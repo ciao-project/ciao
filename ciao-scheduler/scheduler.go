@@ -669,8 +669,23 @@ func main() {
 	var CAcert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
 	var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
 	var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
+	var logDir = "/var/lib/ciao/logs/scheduler"
 
 	flag.Parse()
+
+	logDirFlag := flag.Lookup("log_dir")
+	if logDirFlag == nil {
+		glog.Errorf("log_dir does not exist")
+		return
+	}
+	if logDirFlag.Value.String() == "" {
+		logDirFlag.Value.Set(logDir)
+	}
+	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
+		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
+		return
+	}
+
 	sched := newSsntpSchedulerServer()
 
 	if len(*cpuprofile) != 0 {
