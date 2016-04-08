@@ -60,6 +60,7 @@ func newSsntpSchedulerServer() *ssntpSchedulerServer {
 }
 
 type nodeStat struct {
+	mutex      sync.Mutex
 	status     ssntp.Status
 	uuid       string
 	memTotalMB int
@@ -163,6 +164,7 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 	if sched.cnMap[uuid] != nil {
 		//TODO: consider moving to cnInactiveMap?
 		node := sched.cnMap[uuid]
+
 		if node != nil {
 			for i, n := range sched.cnList {
 				if n != node {
@@ -228,6 +230,9 @@ func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status
 		return
 	}
 
+	node.mutex.Lock()
+	defer node.mutex.Unlock()
+
 	node.status = status
 	switch node.status {
 	case ssntp.READY:
@@ -280,6 +285,9 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 }
 
 func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workResources) bool {
+	node.mutex.Lock()
+	defer node.mutex.Unlock()
+
 	// simple scheduling policy == first memory fit
 	if node.memAvailMB >= workload.memReqMB &&
 		node.status == ssntp.READY {
@@ -379,6 +387,9 @@ func (sched *ssntpSchedulerServer) fwdCmdToComputeNode(command ssntp.Command, pa
 }
 
 func (sched *ssntpSchedulerServer) decrementResourceUsage(node *nodeStat, workload *workResources) {
+	node.mutex.Lock()
+	defer node.mutex.Unlock()
+
 	node.memAvailMB -= workload.memReqMB
 }
 
@@ -620,6 +631,7 @@ func heartBeat(sched *ssntpSchedulerServer) {
 			// show the first four compute nodes
 			cnMax := 4
 			for _, node := range sched.cnMap {
+				node.mutex.Lock()
 				if node.uuid == "" {
 					beatTxt += fmt.Sprintf("node-UNKNOWN:")
 				} else {
@@ -635,6 +647,7 @@ func heartBeat(sched *ssntpSchedulerServer) {
 						node.memTotalMB,
 						node.load)
 				i++
+				node.mutex.Unlock()
 				if i == cnMax {
 					break
 				}
