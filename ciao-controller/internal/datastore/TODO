@@ -1,0 +1,5 @@
+1.  stop requiring csv files at Init time - you should populate anything
+    absolutely required programmatically.
+2.  Write test for releasing tenant IPs which releases an entire subnet
+3.  create schema versioning and migration
+4.  everytime you fail to get a tx, you should not use it.

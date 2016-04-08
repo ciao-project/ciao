@@ -1,0 +1,13 @@
+[Unit]
+Description=Ciao CNCI Agent
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/cnci_agent -server auto -v 3
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=31s
+
+[Install]
+WantedBy=default.target

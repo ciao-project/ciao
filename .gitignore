@@ -1,0 +1,15 @@
+*~
+ciao-cli/ciao-cli
+ciao-controller/ciao-controller
+ciao-launcher/ciao-launcher
+ciao-launcher/tests/ciao-launcher-server/ciao-launcher-server
+ciao-launcher/tests/ciaolc/ciaolc
+ciao-scheduler/ciao-scheduler
+networking/cnci_agent/cnci_agent
+networking/cnci_agent/test_cnci_server/test_cnci_server
+networking/docker/plugin/plugin
+networking/libsnnet/tests/cncicli/cncicli
+networking/libsnnet/tests/cncli/cncli
+networking/libsnnet/tests/snnetcli/snnetcli
+ssntp/tools/tools
+test-cases/test-cases

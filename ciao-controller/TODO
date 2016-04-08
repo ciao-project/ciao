@@ -1,0 +1,16 @@
+Fix sql error handling
+write test cases to check coherency of cache and database
+fix dbLock to be a RWMutex
+clean up all the comments
+either get rid of the table abstraction completely or figure out
+	how to use it better
+
+figure out why we can't reauthenticate with gophercloud after our token
+expires
+
+cleanup TODO
+-----------
+move template files into subdirectory
+move db init (csv and yaml) files into subdirectory
+make it so you don't need to add usage - just do add instance.
+get rid of GetInstanceInfo - make datastore GetInstance()
