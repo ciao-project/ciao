@@ -172,7 +172,7 @@ func fakeControllerStatusReceiverThread(config *ssntp.Config, n int, nFrames int
 
 func main() {
 	var serverURL = flag.String("url", "localhost", "Server URL")
-	var cert = flag.String("cert", "/etc/pki/ciao/cert-client-localhost.pem", "Client certificate")
+	var cert = flag.String("cert", "/etc/pki/ciao/cert-client-controller-localhost.pem", "Client certificate")
 	var CAcert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
 	var nFrames = flag.Int("frames", 10, "Number of frames to send")
 	var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
