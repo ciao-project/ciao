@@ -64,12 +64,18 @@ func createDockerVnicV2(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet
 		return vnic, event, info, err
 	}
 
-	if event == nil {
-		glog.Warning("EVENT information expected")
+	if info == nil {
+		glog.Warning("VNIC information expected")
 		return vnic, event, info, err
 	}
 
-	state.err = createDockerNetwork(context.Background(), info)
+	// We are going to ignore the error here.  Docker network
+	// might fail as it could already have been created.  We
+	// would not know this if it was created in a previous invocation
+	// of launcher.  Should the network really fail to be created
+	// the container will not launch.
+
+	_ = createDockerNetwork(context.Background(), info)
 	return vnic, event, info, state.err
 }
 
