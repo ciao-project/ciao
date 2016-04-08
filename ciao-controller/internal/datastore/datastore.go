@@ -2223,16 +2223,8 @@ func (ds *Datastore) GetInstanceFromTenant(tenantID string, instanceID string) (
 func (ds *Datastore) AddInstance(instance *types.Instance) (err error) {
 	// add to cache
 	ds.instancesLock.Lock()
+
 	ds.instances[instance.Id] = instance
-	ds.instancesLock.Unlock()
-
-	ds.tenantsLock.Lock()
-	ds.tenants[instance.TenantId].instances[instance.Id] = instance
-	ds.tenantsLock.Unlock()
-
-	ds.dbLock.Lock()
-	err = ds.create("instances", instance.Id, instance.TenantId, instance.WorkloadId, instance.MACAddress, instance.IPAddress)
-	ds.dbLock.Unlock()
 
 	instanceStat := payloads.CiaoServerStats{
 		ID:        instance.Id,
@@ -2245,6 +2237,16 @@ func (ds *Datastore) AddInstance(instance *types.Instance) (err error) {
 	ds.instanceLastStatLock.Lock()
 	ds.instanceLastStat[instance.Id] = instanceStat
 	ds.instanceLastStatLock.Unlock()
+
+	ds.instancesLock.Unlock()
+
+	ds.tenantsLock.Lock()
+	ds.tenants[instance.TenantId].instances[instance.Id] = instance
+	ds.tenantsLock.Unlock()
+
+	ds.dbLock.Lock()
+	err = ds.create("instances", instance.Id, instance.TenantId, instance.WorkloadId, instance.MACAddress, instance.IPAddress)
+	ds.dbLock.Unlock()
 
 	return
 }
