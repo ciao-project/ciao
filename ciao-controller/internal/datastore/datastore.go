@@ -94,7 +94,7 @@ type Datastore struct {
 	workloads     map[string]*workload
 	workloadsLock *sync.RWMutex
 
-	nodes     map[string]node
+	nodes     map[string]*node
 	nodesLock *sync.RWMutex
 
 	instances     map[string]*types.Instance
@@ -646,7 +646,7 @@ func (ds *Datastore) Init(tableInitPath string, workloadsPath string) (err error
 	}
 
 	ds.nodesLock = &sync.RWMutex{}
-	ds.nodes = make(map[string]node)
+	ds.nodes = make(map[string]*node)
 
 	for key, i := range ds.instances {
 		n, ok := ds.nodes[i.NodeId]
@@ -654,7 +654,7 @@ func (ds *Datastore) Init(tableInitPath string, workloadsPath string) (err error
 			newNode := types.Node{
 				ID: i.NodeId,
 			}
-			n = node{
+			n = &node{
 				Node:      newNode,
 				instances: make(map[string]*types.Instance),
 			}
@@ -2608,7 +2608,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) (err error) {
 	ds.nodesLock.Lock()
 	n, ok := ds.nodes[stat.NodeUUID]
 	if !ok {
-		n = node{}
+		n = &node{}
 		n.instances = make(map[string]*types.Instance)
 		ds.nodes[stat.NodeUUID] = n
 	}
