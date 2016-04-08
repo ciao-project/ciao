@@ -114,8 +114,8 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 		controller.uuid = uuid
 		sched.controllerMap[uuid] = *controller
 	case ssntp.AGENT:
-		sched.cnMutex.RLock()
-		defer sched.cnMutex.RUnlock()
+		sched.cnMutex.Lock()
+		defer sched.cnMutex.Unlock()
 
 		if sched.cnMap[uuid] != nil {
 			glog.Warningf("Unexpected reconnect from compute node %s\n", uuid)
