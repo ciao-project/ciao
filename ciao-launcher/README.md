@@ -233,7 +233,7 @@ ciao-launcher computes the information that it sends back in the STATS command a
 STATUS update payloads as follows:
 
 <table border=1>
-<tr><th>Datum</th><th>Source</th></td>
+<tr><th>Datum</th><th>Source</th></tr>
 <tr><td>MemTotalMB</td><td>/proc/meminfo:MemTotal</td></tr>
 <tr><td>MemAvailableMB</td><td>/proc/meminfo:MemFree + Active(file) + Inactive(file)</td></tr>
 <tr><td>DiskTotalMB</td><td>statfs("/var/lib/ciao/instances")</td></tr>
@@ -245,7 +245,7 @@ STATUS update payloads as follows:
 And instance statistics are computed like this
 
 <table border=1>
-<tr><th>Datum</th><th>Source</th></td>
+<tr><th>Datum</th><th>Source</th></tr>
 <tr><td>SSHIP</td><td>IP of the concentrator node, see below</td></tr>
 <tr><td>SSHPort</td><td>Port number on the concentrator node which can be used to ssh into the instance</td></tr>
 <tr><td>MemUsageMB</td><td>pss of qemu of docker process id</td></tr>
@@ -401,9 +401,11 @@ need to look in the launcher logs when launching an instance.  You should see
 some instructions in the logs telling you how to connect to the instance.
 Here's an example,
 
+```
 I0407 14:38:10.874786    8154 qemu.go:375] ============================================
 I0407 14:38:10.874830    8154 qemu.go:376] Connect to vm with netcat 127.0.0.1 5909
 I0407 14:38:10.874849    8154 qemu.go:377] ============================================
+```
 
 netcat 127.0.0.1 5909 will give you a login prompt.  You might need to press return to see the login.   Note this will only work if the VM allows login on the
 console port, i.e., is running getty on ttyS0.
