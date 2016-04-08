@@ -77,6 +77,7 @@ const (
 )
 
 type controllerStat struct {
+	mutex  sync.Mutex
 	status controllerStatus
 	uuid   string
 }
@@ -97,10 +98,13 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 		// TODO: smarter clustering than "assume master, unless another is master"
 		controller.status = controllerMaster
 		for _, c := range sched.controllerMap {
+			c.mutex.Lock()
 			if c.status == controllerMaster {
 				controller.status = controllerBackup
+				c.mutex.Unlock()
 				break
 			}
+			c.mutex.Unlock()
 		}
 
 		controller.uuid = uuid
@@ -142,14 +146,18 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
 	if sched.controllerMap[uuid] != nil {
-		if sched.controllerMap[uuid].status == controllerMaster {
+		controller := sched.controllerMap[uuid]
+		if controller.status == controllerMaster {
 			// promote a new master
 			for _, c := range sched.controllerMap {
+				c.mutex.Lock()
 				if c.status == controllerBackup {
 					c.status = controllerMaster
 					//TODO: inform the Controller it is master
+					c.mutex.Unlock()
 					break
 				}
+				c.mutex.Unlock()
 			}
 		}
 		delete(sched.controllerMap, uuid)
@@ -512,11 +520,15 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 		dest.SetDecision(ssntp.Discard)
 		return
 	}
-	if sched.controllerMap[controllerUUID].status != controllerMaster {
+	controller := sched.controllerMap[controllerUUID]
+	controller.mutex.Lock()
+	if controller.status != controllerMaster {
 		glog.Warningf("Ignoring %s command from non-master Controller %s\n", command, controllerUUID)
 		dest.SetDecision(ssntp.Discard)
+		controller.mutex.Unlock()
 		return
 	}
+	controller.mutex.Unlock()
 
 	start := time.Now()
 
@@ -603,12 +615,14 @@ func heartBeat(sched *ssntpSchedulerServer) {
 			// show the first two controller's
 			controllerMax := 2
 			for _, controller := range sched.controllerMap {
+				controller.mutex.Lock()
 				beatTxt += fmt.Sprintf("controller-%s:", controller.uuid[:8])
 				if controller.status == controllerMaster {
 					beatTxt += "master"
 				} else {
 					beatTxt += "backup"
 				}
+				controller.mutex.Unlock()
 				i++
 				if i == controllerMax {
 					break
