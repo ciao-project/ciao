@@ -147,7 +147,6 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 			for _, c := range sched.controllerMap {
 				if c.status == controllerBackup {
 					c.status = controllerMaster
-					sched.controllerMap[c.uuid] = c
 					//TODO: inform the Controller it is master
 					break
 				}
