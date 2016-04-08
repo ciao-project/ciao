@@ -1,8 +1,5 @@
-- Append to slice when creating command and status frames
 - Fuzzy testing
 - Real version check
 - Server reliability:
   * Extended CONNECTED frame for passing alternative servers IP.
-- Fix go lint
-- Connection/disconnection event forwarding
-- TLS hearbeat implementation
+
