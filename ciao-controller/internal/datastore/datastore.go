@@ -962,15 +962,6 @@ func (ds *Datastore) AddLimit(tenantID string, resourceID int, limit int) (err e
 }
 
 func (ds *Datastore) getTenantResources(id string) (resources []*types.Resource, err error) {
-	// check cache first
-	ds.tenantsLock.RLock()
-	tenant := ds.tenants[id]
-	ds.tenantsLock.RUnlock()
-	if tenant != nil {
-		resources = tenant.Resources
-		return
-	}
-
 	query := `WITH instances_usage AS
 		 (
 			 SELECT resource_id, value
@@ -1080,16 +1071,7 @@ func (ds *Datastore) AddTenant(id string) (tenant *types.Tenant, err error) {
 	return &t.Tenant, err
 }
 
-func (ds *Datastore) getTenant(id string) (t *tenant, err error) {
-	// check cache first
-	ds.tenantsLock.RLock()
-	t = ds.tenants[id]
-	ds.tenantsLock.RUnlock()
-
-	if t != nil {
-		return
-	}
-
+func (ds *Datastore) getTenantNoCache(id string) (t *tenant, err error) {
 	query := `SELECT	tenants.id,
 				tenants.name,
 				tenants.cnci_id,
@@ -1121,13 +1103,26 @@ func (ds *Datastore) getTenant(id string) (t *tenant, err error) {
 	}
 
 	t.instances = make(map[string]*types.Instance)
-	instances, err := ds.GetAllInstancesFromTenant(t.Id)
+	instances, err := ds.getTenantInstances(t.Id)
 	if err != nil {
 		for i := range instances {
 			t.instances[instances[i].Id] = instances[i]
 		}
 	}
 	return t, err
+}
+
+func (ds *Datastore) getTenant(id string) (t *tenant, err error) {
+	// check cache first
+	ds.tenantsLock.RLock()
+	t = ds.tenants[id]
+	ds.tenantsLock.RUnlock()
+
+	if t != nil {
+		return
+	}
+
+	return ds.getTenantNoCache(id)
 }
 
 // GetTenant returns details about a tenant referenced by the uuid
@@ -1506,7 +1501,7 @@ func (ds *Datastore) getTenants() ([]*tenant, error) {
 			return nil, err
 		}
 		t.instances = make(map[string]*types.Instance)
-		instances, err := ds.GetAllInstancesFromTenant(t.Id)
+		instances, err := ds.getTenantInstances(t.Id)
 		if err != nil {
 			for i := range instances {
 				t.instances[instances[i].Id] = instances[i]
@@ -1875,19 +1870,7 @@ func (ds *Datastore) GetAllInstances() (instances []*types.Instance, err error) 
 	return instances, nil
 }
 
-// GetAllInstancesFromTenant will retrieve all instances belonging to a specific tenant
-func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) (instances []*types.Instance, err error) {
-	ds.tenantsLock.RLock()
-	t, ok := ds.tenants[tenantID]
-	if ok {
-		for _, val := range t.instances {
-			instances = append(instances, val)
-		}
-		ds.tenantsLock.RUnlock()
-		return
-	}
-	ds.tenantsLock.RUnlock()
-
+func (ds *Datastore) getTenantInstances(tenantID string) (instances []*types.Instance, err error) {
 	datastore := ds.getTableDB("instances")
 
 	ds.tdbLock.RLock()
@@ -1991,6 +1974,26 @@ func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) (instances []*ty
 	ds.tdbLock.RUnlock()
 
 	return instances, nil
+}
+
+// GetAllInstancesFromTenant will retrieve all instances belonging to a specific tenant
+func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) (instances []*types.Instance, err error) {
+	ds.tenantsLock.RLock()
+
+	t, ok := ds.tenants[tenantID]
+	if ok {
+		for _, val := range t.instances {
+			instances = append(instances, val)
+		}
+
+		ds.tenantsLock.RUnlock()
+
+		return
+	}
+
+	ds.tenantsLock.RUnlock()
+
+	return nil, nil
 }
 
 // GetAllInstancesByNode will retrieve all the instances running on a specific compute Node.
@@ -2527,7 +2530,6 @@ func (ds *Datastore) deleteAllUsage(instanceID string, tenantID string) (err err
 	// remove old tenant info from cache
 	ds.tenantsLock.Lock()
 	delete(ds.tenants, tenantID)
-	ds.tenantsLock.Unlock()
 
 	cmd := fmt.Sprintf("DELETE FROM usage WHERE instance_id = '%s';", instanceID)
 	ds.dbLock.Lock()
@@ -2535,12 +2537,11 @@ func (ds *Datastore) deleteAllUsage(instanceID string, tenantID string) (err err
 	ds.dbLock.Unlock()
 
 	// update cache
-	tenant, err := ds.getTenant(tenantID)
+	tenant, err := ds.getTenantNoCache(tenantID)
 	if err != nil || tenant == nil {
 		glog.V(2).Info(err, " unable to get tenant: ", tenantID)
 	}
 
-	ds.tenantsLock.Lock()
 	ds.tenants[tenantID] = tenant
 	ds.tenantsLock.Unlock()
 
