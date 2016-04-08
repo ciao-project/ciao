@@ -34,7 +34,7 @@ type ssntpSchedulerServer struct {
 	ssntp ssntp.Server
 	name  string
 	// Command & Status Reporting node(s)
-	controllerMap   map[string]controllerStat
+	controllerMap   map[string]*controllerStat
 	controllerMutex sync.RWMutex
 	// Compute Nodes
 	cnMap      map[string]*nodeStat
@@ -52,7 +52,7 @@ type ssntpSchedulerServer struct {
 func newSsntpSchedulerServer() *ssntpSchedulerServer {
 	return &ssntpSchedulerServer{
 		name:          "Ciao Scheduler Server",
-		controllerMap: make(map[string]controllerStat),
+		controllerMap: make(map[string]*controllerStat),
 		cnMap:         make(map[string]*nodeStat),
 		cnMRUIndex:    -1,
 		nnMap:         make(map[string]*nodeStat),
@@ -86,11 +86,12 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 		sched.controllerMutex.Lock()
 		defer sched.controllerMutex.Unlock()
 
-		if sched.controllerMap[uuid].uuid != "" {
+		if sched.controllerMap[uuid] != nil {
 			glog.Warningf("Unexpected reconnect from controller %s\n", uuid)
 			return
 		}
-		controller := new(controllerStat)
+
+		var controller controllerStat
 
 		// TODO: smarter clustering than "assume master, unless another is master"
 		controller.status = controllerMaster
@@ -102,7 +103,7 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 		}
 
 		controller.uuid = uuid
-		sched.controllerMap[uuid] = *controller
+		sched.controllerMap[uuid] = &controller
 	case ssntp.AGENT:
 		sched.cnMutex.Lock()
 		defer sched.cnMutex.Unlock()
@@ -139,7 +140,7 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
-	if sched.controllerMap[uuid].uuid != "" {
+	if sched.controllerMap[uuid] != nil {
 		if sched.controllerMap[uuid].status == controllerMaster {
 			// promote a new master
 			for _, c := range sched.controllerMap {
@@ -206,7 +207,7 @@ func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status
 
 	sched.controllerMutex.RLock()
 	defer sched.controllerMutex.RUnlock()
-	if sched.controllerMap[uuid].uuid != "" {
+	if sched.controllerMap[uuid] != nil {
 		glog.Warningf("Ignoring STATUS change from Controller uuid=%s\n", uuid)
 		return
 	}
@@ -496,6 +497,11 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 
 	sched.controllerMutex.RLock()
 	defer sched.controllerMutex.RUnlock()
+	if sched.controllerMap[controllerUUID] == nil {
+		glog.Warningf("Ignoring %s command from unknown Controller %s\n", command, controllerUUID)
+		dest.SetDecision(ssntp.Discard)
+		return
+	}
 	if sched.controllerMap[controllerUUID].status != controllerMaster {
 		glog.Warningf("Ignoring %s command from non-master Controller %s\n", command, controllerUUID)
 		dest.SetDecision(ssntp.Discard)
