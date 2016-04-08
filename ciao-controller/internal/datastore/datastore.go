@@ -1368,13 +1368,19 @@ func (ds *Datastore) AddCNCIIP(cnciMAC string, ip string) (err error) {
 		glog.Warning("Failed to update CNCI IP")
 	}
 
-	c := ds.cnciAddedChans[tenantID]
+	ds.cnciAddedLock.Lock()
+
+	c, ok := ds.cnciAddedChans[tenantID]
+	if ok {
+		delete(ds.cnciAddedChans, tenantID)
+	}
+
+	ds.cnciAddedLock.Unlock()
+
 	if c != nil {
-		ds.cnciAddedLock.Lock()
-		ds.cnciAddedChans[tenantID] = nil
-		ds.cnciAddedLock.Unlock()
 		c <- true
 	}
+
 	return
 }
 
@@ -2291,13 +2297,20 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		}
 		msg := fmt.Sprintf("CNCI Start Failure %s: %s", instanceID, reason.String())
 		ds.logEvent(tenantID, string(userError), msg)
-		c := ds.cnciAddedChans[tenantID]
+
+		ds.cnciAddedLock.Lock()
+
+		c, ok := ds.cnciAddedChans[tenantID]
+		if ok {
+			delete(ds.cnciAddedChans, tenantID)
+		}
+
+		ds.cnciAddedLock.Unlock()
+
 		if c != nil {
-			ds.cnciAddedLock.Lock()
-			ds.cnciAddedChans[tenantID] = nil
-			ds.cnciAddedLock.Unlock()
 			c <- false
 		}
+
 		return
 	}
 
