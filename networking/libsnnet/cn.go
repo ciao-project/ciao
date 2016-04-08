@@ -30,7 +30,7 @@ import (
 //operations to complete. When multiple threads and invoking the API
 //simulatenously the APIs may take time to return due to the need to
 //serialize certian netlink calls
-var CnTimeout int64 = 60
+var CnTimeout int64 = 5
 
 // NetworkConfig from YAML.
 // This is a subset of the top level data center configuration
