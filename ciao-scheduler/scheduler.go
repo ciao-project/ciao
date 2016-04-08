@@ -44,14 +44,9 @@ type ssntpSchedulerServer struct {
 	cnMRUIndex int
 	//cnInactiveMap      map[string]nodeStat
 	// Network Nodes
-	nnMap        map[string]*nodeStat
-	nnMutex      sync.RWMutex
-	nnMRU        string
-	nConnections int
-	nCommands    int
-	nStatuses    int
-	nErrors      int
-	nEvents      int
+	nnMap   map[string]*nodeStat
+	nnMutex sync.RWMutex
+	nnMRU   string
 }
 
 func newSsntpSchedulerServer() *ssntpSchedulerServer {
@@ -61,11 +56,6 @@ func newSsntpSchedulerServer() *ssntpSchedulerServer {
 		cnMap:         make(map[string]*nodeStat),
 		cnMRUIndex:    -1,
 		nnMap:         make(map[string]*nodeStat),
-		nConnections:  0,
-		nCommands:     0,
-		nStatuses:     0,
-		nErrors:       0,
-		nEvents:       0,
 	}
 }
 
@@ -142,7 +132,6 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 		sched.nnMap[uuid] = &node
 	}
 
-	sched.nConnections++
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
@@ -164,7 +153,6 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 		}
 		delete(sched.controllerMap, uuid)
 
-		sched.nConnections--
 		glog.V(2).Infof("Disconnect controller (uuid=%s)\n", uuid)
 		return
 	}
@@ -191,7 +179,6 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 
 		delete(sched.cnMap, uuid)
 
-		sched.nConnections--
 		glog.V(2).Infof("Disconnect cn (uuid=%s)\n", uuid)
 		return
 	}
@@ -202,7 +189,6 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 		//TODO: consider moving to nnInactiveMap?
 		delete(sched.nnMap, uuid)
 
-		sched.nConnections--
 		glog.V(2).Infof("Disconnect nn (uuid=%s)\n", uuid)
 		return
 	}
@@ -216,8 +202,7 @@ func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status
 
 	// for now only pay attention to READY status
 
-	sched.nStatuses++
-	glog.V(2).Infof("STATUS (#%d) %v from %s\n", sched.nStatuses, status, uuid)
+	glog.V(2).Infof("STATUS %v from %s\n", status, uuid)
 
 	sched.controllerMutex.RLock()
 	defer sched.controllerMutex.RUnlock()
@@ -546,8 +531,7 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 func (sched *ssntpSchedulerServer) CommandNotify(uuid string, command ssntp.Command, frame *ssntp.Frame) {
 	// Currently all commands are handled by CommandForward, the SSNTP command forwader,
 	// or directly by role defined forwarding rules.
-	sched.nCommands++
-	glog.V(2).Infof("COMMAND (#%d) %v from %s\n", sched.nCommands, command, uuid)
+	glog.V(2).Infof("COMMAND %v from %s\n", command, uuid)
 }
 
 func (sched *ssntpSchedulerServer) EventForward(uuid string, event ssntp.Event, frame *ssntp.Frame) (dest ssntp.ForwardDestination) {
@@ -573,13 +557,11 @@ func (sched *ssntpSchedulerServer) EventForward(uuid string, event ssntp.Event, 
 func (sched *ssntpSchedulerServer) EventNotify(uuid string, event ssntp.Event, frame *ssntp.Frame) {
 	// Currently all events are handled by EventForward, the SSNTP command forwader,
 	// or directly by role defined forwarding rules.
-	sched.nEvents++
-	glog.V(2).Infof("EVENT (#%d) %v from %s\n", sched.nEvents, event, uuid)
+	glog.V(2).Infof("EVENT %v from %s\n", event, uuid)
 }
 
 func (sched *ssntpSchedulerServer) ErrorNotify(uuid string, error ssntp.Error, frame *ssntp.Frame) {
-	sched.nErrors++
-	glog.V(2).Infof("ERROR (#%d) %v from %s\n", sched.nErrors, error, uuid)
+	glog.V(2).Infof("ERROR %v from %s\n", error, uuid)
 }
 
 func heartBeat(sched *ssntpSchedulerServer) {
