@@ -2366,9 +2366,12 @@ func (ds *Datastore) DeleteInstance(instanceID string) (err error) {
 	delete(ds.tenants[i.TenantId].instances, instanceID)
 	ds.tenantsLock.Unlock()
 
-	ds.nodesLock.Lock()
-	delete(ds.nodes[i.NodeId].instances, instanceID)
-	ds.nodesLock.Unlock()
+	// we may not have received any node stats for this instance
+	if i.NodeId != "" {
+		ds.nodesLock.Lock()
+		delete(ds.nodes[i.NodeId].instances, instanceID)
+		ds.nodesLock.Unlock()
+	}
 
 	tenantID, ipAddress, err := ds.getInstanceTenantNetwork(instanceID)
 	if err != nil {
