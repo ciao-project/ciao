@@ -8,15 +8,23 @@ separates logic into "controller", "scheduler" and "launcher" components
 which communicate over the "Simple and Secure Node Transfer Protocol
 (SSNTP)".
 
-Controller is responsible for policy choices around tenant workloads.
+[Controller](https://github.com/01org/ciao/blob/master/ciao-controller)
+is responsible for policy choices around tenant workloads.
 
-Scheduler implements a push scheduling, finding a first fit on cluster
-compute nodes for a controller approved workload instance.
+[Scheduler](https://github.com/01org/ciao/blob/master/ciao-scheduler)
+implements a push scheduling, finding a first fit on cluster compute
+nodes for a controller approved workload instance.
 
-Launcher abstracts the specific launching details for the different
-workload types (eg: virtual machine, container, bare metal).  Launcher
-reports compute node statistics to the scheduler and controller.  It also
-reports per-instance statistics up to controller.
+[Launcher](https://github.com/01org/ciao/blob/master/ciao-launcher)
+abstracts the specific launching details for the different workload
+types (eg: virtual machine, container, bare metal).  Launcher reports
+compute node statistics to the scheduler and controller.  It also reports
+per-instance statistics up to controller.
 
-An additional set of componentry provides network connectivity for workload
-instances and insures tenant isolation.
+An additional set of componentry provides [ciao
+network](https://github.com/01org/ciao/blob/master/networking)
+connectivity for workload instances and insures tenant isolation.
+
+All ciao components communicate with each other via
+[SSNTP](https://github.com/01org/ciao/blob/master/ssntp/README.md) using a
+set of [payloads](https://github.com/01org/ciao/blob/master/payloads).
