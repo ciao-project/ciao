@@ -76,7 +76,7 @@ type Client struct {
 	trace *TraceConfig
 }
 
-func handleSSNTPServer(client *Client) {
+func (client *Client) handleSSNTPServer() {
 	defer client.Close()
 
 	for {
@@ -345,7 +345,7 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 		return err
 	}
 
-	go handleSSNTPServer(client)
+	go client.handleSSNTPServer()
 
 	return nil
 }
