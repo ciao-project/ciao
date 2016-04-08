@@ -1,5 +1,0 @@
-- Fuzzy testing
-- Real version check
-- Server reliability:
-  * Extended CONNECTED frame for passing alternative servers IP.
-
