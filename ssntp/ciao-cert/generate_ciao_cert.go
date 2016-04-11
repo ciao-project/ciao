@@ -46,7 +46,8 @@ import (
 )
 
 var (
-	host         = flag.String("host", "", "Comma-separated hostnames and IPs to generate a certificate for")
+	host         = flag.String("host", "", "Comma-separated hostnames to generate a certificate for")
+	mgmtIP       = flag.String("ip", "", "Comma-separated IPs to generate a certificate for")
 	serverCert   = flag.String("server-cert", "", "Server certificate for signing a client one")
 	isServer     = flag.Bool("server", false, "Whether this cert should be a server one")
 	verify       = flag.Bool("verify", false, "Verify client certificate")
@@ -190,9 +191,16 @@ func main() {
 	firstHost := hosts[0]
 	for _, h := range hosts {
 		if ip := net.ParseIP(h); ip != nil {
-			template.IPAddresses = append(template.IPAddresses, ip)
+			continue
 		} else {
 			template.DNSNames = append(template.DNSNames, h)
+		}
+	}
+
+	mgmtIPs := strings.Split(*mgmtIP, ",")
+	for _, i := range mgmtIPs {
+		if ip := net.ParseIP(i); ip != nil {
+			template.IPAddresses = append(template.IPAddresses, ip)
 		}
 	}
 
