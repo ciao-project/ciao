@@ -46,11 +46,13 @@ import (
 )
 
 var (
-	host       = flag.String("host", "", "Comma-separated hostnames and IPs to generate a certificate for")
-	serverCert = flag.String("server-cert", "", "Server certificate for signing a client one")
-	isServer   = flag.Bool("server", false, "Whether this cert should be a server one")
-	verify     = flag.Bool("verify", false, "Verify client certificate")
-	isElliptic = flag.Bool("elliptic-key", false, "Use elliptic curve algorithms")
+	host         = flag.String("host", "", "Comma-separated hostnames and IPs to generate a certificate for")
+	serverCert   = flag.String("server-cert", "", "Server certificate for signing a client one")
+	isServer     = flag.Bool("server", false, "Whether this cert should be a server one")
+	verify       = flag.Bool("verify", false, "Verify client certificate")
+	isElliptic   = flag.Bool("elliptic-key", false, "Use elliptic curve algorithms")
+	email        = flag.String("email", "ciao-devel@lists.clearlinux.org", "Certificate email address")
+	organization = flag.String("organization", "", "Certificates organization")
 )
 
 func verifyCert(CACert string, certName string) {
@@ -173,14 +175,14 @@ func main() {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{"Intel/SSG/OTC"},
+			Organization: []string{*organization},
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-		EmailAddresses:        []string{"ciao@lists.01.org"},
+		EmailAddresses:        []string{*email},
 		BasicConstraintsValid: true,
 	}
 
