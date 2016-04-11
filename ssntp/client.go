@@ -27,6 +27,8 @@ import (
 
 // ClientNotifier is the SSNTP client notification interface.
 // Any SSNTP client must implement this interface.
+// IMPORTANT: All ClientNotifier implementations must be thread
+// safe, i.e. they will very likely be called by multiple go routines.
 type ClientNotifier interface {
 	// ConnectNotify notifies of a successful connection to an SSNTP server.
 	// This notification is mostly useful for clients to know when they're
