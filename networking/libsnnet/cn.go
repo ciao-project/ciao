@@ -801,7 +801,7 @@ func waitForDeviceReady(devInfo *linkInfo) (devName string, devIndex int, err er
 	case <-devInfo.ready:
 		return devInfo.name, devInfo.index, nil
 	case <-time.After(time.Duration(CnTimeout) * time.Second):
-		return "", 0, fmt.Errorf("Timeout waiting for device ready")
+		return "", 0, fmt.Errorf("Timeout waiting for device ready [%v] [%v]", devInfo.index, devInfo.name)
 	}
 }
 
