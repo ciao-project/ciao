@@ -1102,13 +1102,8 @@ func (ds *Datastore) getTenantNoCache(id string) (t *tenant, err error) {
 		glog.V(2).Info(err)
 	}
 
-	t.instances = make(map[string]*types.Instance)
-	instances, err := ds.getTenantInstances(t.Id)
-	if err == nil {
-		for _, instance := range instances {
-			t.instances[instance.Id] = instance
-		}
-	}
+	t.instances, err = ds.getTenantInstances(t.Id)
+
 	return t, err
 }
 
@@ -1506,12 +1501,10 @@ func (ds *Datastore) getTenants() ([]*tenant, error) {
 		if err != nil {
 			return nil, err
 		}
-		t.instances = make(map[string]*types.Instance)
-		instances, err := ds.getTenantInstances(t.Id)
-		if err == nil {
-			for _, instance := range instances {
-				t.instances[instance.Id] = instance
-			}
+
+		t.instances, err = ds.getTenantInstances(t.Id)
+		if err != nil {
+			return nil, err
 		}
 
 		tenants = append(tenants, t)
@@ -1876,7 +1869,7 @@ func (ds *Datastore) GetAllInstances() (instances []*types.Instance, err error) 
 	return instances, nil
 }
 
-func (ds *Datastore) getTenantInstances(tenantID string) (instances []*types.Instance, err error) {
+func (ds *Datastore) getTenantInstances(tenantID string) (instances map[string]*types.Instance, err error) {
 	datastore := ds.getTableDB("instances")
 
 	ds.tdbLock.RLock()
@@ -1922,6 +1915,7 @@ func (ds *Datastore) getTenantInstances(tenantID string) (instances []*types.Ins
 	}
 	defer rows.Close()
 
+	instances = make(map[string]*types.Instance)
 	for rows.Next() {
 		var id sql.NullString
 		var tenantID sql.NullString
@@ -1968,7 +1962,7 @@ func (ds *Datastore) getTenantInstances(tenantID string) (instances []*types.Ins
 		if sshPort.Valid {
 			i.SSHPort = int(sshPort.Int64)
 		}
-		instances = append(instances, i)
+		instances[i.Id] = i
 	}
 	if err = rows.Err(); err != nil {
 		tx.Rollback()
