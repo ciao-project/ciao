@@ -1060,7 +1060,7 @@ func (ds *Datastore) AddTenant(id string) (tenant *types.Tenant, err error) {
 	ds.dbLock.Unlock()
 
 	t, err := ds.getTenant(id)
-	if err != nil || tenant == nil {
+	if err != nil || t == nil {
 		glog.V(2).Info(err, " unable to get tenant: ", id)
 	}
 
