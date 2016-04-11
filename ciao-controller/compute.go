@@ -1029,8 +1029,7 @@ func createComputeAPI(context *controller) {
 	}).Methods("GET")
 
 	r.HandleFunc("/v2.1/{tenant}/resources", func(w http.ResponseWriter, r *http.Request) {
-		listTenantQuotas(w, r, context)
-		//listTenantResources(w, r, context)
+		listTenantResources(w, r, context)
 	}).Methods("GET")
 
 	r.HandleFunc("/v2.1/{tenant}/quotas", func(w http.ResponseWriter, r *http.Request) {
