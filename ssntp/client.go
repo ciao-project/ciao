@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/docker/distribution/uuid"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -71,9 +72,29 @@ type Client struct {
 	status     connectionStatus
 	closed     chan struct{}
 
+	frameWg              sync.WaitGroup
+	frameRoutinesChannel chan struct{}
+
 	log Logger
 
 	trace *TraceConfig
+}
+
+func (client *Client) processSSNTPFrame(frame *Frame) {
+	defer client.frameWg.Done()
+
+	switch (Type)(frame.Type) {
+	case COMMAND:
+		client.ntf.CommandNotify((Command)(frame.Operand), frame)
+	case STATUS:
+		client.ntf.StatusNotify((Status)(frame.Operand), frame)
+	case EVENT:
+		client.ntf.EventNotify((Event)(frame.Operand), frame)
+	case ERROR:
+		client.ntf.ErrorNotify((Error)(frame.Operand), frame)
+	default:
+		client.SendError(InvalidFrameType, nil)
+	}
 }
 
 func (client *Client) handleSSNTPServer() {
@@ -100,18 +121,8 @@ func (client *Client) handleSSNTPServer() {
 				break
 			}
 
-			switch (Type)(frame.Type) {
-			case COMMAND:
-				client.ntf.CommandNotify((Command)(frame.Operand), &frame)
-			case STATUS:
-				client.ntf.StatusNotify((Status)(frame.Operand), &frame)
-			case EVENT:
-				client.ntf.EventNotify((Event)(frame.Operand), &frame)
-			case ERROR:
-				client.ntf.ErrorNotify((Error)(frame.Operand), &frame)
-			default:
-				client.SendError(InvalidFrameType, nil)
-			}
+			client.frameWg.Add(1)
+			go client.processSSNTPFrame(&frame)
 		}
 
 		err := client.attemptDial()
@@ -366,6 +377,19 @@ func (client *Client) Close() {
 		close(client.closed)
 	}
 	client.status.Unlock()
+
+	client.frameRoutinesChannel = make(chan struct{})
+	go func(client *Client) {
+		client.frameWg.Wait()
+		close(client.frameRoutinesChannel)
+	}(client)
+
+	select {
+	case <-client.frameRoutinesChannel:
+		break
+	case <-time.After(2 * time.Second):
+		break
+	}
 
 	freeUUID(client.lUUID)
 }
