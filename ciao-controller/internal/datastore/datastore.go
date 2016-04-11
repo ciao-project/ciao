@@ -1104,7 +1104,7 @@ func (ds *Datastore) getTenantNoCache(id string) (t *tenant, err error) {
 
 	t.instances = make(map[string]*types.Instance)
 	instances, err := ds.getTenantInstances(t.Id)
-	if err != nil {
+	if err == nil {
 		for i := range instances {
 			t.instances[instances[i].Id] = instances[i]
 		}
@@ -1508,7 +1508,7 @@ func (ds *Datastore) getTenants() ([]*tenant, error) {
 		}
 		t.instances = make(map[string]*types.Instance)
 		instances, err := ds.getTenantInstances(t.Id)
-		if err != nil {
+		if err == nil {
 			for i := range instances {
 				t.instances[instances[i].Id] = instances[i]
 			}
