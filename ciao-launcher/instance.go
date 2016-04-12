@@ -27,6 +27,24 @@ import (
 	"github.com/golang/glog"
 )
 
+type instanceData struct {
+	cmdCh          chan interface{}
+	instance       string
+	cfg            *vmConfig
+	wg             *sync.WaitGroup
+	doneCh         chan struct{}
+	ac             *agentClient
+	ovsCh          chan<- interface{}
+	instanceWg     sync.WaitGroup
+	monitorCh      chan string
+	connectedCh    chan struct{}
+	monitorCloseCh chan struct{}
+	statsTimer     <-chan time.Time
+	vm             virtualizer
+	instanceDir    string
+	shuttingDown   bool
+}
+
 type insStartCmd struct {
 	userData []byte
 	metaData []byte
@@ -75,40 +93,25 @@ func killMe(instance string, doneCh chan struct{}, ac *agentClient, wg *sync.Wai
 	}()
 }
 
-func instanceLoop(cmdCh chan interface{}, instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{}, ac *agentClient, ovsCh chan<- interface{}) {
-	var instanceWg sync.WaitGroup
-	var monitorCh chan string
-	var connectedCh chan struct{}
-	var monitorCloseCh chan struct{}
-	var statsTimer <-chan time.Time
-	var vm virtualizer
+func (id *instanceData) instanceLoop() {
 
-	if simulate == true {
-		vm = &simulation{}
-	} else if cfg.Container {
-		vm = &docker{}
-	} else {
-		vm = &qemu{}
-	}
-	instanceDir := path.Join(instancesDir, instance)
-	vm.init(cfg, instanceDir)
-	shuttingDown := false
+	id.vm.init(id.cfg, id.instanceDir)
 
-	d, m, c := vm.stats()
-	ovsCh <- &ovsStatsUpdateCmd{instance, m, d, c}
+	d, m, c := id.vm.stats()
+	id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
 
 DONE:
 	for {
 		select {
-		case <-doneCh:
+		case <-id.doneCh:
 			break DONE
-		case <-statsTimer:
-			d, m, c := vm.stats()
-			ovsCh <- &ovsStatsUpdateCmd{instance, m, d, c}
-			statsTimer = time.After(time.Second * statsPeriod)
-		case cmd := <-cmdCh:
+		case <-id.statsTimer:
+			d, m, c := id.vm.stats()
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+			id.statsTimer = time.After(time.Second * statsPeriod)
+		case cmd := <-id.cmdCh:
 			select {
-			case <-doneCh:
+			case <-id.doneCh:
 				break DONE
 			default:
 			}
@@ -116,146 +119,167 @@ DONE:
 			switch cmd := cmd.(type) {
 			case *insStartCmd:
 				glog.Info("Found start command")
-				if monitorCh != nil {
+				if id.monitorCh != nil {
 					startErr := &startError{nil, payloads.AlreadyRunning}
 					glog.Errorf("Unable to start instance[%s]", string(startErr.code))
-					startErr.send(&ac.ssntpConn, instance)
+					startErr.send(&id.ac.ssntpConn, id.instance)
 					continue
 				}
-				startErr := processStart(cmd, instanceDir, vm, &ac.ssntpConn)
+				startErr := processStart(cmd, id.instanceDir, id.vm, &id.ac.ssntpConn)
 				if startErr != nil {
 					glog.Errorf("Unable to start instance[%s]: %v", string(startErr.code), startErr.err)
-					startErr.send(&ac.ssntpConn, instance)
+					startErr.send(&id.ac.ssntpConn, id.instance)
 
 					if startErr.code == payloads.LaunchFailure {
-						ovsCh <- &ovsStateChange{instance, ovsStopped}
+						id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
 					} else if startErr.code != payloads.InstanceExists {
-						glog.Warningf("Unable to create VM instance: %s.  Killing it", instance)
-						killMe(instance, doneCh, ac, &instanceWg)
-						shuttingDown = true
+						glog.Warningf("Unable to create VM instance: %s.  Killing it", id.instance)
+						killMe(id.instance, id.doneCh, id.ac, &id.instanceWg)
+						id.shuttingDown = true
 					}
 					continue
 				}
 
-				connectedCh = make(chan struct{})
-				monitorCloseCh = make(chan struct{})
-				monitorCh = vm.monitorVM(monitorCloseCh, connectedCh, &instanceWg, false)
-				ovsCh <- &ovsStatusCmd{}
+				id.connectedCh = make(chan struct{})
+				id.monitorCloseCh = make(chan struct{})
+				id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, false)
+				id.ovsCh <- &ovsStatusCmd{}
 				if cmd.frame != nil && cmd.frame.PathTrace() {
-					ovsCh <- &ovsTraceFrame{cmd.frame}
+					id.ovsCh <- &ovsTraceFrame{cmd.frame}
 				}
 			case *insRestartCmd:
 				glog.Info("Found restart command")
 
-				if shuttingDown {
+				if id.shuttingDown {
 					restartErr := &restartError{nil, payloads.RestartNoInstance}
 					glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
-					restartErr.send(&ac.ssntpConn, instance)
+					restartErr.send(&id.ac.ssntpConn, id.instance)
 					continue
 				}
 
-				if monitorCh != nil {
+				if id.monitorCh != nil {
 					restartErr := &restartError{nil, payloads.RestartAlreadyRunning}
 					glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
-					restartErr.send(&ac.ssntpConn, instance)
+					restartErr.send(&id.ac.ssntpConn, id.instance)
 					continue
 				}
 
-				restartErr := processRestart(instanceDir, vm, &ac.ssntpConn, cfg)
+				restartErr := processRestart(id.instanceDir, id.vm, &id.ac.ssntpConn, id.cfg)
 
 				if restartErr != nil {
 					glog.Errorf("Unable to restart instance[%s]: %v", string(restartErr.code),
 						restartErr.err)
-					restartErr.send(&ac.ssntpConn, instance)
+					restartErr.send(&id.ac.ssntpConn, id.instance)
 					continue
 				}
 
-				connectedCh = make(chan struct{})
-				monitorCloseCh = make(chan struct{})
-				monitorCh = vm.monitorVM(monitorCloseCh, connectedCh, &instanceWg, false)
+				id.connectedCh = make(chan struct{})
+				id.monitorCloseCh = make(chan struct{})
+				id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, false)
 			case *insMonitorCmd:
-				connectedCh = make(chan struct{})
-				monitorCloseCh = make(chan struct{})
-				monitorCh = vm.monitorVM(monitorCloseCh, connectedCh, &instanceWg, true)
+				id.connectedCh = make(chan struct{})
+				id.monitorCloseCh = make(chan struct{})
+				id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, true)
 			case *insStopCmd:
 
-				if shuttingDown {
+				if id.shuttingDown {
 					stopErr := &stopError{nil, payloads.StopNoInstance}
 					glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
-					stopErr.send(&ac.ssntpConn, instance)
+					stopErr.send(&id.ac.ssntpConn, id.instance)
 					continue
 				}
 
-				if monitorCh == nil {
+				if id.monitorCh == nil {
 					stopErr := &stopError{nil, payloads.StopAlreadyStopped}
 					glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
-					stopErr.send(&ac.ssntpConn, instance)
+					stopErr.send(&id.ac.ssntpConn, id.instance)
 					continue
 				}
-				glog.Infof("Powerdown %s", instance)
-				monitorCh <- virtualizerStopCmd
+				glog.Infof("Powerdown %s", id.instance)
+				id.monitorCh <- virtualizerStopCmd
 			case *insDeleteCmd:
 
-				if shuttingDown && !cmd.suicide {
+				if id.shuttingDown && !cmd.suicide {
 					deleteErr := &deleteError{nil, payloads.DeleteNoInstance}
 					glog.Errorf("Unable to delete instance[%s]", string(deleteErr.code))
-					deleteErr.send(&ac.ssntpConn, instance)
+					deleteErr.send(&id.ac.ssntpConn, id.instance)
 					continue
 				}
 
-				if monitorCh != nil {
-					glog.Infof("Powerdown %s before deleting", instance)
-					monitorCh <- virtualizerStopCmd
-					vm.lostVM()
+				if id.monitorCh != nil {
+					glog.Infof("Powerdown %s before deleting", id.instance)
+					id.monitorCh <- virtualizerStopCmd
+					id.vm.lostVM()
 				}
 
-				_ = processDelete(vm, instanceDir, &ac.ssntpConn, cmd.running)
+				_ = processDelete(id.vm, id.instanceDir, &id.ac.ssntpConn, cmd.running)
 
 				if !cmd.suicide {
-					ovsCh <- &ovsStatusCmd{}
+					id.ovsCh <- &ovsStatusCmd{}
 				}
 
 				break DONE
 			default:
 				glog.Warning("Unknown command")
 			}
-		case <-monitorCloseCh:
+		case <-id.monitorCloseCh:
 			// Means we've lost VM for now
-			vm.lostVM()
-			d, m, c := vm.stats()
-			ovsCh <- &ovsStatsUpdateCmd{instance, m, d, c}
+			id.vm.lostVM()
+			d, m, c := id.vm.stats()
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
 
-			glog.Infof("Lost VM instance: %s", instance)
-			monitorCloseCh = nil
-			connectedCh = nil
-			close(monitorCh)
-			monitorCh = nil
-			statsTimer = nil
-			ovsCh <- &ovsStateChange{instance, ovsStopped}
-		case <-connectedCh:
-			connectedCh = nil
-			vm.connected()
-			ovsCh <- &ovsStateChange{instance, ovsRunning}
-			d, m, c := vm.stats()
-			ovsCh <- &ovsStatsUpdateCmd{instance, m, d, c}
-			statsTimer = time.After(time.Second * statsPeriod)
+			glog.Infof("Lost VM instance: %s", id.instance)
+			id.monitorCloseCh = nil
+			id.connectedCh = nil
+			close(id.monitorCh)
+			id.monitorCh = nil
+			id.statsTimer = nil
+			id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
+		case <-id.connectedCh:
+			id.connectedCh = nil
+			id.vm.connected()
+			id.ovsCh <- &ovsStateChange{id.instance, ovsRunning}
+			d, m, c := id.vm.stats()
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+			id.statsTimer = time.After(time.Second * statsPeriod)
 		}
 	}
 
-	if monitorCh != nil {
-		close(monitorCh)
+	if id.monitorCh != nil {
+		close(id.monitorCh)
 	}
 
-	glog.Infof("Instance goroutine %s waiting for monitor to exit", instance)
-	instanceWg.Wait()
-	glog.Infof("Instance goroutine %s exitted", instance)
-	wg.Done()
+	glog.Infof("Instance goroutine %s waiting for monitor to exit", id.instance)
+	id.instanceWg.Wait()
+	glog.Infof("Instance goroutine %s exitted", id.instance)
+	id.wg.Done()
 }
 
 func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
 	ac *agentClient, ovsCh chan<- interface{}) chan<- interface{} {
-	cmdCh := make(chan interface{})
+
+	var vm virtualizer
+	if simulate == true {
+		vm = &simulation{}
+	} else if cfg.Container {
+		vm = &docker{}
+	} else {
+		vm = &qemu{}
+	}
+
+	id := &instanceData{
+		cmdCh:       make(chan interface{}),
+		instance:    instance,
+		cfg:         cfg,
+		wg:          wg,
+		doneCh:      doneCh,
+		ac:          ac,
+		ovsCh:       ovsCh,
+		vm:          vm,
+		instanceDir: path.Join(instancesDir, instance),
+	}
+
 	wg.Add(1)
-	go instanceLoop(cmdCh, instance, cfg, wg, doneCh, ac, ovsCh)
-	return cmdCh
+	go id.instanceLoop()
+	return id.cmdCh
 }
