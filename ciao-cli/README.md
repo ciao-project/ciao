@@ -15,10 +15,54 @@ Let's assume we're running a Ciao cluster with the following settings:
 * The Ciao controller is running at `ciao-ctl.intel.com`
 * The Keystone server is running at `https://ciao-identity.intel.com:35357`
 * The `admin` user is part of the `admin` project
-* The admin password is "ciao"
+* The admin password is `ciao`
+* An tenant/project UUID is 68a76514-5c8e-40a8-8c9e-0570a11d035b
 
 ### Cluster status
 
-```bash
-ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -cluster-status
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -cluster-status
 ```
+
+### List all compute nodes
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-cns
+```
+
+### List all CNCIs
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-cncis
+```
+
+### List all tenants/projects
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-tenants
+```
+
+### List quotas per tenant
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-quotas -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+```
+
+### List all instances for a given tenant
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+```
+
+### List at most the first 10 instances for a given tenant
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances -list-length 10 -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+```
+
+### List all workloads for a given tenant
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-workloads -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+```
+
