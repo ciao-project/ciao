@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/01org/ciao/networking/libsnnet"
 )
@@ -35,7 +36,7 @@ var scaleCfg = struct {
 	maxVnicsShort   int
 	maxBridgesLong  int
 	maxVnicsLong    int
-}{2, 64, 200, 15}
+}{2, 64, 200, 32}
 
 func cninit() {
 	cnNetEnv = os.Getenv("SNNET_ENV")
@@ -44,16 +45,21 @@ func cninit() {
 		cnNetEnv = "10.3.66.0/24"
 	}
 
-}
-
-func TestCNVM_Parallel(t *testing.T) {
+	libsnnet.CnTimeout = 5
 
 	if cnParallel {
-		t.Log("Setting GOMAXPROCS to ", runtime.NumCPU())
 		runtime.GOMAXPROCS(runtime.NumCPU())
 	} else {
 		runtime.GOMAXPROCS(1)
 	}
+}
+
+func logTime(t *testing.T, start time.Time, fn string) {
+	elapsedTime := time.Since(start)
+	t.Logf("function %s took %s", fn, elapsedTime)
+}
+
+func TestCNVM_Parallel(t *testing.T) {
 
 	cn := &libsnnet.ComputeNode{}
 
@@ -140,6 +146,7 @@ func TestCNVM_Parallel(t *testing.T) {
 	for vnicCfg := range createCh {
 		go func(vnicCfg *libsnnet.VnicConfig) {
 			defer wg.Done()
+			defer logTime(t, time.Now(), "Create VM VNIC")
 
 			if vnicCfg == nil {
 				t.Errorf("WARNING: VM: VNIC nil")
@@ -159,6 +166,7 @@ func TestCNVM_Parallel(t *testing.T) {
 	for vnicCfg := range destroyCh {
 		go func(vnicCfg *libsnnet.VnicConfig) {
 			defer wg.Done()
+			defer logTime(t, time.Now(), "Destroy VM VNIC")
 			if vnicCfg == nil {
 				t.Errorf("WARNING: VM: VNIC nil")
 				return
@@ -174,13 +182,6 @@ func TestCNVM_Parallel(t *testing.T) {
 }
 
 func TestCNContainer_Parallel(t *testing.T) {
-
-	if cnParallel {
-		t.Log("Setting GOMAXPROCS to ", runtime.NumCPU())
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	} else {
-		runtime.GOMAXPROCS(1)
-	}
 
 	cn := &libsnnet.ComputeNode{}
 
@@ -267,6 +268,7 @@ func TestCNContainer_Parallel(t *testing.T) {
 	for vnicCfg := range createCh {
 		go func(vnicCfg *libsnnet.VnicConfig) {
 			defer wg.Done()
+			defer logTime(t, time.Now(), "Create Container VNIC")
 
 			if vnicCfg == nil {
 				t.Errorf("WARNING: VNIC nil")
@@ -285,6 +287,7 @@ func TestCNContainer_Parallel(t *testing.T) {
 	for vnicCfg := range destroyCh {
 		go func(vnicCfg *libsnnet.VnicConfig) {
 			defer wg.Done()
+			defer logTime(t, time.Now(), "Destroy Container VNIC")
 			if vnicCfg == nil {
 				t.Errorf("WARNING: Container: VNIC nil")
 				return
