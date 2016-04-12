@@ -164,62 +164,54 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 
 	switch cmd {
 	case ssntp.START:
-		go func() {
-			start, cn, md := splitYaml(payload)
-			cfg, payloadErr := parseStartPayload(start)
-			if payloadErr != nil {
-				startError := &startError{
-					payloadErr.err,
-					payloads.StartFailureReason(payloadErr.code),
-				}
-				startError.send(&client.ssntpConn, "")
-				glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
-				return
+		start, cn, md := splitYaml(payload)
+		cfg, payloadErr := parseStartPayload(start)
+		if payloadErr != nil {
+			startError := &startError{
+				payloadErr.err,
+				payloads.StartFailureReason(payloadErr.code),
 			}
-			client.cmdCh <- &cmdWrapper{cfg.Instance, &insStartCmd{cn, md, frame, cfg}}
-		}()
+			startError.send(&client.ssntpConn, "")
+			glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
+			return
+		}
+		client.cmdCh <- &cmdWrapper{cfg.Instance, &insStartCmd{cn, md, frame, cfg}}
 	case ssntp.RESTART:
-		go func() {
-			instance, payloadErr := parseRestartPayload(payload)
-			if payloadErr != nil {
-				restartError := &restartError{
-					payloadErr.err,
-					payloads.RestartFailureReason(payloadErr.code),
-				}
-				restartError.send(&client.ssntpConn, "")
-				glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
-				return
+		instance, payloadErr := parseRestartPayload(payload)
+		if payloadErr != nil {
+			restartError := &restartError{
+				payloadErr.err,
+				payloads.RestartFailureReason(payloadErr.code),
 			}
-			client.cmdCh <- &cmdWrapper{instance, &insRestartCmd{}}
-		}()
+			restartError.send(&client.ssntpConn, "")
+			glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
+			return
+		}
+		client.cmdCh <- &cmdWrapper{instance, &insRestartCmd{}}
 	case ssntp.STOP:
-		go func() {
-			instance, payloadErr := parseStopPayload(payload)
-			if payloadErr != nil {
-				stopError := &stopError{
-					payloadErr.err,
-					payloads.StopFailureReason(payloadErr.code),
-				}
-				stopError.send(&client.ssntpConn, "")
-				glog.Errorf("Unable to parse YAML: %s", payloadErr)
-				return
+		instance, payloadErr := parseStopPayload(payload)
+		if payloadErr != nil {
+			stopError := &stopError{
+				payloadErr.err,
+				payloads.StopFailureReason(payloadErr.code),
 			}
-			client.cmdCh <- &cmdWrapper{instance, &insStopCmd{}}
-		}()
+			stopError.send(&client.ssntpConn, "")
+			glog.Errorf("Unable to parse YAML: %s", payloadErr)
+			return
+		}
+		client.cmdCh <- &cmdWrapper{instance, &insStopCmd{}}
 	case ssntp.DELETE:
-		go func() {
-			instance, payloadErr := parseDeletePayload(payload)
-			if payloadErr != nil {
-				deleteError := &deleteError{
-					payloadErr.err,
-					payloads.DeleteFailureReason(payloadErr.code),
-				}
-				deleteError.send(&client.ssntpConn, "")
-				glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
-				return
+		instance, payloadErr := parseDeletePayload(payload)
+		if payloadErr != nil {
+			deleteError := &deleteError{
+				payloadErr.err,
+				payloads.DeleteFailureReason(payloadErr.code),
 			}
-			client.cmdCh <- &cmdWrapper{instance, &insDeleteCmd{}}
-		}()
+			deleteError.send(&client.ssntpConn, "")
+			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
+			return
+		}
+		client.cmdCh <- &cmdWrapper{instance, &insDeleteCmd{}}
 	}
 }
 
