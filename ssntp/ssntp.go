@@ -777,14 +777,12 @@ func prepareTLS(caPEM, certPEM []byte, server bool) *tls.Config {
 			ClientCAs:          certPool,
 			Rand:               rand.Reader,
 			ClientAuth:         tls.RequireAndVerifyClientCert,
-			InsecureSkipVerify: true,
 		}
 	}
 
 	return &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		RootCAs:            certPool,
-		InsecureSkipVerify: true,
 	}
 }
 
