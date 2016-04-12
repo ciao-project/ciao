@@ -30,6 +30,7 @@ import (
 
 var cnNetEnv string
 var cnParallel bool = true
+var cnMaxOutstanding = 16
 
 var scaleCfg = struct {
 	maxBridgesShort int
@@ -37,6 +38,10 @@ var scaleCfg = struct {
 	maxBridgesLong  int
 	maxVnicsLong    int
 }{2, 64, 200, 32}
+
+const (
+	allRoles = libsnnet.TenantContainer + libsnnet.TenantVM
+)
 
 func cninit() {
 	cnNetEnv = os.Getenv("SNNET_ENV")
@@ -59,7 +64,9 @@ func logTime(t *testing.T, start time.Time, fn string) {
 	t.Logf("function %s took %s", fn, elapsedTime)
 }
 
-func TestCNVM_Parallel(t *testing.T) {
+func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole) {
+
+	var sem = make(chan int, cnMaxOutstanding)
 
 	cn := &libsnnet.ComputeNode{}
 
@@ -80,13 +87,13 @@ func TestCNVM_Parallel(t *testing.T) {
 	cn.ComputeNet = mgtNet
 
 	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: VM: cn.Init failed", err)
+		t.Fatal("ERROR: cn.Init failed", err)
 	}
 	if err := cn.ResetNetwork(); err != nil {
-		t.Error("ERROR: VM: cn.ResetNetwork failed", err)
+		t.Error("ERROR: cn.ResetNetwork failed", err)
 	}
 	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: VN: cn.dbRebuild failed")
+		t.Fatal("ERROR: cn.dbRebuild failed")
 	}
 
 	//From YAML on instance init
@@ -119,7 +126,17 @@ func TestCNVM_Parallel(t *testing.T) {
 			vnicID := "vuuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
 			instanceID := "iuuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
 
+			role := role
+			if role == allRoles {
+				if s4%2 == 1 {
+					role = libsnnet.TenantContainer
+				} else {
+					role = libsnnet.TenantVM
+				}
+			}
+
 			vnicCfg := &libsnnet.VnicConfig{
+				VnicRole:   role,
 				VnicIP:     vnicIP,
 				ConcIP:     concIP,
 				VnicMAC:    mac,
@@ -144,138 +161,23 @@ func TestCNVM_Parallel(t *testing.T) {
 	wg.Add(len(createCh))
 
 	for vnicCfg := range createCh {
+
+		sem <- 1
 		go func(vnicCfg *libsnnet.VnicConfig) {
 			defer wg.Done()
-			defer logTime(t, time.Now(), "Create VM VNIC")
-
-			if vnicCfg == nil {
-				t.Errorf("WARNING: VM: VNIC nil")
-				return
-			}
-
-			if _, _, _, err := cn.CreateVnicV2(vnicCfg); err != nil {
-				t.Fatal("ERROR: VM: cn.CreateVnicV2  failed", vnicCfg, err)
-			}
-		}(vnicCfg)
-	}
-
-	wg.Wait()
-
-	wg.Add(len(destroyCh))
-
-	for vnicCfg := range destroyCh {
-		go func(vnicCfg *libsnnet.VnicConfig) {
-			defer wg.Done()
-			defer logTime(t, time.Now(), "Destroy VM VNIC")
-			if vnicCfg == nil {
-				t.Errorf("WARNING: VM: VNIC nil")
-				return
-			}
-			if _, _, err := cn.DestroyVnicV2(vnicCfg); err != nil {
-				t.Fatal("ERROR: VM: cn.DestroyVnicV2 failed event", vnicCfg, err)
-			}
-		}(vnicCfg)
-	}
-
-	wg.Wait()
-
-}
-
-func TestCNContainer_Parallel(t *testing.T) {
-
-	cn := &libsnnet.ComputeNode{}
-
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
-	}
-
-	cn.ID = "cnuuid"
-
-	cninit()
-	_, mnet, _ := net.ParseCIDR(cnNetEnv)
-
-	//From YAML, on agent init
-	mgtNet := []net.IPNet{*mnet}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: Container: cn.Init failed", err)
-	}
-	if err := cn.ResetNetwork(); err != nil {
-		t.Error("ERROR: Container: cn.ResetNetwork failed", err)
-	}
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: Container: cn.dbRebuild failed")
-	}
-
-	//From YAML on instance init
-	tenantID := "tenantuuid"
-	concIP := net.IPv4(192, 168, 254, 1)
-
-	var maxBridges, maxVnics int
-	if testing.Short() {
-		maxBridges = scaleCfg.maxBridgesShort
-		maxVnics = scaleCfg.maxVnicsShort
-	} else {
-		maxBridges = scaleCfg.maxBridgesLong
-		maxVnics = scaleCfg.maxVnicsLong
-	}
-
-	channelSize := maxBridges*maxVnics + 1
-	createCh := make(chan *libsnnet.VnicConfig, channelSize)
-	destroyCh := make(chan *libsnnet.VnicConfig, channelSize)
-
-	for s3 := 1; s3 <= maxBridges; s3++ {
-		s4 := 0
-		_, tenantNet, _ := net.ParseCIDR("192.168." + strconv.Itoa(s3) + "." + strconv.Itoa(s4) + "/24")
-		subnetID := "suuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
-
-		for s4 := 2; s4 <= maxVnics; s4++ {
-
-			vnicIP := net.IPv4(192, 168, byte(s3), byte(s4))
-			mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-
-			vnicID := "vuuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
-			instanceID := "iuuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
-			vnicCfg := &libsnnet.VnicConfig{
-				VnicRole:   libsnnet.TenantContainer,
-				VnicIP:     vnicIP,
-				ConcIP:     concIP,
-				VnicMAC:    mac,
-				Subnet:     *tenantNet,
-				SubnetKey:  s3,
-				VnicID:     vnicID,
-				InstanceID: instanceID,
-				SubnetID:   subnetID,
-				TenantID:   tenantID,
-				ConcID:     "cnciuuid",
-			}
-
-			createCh <- vnicCfg
-			destroyCh <- vnicCfg
-		}
-	}
-
-	close(createCh)
-	close(destroyCh)
-
-	var wg sync.WaitGroup
-	wg.Add(len(createCh))
-
-	for vnicCfg := range createCh {
-		go func(vnicCfg *libsnnet.VnicConfig) {
-			defer wg.Done()
-			defer logTime(t, time.Now(), "Create Container VNIC")
+			defer func() {
+				<-sem
+			}()
 
 			if vnicCfg == nil {
 				t.Errorf("WARNING: VNIC nil")
 				return
 			}
+
+			defer logTime(t, time.Now(), "Create VNIC")
+
 			if _, _, _, err := cn.CreateVnicV2(vnicCfg); err != nil {
-				t.Fatal("ERROR: Container: cn.CreateVnicV2  failed", err)
+				t.Fatal("ERROR: cn.CreateVnicV2  failed", vnicCfg, err)
 			}
 		}(vnicCfg)
 	}
@@ -285,19 +187,35 @@ func TestCNContainer_Parallel(t *testing.T) {
 	wg.Add(len(destroyCh))
 
 	for vnicCfg := range destroyCh {
+		sem <- 1
 		go func(vnicCfg *libsnnet.VnicConfig) {
 			defer wg.Done()
-			defer logTime(t, time.Now(), "Destroy Container VNIC")
+			defer func() {
+				<-sem
+			}()
+
 			if vnicCfg == nil {
-				t.Errorf("WARNING: Container: VNIC nil")
+				t.Errorf("WARNING: VNIC nil")
 				return
 			}
+			defer logTime(t, time.Now(), "Destroy VNIC")
 			if _, _, err := cn.DestroyVnicV2(vnicCfg); err != nil {
-				t.Fatal("ERROR: Container: cn.DestroyVnicV2 failed event", vnicCfg, err)
+				t.Fatal("ERROR: cn.DestroyVnicV2 failed event", vnicCfg, err)
 			}
 		}(vnicCfg)
 	}
 
 	wg.Wait()
+}
 
+func TestCNContainer_Parallel(t *testing.T) {
+	CNAPI_Parallel(t, libsnnet.TenantContainer)
+}
+
+func TestCNVM_Parallel(t *testing.T) {
+	CNAPI_Parallel(t, libsnnet.TenantVM)
+}
+
+func TestCNVMContainer_Parallel(t *testing.T) {
+	CNAPI_Parallel(t, libsnnet.TenantContainer+libsnnet.TenantVM)
 }
