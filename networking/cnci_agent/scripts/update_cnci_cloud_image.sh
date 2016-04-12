@@ -7,7 +7,7 @@
 #TODO: Add code here to clear out any cloud init that was carried out
 
 if [ -z "$1" ]; then
-        IMAGE="clear-6580-cloud-cnci.img.qcow2"
+        IMAGE="clear-7360-ciao-networking.img"
 else
         IMAGE="$1"
 fi
@@ -52,7 +52,7 @@ sudo rm -rf /mnt/tmp/var/lib/ciao
 #sudo ls -alp /mnt/tmp/var/lib/ciao
 
 #Copy the cnci_agent image
-echo "copying agent image" $
+echo "copying agent image"
 sudo cp $CNCI_AGENT /mnt/tmp/usr/sbin/
 
 sudo ls -alp /mnt/tmp/usr/sbin/cnci_agent
@@ -60,7 +60,7 @@ sudo ls -alp $CNCI_AGENT
 sudo diff $CNCI_AGENT /mnt/tmp/usr/sbin/cnci_agent
 
 #Copy the cnci_agent systemd service script
-echo "copying agent systemd service script" $
+echo "copying agent systemd service script"
 sudo cp $CNCI_SYSD /mnt/tmp/usr/lib/systemd/system/
 
 sudo ls -alp /mnt/tmp/usr/lib/systemd/system/cnci-agent.service
@@ -76,10 +76,16 @@ sudo chroot /mnt/tmp /bin/bash -c "sudo ln -s /usr/lib/systemd/system/cnci-agent
 sudo ls -alp /mnt/tmp/etc/systemd/system/default.target.wants
 
 #Copy the certs
-echo "copying the certs"
+echo "Copying the certs"
 sudo mkdir -p /mnt/tmp/var/lib/ciao/
-sudo cp $CERTS_DIR/*.pem /mnt/tmp/var/lib/ciao/
-sudo ls -alp /mnt/tmp/var/lib/ciao/
+
+echo "Copying CA certificates..."
+sudo cp $CERTS_DIR/CAcert-* /mnt/tmp/var/lib/ciao/CAcert-server-localhost.pem
+
+echo -e "Copying CNCI Agent certificate..."
+sudo cp $CERTS_DIR/cert-CNCIAgent-* /mnt/tmp/var/lib/ciao/cert-client-localhost.pem
+
+ls -alp /mnt/tmp/var/lib/ciao/
 
 #Remove cloud-init traces (hack)
 #echo "Checking cleanup"

@@ -6,13 +6,13 @@ xorriso -as mkisofs -R -V config-2 -o seed.iso seed/
 xorriso -as mkisofs -R -V config-2 -o ciao.iso ciao/
 
 if [ -z "$1" ]; then
-	IMAGE="clear-6580-cloud-cnci.img.qcow2"
+	IMAGE="clear-7360-ciao-networking.img"
 else
 	IMAGE="$1"
 fi
 
 if [ -z "$2" ]; then
-	PDEV="eth1"
+	PDEV="eth0"
 else
 	PDEV="$2"
 fi
@@ -29,11 +29,6 @@ sudo ip link del $MACVTAP
 sudo ip link add link $PDEV name $MACVTAP type macvtap mode bridge
 sudo ip link set $MACVTAP address 02:00:DE:AD:02:01 up
 sudo ip link show $MACVTAP
-
-if [[ "$IMAGE" =~ .xz$ ]]; then
-	>&2 echo "File \"$IMAGE\" is still xz compressed. Uncompress it first with \"unxz\""
-	exit 1
-fi
 
 if [ ! -f "$IMAGE" ]; then
 	>&2 echo "Can't find image file \"$IMAGE\""
