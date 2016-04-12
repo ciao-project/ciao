@@ -93,6 +93,115 @@ func killMe(instance string, doneCh chan struct{}, ac *agentClient, wg *sync.Wai
 	}()
 }
 
+func (id *instanceData) startCommand(cmd *insStartCmd) {
+	glog.Info("Found start command")
+	if id.monitorCh != nil {
+		startErr := &startError{nil, payloads.AlreadyRunning}
+		glog.Errorf("Unable to start instance[%s]", string(startErr.code))
+		startErr.send(&id.ac.ssntpConn, id.instance)
+		return
+	}
+	startErr := processStart(cmd, id.instanceDir, id.vm, &id.ac.ssntpConn)
+	if startErr != nil {
+		glog.Errorf("Unable to start instance[%s]: %v", string(startErr.code), startErr.err)
+		startErr.send(&id.ac.ssntpConn, id.instance)
+
+		if startErr.code == payloads.LaunchFailure {
+			id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
+		} else if startErr.code != payloads.InstanceExists {
+			glog.Warningf("Unable to create VM instance: %s.  Killing it", id.instance)
+			killMe(id.instance, id.doneCh, id.ac, &id.instanceWg)
+			id.shuttingDown = true
+		}
+		return
+	}
+
+	id.connectedCh = make(chan struct{})
+	id.monitorCloseCh = make(chan struct{})
+	id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, false)
+	id.ovsCh <- &ovsStatusCmd{}
+	if cmd.frame != nil && cmd.frame.PathTrace() {
+		id.ovsCh <- &ovsTraceFrame{cmd.frame}
+	}
+}
+
+func (id *instanceData) restartCommand(cmd *insRestartCmd) {
+	glog.Info("Found restart command")
+
+	if id.shuttingDown {
+		restartErr := &restartError{nil, payloads.RestartNoInstance}
+		glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
+		restartErr.send(&id.ac.ssntpConn, id.instance)
+		return
+	}
+
+	if id.monitorCh != nil {
+		restartErr := &restartError{nil, payloads.RestartAlreadyRunning}
+		glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
+		restartErr.send(&id.ac.ssntpConn, id.instance)
+		return
+	}
+
+	restartErr := processRestart(id.instanceDir, id.vm, &id.ac.ssntpConn, id.cfg)
+
+	if restartErr != nil {
+		glog.Errorf("Unable to restart instance[%s]: %v", string(restartErr.code),
+			restartErr.err)
+		restartErr.send(&id.ac.ssntpConn, id.instance)
+		return
+	}
+
+	id.connectedCh = make(chan struct{})
+	id.monitorCloseCh = make(chan struct{})
+	id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, false)
+}
+
+func (id *instanceData) monitorCommand(cmd *insMonitorCmd) {
+	id.connectedCh = make(chan struct{})
+	id.monitorCloseCh = make(chan struct{})
+	id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, true)
+}
+
+func (id *instanceData) stopCommand(cmd *insStopCmd) {
+	if id.shuttingDown {
+		stopErr := &stopError{nil, payloads.StopNoInstance}
+		glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
+		stopErr.send(&id.ac.ssntpConn, id.instance)
+		return
+	}
+
+	if id.monitorCh == nil {
+		stopErr := &stopError{nil, payloads.StopAlreadyStopped}
+		glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
+		stopErr.send(&id.ac.ssntpConn, id.instance)
+		return
+	}
+	glog.Infof("Powerdown %s", id.instance)
+	id.monitorCh <- virtualizerStopCmd
+}
+
+func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
+	if id.shuttingDown && !cmd.suicide {
+		deleteErr := &deleteError{nil, payloads.DeleteNoInstance}
+		glog.Errorf("Unable to delete instance[%s]", string(deleteErr.code))
+		deleteErr.send(&id.ac.ssntpConn, id.instance)
+		return false
+	}
+
+	if id.monitorCh != nil {
+		glog.Infof("Powerdown %s before deleting", id.instance)
+		id.monitorCh <- virtualizerStopCmd
+		id.vm.lostVM()
+	}
+
+	_ = processDelete(id.vm, id.instanceDir, &id.ac.ssntpConn, cmd.running)
+
+	if !cmd.suicide {
+		id.ovsCh <- &ovsStatusCmd{}
+	}
+	return true
+}
+
 func (id *instanceData) instanceLoop() {
 
 	id.vm.init(id.cfg, id.instanceDir)
@@ -118,107 +227,17 @@ DONE:
 
 			switch cmd := cmd.(type) {
 			case *insStartCmd:
-				glog.Info("Found start command")
-				if id.monitorCh != nil {
-					startErr := &startError{nil, payloads.AlreadyRunning}
-					glog.Errorf("Unable to start instance[%s]", string(startErr.code))
-					startErr.send(&id.ac.ssntpConn, id.instance)
-					continue
-				}
-				startErr := processStart(cmd, id.instanceDir, id.vm, &id.ac.ssntpConn)
-				if startErr != nil {
-					glog.Errorf("Unable to start instance[%s]: %v", string(startErr.code), startErr.err)
-					startErr.send(&id.ac.ssntpConn, id.instance)
-
-					if startErr.code == payloads.LaunchFailure {
-						id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
-					} else if startErr.code != payloads.InstanceExists {
-						glog.Warningf("Unable to create VM instance: %s.  Killing it", id.instance)
-						killMe(id.instance, id.doneCh, id.ac, &id.instanceWg)
-						id.shuttingDown = true
-					}
-					continue
-				}
-
-				id.connectedCh = make(chan struct{})
-				id.monitorCloseCh = make(chan struct{})
-				id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, false)
-				id.ovsCh <- &ovsStatusCmd{}
-				if cmd.frame != nil && cmd.frame.PathTrace() {
-					id.ovsCh <- &ovsTraceFrame{cmd.frame}
-				}
+				id.startCommand(cmd)
 			case *insRestartCmd:
-				glog.Info("Found restart command")
-
-				if id.shuttingDown {
-					restartErr := &restartError{nil, payloads.RestartNoInstance}
-					glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
-					restartErr.send(&id.ac.ssntpConn, id.instance)
-					continue
-				}
-
-				if id.monitorCh != nil {
-					restartErr := &restartError{nil, payloads.RestartAlreadyRunning}
-					glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
-					restartErr.send(&id.ac.ssntpConn, id.instance)
-					continue
-				}
-
-				restartErr := processRestart(id.instanceDir, id.vm, &id.ac.ssntpConn, id.cfg)
-
-				if restartErr != nil {
-					glog.Errorf("Unable to restart instance[%s]: %v", string(restartErr.code),
-						restartErr.err)
-					restartErr.send(&id.ac.ssntpConn, id.instance)
-					continue
-				}
-
-				id.connectedCh = make(chan struct{})
-				id.monitorCloseCh = make(chan struct{})
-				id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, false)
+				id.restartCommand(cmd)
 			case *insMonitorCmd:
-				id.connectedCh = make(chan struct{})
-				id.monitorCloseCh = make(chan struct{})
-				id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, true)
+				id.monitorCommand(cmd)
 			case *insStopCmd:
-
-				if id.shuttingDown {
-					stopErr := &stopError{nil, payloads.StopNoInstance}
-					glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
-					stopErr.send(&id.ac.ssntpConn, id.instance)
-					continue
-				}
-
-				if id.monitorCh == nil {
-					stopErr := &stopError{nil, payloads.StopAlreadyStopped}
-					glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
-					stopErr.send(&id.ac.ssntpConn, id.instance)
-					continue
-				}
-				glog.Infof("Powerdown %s", id.instance)
-				id.monitorCh <- virtualizerStopCmd
+				id.stopCommand(cmd)
 			case *insDeleteCmd:
-
-				if id.shuttingDown && !cmd.suicide {
-					deleteErr := &deleteError{nil, payloads.DeleteNoInstance}
-					glog.Errorf("Unable to delete instance[%s]", string(deleteErr.code))
-					deleteErr.send(&id.ac.ssntpConn, id.instance)
-					continue
+				if id.deleteCommand(cmd) {
+					break DONE
 				}
-
-				if id.monitorCh != nil {
-					glog.Infof("Powerdown %s before deleting", id.instance)
-					id.monitorCh <- virtualizerStopCmd
-					id.vm.lostVM()
-				}
-
-				_ = processDelete(id.vm, id.instanceDir, &id.ac.ssntpConn, cmd.running)
-
-				if !cmd.suicide {
-					id.ovsCh <- &ovsStatusCmd{}
-				}
-
-				break DONE
 			default:
 				glog.Warning("Unknown command")
 			}
