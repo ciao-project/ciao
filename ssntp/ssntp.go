@@ -576,13 +576,13 @@ func (role *Role) String() string {
 	case Controller:
 		return "Controller"
 	case AGENT:
-		return "CN Agent"
+		return "CNAgent"
 	case SCHEDULER:
 		return "Scheduler"
 	case NETAGENT:
-		return "Networking Agent"
+		return "NetworkingAgent"
 	case CNCIAGENT:
-		return "Concentrator Instance Agent"
+		return "CNCIAgent"
 	}
 
 	return ""
@@ -597,7 +597,7 @@ func (role *Role) Set(value string) error {
 		} else if r == "server" {
 			*role = SERVER
 			return nil
-		} else if r == "Controller" {
+		} else if r == "controller" {
 			*role = Controller
 			return nil
 		} else if r == "agent" {
