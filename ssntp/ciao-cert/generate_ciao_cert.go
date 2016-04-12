@@ -142,7 +142,7 @@ func main() {
 	var parentCert x509.Certificate
 	var role ssntp.Role
 
-	flag.Var(&role, "role", "SSNTP role [agent, scheduler, Controller, netagent, server, cnciagent]")
+	flag.Var(&role, "role", "SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
 	flag.Parse()
 
 	flag.Parse()
@@ -224,11 +224,11 @@ func main() {
 	CAcertName = fmt.Sprintf("CAcert-%s.pem", firstHost)
 	if *isServer == true {
 		template.IsCA = true
-		certName = fmt.Sprintf("cert-server-%s.pem", firstHost)
+		certName = fmt.Sprintf("cert-%s-%s.pem", role.String(), firstHost)
 		parentCert = template
 		serverPrivKey = priv
 	} else {
-		certName = fmt.Sprintf("cert-client-%s.pem", firstHost)
+		certName = fmt.Sprintf("cert-%s-%s.pem", role.String(), firstHost)
 		// Need to fetch the public and private key from the signer
 		bytesCert, err := ioutil.ReadFile(*serverCert)
 		if err != nil {
