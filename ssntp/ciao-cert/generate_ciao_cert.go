@@ -115,7 +115,7 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 	}
 }
 
-func instructionDisplay(server bool, CAcert string, Cert string, serverCert string) {
+func instructionDisplay(server bool, CAcert string, Cert string) {
 	if server {
 		fmt.Printf("--------------------------------------------------------\n")
 		fmt.Printf("CA certificate:     [%s]\n", CAcert)
@@ -126,10 +126,10 @@ func instructionDisplay(server bool, CAcert string, Cert string, serverCert stri
 		fmt.Printf("SSNTP server through its Config CAcert and Cert fields.\n")
 	} else {
 		fmt.Printf("--------------------------------------------------------\n")
-		fmt.Printf("Server certificate: [%s]\n", serverCert)
+		fmt.Printf("CA certificate: [%s]\n", CAcert)
 		fmt.Printf("Client certificate: [%s]\n", Cert)
 		fmt.Printf("--------------------------------------------------------\n")
-		fmt.Printf("You should now copy \"%s\" and \"%s\" ", Cert, serverCert)
+		fmt.Printf("You should now copy \"%s\" and \"%s\" ", CAcert, Cert)
 		fmt.Printf("to a safe location of your choice, and pass them to your ")
 		fmt.Printf("SSNTP client through its Config CAcert and Cert fields.\n")
 	}
@@ -221,9 +221,9 @@ func main() {
 		break
 	}
 
+	CAcertName = fmt.Sprintf("CAcert-%s.pem", firstHost)
 	if *isServer == true {
 		template.IsCA = true
-		CAcertName = fmt.Sprintf("CAcert-%s.pem", firstHost)
 		certName = fmt.Sprintf("cert-server-%s.pem", firstHost)
 		parentCert = template
 		serverPrivKey = priv
@@ -291,5 +291,5 @@ func main() {
 		verifyCert(*serverCert, certName)
 	}
 
-	instructionDisplay(*isServer, CAcertName, certName, *serverCert)
+	instructionDisplay(*isServer, CAcertName, certName)
 }
