@@ -8,6 +8,84 @@ compute API [endpoints](https://github.com/01org/ciao/blob/master/ciao-controlle
 
 ## Usage
 
+```shell
+Usage of ciao-cli:
+  -alsologtostderr
+    	log to standard error as well as files
+  -cluster-status
+    	List all compute nodes
+  -cn string
+    	Compute node UUID
+  -cnci string
+    	CNCI UUID
+  -computeport int
+    	Openstack Compute API port (default 8774)
+  -controller string
+    	Controller URL (default "localhost")
+  -delete-instance
+    	Delete a Ciao instance
+  -dump-cnci
+    	Dump a CNCI details
+  -dump-tenant-id
+    	Dump tenant UUID
+  -dump-token
+    	Dump keystone tokens
+  -identity string
+    	Keystone URL
+  -instance string
+    	Instance UUID
+  -instance-marker string
+    	Show instance list starting from the next instance after instance-marker
+  -instances int
+    	Number of instances to create (default 1)
+  -launch-instances
+    	Launch Ciao instances
+  -list-cncis
+    	List all CNCIs
+  -list-cns
+    	List all compute nodes
+  -list-instances
+    	List all instances for a tenant or for a compute node
+  -list-length int
+    	Maximum number of items in the reponse
+  -list-quotas
+    	List quotas status for a tenant
+  -list-resources
+    	List consumed resources for a tenant for the past 15mn
+  -list-tenants
+    	List all tenants
+  -list-workloads
+    	List all workloads
+  -log_backtrace_at value
+    	when logging hits line file:N, emit a stack trace (default :0)
+  -log_dir string
+    	If non-empty, write log files in this directory
+  -logtostderr
+    	log to standard error instead of files
+  -password string
+    	Openstack Service Username (default "nova")
+  -restart-instance
+    	Restart a Ciao instance
+  -scheme value
+    	Compute API URL scheme (http or https) (default https)
+  -scope string
+    	Scope tenant name (default "service")
+  -stderrthreshold value
+    	logs at or above this threshold go to stderr
+  -stop-instance
+    	Stop a Ciao instance
+  -tenant string
+    	Tenant UUID
+  -username string
+    	Openstack Service Username (default "nova")
+  -v value
+    	log level for V logs
+  -vmodule value
+    	comma-separated list of pattern=N settings for file-filtered logging
+  -workload string
+    	Workload UUID
+```
+
 ## Examples
 
 Let's assume we're running a Ciao cluster with the following settings:
