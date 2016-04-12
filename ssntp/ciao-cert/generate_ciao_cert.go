@@ -223,7 +223,7 @@ func main() {
 
 	if *isServer == true {
 		template.IsCA = true
-		CAcertName = fmt.Sprintf("CAcert-server-%s.pem", firstHost)
+		CAcertName = fmt.Sprintf("CAcert-%s.pem", firstHost)
 		certName = fmt.Sprintf("cert-server-%s.pem", firstHost)
 		parentCert = template
 		serverPrivKey = priv
