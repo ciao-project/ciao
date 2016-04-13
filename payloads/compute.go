@@ -86,7 +86,8 @@ type Server struct {
 }
 
 type ComputeServers struct {
-	Servers []Server `json:"servers"`
+	TotalServers int      `json:"total_servers"`
+	Servers      []Server `json:"servers"`
 }
 
 type ComputeServer struct {

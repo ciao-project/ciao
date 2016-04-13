@@ -106,6 +106,8 @@ func serverQueryParse(r *http.Request) (int, int, string) {
 
 func (pager *serverPager) getInstances(filterType pagerFilterType, filter string, instances []*types.Instance, limit int, offset int) ([]byte, error) {
 	var servers payloads.ComputeServers
+
+	servers.TotalServers = len(instances)
 	pageLength := 0
 
 	glog.V(2).Infof("Get instances limit [%d] offset [%d]", limit, offset)
@@ -699,6 +701,7 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 		}
 		servers.Servers = append(servers.Servers, server)
 	}
+	servers.TotalServers = len(instances)
 
 	b, err := json.Marshal(servers)
 	if err != nil {
