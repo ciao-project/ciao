@@ -300,12 +300,14 @@ func unmarshalComputeResponse(resp *http.Response, v interface{}) error {
 		return err
 	}
 
-	debugf("Response body %v\n", spew.Sdump(body))
-
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		errorf("Could not unmarshal the HTTP response %s\n", err)
 		return err
+	}
+
+	if glog.V(2) {
+		spew.Dump(v)
 	}
 
 	return nil
