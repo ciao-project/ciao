@@ -279,6 +279,50 @@ func dockerRestart(t *testing.T) error {
 }
 
 //Will be replaced by Docker API's in launcher
+//docker run -it --net=none ubuntu ip addr show lo
+func dockerRunNetNone(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
+	defer logTime(t, time.Now(), "dockerRunNetNone")
+
+	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net=none",
+		"ubuntu", "ip", "addr", "show", "lo")
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		t.Error("docker run failed", cmd, err)
+	} else {
+		t.Log("docker run dump \n", string(out))
+	}
+
+	if err := dockerContainerInfo(t, name); err != nil {
+		t.Error("docker container inspect failed", name, err.Error())
+	}
+
+	return err
+}
+
+//Will be replaced by Docker API's in launcher
+//docker run -it ubuntu ip addr show lo
+func dockerRunNetDocker(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
+	defer logTime(t, time.Now(), "dockerRunNetDocker")
+
+	cmd := exec.Command("docker", "run", "--name", ip.String(),
+		"ubuntu", "ip", "addr", "show", "lo")
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		t.Error("docker run failed", cmd, err)
+	} else {
+		t.Log("docker run dump \n", string(out))
+	}
+
+	if err := dockerContainerInfo(t, name); err != nil {
+		t.Error("docker container inspect failed", name, err.Error())
+	}
+
+	return err
+}
+
+//Will be replaced by Docker API's in launcher
 //docker run -it --net=<subnet.Name> --ip=<instance.IP> --mac-address=<instance.MacAddresss>
 //ubuntu ip addr show eth0 scope global
 func dockerRunVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
@@ -403,6 +447,14 @@ func dockerNetInfo(t *testing.T, subnetID string) error {
 	return err
 }
 
+type dockerNetType int
+
+const (
+	netCiao dockerNetType = iota
+	netDockerNone
+	netDockerDefault
+)
+
 //Tests launch of Docker containers at scale (serially)
 //
 //This tests exercises attempts to launch large
@@ -410,7 +462,7 @@ func dockerNetInfo(t *testing.T, subnetID string) error {
 //any issues with plugin responsiveness
 //
 //Test is expected to pass
-func TestDocker_Serial(t *testing.T) {
+func Docker_Serial(netType dockerNetType, t *testing.T) {
 	defer logTime(t, time.Now(), "TestDocker_Serial")
 	cn := &libsnnet.ComputeNode{}
 
@@ -444,10 +496,12 @@ func TestDocker_Serial(t *testing.T) {
 	if err := dockerPlugin.Init(); err != nil {
 		t.Fatal("ERROR: Docker Init failed ", err)
 	}
+	defer dockerPlugin.Close()
 
 	if err := dockerPlugin.Start(); err != nil {
 		t.Fatal("ERROR: Docker start failed ", err)
 	}
+	defer dockerPlugin.Stop()
 
 	//Restarting docker here so the the plugin will
 	//be picked up without modifing the boot scripts
@@ -511,13 +565,57 @@ func TestDocker_Serial(t *testing.T) {
 					}
 				}
 
-				if err := dockerRunVerify(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID); err != nil {
-					t.Error("ERROR: docker run", cInfo, err)
-				} else {
-					defer dockerContainerDelete(t, vnicCfg.VnicIP.String())
+				switch netType {
+				case netCiao:
+					if err := dockerRunVerify(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID); err != nil {
+						t.Error("ERROR: docker run", cInfo, err)
+					}
+				case netDockerNone:
+					if err := dockerRunNetNone(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID); err != nil {
+						t.Error("ERROR: docker run", cInfo, err)
+					}
+				case netDockerDefault:
+					if err := dockerRunNetDocker(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID); err != nil {
+						t.Error("ERROR: docker run", cInfo, err)
+					}
 				}
+				defer dockerContainerDelete(t, vnicCfg.VnicIP.String())
 			}
-
 		}
 	}
+}
+
+//Tests launch of Docker containers at scale (serially)
+//
+//This tests exercises attempts to launch large
+//numbers of docker containers at scale to isolate
+//any issues with plugin responsiveness
+//
+//Test is expected to pass
+func TestDockerNetCiao_Serial(t *testing.T) {
+	Docker_Serial(netCiao, t)
+}
+
+//Tests launch of Docker containers at scale (serially)
+//
+//This tests exercises attempts to launch large
+//numbers of docker containers at scale to isolate
+//any issues with plugin responsiveness
+//This test benchmarks docker without networking
+//
+//Test is expected to pass
+func TestDockerNetNone_Serial(t *testing.T) {
+	Docker_Serial(netDockerNone, t)
+}
+
+//Tests launch of Docker containers at scale (serially)
+//
+//This tests exercises attempts to launch large
+//numbers of docker containers at scale to isolate
+//any issues with plugin responsiveness
+//This test benchmarks docker with default networking
+//
+//Test is expected to pass
+func TestDockerNetDocker_Serial(t *testing.T) {
+	Docker_Serial(netDockerDefault, t)
 }
