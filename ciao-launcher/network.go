@@ -299,9 +299,9 @@ func destroyVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) error {
 		var err error
 
 		if vnicCfg.VnicRole == libsnnet.TenantContainer {
-			event, _, err = cnNet.DestroyVnicV2(vnicCfg)
-		} else {
 			event, err = destroyDockerVnicV2(vnicCfg)
+		} else {
+			event, _, err = cnNet.DestroyVnicV2(vnicCfg)
 		}
 		if err != nil {
 			glog.Errorf("cn.DestroyVnic failed %v", err)
