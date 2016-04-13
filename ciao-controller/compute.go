@@ -76,9 +76,10 @@ func dumpRequest(r *http.Request) {
 	dumpRequestBody(r, false)
 }
 
-func serverQueryParse(r *http.Request) (int, string) {
+func serverQueryParse(r *http.Request) (int, int, string) {
 	values := r.URL.Query()
 	limit := 0
+	offset := 0
 	marker := ""
 	if values["limit"] != nil {
 		l, err := strconv.ParseInt(values["limit"][0], 10, 32)
@@ -91,16 +92,34 @@ func serverQueryParse(r *http.Request) (int, string) {
 
 	if values["marker"] != nil {
 		marker = values["marker"][0]
+	} else if values["offset"] != nil {
+		o, err := strconv.ParseInt(values["offset"][0], 10, 32)
+		if err != nil {
+			offset = 0
+		} else {
+			offset = (int)(o)
+		}
 	}
 
-	return limit, marker
+	return limit, offset, marker
 }
 
-func (pager *serverPager) getInstances(filterType pagerFilterType, filter string, instances []*types.Instance, limit int) ([]byte, error) {
+func (pager *serverPager) getInstances(filterType pagerFilterType, filter string, instances []*types.Instance, limit int, offset int) ([]byte, error) {
 	var servers payloads.ComputeServers
 	pageLength := 0
 
-	for _, instance := range instances {
+	glog.V(2).Infof("Get instances limit [%d] offset [%d]", limit, offset)
+
+	if instances == nil || offset >= len(instances) {
+		b, err := json.Marshal(servers)
+		if err != nil {
+			return nil, err
+		}
+
+		return b, nil
+	}
+
+	for _, instance := range instances[offset:] {
 		if filterType != none && pager.filter(filterType, filter, instance) {
 			continue
 		}
@@ -138,23 +157,25 @@ func (pager *serverPager) filter(filterType pagerFilterType, filter string, inst
 }
 
 func (pager *serverPager) nextPage(filterType pagerFilterType, filter string, r *http.Request) ([]byte, error) {
-	limit, lastSeen := serverQueryParse(r)
+	limit, offset, lastSeen := serverQueryParse(r)
+
+	glog.V(2).Infof("Next page marker [%s] limit [%d] offset [%d]", lastSeen, limit, offset)
 
 	if lastSeen == "" {
 		if limit != 0 {
-			return pager.getInstances(filterType, filter, pager.instances, limit)
+			return pager.getInstances(filterType, filter, pager.instances, limit, offset)
 		}
 
-		return pager.getInstances(filterType, filter, pager.instances, 0)
+		return pager.getInstances(filterType, filter, pager.instances, 0, offset)
 	}
 
 	for i, instance := range pager.instances {
 		if instance.Id == lastSeen {
 			if i >= len(pager.instances)-1 {
-				return pager.getInstances(filterType, filter, nil, limit)
+				return pager.getInstances(filterType, filter, nil, limit, 0)
 			}
 
-			return pager.getInstances(filterType, filter, pager.instances[i+1:], limit)
+			return pager.getInstances(filterType, filter, pager.instances[i+1:], limit, 0)
 		}
 	}
 
