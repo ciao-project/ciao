@@ -1,0 +1,3 @@
+These tests are placed in an independent test folder as they need a large
+amount of time to run (upwards of 10 minutes). The -short version of
+this test suite will complete in under a minute if there are no errors.

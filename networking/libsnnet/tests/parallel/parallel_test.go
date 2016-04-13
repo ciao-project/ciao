@@ -30,7 +30,10 @@ import (
 
 var cnNetEnv string
 var cnParallel bool = true
-var cnMaxOutstanding = 16
+
+//Controls the number of go routines that concurrently invoke Network APIs
+//This checks that the internal throttling is working
+var cnMaxOutstanding = 128
 
 var scaleCfg = struct {
 	maxBridgesShort int
@@ -50,8 +53,6 @@ func cninit() {
 		cnNetEnv = "10.3.66.0/24"
 	}
 
-	libsnnet.CnTimeout = 5
-
 	if cnParallel {
 		runtime.GOMAXPROCS(runtime.NumCPU())
 	} else {
@@ -64,7 +65,7 @@ func logTime(t *testing.T, start time.Time, fn string) {
 	t.Logf("function %s took %s", fn, elapsedTime)
 }
 
-func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole) {
+func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
 
 	var sem = make(chan int, cnMaxOutstanding)
 
@@ -112,6 +113,9 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole) {
 	channelSize := maxBridges*maxVnics + 1
 	createCh := make(chan *libsnnet.VnicConfig, channelSize)
 	destroyCh := make(chan *libsnnet.VnicConfig, channelSize)
+	cancelCh := make(chan chan interface{}, channelSize)
+
+	t.Log("Priming interfaces")
 
 	for s3 := 1; s3 <= maxBridges; s3++ {
 		s4 := 0
@@ -149,16 +153,31 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole) {
 				ConcID:     "cnciuuid",
 			}
 
+			if modelCancel {
+				vnicCfg.CancelChan = make(chan interface{})
+			}
+
 			createCh <- vnicCfg
 			destroyCh <- vnicCfg
+			cancelCh <- vnicCfg.CancelChan
 		}
 	}
 
 	close(createCh)
 	close(destroyCh)
+	close(cancelCh)
 
 	var wg sync.WaitGroup
 	wg.Add(len(createCh))
+
+	if modelCancel {
+		for c := range cancelCh {
+			go func(c chan interface{}) {
+				time.Sleep(100 * time.Millisecond)
+				close(c)
+			}(c)
+		}
+	}
 
 	for vnicCfg := range createCh {
 
@@ -177,15 +196,18 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole) {
 			defer logTime(t, time.Now(), "Create VNIC")
 
 			if _, _, _, err := cn.CreateVnicV2(vnicCfg); err != nil {
-				t.Fatal("ERROR: cn.CreateVnicV2  failed", vnicCfg, err)
+				if !modelCancel {
+					//We expect failures only when we have cancellations
+					t.Error("ERROR: cn.CreateVnicV2  failed", vnicCfg, err)
+				}
 			}
+
 		}(vnicCfg)
 	}
 
 	wg.Wait()
 
 	wg.Add(len(destroyCh))
-
 	for vnicCfg := range destroyCh {
 		sem <- 1
 		go func(vnicCfg *libsnnet.VnicConfig) {
@@ -200,7 +222,10 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole) {
 			}
 			defer logTime(t, time.Now(), "Destroy VNIC")
 			if _, _, err := cn.DestroyVnicV2(vnicCfg); err != nil {
-				t.Fatal("ERROR: cn.DestroyVnicV2 failed event", vnicCfg, err)
+				if !modelCancel {
+					//We expect failures only when we have cancellations
+					t.Error("ERROR: cn.DestroyVnicV2 failed event", vnicCfg, err)
+				}
 			}
 		}(vnicCfg)
 	}
@@ -209,13 +234,17 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole) {
 }
 
 func TestCNContainer_Parallel(t *testing.T) {
-	CNAPI_Parallel(t, libsnnet.TenantContainer)
+	CNAPI_Parallel(t, libsnnet.TenantContainer, false)
 }
 
 func TestCNVM_Parallel(t *testing.T) {
-	CNAPI_Parallel(t, libsnnet.TenantVM)
+	CNAPI_Parallel(t, libsnnet.TenantVM, false)
 }
 
 func TestCNVMContainer_Parallel(t *testing.T) {
-	CNAPI_Parallel(t, libsnnet.TenantContainer+libsnnet.TenantVM)
+	CNAPI_Parallel(t, libsnnet.TenantContainer+libsnnet.TenantVM, false)
+}
+
+func TestCNVMContainer_Cancel(t *testing.T) {
+	CNAPI_Parallel(t, libsnnet.TenantContainer+libsnnet.TenantVM, true)
 }

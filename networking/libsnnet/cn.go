@@ -26,12 +26,6 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-//CnTimeout specifies the amount of time the API will wait for netlink
-//operations to complete. When multiple threads and invoking the API
-//simulatenously the APIs may take time to return due to the need to
-//serialize certian netlink calls
-var CnTimeout int64 = 5
-
 // NetworkConfig from YAML.
 // This is a subset of the top level data center configuration
 type NetworkConfig struct {
@@ -40,9 +34,19 @@ type NetworkConfig struct {
 	Mode          NetworkMode //The data center networking mode
 }
 
+// CnAPICtx contains API level context used to control the behaviour
+// of the API, for example, cancellation by invoking close(CancelChan)
+type CnAPICtx struct {
+	CancelChan chan interface{}
+}
+
 // VnicConfig fram YAML
 // All these fields originate from the Controller
 type VnicConfig struct {
+	// Per API Context
+	// TODO: Move this outside of the VNIC Cfg.
+	// Currently placed within the VnicConfig for API backward compatibility
+	CnAPICtx
 	VnicRole
 	VnicIP     net.IP
 	ConcIP     net.IP
@@ -138,6 +142,16 @@ func initCnTopology(topology *cnTopology) {
 	topology.containerMap = make(map[string]bool)
 }
 
+//CnMaxAPIConcurrency default controls internal concurrency
+//It determines how many API's are being actively processed
+//Can be over-ridden prior to init
+var CnMaxAPIConcurrency int = 8
+
+//CnAPITimeout default controls the API timeout
+const (
+	CnAPITimeout = 6
+)
+
 // ComputeNode describes the high level networking setup of a compute node.
 // The design allows for multiple links, however in phase 0 only the first
 // link is chosen. The remaining are ignored. In the future this allows for
@@ -149,7 +163,13 @@ type ComputeNode struct {
 	MgtLink     []netlink.Link
 	ComputeAddr []netlink.Addr
 	ComputeLink []netlink.Link
+	//APITimeout specifies the amount of time the API will wait for netlink
+	//operations to complete. When multiple go routines  invoke the API
+	//simulatenously certian netlink calls suffer higher latencies
+	APITimeout time.Duration
+
 	*cnTopology
+	apiThrottleSem chan int
 }
 
 // Init sets the CN node configuration
@@ -168,6 +188,8 @@ func (cn *ComputeNode) Init() error {
 	cn.MgtLink = nil
 	cn.ComputeAddr = nil
 	cn.ComputeLink = nil
+	cn.APITimeout = time.Second * CnAPITimeout
+	cn.apiThrottleSem = make(chan int, CnMaxAPIConcurrency)
 
 	for _, link := range links {
 
@@ -490,7 +512,7 @@ func (cn *ComputeNode) CreateCnciVnic(cfg *VnicConfig) (*CnciVnic, error) {
 	if vLink, present := cn.linkMap[cvnic.GlobalID]; present {
 		cn.cnTopology.Unlock()
 
-		cvnic.LinkName, cvnic.Link.Index, err = waitForDeviceReady(vLink)
+		cvnic.LinkName, cvnic.Link.Index, err = waitForDeviceReady(vLink, cn.APITimeout)
 		if err != nil {
 			return nil, NewFatalError(cvnic.GlobalID + err.Error())
 		}
@@ -554,7 +576,7 @@ func (cn *ComputeNode) DestroyCnciVnic(cfg *VnicConfig) error {
 		return nil
 	}
 
-	cvnic.LinkName, cvnic.Link.Index, err = waitForDeviceReady(vLink)
+	cvnic.LinkName, cvnic.Link.Index, err = waitForDeviceReady(vLink, cn.APITimeout)
 	if err != nil {
 		return NewFatalError(cvnic.GlobalID + err.Error())
 	}
@@ -595,6 +617,16 @@ func (cn *ComputeNode) CreateVnicV2(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *C
 			cfg.MTU = 1400
 		}
 	}
+
+	cn.apiThrottleSem <- 1
+	defer func() {
+		<-cn.apiThrottleSem
+	}()
+
+	if apiCancelled(cfg.CancelChan) {
+		return nil, nil, nil, NewAPIError("API Cancelled for " + cfg.VnicID)
+	}
+
 	return cn.createVnicInternal(cfg)
 }
 
@@ -665,7 +697,7 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 		bLink, present := cn.linkMap[bridge.GlobalID]
 		cn.cnTopology.Unlock()
 
-		vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink)
+		vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink, cn.APITimeout)
 		if err != nil {
 			return nil, nil, nil, NewFatalError(vnic.GlobalID + err.Error())
 		}
@@ -679,7 +711,7 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 		if !present {
 			return nil, nil, nil, NewFatalError(vnic.GlobalID + " Bridge not present")
 		}
-		bridge.LinkName, bridge.Link.Attrs().Index, err = waitForDeviceReady(bLink)
+		bridge.LinkName, bridge.Link.Attrs().Index, err = waitForDeviceReady(bLink, cn.APITimeout)
 		if err != nil {
 			return nil, nil, nil, NewFatalError(vnic.GlobalID + err.Error())
 		}
@@ -710,7 +742,7 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 
 		cn.cnTopology.Unlock()
 
-		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink)
+		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
 		if err != nil {
 			return nil, nil, nil, NewFatalError(bridge.GlobalID + err.Error())
 		}
@@ -796,11 +828,11 @@ func getContainerInfo(cfg *VnicConfig, vnic *Vnic, bridge *Bridge) *ContainerInf
 }
 
 //TODO: Use interfaces here to perform the name and index assignment
-func waitForDeviceReady(devInfo *linkInfo) (devName string, devIndex int, err error) {
+func waitForDeviceReady(devInfo *linkInfo, timeout time.Duration) (devName string, devIndex int, err error) {
 	select {
 	case <-devInfo.ready:
 		return devInfo.name, devInfo.index, nil
-	case <-time.After(time.Duration(CnTimeout) * time.Second):
+	case <-time.After(timeout):
 		return "", 0, fmt.Errorf("Timeout waiting for device ready [%v] [%v]", devInfo.index, devInfo.name)
 	}
 }
@@ -895,6 +927,15 @@ func createAndEnableVnic(vnic *Vnic, bridge *Bridge) error {
 	return nil
 }
 
+func apiCancelled(cancel chan interface{}) bool {
+	select {
+	case <-cancel:
+		return true
+	default:
+		return false
+	}
+}
+
 // DestroyVnicV2 destroys a tenant VNIC. If this happens to be the last vnic for
 // this tenant subnet on this CN, the bridge and gre tunnel will also be
 // destroyed and SSNTP message generated.
@@ -909,6 +950,15 @@ func createAndEnableVnic(vnic *Vnic, bridge *Bridge) error {
 // docker network rm ContainerInfo.SubnetID>
 func (cn *ComputeNode) DestroyVnicV2(cfg *VnicConfig) (*SsntpEventInfo, *ContainerInfo, error) {
 	var cInfo *ContainerInfo
+
+	cn.apiThrottleSem <- 1
+	defer func() {
+		<-cn.apiThrottleSem
+	}()
+
+	if apiCancelled(cfg.CancelChan) {
+		return nil, nil, NewAPIError("API Cancelled for " + cfg.VnicID)
+	}
 
 	s, err := cn.DestroyVnic(cfg)
 	if s != nil && s.containerSubnetID != "" {
@@ -958,7 +1008,7 @@ func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, error) {
 		return nil, nil
 	}
 
-	vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink)
+	vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink, cn.APITimeout)
 	if err != nil {
 		return nil, NewFatalError(vnic.GlobalID + err.Error())
 	}
@@ -1003,7 +1053,7 @@ func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, error) {
 	//TODO: Try and make forward progress even on error
 	gLink, present := cn.linkMap[alias.gre]
 	if present {
-		gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink)
+		gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink, cn.APITimeout)
 		if err != nil {
 			return nil, NewFatalError(gre.GlobalID + err.Error())
 		}
@@ -1022,7 +1072,7 @@ func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, error) {
 
 	bLink, present := cn.linkMap[alias.bridge]
 	if present {
-		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink)
+		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
 		if err != nil {
 			return nil, NewFatalError(bridge.GlobalID + err.Error())
 		}
