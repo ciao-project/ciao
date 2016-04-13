@@ -766,6 +766,10 @@ func TestNN_Base(t *testing.T) {
 
 func validSsntpEvent(ssntpEvent *libsnnet.SsntpEventInfo, cfg *libsnnet.VnicConfig) error {
 
+	if ssntpEvent == nil {
+		return fmt.Errorf("SsntpEvent: nil")
+	}
+
 	//Note: Checking for non nil values just to ensure the caller called it with all
 	//parameters setup properly.
 	switch {
