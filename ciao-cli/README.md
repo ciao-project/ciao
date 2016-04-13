@@ -128,6 +128,12 @@ $GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ci
 $GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-quotas -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
 ```
 
+### List consumed resources per tenant
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-resources -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+```
+
 ### List all instances for a given tenant
 
 ```shell
