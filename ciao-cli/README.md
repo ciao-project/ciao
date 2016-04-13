@@ -36,6 +36,8 @@ Usage of ciao-cli:
     	Instance UUID
   -instance-marker string
     	Show instance list starting from the next instance after instance-marker
+  -instance-offset int
+    	Show instance list starting from instance #instance-offset
   -instances int
     	Number of instances to create (default 1)
   -launch-instances
@@ -136,6 +138,12 @@ $GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ci
 
 ```shell
 $GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances -list-length 10 -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+```
+
+### List at most the 20 instances starting from instance number 10 for a given tenant
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances -list-length 20 -instance-offset 10 -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
 ```
 
 ### List all workloads for a given tenant

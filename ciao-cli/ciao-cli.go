@@ -131,6 +131,7 @@ var (
 	instances        = flag.Int("instances", 1, "Number of instances to create")
 	instance         = flag.String("instance", "", "Instance UUID")
 	instanceMarker   = flag.String("instance-marker", "", "Show instance list starting from the next instance after instance-marker")
+	instanceOffset   = flag.Int("instance-offset", 0, "Show instance list starting from instance #instance-offset")
 	tenant           = flag.String("tenant", "", "Tenant UUID")
 	scope            = flag.String("scope", "service", "Scope tenant name")
 	computeNode      = flag.String("cn", "", "Compute node UUID")
@@ -310,7 +311,7 @@ func unmarshalComputeResponse(resp *http.Response, v interface{}) error {
 	return nil
 }
 
-func listAllInstances(tenant string, workload string, marker string, limit int) {
+func listAllInstances(tenant string, workload string, marker string, offset int, limit int) {
 	var servers payloads.ComputeServers
 	var url string
 
@@ -325,6 +326,13 @@ func listAllInstances(tenant string, workload string, marker string, limit int) 
 		values = append(values, queryValue{
 			name:  "limit",
 			value: fmt.Sprintf("%d", limit),
+		})
+	}
+
+	if offset > 0 {
+		values = append(values, queryValue{
+			name:  "offset",
+			value: fmt.Sprintf("%d", offset),
 		})
 	}
 
@@ -735,11 +743,11 @@ func main() {
 
 	if *listInstances == true {
 		if len(*tenant) != 0 {
-			listAllInstances(*tenant, "", *instanceMarker, *listLength)
+			listAllInstances(*tenant, "", *instanceMarker, *instanceOffset, *listLength)
 		} else if len(*computeNode) != 0 {
 			listNodeInstances(*computeNode)
 		} else if len(*workload) != 0 {
-			listAllInstances("", *workload, *instanceMarker, *listLength)
+			listAllInstances("", *workload, *instanceMarker, *instanceOffset, *listLength)
 		} else {
 			fatalf("Missing required -tenant or -cn or -workload parameters")
 		}
