@@ -43,14 +43,18 @@ line options.
 
 ciao-launcher has dependencies on five external packages:
 
-1. qemu-system-x86_64 and qemu-img to launch the VMs and create qcow images
-2. xorriso to create ISO images for cloudinit
+1. qemu-system-x86_64 and qemu-img, to launch the VMs and create qcow images
+2. xorriso, to create ISO images for cloudinit
 3. ovmf, EFI firmware required for some images
-4. fuser
-5. docker, if you want to manage docker containers
+4. fuser, part of most distro's psmisc package
+5. docker, to manage docker containers
 
 All of these packages need to be installed on your compute node before launcher
 can be run.
+
+An optimized OVMF is available from ClearLinux.  Download the OVMF.fd
+[file](https://download.clearlinux.org/image/OVMF.fd) and save it to
+/usr/share/qemu/OVMF.fd on each node that will run launcher.
 
 To create a new instance, launcher needs a template iso image to use as a backing file.
 Currently, launcher requires all such backing files to be stored in
