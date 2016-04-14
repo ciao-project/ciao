@@ -430,34 +430,20 @@ func (d *docker) lostVM() {
 
 //BUG(markus): Everything from here onwards should be in a different file.  It's confusing
 
-func dockerKillInstance(instanceDir string) []string {
+func dockerKillInstance(instanceDir string) {
 	idPath := path.Join(instanceDir, "docker-id")
 	data, err := ioutil.ReadFile(idPath)
 	if err != nil {
 		glog.Errorf("Unable to read docker container ID %v", err)
-		return nil
+		return
 	}
 
 	cli, err := getDockerClient()
 	if err != nil {
-		return nil
+		return
 	}
 
 	dockerID := string(data)
-	bridges := []string{}
-
-	con, err := cli.ContainerInspect(context.Background(), dockerID)
-	if err != nil {
-		glog.Warningf("Unable to determine status of instance %s:%s: %v", instanceDir, dockerID, err)
-	} else {
-		bridges = make([]string, 0, len(con.NetworkSettings.Networks))
-		for _, v := range con.NetworkSettings.Networks {
-			if v != nil && v.NetworkID != "" {
-				bridges = append(bridges, v.NetworkID)
-			}
-		}
-	}
-
 	err = cli.ContainerRemove(context.Background(),
 		types.ContainerRemoveOptions{
 			ContainerID: dockerID,
@@ -465,8 +451,6 @@ func dockerKillInstance(instanceDir string) []string {
 	if err != nil {
 		glog.Warningf("Unable to delete docker instance %s err %v", dockerID, err)
 	}
-
-	return bridges
 }
 
 func checkDockerServerVersion(requiredVersion string, ctx context.Context) error {

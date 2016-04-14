@@ -444,7 +444,6 @@ func purgeLauncherState() {
 	glog.Info("Shutting down running instances")
 
 	toRemove := make([]string, 0, 1024)
-	dockerBridges := map[string]struct{}{}
 	networking := false
 	dockerNetworking := false
 
@@ -476,9 +475,7 @@ func purgeLauncherState() {
 			glog.Warningf("Unable to load config for %s: %v", path, err)
 		} else {
 			if cfg.Container {
-				for _, b := range dockerKillInstance(path) {
-					dockerBridges[b] = struct{}{}
-				}
+				dockerKillInstance(path)
 			} else {
 				qemuKillInstance(path)
 			}
@@ -495,15 +492,9 @@ func purgeLauncherState() {
 	}
 
 	if dockerNetworking {
-
 		glog.Info("Reset docker networking")
 
-		for b := range dockerBridges {
-			glog.Infof("Deleting docker network %s", b)
-			if err := destroyDockerNetwork(context.Background(), b); err != nil {
-				glog.Warningf("Unable to delete docker bridge %s", b)
-			}
-		}
+		resetDockerNetworking()
 	}
 
 	if !networking {

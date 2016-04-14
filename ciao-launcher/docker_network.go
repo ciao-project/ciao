@@ -137,3 +137,28 @@ func destroyDockerNetwork(ctx context.Context, bridge string) error {
 
 	return err
 }
+
+func resetDockerNetworking() {
+	cli, err := getDockerClient()
+	if err != nil {
+		return
+	}
+
+	nets, err := cli.NetworkList(context.Background(), types.NetworkListOptions{})
+	if err != nil {
+		glog.Error("Unable to retrieve list of docker networks: %v", err)
+		return
+	}
+
+	for i := range nets {
+		if nets[i].Driver == "ciao" {
+			glog.Infof("Deleting docker network %s", nets[i].Name)
+			err = cli.NetworkRemove(context.Background(), nets[i].ID)
+			if err != nil {
+				glog.Errorf("Unable to remove docker network %s: %v", nets[i].ID, err)
+			}
+		}
+	}
+
+	return
+}
