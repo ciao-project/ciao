@@ -64,6 +64,7 @@ func initNetworkPhase1() error {
 		Mode:          libsnnet.GreTunnel,
 	}
 
+	libsnnet.CnMaxAPIConcurrency = 1
 	if err := cn.Init(); err != nil {
 		return err
 	}
