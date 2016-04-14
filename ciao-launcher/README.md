@@ -93,9 +93,9 @@ Usage of ./launcher:
   -alsologtostderr
     	log to standard error as well as files
   -cacert string
-    	Client certificate (default "/var/lib/ciao/CAcert-server-localhost.pem")
+    	Client certificate (default "/etc/pki/ciao/CAcert-server-localhost.pem")
   -cert string
-    	CA certificate (default "/var/lib/ciao/cert-client-localhost.pem")
+    	CA certificate (default "/etc/pki/ciao/cert-client-localhost.pem")
   -compute-net string
     	Compute Subnet
   -cpuprofile string
