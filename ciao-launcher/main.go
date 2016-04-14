@@ -95,8 +95,8 @@ var maxInstances = int(math.MaxInt32)
 
 func init() {
 	flag.StringVar(&serverURL, "server", "localhost", "URL of SSNTP server")
-	flag.StringVar(&serverCertPath, "cacert", "/var/lib/ciao/CAcert-server-localhost.pem", "Client certificate")
-	flag.StringVar(&clientCertPath, "cert", "/var/lib/ciao/cert-client-localhost.pem", "CA certificate")
+	flag.StringVar(&serverCertPath, "cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "Client certificate")
+	flag.StringVar(&clientCertPath, "cert", "/etc/pki/ciao/cert-client-localhost.pem", "CA certificate")
 	flag.StringVar(&computeNet, "compute-net", "", "Compute Subnet")
 	flag.StringVar(&mgmtNet, "mgmt-net", "", "Management Subnet")
 	flag.Var(&networking, "network", "Can be none, cn (compute node) or nn (network node)")
