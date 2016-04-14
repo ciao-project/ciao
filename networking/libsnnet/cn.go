@@ -1136,7 +1136,15 @@ func (cn *ComputeNode) ResetNetwork() error {
 		alias := link.Attrs().Alias
 		name := link.Attrs().Name
 
-		if alias == "" {
+		if !validSnPrefix(name) {
+			continue
+		}
+
+		// Be paranoid
+		switch link.Type() {
+		case "device":
+			continue
+		case "bond":
 			continue
 		}
 

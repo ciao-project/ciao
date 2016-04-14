@@ -19,6 +19,7 @@ package libsnnet
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/vishvananda/netlink"
@@ -43,6 +44,21 @@ var (
 func init() {
 	ifaceRseed = rand.NewSource(time.Now().UnixNano())
 	ifaceRsrc = rand.New(ifaceRseed)
+}
+
+func validSnPrefix(s string) bool {
+	switch {
+	case strings.HasPrefix(s, prefixBridge):
+	case strings.HasPrefix(s, prefixVnic):
+	case strings.HasPrefix(s, prefixVnicCont):
+	case strings.HasPrefix(s, prefixVnicHost):
+	case strings.HasPrefix(s, prefixCnciVnic):
+	case strings.HasPrefix(s, prefixGretap):
+	default:
+		return false
+	}
+
+	return true
 }
 
 // GenIface generates locally unique interface names based on the
