@@ -146,7 +146,7 @@ func resetDockerNetworking() {
 
 	nets, err := cli.NetworkList(context.Background(), types.NetworkListOptions{})
 	if err != nil {
-		glog.Error("Unable to retrieve list of docker networks: %v", err)
+		glog.Errorf("Unable to retrieve list of docker networks: %v", err)
 		return
 	}
 
