@@ -43,6 +43,8 @@ type instanceData struct {
 	vm             virtualizer
 	instanceDir    string
 	shuttingDown   bool
+	rcvStamp       time.Time
+	st             *startTimes
 }
 
 type insStartCmd struct {
@@ -50,6 +52,7 @@ type insStartCmd struct {
 	metaData []byte
 	frame    *ssntp.Frame
 	cfg      *vmConfig
+	rcvStamp time.Time
 }
 type insRestartCmd struct{}
 type insDeleteCmd struct {
@@ -101,7 +104,7 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 		startErr.send(&id.ac.ssntpConn, id.instance)
 		return
 	}
-	startErr := processStart(cmd, id.instanceDir, id.vm, &id.ac.ssntpConn)
+	st, startErr := processStart(cmd, id.instanceDir, id.vm, &id.ac.ssntpConn)
 	if startErr != nil {
 		glog.Errorf("Unable to start instance[%s]: %v", string(startErr.code), startErr.err)
 		startErr.send(&id.ac.ssntpConn, id.instance)
@@ -115,6 +118,7 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 		}
 		return
 	}
+	id.st = st
 
 	id.connectedCh = make(chan struct{})
 	id.monitorCloseCh = make(chan struct{})
@@ -202,6 +206,28 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	return true
 }
 
+func (id *instanceData) logStartTrace() {
+	if id.st == nil {
+		return
+	}
+
+	runningStamp := time.Now()
+	glog.Info("================ START TRACE ============")
+	glog.Infof("Total time to start instance: %d ms", (runningStamp.Sub(id.rcvStamp))/time.Millisecond)
+	glog.Infof("Launcher routing time: %d ms", (id.st.startStamp.Sub(id.rcvStamp))/time.Millisecond)
+	glog.Infof("Creating time: %d ms", (id.st.runStamp.Sub(id.st.startStamp))/time.Millisecond)
+	glog.Infof("Time to running: %d ms", (runningStamp.Sub(id.st.startStamp))/time.Millisecond)
+	glog.Infof("Running detection time: %d ms", (runningStamp.Sub(id.st.runStamp))/time.Millisecond)
+	glog.Info("")
+	glog.Info("Detailed creation times")
+	glog.Info("-----------------------")
+	glog.Infof("Backing Image Check: %d", id.st.backingImageCheck.Sub(id.st.startStamp)/time.Millisecond)
+	glog.Infof("Network creation: %d", id.st.networkStamp.Sub(id.st.backingImageCheck)/time.Millisecond)
+	glog.Infof("VM/Container creation: %d", id.st.creationStamp.Sub(id.st.networkStamp)/time.Millisecond)
+	glog.Infof("Time to start: %d", id.st.runStamp.Sub(id.st.creationStamp)/time.Millisecond)
+	glog.Info("=========================================")
+}
+
 func (id *instanceData) instanceLoop() {
 
 	id.vm.init(id.cfg, id.instanceDir)
@@ -227,6 +253,7 @@ DONE:
 
 			switch cmd := cmd.(type) {
 			case *insStartCmd:
+				id.rcvStamp = cmd.rcvStamp
 				id.startCommand(cmd)
 			case *insRestartCmd:
 				id.restartCommand(cmd)
@@ -254,7 +281,9 @@ DONE:
 			id.monitorCh = nil
 			id.statsTimer = nil
 			id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
+			id.st = nil
 		case <-id.connectedCh:
+			id.logStartTrace()
 			id.connectedCh = nil
 			id.vm.connected()
 			id.ovsCh <- &ovsStateChange{id.instance, ovsRunning}
