@@ -1101,6 +1101,34 @@ func listCNCIDetails(w http.ResponseWriter, r *http.Request, context *controller
 	w.Write(b)
 }
 
+func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
+	var traces payloads.CiaoTraces
+
+	if validateToken(context, r) == false {
+		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		return
+	}
+
+	summary, err := context.ds.GetBatchFrameSummary()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for _, s := range summary {
+		traces.Labels = append(traces.Labels, s.BatchID)
+	}
+
+	b, err := json.Marshal(traces)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
 func createComputeAPI(context *controller) {
 	r := mux.NewRouter()
 
@@ -1171,6 +1199,10 @@ func createComputeAPI(context *controller) {
 
 	r.HandleFunc("/v2.1/cncis/{cnci}/detail", func(w http.ResponseWriter, r *http.Request) {
 		listCNCIDetails(w, r, context)
+	}).Methods("GET")
+
+	r.HandleFunc("/v2.1/traces", func(w http.ResponseWriter, r *http.Request) {
+		listTraces(w, r, context)
 	}).Methods("GET")
 
 	service := fmt.Sprintf(":%d", *computeAPIPort)

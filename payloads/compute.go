@@ -239,4 +239,33 @@ type CNCIDetail struct {
 type CiaoServersAction struct {
 	Action    string   `json:"action"`
 	ServerIDs []string `json:"servers"`
-} 
+}
+
+type CiaoTraces struct {
+	Labels []string `json:"labels"`
+}
+
+type CiaoFrameStat struct {
+	ID               string  `json:"node_id"`
+	TotalElapsedTime float64 `json:"total_elapsed_time"`
+	ControllerTime   float64 `json:"total_controller_time"`
+	LauncherTime     float64 `json:"total_launcher_time"`
+	SchedulerTime    float64 `json:"total_scheduler_time"`
+}
+
+type CiaoBatchFrameStat struct {
+	NumInstances             int     `json:"num_instances"`
+	TotalElapsed             float64 `json:"total_elapsed"`
+	AverageElapsed           float64 `json:"average_elapsed"`
+	AverageControllerElapsed float64 `json:"average_controller_elapsed"`
+	AverageLauncherElapsed   float64 `json:"average_launcher_elapsed"`
+	AverageSchedulerElapsed  float64 `json:"average_scheduler_elapsed"`
+	VarianceController       float64 `json:"controller_variance"`
+	VarianceLauncher         float64 `json:"launcher_variance"`
+	VarianceScheduler        float64 `json:"scheduler_variance"`
+}
+
+type CiaoTraceData struct {
+	Summary    CiaoBatchFrameStat `json:"summary"`
+	FramesStat []CiaoFrameStat    `json:"frames"`
+}
