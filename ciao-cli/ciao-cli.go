@@ -751,7 +751,7 @@ func startStopInstance(tenant, instance string, action action) {
 }
 
 func listAllLabels() {
-	var traces payloads.CiaoTraces
+	var traces payloads.CiaoTracesSummary
 
 	url := buildComputeURL("traces")
 
@@ -765,9 +765,9 @@ func listAllLabels() {
 		fatalf(err.Error())
 	}
 
-	fmt.Printf("%d trace label(s) available\n", len(traces.Labels))
-	for i, label := range traces.Labels {
-		fmt.Printf("\tLabel #%d: %s\n", i+1, label)
+	fmt.Printf("%d trace label(s) available\n", len(traces.Summaries))
+	for i, summary := range traces.Summaries {
+		fmt.Printf("\tLabel #%d: %s (%d instances running)\n", i+1, summary.Label, summary.Instances)
 	}
 
 }

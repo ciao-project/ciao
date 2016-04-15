@@ -1102,21 +1102,25 @@ func listCNCIDetails(w http.ResponseWriter, r *http.Request, context *controller
 }
 
 func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
-	var traces payloads.CiaoTraces
+	var traces payloads.CiaoTracesSummary
 
 	if validateToken(context, r) == false {
 		http.Error(w, "Invalid token", http.StatusInternalServerError)
 		return
 	}
 
-	summary, err := context.ds.GetBatchFrameSummary()
+	summaries, err := context.ds.GetBatchFrameSummary()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	for _, s := range summary {
-		traces.Labels = append(traces.Labels, s.BatchID)
+	for _, s := range summaries {
+		summary := payloads.CiaoTraceSummary{
+			Label:     s.BatchID,
+			Instances: s.NumInstances,
+		}
+		traces.Summaries = append(traces.Summaries, summary)
 	}
 
 	b, err := json.Marshal(traces)

@@ -241,8 +241,13 @@ type CiaoServersAction struct {
 	ServerIDs []string `json:"servers"`
 }
 
-type CiaoTraces struct {
-	Labels []string `json:"labels"`
+type CiaoTraceSummary struct {
+	Label     string `json:"label"`
+	Instances int    `json:"instances"`
+}
+
+type CiaoTracesSummary struct {
+	Summaries []CiaoTraceSummary `json:"summaries"`
 }
 
 type CiaoFrameStat struct {
