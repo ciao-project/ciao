@@ -41,6 +41,7 @@ type action uint8
 const (
 	computeActionStart action = iota
 	computeActionStop
+	computeActionDelete
 )
 
 type pagerFilterType uint8
@@ -714,6 +715,79 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+type instanceAction func(string) error
+
+func tenantServersAction(w http.ResponseWriter, r *http.Request, context *controller) {
+	var servers payloads.CiaoServersAction
+	var actionFunc instanceAction
+	var statusFilter string
+
+	dumpRequestBody(r, true)
+
+	if validateToken(context, r) == false {
+		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		return
+	}
+
+	defer r.Body.Close()
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = json.Unmarshal(body, &servers)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if servers.Action == "os-start" {
+		actionFunc = context.restartInstance
+		statusFilter = payloads.ComputeStatusStopped
+	} else if servers.Action == "os-stop" {
+		actionFunc = context.stopInstance
+		statusFilter = payloads.ComputeStatusRunning
+	} else if servers.Action == "os-delete" {
+		actionFunc = context.deleteInstance
+		statusFilter = ""
+	} else {
+		http.Error(w, "Unsupported action", http.StatusServiceUnavailable)
+		return
+	}
+
+	if len(servers.ServerIDs) > 0 {
+		/* TODO Check that instance belongs to the right tenant */
+		for _, instance := range servers.ServerIDs {
+			actionFunc(instance)
+		}
+	} else {
+		vars := mux.Vars(r)
+		tenant := vars["tenant"]
+
+		/* We want to act on all relevant instances */
+		instances, err := context.ds.GetAllInstancesFromTenant(tenant)
+		if err != nil {
+			http.Error(w, "No instances for tenant", http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Printf("Tenant %s has %d instances\n", tenant, len(instances))
+
+		for _, instance := range instances {
+			if statusFilter != "" && instance.State != statusFilter {
+				continue
+			}
+
+			fmt.Printf("Action on %s\n", instance.Id)
+			actionFunc(instance.Id)
+		}
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
 func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -1039,6 +1113,10 @@ func createComputeAPI(context *controller) {
 	r.HandleFunc("/v2.1/{tenant}/servers/{server}", func(w http.ResponseWriter, r *http.Request) {
 		deleteServer(w, r, context)
 	}).Methods("DELETE")
+
+	r.HandleFunc("/v2.1/{tenant}/servers/action", func(w http.ResponseWriter, r *http.Request) {
+		tenantServersAction(w, r, context)
+	}).Methods("POST")
 
 	r.HandleFunc("/v2.1/{tenant}/servers/{server}/action", func(w http.ResponseWriter, r *http.Request) {
 		serverAction(w, r, context)

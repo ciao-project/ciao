@@ -50,6 +50,12 @@ type SecurityGroup struct {
 	Name string `json:"name"`
 }
 
+const (
+	ComputeStatusPending = "pending"
+	ComputeStatusRunning = "running"
+	ComputeStatusStopped = "exited"
+)
+
 type Server struct {
 	Addresses                        Addresses       `json:"addresses"`
 	Created                          time.Time       `json:"created"`
@@ -229,3 +235,8 @@ type CiaoClusterStatus struct {
 type CNCIDetail struct {
 	IPv4 string `json:"IPv4"`
 }
+
+type CiaoServersAction struct {
+	Action    string   `json:"action"`
+	ServerIDs []string `json:"servers"`
+} 
