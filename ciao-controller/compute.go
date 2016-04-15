@@ -688,7 +688,13 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 		nInstances = server.Server.MinInstances
 	}
 
-	instances, err := context.startWorkload(server.Server.Workload, tenant, nInstances, false, "")
+	trace := false
+	label := ""
+	if server.Server.Name != "" {
+		trace = true
+		label = server.Server.Name
+	}
+	instances, err := context.startWorkload(server.Server.Workload, tenant, nInstances, trace, label)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
