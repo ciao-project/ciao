@@ -794,9 +794,9 @@ func dumpTraceData(label string) {
 	fmt.Printf("\tAverage Controller time: %f seconds\n", traceData.Summary.AverageControllerElapsed)
 	fmt.Printf("\tAverage Scheduler time : %f seconds\n", traceData.Summary.AverageSchedulerElapsed)
 	fmt.Printf("\tAverage Launcher time  : %f seconds\n", traceData.Summary.AverageLauncherElapsed)
-	fmt.Printf("\tController variance    : %f seconds\n", traceData.Summary.VarianceController)
-	fmt.Printf("\tScheduler variance     : %f seconds\n", traceData.Summary.VarianceScheduler)
-	fmt.Printf("\tLauncher variance      : %f seconds\n", traceData.Summary.VarianceLauncher)
+	fmt.Printf("\tController variance    : %f seconds²\n", traceData.Summary.VarianceController)
+	fmt.Printf("\tScheduler variance     : %f seconds²\n", traceData.Summary.VarianceScheduler)
+	fmt.Printf("\tLauncher variance      : %f seconds²\n", traceData.Summary.VarianceLauncher)
 
 }
 
