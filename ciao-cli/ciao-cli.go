@@ -144,6 +144,7 @@ var (
 	identityURL      = flag.String("identity", "", "Keystone URL")
 	identityUser     = flag.String("username", "nova", "Openstack Service Username")
 	identityPassword = flag.String("password", "nova", "Openstack Service Username")
+	dumpLabel        = flag.Bool("dump-label", false, "Dump all trace data for a given label")
 )
 
 type Project struct {
@@ -771,6 +772,34 @@ func listAllLabels() {
 
 }
 
+func dumpTraceData(label string) {
+	var traceData payloads.CiaoTraceData
+
+	url := buildComputeURL("traces/%s", label)
+
+	resp, err := sendComputeRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	err = unmarshalComputeResponse(resp, &traceData)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	fmt.Printf("Trace data for [%s]:\n", label)
+	fmt.Printf("\tNumber of instances: %d\n", traceData.Summary.NumInstances)
+	fmt.Printf("\tTotal time elapsed     : %f seconds\n", traceData.Summary.TotalElapsed)
+	fmt.Printf("\tAverage time elapsed   : %f seconds\n", traceData.Summary.AverageElapsed)
+	fmt.Printf("\tAverage Controller time: %f seconds\n", traceData.Summary.AverageControllerElapsed)
+	fmt.Printf("\tAverage Scheduler time : %f seconds\n", traceData.Summary.AverageSchedulerElapsed)
+	fmt.Printf("\tAverage Launcher time  : %f seconds\n", traceData.Summary.AverageLauncherElapsed)
+	fmt.Printf("\tController variance    : %f seconds\n", traceData.Summary.VarianceController)
+	fmt.Printf("\tScheduler variance     : %f seconds\n", traceData.Summary.VarianceScheduler)
+	fmt.Printf("\tLauncher variance      : %f seconds\n", traceData.Summary.VarianceLauncher)
+
+}
+
 func main() {
 	flag.Var(&computeScheme, "scheme", "Compute API URL scheme (http or https)")
 	flag.Parse()
@@ -908,5 +937,13 @@ func main() {
 
 	if *listLabels == true {
 		listAllLabels()
+	}
+
+	if *dumpLabel == true {
+		if *instanceLabel == "" {
+			fatalf("Missing required -instance-label parameter")
+		}
+
+		dumpTraceData(*instanceLabel)
 	}
 }

@@ -206,5 +206,11 @@ $GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ci
 $GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-labels
 ```
 
+### Dump and display trace data from a given trace label
+
+```shell
+$GOBIN/ciao-cli -password ciao -username admin -scope admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -dump-label -instance-label start_trace_20160415
+```
+
 
 
