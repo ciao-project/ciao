@@ -121,6 +121,7 @@ var (
 	listComputeNodes = flag.Bool("list-cns", false, "List all compute nodes")
 	listCNCIs        = flag.Bool("list-cncis", false, "List all CNCIs")
 	listLength       = flag.Int("list-length", 0, "Maximum number of items in the reponse")
+	listLabels       = flag.Bool("list-labels", false, "List all trace labels")
 	dumpCNCI         = flag.Bool("dump-cnci", false, "Dump a CNCI details")
 	dumpToken        = flag.Bool("dump-token", false, "Dump keystone tokens")
 	dumpTenantID     = flag.Bool("dump-tenant-id", false, "Dump tenant UUID")
@@ -748,6 +749,28 @@ func startStopInstance(tenant, instance string, action action) {
 	}
 }
 
+func listAllLabels() {
+	var traces payloads.CiaoTraces
+
+	url := buildComputeURL("traces")
+
+	resp, err := sendComputeRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	err = unmarshalComputeResponse(resp, &traces)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	fmt.Printf("%d trace label(s) available\n", len(traces.Labels))
+	for i, label := range traces.Labels {
+		fmt.Printf("\tLabel #%d: %s\n", i+1, label)
+	}
+
+}
+
 func main() {
 	flag.Var(&computeScheme, "scheme", "Compute API URL scheme (http or https)")
 	flag.Parse()
@@ -881,5 +904,9 @@ func main() {
 		}
 
 		startStopInstance(*tenant, *instance, action)
+	}
+
+	if *listLabels == true {
+		listAllLabels()
 	}
 }
