@@ -111,6 +111,7 @@ func fatalf(format string, args ...interface{}) {
 }
 
 var (
+	allInstances     = flag.Bool("all-instances", false, "Select all instances")
 	listInstances    = flag.Bool("list-instances", false, "List all instances for a tenant or for a compute node")
 	listQuotas       = flag.Bool("list-quotas", false, "List quotas status for a tenant")
 	listResources    = flag.Bool("list-resources", false, "List consumed resources for a tenant for the past 15mn")
@@ -630,6 +631,35 @@ func deleteTenantInstance(tenant string, instance string) {
 	fmt.Printf("Deleted instance: %s\n", instance)
 }
 
+func actionAllTenantInstance(tenant string, osAction string) {
+	var action payloads.CiaoServersAction
+
+	url := buildComputeURL("%s/servers/action", tenant)
+
+	action.Action = osAction
+
+	actionBytes, err := json.Marshal(action)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	body := bytes.NewReader(actionBytes)
+
+	resp, err := sendComputeRequest("POST", url, nil, body)
+	if err != nil {
+		fatalf(err.Error())
+
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		fatalf("Action %s on all instances failed: %s", osAction, resp.Status)
+	}
+
+	fmt.Printf("%s all instances for tenant %s\n", osAction, tenant)
+}
+
 func listNodeInstances(node string) {
 	var servers payloads.CiaoServersStats
 	url := buildComputeURL("nodes/%s/servers/detail", node)
@@ -677,8 +707,11 @@ func dumpClusterStatus() {
 	fmt.Printf("\tMaintenance %d\n", status.Status.TotalNodesMaintenance)
 }
 
-const osStart = "os-start"
-const osStop = "os-stop"
+const (
+	osStart  = "os-start"
+	osStop   = "os-stop"
+	osDelete = "os-delete"
+)
 
 func startStopInstance(tenant, instance string, action action) {
 	var actionBytes []byte
@@ -812,11 +845,15 @@ func main() {
 			fatalf("Missing required -tenant parameter")
 		}
 
-		if len(*instance) == 0 {
+		if len(*instance) == 0 && *allInstances == false {
 			fatalf("Missing required -instance parameter")
 		}
 
-		deleteTenantInstance(*tenant, *instance)
+		if *allInstances == false {
+			deleteTenantInstance(*tenant, *instance)
+		} else {
+			actionAllTenantInstance(*tenant, osDelete)
+		}
 	}
 
 	if *dumpCNCI == true {
