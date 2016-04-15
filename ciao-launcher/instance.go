@@ -285,7 +285,7 @@ DONE:
 		case <-id.statsTimer:
 			d, m, c := id.vm.stats()
 			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
-			id.statsTimer = time.After(time.Second * statsPeriod)
+			id.statsTimer = time.After(time.Second * resourcePeriod)
 		case cmd := <-id.cmdCh:
 			if !id.instanceCommand(cmd) {
 				break DONE
@@ -311,7 +311,7 @@ DONE:
 			id.ovsCh <- &ovsStateChange{id.instance, ovsRunning}
 			d, m, c := id.vm.stats()
 			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
-			id.statsTimer = time.After(time.Second * statsPeriod)
+			id.statsTimer = time.After(time.Second * resourcePeriod)
 		}
 	}
 

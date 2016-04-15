@@ -75,12 +75,13 @@ func init() {
 }
 
 const (
-	lockDir       = "/tmp/lock/ciao"
-	instancesDir  = "/var/lib/ciao/instances"
-	logDir        = "/var/lib/ciao/logs/launcher"
-	instanceState = "state"
-	lockFile      = "client-agent.lock"
-	statsPeriod   = 30
+	lockDir        = "/tmp/lock/ciao"
+	instancesDir   = "/var/lib/ciao/instances"
+	logDir         = "/var/lib/ciao/logs/launcher"
+	instanceState  = "state"
+	lockFile       = "client-agent.lock"
+	statsPeriod    = 6
+	resourcePeriod = 30
 )
 
 type cmdWrapper struct {
