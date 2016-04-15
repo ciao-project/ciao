@@ -267,7 +267,12 @@ func TestDeleteInstance(t *testing.T) {
 	for name, val := range resourcesAfter {
 		before := resourcesBefore[name]
 		delta := usage[name]
-		if val != before-delta {
+
+		if name == "instances" {
+			if val != before-1 {
+				t.Error("instances not decremented")
+			}
+		} else if val != before-delta {
 			t.Error("usage not reduced")
 		}
 	}
@@ -1809,7 +1814,12 @@ func TestStartFailureFullCloud(t *testing.T) {
 	for name, val := range resourcesAfter {
 		before := resourcesBefore[name]
 		delta := usage[name]
-		if val != before-delta {
+
+		if name == "instances" {
+			if val != before-1 {
+				t.Error("instances not decremented")
+			}
+		} else if val != before-delta {
 			t.Error("usage not reduced")
 		}
 	}

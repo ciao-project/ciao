@@ -2326,6 +2326,7 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		payloads.NetworkFailure:
 
 		ds.instancesLock.Lock()
+		i := ds.instances[instanceID]
 		delete(ds.instances, instanceID)
 		ds.instancesLock.Unlock()
 
@@ -2333,19 +2334,18 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		delete(ds.tenants[tenantID].instances, instanceID)
 		ds.tenantsLock.Unlock()
 
-		err = ds.deleteAllUsage(instanceID, tenantID)
+		err = ds.deleteAllUsage(i, tenantID)
 		if err != nil {
 			glog.Warning(err)
 		}
 
-		cmd := `DELETE FROM instances WHERE id = '%s';`
-		str := fmt.Sprintf(cmd, instanceID)
-		ds.dbLock.Lock()
-		err = ds.exec(ds.getTableDB("instances"), str)
-		ds.dbLock.Unlock()
-		if err != nil {
-			return err
-		}
+		go func() {
+			cmd := `DELETE FROM instances WHERE id = '%s';`
+			str := fmt.Sprintf(cmd, instanceID)
+			ds.dbLock.Lock()
+			_ = ds.exec(ds.getTableDB("instances"), str)
+			ds.dbLock.Unlock()
+		}()
 
 		err = ds.ReleaseTenantIP(tenantID, ipAddress)
 		if err != nil {
@@ -2388,7 +2388,7 @@ func (ds *Datastore) DeleteInstance(instanceID string) (err error) {
 		return
 	}
 
-	err = ds.deleteAllUsage(instanceID, tenantID)
+	err = ds.deleteAllUsage(i, tenantID)
 	if err != nil {
 		glog.Warning(err)
 	}
@@ -2538,24 +2538,47 @@ func (ds *Datastore) AddUsage(tenantID string, instanceID string, usage map[stri
 	return
 }
 
-func (ds *Datastore) deleteAllUsage(instanceID string, tenantID string) (err error) {
-	// remove old tenant info from cache
-	ds.tenantsLock.Lock()
-	delete(ds.tenants, tenantID)
+func (ds *Datastore) deleteAllUsage(i *types.Instance, tenantID string) (err error) {
+	// get the usage into a map
+	ds.workloadsLock.RLock()
+	wl := ds.workloads[i.WorkloadId]
+	ds.workloadsLock.RUnlock()
 
-	cmd := fmt.Sprintf("DELETE FROM usage WHERE instance_id = '%s';", instanceID)
-	ds.dbLock.Lock()
-	err = ds.exec(ds.getTableDB("usage"), cmd)
-	ds.dbLock.Unlock()
-
-	// update cache
-	tenant, err := ds.getTenantNoCache(tenantID)
-	if err != nil || tenant == nil {
-		glog.V(2).Info(err, " unable to get tenant: ", tenantID)
+	// convert RequestedResources into a map[string]int
+	usage := make(map[string]int)
+	for i := range wl.Defaults {
+		usage[string(wl.Defaults[i].Type)] = wl.Defaults[i].Value
 	}
 
-	ds.tenants[tenantID] = tenant
+	// update tenant usage in cache
+	ds.tenantsLock.Lock()
+	tenant := ds.tenants[tenantID]
+	if tenant != nil {
+		for name, val := range usage {
+			for i := range tenant.Resources {
+				if tenant.Resources[i].Rname == name {
+					tenant.Resources[i].Usage -= val
+					break
+				}
+			}
+		}
+		// decrement instances count
+		for i := range tenant.Resources {
+			if tenant.Resources[i].Rtype == 1 {
+				tenant.Resources[i].Usage--
+				break
+			}
+		}
+	}
 	ds.tenantsLock.Unlock()
+
+	// update persistent store
+	go func() {
+		cmd := fmt.Sprintf("DELETE FROM usage WHERE instance_id = '%s';", i.Id)
+		ds.dbLock.Lock()
+		err = ds.exec(ds.getTableDB("usage"), cmd)
+		ds.dbLock.Unlock()
+	}()
 
 	return
 }
