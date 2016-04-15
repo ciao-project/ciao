@@ -28,12 +28,13 @@ in your PATH.
 LINK NEEDED TO CERTIFICATE CREATION PROCESS
 
 Secondly you need to generate a certificate pair to allow launcher to connect to
-the SSNTP server.  The default location for these certificates is /var/lib/ciao
+the SSNTP server.  The default location for these certificates is /etc/pki/ciao
 So you can either copy the certs to this location, e.g.,
 
 ```
-cp CAcert-server-localhost.pem /var/lib/ciao
-cp cert-client-localhost.pem /var/lib/ciao
+sudo mkdir -p /etc/pki/ciao
+cp CAcert-server-localhost.pem /etc/pki/ciao
+cp cert-client-localhost.pem /etc/pki/ciao
 ```
 
 or provide alternative locations for these files via the -cert and -cacert command
@@ -279,7 +280,7 @@ ciao-launcher-server exposes a REST API.  Commands can be sent to it
 directly using curl, if you know the URLs, or directly with the tool, ciaolc.
 We'll look at some examples of using ciaolc below.
 
-To get started copy the test certs in https://github.com/01org/ciao/tree/master/ciao-launcher/tests/ciao-launcher-server to /var/lib/ciao.  Then run
+To get started copy the test certs in https://github.com/01org/ciao/tree/master/ciao-launcher/tests/ciao-launcher-server to /etc/pki/ciao.  Then run
 ciao-launcher-server.
 
 Open a new terminal and start ciao-launcher, e.g.,
