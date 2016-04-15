@@ -1129,6 +1129,44 @@ func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+func traceData(w http.ResponseWriter, r *http.Request, context *controller) {
+	vars := mux.Vars(r)
+	label := vars["label"]
+	var traceData payloads.CiaoTraceData
+
+	if validateToken(context, r) == false {
+		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		return
+	}
+
+	batchStats, err := context.ds.GetBatchFrameStatistics(label)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	traceData.Summary = payloads.CiaoBatchFrameStat{
+		NumInstances:             batchStats[0].NumInstances,
+		TotalElapsed:             batchStats[0].TotalElapsed,
+		AverageElapsed:           batchStats[0].AverageElapsed,
+		AverageControllerElapsed: batchStats[0].AverageControllerElapsed,
+		AverageLauncherElapsed:   batchStats[0].AverageLauncherElapsed,
+		AverageSchedulerElapsed:  batchStats[0].AverageSchedulerElapsed,
+		VarianceController:       batchStats[0].VarianceController,
+		VarianceLauncher:         batchStats[0].VarianceLauncher,
+		VarianceScheduler:        batchStats[0].VarianceScheduler,
+	}
+
+	b, err := json.Marshal(traceData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
 func createComputeAPI(context *controller) {
 	r := mux.NewRouter()
 
@@ -1203,6 +1241,10 @@ func createComputeAPI(context *controller) {
 
 	r.HandleFunc("/v2.1/traces", func(w http.ResponseWriter, r *http.Request) {
 		listTraces(w, r, context)
+	}).Methods("GET")
+
+	r.HandleFunc("/v2.1/traces/{label}", func(w http.ResponseWriter, r *http.Request) {
+		traceData(w, r, context)
 	}).Methods("GET")
 
 	service := fmt.Sprintf(":%d", *computeAPIPort)
