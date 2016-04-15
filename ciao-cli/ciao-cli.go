@@ -112,6 +112,7 @@ func fatalf(format string, args ...interface{}) {
 
 var (
 	allInstances     = flag.Bool("all-instances", false, "Select all instances")
+	instanceLabel    = flag.String("instance-label", "", "Set a frame label. This will trigger frame tracing")
 	listInstances    = flag.Bool("list-instances", false, "List all instances for a tenant or for a compute node")
 	listQuotas       = flag.Bool("list-quotas", false, "List quotas status for a tenant")
 	listResources    = flag.Bool("list-resources", false, "List consumed resources for a tenant for the past 15mn")
@@ -578,10 +579,11 @@ func dumpCNCIDetails(cnciID string) {
 	}
 }
 
-func createTenantInstance(tenant string, workload string, instances int) {
+func createTenantInstance(tenant string, workload string, instances int, label string) {
 	var server payloads.ComputeCreateServer
 	var servers payloads.ComputeServers
 
+	server.Server.Name = label
 	server.Server.Workload = workload
 	server.Server.MaxInstances = instances
 	server.Server.MinInstances = 1
@@ -837,7 +839,7 @@ func main() {
 			fatalf("Missing required -workload parameter")
 		}
 
-		createTenantInstance(*tenant, *workload, *instances)
+		createTenantInstance(*tenant, *workload, *instances, *instanceLabel)
 	}
 
 	if *deleteInstance == true {
