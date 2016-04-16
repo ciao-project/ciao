@@ -32,9 +32,9 @@ ciao-controller automatically prepares a [CNCI
 appliance](https://github.com/01org/ciao/tree/master/networking/cnci_agent)
 for the tenant.  This provides a virtual network which spans the tenant's
 workloads.  Tenant workloads have access only to their tenant network
-and not any nother tenant networks.  New workload instances within the
-tenant will automatically be assigned network connectivity within the
-tenant private network.
+and not any other tenant networks.  New workload instances within the
+tenant are automatically assigned network connectivity within the tenant
+private network.
 
 Ciao-controller currently has early, developer oriented workload definition
 files and a cloud-init template which demonstrate launching virtual
@@ -45,7 +45,7 @@ Running Controller
 ------------------
 
 Controller has many configuration options and depends on connectivity
-to a keystone server as well as ciao network node, ciao-scheduler and
+to a keystone server as well as ciao network node, ciao-scheduler, and
 ciao compute nodes configured for ciao-launcher.
 
 The key ciao-controller configuration options describe your keys (-cacert,
@@ -87,8 +87,8 @@ $ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem
 ```
 
 Copy the controller_cert.pem and controller_key.pem files to your
-controller node. You can use the same location where you will be storing
-your controller binary (ciao-controller).
+controller node. You can use the same location where you will be
+building/running your controller binary (ciao-controller).
 
 ### Usage
 
@@ -121,7 +121,7 @@ Usage of ciao-controller/ciao-controller:
   -nonetwork
     	Debug with no networking
   -password string
-    	Openstack Service Username (default "nova")
+    	Openstack Service Username (default "ciao")
   -port int
     	http port (default 8889)
   -stats_path string
@@ -133,7 +133,7 @@ Usage of ciao-controller/ciao-controller:
   -url string
     	Server URL (default "localhost")
   -username string
-    	Openstack Service Username (default "nova")
+    	Openstack Service Username (default "ciao")
   -v value
     	log level for V logs
   -vmodule value
@@ -145,5 +145,5 @@ Usage of ciao-controller/ciao-controller:
 ### Example
 
 ```shell
-sudo ./ciao-controller --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Controller-localhost.pem --identity=https://your.keystone.server.com:35357 --username=csr --password=giveciaoatry --port 80 --url ciao.ctl.intel.com -computeport 443 --httpskey=/etc/pki/ciao/csr_key.pem --httpscert=/etc/pki/ciao/csr_cert.pem
+sudo ./ciao-controller --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Controller-localhost.pem --identity=https://your.keystone.server.com:35357 --username=csr --password=hello --port 80 --url ciao.ctl.intel.com -computeport 443 --httpskey=/etc/pki/ciao/csr_key.pem --httpscert=/etc/pki/ciao/csr_cert.pem
 ```
