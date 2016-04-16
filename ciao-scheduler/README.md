@@ -39,8 +39,63 @@ across only in-memory, known up-to-date data, and is done **very quickly**.
 
 
 
-A Fit vs. Best Fit
-------------------
+Running Scheduler
+-----------------
+
+Scheduler does not need to run as root, unlike other ciao components.
+
+Certificates are assumed to be in /etc/pki/ciao, or can be specified on the
+command line.  They are created with the
+[ciao-cert](https://github.com/01org/ciao/tree/master/ssntp/ciao-cert)
+tool.
+
+For debugging or informational purposes glog options are useful.
+The "-heartbeat" option emits a simple textual status update of connected
+controller(s) and compute node(s).
+
+Of course nothing much interesting happens until you connect at least
+a ciao-controller and ciao-launchers also.  See the [ciao cluster setup
+guide]() for more information.
+
+### Usage
+
+```shell
+Usage of ./ciao-scheduler:
+  -alsologtostderr
+    	log to standard error as well as files
+  -cacert string
+    	CA certificate (default "/etc/pki/ciao/CAcert-server-localhost.pem")
+  -cert string
+    	Server certificate (default "/etc/pki/ciao/cert-server-localhost.pem")
+  -cpuprofile string
+    	Write cpu profile to file
+  -heartbeat
+    	Emit status heartbeat text
+  -log_backtrace_at value
+    	when logging hits line file:N, emit a stack trace (default :0)
+  -log_dir string
+    	If non-empty, write log files in this directory
+  -logtostderr
+    	log to standard error instead of files
+  -stderrthreshold value
+    	logs at or above this threshold go to stderr
+  -v value
+    	log level for V logs
+  -vmodule value
+    	comma-separated list of pattern=N settings for file-filtered logging
+```
+
+### Example
+
+```shell
+$GOBIN/ciao-scheduler --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Scheduler-ciao-ctl.intel.com.pem --heartbeat
+```
+
+
+Design Thinking
+---------------
+
+### A Fit vs. Best Fit
 
 Ciao-scheduler explicitly does not attempt to find the best fit for
 a workload.
@@ -73,10 +128,7 @@ it is full and the scheduler will not dispatch work to that node.
 As a last resort, ciao-scheduler will return a "cloud full" status to
 ciao-controller if no compute nodes have capacity to do work.
 
-
-
-Data Structures and Scale
--------------------------
+### Data Structures and Scale
 
 In the initial implementation, the scheduling choice
 focuses primarily on RAM, disk and CPU availability
@@ -104,10 +156,7 @@ list is not a deeply computationally complex act.
 For typical clouds today and in the foreseeable future, we expect our
 implementation will scale.
 
-
-
-Robustness and Update-ability
----------------------------
+### Robustness and Update-ability
 
 The nature of the launcher agents checking in with scheduler to update
 their node statistics and request work means that the scheduler always
@@ -117,10 +166,7 @@ restart, or be stopped and updated and restarted, and launcher agents
 will simply reconnect and keep on continually updating the scheduler of
 any changes in their node statistics.
 
-
-
-Fairness
---------
+### Fairness
 
 Ciao-scheduler currently implements an extremely trivial algorithm to
 prefer not using the most-recently-used compute node.  This is inexpensive
