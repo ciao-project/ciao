@@ -31,10 +31,10 @@ When a first workload is launched for a tenant,
 ciao-controller automatically prepares a [CNCI
 appliance](https://github.com/01org/ciao/tree/master/networking/cnci_agent)
 for the tenant.  This provides a virtual network which spans the tenant's
-workloads.  Tenant workloads have access only to their tenant network
-and not any other tenant networks.  New workload instances within the
-tenant are automatically assigned network connectivity within the tenant
-private network.
+workloads.  Tenant workloads have access only to their tenant private
+network and not any other tenant networks.  New workload instances within
+the tenant are automatically assigned network connectivity within that
+tenant's private network.
 
 Ciao-controller currently has early, developer oriented workload definition
 files and a cloud-init template which demonstrate launching virtual
@@ -121,7 +121,7 @@ Usage of ciao-controller/ciao-controller:
   -nonetwork
     	Debug with no networking
   -password string
-    	Openstack Service Username (default "ciao")
+    	Openstack Service Username
   -port int
     	http port (default 8889)
   -stats_path string
