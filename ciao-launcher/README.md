@@ -25,20 +25,11 @@ in your PATH.
 
 ## Installing Certificates
 
-LINK NEEDED TO CERTIFICATE CREATION PROCESS
-
-Secondly you need to generate a certificate pair to allow launcher to connect to
-the SSNTP server.  The default location for these certificates is /etc/pki/ciao
-So you can either copy the certs to this location, e.g.,
-
-```
-sudo mkdir -p /etc/pki/ciao
-cp CAcert-server-localhost.pem /etc/pki/ciao
-cp cert-client-localhost.pem /etc/pki/ciao
-```
-
-or provide alternative locations for these files via the -cert and -cacert command
-line options.
+Certificates are assumed to be in /etc/pki/ciao, or can be
+specified on the command line via the "-cert" and "-cacert"
+command line options.  Certificates are created with the
+[ciao-cert](https://github.com/01org/ciao/tree/master/ssntp/ciao-cert)
+tool.
 
 ## Install Dependencies
 

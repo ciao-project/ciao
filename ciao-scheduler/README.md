@@ -44,8 +44,9 @@ Running Scheduler
 
 Scheduler does not need to run as root, unlike other ciao components.
 
-Certificates are assumed to be in /etc/pki/ciao, or can be specified on the
-command line.  They are created with the
+Certificates are assumed to be in /etc/pki/ciao, or can be
+specified on the command line via the "-cert" and "-cacert"
+command line options.  Certificates are created with the
 [ciao-cert](https://github.com/01org/ciao/tree/master/ssntp/ciao-cert)
 tool.
 
