@@ -240,7 +240,7 @@ func buildComputeURL(format string, args ...interface{}) string {
 	return fmt.Sprintf(prefix+format, args...)
 }
 
-func sendComputeRequest(method string, url string, values []queryValue, body io.Reader) (*http.Response, error) {
+func sendHTTPRequest(method string, url string, values []queryValue, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest(method, os.ExpandEnv(url), body)
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func sendComputeRequest(method string, url string, values []queryValue, body io.
 	return resp, err
 }
 
-func unmarshalComputeResponse(resp *http.Response, v interface{}) error {
+func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -355,12 +355,12 @@ func listAllInstances(tenant string, workload string, marker string, offset int,
 		})
 	}
 
-	resp, err := sendComputeRequest("GET", url, values, nil)
+	resp, err := sendHTTPRequest("GET", url, values, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &servers)
+	err = unmarshalHTTPResponse(resp, &servers)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -393,12 +393,12 @@ func listTenantQuotas(tenant string) {
 	var resources payloads.CiaoTenantResources
 	url := buildComputeURL("%s/quotas", tenant)
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &resources)
+	err = unmarshalHTTPResponse(resp, &resources)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -426,12 +426,12 @@ func listTenantResources(tenant string) {
 		},
 	}
 
-	resp, err := sendComputeRequest("GET", url, values, nil)
+	resp, err := sendHTTPRequest("GET", url, values, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &usage)
+	err = unmarshalHTTPResponse(resp, &usage)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -447,12 +447,12 @@ func workloadDetail(tenant string, workload string) string {
 
 	url := buildComputeURL("%s/flavors/%s", tenant, workload)
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &flavor)
+	err = unmarshalHTTPResponse(resp, &flavor)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -469,12 +469,12 @@ func listTenantWorkloads(tenant string) {
 
 	url := buildComputeURL("%s/flavors", tenant)
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &flavors)
+	err = unmarshalHTTPResponse(resp, &flavors)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -490,12 +490,12 @@ func listAllTenants() {
 
 	url := buildComputeURL("tenants")
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &tenants)
+	err = unmarshalHTTPResponse(resp, &tenants)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -512,12 +512,12 @@ func listAllComputeNodes() {
 
 	url := buildComputeURL("nodes")
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &nodes)
+	err = unmarshalHTTPResponse(resp, &nodes)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -541,12 +541,12 @@ func listAllCNCIs() {
 
 	url := buildComputeURL("cncis")
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &cncis)
+	err = unmarshalHTTPResponse(resp, &cncis)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -568,12 +568,12 @@ func dumpCNCIDetails(cnciID string) {
 
 	url := buildComputeURL("cncis/%s/detail", cnciID)
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &cnci)
+	err = unmarshalHTTPResponse(resp, &cnci)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -604,7 +604,7 @@ func createTenantInstance(tenant string, workload string, instances int, label s
 
 	url := buildComputeURL("%s/servers", tenant)
 
-	resp, err := sendComputeRequest("POST", url, nil, body)
+	resp, err := sendHTTPRequest("POST", url, nil, body)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -613,7 +613,7 @@ func createTenantInstance(tenant string, workload string, instances int, label s
 		fatalf("Instance creation failed: %s", resp.Status)
 	}
 
-	err = unmarshalComputeResponse(resp, &servers)
+	err = unmarshalHTTPResponse(resp, &servers)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -626,7 +626,7 @@ func createTenantInstance(tenant string, workload string, instances int, label s
 func deleteTenantInstance(tenant string, instance string) {
 	url := buildComputeURL("%s/servers/%s", tenant, instance)
 
-	resp, err := sendComputeRequest("DELETE", url, nil, nil)
+	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 
@@ -655,7 +655,7 @@ func actionAllTenantInstance(tenant string, osAction string) {
 
 	body := bytes.NewReader(actionBytes)
 
-	resp, err := sendComputeRequest("POST", url, nil, body)
+	resp, err := sendHTTPRequest("POST", url, nil, body)
 	if err != nil {
 		fatalf(err.Error())
 
@@ -674,12 +674,12 @@ func listNodeInstances(node string) {
 	var servers payloads.CiaoServersStats
 	url := buildComputeURL("nodes/%s/servers/detail", node)
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &servers)
+	err = unmarshalHTTPResponse(resp, &servers)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -700,12 +700,12 @@ func dumpClusterStatus() {
 	var status payloads.CiaoClusterStatus
 	url := buildComputeURL("nodes/summary")
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &status)
+	err = unmarshalHTTPResponse(resp, &status)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -739,7 +739,7 @@ func startStopInstance(tenant, instance string, action action) {
 
 	url := buildComputeURL("%s/servers/%s/action", tenant, instance)
 
-	resp, err := sendComputeRequest("POST", url, nil, body)
+	resp, err := sendHTTPRequest("POST", url, nil, body)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -761,12 +761,12 @@ func listAllLabels() {
 
 	url := buildComputeURL("traces")
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &traces)
+	err = unmarshalHTTPResponse(resp, &traces)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -783,12 +783,12 @@ func dumpTraceData(label string) {
 
 	url := buildComputeURL("traces/%s", label)
 
-	resp, err := sendComputeRequest("GET", url, nil, nil)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalComputeResponse(resp, &traceData)
+	err = unmarshalHTTPResponse(resp, &traceData)
 	if err != nil {
 		fatalf(err.Error())
 	}
