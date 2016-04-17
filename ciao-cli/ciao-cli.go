@@ -174,8 +174,7 @@ func (r getResult) ExtractProject() (string, error) {
 
 	return response.Token.ValidProject.ID, nil
 }
-
-func getScopedToken(username string, password string, projectScope string) (string, string, error) {
+func getToken(username string, password string, projectScope string) (string, string, error) {
 	opt := gophercloud.AuthOptions{
 		IdentityEndpoint: *identityURL + "/v3/",
 		Username:         username,
@@ -196,9 +195,12 @@ func getScopedToken(username string, password string, projectScope string) (stri
 		return "", "", nil
 	}
 
-	scope := tokens.Scope{
-		ProjectName: projectScope,
-		DomainName:  "default",
+	scope := tokens.Scope{}
+	if projectScope != "" {
+		scope = tokens.Scope{
+			ProjectName: projectScope,
+			DomainName:  "default",
+		}
 	}
 	token, err := tokens.Create(client, opt, &scope).Extract()
 	if err != nil {
@@ -220,9 +222,13 @@ func getScopedToken(username string, password string, projectScope string) (stri
 		spew.Dump(result.Body)
 	}
 
-	infof("Got token %s for (%s, %s, %s)\n", token.ID, username, password, projectScope)
+	infof("Got token %s for tenant %s (%s, %s, %s)\n", token.ID, tenantID, username, password, projectScope)
 
 	return token.ID, tenantID, nil
+}
+
+func getScopedToken(username string, password string) (string, string, error) {
+	return getToken(username, password, *scope)
 }
 
 type queryValue struct {
@@ -817,7 +823,7 @@ func main() {
 			fatalf("Missing required -scope parameter")
 		}
 
-		t, id, err := getScopedToken(*identityUser, *identityPassword, *scope)
+		t, id, err := getScopedToken(*identityUser, *identityPassword)
 		if err != nil {
 			fatalf(err.Error())
 		}
