@@ -156,6 +156,36 @@ type getResult struct {
 	tokens.GetResult
 }
 
+type Domain struct {
+	ID   string `mapstructure:"id"`
+	Name string `mapstructure:"name"`
+}
+
+type User struct {
+	ValidDomain Domain `mapstructure:"domain"`
+	ID          string `mapstructure:"id"`
+	Name        string `mapstructure:"name"`
+}
+
+func (r getResult) ExtractUserID() (string, error) {
+	if r.Err != nil {
+		return "", r.Err
+	}
+
+	var response struct {
+		Token struct {
+			ValidUser User `mapstructure:"user"`
+		} `mapstructure:"token"`
+	}
+
+	err := mapstructure.Decode(r.Body, &response)
+	if err != nil {
+		return "", err
+	}
+
+	return response.Token.ValidUser.ID, nil
+}
+
 func (r getResult) ExtractProject() (string, error) {
 	if r.Err != nil {
 		return "", r.Err
@@ -174,7 +204,10 @@ func (r getResult) ExtractProject() (string, error) {
 
 	return response.Token.ValidProject.ID, nil
 }
-func getToken(username string, password string, projectScope string) (string, string, error) {
+
+func getScopedToken(username string, password string, projectScope string) (string, string, string, error) {
+	var scope *tokens.Scope
+
 	opt := gophercloud.AuthOptions{
 		IdentityEndpoint: *identityURL + "/v3/",
 		Username:         username,
@@ -186,26 +219,27 @@ func getToken(username string, password string, projectScope string) (string, st
 	provider, err := openstack.AuthenticatedClient(opt)
 	if err != nil {
 		errorf("Could not get AuthenticatedClient %s\n", err)
-		return "", "", nil
+		return "", "", "", nil
 	}
 
 	client := openstack.NewIdentityV3(provider)
 	if client == nil {
 		errorf("something went wrong")
-		return "", "", nil
+		return "", "", "", nil
 	}
 
-	scope := tokens.Scope{}
+	scope = nil
 	if projectScope != "" {
-		scope = tokens.Scope{
+		scope = &tokens.Scope{
 			ProjectName: projectScope,
 			DomainName:  "default",
 		}
 	}
-	token, err := tokens.Create(client, opt, &scope).Extract()
+
+	token, err := tokens.Create(client, opt, scope).Extract()
 	if err != nil {
 		errorf("Could not extract token %s\n", err)
-		return "", "", nil
+		return "", "", "", nil
 	}
 
 	r := tokens.Get(client, token.ID)
@@ -213,7 +247,13 @@ func getToken(username string, password string, projectScope string) (string, st
 	tenantID, err := result.ExtractProject()
 	if err != nil {
 		errorf("Could not extract tenant ID %s\n", err)
-		return "", "", nil
+		return "", "", "", nil
+	}
+
+	userID, err := result.ExtractUserID()
+	if err != nil {
+		errorf("Could not extract user ID %s\n", err)
+		return "", "", "", nil
 	}
 
 	debugf("Token: %s\n", spew.Sdump(result.Body))
@@ -222,13 +262,13 @@ func getToken(username string, password string, projectScope string) (string, st
 		spew.Dump(result.Body)
 	}
 
-	infof("Got token %s for tenant %s (%s, %s, %s)\n", token.ID, tenantID, username, password, projectScope)
+	infof("Got token %s for tenant %s, user %s (%s, %s, %s)\n", token.ID, tenantID, userID, username, password, projectScope)
 
-	return token.ID, tenantID, nil
+	return token.ID, tenantID, userID, nil
 }
 
-func getScopedToken(username string, password string) (string, string, error) {
-	return getToken(username, password, *scope)
+func getUnscopedToken(username string, password string) (string, string, string, error) {
+	return getScopedToken(username, password, "")
 }
 
 type queryValue struct {
@@ -240,7 +280,7 @@ func buildComputeURL(format string, args ...interface{}) string {
 	return fmt.Sprintf(prefix+format, args...)
 }
 
-func sendHTTPRequest(method string, url string, values []queryValue, body io.Reader) (*http.Response, error) {
+func sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest(method, os.ExpandEnv(url), body)
 	if err != nil {
 		return nil, err
@@ -259,8 +299,8 @@ func sendHTTPRequest(method string, url string, values []queryValue, body io.Rea
 		req.URL.RawQuery = v.Encode()
 	}
 
-	if scopedToken != "" {
-		req.Header.Add("X-Auth-Token", scopedToken)
+	if token != "" {
+		req.Header.Add("X-Auth-Token", token)
 	}
 
 	if body != nil {
@@ -301,6 +341,10 @@ func sendHTTPRequest(method string, url string, values []queryValue, body io.Rea
 	return resp, err
 }
 
+func sendHTTPRequest(method string, url string, values []queryValue, body io.Reader) (*http.Response, error) {
+	return sendHTTPRequestToken(method, url, values, scopedToken, body)
+}
+
 func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
 	defer resp.Body.Close()
 
@@ -321,6 +365,58 @@ func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
 	}
 
 	return nil
+}
+
+type UserProjects struct {
+	Projects []struct {
+		Description string `json:"description"`
+		DomainID    string `json:"domain_id"`
+		Enabled     bool   `json:"enabled"`
+		ID          string `json:"id"`
+		ParentID    string `json:"parent_id"`
+		Links       struct {
+			Self string `json:"self"`
+		} `json:"links"`
+		Name string `json:"name"`
+	} `json:"projects"`
+
+	Links struct {
+		Self     string      `json:"self"`
+		Previous interface{} `json:"previous"`
+		Next     interface{} `json:"next"`
+	} `json:"links"`
+}
+
+func getUserProjects(username string, password string) ([]Project, error) {
+	var projects UserProjects
+	var userProjects []Project
+
+	token, _, user, err := getUnscopedToken(*identityUser, *identityPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	identity := fmt.Sprintf("%s/v3/users/%s/projects", *identityURL, user)
+
+	resp, err := sendHTTPRequestToken("GET", identity, nil, token, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	err = unmarshalHTTPResponse(resp, &projects)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, project := range projects.Projects {
+		newProject := Project{
+			ID: project.ID,
+			Name: project.Name,
+		}
+		userProjects = append(userProjects, newProject)
+	}
+
+	return userProjects, nil
 }
 
 func listAllInstances(tenant string, workload string, marker string, offset int, limit int) {
@@ -823,7 +919,7 @@ func main() {
 			fatalf("Missing required -scope parameter")
 		}
 
-		t, id, err := getScopedToken(*identityUser, *identityPassword)
+		t, id, _, err := getScopedToken(*identityUser, *identityPassword, *scope)
 		if err != nil {
 			fatalf(err.Error())
 		}
