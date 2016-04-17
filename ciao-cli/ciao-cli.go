@@ -136,7 +136,7 @@ var (
 	instanceMarker   = flag.String("instance-marker", "", "Show instance list starting from the next instance after instance-marker")
 	instanceOffset   = flag.Int("instance-offset", 0, "Show instance list starting from instance #instance-offset")
 	tenant           = flag.String("tenant", "", "Tenant UUID")
-	scope            = flag.String("scope", "service", "Scope tenant name")
+	scope            = flag.String("scope", "", "Scope tenant name")
 	computeNode      = flag.String("cn", "", "Compute node UUID")
 	cnci             = flag.String("cnci", "", "CNCI UUID")
 	controllerURL    = flag.String("controller", "localhost", "Controller URL")
@@ -410,7 +410,7 @@ func getUserProjects(username string, password string) ([]Project, error) {
 
 	for _, project := range projects.Projects {
 		newProject := Project{
-			ID: project.ID,
+			ID:   project.ID,
 			Name: project.Name,
 		}
 		userProjects = append(userProjects, newProject)
@@ -916,7 +916,25 @@ func main() {
 		}
 
 		if len(*scope) == 0 {
-			fatalf("Missing required -scope parameter")
+			projects, err := getUserProjects(*identityUser, *identityPassword)
+			if err != nil {
+				fatalf(err.Error())
+			}
+
+			if len(projects) > 1 {
+				fmt.Printf("Available projects for %s:\n", *identityUser)
+				for i, p := range projects {
+					fmt.Printf("\t Project[%d]: %s (%s)\n", i+1, p.Name, p.ID)
+				}
+				fatalf("Please specify a project to use with -scope or -tenant")
+			}
+
+			*scope = projects[0].Name
+			if len(*tenant) == 0 {
+				*tenant = projects[0].ID
+			}
+
+			warningf("Unspecified scope, using (%s, %s)", *scope, *tenant)
 		}
 
 		t, id, _, err := getScopedToken(*identityUser, *identityPassword, *scope)
