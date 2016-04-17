@@ -11,7 +11,7 @@ daemon about the veth interface it needs to place inside the container
 
 Hence the real flow will be as follows
 
-0. Laucher starts the docker http server plugin thread
+0. Launcher starts the docker http server plugin thread
 
 Note: The launcher should be launched prior to the docker daemon.
       Also we need to configure docker daemon to not create its default
@@ -46,8 +46,8 @@ Note: The launcher should be launched prior to the docker daemon.
 	Note: Our custom IPAM driver is needed to support overlapping subnets
 	between tenants. Otherwise the default IPAM driver meets our needs.
 
-	Note: Fully speccing the network creation and handing control to the
-	ciao driver (-d) makes docker a passthro for networking.
+	Note: Fully specify the network creation and handing control to the
+	ciao driver (-d) makes docker a pass-through for networking.
 
 	In the future any additional information need by the plugin can also been
 	sent as more options. e.g.
@@ -58,7 +58,7 @@ Note: The launcher should be launched prior to the docker daemon.
 	- The plugin will record this information and return success
 
 5. (Launcher) will then request docker to create & launch the container,
-   again fully specifing the networking configuration.
+   again fully specifying the networking configuration.
 
     docker run -it --net=<subnet.Name> --ip=<instance.IP> --mac-address=<instance.MacAddresss> busybox
 
@@ -67,7 +67,7 @@ Note: The launcher should be launched prior to the docker daemon.
 	remote IPAM plugin. Without this we cannot use our IPAM driver
 
 6. The ciao docker plugin acts as both a network and IPAM remote plugin.
-   It handles all the requests. Some of the more imporant ones are
+   It handles all the requests. Some of the more important ones are
 
 	 a. EndPointCreate: If the container is being created for the first time
         As we have already created the VNIC, we only need to cache the endpoint

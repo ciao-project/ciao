@@ -39,7 +39,7 @@ and overlay network linking.
 ### Network Node ###
 
 The tenant overlay networks are linked together to Network Nodes. The Network
-Node switch and route traffic between the tenant bridges and subnets distibuted
+Node switch and route traffic between the tenant bridges and subnets distributed
 across multiple Compute Nodes.
 
 ### CNCI ###
@@ -53,4 +53,3 @@ The CNCIs also implement tenant specific firewall and NAT rules. In the future
 they may be extended to perform traffic shaping.
 
  
-
