@@ -41,7 +41,6 @@ import (
 )
 
 var scopedToken string
-var tenantID string
 
 const openstackComputePort = 8774
 const openstackComputeVersion = "v2.1"
@@ -113,7 +112,7 @@ func fatalf(format string, args ...interface{}) {
 var (
 	allInstances     = flag.Bool("all-instances", false, "Select all instances")
 	instanceLabel    = flag.String("instance-label", "", "Set a frame label. This will trigger frame tracing")
-	listInstances    = flag.Bool("list-instances", false, "List all instances for a tenant or for a compute node")
+	listInstances    = flag.Bool("list-instances", false, "List all instances for a tenant")
 	listQuotas       = flag.Bool("list-quotas", false, "List quotas status for a tenant")
 	listResources    = flag.Bool("list-resources", false, "List consumed resources for a tenant for the past 15mn")
 	listWorkloads    = flag.Bool("list-workloads", false, "List all workloads")
@@ -135,8 +134,8 @@ var (
 	instance         = flag.String("instance", "", "Instance UUID")
 	instanceMarker   = flag.String("instance-marker", "", "Show instance list starting from the next instance after instance-marker")
 	instanceOffset   = flag.Int("instance-offset", 0, "Show instance list starting from instance #instance-offset")
-	tenant           = flag.String("tenant", "", "Tenant UUID")
-	scope            = flag.String("scope", "", "Scope tenant name")
+	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
+	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	computeNode      = flag.String("cn", "", "Compute node UUID")
 	cnci             = flag.String("cnci", "", "CNCI UUID")
 	controllerURL    = flag.String("controller", "localhost", "Controller URL")
@@ -915,7 +914,7 @@ func main() {
 			fatalf("Missing required -user parameter")
 		}
 
-		if len(*scope) == 0 {
+		if len(*tenantName) == 0 {
 			projects, err := getUserProjects(*identityUser, *identityPassword)
 			if err != nil {
 				fatalf(err.Error())
@@ -929,30 +928,32 @@ func main() {
 				fatalf("Please specify a project to use with -scope or -tenant")
 			}
 
-			*scope = projects[0].Name
-			if len(*tenant) == 0 {
-				*tenant = projects[0].ID
+			*tenantName = projects[0].Name
+			if len(*tenantID) == 0 {
+				*tenantID = projects[0].ID
 			}
 
-			warningf("Unspecified scope, using (%s, %s)", *scope, *tenant)
+			warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
 		}
 
-		t, id, _, err := getScopedToken(*identityUser, *identityPassword, *scope)
+		t, id, _, err := getScopedToken(*identityUser, *identityPassword, *tenantName)
 		if err != nil {
 			fatalf(err.Error())
 		}
 
 		scopedToken = t
-		tenantID = id
+		if len(*tenantID) == 0 {
+			*tenantID = id
+		}
 	}
 
 	if *dumpTenantID == true {
-		fmt.Printf("Tenant UUID: %s\n", tenantID)
+		fmt.Printf("Tenant UUID: %s\n", *tenantID)
 	}
 
 	if *listInstances == true {
-		if len(*tenant) != 0 {
-			listAllInstances(*tenant, "", *instanceMarker, *instanceOffset, *listLength)
+		if len(*tenantID) != 0 {
+			listAllInstances(*tenantID, "", *instanceMarker, *instanceOffset, *listLength)
 		} else if len(*computeNode) != 0 {
 			listNodeInstances(*computeNode)
 		} else if len(*workload) != 0 {
@@ -963,27 +964,27 @@ func main() {
 	}
 
 	if *listQuotas == true {
-		if len(*tenant) == 0 {
+		if len(*tenantID) == 0 {
 			fatalf("Missing required -tenant parameter")
 		}
 
-		listTenantQuotas(*tenant)
+		listTenantQuotas(*tenantID)
 	}
 
 	if *listResources == true {
-		if len(*tenant) == 0 {
+		if len(*tenantID) == 0 {
 			fatalf("Missing required -tenant parameter")
 		}
 
-		listTenantResources(*tenant)
+		listTenantResources(*tenantID)
 	}
 
 	if *listWorkloads == true {
-		if len(*tenant) == 0 {
+		if len(*tenantID) == 0 {
 			fatalf("Missing required -tenant parameter")
 		}
 
-		listTenantWorkloads(*tenant)
+		listTenantWorkloads(*tenantID)
 	}
 
 	if *listTenants == true {
@@ -1003,7 +1004,7 @@ func main() {
 	}
 
 	if *launchInstances == true {
-		if len(*tenant) == 0 {
+		if len(*tenantID) == 0 {
 			fatalf("Missing required -tenant parameter")
 		}
 
@@ -1011,11 +1012,11 @@ func main() {
 			fatalf("Missing required -workload parameter")
 		}
 
-		createTenantInstance(*tenant, *workload, *instances, *instanceLabel)
+		createTenantInstance(*tenantID, *workload, *instances, *instanceLabel)
 	}
 
 	if *deleteInstance == true {
-		if len(*tenant) == 0 {
+		if len(*tenantID) == 0 {
 			fatalf("Missing required -tenant parameter")
 		}
 
@@ -1024,9 +1025,9 @@ func main() {
 		}
 
 		if *allInstances == false {
-			deleteTenantInstance(*tenant, *instance)
+			deleteTenantInstance(*tenantID, *instance)
 		} else {
-			actionAllTenantInstance(*tenant, osDelete)
+			actionAllTenantInstance(*tenantID, osDelete)
 		}
 	}
 
@@ -1039,7 +1040,7 @@ func main() {
 	}
 
 	if *stopInstance == true || *restartInstance == true {
-		if len(*tenant) == 0 {
+		if len(*tenantID) == 0 {
 			fatalf("Missing required -tenant parameter")
 		}
 
@@ -1052,7 +1053,7 @@ func main() {
 			action = computeActionStop
 		}
 
-		startStopInstance(*tenant, *instance, action)
+		startStopInstance(*tenantID, *instance, action)
 	}
 
 	if *listLabels == true {
