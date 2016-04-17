@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#This script will be deprecated and removed in the future
+
 #Note: the clear image should have dnsmasq and iptables installed
 #swupd bundle-add sysadmin-hostmgmt/kvm-host network-advanced
 #You can take any clear image that supports GRE tunneling (6000 and beyond)

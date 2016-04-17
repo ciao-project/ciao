@@ -2,16 +2,16 @@
 
 ## Overview ##
 
-Helper scripts to provison and test CNCI Images
+Helper scripts to provision and test CNCI Images
 
-## CNCI Image Provisoning ##
+## CNCI Image Provisioning ##
 
 The CNCI Image creation scripts helps you create a CNCI Image from
 a clear linux cloud image. Clear cloud images can be obtained from
 
 https://download.clearlinux.org/image/
 
-The scripts are used to provison the image with the CNCI Agent and
+The scripts are used to provision the image with the CNCI Agent and
 the certificates it needs to connect to the ciao-scheduler.
 
 0. The image has to be preprovisoned with the following tools 
@@ -36,13 +36,13 @@ the certificates it needs to connect to the ciao-scheduler.
 ./update_cnci_cloud_image.sh
 ```
 
-This will yield a provisoned image. This can be used as a CNCI VM.
+This will yield a provisioned image. This can be used as a CNCI VM.
 
 ## CNCI Verification ##
 
 A simple script to launch the CNCI VM using QEMU and a sample cloud-init
 configuration. The cloud-init is setup to check if the CNCI Agent can
-be sucessfully launched within this VM
+be successfully launched within this VM
 
 0. Customize the cloud-init files
 
