@@ -1167,6 +1167,21 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+func clearEvents(w http.ResponseWriter, r *http.Request, context *controller) {
+	if validateToken(context, r) == false {
+		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		return
+	}
+
+	err := context.ds.ClearLog()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
 func traceData(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	label := vars["label"]
@@ -1280,6 +1295,10 @@ func createComputeAPI(context *controller) {
 	r.HandleFunc("/v2.1/events", func(w http.ResponseWriter, r *http.Request) {
 		listEvents(w, r, context)
 	}).Methods("GET")
+
+	r.HandleFunc("/v2.1/events", func(w http.ResponseWriter, r *http.Request) {
+		clearEvents(w, r, context)
+	}).Methods("DELETE")
 
 	r.HandleFunc("/v2.1/traces", func(w http.ResponseWriter, r *http.Request) {
 		listTraces(w, r, context)
