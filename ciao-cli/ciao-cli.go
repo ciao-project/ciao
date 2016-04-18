@@ -113,6 +113,8 @@ var (
 	allInstances     = flag.Bool("all-instances", false, "Select all instances")
 	instanceLabel    = flag.String("instance-label", "", "Set a frame label. This will trigger frame tracing")
 	listInstances    = flag.Bool("list-instances", false, "List all instances for a tenant")
+	listCNInstances  = flag.Bool("list-cn-instances", false, "List all instances for a compute node")
+	listWlInstances  = flag.Bool("list-wl-instances", false, "List all instances for a workload")
 	listQuotas       = flag.Bool("list-quotas", false, "List quotas status for a tenant")
 	listResources    = flag.Bool("list-resources", false, "List consumed resources for a tenant for the past 15mn")
 	listWorkloads    = flag.Bool("list-workloads", false, "List all workloads")
@@ -954,18 +956,30 @@ func main() {
 	if *listInstances == true {
 		if len(*tenantID) != 0 {
 			listAllInstances(*tenantID, "", *instanceMarker, *instanceOffset, *listLength)
-		} else if len(*computeNode) != 0 {
+		} else {
+			fatalf("Missing required -tenant-id parameter")
+		}
+	}
+
+	if *listCNInstances == true {
+		if len(*computeNode) != 0 {
 			listNodeInstances(*computeNode)
-		} else if len(*workload) != 0 {
+		} else {
+			fatalf("Missing required -cn parameter")
+		}
+	}
+
+	if *listWlInstances == true {
+		if len(*workload) != 0 {
 			listAllInstances("", *workload, *instanceMarker, *instanceOffset, *listLength)
 		} else {
-			fatalf("Missing required -tenant or -cn or -workload parameters")
+			fatalf("Missing required -workload parameter")
 		}
 	}
 
 	if *listQuotas == true {
 		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant parameter")
+			fatalf("Missing required -tenant-id parameter")
 		}
 
 		listTenantQuotas(*tenantID)
@@ -973,7 +987,7 @@ func main() {
 
 	if *listResources == true {
 		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant parameter")
+			fatalf("Missing required -tenant-id parameter")
 		}
 
 		listTenantResources(*tenantID)
@@ -981,7 +995,7 @@ func main() {
 
 	if *listWorkloads == true {
 		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant parameter")
+			fatalf("Missing required -tenant-id parameter")
 		}
 
 		listTenantWorkloads(*tenantID)
@@ -1005,7 +1019,7 @@ func main() {
 
 	if *launchInstances == true {
 		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant parameter")
+			fatalf("Missing required -tenant-id parameter")
 		}
 
 		if len(*workload) == 0 {
@@ -1017,7 +1031,7 @@ func main() {
 
 	if *deleteInstance == true {
 		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant parameter")
+			fatalf("Missing required -tenant-id parameter")
 		}
 
 		if len(*instance) == 0 && *allInstances == false {
@@ -1041,7 +1055,7 @@ func main() {
 
 	if *stopInstance == true || *restartInstance == true {
 		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant parameter")
+			fatalf("Missing required -tenant-id parameter")
 		}
 
 		if len(*instance) == 0 {
