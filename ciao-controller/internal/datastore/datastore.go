@@ -2934,48 +2934,6 @@ func (ds *Datastore) GetEventLog() (logEntries []*types.LogEntry, err error) {
 	return logEntries, err
 }
 
-// ClearNodeStats will delete all the log entries that were entered prior to the given time.
-func (ds *Datastore) ClearNodeStats(before time.Time) (err error) {
-	ds.tdbLock.Lock()
-	cmd := "DELETE FROM node_statistics WHERE timestamp < '%s'"
-	str := fmt.Sprintf(cmd, before)
-	err = ds.exec(ds.getTableDB("node_statistics"), str)
-	ds.tdbLock.Unlock()
-	return
-}
-
-// GetNodeStats returns all node stats received between start and end time.
-func (ds *Datastore) GetNodeStats(start time.Time, end time.Time) (statsRows []*types.NodeStats, err error) {
-	datastore := ds.getTableDB("node_statistics")
-	ds.tdbLock.RLock()
-
-	rows, err := datastore.Query("SELECT timestamp, node_id, load, mem_total_mb, mem_available_mb, disk_total_mb, disk_available_mb, cpus_online FROM node_statistics WHERE timestamp BETWEEN ? AND ?", start, end)
-	if err != nil {
-		ds.tdbLock.RUnlock()
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var r types.NodeStats
-
-		err = rows.Scan(&r.Timestamp, &r.NodeId, &r.Load, &r.MemTotalMB, &r.MemAvailableMB, &r.DiskTotalMB, &r.DiskAvailableMB, &r.CpusOnline)
-		if err != nil {
-			ds.tdbLock.RUnlock()
-			return nil, err
-		}
-		statsRows = append(statsRows, &r)
-	}
-
-	if len(statsRows) == 0 {
-		ds.tdbLock.RUnlock()
-		return nil, err
-	}
-	ds.tdbLock.RUnlock()
-
-	return statsRows, err
-}
-
 // GetNodeSummary provides a summary the state and count of instances running per node.
 func (ds *Datastore) GetNodeSummary() (Summary []*types.NodeSummary, err error) {
 	datastore := ds.getTableDB("instance_statistics")
@@ -3118,102 +3076,6 @@ func (ds *Datastore) GetTenantCNCISummary(cnci string) (cncis []types.TenantCNCI
 	}
 
 	return cncis, err
-}
-
-// GetFrameStatistics will return trace data by label id.
-func (ds *Datastore) GetFrameStatistics(label string) (stats []types.FrameStat, err error) {
-	ds.tdbLock.RLock()
-	query := `WITH total AS
-		 (
-			SELECT	id,
-				start_timestamp,
-				end_timestamp,
-				(julianday(end_timestamp) - julianday(start_timestamp)) * 24 * 60 * 60 AS total_elapsed
-			 FROM frame_statistics
-			 WHERE label = ?
-		 ),
-		 total_start AS
-		 (
-			SELECT	trace_data.frame_id,
-				trace_data.ssntp_uuid,
-				(julianday(trace_data.tx_timestamp) - julianday(total.start_timestamp)) * 24 * 60 * 60 AS total_elapsed
-			FROM trace_data
-			JOIN total
-			WHERE rx_timestamp = '' and trace_data.frame_id = total.id
-		),
-		total_end AS
-		(
-			SELECT	trace_data.frame_id,
-				trace_data.ssntp_uuid,
-				(julianday(total.end_timestamp) - julianday(trace_data.rx_timestamp)) * 24 * 60 * 60 AS total_elapsed
-			FROM trace_data
-			JOIN total
-			WHERE tx_timestamp = '' and trace_data.frame_id = total.id
-		),
-		total_per_node AS
-		(
-			SELECT	trace_data.frame_id,
-				trace_data.ssntp_uuid,
-				(julianday(trace_data.tx_timestamp) - julianday(trace_data.rx_timestamp)) * 24 * 60 * 60 AS total_elapsed
-			FROM trace_data
-			WHERE tx_timestamp != '' and rx_timestamp != ''
-		)
-		SELECT	total_end.ssntp_uuid,
-			total.total_elapsed,
-			total_start.total_elapsed,
-			total_end.total_elapsed,
-			total_per_node.total_elapsed
-		FROM total
-		LEFT JOIN total_start
-		ON total.id = total_start.frame_id
-		LEFT JOIN total_end
-		ON total_start.frame_id = total_end.frame_id
-		LEFT JOIN total_per_node
-		ON total_start.frame_id = total_per_node.frame_id
-		ORDER BY total.start_timestamp;`
-
-	datastore := ds.getTableDB("frame_statistics")
-
-	rows, err := datastore.Query(query, label)
-	if err != nil {
-		ds.tdbLock.RUnlock()
-		return nil, err
-	}
-	defer rows.Close()
-
-	stats = make([]types.FrameStat, 0)
-	for rows.Next() {
-		var stat types.FrameStat
-		var uuid sql.NullString
-		var controllerTime sql.NullFloat64
-		var launcherTime sql.NullFloat64
-		var schedulerTime sql.NullFloat64
-		var totalTime sql.NullFloat64
-		err = rows.Scan(&uuid, &totalTime, &controllerTime, &launcherTime, &schedulerTime)
-		if err != nil {
-			ds.tdbLock.RUnlock()
-			return
-		}
-		if uuid.Valid {
-			stat.ID = uuid.String
-		}
-		if controllerTime.Valid {
-			stat.ControllerTime = controllerTime.Float64
-		}
-		if launcherTime.Valid {
-			stat.LauncherTime = launcherTime.Float64
-		}
-		if schedulerTime.Valid {
-			stat.SchedulerTime = schedulerTime.Float64
-		}
-		if totalTime.Valid {
-			stat.TotalElapsedTime = totalTime.Float64
-		}
-		stats = append(stats, stat)
-	}
-	ds.tdbLock.RUnlock()
-
-	return stats, err
 }
 
 // GetBatchFrameSummary will retieve the count of traces we have for a specific label
@@ -3394,17 +3256,4 @@ func (ds *Datastore) GetBatchFrameStatistics(label string) (stats []types.BatchF
 	ds.tdbLock.RUnlock()
 
 	return stats, err
-}
-
-// GetNodes will retrieve a list of all the nodes that we have information on
-func (ds *Datastore) GetNodes() (nodes []types.Node, err error) {
-	ds.nodesLock.RLock()
-
-	for i := range ds.nodes {
-		nodes = append(nodes, ds.nodes[i].Node)
-	}
-
-	ds.nodesLock.RUnlock()
-
-	return nodes, nil
 }

@@ -37,14 +37,12 @@ var serverURL = flag.String("url", "localhost", "Server URL")
 var identityURL = flag.String("identity", "identity:35357", "Keystone URL")
 var serviceUser = flag.String("username", "csr", "Openstack Service Username")
 var servicePassword = flag.String("password", "", "Openstack Service Username")
-var port = flag.Int("port", 8889, "http port")
 var computeAPIPort = flag.Int("computeport", openstackComputeAPIPort, "Openstack Compute API port")
 var httpsCAcert = flag.String("httpscert", "/etc/pki/ciao/ciao-controller-cacert.pem", "HTTPS CA certificate")
 var httpsKey = flag.String("httpskey", "/etc/pki/ciao/ciao-controller-key.pem", "HTTPS cert key")
 var tablesInitPath = flag.String("tables_init_path", ".", "path to csv files")
 var workloadsPath = flag.String("workloads_path", ".", "path to yaml files")
 var noNetwork = flag.Bool("nonetwork", false, "Debug with no networking")
-var debugUI = flag.Bool("debug_ui", true, "Create Debug web UI")
 var persistentDatastoreLocation = flag.String("database_path", "./ciao-controller.db", "path to persistent database")
 var transientDatastoreLocation = flag.String("stats_path", "/tmp/ciao-controller-stats.db", "path to stats database")
 var logDir = "/var/lib/ciao/logs/controller"
@@ -112,11 +110,6 @@ func main() {
 	if err != nil {
 		glog.Fatal("Unable to authenticate to Keystone: ", err)
 		return
-	}
-
-	if *debugUI {
-		wg.Add(1)
-		go createDebugInterface(context)
 	}
 
 	wg.Add(1)

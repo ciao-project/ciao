@@ -723,22 +723,6 @@ func TestHandleStats(t *testing.T) {
 			t.Error("state not updated")
 		}
 	}
-
-	// check node stats recorded
-	end := time.Now().UTC()
-	start := end.Add(-20 * time.Minute)
-
-	statsRows, err := ds.GetNodeStats(start, end)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for i := range statsRows {
-		if statsRows[i].NodeId == stat.NodeUUID {
-			return
-		}
-	}
-	t.Error("node stat not found")
 }
 
 func TestGetInstanceLastStats(t *testing.T) {
@@ -953,65 +937,8 @@ func TestGetBatchFrameSummary(t *testing.T) {
 	}
 }
 
-func TestGetFrameStatistics(t *testing.T) {
-	var nodes []payloads.SSNTPNode
-	for i := 0; i < 3; i++ {
-		node := payloads.SSNTPNode{
-			SSNTPUUID:   uuid.Generate().String(),
-			SSNTPRole:   "test",
-			TxTimestamp: time.Now().Format(time.RFC3339Nano),
-			RxTimestamp: time.Now().Format(time.RFC3339Nano),
-		}
-		nodes = append(nodes, node)
-	}
-
-	var frames []payloads.FrameTrace
-	for i := 0; i < 3; i++ {
-		stat := payloads.FrameTrace{
-			Label:          "test",
-			Type:           "type",
-			Operand:        "operand",
-			StartTimestamp: time.Now().Format(time.RFC3339Nano),
-			EndTimestamp:   time.Now().Format(time.RFC3339Nano),
-			Nodes:          nodes,
-		}
-		frames = append(frames, stat)
-	}
-
-	trace := payloads.Trace{
-		Frames: frames,
-	}
-
-	err := ds.HandleTraceReport(trace)
-	if err != nil {
-		t.Error(err)
-	}
-
-	_, err = ds.GetFrameStatistics("test")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-}
-
 func TestGetNodeSummary(t *testing.T) {
 	_, err := ds.GetNodeSummary()
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-}
-
-func TestGetNodeStats(t *testing.T) {
-	endTime := time.Now()
-	startTime := endTime.Add(-20 * time.Minute)
-
-	_, err := ds.GetNodeStats(startTime, endTime)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-}
-
-func TestClearNodeStats(t *testing.T) {
-	err := ds.ClearNodeStats(time.Now())
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -1867,40 +1794,6 @@ func TestAllocate100IPs(t *testing.T) {
 
 func TestAllocate1024IPs(t *testing.T) {
 	testAllocateTenantIPs(t, 1024)
-}
-
-func TestGetNodes(t *testing.T) {
-	startNodes, err := ds.GetNodes()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for i := 0; i < 10; i++ {
-		stat := payloads.Stat{
-			NodeUUID:        uuid.Generate().String(),
-			MemTotalMB:      256,
-			MemAvailableMB:  256,
-			DiskTotalMB:     1024,
-			DiskAvailableMB: 1024,
-			Load:            20,
-			CpusOnline:      4,
-			NodeHostName:    "test",
-		}
-		err := ds.addNodeStat(stat)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	nodes, err := ds.GetNodes()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(nodes) != len(startNodes)+10 {
-		msg := fmt.Sprintf("expected %d nodes, got %d", len(startNodes)+10, len(nodes))
-		t.Fatal(msg)
-	}
 }
 
 var ds *Datastore

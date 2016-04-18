@@ -104,8 +104,6 @@ Usage of ciao-controller/ciao-controller:
     	Openstack Compute API port (default 8774)
   -database_path string
     	path to persistent database (default "./ciao-controller.db")
-  -debug_ui
-    	Create Debug web UI (default true)
   -httpscert string
     	HTTPS CA certificate (default "/etc/pki/ciao/ciao-controller-cacert.pem")
   -httpskey string
@@ -122,8 +120,6 @@ Usage of ciao-controller/ciao-controller:
     	Debug with no networking
   -password string
     	Openstack Service Username
-  -port int
-    	http port (default 8889)
   -stats_path string
     	path to stats database (default "/tmp/ciao-controller-stats.db")
   -stderrthreshold value
@@ -145,5 +141,5 @@ Usage of ciao-controller/ciao-controller:
 ### Example
 
 ```shell
-sudo ./ciao-controller --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Controller-localhost.pem --identity=https://your.keystone.server.com:35357 --username=csr --password=hello --port 80 --url ciao.ctl.intel.com -computeport 443 --httpskey=/etc/pki/ciao/csr_key.pem --httpscert=/etc/pki/ciao/csr_cert.pem
+sudo ./ciao-controller --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Controller-localhost.pem --identity=https://your.keystone.server.com:35357 --username=csr --password=hello --url ciao.ctl.intel.com -computeport 443 --httpskey=/etc/pki/ciao/csr_key.pem --httpscert=/etc/pki/ciao/csr_cert.pem
 ```
