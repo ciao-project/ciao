@@ -100,6 +100,26 @@ Usage of ./ciao-cli:
     	Workload UUID
 ```
 
+## Keystone certificates
+
+ciao-cli interact with the CIAO keystone instance over HTTPS.
+As such you will have to install the keystone CA certificate locally
+in order for ciao-cli to verify the keystone identity.
+
+CA certificate installation is a distribution specific process. For example:
+
+* On Fedora:
+```shell
+sudo cp keystone_ca_cert.pem /etc/pki/ca-trust/source/anchors/
+sudo update-ca-trust
+```
+
+* On Ubuntu
+```shell
+sudo cp keystone_ca_cert.pem /usr/local/share/ca-certificates/keystone.crt
+sudo update-ca-certificates
+```
+
 ## Priviledged versus non priviledged CIAO users
 
 Administrators of a CIAO cluster are priviledged users that are part of the
