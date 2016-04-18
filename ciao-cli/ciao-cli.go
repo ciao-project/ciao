@@ -124,6 +124,7 @@ var (
 	listCNCIs        = flag.Bool("list-cncis", false, "List all CNCIs")
 	listLength       = flag.Int("list-length", 0, "Maximum number of items in the reponse")
 	listLabels       = flag.Bool("list-labels", false, "List all trace labels")
+	listEvents       = flag.Bool("list-events", false, "List all cluster events")
 	dumpCNCI         = flag.Bool("dump-cnci", false, "Dump a CNCI details")
 	dumpToken        = flag.Bool("dump-token", false, "Dump keystone tokens")
 	dumpTenantID     = flag.Bool("dump-tenant-id", false, "Dump tenant UUID")
@@ -884,6 +885,28 @@ func listAllLabels() {
 
 }
 
+func listAllEvents() {
+	var events payloads.CiaoEvents
+
+	url := buildComputeURL("event")
+
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	err = unmarshalHTTPResponse(resp, &events)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	fmt.Printf("%d Ciao event(s):\n", len(events.Events))
+	for i, event := range events.Events {
+		fmt.Printf("\t[%d] %v: %s:%s (Tenant %s)\n", i+1, event.Timestamp, event.EventType, event.Message, event.TenantId)
+	}
+
+}
+
 func dumpTraceData(label string) {
 	var traceData payloads.CiaoTraceData
 
@@ -1123,5 +1146,9 @@ func main() {
 
 	if *dumpLabel != "" {
 		dumpTraceData(*dumpLabel)
+	}
+
+	if *listEvents == true {
+		listAllEvents()
 	}
 }
