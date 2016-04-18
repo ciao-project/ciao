@@ -157,7 +157,7 @@ Non priviledged commands can be run by all users. Administrators will have to sp
 a tenant/project UUID through the -tenant-id option in order to specify against which
 CIAO tenant/project they're running the command:
 ```shell
-$GOBIN/ciao-cli -password ciao -username admin -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+$GOBIN/ciao-cli -password ciao -username admin -list-instances -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
 ```
 
 Non priviledged users belonging to several tenants/projects will also have to specify
@@ -165,14 +165,14 @@ a tenant/project UUID or name through either the -tenant-id or -tenant-name opti
 in order to specify against which CIAO tenant/project they're running the command:
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances -tenant-name project1
+$GOBIN/ciao-cli -username user -password ciaouser -list-instances -tenant-name project1
 ```
 
 Non priviledged users belonging to only one single tenant/project do not need to
 pass the tenant/project UUID or name when running non priviledged commands:
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances
+$GOBIN/ciao-cli -username user -password ciaouser -list-instances
 ```
 
 
@@ -202,7 +202,7 @@ export CIAO_PASSWORD=ciaouser
 ### Cluster status (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -cluster-status
+$GOBIN/ciao-cli -username admin -password ciao -cluster-status
 ```
 
 ### List all compute nodes (Privileged)
