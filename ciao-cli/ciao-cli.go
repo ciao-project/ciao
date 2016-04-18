@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -146,6 +147,14 @@ var (
 	identityUser     = flag.String("username", "nova", "Openstack Service Username")
 	identityPassword = flag.String("password", "nova", "Openstack Service Username")
 	dumpLabel        = flag.String("dump-label", "", "Dump all trace data for a given label")
+)
+
+const (
+	ciaoIdentityEnv    = "CIAO_IDENTITY"
+	ciaoControllerEnv  = "CIAO_CONTROLLER"
+	ciaoUsernameEnv    = "CIAO_USERNAME"
+	ciaoPasswordEnv    = "CIAO_PASSWORD"
+	ciaoComputePortEnv = "CIAO_COMPUTEPORT"
 )
 
 type Project struct {
@@ -903,9 +912,47 @@ func dumpTraceData(label string) {
 
 }
 
+func getCiaoEnvVariables() {
+	identity := os.Getenv(ciaoIdentityEnv)
+	controller := os.Getenv(ciaoControllerEnv)
+	username := os.Getenv(ciaoUsernameEnv)
+	password := os.Getenv(ciaoPasswordEnv)
+	port := os.Getenv(ciaoComputePortEnv)
+
+	infof("Ciao environment variables:\n")
+	infof("\t%s:%s\n", ciaoIdentityEnv, identity)
+	infof("\t%s:%s\n", ciaoControllerEnv, controller)
+	infof("\t%s:%s\n", ciaoUsernameEnv, username)
+	infof("\t%s:%s\n", ciaoPasswordEnv, password)
+	infof("\t%s:%s\n", ciaoComputePortEnv, port)
+
+	if identity != "" {
+		*identityURL = identity
+	}
+
+	if controller != "" {
+		*controllerURL = controller
+	}
+
+	if username != "" {
+		*identityUser = username
+	}
+
+	if password != "" {
+		*identityPassword = password
+	}
+
+	if port != "" {
+		*computePort, _ = strconv.Atoi(port)
+	}
+
+}
+
 func main() {
 	flag.Var(&computeScheme, "scheme", "Compute API URL scheme (http or https)")
 	flag.Parse()
+
+	getCiaoEnvVariables()
 
 	if *identityURL != "" {
 		if len(*identityUser) == 0 {

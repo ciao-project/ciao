@@ -100,6 +100,32 @@ Usage of ./ciao-cli:
     	Workload UUID
 ```
 
+## Ciao environment variables
+
+ciao-cli first look for Ciao specific environment variables to retrieve
+credentials and networking information:
+
+* `CIAO_CONTROLLER` exports the Ciao controller URL
+* `CIAO_IDENTITY` exports the Ciao keystone instance URL
+* `CIAO_COMPUTEPORT` exports the Ciao compute alternative port
+* `CIAO_USERNAME` exports the Ciao username
+* `CIAO_PASSWORD` export the Ciao password for `CIAO_USERNAME`
+
+All those environmant variables can be set through an rc file.
+For example:
+
+```shell
+$ cat ciao-cli-example.sh
+
+export CIAO_CONTROLLER=ciao-ctl.intel.com
+export CIAO_IDENTITY=https://ciao-identity.intel.com:35357
+export CIAO_USERNAME=user
+export CIAO_PASSWORD=ciaouser
+```
+
+Exporting those variables is not compulsory and they can be defined
+or overridden from the `ciao-cli` command line.
+
 ## Keystone certificates
 
 ciao-cli interact with the CIAO keystone instance over HTTPS.
@@ -162,6 +188,17 @@ Let's assume we're running a Ciao cluster with the following settings:
 * The password for `user` is `ciaouser`
 * `project1` UUID is `68a76514-5c8e-40a8-8c9e-0570a11d035b`
 
+This can be defined through the following Ciao rc file:
+
+```shell
+$ cat ciao-cli-example.sh
+
+export CIAO_CONTROLLER=ciao-ctl.intel.com
+export CIAO_IDENTITY=https://ciao-identity.intel.com:35357
+export CIAO_USERNAME=user
+export CIAO_PASSWORD=ciaouser
+```
+
 ### Cluster status (Privileged)
 
 ```shell
@@ -171,109 +208,109 @@ $GOBIN/ciao-cli -username admin -password ciao -identity https://ciao-identity.i
 ### List all compute nodes (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-cns
+$GOBIN/ciao-cli -username admin -password ciao -list-cns
 ```
 
 ### List all CNCIs (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-cncis
+$GOBIN/ciao-cli -username admin -password ciao -list-cncis
 ```
 
 ### List all tenants/projects (Priviledged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-tenants
+$GOBIN/ciao-cli -username admin -password ciao -list-tenants
 ```
 
 ### List quotas
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-quotas
+$GOBIN/ciao-cli -username user -password ciaouser -list-quotas
 ```
 
 ### List consumed resources
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-resources
+$GOBIN/ciao-cli -list-resources
 ```
 
 ### List all instances
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances
+$GOBIN/ciao-cli -list-instances
 ```
 
 ### List at most the first 10 instances
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances -list-length 10
+$GOBIN/ciao-cli -list-instances -list-length 10
 ```
 
 ### List at most the 20 instances starting from instance number 10
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-instances -list-length 20 -instance-offset 10
+$GOBIN/ciao-cli -list-instances -list-length 20 -instance-offset 10
 ```
 
 ### List all workloads
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-workloads
+$GOBIN/ciao-cli -list-workloads
 ```
 
 ### Launch a new instance
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7
+$GOBIN/ciao-cli -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7
 ```
 
 ### Launch 1000 new instances
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instances 1000
+$GOBIN/ciao-cli -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instances 1000
 ```
 
 ### Launch 1000 instances and trace them
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instance-label start_trace_20160415
+$GOBIN/ciao-cli -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instance-label start_trace_20160415
 ```
 
 ### Stop a running instance
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -stop-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
+$GOBIN/ciao-cli -stop-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
 ```
 
 ### Restart a stopped instance
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -restart-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
+$GOBIN/ciao-cli -restart-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
 ```
 
 ### Delete an instance
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -delete-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
+$GOBIN/ciao-cli -delete-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
 ```
 
 ### Delete all instances for a given tenant
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -delete-instance -all-instances
+$GOBIN/ciao-cli -delete-instance -all-instances
 ```
 
 ### List all available trace labels (Priviledged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -list-labels
+$GOBIN/ciao-cli -username admin -password ciao -list-labels
 ```
 
 ### Dump and display trace data from a given trace label (Priviledged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -identity https://ciao-identity.intel.com:35357 -controller ciao-ctl.intel.com -dump-label -instance-label start_trace_20160415
+$GOBIN/ciao-cli -username admin -password ciao -dump-label -instance-label start_trace_20160415
 ```
 
 
