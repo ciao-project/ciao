@@ -145,7 +145,7 @@ var (
 	identityURL      = flag.String("identity", "", "Keystone URL")
 	identityUser     = flag.String("username", "nova", "Openstack Service Username")
 	identityPassword = flag.String("password", "nova", "Openstack Service Username")
-	dumpLabel        = flag.Bool("dump-label", false, "Dump all trace data for a given label")
+	dumpLabel        = flag.String("dump-label", "", "Dump all trace data for a given label")
 )
 
 type Project struct {
@@ -1074,11 +1074,7 @@ func main() {
 		listAllLabels()
 	}
 
-	if *dumpLabel == true {
-		if *instanceLabel == "" {
-			fatalf("Missing required -instance-label parameter")
-		}
-
-		dumpTraceData(*instanceLabel)
+	if *dumpLabel != "" {
+		dumpTraceData(*dumpLabel)
 	}
 }
