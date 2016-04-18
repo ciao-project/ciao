@@ -131,6 +131,7 @@ var (
 	clusterStatus    = flag.Bool("cluster-status", false, "List all compute nodes")
 	launchInstances  = flag.Bool("launch-instances", false, "Launch Ciao instances")
 	deleteInstance   = flag.Bool("delete-instance", false, "Delete a Ciao instance")
+	deleteEvents     = flag.Bool("delete-events", false, "Delete all stored Ciao events")
 	stopInstance     = flag.Bool("stop-instance", false, "Stop a Ciao instance")
 	restartInstance  = flag.Bool("restart-instance", false, "Restart a Ciao instance")
 	workload         = flag.String("workload", "", "Workload UUID")
@@ -888,7 +889,7 @@ func listAllLabels() {
 func listAllEvents() {
 	var events payloads.CiaoEvents
 
-	url := buildComputeURL("event")
+	url := buildComputeURL("events")
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
@@ -905,6 +906,23 @@ func listAllEvents() {
 		fmt.Printf("\t[%d] %v: %s:%s (Tenant %s)\n", i+1, event.Timestamp, event.EventType, event.Message, event.TenantId)
 	}
 
+}
+
+func deleteAllEvents() {
+	url := buildComputeURL("events")
+
+	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		fatalf("Events log deletion failed: %s", resp.Status)
+	}
+
+	fmt.Printf("Deleted all event logs\n")
 }
 
 func dumpTraceData(label string) {
@@ -1150,5 +1168,9 @@ func main() {
 
 	if *listEvents == true {
 		listAllEvents()
+	}
+
+	if *deleteEvents == true {
+		deleteAllEvents()
 	}
 }
