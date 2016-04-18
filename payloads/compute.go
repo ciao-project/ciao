@@ -274,3 +274,14 @@ type CiaoTraceData struct {
 	Summary    CiaoBatchFrameStat `json:"summary"`
 	FramesStat []CiaoFrameStat    `json:"frames"`
 }
+
+type CiaoEvent struct {
+	Timestamp time.Time `json:"time_stamp"`
+	TenantId  string    `json:"tenant_id"`
+	EventType string    `json:"type"`
+	Message   string    `json:"message"`
+}
+
+type CiaoEvents struct {
+	Events []CiaoEvent `json:"events"`
+}
