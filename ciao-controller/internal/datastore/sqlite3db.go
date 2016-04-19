@@ -1362,15 +1362,21 @@ func (ds *sqliteDB) addInstance(instance *types.Instance) (err error) {
 	return
 }
 
-func (ds *sqliteDB) removeInstance(instanceID string) (err error) {
-	cmd := `DELETE FROM instances WHERE id = '%s';`
-	str := fmt.Sprintf(cmd, instanceID)
+func (ds *sqliteDB) removeInstance(instanceID string) error {
+	cmd1 := fmt.Sprintf("DELETE FROM instances WHERE id = '%s';", instanceID)
+	cmd2 := fmt.Sprintf("DELETE FROM usage WHERE instance_id = '%s';", instanceID)
 
 	ds.dbLock.Lock()
-	err = ds.exec(ds.getTableDB("instances"), str)
+	err := ds.exec(ds.getTableDB("instances"), cmd1)
+	if err != nil {
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	err = ds.exec(ds.getTableDB("usage"), cmd2)
 	ds.dbLock.Unlock()
 
-	return
+	return err
 }
 
 func (ds *sqliteDB) addUsage(instanceID string, usage map[string]int) {
@@ -1388,16 +1394,6 @@ func (ds *sqliteDB) addUsage(instanceID string, usage map[string]int) {
 			// but keep going
 		}
 	}
-}
-
-func (ds *sqliteDB) deleteUsageNoCache(instanceID string) (err error) {
-	cmd := fmt.Sprintf("DELETE FROM usage WHERE instance_id = '%s';", instanceID)
-
-	ds.dbLock.Lock()
-	err = ds.exec(ds.getTableDB("usage"), cmd)
-	ds.dbLock.Unlock()
-
-	return
 }
 
 func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) (err error) {

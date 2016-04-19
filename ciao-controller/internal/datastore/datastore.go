@@ -91,8 +91,6 @@ type persistentStore interface {
 	getInstances() (instances []*types.Instance, err error)
 	addInstance(instance *types.Instance) (err error)
 	removeInstance(instanceID string) (err error)
-	// this should be merged into removeInstance
-	deleteUsageNoCache(instanceID string) (err error)
 
 	// interfaces related to statistics
 	addNodeStatDB(stat payloads.Stat) (err error)
@@ -817,9 +815,6 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		return
 	}
 
-	tenantID = i.TenantId
-	ipAddress := i.IPAddress
-
 	switch reason {
 	case payloads.FullCloud,
 		payloads.FullComputeNode,
@@ -830,40 +825,20 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		payloads.ImageFailure,
 		payloads.NetworkFailure:
 
-		ds.instancesLock.Lock()
-		i := ds.instances[instanceID]
-		delete(ds.instances, instanceID)
-		ds.instancesLock.Unlock()
+		ds.deleteInstance(instanceID)
 
-		ds.tenantsLock.Lock()
-		delete(ds.tenants[tenantID].instances, instanceID)
-		ds.tenantsLock.Unlock()
-
-		err = ds.deleteAllUsage(i, tenantID)
-		if err != nil {
-			glog.Warning(err)
-		}
-
-		err = ds.db.removeInstance(instanceID)
-		if err != nil {
-			return err
-		}
-
-		err = ds.ReleaseTenantIP(tenantID, ipAddress)
-		if err != nil {
-			glog.V(2).Info("StartFailure: ", err)
-		}
 	case payloads.LaunchFailure,
 		payloads.AlreadyRunning,
 		payloads.InstanceExists:
 	}
+
 	msg := fmt.Sprintf("Start Failure %s: %s", instanceID, reason.String())
-	ds.db.logEvent(tenantID, string(userError), msg)
+	ds.db.logEvent(i.TenantId, string(userError), msg)
+
 	return
 }
 
-// DeleteInstance removes an instance from the datastore.
-func (ds *Datastore) DeleteInstance(instanceID string) (err error) {
+func (ds *Datastore) deleteInstance(instanceID string) error {
 	ds.instanceLastStatLock.Lock()
 	delete(ds.instanceLastStat, instanceID)
 	ds.instanceLastStatLock.Unlock()
@@ -874,7 +849,25 @@ func (ds *Datastore) DeleteInstance(instanceID string) (err error) {
 	ds.instancesLock.Unlock()
 
 	ds.tenantsLock.Lock()
-	delete(ds.tenants[i.TenantId].instances, instanceID)
+	tenant := ds.tenants[i.TenantId]
+	delete(tenant.instances, instanceID)
+	if tenant != nil {
+		for name, val := range i.Usage {
+			for i := range tenant.Resources {
+				if tenant.Resources[i].Rname == name {
+					tenant.Resources[i].Usage -= val
+					break
+				}
+			}
+		}
+		// decrement instances count
+		for i := range tenant.Resources {
+			if tenant.Resources[i].Rtype == 1 {
+				tenant.Resources[i].Usage--
+				break
+			}
+		}
+	}
 	ds.tenantsLock.Unlock()
 
 	// we may not have received any node stats for this instance
@@ -884,25 +877,30 @@ func (ds *Datastore) DeleteInstance(instanceID string) (err error) {
 		ds.nodesLock.Unlock()
 	}
 
-	err = ds.deleteAllUsage(i, i.TenantId)
+	err := ds.db.removeInstance(i.Id)
 	if err != nil {
-		glog.Warning(err)
-	}
-
-	err = ds.db.removeInstance(i.Id)
-	if err != nil {
-		glog.V(2).Info("DeleteInstance: ", err)
+		glog.V(2).Info("deleteInstance: ", err)
 	}
 
 	err = ds.ReleaseTenantIP(i.TenantId, i.IPAddress)
 	if err != nil {
-		glog.V(2).Info("DeleteInstance: ", err)
-		return
+		glog.V(2).Info("deleteInstance: ", err)
+	}
+
+	return err
+}
+
+// DeleteInstance removes an instance from the datastore.
+func (ds *Datastore) DeleteInstance(instanceID string) error {
+	err := ds.deleteInstance(instanceID)
+	if err != nil {
+		return err
 	}
 
 	msg := fmt.Sprintf("Deleted Instance %s", instanceID)
-	ds.db.logEvent(i.TenantId, string(userInfo), msg)
-	return
+	ds.db.logEvent(instanceID, string(userInfo), msg)
+
+	return nil
 }
 
 // GetInstanceInfo will be replaced by something else soon that makes more sense.
@@ -943,8 +941,7 @@ func (ds *Datastore) deleteAllUsage(i *types.Instance, tenantID string) (err err
 	}
 	ds.tenantsLock.Unlock()
 
-	// update persistent store
-	return ds.db.deleteUsageNoCache(i.Id)
+	return
 }
 
 // HandleStats makes sure that the data from the stat payload is stored.

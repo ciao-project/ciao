@@ -110,8 +110,6 @@ func (i *instance) Allowed() (b bool, err error) {
 		return false, err
 	}
 
-	usage := i.newConfig.GetResources()
-
 	for _, res := range tenant.Resources {
 		// check instance count separately
 		if res.Rtype == 1 {
@@ -120,7 +118,7 @@ func (i *instance) Allowed() (b bool, err error) {
 			}
 			continue
 		}
-		if res.OverLimit(usage[res.Rname]) {
+		if res.OverLimit(i.Usage[res.Rname]) {
 			return false, nil
 		}
 	}
