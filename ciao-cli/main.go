@@ -373,24 +373,15 @@ func listTenantWorkloads(tenant string) {
 }
 
 func listAllTenants() {
-	var tenants payloads.CiaoComputeTenants
-
-	url := buildComputeURL("tenants")
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	projects, err := getAllProjects(*identityUser, *identityPassword)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &tenants)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	for i, tenant := range tenants.Tenants {
-		fmt.Printf("Tenant %d\n", i+1)
-		fmt.Printf("\tUUID: %s\n", tenant.ID)
-		fmt.Printf("\tName: %s\n", tenant.Name)
+	for i, project := range projects.Projects {
+		fmt.Printf("Tenant [%d]\n", i+1)
+		fmt.Printf("\tUUID: %s\n", project.ID)
+		fmt.Printf("\tName: %s\n", project.Name)
 	}
 }
 

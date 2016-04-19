@@ -201,3 +201,46 @@ func getUserProjects(username string, password string) ([]Project, error) {
 
 	return userProjects, nil
 }
+
+type IdentityProjects struct {
+	Links struct {
+		Next     interface{} `json:"next"`
+		Previous interface{} `json:"previous"`
+		Self     string      `json:"self"`
+	} `json:"links"`
+
+	Projects []struct {
+		Description interface{} `json:"description"`
+		DomainID    string      `json:"domain_id"`
+		Enabled     bool        `json:"enabled"`
+		ID          string      `json:"id"`
+		Links       struct {
+			Self string `json:"self"`
+		} `json:"links"`
+		Name     string      `json:"name"`
+		ParentID interface{} `json:"parent_id"`
+	} `json:"projects"`
+}
+
+func getAllProjects(username string, password string) (*IdentityProjects, error) {
+	var projects IdentityProjects
+
+	token, _, _, err := getUnscopedToken(username, password)
+	if err != nil {
+		return nil, err
+	}
+
+	identity := fmt.Sprintf("%s/v3/projects", *identityURL)
+
+	resp, err := sendHTTPRequestToken("GET", identity, nil, token, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	err = unmarshalHTTPResponse(resp, &projects)
+	if err != nil {
+		return nil, err
+	}
+
+	return &projects, nil
+}
