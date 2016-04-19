@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#Simple script to boot a clear VM and attach it to the CN VNIC
+#Use the cncli command to create the VNIC
+#Note: This cannot be used for CNCI VNICs
+#For CNCI VNICs, create the CNCI VNIC using the cncli and
+#then use the script cnci_agent/scripts/run_cn_vm.sh to launch the CNCI VM
+
 if [ -z "$1" ]; then
         IMAGE=clear.img
 else
@@ -34,6 +40,7 @@ qemu-system-x86_64 \
         -bios OVMF.fd \
         -smp cpus=4,cores=2 -cpu host \
         -vga none -nographic \
-        -drive file="$IMAGE",if=virtio,aio=threads \
-        -net nic,model=virtio,macaddr=$3 -net tap,ifname=$2,script=no,downscript=no \
+        -drive file="$IMAGE",if=virtio,aio=threads,format=qcow2 \
+        -net nic,model=virtio,macaddr="$MAC" -net tap,ifname="$VNIC",script=no,downscript=no \
         -debugcon file:debug.log -global isa-debugcon.iobase=0x402
+

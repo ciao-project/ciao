@@ -118,12 +118,12 @@ func main() {
 				os.Exit(-1)
 			} else {
 				if ssntpEvent != nil {
-					fmt.Println("VNIC:=", vnic.LinkName, "SSNTP Event:=", ssntpEvent)
+					fmt.Println("SSNTP Event :=", ssntpEvent)
+					fmt.Println("tap interface :=", vnic.LinkName)
 				} else {
-					fmt.Println("VNIC:=", vnic.LinkName)
+					fmt.Println("tap interface :=", vnic.LinkName)
 				}
 			}
-			fmt.Println("Subnet Key:= ", subnetKey)
 		case "delete":
 			fmt.Println("Deleting VNIC for Workload")
 			if ssntpEvent, err := cn.DestroyVnic(vnicCfg); err != nil {
@@ -155,7 +155,8 @@ func main() {
 				fmt.Println(err)
 				os.Exit(-1)
 			} else {
-				fmt.Println("CVNIC:=", cvnic.LinkName, cvnic)
+				fmt.Println("CNCI VNIC :=", cvnic)
+				fmt.Println("macvtap interface :=", cvnic.LinkName)
 			}
 		case "delete":
 			if err := cn.DestroyCnciVnic(vnicCfg); err != nil {
