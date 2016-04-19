@@ -29,10 +29,9 @@ import (
 func main() {
 
 	operationIn := flag.String("operation", "create", "operation <create|delete|reset> reset clears all CNCI setup")
-	cnciSubnetIn := flag.String("cnciSubnet", "", "CNCI Physicla subnet on which the CN can be reached")
+	cnciSubnetIn := flag.String("cnciSubnet", "", "CNCI Physical subnet on which the NN can be reached")
 	tenantSubnetIn := flag.String("tenantSubnet", "192.168.8.0/21", "Tenant subnet served by this CNCI")
 	cnIPIn := flag.String("cnip", "127.0.0.1", "CNCI reachable CN IP address")
-
 	cnciIDIn := flag.String("cnciuuid", "cnciuuid", "CNCI UUID")
 
 	flag.Parse()
