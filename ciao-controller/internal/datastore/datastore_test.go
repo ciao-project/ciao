@@ -44,7 +44,7 @@ func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
 func addTestInstance(tenant *types.Tenant, workload *types.Workload) (instance *types.Instance, err error) {
 	id := uuid.Generate()
 
-	ip, err := ds.AllocateTenantIP(tenant.Id)
+	ip, err := ds.AllocateTenantIP(tenant.ID)
 	if err != nil {
 		return
 	}
@@ -59,10 +59,10 @@ func addTestInstance(tenant *types.Tenant, workload *types.Workload) (instance *
 	}
 
 	instance = &types.Instance{
-		TenantId:   tenant.Id,
-		WorkloadId: workload.Id,
+		TenantID:   tenant.ID,
+		WorkloadID: workload.ID,
 		State:      payloads.Pending,
-		Id:         id.String(),
+		ID:         id.String(),
 		CNCI:       false,
 		IPAddress:  ip.String(),
 		MACAddress: mac.String(),
@@ -211,7 +211,7 @@ func TestDeleteInstance(t *testing.T) {
 	}
 
 	// update tenant Info
-	tenantBefore, err := ds.getTenant(tenant.Id)
+	tenantBefore, err := ds.getTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -224,12 +224,12 @@ func TestDeleteInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = ds.DeleteInstance(instance.Id)
+	err = ds.DeleteInstance(instance.ID)
 	if err != nil {
 		t.Error(err)
 	}
 
-	tenantAfter, err := ds.getTenant(tenant.Id)
+	tenantAfter, err := ds.getTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -279,11 +279,11 @@ func TestDeleteInstance(t *testing.T) {
 
 	// clear tenant from cache
 	ds.tenantsLock.Lock()
-	delete(ds.tenants, tenant.Id)
+	delete(ds.tenants, tenant.ID)
 	ds.tenantsLock.Unlock()
 
 	// get updated tenant info - should hit database
-	newTenant, err := ds.getTenant(tenant.Id)
+	newTenant, err := ds.getTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -357,10 +357,10 @@ func TestGetAllInstancesFromTenant(t *testing.T) {
 	}
 
 	// if we don't get 10 eventually, the test will timeout and fail
-	instances, err := ds.GetAllInstancesFromTenant(tenant.Id)
+	instances, err := ds.GetAllInstancesFromTenant(tenant.ID)
 	for len(instances) < 10 {
 		time.Sleep(1 * time.Second)
-		instances, err = ds.GetAllInstancesFromTenant(tenant.Id)
+		instances, err = ds.GetAllInstancesFromTenant(tenant.ID)
 	}
 
 	if err != nil {
@@ -401,7 +401,7 @@ func TestGetAllInstancesByNode(t *testing.T) {
 
 	for i := range instances {
 		stat := payloads.InstanceStat{
-			InstanceUUID:  instances[i].Id,
+			InstanceUUID:  instances[i].ID,
 			State:         "running",
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
@@ -483,7 +483,7 @@ func TestGetInstancesFromTenant(t *testing.T) {
 
 	for i := range instances {
 		stat := payloads.InstanceStat{
-			InstanceUUID:  instances[i].Id,
+			InstanceUUID:  instances[i].ID,
 			State:         "running",
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
@@ -515,14 +515,14 @@ func TestGetInstancesFromTenant(t *testing.T) {
 		t.Error(err)
 	}
 
-	instance, err := ds.GetInstanceFromTenant(tenant.Id, instances[0].Id)
+	instance, err := ds.GetInstanceFromTenant(tenant.ID, instances[0].ID)
 	if err != nil && err != sql.ErrNoRows {
 		t.Error(err)
 	}
 
 	for instance == nil {
 		time.Sleep(1 * time.Second)
-		instance, err = ds.GetInstanceFromTenant(tenant.Id, instances[0].Id)
+		instance, err = ds.GetInstanceFromTenant(tenant.ID, instances[0].ID)
 		if err != nil && err != sql.ErrNoRows {
 			t.Error(err)
 		}
@@ -552,7 +552,7 @@ func TestGetInstanceInfo(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	nodeID, state, err := ds.GetInstanceInfo(instance.Id)
+	nodeID, state, err := ds.GetInstanceInfo(instance.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -569,7 +569,7 @@ func TestGetInstanceInfo(t *testing.T) {
 	var stats []payloads.InstanceStat
 
 	istat := payloads.InstanceStat{
-		InstanceUUID:  instance.Id,
+		InstanceUUID:  instance.ID,
 		State:         "running",
 		SSHIP:         "192.168.0.1",
 		SSHPort:       34567,
@@ -601,7 +601,7 @@ func TestGetInstanceInfo(t *testing.T) {
 		t.Error(err)
 	}
 
-	nodeID, state, err = ds.GetInstanceInfo(instance.Id)
+	nodeID, state, err = ds.GetInstanceInfo(instance.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -616,10 +616,10 @@ func TestGetInstanceInfo(t *testing.T) {
 
 	// now clear instance cache to exercise sql
 	ds.instanceLastStatLock.Lock()
-	delete(ds.instanceLastStat, instance.Id)
+	delete(ds.instanceLastStat, instance.ID)
 	ds.instanceLastStatLock.Unlock()
 
-	nodeID, state, err = ds.GetInstanceInfo(instance.Id)
+	nodeID, state, err = ds.GetInstanceInfo(instance.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -662,7 +662,7 @@ func TestHandleStats(t *testing.T) {
 
 	for i := range instances {
 		stat := payloads.InstanceStat{
-			InstanceUUID:  instances[i].Id,
+			InstanceUUID:  instances[i].ID,
 			State:         "running",
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
@@ -738,7 +738,7 @@ func TestGetInstanceLastStats(t *testing.T) {
 
 	for i := range instances {
 		stat := payloads.InstanceStat{
-			InstanceUUID:  instances[i].Id,
+			InstanceUUID:  instances[i].ID,
 			State:         "running",
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
@@ -803,7 +803,7 @@ func TestGetNodeLastStats(t *testing.T) {
 
 	for i := range instances {
 		stat := payloads.InstanceStat{
-			InstanceUUID:  instances[i].Id,
+			InstanceUUID:  instances[i].ID,
 			State:         "running",
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
@@ -1044,13 +1044,13 @@ func TestAllocateTenantIP(t *testing.T) {
 		t.Error(err)
 	}
 
-	ip, err := ds.AllocateTenantIP(tenant.Id)
+	ip, err := ds.AllocateTenantIP(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// this should hit cache
-	newTenant, err := ds.getTenant(tenant.Id)
+	newTenant, err := ds.getTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1071,11 +1071,11 @@ func TestAllocateTenantIP(t *testing.T) {
 
 	// clear out cache
 	ds.tenantsLock.Lock()
-	delete(ds.tenants, tenant.Id)
+	delete(ds.tenants, tenant.ID)
 	ds.tenantsLock.Unlock()
 
 	// this should not hit cache
-	newTenant, err = ds.getTenant(tenant.Id)
+	newTenant, err = ds.getTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1092,7 +1092,7 @@ func TestNonOverlappingTenantIP(t *testing.T) {
 		t.Error(err)
 	}
 
-	ip1, err := ds.AllocateTenantIP(tenant.Id)
+	ip1, err := ds.AllocateTenantIP(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1102,7 +1102,7 @@ func TestNonOverlappingTenantIP(t *testing.T) {
 		t.Error(err)
 	}
 
-	ip2, err := ds.AllocateTenantIP(tenant.Id)
+	ip2, err := ds.AllocateTenantIP(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1131,15 +1131,15 @@ func TestAddLimit(t *testing.T) {
 	}
 
 	/* put tenant limit of 1 instance */
-	err = ds.AddLimit(tenant.Id, 1, 1)
+	err = ds.AddLimit(tenant.ID, 1, 1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// make sure cache was updated
 	ds.tenantsLock.Lock()
-	t2 := ds.tenants[tenant.Id]
-	delete(ds.tenants, tenant.Id)
+	t2 := ds.tenants[tenant.ID]
+	delete(ds.tenants, tenant.ID)
 	ds.tenantsLock.Unlock()
 
 	for i := range t2.Resources {
@@ -1151,7 +1151,7 @@ func TestAddLimit(t *testing.T) {
 	}
 
 	// make sure datastore was updated
-	t3, err := ds.GetTenant(tenant.Id)
+	t3, err := ds.GetTenant(tenant.ID)
 	for i := range t3.Resources {
 		if t3.Resources[i].Rtype == 1 {
 			if t3.Resources[i].Limit != 1 {
@@ -1167,15 +1167,15 @@ func TestRemoveTenantCNCI(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = ds.removeTenantCNCI(tenant.Id)
+	err = ds.removeTenantCNCI(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// make sure cache was updated
 	ds.tenantsLock.Lock()
-	t2 := ds.tenants[tenant.Id]
-	delete(ds.tenants, tenant.Id)
+	t2 := ds.tenants[tenant.ID]
+	delete(ds.tenants, tenant.ID)
 	ds.tenantsLock.Unlock()
 
 	if t2.CNCIID != "" || t2.CNCIIP != "" {
@@ -1183,7 +1183,7 @@ func TestRemoveTenantCNCI(t *testing.T) {
 	}
 
 	// check database was updated
-	testTenant, err := ds.GetTenant(tenant.Id)
+	testTenant, err := ds.GetTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1198,11 +1198,11 @@ func TestGetTenant(t *testing.T) {
 		t.Error(err)
 	}
 
-	testTenant, err := ds.GetTenant(tenant.Id)
+	testTenant, err := ds.GetTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
-	if testTenant.Id != tenant.Id {
+	if testTenant.ID != tenant.ID {
 		t.Error(err)
 	}
 }
@@ -1225,7 +1225,7 @@ func TestAddCNCIIP(t *testing.T) {
 	}
 
 	// Add fake CNCI
-	err = ds.AddTenantCNCI(tenant.Id, uuid.Generate().String(), tenant.CNCIMAC)
+	err = ds.AddTenantCNCI(tenant.ID, uuid.Generate().String(), tenant.CNCIMAC)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1233,7 +1233,7 @@ func TestAddCNCIIP(t *testing.T) {
 	// make sure that AddCNCIIP signals the channel it's supposed to
 	c := make(chan bool)
 	ds.cnciAddedLock.Lock()
-	ds.cnciAddedChans[tenant.Id] = c
+	ds.cnciAddedChans[tenant.ID] = c
 	ds.cnciAddedLock.Unlock()
 
 	go func() {
@@ -1250,7 +1250,7 @@ func TestAddCNCIIP(t *testing.T) {
 
 	// confirm that the channel was cleared
 	ds.cnciAddedLock.Lock()
-	c = ds.cnciAddedChans[tenant.Id]
+	c = ds.cnciAddedChans[tenant.ID]
 	ds.cnciAddedLock.Unlock()
 	if c != nil {
 		t.Error(err)
@@ -1319,7 +1319,7 @@ func TestReleaseTenantIP(t *testing.T) {
 		t.Error(err)
 	}
 
-	ip, err := ds.AllocateTenantIP(tenant.Id)
+	ip, err := ds.AllocateTenantIP(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1330,7 +1330,7 @@ func TestReleaseTenantIP(t *testing.T) {
 	subnetInt := binary.BigEndian.Uint16(ipBytes[1:3])
 
 	// get updated tenant info
-	newTenant, err := ds.getTenant(tenant.Id)
+	newTenant, err := ds.getTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1342,13 +1342,13 @@ func TestReleaseTenantIP(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = ds.ReleaseTenantIP(tenant.Id, ip.String())
+	err = ds.ReleaseTenantIP(tenant.ID, ip.String())
 	if err != nil {
 		t.Error(err)
 	}
 
 	// get updated tenant info - should hit cache
-	newTenant, err = ds.getTenant(tenant.Id)
+	newTenant, err = ds.getTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1362,11 +1362,11 @@ func TestReleaseTenantIP(t *testing.T) {
 
 	// clear tenant from cache
 	ds.tenantsLock.Lock()
-	delete(ds.tenants, tenant.Id)
+	delete(ds.tenants, tenant.ID)
 	ds.tenantsLock.Unlock()
 
 	// get updated tenant info - should hit database
-	newTenant, err = ds.getTenant(tenant.Id)
+	newTenant, err = ds.getTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1385,12 +1385,12 @@ func TestAddTenantChan(t *testing.T) {
 		t.Error(err)
 	}
 
-	ds.AddTenantChan(c, tenant.Id)
+	ds.AddTenantChan(c, tenant.ID)
 
 	// check cncisAddedChans
 	ds.cnciAddedLock.Lock()
-	c1 := ds.cnciAddedChans[tenant.Id]
-	delete(ds.cnciAddedChans, tenant.Id)
+	c1 := ds.cnciAddedChans[tenant.ID]
+	delete(ds.cnciAddedChans, tenant.ID)
 	ds.cnciAddedLock.Unlock()
 
 	if c1 != c {
@@ -1404,7 +1404,7 @@ func TestGetWorkload(t *testing.T) {
 		t.Error(err)
 	}
 
-	wl, err := ds.GetWorkload(wls[0].Id)
+	wl, err := ds.GetWorkload(wls[0].ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1416,26 +1416,26 @@ func TestGetWorkload(t *testing.T) {
 	// clear cache to exercise sql
 	// clear out of cache to exercise sql
 	ds.workloadsLock.Lock()
-	delete(ds.workloads, wl.Id)
+	delete(ds.workloads, wl.ID)
 	ds.workloadsLock.Unlock()
 
-	wl2, err := ds.GetWorkload(wls[0].Id)
+	wl2, err := ds.GetWorkload(wls[0].ID)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if wl2.Id != wl.Id {
+	if wl2.ID != wl.ID {
 		t.Error("Did not get correct workload from db")
 	}
 
 	// put it back in the cache
-	work, err := ds.getWorkload(wl.Id)
+	work, err := ds.getWorkload(wl.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	ds.workloadsLock.Lock()
-	ds.workloads[wl.Id] = work
+	ds.workloads[wl.ID] = work
 	ds.workloadsLock.Unlock()
 }
 
@@ -1458,7 +1458,7 @@ func TestRestartFailure(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	reason := payloads.RestartNoInstance
 
-	err = ds.RestartFailure(instance.Id, reason)
+	err = ds.RestartFailure(instance.ID, reason)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1483,7 +1483,7 @@ func TestStopFailure(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	reason := payloads.StopNoInstance
 
-	err = ds.StopFailure(instance.Id, reason)
+	err = ds.StopFailure(instance.ID, reason)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1507,7 +1507,7 @@ func TestStartFailureFullCloud(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	tenantBefore, err := ds.GetTenant(tenant.Id)
+	tenantBefore, err := ds.GetTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1520,12 +1520,12 @@ func TestStartFailureFullCloud(t *testing.T) {
 
 	reason := payloads.FullCloud
 
-	err = ds.StartFailure(instance.Id, reason)
+	err = ds.StartFailure(instance.ID, reason)
 	if err != nil {
 		t.Error(err)
 	}
 
-	tenantAfter, err := ds.GetTenant(tenant.Id)
+	tenantAfter, err := ds.GetTenant(tenant.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1568,14 +1568,14 @@ func testAllocateTenantIPs(t *testing.T, nIPs int) {
 
 	// make this tenant have some network hosts assigned to them.
 	for n := 0; n < nIPs; n++ {
-		_, err = ds.AllocateTenantIP(newTenant.Id)
+		_, err = ds.AllocateTenantIP(newTenant.ID)
 		if err != nil {
 			t.Error(err)
 		}
 	}
 
 	// get private tenant type
-	tenant, err := ds.getTenant(newTenant.Id)
+	tenant, err := ds.getTenant(newTenant.ID)
 
 	if len(tenant.subnets) != (nIPs/nIPsPerSubnet)+1 {
 		t.Error("Too many subnets created")

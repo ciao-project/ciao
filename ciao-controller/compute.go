@@ -151,7 +151,7 @@ func (pager *serverPager) getInstances(filterType pagerFilterType, filter string
 func (pager *serverPager) filter(filterType pagerFilterType, filter string, instance *types.Instance) bool {
 	switch filterType {
 	case workloadFilter:
-		if instance.WorkloadId != filter {
+		if instance.WorkloadID != filter {
 			return true
 		}
 	}
@@ -173,7 +173,7 @@ func (pager *serverPager) nextPage(filterType pagerFilterType, filter string, r 
 	}
 
 	for i, instance := range pager.instances {
-		if instance.Id == lastSeen {
+		if instance.ID == lastSeen {
 			if i >= len(pager.instances)-1 {
 				return pager.getInstances(filterType, filter, nil, limit, 0)
 			}
@@ -280,7 +280,7 @@ func validateToken(context *controller, r *http.Request) bool {
 }
 
 func instanceToServer(context *controller, instance *types.Instance) (payloads.Server, error) {
-	workload, err := context.ds.GetWorkload(instance.WorkloadId)
+	workload, err := context.ds.GetWorkload(instance.WorkloadID)
 	if err != nil {
 		return payloads.Server{}, err
 	}
@@ -288,11 +288,11 @@ func instanceToServer(context *controller, instance *types.Instance) (payloads.S
 	imageID := workload.ImageID
 
 	server := payloads.Server{
-		HostID:   instance.NodeId,
-		ID:       instance.Id,
-		TenantID: instance.TenantId,
+		HostID:   instance.NodeID,
+		ID:       instance.ID,
+		TenantID: instance.TenantID,
 		Flavor: payloads.Flavor{
-			ID: instance.WorkloadId,
+			ID: instance.WorkloadID,
 		},
 		Image: payloads.Image{
 			ID: imageID,
@@ -399,7 +399,7 @@ func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 				Links []payloads.Link `json:"links"`
 				Name  string          `json:"name"`
 			}{
-				ID:   workload.Id,
+				ID:   workload.ID,
 				Name: workload.Description,
 			},
 		)
@@ -464,7 +464,7 @@ func listTenantQuotas(w http.ResponseWriter, r *http.Request, context *controlle
 
 	resources := t.Resources
 
-	tenantResource.ID = t.Id
+	tenantResource.ID = t.ID
 
 	for _, resource := range resources {
 		switch resource.Rtype {
@@ -786,8 +786,8 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 				continue
 			}
 
-			fmt.Printf("Action on %s\n", instance.Id)
-			actionFunc(instance.Id)
+			fmt.Printf("Action on %s\n", instance.ID)
+			actionFunc(instance.ID)
 		}
 	}
 
@@ -870,7 +870,7 @@ func listTenants(w http.ResponseWriter, r *http.Request, context *controller) {
 				ID   string `json:"id"`
 				Name string `json:"name"`
 			}{
-				ID:   tenant.Id,
+				ID:   tenant.ID,
 				Name: tenant.Name,
 			},
 		)
@@ -904,7 +904,7 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	for _, node := range nodeSummary {
 		for i := range computeNodes.Nodes {
-			if computeNodes.Nodes[i].ID != node.NodeId {
+			if computeNodes.Nodes[i].ID != node.NodeID {
 				continue
 			}
 
@@ -983,11 +983,11 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 
 	for _, instance := range instances {
 		for i := range serversStats.Servers {
-			if serversStats.Servers[i].ID != instance.Id {
+			if serversStats.Servers[i].ID != instance.ID {
 				continue
 			}
 
-			serversStats.Servers[i].TenantID = instance.TenantId
+			serversStats.Servers[i].TenantID = instance.TenantID
 			serversStats.Servers[i].IPv4 = instance.IPAddress
 		}
 	}
@@ -1150,7 +1150,7 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	for _, l := range logs {
 		event := payloads.CiaoEvent{
 			Timestamp: l.Timestamp,
-			TenantId:  l.TenantId,
+			TenantId:  l.TenantID,
 			EventType: l.EventType,
 			Message:   l.Message,
 		}

@@ -168,7 +168,7 @@ func (ds *Datastore) Init(config Config) (err error) {
 		glog.Warning(err)
 	} else {
 		for i := range instances {
-			ds.instances[instances[i].Id] = instances[i]
+			ds.instances[instances[i].ID] = instances[i]
 		}
 	}
 
@@ -177,7 +177,7 @@ func (ds *Datastore) Init(config Config) (err error) {
 	tenants, err := ds.getTenants()
 	if err == nil {
 		for i := range tenants {
-			ds.tenants[tenants[i].Id] = tenants[i]
+			ds.tenants[tenants[i].ID] = tenants[i]
 		}
 	}
 
@@ -190,7 +190,7 @@ func (ds *Datastore) Init(config Config) (err error) {
 		glog.Warning(err)
 	} else {
 		for i := range workloads {
-			ds.workloads[workloads[i].Id] = workloads[i]
+			ds.workloads[workloads[i].ID] = workloads[i]
 		}
 	}
 
@@ -203,18 +203,18 @@ func (ds *Datastore) Init(config Config) (err error) {
 	ds.nodes = make(map[string]*node)
 
 	for key, i := range ds.instances {
-		n, ok := ds.nodes[i.NodeId]
+		n, ok := ds.nodes[i.NodeID]
 		if !ok {
 			newNode := types.Node{
-				ID: i.NodeId,
+				ID: i.NodeID,
 			}
 			n = &node{
 				Node:      newNode,
 				instances: make(map[string]*types.Instance),
 			}
-			ds.nodes[i.NodeId] = n
+			ds.nodes[i.NodeID] = n
 		}
-		ds.nodes[i.NodeId].instances[key] = i
+		ds.nodes[i.NodeID].instances[key] = i
 	}
 
 	ds.tenantUsage = make(map[string][]payloads.CiaoUsage)
@@ -697,25 +697,25 @@ func (ds *Datastore) AddInstance(instance *types.Instance) (err error) {
 	// add to cache
 	ds.instancesLock.Lock()
 
-	ds.instances[instance.Id] = instance
+	ds.instances[instance.ID] = instance
 
 	instanceStat := payloads.CiaoServerStats{
-		ID:        instance.Id,
-		TenantID:  instance.TenantId,
-		NodeID:    instance.NodeId,
+		ID:        instance.ID,
+		TenantID:  instance.TenantID,
+		NodeID:    instance.NodeID,
 		Timestamp: time.Now(),
 		Status:    instance.State,
 	}
 
 	ds.instanceLastStatLock.Lock()
-	ds.instanceLastStat[instance.Id] = instanceStat
+	ds.instanceLastStat[instance.ID] = instanceStat
 	ds.instanceLastStatLock.Unlock()
 
 	ds.instancesLock.Unlock()
 
 	ds.tenantsLock.Lock()
 
-	tenant := ds.tenants[instance.TenantId]
+	tenant := ds.tenants[instance.TenantID]
 	if tenant != nil {
 		for name, val := range instance.Usage {
 			for i := range tenant.Resources {
@@ -733,7 +733,7 @@ func (ds *Datastore) AddInstance(instance *types.Instance) (err error) {
 				break
 			}
 		}
-		tenant.instances[instance.Id] = instance
+		tenant.instances[instance.ID] = instance
 	}
 
 	ds.tenantsLock.Unlock()
@@ -749,7 +749,7 @@ func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFa
 	}
 
 	msg := fmt.Sprintf("Restart Failure %s: %s", instanceID, reason.String())
-	ds.db.logEvent(i.TenantId, string(userError), msg)
+	ds.db.logEvent(i.TenantID, string(userError), msg)
 	return
 }
 
@@ -761,7 +761,7 @@ func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureR
 	}
 
 	msg := fmt.Sprintf("Stop Failure %s: %s", instanceID, reason.String())
-	ds.db.logEvent(i.TenantId, string(userError), msg)
+	ds.db.logEvent(i.TenantID, string(userError), msg)
 	return
 }
 
@@ -833,7 +833,7 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 	}
 
 	msg := fmt.Sprintf("Start Failure %s: %s", instanceID, reason.String())
-	ds.db.logEvent(i.TenantId, string(userError), msg)
+	ds.db.logEvent(i.TenantID, string(userError), msg)
 
 	return
 }
@@ -849,7 +849,7 @@ func (ds *Datastore) deleteInstance(instanceID string) error {
 	ds.instancesLock.Unlock()
 
 	ds.tenantsLock.Lock()
-	tenant := ds.tenants[i.TenantId]
+	tenant := ds.tenants[i.TenantID]
 	delete(tenant.instances, instanceID)
 	if tenant != nil {
 		for name, val := range i.Usage {
@@ -871,18 +871,18 @@ func (ds *Datastore) deleteInstance(instanceID string) error {
 	ds.tenantsLock.Unlock()
 
 	// we may not have received any node stats for this instance
-	if i.NodeId != "" {
+	if i.NodeID != "" {
 		ds.nodesLock.Lock()
-		delete(ds.nodes[i.NodeId].instances, instanceID)
+		delete(ds.nodes[i.NodeID].instances, instanceID)
 		ds.nodesLock.Unlock()
 	}
 
-	err := ds.db.removeInstance(i.Id)
+	err := ds.db.removeInstance(i.ID)
 	if err != nil {
 		glog.V(2).Info("deleteInstance: ", err)
 	}
 
-	err = ds.ReleaseTenantIP(i.TenantId, i.IPAddress)
+	err = ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
 	if err != nil {
 		glog.V(2).Info("deleteInstance: ", err)
 	}
@@ -911,7 +911,7 @@ func (ds *Datastore) GetInstanceInfo(instanceID string) (nodeID string, state st
 	}
 
 	if instance != nil {
-		nodeID = instance.NodeId
+		nodeID = instance.NodeID
 		state = instance.State
 	}
 
@@ -1133,11 +1133,11 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 		instance, ok := ds.instances[stat.InstanceUUID]
 		if ok {
 			instance.State = stat.State
-			instance.NodeId = nodeID
+			instance.NodeID = nodeID
 			instance.SSHIP = stat.SSHIP
 			instance.SSHPort = stat.SSHPort
 			ds.nodesLock.Lock()
-			ds.nodes[nodeID].instances[instance.Id] = instance
+			ds.nodes[nodeID].instances[instance.ID] = instance
 			ds.nodesLock.Unlock()
 		}
 		ds.instancesLock.Unlock()
@@ -1162,7 +1162,7 @@ func (ds *Datastore) GetTenantCNCISummary(cnci string) (cncis []types.TenantCNCI
 		}
 
 		cn := types.TenantCNCI{
-			TenantID:   t.Id,
+			TenantID:   t.ID,
 			IPAddress:  t.CNCIIP,
 			MACAddress: t.CNCIMAC,
 			InstanceID: t.CNCIID,

@@ -540,7 +540,7 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = context.startWorkload(wls[0].Id, tuuid.String(), 1, false, "")
+		_, err = context.startWorkload(wls[0].ID, tuuid.String(), 1, false, "")
 		if err != nil {
 			b.Error(err)
 		}
@@ -575,7 +575,7 @@ func BenchmarkStart1000Workload(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = context.startWorkload(wls[0].Id, tuuid.String(), 1000, false, "")
+		_, err = context.startWorkload(wls[0].ID, tuuid.String(), 1000, false, "")
 		if err != nil {
 			b.Error(err)
 		}
@@ -600,7 +600,7 @@ func BenchmarkNewConfig(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err := newConfig(context, wls[0], id.String(), tenant.Id)
+		_, err := newConfig(context, wls[0], id.String(), tenant.ID)
 		if err != nil {
 			b.Error(err)
 		}
@@ -616,7 +616,7 @@ func TestTenantWithinBounds(t *testing.T) {
 	}
 
 	/* put tenant limit of 1 instance */
-	err = context.ds.AddLimit(tenant.Id, 1, 1)
+	err = context.ds.AddLimit(tenant.ID, 1, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -626,7 +626,7 @@ func TestTenantWithinBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	_, err = context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -642,7 +642,7 @@ func TestTenantOutOfBounds(t *testing.T) {
 	}
 
 	/* put tenant limit of 1 instance */
-	_ = context.ds.AddLimit(tenant.Id, 1, 1)
+	_ = context.ds.AddLimit(tenant.ID, 1, 1)
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil || len(wls) == 0 {
@@ -650,7 +650,7 @@ func TestTenantOutOfBounds(t *testing.T) {
 	}
 
 	/* try to send 2 workload start commands */
-	_, err = context.startWorkload(wls[0].Id, tenant.Id, 2, false, "")
+	_, err = context.startWorkload(wls[0].ID, tenant.ID, 2, false, "")
 	if err == nil {
 		t.Errorf("Not tracking limits correctly")
 	}
@@ -682,7 +682,7 @@ func TestStartWorkload(t *testing.T) {
 	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.START, c)
 
-	instances, err := context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -697,7 +697,7 @@ func TestStartWorkload(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -722,7 +722,7 @@ func TestStartWorkloadLaunchCNCI(t *testing.T) {
 	var instances []*types.Instance
 
 	go func() {
-		instances, err = context.startWorkload(wls[0].Id, id, 1, false, "")
+		instances, err = context.startWorkload(wls[0].ID, id, 1, false, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -759,7 +759,7 @@ func TestStartWorkloadLaunchCNCI(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -800,7 +800,7 @@ func TestDeleteInstance(t *testing.T) {
 	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.START, c)
 
-	instances, err := context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -815,7 +815,7 @@ func TestDeleteInstance(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -832,7 +832,7 @@ func TestDeleteInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = context.deleteInstance(instances[0].Id)
+	err = context.deleteInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -843,7 +843,7 @@ func TestDeleteInstance(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -870,7 +870,7 @@ func TestStopInstance(t *testing.T) {
 	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.START, c)
 
-	instances, err := context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -885,7 +885,7 @@ func TestStopInstance(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -902,7 +902,7 @@ func TestStopInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = context.stopInstance(instances[0].Id)
+	err = context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -913,7 +913,7 @@ func TestStopInstance(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -940,7 +940,7 @@ func TestRestartInstance(t *testing.T) {
 	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.START, c)
 
-	instances, err := context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -955,7 +955,7 @@ func TestRestartInstance(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -972,7 +972,7 @@ func TestRestartInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = context.stopInstance(instances[0].Id)
+	err = context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -983,7 +983,7 @@ func TestRestartInstance(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -1001,7 +1001,7 @@ func TestRestartInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = context.restartInstance(instances[0].Id)
+	err = context.restartInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1012,7 +1012,7 @@ func TestRestartInstance(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 	case <-time.After(5 * time.Second):
@@ -1065,7 +1065,7 @@ func TestInstanceDeletedEvent(t *testing.T) {
 
 	client := newTestClient(0, ssntp.AGENT)
 
-	instances, err := context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1082,19 +1082,19 @@ func TestInstanceDeletedEvent(t *testing.T) {
 
 	// right now I don't have this forwarded to the client
 	// so this step is probably not necessary
-	err = context.deleteInstance(instances[0].Id)
+	err = context.deleteInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	time.Sleep(1 * time.Second)
 
-	client.sendDeleteEvent(instances[0].Id)
+	client.sendDeleteEvent(instances[0].ID)
 
 	time.Sleep(1 * time.Second)
 
 	// try to get instance info
-	_, _, err = context.ds.GetInstanceInfo(instances[0].Id)
+	_, _, err = context.ds.GetInstanceInfo(instances[0].ID)
 	if err == nil {
 		t.Error("Instance not deleted")
 	}
@@ -1163,7 +1163,7 @@ func TestStartFailure(t *testing.T) {
 	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.START, c)
 
-	instances, err := context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1178,7 +1178,7 @@ func TestStartFailure(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -1211,7 +1211,7 @@ func TestStopFailure(t *testing.T) {
 	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.START, c)
 
-	instances, err := context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1226,7 +1226,7 @@ func TestStopFailure(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -1245,7 +1245,7 @@ func TestStopFailure(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = context.stopInstance(instances[0].Id)
+	err = context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1256,7 +1256,7 @@ func TestStopFailure(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -1274,7 +1274,7 @@ func TestStopFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedMsg := fmt.Sprintf("Stop Failure %s: %s", instances[0].Id, client.stopFailReason.String())
+	expectedMsg := fmt.Sprintf("Stop Failure %s: %s", instances[0].ID, client.stopFailReason.String())
 
 	for i := range entries {
 		if entries[i].Message == expectedMsg {
@@ -1304,7 +1304,7 @@ func TestRestartFailure(t *testing.T) {
 	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.START, c)
 
-	instances, err := context.startWorkload(wls[0].Id, tenant.Id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1319,7 +1319,7 @@ func TestRestartFailure(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -1336,7 +1336,7 @@ func TestRestartFailure(t *testing.T) {
 	c = make(chan cmdResult)
 	server.addCmdChan(ssntp.STOP, c)
 
-	err = context.stopInstance(instances[0].Id)
+	err = context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1347,7 +1347,7 @@ func TestRestartFailure(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 
@@ -1364,7 +1364,7 @@ func TestRestartFailure(t *testing.T) {
 	c = make(chan cmdResult)
 	server.addCmdChan(ssntp.RESTART, c)
 
-	err = context.restartInstance(instances[0].Id)
+	err = context.restartInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1375,7 +1375,7 @@ func TestRestartFailure(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 	case <-time.After(5 * time.Second):
@@ -1392,7 +1392,7 @@ func TestRestartFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedMsg := fmt.Sprintf("Restart Failure %s: %s", instances[0].Id, client.restartFailReason.String())
+	expectedMsg := fmt.Sprintf("Restart Failure %s: %s", instances[0].ID, client.restartFailReason.String())
 
 	for i := range entries {
 		if entries[i].Message == expectedMsg {
@@ -1417,7 +1417,7 @@ func TestNoNetwork(t *testing.T) {
 	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.START, c)
 
-	instances, err := context.startWorkload(wls[0].Id, id, 1, false, "")
+	instances, err := context.startWorkload(wls[0].ID, id, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1432,7 +1432,7 @@ func TestNoNetwork(t *testing.T) {
 			t.Fatal("Error parsing command yaml")
 		}
 
-		if result.instanceUUID != instances[0].Id {
+		if result.instanceUUID != instances[0].ID {
 			t.Fatal("Did not get correct Instance ID")
 		}
 

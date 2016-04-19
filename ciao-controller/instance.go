@@ -63,10 +63,10 @@ func newInstance(context *controller, tenantID string, workload *types.Workload)
 	usage := config.GetResources()
 
 	newInstance := types.Instance{
-		TenantId:   tenantID,
-		WorkloadId: workload.Id,
+		TenantID:   tenantID,
+		WorkloadID: workload.ID,
 		State:      payloads.Pending,
-		Id:         id.String(),
+		ID:         id.String(),
 		CNCI:       config.cnci,
 		IPAddress:  config.ip,
 		MACAddress: config.mac,
@@ -86,14 +86,14 @@ func (i *instance) Add() (err error) {
 		ds := i.context.ds
 		go ds.AddInstance(&i.Instance)
 	} else {
-		i.context.ds.AddTenantCNCI(i.TenantId, i.Id, i.MACAddress)
+		i.context.ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}
 	return
 }
 
 func (i *instance) Clean() (err error) {
 	if i.CNCI == false {
-		i.context.ds.ReleaseTenantIP(i.TenantId, i.IPAddress)
+		i.context.ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
 	}
 	return
 }
@@ -105,7 +105,7 @@ func (i *instance) Allowed() (b bool, err error) {
 	}
 
 	ds := i.context.ds
-	tenant, err := ds.GetTenant(i.TenantId)
+	tenant, err := ds.GetTenant(i.TenantID)
 	if err != nil {
 		return false, err
 	}

@@ -22,7 +22,7 @@ import (
 )
 
 type Workload struct {
-	Id          string                       `json:"id"`
+	ID          string                       `json:"id"`
 	Description string                       `json:"description"`
 	FWType      string                       `json:"-"`
 	VMType      payloads.Hypervisor          `json:"-"`
@@ -33,11 +33,11 @@ type Workload struct {
 }
 
 type Instance struct {
-	Id         string         `json:"instance_id"`
-	TenantId   string         `json:"tenant_id"`
+	ID         string         `json:"instance_id"`
+	TenantID   string         `json:"tenant_id"`
 	State      string         `json:"instance_state"`
-	WorkloadId string         `json:"workload_id"`
-	NodeId     string         `json:"node_id"`
+	WorkloadID string         `json:"workload_id"`
+	NodeID     string         `json:"node_id"`
 	MACAddress string         `json:"mac_address"`
 	IPAddress  string         `json:"ip_address"`
 	SSHIP      string         `json:"ssh_ip"`
@@ -47,7 +47,7 @@ type Instance struct {
 }
 
 type Tenant struct {
-	Id        string
+	ID        string
 	Name      string
 	CNCIID    string
 	CNCIMAC   string
@@ -71,13 +71,13 @@ func (r *Resource) OverLimit(request int) bool {
 
 type LogEntry struct {
 	Timestamp time.Time `json:"time_stamp"`
-	TenantId  string    `json:"tenant_id"`
+	TenantID  string    `json:"tenant_id"`
 	EventType string    `json:"type"`
 	Message   string    `json:"message"`
 }
 
 type NodeStats struct {
-	NodeId          string    `json:"node_id"`
+	NodeID          string    `json:"node_id"`
 	Timestamp       time.Time `json:"time_stamp"`
 	Load            int       `json:"load"`
 	MemTotalMB      int       `json:"mem_total_mb"`
@@ -88,7 +88,7 @@ type NodeStats struct {
 }
 
 type NodeSummary struct {
-	NodeId                string `json:"node_id"`
+	NodeID                string `json:"node_id"`
 	TotalInstances        int    `json:"total_instances"`
 	TotalRunningInstances int    `json:"total_running_instances"`
 	TotalPendingInstances int    `json:"total_pending_instances"`

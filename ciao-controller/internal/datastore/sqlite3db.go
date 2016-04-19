@@ -855,7 +855,7 @@ func (ds *sqliteDB) getTenantNoCache(id string) (t *tenant, err error) {
 
 	t = new(tenant)
 
-	err = row.Scan(&t.Id, &t.Name, &t.CNCIID, &t.CNCIMAC, &t.CNCIIP)
+	err = row.Scan(&t.ID, &t.Name, &t.CNCIID, &t.CNCIMAC, &t.CNCIIP)
 	if err != nil {
 		glog.Warning("unable to retrieve tenant from tenants")
 		if err == sql.ErrNoRows {
@@ -872,7 +872,7 @@ func (ds *sqliteDB) getTenantNoCache(id string) (t *tenant, err error) {
 		glog.V(2).Info(err)
 	}
 
-	t.instances, err = ds.getTenantInstances(t.Id)
+	t.instances, err = ds.getTenantInstances(t.ID)
 
 	return t, err
 }
@@ -894,7 +894,7 @@ func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
 
 	var VMType string
 
-	err := datastore.QueryRow(query, id).Scan(&work.Id, &work.Description, &work.filename, &work.FWType, &VMType, &work.ImageID, &work.ImageName)
+	err := datastore.QueryRow(query, id).Scan(&work.ID, &work.Description, &work.filename, &work.FWType, &VMType, &work.ImageID, &work.ImageName)
 	if err != nil {
 		return nil, err
 	}
@@ -940,17 +940,17 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 
 		var VMType string
 
-		err = rows.Scan(&wl.Id, &wl.Description, &wl.filename, &wl.FWType, &VMType, &wl.ImageID, &wl.ImageName)
+		err = rows.Scan(&wl.ID, &wl.Description, &wl.filename, &wl.FWType, &VMType, &wl.ImageID, &wl.ImageName)
 		if err != nil {
 			return nil, err
 		}
 
-		wl.Config, err = ds.getConfigNoCache(wl.Id)
+		wl.Config, err = ds.getConfigNoCache(wl.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		wl.Defaults, err = ds.getWorkloadDefaults(wl.Id)
+		wl.Defaults, err = ds.getWorkloadDefaults(wl.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -968,7 +968,7 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 func (ds *sqliteDB) updateTenant(t *tenant) (err error) {
 	db := ds.getTableDB("tenants")
 
-	cmd := fmt.Sprintf("UPDATE tenants SET cnci_id = '%s', cnci_mac = '%s', cnci_ip = '%s' WHERE id = '%s'", t.CNCIID, t.CNCIMAC, t.CNCIIP, t.Id)
+	cmd := fmt.Sprintf("UPDATE tenants SET cnci_id = '%s', cnci_mac = '%s', cnci_ip = '%s' WHERE id = '%s'", t.CNCIID, t.CNCIMAC, t.CNCIIP, t.ID)
 
 	ds.dbLock.Lock()
 	err = ds.exec(db, cmd)
@@ -1009,7 +1009,7 @@ func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
 		}
 
 		if id.Valid {
-			t.Id = id.String
+			t.ID = id.String
 		}
 		if name.Valid {
 			t.Name = name.String
@@ -1024,7 +1024,7 @@ func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
 			t.CNCIIP = cnciIP.String
 		}
 
-		t.Resources, err = ds.getTenantResources(t.Id)
+		t.Resources, err = ds.getTenantResources(t.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -1034,7 +1034,7 @@ func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
 			return nil, err
 		}
 
-		t.instances, err = ds.getTenantInstances(t.Id)
+		t.instances, err = ds.getTenantInstances(t.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -1101,7 +1101,7 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) (err error) {
 	query := `SELECT subnet, rest
 		  FROM tenant_network
 		  WHERE tenant_id = ?`
-	rows, err := tx.Query(query, tenant.Id)
+	rows, err := tx.Query(query, tenant.ID)
 	if err != nil {
 		glog.Warning(err)
 		tx.Rollback()
@@ -1188,7 +1188,7 @@ func (ds *sqliteDB) getInstances() (instances []*types.Instance, err error) {
 
 		var sshPort sql.NullInt64
 
-		err = rows.Scan(&i.Id, &i.TenantId, &i.State, &i.WorkloadId, &i.SSHIP, &sshPort, &i.NodeId, &i.MACAddress, &i.IPAddress)
+		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &i.WorkloadID, &i.SSHIP, &sshPort, &i.NodeID, &i.MACAddress, &i.IPAddress)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
@@ -1199,7 +1199,7 @@ func (ds *sqliteDB) getInstances() (instances []*types.Instance, err error) {
 			i.SSHPort = int(sshPort.Int64)
 		}
 
-		defaults, err := ds.getWorkloadDefaults(i.WorkloadId)
+		defaults, err := ds.getWorkloadDefaults(i.WorkloadID)
 		if err != nil {
 			return nil, err
 		}
@@ -1295,16 +1295,16 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 		}
 
 		if id.Valid {
-			i.Id = id.String
+			i.ID = id.String
 		}
 		if tenantID.Valid {
-			i.TenantId = tenantID.String
+			i.TenantID = tenantID.String
 		}
 		if state.Valid {
 			i.State = state.String
 		}
 		if workloadID.Valid {
-			i.WorkloadId = workloadID.String
+			i.WorkloadID = workloadID.String
 		}
 		if macAddress.Valid {
 			i.MACAddress = macAddress.String
@@ -1313,7 +1313,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 			i.IPAddress = ipAddress.String
 		}
 		if nodeID.Valid {
-			i.NodeId = nodeID.String
+			i.NodeID = nodeID.String
 		}
 		if sshIP.Valid {
 			i.SSHIP = sshIP.String
@@ -1322,7 +1322,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 			i.SSHPort = int(sshPort.Int64)
 		}
 
-		defaults, err := ds.getWorkloadDefaults(i.WorkloadId)
+		defaults, err := ds.getWorkloadDefaults(i.WorkloadID)
 		if err != nil {
 			return nil, err
 		}
@@ -1336,7 +1336,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 		}
 		i.Usage = usage
 
-		instances[i.Id] = i
+		instances[i.ID] = i
 	}
 	if err = rows.Err(); err != nil {
 		tx.Rollback()
@@ -1353,11 +1353,11 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 func (ds *sqliteDB) addInstance(instance *types.Instance) (err error) {
 	ds.dbLock.Lock()
 
-	err = ds.create("instances", instance.Id, instance.TenantId, instance.WorkloadId, instance.MACAddress, instance.IPAddress)
+	err = ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.IPAddress)
 
 	ds.dbLock.Unlock()
 
-	ds.addUsage(instance.Id, instance.Usage)
+	ds.addUsage(instance.ID, instance.Usage)
 
 	return
 }
@@ -1512,7 +1512,7 @@ func (ds *sqliteDB) getEventLog() (logEntries []*types.LogEntry, err error) {
 	logEntries = make([]*types.LogEntry, 0)
 	for rows.Next() {
 		var e types.LogEntry
-		err = rows.Scan(&e.Timestamp, &e.TenantId, &e.EventType, &e.Message)
+		err = rows.Scan(&e.Timestamp, &e.TenantID, &e.EventType, &e.Message)
 		if err != nil {
 			ds.tdbLock.RUnlock()
 			return nil, err
@@ -1611,7 +1611,7 @@ ON total_instances.node_id = total_exited.node_id
 	Summary = make([]*types.NodeSummary, 0)
 	for rows.Next() {
 		var n types.NodeSummary
-		err = rows.Scan(&n.NodeId, &n.TotalInstances, &n.TotalRunningInstances, &n.TotalPendingInstances, &n.TotalPausedInstances)
+		err = rows.Scan(&n.NodeID, &n.TotalInstances, &n.TotalRunningInstances, &n.TotalPendingInstances, &n.TotalPausedInstances)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
