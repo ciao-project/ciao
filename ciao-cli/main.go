@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -28,7 +27,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -48,42 +46,6 @@ const (
 	computeActionStart action = iota
 	computeActionStop
 )
-
-type scheme string
-
-const (
-	computeHTTP  scheme = "http"
-	computeHTTPS scheme = "https"
-)
-
-var computeScheme = computeHTTPS
-
-func (s *scheme) String() string {
-	switch *s {
-	case computeHTTP:
-		return "http"
-	case computeHTTPS:
-		return "https"
-	}
-
-	return ""
-}
-
-func (s *scheme) Set(value string) error {
-	for _, r := range strings.Split(value, ",") {
-		if r == "http" {
-			*s = computeHTTP
-			return nil
-		} else if r == "https" {
-			*s = computeHTTPS
-			return nil
-		} else {
-			return errors.New("Unknown scheme")
-		}
-	}
-
-	return nil
-}
 
 func debugf(format string, args ...interface{}) {
 	glog.V(2).Infof("ciao-cli DEBUG: "+format, args...)
@@ -160,7 +122,7 @@ type queryValue struct {
 }
 
 func buildComputeURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("%s://%s:%d/%s/", computeScheme, *controllerURL, *computePort, openstackComputeVersion)
+	prefix := fmt.Sprintf("https://%s:%d/%s/", *controllerURL, *computePort, openstackComputeVersion)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
@@ -192,11 +154,9 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.Header.Set("Accept", "application/json")
 	}
 
-	tlsConfig := &tls.Config{}
-	if computeScheme == computeHTTPS {
-		warningf("Skipping TLS verification for %s scheme\n", computeScheme)
-		tlsConfig = &tls.Config{InsecureSkipVerify: true}
-	}
+
+	warningf("Skipping TLS verification\n")
+	tlsConfig := &tls.Config{InsecureSkipVerify: true}
 
 	transport := &http.Transport{
 		TLSClientConfig: tlsConfig,
@@ -810,7 +770,6 @@ func getCiaoEnvVariables() {
 }
 
 func main() {
-	flag.Var(&computeScheme, "scheme", "Compute API URL scheme (http or https)")
 	flag.Parse()
 
 	getCiaoEnvVariables()

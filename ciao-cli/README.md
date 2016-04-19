@@ -80,8 +80,6 @@ Usage of ./ciao-cli:
     	Openstack Service Username (default "nova")
   -restart-instance
     	Restart a Ciao instance
-  -scheme value
-    	Compute API URL scheme (http or https) (default https)
   -stderrthreshold value
     	logs at or above this threshold go to stderr
   -stop-instance
