@@ -1454,12 +1454,15 @@ func TestMain(m *testing.M) {
 
 	context = new(controller)
 	context.ds = new(datastore.Datastore)
-	err := context.ds.Connect("./ciao-controller-test.db", "./ciao-controller-test-tdb.db")
-	if err != nil {
-		os.Exit(1)
+
+	dsConfig := datastore.Config{
+		PersistentURI:     "./ciao-controller-test.db",
+		TransientURI:      "./ciao-controller-test-tdb.db",
+		InitTablesPath:    *tablesInitPath,
+		InitWorkloadsPath: *workloadsPath,
 	}
 
-	err = context.ds.Init(*tablesInitPath, *workloadsPath)
+	err := context.ds.Init(dsConfig)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -1479,7 +1482,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	context.client.Disconnect()
-	context.ds.Disconnect()
+	context.ds.Exit()
 
 	os.Remove("./ciao-controller-test.db")
 	os.Remove("./ciao-controller-test.db-shm")

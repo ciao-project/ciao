@@ -73,13 +73,14 @@ func main() {
 	context := new(controller)
 	context.ds = new(datastore.Datastore)
 
-	err = context.ds.Connect(*persistentDatastoreLocation, *transientDatastoreLocation)
-	if err != nil {
-		glog.Fatalf("unable to connect to datastore: %s", err)
-		return
+	dsConfig := datastore.Config{
+		PersistentURI:     *persistentDatastoreLocation,
+		TransientURI:      *transientDatastoreLocation,
+		InitTablesPath:    *tablesInitPath,
+		InitWorkloadsPath: *workloadsPath,
 	}
 
-	err = context.ds.Init(*tablesInitPath, *workloadsPath)
+	err = context.ds.Init(dsConfig)
 	if err != nil {
 		glog.Fatalf("unable to Init datastore: %s", err)
 		return
@@ -116,6 +117,6 @@ func main() {
 	go createComputeAPI(context)
 
 	wg.Wait()
-	context.ds.Disconnect()
+	context.ds.Exit()
 	context.client.Disconnect()
 }

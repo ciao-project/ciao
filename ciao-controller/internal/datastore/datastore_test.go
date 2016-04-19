@@ -98,7 +98,7 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 	return
 }
 
-func BenchmarkGetTenantResources(b *testing.B) {
+func BenchmarkGetTenantNoCache(b *testing.B) {
 	/* add a new tenant */
 	tuuid := uuid.Generate().String()
 	_, err := ds.AddTenant(tuuid)
@@ -108,7 +108,7 @@ func BenchmarkGetTenantResources(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = ds.getTenantResources(tuuid)
+		_, err = ds.db.getTenantNoCache(tuuid)
 		if err != nil {
 			b.Error(err)
 		}
@@ -137,21 +137,6 @@ func BenchmarkGetAllInstances(b *testing.B) {
 		_, err := ds.GetAllInstances()
 		if err != nil {
 			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkGetTenantCNCI(b *testing.B) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		b.Error(err)
-	}
-
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		_, _, _, err := ds.getTenantCNCI(tenant.Id)
-		if err != nil {
-			b.Error(err)
 		}
 	}
 }
@@ -891,7 +876,7 @@ func TestGetBatchFrameStatistics(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = ds.GetBatchFrameStatistics("batch_frame_test")
+	_, err = ds.db.getBatchFrameStatistics("batch_frame_test")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -931,40 +916,40 @@ func TestGetBatchFrameSummary(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = ds.GetBatchFrameSummary()
+	_, err = ds.db.getBatchFrameSummary()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
 func TestGetNodeSummary(t *testing.T) {
-	_, err := ds.GetNodeSummary()
+	_, err := ds.db.getNodeSummary()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
 func TestGetEventLog(t *testing.T) {
-	err := ds.logEvent("test-tenantID", "info", "this is a test")
+	err := ds.db.logEvent("test-tenantID", "info", "this is a test")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	_, err = ds.GetEventLog()
+	_, err = ds.db.getEventLog()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
 func TestLogEvent(t *testing.T) {
-	err := ds.logEvent("test-tenantID", "info", "this is a test")
+	err := ds.db.logEvent("test-tenantID", "info", "this is a test")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
 func TestClearLog(t *testing.T) {
-	err := ds.ClearLog()
+	err := ds.db.clearLog()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -990,7 +975,7 @@ func TestAddFrameStat(t *testing.T) {
 		EndTimestamp:   time.Now().Format(time.RFC3339Nano),
 		Nodes:          nodes,
 	}
-	err := ds.addFrameStat(stat)
+	err := ds.db.addFrameStat(stat)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1134,105 +1119,10 @@ func TestNonOverlappingTenantIP(t *testing.T) {
 }
 
 func TestGetCNCIWorkloadID(t *testing.T) {
-	_, err := ds.GetCNCIWorkloadID()
+	_, err := ds.db.getCNCIWorkloadID()
 	if err != nil {
 		t.Error(err)
 	}
-}
-
-func TestGetConfig(t *testing.T) {
-	wls, err := ds.GetWorkloads()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("No Workloads Found")
-	}
-
-	_, err = ds.getConfig(wls[0].Id)
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-func TestGetImageInfo(t *testing.T) {
-	wls, err := ds.GetWorkloads()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if wls == nil {
-		t.Errorf("No Workloads to Test")
-	}
-
-	wl := wls[0]
-
-	// this should hit cache
-	_, _, err = ds.getImageInfo(wl.Id)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// clear out of cache to exercise sql
-	ds.workloadsLock.Lock()
-	delete(ds.workloads, wl.Id)
-	ds.workloadsLock.Unlock()
-
-	_, _, err = ds.getImageInfo(wl.Id)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// put it back in the cache
-	work, err := ds.getWorkload(wl.Id)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ds.workloadsLock.Lock()
-	ds.workloads[wl.Id] = work
-	ds.workloadsLock.Unlock()
-}
-
-func TestGetWorkloadDefaults(t *testing.T) {
-	wls, err := ds.GetWorkloads()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if wls == nil {
-		t.Error("No Workloads to test")
-	}
-
-	wl := wls[0]
-
-	// this should hit the cache
-	_, err = ds.getWorkloadDefaults(wl.Id)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// clear cache to exercise sql
-	ds.workloadsLock.Lock()
-	delete(ds.workloads, wl.Id)
-	ds.workloadsLock.Unlock()
-
-	// this should not hit the cache
-	_, err = ds.getWorkloadDefaults(wl.Id)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// put it back in the cache
-	work, err := ds.getWorkload(wl.Id)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ds.workloadsLock.Lock()
-	ds.workloads[wl.Id] = work
-	ds.workloadsLock.Unlock()
 }
 
 func TestAddLimit(t *testing.T) {
@@ -1272,66 +1162,13 @@ func TestAddLimit(t *testing.T) {
 	}
 }
 
-func TestGetTenantResources(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Error(err)
-	}
-
-	// this should hit the cache
-	_, err = ds.getTenantResources(tenant.Id)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// clear cached
-	ds.tenantsLock.Lock()
-	delete(ds.tenants, tenant.Id)
-	ds.tenantsLock.Unlock()
-
-	_, err = ds.getTenantResources(tenant.Id)
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-func TestGetTenantCNCI(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Error(err)
-	}
-
-	// this will hit cache
-	id, ip, mac, err := ds.getTenantCNCI(tenant.Id)
-	if err != nil {
-		t.Error(err)
-	}
-	if id != tenant.CNCIID || ip != tenant.CNCIIP || mac != tenant.CNCIMAC {
-		t.Error(err)
-	}
-
-	// clear cached
-	ds.tenantsLock.Lock()
-	delete(ds.tenants, tenant.Id)
-	ds.tenantsLock.Unlock()
-
-	// exercise sql
-	id, ip, mac, err = ds.getTenantCNCI(tenant.Id)
-	if err != nil {
-		t.Error(err)
-	}
-	if id != tenant.CNCIID || ip != tenant.CNCIIP || mac != tenant.CNCIMAC {
-		t.Error(err)
-	}
-}
-
 func TestRemoveTenantCNCI(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = ds.removeTenantCNCI(tenant.Id, tenant.CNCIID)
+	err = ds.removeTenantCNCI(tenant.Id)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1353,36 +1190,6 @@ func TestRemoveTenantCNCI(t *testing.T) {
 	}
 	if testTenant.CNCIID != "" || testTenant.CNCIIP != "" {
 		t.Error("Database not updated")
-	}
-}
-
-func TestGetCNCITenant(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Error(err)
-	}
-
-	tenantID, err := ds.getCNCITenant(tenant.CNCIID)
-	if err != nil {
-		t.Error(err)
-	}
-	if tenantID != tenant.Id {
-		t.Error("Did not retrieve correct tenant")
-	}
-}
-
-func TestIsInstanceCNCI(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Error(err)
-	}
-
-	ok, err := ds.isInstanceCNCI(tenant.CNCIID)
-	if err != nil {
-		t.Error(err)
-	}
-	if !ok {
-		t.Error("Instance should have been a CNCI")
 	}
 }
 
@@ -1806,19 +1613,21 @@ func TestMain(m *testing.M) {
 
 	ds = new(Datastore)
 
-	err := ds.Connect("./ciao-controller-test.db", "./ciao-controller-test-tdb.db")
-	if err != nil {
-		os.Exit(1)
+	dsConfig := Config{
+		PersistentURI:     "ciao-controller-test.db",
+		TransientURI:      "ciao-controller-test-tdb.db",
+		InitTablesPath:    *tablesInitPath,
+		InitWorkloadsPath: *workloadsPath,
 	}
 
-	err = ds.Init(*tablesInitPath, *workloadsPath)
+	err := ds.Init(dsConfig)
 	if err != nil {
 		os.Exit(1)
 	}
 
 	code := m.Run()
 
-	ds.Disconnect()
+	ds.Exit()
 	os.Remove("./ciao-controller-test.db")
 	os.Remove("./ciao-controller-test.db-wal")
 	os.Remove("./ciao-controller-test.db-shm")
