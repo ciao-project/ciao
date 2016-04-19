@@ -1199,6 +1199,20 @@ func (ds *sqliteDB) getInstances() (instances []*types.Instance, err error) {
 			i.SSHPort = int(sshPort.Int64)
 		}
 
+		defaults, err := ds.getWorkloadDefaults(i.WorkloadId)
+		if err != nil {
+			return nil, err
+		}
+
+		// convert RequestedResources into a map[string]int
+		// TBD: shouldn't we just change getWorkloadDefaults
+		// to return a map?
+		usage := make(map[string]int)
+		for c := range defaults {
+			usage[string(defaults[c].Type)] = defaults[c].Value
+		}
+		i.Usage = usage
+
 		instances = append(instances, &i)
 	}
 	if err = rows.Err(); err != nil {
@@ -1307,6 +1321,21 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 		if sshPort.Valid {
 			i.SSHPort = int(sshPort.Int64)
 		}
+
+		defaults, err := ds.getWorkloadDefaults(i.WorkloadId)
+		if err != nil {
+			return nil, err
+		}
+
+		// convert RequestedResources into a map[string]int
+		// TBD: shouldn't we just change getWorkloadDefaults
+		// to return a map?
+		usage := make(map[string]int)
+		for c := range defaults {
+			usage[string(defaults[c].Type)] = defaults[c].Value
+		}
+		i.Usage = usage
+
 		instances[i.Id] = i
 	}
 	if err = rows.Err(); err != nil {
@@ -1327,6 +1356,8 @@ func (ds *sqliteDB) addInstance(instance *types.Instance) (err error) {
 	err = ds.create("instances", instance.Id, instance.TenantId, instance.WorkloadId, instance.MACAddress, instance.IPAddress)
 
 	ds.dbLock.Unlock()
+
+	ds.addUsage(instance.Id, instance.Usage)
 
 	return
 }

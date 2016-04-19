@@ -51,6 +51,13 @@ func addTestInstance(tenant *types.Tenant, workload *types.Workload) (instance *
 
 	mac := newTenantHardwareAddr(ip)
 
+	resources := make(map[string]int)
+	rr := workload.Defaults
+
+	for i := range rr {
+		resources[string(rr[i].Type)] = rr[i].Value
+	}
+
 	instance = &types.Instance{
 		TenantId:   tenant.Id,
 		WorkloadId: workload.Id,
@@ -59,21 +66,13 @@ func addTestInstance(tenant *types.Tenant, workload *types.Workload) (instance *
 		CNCI:       false,
 		IPAddress:  ip.String(),
 		MACAddress: mac.String(),
+		Usage:      resources,
 	}
 
 	err = ds.AddInstance(instance)
 	if err != nil {
 		return
 	}
-
-	resources := make(map[string]int)
-	rr := workload.Defaults
-
-	for i := range rr {
-		resources[string(rr[i].Type)] = rr[i].Value
-	}
-
-	err = ds.AddUsage(tenant.Id, instance.Id, resources)
 
 	return
 }

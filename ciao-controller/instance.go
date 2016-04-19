@@ -60,6 +60,8 @@ func newInstance(context *controller, tenantID string, workload *types.Workload)
 		return
 	}
 
+	usage := config.GetResources()
+
 	newInstance := types.Instance{
 		TenantId:   tenantID,
 		WorkloadId: workload.Id,
@@ -68,6 +70,7 @@ func newInstance(context *controller, tenantID string, workload *types.Workload)
 		CNCI:       config.cnci,
 		IPAddress:  config.ip,
 		MACAddress: config.mac,
+		Usage:      usage,
 	}
 
 	i = &instance{
@@ -82,8 +85,6 @@ func (i *instance) Add() (err error) {
 	if i.CNCI == false {
 		ds := i.context.ds
 		go ds.AddInstance(&i.Instance)
-		usage := i.newConfig.GetResources()
-		err = ds.AddUsage(i.TenantId, i.Id, usage)
 	} else {
 		i.context.ds.AddTenantCNCI(i.TenantId, i.Id, i.MACAddress)
 	}

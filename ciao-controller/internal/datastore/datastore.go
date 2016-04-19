@@ -91,8 +91,6 @@ type persistentStore interface {
 	getInstances() (instances []*types.Instance, err error)
 	addInstance(instance *types.Instance) (err error)
 	removeInstance(instanceID string) (err error)
-	// this should be merged into addInstance
-	addUsage(instanceID string, usage map[string]int)
 	// this should be merged into removeInstance
 	deleteUsageNoCache(instanceID string) (err error)
 
@@ -718,7 +716,28 @@ func (ds *Datastore) AddInstance(instance *types.Instance) (err error) {
 	ds.instancesLock.Unlock()
 
 	ds.tenantsLock.Lock()
-	ds.tenants[instance.TenantId].instances[instance.Id] = instance
+
+	tenant := ds.tenants[instance.TenantId]
+	if tenant != nil {
+		for name, val := range instance.Usage {
+			for i := range tenant.Resources {
+				if tenant.Resources[i].Rname == name {
+					tenant.Resources[i].Usage += val
+					break
+				}
+			}
+		}
+
+		// increment instances count
+		for i := range tenant.Resources {
+			if tenant.Resources[i].Rtype == 1 {
+				tenant.Resources[i].Usage++
+				break
+			}
+		}
+		tenant.instances[instance.Id] = instance
+	}
+
 	ds.tenantsLock.Unlock()
 
 	return ds.db.addInstance(instance)
@@ -901,52 +920,12 @@ func (ds *Datastore) GetInstanceInfo(instanceID string) (nodeID string, state st
 	return
 }
 
-// AddUsage updates the accounting against this tenant's limits.
-// usage is a map of resource name to the delta
-func (ds *Datastore) AddUsage(tenantID string, instanceID string, usage map[string]int) (err error) {
-	// update tenant cache
-	ds.tenantsLock.Lock()
-	tenant := ds.tenants[tenantID]
-	if tenant != nil {
-		for name, val := range usage {
-			for i := range tenant.Resources {
-				if tenant.Resources[i].Rname == name {
-					tenant.Resources[i].Usage += val
-					break
-				}
-			}
-		}
-		// increment instances count
-		for i := range tenant.Resources {
-			if tenant.Resources[i].Rtype == 1 {
-				tenant.Resources[i].Usage++
-				break
-			}
-		}
-	}
-	ds.tenantsLock.Unlock()
-
-	go ds.db.addUsage(instanceID, usage)
-	return
-}
-
 func (ds *Datastore) deleteAllUsage(i *types.Instance, tenantID string) (err error) {
-	// get the usage into a map
-	ds.workloadsLock.RLock()
-	wl := ds.workloads[i.WorkloadId]
-	ds.workloadsLock.RUnlock()
-
-	// convert RequestedResources into a map[string]int
-	usage := make(map[string]int)
-	for i := range wl.Defaults {
-		usage[string(wl.Defaults[i].Type)] = wl.Defaults[i].Value
-	}
-
 	// update tenant usage in cache
 	ds.tenantsLock.Lock()
 	tenant := ds.tenants[tenantID]
 	if tenant != nil {
-		for name, val := range usage {
+		for name, val := range i.Usage {
 			for i := range tenant.Resources {
 				if tenant.Resources[i].Rname == name {
 					tenant.Resources[i].Usage -= val

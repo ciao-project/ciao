@@ -33,16 +33,17 @@ type Workload struct {
 }
 
 type Instance struct {
-	Id         string `json:"instance_id"`
-	TenantId   string `json:"tenant_id"`
-	State      string `json:"instance_state"`
-	WorkloadId string `json:"workload_id"`
-	NodeId     string `json:"node_id"`
-	MACAddress string `json:"mac_address"`
-	IPAddress  string `json:"ip_address"`
-	SSHIP      string `json:"ssh_ip"`
-	SSHPort    int    `json:"ssh_port"`
-	CNCI       bool   `json:"-"`
+	Id         string         `json:"instance_id"`
+	TenantId   string         `json:"tenant_id"`
+	State      string         `json:"instance_state"`
+	WorkloadId string         `json:"workload_id"`
+	NodeId     string         `json:"node_id"`
+	MACAddress string         `json:"mac_address"`
+	IPAddress  string         `json:"ip_address"`
+	SSHIP      string         `json:"ssh_ip"`
+	SSHPort    int            `json:"ssh_port"`
+	CNCI       bool           `json:"-"`
+	Usage      map[string]int `json:"-"`
 }
 
 type Tenant struct {
