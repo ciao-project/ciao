@@ -262,19 +262,19 @@ $GOBIN/ciao-cli -list-workloads
 ### Launch a new instance
 
 ```shell
-$GOBIN/ciao-cli -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7
+$GOBIN/ciao-cli -launch-instances -workload 69e84267-ed01-4738-b15f-b47de06b62e7
 ```
 
 ### Launch 1000 new instances
 
 ```shell
-$GOBIN/ciao-cli -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instances 1000
+$GOBIN/ciao-cli -launch-instances -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instances 1000
 ```
 
 ### Launch 1000 instances and trace them
 
 ```shell
-$GOBIN/ciao-cli -launch-instance -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instance-label start_trace_20160415
+$GOBIN/ciao-cli -launch-instances -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instance-label start_trace_20160415
 ```
 
 ### Stop a running instance
