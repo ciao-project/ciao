@@ -56,5 +56,5 @@ Now you can connect to this CNCI (running on the bare metal host) from a VM
 running on 192.168.0.103 created using the command
 
 ```
-cncli -cnci 192.168.0.100 -subnet 192.168.0.0/24 -vnicsubnet 172.1.1.0/24 -vnicIP 172.1.1.24 -operation create
+sudo cncli -cnci 192.168.0.100 -subnet 192.168.0.0/24 -vnicsubnet 172.1.1.0/24 -vnicIP 172.1.1.24 -operation create
 ```

@@ -1,3 +1,4 @@
+#!/bin/bash
 sudo ./snnetcli create bridge br00
 sudo ./snnetcli show br00
 sudo ./snnetcli enable bridge br00
