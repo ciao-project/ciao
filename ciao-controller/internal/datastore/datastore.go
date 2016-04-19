@@ -918,32 +918,6 @@ func (ds *Datastore) GetInstanceInfo(instanceID string) (nodeID string, state st
 	return
 }
 
-func (ds *Datastore) deleteAllUsage(i *types.Instance, tenantID string) (err error) {
-	// update tenant usage in cache
-	ds.tenantsLock.Lock()
-	tenant := ds.tenants[tenantID]
-	if tenant != nil {
-		for name, val := range i.Usage {
-			for i := range tenant.Resources {
-				if tenant.Resources[i].Rname == name {
-					tenant.Resources[i].Usage -= val
-					break
-				}
-			}
-		}
-		// decrement instances count
-		for i := range tenant.Resources {
-			if tenant.Resources[i].Rtype == 1 {
-				tenant.Resources[i].Usage--
-				break
-			}
-		}
-	}
-	ds.tenantsLock.Unlock()
-
-	return
-}
-
 // HandleStats makes sure that the data from the stat payload is stored.
 func (ds *Datastore) HandleStats(stat payloads.Stat) (err error) {
 	if stat.Load != -1 {
