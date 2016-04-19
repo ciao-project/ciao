@@ -101,11 +101,11 @@ var (
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	computeNode      = flag.String("cn", "", "Compute node UUID")
 	cnci             = flag.String("cnci", "", "CNCI UUID")
-	controllerURL    = flag.String("controller", "localhost", "Controller URL")
+	controllerURL    = flag.String("controller", "", "Controller URL")
 	computePort      = flag.Int("computeport", openstackComputePort, "Openstack Compute API port")
 	identityURL      = flag.String("identity", "", "Keystone URL")
-	identityUser     = flag.String("username", "nova", "Openstack Service Username")
-	identityPassword = flag.String("password", "nova", "Openstack Service Username")
+	identityUser     = flag.String("username", "", "Openstack Service Username")
+	identityPassword = flag.String("password", "", "Openstack Service Username")
 	dumpLabel        = flag.String("dump-label", "", "Dump all trace data for a given label")
 )
 
@@ -153,7 +153,6 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
 	}
-
 
 	warningf("Skipping TLS verification\n")
 	tlsConfig := &tls.Config{InsecureSkipVerify: true}
@@ -747,23 +746,23 @@ func getCiaoEnvVariables() {
 	infof("\t%s:%s\n", ciaoPasswordEnv, password)
 	infof("\t%s:%s\n", ciaoComputePortEnv, port)
 
-	if identity != "" {
+	if identity != "" && *identityURL == "" {
 		*identityURL = identity
 	}
 
-	if controller != "" {
+	if controller != "" && *controllerURL == "" {
 		*controllerURL = controller
 	}
 
-	if username != "" {
+	if username != "" && *identityUser == "" {
 		*identityUser = username
 	}
 
-	if password != "" {
+	if password != "" && *identityPassword == "" {
 		*identityPassword = password
 	}
 
-	if port != "" {
+	if port != "" && *computePort == openstackComputePort {
 		*computePort, _ = strconv.Atoi(port)
 	}
 
