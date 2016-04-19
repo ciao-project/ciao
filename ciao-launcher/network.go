@@ -75,12 +75,6 @@ func initNetworkPhase1() error {
 }
 
 func initDockerNetworking(ctx context.Context) error {
-	err := checkDockerServerVersion("1.10.0", ctx)
-	if err != nil {
-		glog.Warningf("Docker Version check failed: %v", err)
-		return err
-	}
-
 	dockerPlugin := libsnnet.NewDockerPlugin()
 	if err := dockerPlugin.Init(); err != nil {
 		glog.Warningf("Docker Init failed: %v", err)

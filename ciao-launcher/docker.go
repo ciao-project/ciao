@@ -18,7 +18,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"path"
@@ -28,7 +27,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/pkg/version"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/container"
@@ -451,27 +449,4 @@ func dockerKillInstance(instanceDir string) {
 	if err != nil {
 		glog.Warningf("Unable to delete docker instance %s err %v", dockerID, err)
 	}
-}
-
-func checkDockerServerVersion(requiredVersion string, ctx context.Context) error {
-
-	cli, err := getDockerClient()
-	if err != nil {
-		return err
-	}
-
-	ver, err := cli.ServerVersion(ctx)
-	if err != nil {
-		glog.Errorf("Unable to retrieve info from docker server err: %v", err)
-		return err
-	}
-
-	glog.Infof("Docker server version %s", ver.Version)
-
-	if version.Version(ver.Version).LessThan(version.Version(requiredVersion)) {
-		return fmt.Errorf("Docker is too old.  Required >= %s.  Found %s.  Some things might not work.",
-			requiredVersion, ver.Version)
-	}
-
-	return nil
 }
