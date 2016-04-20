@@ -780,16 +780,33 @@ func main() {
 			}
 
 			if len(projects) > 1 {
-				fmt.Printf("Available projects for %s:\n", *identityUser)
-				for i, p := range projects {
-					fmt.Printf("\t Project[%d]: %s (%s)\n", i+1, p.Name, p.ID)
-				}
-				fatalf("Please specify a project to use with -tenant-name or -tenant-id")
-			}
+				if len(*tenantID) == 0 {
+					fmt.Printf("Available projects for %s:\n", *identityUser)
+					for i, p := range projects {
+						fmt.Printf("\t Project[%d]: %s (%s)\n", i+1, p.Name, p.ID)
+					}
+					fatalf("Please specify a project to use with -tenant-name or -tenant-id")
+				} else {
+					for _, p := range projects {
+						if p.ID != *tenantID {
+							continue
+						}
+						*tenantName = p.Name
+					}
 
-			*tenantName = projects[0].Name
-			if len(*tenantID) == 0 {
-				*tenantID = projects[0].ID
+					if len(*tenantName) == 0 {
+						fatalf("No tenant name for %s", *tenantID)
+					}
+				}
+			} else {
+				if len(*tenantID) != 0 && projects[0].ID != *tenantID {
+					fatalf("No tenant name for %s", *tenantID)
+				}
+
+				*tenantName = projects[0].Name
+				if len(*tenantID) == 0 {
+					*tenantID = projects[0].ID
+				}
 			}
 
 			warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
