@@ -323,6 +323,11 @@ func listTenantResources(tenant string) {
 		fatalf(err.Error())
 	}
 
+	if len(usage.Usages) == 0 {
+		fmt.Printf("No usage history for %s\n", tenant)
+		return
+	}
+
 	fmt.Printf("Usage for tenant %s:\n", tenant)
 	for _, u := range usage.Usages {
 		fmt.Printf("\t%v: [%d CPUs] [%d MB memory] [%d MB disk]\n", u.Timestamp, u.VCPU, u.Memory, u.Disk)
