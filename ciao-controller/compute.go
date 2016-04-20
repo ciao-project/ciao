@@ -193,7 +193,6 @@ type nodePager struct {
 func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, nodes []payloads.CiaoComputeNode, limit int, offset int) ([]byte, error) {
 	var computeNodes payloads.CiaoComputeNodes
 
-	//	servers.TotalServers = len(instances)
 	pageLength := 0
 
 	glog.V(2).Infof("Get nodes limit [%d] offset [%d]", limit, offset)
@@ -248,6 +247,75 @@ func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *h
 			}
 
 			return pager.getNodes(filterType, filter, pager.nodes[i+1:], limit, 0)
+		}
+	}
+
+	return nil, fmt.Errorf("Item %s not found", lastSeen)
+}
+
+type nodeServerPager struct {
+	context   *controller
+	instances []payloads.CiaoServerStats
+}
+
+func (pager *nodeServerPager) getNodeServers(filterType pagerFilterType, filter string, instances []payloads.CiaoServerStats,
+	limit int, offset int) ([]byte, error) {
+	var servers payloads.CiaoServersStats
+
+	pageLength := 0
+
+	glog.V(2).Infof("Get nodes limit [%d] offset [%d]", limit, offset)
+
+	if instances == nil || offset >= len(instances) {
+		b, err := json.Marshal(servers)
+		if err != nil {
+			return nil, err
+		}
+
+		return b, nil
+	}
+
+	for _, instance := range instances[offset:] {
+		servers.Servers = append(servers.Servers, instance)
+
+		pageLength++
+		if limit > 0 && pageLength >= limit {
+			break
+		}
+	}
+
+	b, err := json.Marshal(servers)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func (pager *nodeServerPager) filter(filterType pagerFilterType, filter string, instance payloads.CiaoServerStats) bool {
+	return false
+}
+
+func (pager *nodeServerPager) nextPage(filterType pagerFilterType, filter string, r *http.Request) ([]byte, error) {
+	limit, offset, lastSeen := pagerQueryParse(r)
+
+	glog.V(2).Infof("Next page marker [%s] limit [%d] offset [%d]", lastSeen, limit, offset)
+
+	if lastSeen == "" {
+		if limit != 0 {
+			return pager.getNodeServers(filterType, filter, pager.instances, limit, offset)
+		}
+
+		return pager.getNodeServers(filterType, filter, pager.instances, 0, offset)
+	}
+
+	for i, instance := range pager.instances {
+		if instance.ID == lastSeen {
+			if i >= len(pager.instances)-1 {
+				return pager.getNodeServers(filterType, filter, nil, limit, 0)
+			}
+
+			return pager.getNodeServers(filterType, filter, pager.instances[i+1:], limit, 0)
 		}
 	}
 
@@ -1081,7 +1149,12 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 		}
 	}
 
-	b, err := json.Marshal(serversStats)
+	pager := nodeServerPager{
+		context:   context,
+		instances: serversStats.Servers,
+	}
+
+	b, err := pager.nextPage(none, "", r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
