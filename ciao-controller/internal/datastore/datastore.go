@@ -1064,7 +1064,7 @@ func (ds *Datastore) GetTenantUsage(tenantID string, start time.Time, end time.T
 
 	tenantUsage := ds.tenantUsage[tenantID]
 	if tenantUsage == nil || len(tenantUsage) == 0 {
-		return nil, fmt.Errorf("No usage history for %s", tenantID)
+		return nil, nil
 	}
 
 	historyLength := len(tenantUsage)
