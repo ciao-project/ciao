@@ -249,7 +249,7 @@ func (i *identity) validateProjectRole(token string, project string, role string
 	return false
 }
 
-func newIdentityClient(config identityConfig) (id *identity, err error) {
+func newIdentityClient(config identityConfig) (*identity, error) {
 	opt := gophercloud.AuthOptions{
 		IdentityEndpoint: config.endpoint + "/v3/",
 		Username:         config.serviceUserName,
@@ -260,7 +260,7 @@ func newIdentityClient(config identityConfig) (id *identity, err error) {
 	}
 	provider, err := openstack.AuthenticatedClient(opt)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	provider.ReauthFunc = func() error {
@@ -273,8 +273,9 @@ func newIdentityClient(config identityConfig) (id *identity, err error) {
 		return nil, errors.New("Unable to get keystone V3 client")
 	}
 
-	id = &identity{
+	id := &identity{
 		scV3: v3client,
 	}
-	return
+
+	return id, err
 }
