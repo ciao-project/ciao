@@ -136,12 +136,14 @@ type Datastore struct {
 // The sql tables are populated with initial data from csv
 // files if this is the first time the database has been
 // created.  The datastore caches are also filled.
-func (ds *Datastore) Init(config Config) (err error) {
+func (ds *Datastore) Init(config Config) error {
 	// init persistentStore first...
-	ds.db, err = getPersistentStore(config)
+	ps, err := getPersistentStore(config)
 	if err != nil {
-		return
+		return err
 	}
+
+	ds.db = ps
 
 	ds.cnciAddedChans = make(map[string]chan bool)
 	ds.cnciAddedLock = &sync.Mutex{}
@@ -220,7 +222,7 @@ func (ds *Datastore) Init(config Config) (err error) {
 	ds.tenantUsage = make(map[string][]payloads.CiaoUsage)
 	ds.tenantUsageLock = &sync.RWMutex{}
 
-	return
+	return err
 }
 
 func (ds *Datastore) Exit() {
@@ -238,17 +240,19 @@ func (ds *Datastore) AddTenantChan(c chan bool, tenantID string) {
 }
 
 // AddLimit allows the caller to store a limt for a specific resource for a tenant.
-func (ds *Datastore) AddLimit(tenantID string, resourceID int, limit int) (err error) {
-	err = ds.db.addLimit(tenantID, resourceID, limit)
+func (ds *Datastore) AddLimit(tenantID string, resourceID int, limit int) error {
+	err := ds.db.addLimit(tenantID, resourceID, limit)
 	if err != nil {
-		return
+		return err
 	}
 
 	// update cache
 	ds.tenantsLock.Lock()
+
 	tenant := ds.tenants[tenantID]
 	if tenant != nil {
 		resources := tenant.Resources
+
 		for i := range resources {
 			if resources[i].Rtype == resourceID {
 				resources[i].Limit = limit
@@ -256,15 +260,17 @@ func (ds *Datastore) AddLimit(tenantID string, resourceID int, limit int) (err e
 			}
 		}
 	}
+
 	ds.tenantsLock.Unlock()
-	return
+
+	return err
 }
 
-func newHardwareAddr() (hw net.HardwareAddr, err error) {
+func newHardwareAddr() (net.HardwareAddr, error) {
 	buf := make([]byte, 6)
-	_, err = rand.Read(buf)
+	_, err := rand.Read(buf)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	// vnic creation seems to require not just the
@@ -276,18 +282,20 @@ func newHardwareAddr() (hw net.HardwareAddr, err error) {
 	if buf[1] == 0 {
 		buf[1] = 3
 	}
-	hw = net.HardwareAddr(buf)
-	return
+
+	hw := net.HardwareAddr(buf)
+
+	return hw, nil
 }
 
 // AddTenant stores information about a tenant into the datastore.
 // it creates a MAC address for the tenant network and makes sure
 // that this new tenant is cached.
-func (ds *Datastore) AddTenant(id string) (tenant *types.Tenant, err error) {
+func (ds *Datastore) AddTenant(id string) (*types.Tenant, error) {
 	hw, err := newHardwareAddr()
 	if err != nil {
 		glog.V(2).Info("error creating mac address", err)
-		return
+		return nil, err
 	}
 
 	err = ds.db.addTenant(id, hw.String())
@@ -304,21 +312,21 @@ func (ds *Datastore) AddTenant(id string) (tenant *types.Tenant, err error) {
 	return &t.Tenant, err
 }
 
-func (ds *Datastore) getTenant(id string) (t *tenant, err error) {
+func (ds *Datastore) getTenant(id string) (*tenant, error) {
 	// check cache first
 	ds.tenantsLock.RLock()
-	t = ds.tenants[id]
+	t := ds.tenants[id]
 	ds.tenantsLock.RUnlock()
 
 	if t != nil {
-		return
+		return t, nil
 	}
 
 	return ds.db.getTenantNoCache(id)
 }
 
 // GetTenant returns details about a tenant referenced by the uuid
-func (ds *Datastore) GetTenant(id string) (tenant *types.Tenant, err error) {
+func (ds *Datastore) GetTenant(id string) (*types.Tenant, error) {
 	t, err := ds.getTenant(id)
 	if err != nil || t == nil {
 		return nil, err
@@ -391,12 +399,12 @@ func (ds *Datastore) GetWorkloads() ([]*types.Workload, error) {
 
 // AddCNCIIP will associate a new IP address with an existing CNCI
 // via the mac address
-func (ds *Datastore) AddCNCIIP(cnciMAC string, ip string) (err error) {
-	ds.tenantsLock.Lock()
-
+func (ds *Datastore) AddCNCIIP(cnciMAC string, ip string) error {
 	var ok bool
 	var tenantID string
 	var tenant *tenant
+
+	ds.tenantsLock.Lock()
 
 	for tenantID, tenant = range ds.tenants {
 		if tenant.CNCIMAC == cnciMAC {
@@ -415,7 +423,7 @@ func (ds *Datastore) AddCNCIIP(cnciMAC string, ip string) (err error) {
 	ds.tenantsLock.Unlock()
 
 	// not sure what to do about an error
-	_ = ds.db.updateTenant(tenant)
+	err := ds.db.updateTenant(tenant)
 
 	ds.cnciAddedLock.Lock()
 
@@ -430,13 +438,13 @@ func (ds *Datastore) AddCNCIIP(cnciMAC string, ip string) (err error) {
 		c <- true
 	}
 
-	return
+	return err
 }
 
 // AddTenantCNCI will associate a new CNCI instance with a specific tenant.
 // The instanceID of the new CNCI instance and the MAC address of the new instance
 // are stored in the sql database and updated in the cache.
-func (ds *Datastore) AddTenantCNCI(tenantID string, instanceID string, mac string) (err error) {
+func (ds *Datastore) AddTenantCNCI(tenantID string, instanceID string, mac string) error {
 	// update tenants cache
 	ds.tenantsLock.Lock()
 
@@ -454,7 +462,7 @@ func (ds *Datastore) AddTenantCNCI(tenantID string, instanceID string, mac strin
 	return ds.db.updateTenant(tenant)
 }
 
-func (ds *Datastore) removeTenantCNCI(tenantID string) (err error) {
+func (ds *Datastore) removeTenantCNCI(tenantID string) error {
 	// update tenants cache
 	ds.tenantsLock.Lock()
 
@@ -477,13 +485,17 @@ func (ds *Datastore) getTenants() ([]*tenant, error) {
 
 	// check the cache first
 	ds.tenantsLock.RLock()
+
 	if len(ds.tenants) > 0 {
 		for _, value := range ds.tenants {
 			tenants = append(tenants, value)
 		}
+
 		ds.tenantsLock.RUnlock()
+
 		return tenants, nil
 	}
+
 	ds.tenantsLock.RUnlock()
 
 	return ds.db.getTenantsNoCache()
@@ -515,7 +527,7 @@ func (ds *Datastore) GetAllTenants() ([]*types.Tenant, error) {
 // ReleaseTenantIP will return an IP address previously allocated to the pool.
 // Once a tenant IP address is released, it can be reassigned to another
 // instance.
-func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) (err error) {
+func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) error {
 	ipAddr := net.ParseIP(ip)
 	if ipAddr == nil {
 		return errors.New("Invalid IPv4 Address")
@@ -525,13 +537,16 @@ func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) (err error) {
 	if ipBytes == nil {
 		return errors.New("Unable to convert ip to bytes")
 	}
+
 	subnetInt := binary.BigEndian.Uint16(ipBytes[1:3])
 
 	// clear from cache
 	ds.tenantsLock.Lock()
+
 	if ds.tenants[tenantID] != nil {
 		ds.tenants[tenantID].network[int(subnetInt)][int(ipBytes[3])] = false
 	}
+
 	ds.tenantsLock.Unlock()
 
 	return ds.db.releaseTenantIP(tenantID, int(subnetInt), int(ipBytes[3]))
@@ -540,16 +555,18 @@ func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) (err error) {
 // AllocateTenantIP will find a free IP address within a tenant network.
 // For now we make each tenant have unique subnets even though it
 // isn't actually needed because of a docker issue.
-func (ds *Datastore) AllocateTenantIP(tenantID string) (ip net.IP, err error) {
+func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
 	var subnetInt uint16
 	subnetInt = 0
 
 	ds.tenantsLock.Lock()
+
 	network := ds.tenants[tenantID].network
 	subnets := ds.tenants[tenantID].subnets
 
 	// find any subnet assigned to this tenant with available addresses
 	sort.Ints(subnets)
+
 	for _, k := range subnets {
 		if len(network[k]) < 253 {
 			subnetInt = uint16(k)
@@ -557,6 +574,7 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (ip net.IP, err error) {
 	}
 
 	var subnetBytes = []byte{16, 0}
+
 	if subnetInt == 0 {
 		i := binary.BigEndian.Uint16(subnetBytes)
 
@@ -574,6 +592,7 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (ip net.IP, err error) {
 
 				break
 			}
+
 			if subnetBytes[1] == 255 {
 				if subnetBytes[0] == 31 {
 					// out of possible subnets
@@ -586,9 +605,12 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (ip net.IP, err error) {
 			} else {
 				subnetBytes[1]++
 			}
+
 			i = binary.BigEndian.Uint16(subnetBytes)
 		}
+
 		subnetInt = i
+
 		ds.tenants[tenantID].subnets = append(subnets, int(subnetInt))
 	} else {
 		binary.BigEndian.PutUint16(subnetBytes, subnetInt)
@@ -597,6 +619,7 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (ip net.IP, err error) {
 	hosts := network[int(subnetInt)]
 
 	rest := 2
+
 	for {
 		if hosts[rest] == false {
 			hosts[rest] = true
@@ -606,9 +629,12 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (ip net.IP, err error) {
 		if rest == 255 {
 			// this should never happen
 			glog.Warning("ran out of host numbers")
+
 			ds.tenantsLock.Unlock()
+
 			return nil, errors.New("rand out of host numbers")
 		}
+
 		rest++
 	}
 
@@ -618,38 +644,47 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (ip net.IP, err error) {
 
 	// convert to IP type.
 	next := net.IPv4(172, subnetBytes[0], subnetBytes[1], byte(rest))
-	return next, err
+
+	return next, nil
 }
 
 // GetAllInstances retrieves all instances out of the datastore.
-func (ds *Datastore) GetAllInstances() (instances []*types.Instance, err error) {
+func (ds *Datastore) GetAllInstances() ([]*types.Instance, error) {
+	var instances []*types.Instance
+
 	// always get from cache
 	ds.instancesLock.RLock()
+
 	if len(ds.instances) > 0 {
 		for _, val := range ds.instances {
 			instances = append(instances, val)
 		}
 	}
+
 	ds.instancesLock.RUnlock()
 
 	return instances, nil
 }
 
-func (ds *Datastore) getInstance(id string) (instance *types.Instance, err error) {
+func (ds *Datastore) getInstance(id string) (*types.Instance, error) {
 	// always get from cache
 	ds.instancesLock.RLock()
+
 	value, ok := ds.instances[id]
+
 	ds.instancesLock.RUnlock()
 
 	if !ok {
-		err = errors.New("Instance Not Found")
+		return nil, errors.New("Instance Not Found")
 	}
 
-	return value, err
+	return value, nil
 }
 
 // GetAllInstancesFromTenant will retrieve all instances belonging to a specific tenant
-func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) (instances []*types.Instance, err error) {
+func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) ([]*types.Instance, error) {
+	var instances []*types.Instance
+
 	ds.tenantsLock.RLock()
 
 	t, ok := ds.tenants[tenantID]
@@ -660,7 +695,7 @@ func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) (instances []*ty
 
 		ds.tenantsLock.RUnlock()
 
-		return
+		return instances, nil
 	}
 
 	ds.tenantsLock.RUnlock()
@@ -669,7 +704,9 @@ func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) (instances []*ty
 }
 
 // GetAllInstancesByNode will retrieve all the instances running on a specific compute Node.
-func (ds *Datastore) GetAllInstancesByNode(nodeID string) (instances []*types.Instance, err error) {
+func (ds *Datastore) GetAllInstancesByNode(nodeID string) ([]*types.Instance, error) {
+	var instances []*types.Instance
+
 	ds.nodesLock.RLock()
 
 	n, ok := ds.nodes[nodeID]
@@ -693,7 +730,7 @@ func (ds *Datastore) GetInstanceFromTenant(tenantID string, instanceID string) (
 
 // AddInstance will store a new instance in the datastore.
 // The instance will be updated both in the cache and in the database
-func (ds *Datastore) AddInstance(instance *types.Instance) (err error) {
+func (ds *Datastore) AddInstance(instance *types.Instance) error {
 	// add to cache
 	ds.instancesLock.Lock()
 
@@ -733,6 +770,7 @@ func (ds *Datastore) AddInstance(instance *types.Instance) (err error) {
 				break
 			}
 		}
+
 		tenant.instances[instance.ID] = instance
 	}
 
@@ -742,27 +780,30 @@ func (ds *Datastore) AddInstance(instance *types.Instance) (err error) {
 }
 
 // RestartFailure logs a RestartFailure in the datastore
-func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFailureReason) (err error) {
+func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFailureReason) error {
 	i, err := ds.getInstance(instanceID)
 	if err != nil {
-		return
+		return err
 	}
 
 	msg := fmt.Sprintf("Restart Failure %s: %s", instanceID, reason.String())
 	ds.db.logEvent(i.TenantID, string(userError), msg)
-	return
+
+	return nil
 }
 
 // StopFailure logs a StopFailure in the datastore
-func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureReason) (err error) {
+func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureReason) error {
 	i, err := ds.getInstance(instanceID)
 	if err != nil {
-		return
+		return err
 	}
 
 	msg := fmt.Sprintf("Stop Failure %s: %s", instanceID, reason.String())
+
 	ds.db.logEvent(i.TenantID, string(userError), msg)
-	return
+
+	return nil
 }
 
 // StartFailure will clean up after a failure to start an instance.
@@ -770,11 +811,12 @@ func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureR
 // for this tenant. If the instance was a normal tenant instance, the
 // IP address will be released and the instance will be deleted from the
 // datastore.
-func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailureReason) (err error) {
+func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailureReason) error {
 	var tenantID string
 	var cnci bool
 
 	ds.tenantsLock.RLock()
+
 	for key, t := range ds.tenants {
 		if t.CNCIID == instanceID {
 			cnci = true
@@ -782,15 +824,17 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 			break
 		}
 	}
+
 	ds.tenantsLock.RUnlock()
 
 	if cnci == true {
 		glog.Warning("CNCI ", instanceID, " Failed to start")
 
-		err = ds.removeTenantCNCI(tenantID)
+		err := ds.removeTenantCNCI(tenantID)
 		if err != nil {
 			glog.Warning(err)
 		}
+
 		msg := fmt.Sprintf("CNCI Start Failure %s: %s", instanceID, reason.String())
 		ds.db.logEvent(tenantID, string(userError), msg)
 
@@ -807,12 +851,12 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 			c <- false
 		}
 
-		return
+		return err
 	}
 
 	i, err := ds.getInstance(instanceID)
 	if err != nil {
-		return
+		return err
 	}
 
 	switch reason {
@@ -835,7 +879,7 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 	msg := fmt.Sprintf("Start Failure %s: %s", instanceID, reason.String())
 	ds.db.logEvent(i.TenantID, string(userError), msg)
 
-	return
+	return nil
 }
 
 func (ds *Datastore) deleteInstance(instanceID string) error {
@@ -919,28 +963,25 @@ func (ds *Datastore) GetInstanceInfo(instanceID string) (nodeID string, state st
 }
 
 // HandleStats makes sure that the data from the stat payload is stored.
-func (ds *Datastore) HandleStats(stat payloads.Stat) (err error) {
+func (ds *Datastore) HandleStats(stat payloads.Stat) error {
 	if stat.Load != -1 {
 		ds.addNodeStat(stat)
 	}
 
-	err = ds.addInstanceStats(stat.Instances, stat.NodeUUID)
-	if err != nil {
-		glog.Warning(err)
-	}
-
-	return
+	return ds.addInstanceStats(stat.Instances, stat.NodeUUID)
 }
 
 // HandleTraceReport stores the provided trace data in the datastore.
-func (ds *Datastore) HandleTraceReport(trace payloads.Trace) (err error) {
+func (ds *Datastore) HandleTraceReport(trace payloads.Trace) error {
 	for index := range trace.Frames {
 		i := trace.Frames[index]
-		err = ds.db.addFrameStat(i)
+
+		err := ds.db.addFrameStat(i)
 		if err != nil {
 			glog.Warning(err)
 		}
 	}
+
 	return nil
 }
 
@@ -975,16 +1016,19 @@ func (ds *Datastore) GetNodeLastStats() payloads.CiaoComputeNodes {
 	return computeNodes
 }
 
-func (ds *Datastore) addNodeStat(stat payloads.Stat) (err error) {
+func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 	ds.nodesLock.Lock()
+
 	n, ok := ds.nodes[stat.NodeUUID]
 	if !ok {
 		n = &node{}
 		n.instances = make(map[string]*types.Instance)
 		ds.nodes[stat.NodeUUID] = n
 	}
+
 	n.ID = stat.NodeUUID
 	n.Hostname = stat.NodeHostName
+
 	ds.nodesLock.Unlock()
 
 	cnStat := payloads.CiaoComputeNode{
@@ -1096,7 +1140,7 @@ func reduceToZero(v int) int {
 	return v
 }
 
-func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID string) (err error) {
+func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID string) error {
 	for index := range stats {
 		stat := stats[index]
 
@@ -1150,8 +1194,8 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 // If the cnci string is the null string, then this function will retrieve all
 // tenants.  If cnci is not null, it will only provide information about a specific
 // cnci.
-func (ds *Datastore) GetTenantCNCISummary(cnci string) (cncis []types.TenantCNCI, err error) {
-	cncis = make([]types.TenantCNCI, 0)
+func (ds *Datastore) GetTenantCNCISummary(cnci string) ([]types.TenantCNCI, error) {
+	cncis := make([]types.TenantCNCI, 0)
 	subnetBytes := []byte{0, 0}
 
 	ds.tenantsLock.RLock()
@@ -1182,12 +1226,12 @@ func (ds *Datastore) GetTenantCNCISummary(cnci string) (cncis []types.TenantCNCI
 
 	ds.tenantsLock.RUnlock()
 
-	return cncis, err
+	return cncis, nil
 }
 
 // GetCNCIWorkloadID returns the UUID of the workload template
 // for the CNCI workload
-func (ds *Datastore) GetCNCIWorkloadID() (id string, err error) {
+func (ds *Datastore) GetCNCIWorkloadID() (string, error) {
 	if ds.cnciWorkloadID == "" {
 		return "", errors.New("No CNCI Workload in datastore")
 	}
@@ -1196,14 +1240,14 @@ func (ds *Datastore) GetCNCIWorkloadID() (id string, err error) {
 }
 
 // GetNodeSummary provides a summary the state and count of instances running per node.
-func (ds *Datastore) GetNodeSummary() (Summary []*types.NodeSummary, err error) {
+func (ds *Datastore) GetNodeSummary() ([]*types.NodeSummary, error) {
 	// TBD: write a new routine that grabs the node summary info
 	// from the cache rather than do this lengthy sql query.
 	return ds.db.getNodeSummary()
 }
 
 // GetBatchFrameSummary will retieve the count of traces we have for a specific label
-func (ds *Datastore) GetBatchFrameSummary() (stats []types.BatchFrameSummary, err error) {
+func (ds *Datastore) GetBatchFrameSummary() ([]types.BatchFrameSummary, error) {
 	// until we start caching frame stats, we have to send this
 	// right through to the database.
 	return ds.db.getBatchFrameSummary()
@@ -1211,14 +1255,14 @@ func (ds *Datastore) GetBatchFrameSummary() (stats []types.BatchFrameSummary, er
 
 // GetBatchFrameStatistics will show individual trace data per instance for a batch of trace data.
 // The batch is identified by the label.
-func (ds *Datastore) GetBatchFrameStatistics(label string) (stats []types.BatchFrameStat, err error) {
+func (ds *Datastore) GetBatchFrameStatistics(label string) ([]types.BatchFrameStat, error) {
 	// until we start caching frame stats, we have to send this
 	// right through to the database.
 	return ds.db.getBatchFrameStatistics(label)
 }
 
 // GetEventLog retrieves all the log entries stored in the datastore.
-func (ds *Datastore) GetEventLog() (logEntries []*types.LogEntry, err error) {
+func (ds *Datastore) GetEventLog() ([]*types.LogEntry, error) {
 	// we don't as of yet cache any of the events that are logged.
 	return ds.db.getEventLog()
 }
