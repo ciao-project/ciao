@@ -784,7 +784,7 @@ func main() {
 				for i, p := range projects {
 					fmt.Printf("\t Project[%d]: %s (%s)\n", i+1, p.Name, p.ID)
 				}
-				fatalf("Please specify a project to use with -scope or -tenant")
+				fatalf("Please specify a project to use with -tenant-name or -tenant-id")
 			}
 
 			*tenantName = projects[0].Name
