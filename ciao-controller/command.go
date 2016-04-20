@@ -33,54 +33,54 @@ func (c *controller) evacuateNode(nodeID string) error {
 func (c *controller) restartInstance(instanceID string) error {
 	// should I bother to see if instanceID is valid?
 	// get node id.  If there is no node id we can't send a restart
-	nodeID, state, err := c.ds.GetInstanceInfo(instanceID)
+	i, err := c.ds.GetInstance(instanceID)
 	if err != nil {
 		return err
 	}
 
-	if nodeID == "" {
+	if i.NodeID == "" {
 		return errors.New("Instance Not Assigned to Node")
 	}
 
-	if state != "exited" {
+	if i.State != "exited" {
 		return errors.New("You may only restart paused instances")
 	}
 
-	go c.client.RestartInstance(instanceID, nodeID)
+	go c.client.RestartInstance(instanceID, i.NodeID)
 	return nil
 }
 
 func (c *controller) stopInstance(instanceID string) error {
 	// get node id.  If there is no node id we can't send a delete
-	nodeID, state, err := c.ds.GetInstanceInfo(instanceID)
+	i, err := c.ds.GetInstance(instanceID)
 	if err != nil {
 		return err
 	}
 
-	if nodeID == "" {
+	if i.NodeID == "" {
 		return errors.New("Instance Not Assigned to Node")
 	}
 
-	if state == "pending" {
+	if i.State == "pending" {
 		return errors.New("You may not stop a pending instance")
 	}
 
-	go c.client.StopInstance(instanceID, nodeID)
+	go c.client.StopInstance(instanceID, i.NodeID)
 	return nil
 }
 
 func (c *controller) deleteInstance(instanceID string) error {
 	// get node id.  If there is no node id we can't send a delete
-	nodeID, _, err := c.ds.GetInstanceInfo(instanceID)
+	i, err := c.ds.GetInstance(instanceID)
 	if err != nil {
 		return err
 	}
 
-	if nodeID == "" {
+	if i.NodeID == "" {
 		return errors.New("Instance Not Assigned to Node")
 	}
 
-	go c.client.DeleteInstance(instanceID, nodeID)
+	go c.client.DeleteInstance(instanceID, i.NodeID)
 	return nil
 }
 

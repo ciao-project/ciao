@@ -666,7 +666,8 @@ func (ds *Datastore) GetAllInstances() ([]*types.Instance, error) {
 	return instances, nil
 }
 
-func (ds *Datastore) getInstance(id string) (*types.Instance, error) {
+// GetInstance retrieves an instance out of the datastore.
+func (ds *Datastore) GetInstance(id string) (*types.Instance, error) {
 	// always get from cache
 	ds.instancesLock.RLock()
 
@@ -719,13 +720,6 @@ func (ds *Datastore) GetAllInstancesByNode(nodeID string) ([]*types.Instance, er
 	ds.nodesLock.RUnlock()
 
 	return instances, nil
-}
-
-// GetInstanceFromTenant will be replaced soon with something else that makes more sense.
-// this function doesn't make sense because if we know the instanceID
-// we really don't care what the tenantID is.
-func (ds *Datastore) GetInstanceFromTenant(tenantID string, instanceID string) (*types.Instance, error) {
-	return ds.getInstance(instanceID)
 }
 
 // AddInstance will store a new instance in the datastore.
@@ -781,7 +775,7 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 
 // RestartFailure logs a RestartFailure in the datastore
 func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFailureReason) error {
-	i, err := ds.getInstance(instanceID)
+	i, err := ds.GetInstance(instanceID)
 	if err != nil {
 		return err
 	}
@@ -794,7 +788,7 @@ func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFa
 
 // StopFailure logs a StopFailure in the datastore
 func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureReason) error {
-	i, err := ds.getInstance(instanceID)
+	i, err := ds.GetInstance(instanceID)
 	if err != nil {
 		return err
 	}
@@ -854,7 +848,7 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		return err
 	}
 
-	i, err := ds.getInstance(instanceID)
+	i, err := ds.GetInstance(instanceID)
 	if err != nil {
 		return err
 	}
@@ -945,21 +939,6 @@ func (ds *Datastore) DeleteInstance(instanceID string) error {
 	ds.db.logEvent(instanceID, string(userInfo), msg)
 
 	return nil
-}
-
-// GetInstanceInfo will be replaced by something else soon that makes more sense.
-func (ds *Datastore) GetInstanceInfo(instanceID string) (nodeID string, state string, err error) {
-	instance, err := ds.getInstance(instanceID)
-	if err != nil {
-		return
-	}
-
-	if instance != nil {
-		nodeID = instance.NodeID
-		state = instance.State
-	}
-
-	return
 }
 
 // HandleStats makes sure that the data from the stat payload is stored.

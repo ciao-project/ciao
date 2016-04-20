@@ -326,8 +326,13 @@ func showServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 		return
 	}
 
-	instance, err := context.ds.GetInstanceFromTenant(tenant, instanceID)
+	instance, err := context.ds.GetInstance(instanceID)
 	if err != nil {
+		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		return
+	}
+
+	if instance.TenantID != tenant {
 		http.Error(w, "Instance not available", http.StatusInternalServerError)
 		return
 	}
@@ -361,8 +366,13 @@ func deleteServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 
 	/* First check that the instance belongs to this tenant */
-	_, err := context.ds.GetInstanceFromTenant(tenant, instance)
+	i, err := context.ds.GetInstance(instance)
 	if err != nil {
+		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		return
+	}
+
+	if i.TenantID != tenant {
 		http.Error(w, "Instance not available", http.StatusInternalServerError)
 		return
 	}
@@ -808,8 +818,13 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 
 	/* First check that the instance belongs to this tenant */
-	_, err := context.ds.GetInstanceFromTenant(tenant, instance)
+	i, err := context.ds.GetInstance(instance)
 	if err != nil {
+		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		return
+	}
+
+	if i.TenantID != tenant {
 		http.Error(w, "Instance not available", http.StatusInternalServerError)
 		return
 	}

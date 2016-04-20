@@ -454,7 +454,7 @@ func TestGetAllInstancesByNode(t *testing.T) {
 	}
 }
 
-func TestGetInstancesFromTenant(t *testing.T) {
+func TestGetInstance(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
 		t.Error(err)
@@ -515,120 +515,24 @@ func TestGetInstancesFromTenant(t *testing.T) {
 		t.Error(err)
 	}
 
-	instance, err := ds.GetInstanceFromTenant(tenant.ID, instances[0].ID)
+	instance, err := ds.GetInstance(instances[0].ID)
 	if err != nil && err != sql.ErrNoRows {
 		t.Error(err)
 	}
 
 	for instance == nil {
 		time.Sleep(1 * time.Second)
-		instance, err = ds.GetInstanceFromTenant(tenant.ID, instances[0].ID)
+		instance, err = ds.GetInstance(instances[0].ID)
 		if err != nil && err != sql.ErrNoRows {
 			t.Error(err)
 		}
 	}
-	// check contents of instance for correctness - TBD
-}
 
-func TestGetInstanceInfo(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Error(err)
-	}
-
-	wls, err := ds.GetWorkloads()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("No Workloads Found")
-	}
-
-	instance, err := addTestInstance(tenant, wls[0])
-	if err != nil {
-		t.Error(err)
-	}
-
-	time.Sleep(1 * time.Second)
-
-	nodeID, state, err := ds.GetInstanceInfo(instance.ID)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if nodeID != "" {
-		t.Error(errors.New("Expected NULL nodeID"))
-	}
-
-	if state != "pending" {
-		t.Error(errors.New("Expected pending state"))
-	}
-
-	// add some stats and retest
-	var stats []payloads.InstanceStat
-
-	istat := payloads.InstanceStat{
-		InstanceUUID:  instance.ID,
-		State:         "running",
-		SSHIP:         "192.168.0.1",
-		SSHPort:       34567,
-		MemoryUsageMB: 0,
-		DiskUsageMB:   0,
-		CPUUsage:      0,
-	}
-	stats = append(stats, istat)
-
-	stat := payloads.Stat{
-		NodeUUID:        uuid.Generate().String(),
-		MemTotalMB:      256,
-		MemAvailableMB:  256,
-		DiskTotalMB:     1024,
-		DiskAvailableMB: 1024,
-		Load:            20,
-		CpusOnline:      4,
-		NodeHostName:    "test",
-		Instances:       stats,
-	}
-
-	err = ds.addNodeStat(stat)
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = ds.addInstanceStats(stats, stat.NodeUUID)
-	if err != nil {
-		t.Error(err)
-	}
-
-	nodeID, state, err = ds.GetInstanceInfo(instance.ID)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if nodeID != stat.NodeUUID {
+	if instance.NodeID != stat.NodeUUID {
 		t.Error("retrieved incorrect NodeID")
 	}
 
-	if state != "running" {
-		t.Error("retrieved incorrect state")
-	}
-
-	// now clear instance cache to exercise sql
-	ds.instanceLastStatLock.Lock()
-	delete(ds.instanceLastStat, instance.ID)
-	ds.instanceLastStatLock.Unlock()
-
-	nodeID, state, err = ds.GetInstanceInfo(instance.ID)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if nodeID != stat.NodeUUID {
-		t.Error("retrieved incorrect NodeID")
-	}
-
-	if state != "running" {
+	if instance.State != "running" {
 		t.Error("retrieved incorrect state")
 	}
 }
@@ -694,16 +598,16 @@ func TestHandleStats(t *testing.T) {
 	// check instance stats recorded
 	for i := range stats {
 		id := stats[i].InstanceUUID
-		nodeID, state, err := ds.GetInstanceInfo(id)
+		instance, err := ds.GetInstance(id)
 		if err != nil {
 			t.Error(err)
 		}
 
-		if nodeID != stat.NodeUUID {
+		if instance.NodeID != stat.NodeUUID {
 			t.Error("Incorrect NodeID in stats table")
 		}
 
-		if state != "running" {
+		if instance.State != "running" {
 			t.Error("state not updated")
 		}
 	}

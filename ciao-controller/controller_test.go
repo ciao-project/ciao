@@ -1094,7 +1094,7 @@ func TestInstanceDeletedEvent(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// try to get instance info
-	_, _, err = context.ds.GetInstanceInfo(instances[0].ID)
+	_, err = context.ds.GetInstance(instances[0].ID)
 	if err == nil {
 		t.Error("Instance not deleted")
 	}
