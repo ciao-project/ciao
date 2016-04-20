@@ -1604,8 +1604,8 @@ func TestAllocate1024IPs(t *testing.T) {
 
 var ds *Datastore
 
-var tablesInitPath = flag.String("tables_init_path", ".", "path to csv files")
-var workloadsPath = flag.String("workloads_path", ".", "path to yaml files")
+var tablesInitPath = flag.String("tables_init_path", "../../tables", "path to csv files")
+var workloadsPath = flag.String("workloads_path", "../../workloads", "path to yaml files")
 
 func TestMain(m *testing.M) {
 	flag.Parse()
