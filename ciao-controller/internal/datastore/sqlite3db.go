@@ -75,10 +75,10 @@ func (d namedData) DB() *sql.DB {
 	return d.db
 }
 
-func (d namedData) ReadCsv() (records [][]string, err error) {
+func (d namedData) ReadCsv() ([][]string, error) {
 	f, err := os.Open(fmt.Sprintf("%s/%s.csv", d.ds.tableInitPath, d.name))
 	if err != nil {
-		return
+		return nil, err
 	}
 	defer f.Close()
 
@@ -86,18 +86,19 @@ func (d namedData) ReadCsv() (records [][]string, err error) {
 	r.TrimLeadingSpace = true
 	r.Comment = '#'
 
-	records, err = r.ReadAll()
+	records, err := r.ReadAll()
 	if err != nil {
-		return
+		return nil, err
 	}
-	return
+
+	return records, nil
 }
 
 type logData struct {
 	namedData
 }
 
-func (d logData) Init() (err error) {
+func (d logData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS log
 		(
 		id integer primary key,
@@ -106,15 +107,15 @@ func (d logData) Init() (err error) {
 		message string,
 		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 type subnetData struct {
 	namedData
 }
 
-func (d subnetData) Init() (err error) {
+func (d subnetData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS tenant_network
 		(
 		tenant_id varchar(32),
@@ -122,8 +123,8 @@ func (d subnetData) Init() (err error) {
 		rest int,
 		foreign key(tenant_id) references tenants(id)
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 // Handling of Limit specific Data
@@ -131,7 +132,7 @@ type limitsData struct {
 	namedData
 }
 
-func (d limitsData) Populate() (err error) {
+func (d limitsData) Populate() error {
 	lines, err := d.ReadCsv()
 	if err != nil {
 		return err
@@ -146,10 +147,11 @@ func (d limitsData) Populate() (err error) {
 			glog.V(2).Info("could not add limit: ", err)
 		}
 	}
-	return
+
+	return err
 }
 
-func (d limitsData) Init() (err error) {
+func (d limitsData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS limits
 		(
 		resource_id integer,
@@ -158,8 +160,8 @@ func (d limitsData) Init() (err error) {
 		foreign key(resource_id) references resources(id),
 		foreign key(tenant_id) references tenants(id)
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 // Handling of Instance specific data
@@ -167,7 +169,7 @@ type instanceData struct {
 	namedData
 }
 
-func (d instanceData) Init() (err error) {
+func (d instanceData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS instances
 		(
 		id string primary key,
@@ -179,8 +181,8 @@ func (d instanceData) Init() (err error) {
 		foreign key(workload_id) references workload_template(id),
 		unique(tenant_id, ip, mac_address)
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 // Resources data
@@ -188,7 +190,7 @@ type resourceData struct {
 	namedData
 }
 
-func (d resourceData) Populate() (err error) {
+func (d resourceData) Populate() error {
 	lines, err := d.ReadCsv()
 	if err != nil {
 		return err
@@ -202,17 +204,18 @@ func (d resourceData) Populate() (err error) {
 			glog.V(2).Info("could not add resource: ", err)
 		}
 	}
-	return
+
+	return err
 }
 
-func (d resourceData) Init() (err error) {
+func (d resourceData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS resources
 		(
 		id int primary key,
 		name text
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 // Tenants data
@@ -220,7 +223,7 @@ type tenantData struct {
 	namedData
 }
 
-func (d tenantData) Populate() (err error) {
+func (d tenantData) Populate() error {
 	lines, err := d.ReadCsv()
 	if err != nil {
 		return err
@@ -233,15 +236,17 @@ func (d tenantData) Populate() (err error) {
 		if err != nil {
 			glog.V(2).Info("could not add tenant: ", err)
 		}
+
 		err = d.ds.create(d.name, id, name, "", mac, "")
 		if err != nil {
 			glog.V(2).Info("could not add tenant: ", err)
 		}
 	}
-	return
+
+	return err
 }
 
-func (d tenantData) Init() (err error) {
+func (d tenantData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS tenants
 		(
 		id varchar(32) primary key,
@@ -250,8 +255,8 @@ func (d tenantData) Init() (err error) {
 		cnci_mac string default null,
 		cnci_ip string default null
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 // usage data
@@ -259,7 +264,7 @@ type usageData struct {
 	namedData
 }
 
-func (d usageData) Init() (err error) {
+func (d usageData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS usage
 		(
 		instance_id string,
@@ -270,8 +275,8 @@ func (d usageData) Init() (err error) {
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS myindex
 		ON usage(instance_id, resource_id);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 // workload resources
@@ -279,7 +284,7 @@ type workloadResourceData struct {
 	namedData
 }
 
-func (d workloadResourceData) Populate() (err error) {
+func (d workloadResourceData) Populate() error {
 	lines, err := d.ReadCsv()
 	if err != nil {
 		return err
@@ -296,10 +301,11 @@ func (d workloadResourceData) Populate() (err error) {
 			glog.V(2).Info("could not add workload: ", err)
 		}
 	}
-	return
+
+	return err
 }
 
-func (d workloadResourceData) Init() (err error) {
+func (d workloadResourceData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS workload_resources
 		(
 		workload_id varchar(32),
@@ -312,8 +318,8 @@ func (d workloadResourceData) Init() (err error) {
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS wlr_index
 		ON workload_resources(workload_id, resource_id);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 // workload template data
@@ -321,7 +327,7 @@ type workloadTemplateData struct {
 	namedData
 }
 
-func (d workloadTemplateData) Populate() (err error) {
+func (d workloadTemplateData) Populate() error {
 	lines, err := d.ReadCsv()
 	if err != nil {
 		return err
@@ -341,10 +347,11 @@ func (d workloadTemplateData) Populate() (err error) {
 			glog.V(2).Info("could not add workload: ", err)
 		}
 	}
-	return
+
+	return err
 }
 
-func (d workloadTemplateData) Init() (err error) {
+func (d workloadTemplateData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS workload_template
 		(
 		id varchar(32) primary key,
@@ -356,8 +363,8 @@ func (d workloadTemplateData) Init() (err error) {
 		image_name text,
 		internal integer
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 // statistics
@@ -365,7 +372,7 @@ type nodeStatisticsData struct {
 	namedData
 }
 
-func (d nodeStatisticsData) Init() (err error) {
+func (d nodeStatisticsData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS node_statistics
 		(
 			id integer primary key autoincrement not null,
@@ -378,15 +385,15 @@ func (d nodeStatisticsData) Init() (err error) {
 			cpus_online int,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 type instanceStatisticsData struct {
 	namedData
 }
 
-func (d instanceStatisticsData) Init() (err error) {
+func (d instanceStatisticsData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS instance_statistics
 		(
 			id integer primary key autoincrement not null,
@@ -400,15 +407,15 @@ func (d instanceStatisticsData) Init() (err error) {
 			ssh_port int,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 type frameStatisticsData struct {
 	namedData
 }
 
-func (d frameStatisticsData) Init() (err error) {
+func (d frameStatisticsData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS frame_statistics
 		(
 			id integer primary key autoincrement not null,
@@ -418,15 +425,15 @@ func (d frameStatisticsData) Init() (err error) {
 			start_timestamp DATETIME,
 			end_timestamp DATETIME
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
 type traceData struct {
 	namedData
 }
 
-func (d traceData) Init() (err error) {
+func (d traceData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS trace_data
 		(
 			id integer primary key autoincrement not null,
@@ -436,52 +443,57 @@ func (d traceData) Init() (err error) {
 			rx_timestamp DATETIME,
 			foreign key(frame_id) references frame_statistics(id)
 		);`
-	err = d.ds.exec(d.db, cmd)
-	return
+
+	return d.ds.exec(d.db, cmd)
 }
 
-func (ds *sqliteDB) exec(db *sql.DB, cmd string) (err error) {
+func (ds *sqliteDB) exec(db *sql.DB, cmd string) error {
 	glog.V(2).Info("exec: ", cmd)
 
 	tx, err := db.Begin()
 	if err != nil {
-		return
+		return err
 	}
 
 	_, err = tx.Exec(cmd)
 	if err != nil {
 		tx.Rollback()
-		return
+		return err
 	}
+
 	tx.Commit()
-	return
+
+	return err
 }
 
-func (ds *sqliteDB) create(tableName string, record ...interface{}) (err error) {
+func (ds *sqliteDB) create(tableName string, record ...interface{}) error {
 	// get database location of this table
 	db := ds.getTableDB(tableName)
 
 	if db == nil {
-		err = errors.New("Bad table name")
-		return
+		return errors.New("Bad table name")
 	}
 
 	var values []string
 	for _, val := range record {
 		v := reflect.ValueOf(val)
+
 		var newval string
+
 		// enclose strings in quotes to not confuse sqlite
 		if v.Kind() == reflect.String {
 			newval = fmt.Sprintf("'%v'", val)
 		} else {
 			newval = fmt.Sprintf("%v", val)
 		}
+
 		values = append(values, newval)
 	}
+
 	args := strings.Join(values, ",")
 	cmd := "INSERT or IGNORE into " + tableName + " VALUES (" + args + ");"
-	err = ds.exec(db, cmd)
-	return
+
+	return ds.exec(db, cmd)
 }
 
 func (ds *sqliteDB) getTableDB(name string) *sql.DB {
@@ -498,12 +510,12 @@ func (ds *sqliteDB) getTableDB(name string) *sql.DB {
 // The sql tables are populated with initial data from csv
 // files if this is the first time the database has been
 // created.  The datastore caches are also filled.
-func getPersistentStore(config Config) (ps persistentStore, err error) {
+func getPersistentStore(config Config) (persistentStore, error) {
 	var ds = &sqliteDB{}
 
-	err = ds.Connect(config.PersistentURI, config.TransientURI)
+	err := ds.Connect(config.PersistentURI, config.TransientURI)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	ds.dbLock = &sync.Mutex{}
@@ -531,7 +543,7 @@ func getPersistentStore(config Config) (ps persistentStore, err error) {
 	for _, table := range ds.tables {
 		err = table.Init()
 		if err != nil {
-			return
+			return nil, err
 		}
 	}
 
@@ -548,7 +560,7 @@ func getPersistentStore(config Config) (ps persistentStore, err error) {
 // persistent state that needs to be restored on restart, the
 // other is for transient data that does not need to be restored
 // on restart.
-func (ds *sqliteDB) Connect(persistentURI string, transientURI string) (err error) {
+func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 	sql.Register("sqlite_attach_tdb", &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
 			cmd := fmt.Sprintf("ATTACH '%s' AS tdb", transientURI)
@@ -584,7 +596,7 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) (err erro
 	err = datastore.Ping()
 	if err != nil {
 		glog.Warning("unable to ping database")
-		return
+		return err
 	}
 
 	ds.db = datastore
@@ -628,7 +640,7 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) (err erro
 	err = datastore.Ping()
 	if err != nil {
 		glog.Warning("unable to ping database")
-		return
+		return err
 	}
 
 	ds.tdb = datastore
@@ -659,7 +671,7 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) (err erro
 		glog.Warning("unable to change temp_store", err)
 	}
 
-	return
+	return err
 }
 
 // Disconnect is used to close the connection to the sql database
@@ -703,45 +715,56 @@ func (ds *sqliteDB) clearLog() error {
 
 // GetCNCIWorkloadID returns the UUID of the workload template
 // for the CNCI workload
-func (ds *sqliteDB) getCNCIWorkloadID() (id string, err error) {
+func (ds *sqliteDB) getCNCIWorkloadID() (string, error) {
+	var ID string
+
 	db := ds.getTableDB("workload_template")
 
-	err = db.QueryRow("SELECT id FROM workload_template WHERE description = 'CNCI'").Scan(&id)
+	err := db.QueryRow("SELECT id FROM workload_template WHERE description = 'CNCI'").Scan(&ID)
 	if err != nil {
-		return
+		return "", err
 	}
-	return
+
+	return ID, nil
 }
 
-func (ds *sqliteDB) getConfigNoCache(id string) (config string, err error) {
+func (ds *sqliteDB) getConfigNoCache(ID string) (string, error) {
 	var configFile string
 
 	db := ds.getTableDB("workload_template")
 
-	err = db.QueryRow("SELECT filename FROM workload_template where id = ?", id).Scan(&configFile)
+	err := db.QueryRow("SELECT filename FROM workload_template where id = ?", ID).Scan(&configFile)
 
 	if err != nil {
-		return config, err
+		return "", err
 	}
 
 	path := fmt.Sprintf("%s/%s", ds.workloadsPath, configFile)
 	bytes, err := ioutil.ReadFile(path)
-	config = string(bytes)
-	return config, err
+	if err != nil {
+		return "", err
+	}
+
+	config := string(bytes)
+
+	return config, nil
 }
 
-func (ds *sqliteDB) getWorkloadDefaults(id string) (defaults []payloads.RequestedResource, err error) {
+func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource, error) {
 	query := `SELECT resources.name, default_value, mandatory FROM workload_resources
 		  JOIN resources
 		  ON workload_resources.resource_id=resources.id
 		  WHERE workload_id = ?`
+
 	db := ds.getTableDB("workload_resources")
 
-	rows, err := db.Query(query, id)
+	rows, err := db.Query(query, ID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
+	var defaults []payloads.RequestedResource
 
 	for rows.Next() {
 		var val int
@@ -759,17 +782,19 @@ func (ds *sqliteDB) getWorkloadDefaults(id string) (defaults []payloads.Requeste
 		}
 		defaults = append(defaults, r)
 	}
-	return
+
+	return defaults, nil
 }
 
-func (ds *sqliteDB) addLimit(tenantID string, resourceID int, limit int) (err error) {
+func (ds *sqliteDB) addLimit(tenantID string, resourceID int, limit int) error {
 	ds.dbLock.Lock()
-	err = ds.create("limits", resourceID, tenantID, limit)
+	err := ds.create("limits", resourceID, tenantID, limit)
 	ds.dbLock.Unlock()
-	return
+
+	return err
 }
 
-func (ds *sqliteDB) getTenantResources(id string) (resources []*types.Resource, err error) {
+func (ds *sqliteDB) getTenantResources(ID string) ([]*types.Resource, error) {
 	query := `WITH instances_usage AS
 		 (
 			 SELECT resource_id, value
@@ -795,14 +820,18 @@ func (ds *sqliteDB) getTenantResources(id string) (resources []*types.Resource, 
 		 ON resources.id=limits.resource_id
 		 AND limits.tenant_id = ?
 		 GROUP BY resources.id`
+
 	datastore := ds.db
 
-	rows, err := datastore.Query(query, id, id, id)
+	rows, err := datastore.Query(query, ID, ID, ID)
 	if err != nil {
 		glog.Warning("Failed to get tenant usage")
 		return nil, err
 	}
 	defer rows.Close()
+
+	var resources []*types.Resource
+
 	for rows.Next() {
 		var id int
 		var name string
@@ -819,29 +848,33 @@ func (ds *sqliteDB) getTenantResources(id string) (resources []*types.Resource, 
 		if sqlMaxVal.Valid {
 			maxVal = int(sqlMaxVal.Int64)
 		}
+
 		if sqlCurVal.Valid {
 			curVal = int(sqlCurVal.Int64)
 		}
+
 		r := types.Resource{
 			Rname: name,
 			Rtype: id,
 			Limit: maxVal,
 			Usage: curVal,
 		}
+
 		resources = append(resources, &r)
 	}
 
-	return
+	return resources, nil
 }
 
-func (ds *sqliteDB) addTenant(id string, MAC string) (err error) {
+func (ds *sqliteDB) addTenant(ID string, MAC string) error {
 	ds.dbLock.Lock()
-	err = ds.create("tenants", id, "", "", MAC, "")
+	err := ds.create("tenants", ID, "", "", MAC, "")
 	ds.dbLock.Unlock()
-	return
+
+	return err
 }
 
-func (ds *sqliteDB) getTenantNoCache(id string) (t *tenant, err error) {
+func (ds *sqliteDB) getTenantNoCache(ID string) (*tenant, error) {
 	query := `SELECT	tenants.id,
 				tenants.name,
 				tenants.cnci_id,
@@ -849,23 +882,26 @@ func (ds *sqliteDB) getTenantNoCache(id string) (t *tenant, err error) {
 				tenants.cnci_ip
 		  FROM tenants
 		  WHERE tenants.id = ?`
+
 	datastore := ds.db
 
-	row := datastore.QueryRow(query, id)
+	row := datastore.QueryRow(query, ID)
 
-	t = new(tenant)
+	t := &tenant{}
 
-	err = row.Scan(&t.ID, &t.Name, &t.CNCIID, &t.CNCIMAC, &t.CNCIIP)
+	err := row.Scan(&t.ID, &t.Name, &t.CNCIID, &t.CNCIMAC, &t.CNCIIP)
 	if err != nil {
 		glog.Warning("unable to retrieve tenant from tenants")
+
 		if err == sql.ErrNoRows {
 			// not an error, it's just not there.
 			err = nil
 		}
+
 		return nil, err
 	}
 
-	t.Resources, err = ds.getTenantResources(id)
+	t.Resources, err = ds.getTenantResources(ID)
 
 	err = ds.getTenantNetwork(t)
 	if err != nil {
@@ -965,16 +1001,16 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 	return workloads, nil
 }
 
-func (ds *sqliteDB) updateTenant(t *tenant) (err error) {
+func (ds *sqliteDB) updateTenant(t *tenant) error {
 	db := ds.getTableDB("tenants")
 
 	cmd := fmt.Sprintf("UPDATE tenants SET cnci_id = '%s', cnci_mac = '%s', cnci_ip = '%s' WHERE id = '%s'", t.CNCIID, t.CNCIMAC, t.CNCIIP, t.ID)
 
 	ds.dbLock.Lock()
-	err = ds.exec(db, cmd)
+	err := ds.exec(db, cmd)
 	ds.dbLock.Unlock()
 
-	return
+	return err
 }
 
 func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
@@ -1011,15 +1047,19 @@ func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
 		if id.Valid {
 			t.ID = id.String
 		}
+
 		if name.Valid {
 			t.Name = name.String
 		}
+
 		if cnciID.Valid {
 			t.CNCIID = cnciID.String
 		}
+
 		if cnciMAC.Valid {
 			t.CNCIMAC = cnciMAC.String
 		}
+
 		if cnciIP.Valid {
 			t.CNCIIP = cnciIP.String
 		}
@@ -1048,13 +1088,13 @@ func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
 	return tenants, nil
 }
 
-func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt int, rest int) (err error) {
+func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt int, rest int) error {
 	datastore := ds.getTableDB("tenant_network")
 	ds.dbLock.Lock()
 	tx, err := datastore.Begin()
 	if err != nil {
 		ds.dbLock.Unlock()
-		return
+		return err
 	}
 
 	cmd := `INSERT INTO tenant_network VALUES('%s', %d, %d);`
@@ -1064,49 +1104,51 @@ func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt int, rest int) (err
 		glog.Warning(cmd, err)
 		tx.Rollback()
 		ds.dbLock.Unlock()
-		return
+		return err
 	}
 
 	tx.Commit()
 	ds.dbLock.Unlock()
 
-	return
+	return nil
 }
 
-func (ds *sqliteDB) releaseTenantIP(tenantID string, subnetInt int, rest int) (err error) {
+func (ds *sqliteDB) releaseTenantIP(tenantID string, subnetInt int, rest int) error {
 	datastore := ds.getTableDB("tenant_network")
 
 	cmd := fmt.Sprintf("DELETE FROM tenant_network WHERE tenant_id = '%s' AND subnet = %d AND rest = %d", tenantID, subnetInt, rest)
 
 	ds.dbLock.Lock()
-	err = ds.exec(datastore, cmd)
+	err := ds.exec(datastore, cmd)
 	ds.dbLock.Unlock()
 
-	return
+	return err
 }
 
-func (ds *sqliteDB) getTenantNetwork(tenant *tenant) (err error) {
+func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
 	tenant.network = make(map[int]map[int]bool)
 
-	// serialize
 	ds.dbLock.Lock()
+
 	datastore := ds.getTableDB("tenant_network")
+
 	tx, err := datastore.Begin()
 	if err != nil {
 		ds.dbLock.Unlock()
-		return
+		return err
 	}
 
 	// get all subnet,rest values for this tenant
 	query := `SELECT subnet, rest
 		  FROM tenant_network
 		  WHERE tenant_id = ?`
+
 	rows, err := tx.Query(query, tenant.ID)
 	if err != nil {
 		glog.Warning(err)
 		tx.Rollback()
 		ds.dbLock.Unlock()
-		return
+		return err
 	}
 	defer rows.Close()
 
@@ -1119,26 +1161,33 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) (err error) {
 			glog.Warning(err)
 			tx.Rollback()
 			ds.dbLock.Unlock()
-			return
+			return err
 		}
+
 		sub, ok := tenant.network[int(subnetInt)]
 		if !ok {
 			sub = make(map[int]bool)
 			tenant.network[int(subnetInt)] = sub
 		}
+
 		/* Only add to the subnet list for the first host */
 		if len(tenant.network[int(subnetInt)]) == 0 {
 			tenant.subnets = append(tenant.subnets, int(subnetInt))
 		}
-		tenant.network[int(subnetInt)][int(rest)] = true
 
+		tenant.network[int(subnetInt)][int(rest)] = true
 	}
+
 	tx.Commit()
+
 	ds.dbLock.Unlock()
-	return
+
+	return err
 }
 
-func (ds *sqliteDB) getInstances() (instances []*types.Instance, err error) {
+func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
+	var instances []*types.Instance
+
 	datastore := ds.getTableDB("instances")
 
 	ds.tdbLock.RLock()
@@ -1215,6 +1264,7 @@ func (ds *sqliteDB) getInstances() (instances []*types.Instance, err error) {
 
 		instances = append(instances, &i)
 	}
+
 	if err = rows.Err(); err != nil {
 		tx.Rollback()
 		ds.tdbLock.RUnlock()
@@ -1228,7 +1278,7 @@ func (ds *sqliteDB) getInstances() (instances []*types.Instance, err error) {
 	return instances, nil
 }
 
-func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*types.Instance, err error) {
+func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Instance, error) {
 	datastore := ds.getTableDB("instances")
 
 	ds.tdbLock.RLock()
@@ -1274,7 +1324,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 	}
 	defer rows.Close()
 
-	instances = make(map[string]*types.Instance)
+	instances := make(map[string]*types.Instance)
 	for rows.Next() {
 		var id sql.NullString
 		var tenantID sql.NullString
@@ -1286,7 +1336,8 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 		var sshIP sql.NullString
 		var sshPort sql.NullInt64
 
-		i := new(types.Instance)
+		i := &types.Instance{}
+
 		err = rows.Scan(&id, &tenantID, &state, &sshIP, &sshPort, &workloadID, &nodeID, &macAddress, &ipAddress)
 		if err != nil {
 			tx.Rollback()
@@ -1297,27 +1348,35 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 		if id.Valid {
 			i.ID = id.String
 		}
+
 		if tenantID.Valid {
 			i.TenantID = tenantID.String
 		}
+
 		if state.Valid {
 			i.State = state.String
 		}
+
 		if workloadID.Valid {
 			i.WorkloadID = workloadID.String
 		}
+
 		if macAddress.Valid {
 			i.MACAddress = macAddress.String
 		}
+
 		if ipAddress.Valid {
 			i.IPAddress = ipAddress.String
 		}
+
 		if nodeID.Valid {
 			i.NodeID = nodeID.String
 		}
+
 		if sshIP.Valid {
 			i.SSHIP = sshIP.String
 		}
+
 		if sshPort.Valid {
 			i.SSHPort = int(sshPort.Int64)
 		}
@@ -1338,11 +1397,13 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 
 		instances[i.ID] = i
 	}
+
 	if err = rows.Err(); err != nil {
 		tx.Rollback()
 		ds.tdbLock.RUnlock()
 		return nil, err
 	}
+
 	tx.Commit()
 
 	ds.tdbLock.RUnlock()
@@ -1350,16 +1411,18 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (instances map[string]*t
 	return instances, nil
 }
 
-func (ds *sqliteDB) addInstance(instance *types.Instance) (err error) {
+func (ds *sqliteDB) addInstance(instance *types.Instance) error {
 	ds.dbLock.Lock()
 
-	err = ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.IPAddress)
+	err := ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.IPAddress)
 
 	ds.dbLock.Unlock()
 
-	ds.addUsage(instance.ID, instance.Usage)
+	if err != nil {
+		ds.addUsage(instance.ID, instance.Usage)
+	}
 
-	return
+	return err
 }
 
 func (ds *sqliteDB) removeInstance(instanceID string) error {
@@ -1386,9 +1449,11 @@ func (ds *sqliteDB) addUsage(instanceID string, usage map[string]int) {
 
 	for key, val := range usage {
 		str := fmt.Sprintf(cmd, instanceID, val, key)
+
 		ds.dbLock.Lock()
 		err := ds.exec(ds.getTableDB("usage"), str)
 		ds.dbLock.Unlock()
+
 		if err != nil {
 			glog.V(2).Info(err)
 			// but keep going
@@ -1396,7 +1461,7 @@ func (ds *sqliteDB) addUsage(instanceID string, usage map[string]int) {
 	}
 }
 
-func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) (err error) {
+func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) error {
 	cmd := `INSERT INTO node_statistics (node_id, mem_total_mb, mem_available_mb, disk_total_mb, disk_available_mb, load, cpus_online)
 		VALUES('%s', %d, %d, %d, %d, %d, %d);`
 
@@ -1404,14 +1469,14 @@ func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) (err error) {
 
 	ds.tdbLock.Lock()
 
-	err = ds.exec(ds.getTableDB("node_statistics"), str)
+	err := ds.exec(ds.getTableDB("node_statistics"), str)
 
 	ds.tdbLock.Unlock()
 
-	return
+	return err
 }
 
-func (ds *sqliteDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID string) (err error) {
+func (ds *sqliteDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID string) error {
 	datastore := ds.getTableDB("instance_statistics")
 
 	ds.tdbLock.Lock()
@@ -1419,7 +1484,7 @@ func (ds *sqliteDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID str
 	tx, err := datastore.Begin()
 	if err != nil {
 		ds.tdbLock.Unlock()
-		return
+		return err
 	}
 
 	cmd := `INSERT INTO instance_statistics (instance_id, memory_usage_mb, disk_usage_mb, cpu_usage, state, node_id, ssh_ip, ssh_port)
@@ -1429,8 +1494,9 @@ func (ds *sqliteDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID str
 	if err != nil {
 		tx.Rollback()
 		ds.tdbLock.Unlock()
-		return
+		return err
 	}
+
 	defer stmt.Close()
 
 	for index := range stats {
@@ -1441,16 +1507,16 @@ func (ds *sqliteDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID str
 			glog.Warning(err)
 			// but keep going
 		}
-
 	}
+
 	tx.Commit()
 
 	ds.tdbLock.Unlock()
 
-	return
+	return err
 }
 
-func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) (err error) {
+func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 	datastore := ds.getTableDB("frame_statistics")
 
 	ds.tdbLock.Lock()
@@ -1458,46 +1524,56 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) (err error) {
 	tx, err := datastore.Begin()
 	if err != nil {
 		ds.tdbLock.Unlock()
-		return
+		return err
 	}
 
 	cmd := `INSERT INTO frame_statistics (label, type, operand, start_timestamp, end_timestamp)
 		VALUES('%s', '%s', '%s', '%s', '%s')`
+
 	str := fmt.Sprintf(cmd, stat.Label, stat.Type, stat.Operand, stat.StartTimestamp, stat.EndTimestamp)
+
 	_, err = tx.Exec(str)
 	if err != nil {
 		tx.Rollback()
 		ds.tdbLock.Unlock()
-		return
+		return err
 	}
 
 	var id int
+
 	err = tx.QueryRow("SELECT last_insert_rowid();").Scan(&id)
 	if err != nil {
 		tx.Rollback()
 		ds.tdbLock.Unlock()
-		return
+		return err
 	}
 
 	for index := range stat.Nodes {
 		t := stat.Nodes[index]
+
 		cmd := `INSERT INTO trace_data (frame_id, ssntp_uuid, tx_timestamp, rx_timestamp)
 			VALUES(%d, '%s', '%s', '%s');`
+
 		str := fmt.Sprintf(cmd, id, t.SSNTPUUID, t.TxTimestamp, t.RxTimestamp)
 		_, err = tx.Exec(str)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.Unlock()
-			return
+			return err
 		}
 	}
+
 	tx.Commit()
+
 	ds.tdbLock.Unlock()
-	return
+
+	return err
 }
 
 // GetEventLog retrieves all the log entries stored in the datastore.
-func (ds *sqliteDB) getEventLog() (logEntries []*types.LogEntry, err error) {
+func (ds *sqliteDB) getEventLog() ([]*types.LogEntry, error) {
+	var logEntries []*types.LogEntry
+
 	datastore := ds.getTableDB("log")
 
 	ds.tdbLock.RLock()
@@ -1526,13 +1602,17 @@ func (ds *sqliteDB) getEventLog() (logEntries []*types.LogEntry, err error) {
 }
 
 // GetNodeSummary provides a summary the state and count of instances running per node.
-func (ds *sqliteDB) getNodeSummary() (Summary []*types.NodeSummary, err error) {
+func (ds *sqliteDB) getNodeSummary() ([]*types.NodeSummary, error) {
+	var summary []*types.NodeSummary
+
 	datastore := ds.getTableDB("instance_statistics")
+
 	ds.tdbLock.RLock()
+
 	tx, err := datastore.Begin()
 	if err != nil {
 		ds.tdbLock.RUnlock()
-		return
+		return nil, err
 	}
 
 	query := `
@@ -1608,26 +1688,34 @@ ON total_instances.node_id = total_exited.node_id
 	}
 	defer rows.Close()
 
-	Summary = make([]*types.NodeSummary, 0)
+	summary = make([]*types.NodeSummary, 0)
+
 	for rows.Next() {
 		var n types.NodeSummary
+
 		err = rows.Scan(&n.NodeID, &n.TotalInstances, &n.TotalRunningInstances, &n.TotalPendingInstances, &n.TotalPausedInstances)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
 			return nil, err
 		}
-		Summary = append(Summary, &n)
+
+		summary = append(summary, &n)
 	}
+
 	tx.Commit()
+
 	ds.tdbLock.RUnlock()
 
-	return Summary, err
+	return summary, err
 }
 
 // GetFrameStatistics will return trace data by label id.
-func (ds *sqliteDB) GetFrameStatistics(label string) (stats []types.FrameStat, err error) {
+func (ds *sqliteDB) GetFrameStatistics(label string) ([]types.FrameStat, error) {
+	var stats []types.FrameStat
+
 	ds.tdbLock.RLock()
+
 	query := `WITH total AS
 		 (
 			SELECT	id,
@@ -1687,6 +1775,7 @@ func (ds *sqliteDB) GetFrameStatistics(label string) (stats []types.FrameStat, e
 	defer rows.Close()
 
 	stats = make([]types.FrameStat, 0)
+
 	for rows.Next() {
 		var stat types.FrameStat
 		var uuid sql.NullString
@@ -1697,32 +1786,41 @@ func (ds *sqliteDB) GetFrameStatistics(label string) (stats []types.FrameStat, e
 		err = rows.Scan(&uuid, &totalTime, &controllerTime, &launcherTime, &schedulerTime)
 		if err != nil {
 			ds.tdbLock.RUnlock()
-			return
+			return nil, err
 		}
+
 		if uuid.Valid {
 			stat.ID = uuid.String
 		}
+
 		if controllerTime.Valid {
 			stat.ControllerTime = controllerTime.Float64
 		}
+
 		if launcherTime.Valid {
 			stat.LauncherTime = launcherTime.Float64
 		}
+
 		if schedulerTime.Valid {
 			stat.SchedulerTime = schedulerTime.Float64
 		}
+
 		if totalTime.Valid {
 			stat.TotalElapsedTime = totalTime.Float64
 		}
+
 		stats = append(stats, stat)
 	}
+
 	ds.tdbLock.RUnlock()
 
 	return stats, err
 }
 
 // GetBatchFrameSummary will retieve the count of traces we have for a specific label
-func (ds *sqliteDB) getBatchFrameSummary() (stats []types.BatchFrameSummary, err error) {
+func (ds *sqliteDB) getBatchFrameSummary() ([]types.BatchFrameSummary, error) {
+	var stats []types.BatchFrameSummary
+
 	datastore := ds.getTableDB("frame_statistics")
 
 	ds.tdbLock.RLock()
@@ -1739,15 +1837,19 @@ func (ds *sqliteDB) getBatchFrameSummary() (stats []types.BatchFrameSummary, err
 	defer rows.Close()
 
 	stats = make([]types.BatchFrameSummary, 0)
+
 	for rows.Next() {
 		var stat types.BatchFrameSummary
+
 		err = rows.Scan(&stat.BatchID, &stat.NumInstances)
 		if err != nil {
 			ds.tdbLock.RUnlock()
-			return
+			return nil, err
 		}
+
 		stats = append(stats, stat)
 	}
+
 	ds.tdbLock.RUnlock()
 
 	return stats, err
@@ -1755,7 +1857,9 @@ func (ds *sqliteDB) getBatchFrameSummary() (stats []types.BatchFrameSummary, err
 
 // GetBatchFrameStatistics will show individual trace data per instance for a batch of trace data.
 // The batch is identified by the label.
-func (ds *sqliteDB) getBatchFrameStatistics(label string) (stats []types.BatchFrameStat, err error) {
+func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameStat, error) {
+	var stats []types.BatchFrameStat
+
 	datastore := ds.getTableDB("frame_statistics")
 
 	query := `WITH total AS
@@ -1840,7 +1944,9 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) (stats []types.BatchFr
 		FROM variance
 		JOIN total
 		JOIN averages;`
+
 	ds.tdbLock.RLock()
+
 	rows, err := datastore.Query(query, label)
 	if err != nil {
 		ds.tdbLock.RUnlock()
@@ -1849,6 +1955,7 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) (stats []types.BatchFr
 	defer rows.Close()
 
 	stats = make([]types.BatchFrameStat, 0)
+
 	for rows.Next() {
 		var stat types.BatchFrameStat
 		var numInstances sql.NullInt64
@@ -1864,35 +1971,45 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) (stats []types.BatchFr
 		err = rows.Scan(&numInstances, &totalElapsed, &averageElapsed, &averageControllerElapsed, &averageLauncherElapsed, &averageSchedulerElapsed, &varianceController, &varianceLauncher, &varianceScheduler)
 		if err != nil {
 			ds.tdbLock.RUnlock()
-			return
+			return nil, err
 		}
+
 		if numInstances.Valid {
 			stat.NumInstances = int(numInstances.Int64)
 		}
+
 		if totalElapsed.Valid {
 			stat.TotalElapsed = totalElapsed.Float64
 		}
+
 		if averageElapsed.Valid {
 			stat.AverageElapsed = averageElapsed.Float64
 		}
+
 		if averageControllerElapsed.Valid {
 			stat.AverageControllerElapsed = averageControllerElapsed.Float64
 		}
+
 		if averageLauncherElapsed.Valid {
 			stat.AverageLauncherElapsed = averageLauncherElapsed.Float64
 		}
+
 		if averageSchedulerElapsed.Valid {
 			stat.AverageSchedulerElapsed = averageSchedulerElapsed.Float64
 		}
+
 		if varianceController.Valid {
 			stat.VarianceController = varianceController.Float64
 		}
+
 		if varianceLauncher.Valid {
 			stat.VarianceLauncher = varianceLauncher.Float64
 		}
+
 		if varianceScheduler.Valid {
 			stat.VarianceScheduler = varianceScheduler.Float64
 		}
+
 		stats = append(stats, stat)
 	}
 
