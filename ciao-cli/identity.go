@@ -174,7 +174,7 @@ func getUserProjects(username string, password string) ([]Project, error) {
 	var projects UserProjects
 	var userProjects []Project
 
-	token, _, user, err := getUnscopedToken(*identityUser, *identityPassword)
+	token, _, user, err := getUnscopedToken(username, password)
 	if err != nil {
 		return nil, err
 	}
