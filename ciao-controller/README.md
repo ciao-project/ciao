@@ -125,7 +125,7 @@ Usage of ciao-controller/ciao-controller:
   -stderrthreshold value
     	logs at or above this threshold go to stderr
   -tables_init_path string
-    	path to csv files (default ".")
+	path to csv files (default "./tables")
   -url string
     	Server URL (default "localhost")
   -username string
