@@ -127,65 +127,84 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 	glog.V(1).Info(string(payload))
 }
 
-func newSSNTPClient(context *controller, config *ssntp.Config) (client *ssntpClient, err error) {
-	client = &ssntpClient{name: "ciao Controller", context: context}
+func newSSNTPClient(context *controller, config *ssntp.Config) (*ssntpClient, error) {
+	client := &ssntpClient{name: "ciao Controller", context: context}
 
-	err = client.ssntp.Dial(config, client)
-	return
+	err := client.ssntp.Dial(config, client)
+	return client, err
 }
 
-func (client *ssntpClient) StartTracedWorkload(config string, startTime time.Time, label string) (err error) {
+func (client *ssntpClient) StartTracedWorkload(config string, startTime time.Time, label string) error {
 	glog.V(1).Info("START TRACED config:")
 	glog.V(1).Info(config)
-	traceConfig := &ssntp.TraceConfig{PathTrace: true, Start: startTime, Label: []byte(label)}
-	_, err = client.ssntp.SendTracedCommand(ssntp.START, []byte(config), traceConfig)
-	return
+
+	traceConfig := &ssntp.TraceConfig{
+		PathTrace: true,
+		Start:     startTime,
+		Label:     []byte(label),
+	}
+
+	_, err := client.ssntp.SendTracedCommand(ssntp.START, []byte(config), traceConfig)
+
+	return err
 }
 
-func (client *ssntpClient) StartWorkload(config string) (err error) {
+func (client *ssntpClient) StartWorkload(config string) error {
 	glog.V(1).Info("START config:")
 	glog.V(1).Info(config)
-	_, err = client.ssntp.SendCommand(ssntp.START, []byte(config))
-	return
+
+	_, err := client.ssntp.SendCommand(ssntp.START, []byte(config))
+
+	return err
 }
 
-func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) (err error) {
+func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) error {
 	stopCmd := payloads.StopCmd{
 		InstanceUUID:      instanceID,
 		WorkloadAgentUUID: nodeID,
 	}
+
 	payload := payloads.Delete{
 		Delete: stopCmd,
 	}
+
 	y, err := yaml.Marshal(payload)
 	if err != nil {
 		return err
 	}
+
 	glog.Info("DELETE instance_id: ", instanceID, "node_id ", nodeID)
 	glog.V(1).Info(string(y))
+
 	_, err = client.ssntp.SendCommand(ssntp.DELETE, y)
-	return
+
+	return err
 }
 
-func (client *ssntpClient) StopInstance(instanceID string, nodeID string) (err error) {
+func (client *ssntpClient) StopInstance(instanceID string, nodeID string) error {
 	stopCmd := payloads.StopCmd{
 		InstanceUUID:      instanceID,
 		WorkloadAgentUUID: nodeID,
 	}
+
 	payload := payloads.Stop{
 		Stop: stopCmd,
 	}
+
 	y, err := yaml.Marshal(payload)
 	if err != nil {
 		return err
 	}
+
 	glog.Info("STOP instance_id: ", instanceID, "node_id ", nodeID)
 	glog.V(1).Info(string(y))
+
 	_, err = client.ssntp.SendCommand(ssntp.STOP, y)
-	return
+
+	return err
 }
 
-func (client *ssntpClient) RestartInstance(instanceID string, nodeID string) (err error) {
+func (client *ssntpClient) RestartInstance(instanceID string, nodeID string) error {
 	restartCmd := payloads.RestartCmd{
 		InstanceUUID:      instanceID,
 		WorkloadAgentUUID: nodeID,
@@ -199,13 +218,16 @@ func (client *ssntpClient) RestartInstance(instanceID string, nodeID string) (er
 	if err != nil {
 		return err
 	}
+
 	glog.Info("RESTART instance: ", instanceID)
 	glog.V(1).Info(string(y))
+
 	_, err = client.ssntp.SendCommand(ssntp.RESTART, y)
-	return
+
+	return err
 }
 
-func (client *ssntpClient) EvacuateNode(nodeID string) (err error) {
+func (client *ssntpClient) EvacuateNode(nodeID string) error {
 	evacuateCmd := payloads.EvacuateCmd{
 		WorkloadAgentUUID: nodeID,
 	}
@@ -218,10 +240,13 @@ func (client *ssntpClient) EvacuateNode(nodeID string) (err error) {
 	if err != nil {
 		return err
 	}
+
 	glog.Info("EVACUATE node: ", nodeID)
 	glog.V(1).Info(string(y))
+
 	_, err = client.ssntp.SendCommand(ssntp.EVACUATE, y)
-	return
+
+	return err
 }
 
 func (client *ssntpClient) Disconnect() {
