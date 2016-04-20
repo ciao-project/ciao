@@ -77,7 +77,7 @@ func dumpRequest(r *http.Request) {
 	dumpRequestBody(r, false)
 }
 
-func serverQueryParse(r *http.Request) (int, int, string) {
+func pagerQueryParse(r *http.Request) (int, int, string) {
 	values := r.URL.Query()
 	limit := 0
 	offset := 0
@@ -160,7 +160,7 @@ func (pager *serverPager) filter(filterType pagerFilterType, filter string, inst
 }
 
 func (pager *serverPager) nextPage(filterType pagerFilterType, filter string, r *http.Request) ([]byte, error) {
-	limit, offset, lastSeen := serverQueryParse(r)
+	limit, offset, lastSeen := pagerQueryParse(r)
 
 	glog.V(2).Infof("Next page marker [%s] limit [%d] offset [%d]", lastSeen, limit, offset)
 
@@ -179,6 +179,75 @@ func (pager *serverPager) nextPage(filterType pagerFilterType, filter string, r 
 			}
 
 			return pager.getInstances(filterType, filter, pager.instances[i+1:], limit, 0)
+		}
+	}
+
+	return nil, fmt.Errorf("Item %s not found", lastSeen)
+}
+
+type nodePager struct {
+	context *controller
+	nodes   []payloads.CiaoComputeNode
+}
+
+func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, nodes []payloads.CiaoComputeNode, limit int, offset int) ([]byte, error) {
+	var computeNodes payloads.CiaoComputeNodes
+
+	//	servers.TotalServers = len(instances)
+	pageLength := 0
+
+	glog.V(2).Infof("Get nodes limit [%d] offset [%d]", limit, offset)
+
+	if nodes == nil || offset >= len(nodes) {
+		b, err := json.Marshal(computeNodes)
+		if err != nil {
+			return nil, err
+		}
+
+		return b, nil
+	}
+
+	for _, node := range nodes[offset:] {
+		computeNodes.Nodes = append(computeNodes.Nodes, node)
+
+		pageLength++
+		if limit > 0 && pageLength >= limit {
+			break
+		}
+	}
+
+	b, err := json.Marshal(computeNodes)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func (pager *nodePager) filter(filterType pagerFilterType, filter string, node payloads.CiaoComputeNode) bool {
+	return false
+}
+
+func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *http.Request) ([]byte, error) {
+	limit, offset, lastSeen := pagerQueryParse(r)
+
+	glog.V(2).Infof("Next page marker [%s] limit [%d] offset [%d]", lastSeen, limit, offset)
+
+	if lastSeen == "" {
+		if limit != 0 {
+			return pager.getNodes(filterType, filter, pager.nodes, limit, offset)
+		}
+
+		return pager.getNodes(filterType, filter, pager.nodes, 0, offset)
+	}
+
+	for i, node := range pager.nodes {
+		if node.ID == lastSeen {
+			if i >= len(pager.nodes)-1 {
+				return pager.getNodes(filterType, filter, nil, limit, 0)
+			}
+
+			return pager.getNodes(filterType, filter, pager.nodes[i+1:], limit, 0)
 		}
 	}
 
@@ -930,7 +999,12 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 		}
 	}
 
-	b, err := json.Marshal(computeNodes)
+	pager := nodePager{
+		context: context,
+		nodes:   computeNodes.Nodes,
+	}
+
+	b, err := pager.nextPage(none, "", r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
