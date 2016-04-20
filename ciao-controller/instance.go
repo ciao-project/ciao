@@ -49,15 +49,16 @@ func isCNCIWorkload(workload *types.Workload) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
-func newInstance(context *controller, tenantID string, workload *types.Workload) (i *instance, err error) {
+func newInstance(context *controller, tenantID string, workload *types.Workload) (*instance, error) {
 	id := uuid.Generate()
 
 	config, err := newConfig(context, workload, id.String(), tenantID)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	usage := config.GetResources()
@@ -73,38 +74,42 @@ func newInstance(context *controller, tenantID string, workload *types.Workload)
 		Usage:      usage,
 	}
 
-	i = &instance{
+	i := &instance{
 		context:   context,
 		newConfig: config,
 		Instance:  newInstance,
 	}
-	return
+
+	return i, nil
 }
 
-func (i *instance) Add() (err error) {
+func (i *instance) Add() error {
 	if i.CNCI == false {
 		ds := i.context.ds
 		go ds.AddInstance(&i.Instance)
 	} else {
 		i.context.ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}
-	return
+
+	return nil
 }
 
-func (i *instance) Clean() (err error) {
+func (i *instance) Clean() error {
 	if i.CNCI == false {
 		i.context.ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
 	}
-	return
+
+	return nil
 }
 
-func (i *instance) Allowed() (b bool, err error) {
+func (i *instance) Allowed() (bool, error) {
 	if i.CNCI == true {
 		// should I bother to check the tenant id exists?
 		return true, nil
 	}
 
 	ds := i.context.ds
+
 	tenant, err := ds.GetTenant(i.TenantID)
 	if err != nil {
 		return false, err
@@ -122,26 +127,30 @@ func (i *instance) Allowed() (b bool, err error) {
 			return false, nil
 		}
 	}
+
 	return true, nil
 }
 
-func (c *config) GetResources() (resources map[string]int) {
+func (c *config) GetResources() map[string]int {
 	rr := c.sc.Start.RequestedResources
 
 	// convert RequestedResources into a map[string]int
-	resources = make(map[string]int)
+	resources := make(map[string]int)
 	for i := range rr {
 		resources[string(rr[i].Type)] = rr[i].Value
 	}
-	return
+
+	return resources
 }
 
-func newConfig(context *controller, wl *types.Workload, instanceID string, tenantID string) (config config, err error) {
+func newConfig(context *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {
 	type UserData struct {
 		UUID     string `json:"uuid"`
 		Hostname string `json:"hostname"`
 	}
+
 	var userData UserData
+	var config config
 
 	baseConfig := wl.Config
 	defaults := wl.Defaults
@@ -230,15 +239,15 @@ func newConfig(context *controller, wl *types.Workload, instanceID string, tenan
 
 	config.config = "---\n" + string(y) + "...\n" + baseConfig + "---\n" + string(b) + "\n...\n"
 	config.mac = networking.VnicMAC
-	return
+
+	return config, err
 }
 
-func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
+func newTenantHardwareAddr(ip net.IP) net.HardwareAddr {
 	buf := make([]byte, 6)
 	ipBytes := ip.To4()
 	buf[0] |= 2
 	buf[1] = 0
 	copy(buf[2:6], ipBytes)
-	hw = net.HardwareAddr(buf)
-	return
+	return net.HardwareAddr(buf)
 }
