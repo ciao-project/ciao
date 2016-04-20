@@ -169,7 +169,7 @@ func (c *controller) startWorkload(workloadID string, tenantID string, instances
 	return newInstances, e
 }
 
-func (c *controller) launchCNCI(tenantID string) (err error) {
+func (c *controller) launchCNCI(tenantID string) error {
 	workloadID, err := c.ds.GetCNCIWorkloadID()
 	if err != nil {
 		return err
