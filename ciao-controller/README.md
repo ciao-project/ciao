@@ -135,7 +135,7 @@ Usage of ciao-controller/ciao-controller:
   -vmodule value
     	comma-separated list of pattern=N settings for file-filtered logging
   -workloads_path string
-    	path to yaml files (default ".")
+	path to yaml files (default "./workloads")
 ```
 
 ### Example
