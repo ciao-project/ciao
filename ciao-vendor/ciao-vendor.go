@@ -34,6 +34,7 @@ type repoInfo struct {
 
 var repos = map[string]repoInfo{
 	"github.com/docker/distribution": {"https://github.com/docker/distribution.git", "v2.4.0"},
+	"gopkg.in/yaml.v2":               {"https://gopkg.in/yaml.v2", "a83829b"},
 }
 
 var vendorTmpPath = "/tmp/ciao-vendor"
@@ -42,7 +43,7 @@ func isStandardPackage(name string) bool {
 	cmd := exec.Command("go", "list", "-f", "{{.Standard}}", name)
 	output, err := cmd.Output()
 	if err != nil {
-		return true
+		return false
 	}
 	return bytes.HasPrefix(output, []byte{'t', 'r', 'u', 'e'})
 }
@@ -146,12 +147,14 @@ func cloneRepos() error {
 func copyRepos(cwd string, subPackages map[string][]string) error {
 	errCh := make(chan error)
 	for k, r := range repos {
-		packages, ok := subPackages[k]
-		if !ok {
-			fmt.Printf("Warning: No packages found for: %s\n", r.URL)
-			continue
-		}
-		go func(k string, packages []string) {
+		go func(k string, URL string) {
+			packages, ok := subPackages[k]
+			if !ok {
+				fmt.Printf("Warning: No packages found for: %s\n", URL)
+				errCh <- nil
+				return
+			}
+
 			args := []string{"archive", repos[k].version}
 			args = append(args, packages...)
 			cmd1 := exec.Command("git", args...)
@@ -182,7 +185,7 @@ func copyRepos(cwd string, subPackages map[string][]string) error {
 				return
 			}
 			errCh <- nil
-		}(k, packages)
+		}(k, r.URL)
 	}
 
 	var err error
