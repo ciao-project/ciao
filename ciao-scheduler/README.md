@@ -141,18 +141,14 @@ many more compute node and workload characteristics.  We don't expect
 that to significantly impact the time needed to make a scheduling choice.
 We have designed throughout ciao to scale.
 
-Today with scheduler running on server class hardware, the scheduling
-choice takes on the order of microseconds.  Even on low-end desktop
-hardware the scheduling choice is typically made in single digit
-milliseconds.
-
-While we haven't yet tested on extremely large clusters, searching an
-in memory data structure containing many thousands of nodes of data
-should only take on the order of milliseconds.  Even if each node is
-a structure of a thousand unique resource statistics.  And even if the
-top structure is a simple linked list.  Walking a list of thousands of
-elements and doing thousands of string compares for each element of the
-list is not a deeply computationally complex act.
+Our goal is to have scheduling take on the order of microseconds.
+While we haven't yet tested on extremely large clusters, conceptually one
+should expect that searching an in-memory data structure containing many
+thousands of nodes' resource data should not take more than milliseconds.
+Even if each node is a structure of a thousand unique resource statistics.
+And even if the top structure is only a simple linked list.  Walking a
+list of thousands of elements and doing thousands of string compares
+for each element of the list is not a deeply computationally complex act.
 
 For typical clouds today and in the foreseeable future, we expect our
 implementation will scale.
