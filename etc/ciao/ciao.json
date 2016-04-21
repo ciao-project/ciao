@@ -1,0 +1,13 @@
+{
+    "launcher": {
+	"server": "localhost",
+	"cacert": "/etc/pki/ciao/CAcert-server-localhost.pem",
+	"cert": "/etc/pki/ciao/cert-client-localhost.pem",
+	"compute-net":  "",
+	"mgmt-net":  "",
+	"hard-reset": false,
+	"disk-limit": true,
+	"mem-limit": true,
+	"simulation": false
+    }
+}
