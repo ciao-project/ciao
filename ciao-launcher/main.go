@@ -33,6 +33,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/01org/ciao/config"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 )
@@ -94,16 +95,26 @@ var simulate bool
 var maxInstances = int(math.MaxInt32)
 
 func init() {
-	flag.StringVar(&serverURL, "server", "localhost", "URL of SSNTP server")
-	flag.StringVar(&serverCertPath, "cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "Client certificate")
-	flag.StringVar(&clientCertPath, "cert", "/etc/pki/ciao/cert-client-localhost.pem", "CA certificate")
-	flag.StringVar(&computeNet, "compute-net", "", "Compute Subnet")
-	flag.StringVar(&mgmtNet, "mgmt-net", "", "Management Subnet")
+	defaults := config.InitConfig()
+	flag.StringVar(&serverURL, "server",
+		defaults.Launcher.Server, "URL of SSNTP server")
+	flag.StringVar(&serverCertPath, "cacert",
+		defaults.Launcher.CACert, "Client certificate")
+	flag.StringVar(&clientCertPath, "cert",
+		defaults.Launcher.Cert, "CA certificate")
+	flag.StringVar(&computeNet, "compute-net",
+		defaults.Launcher.ComputeNet, "Compute Subnet")
+	flag.StringVar(&mgmtNet, "mgmt-net",
+		defaults.Launcher.MgmtNet, "Management Subnet")
 	flag.Var(&networking, "network", "Can be none, cn (compute node) or nn (network node)")
-	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
-	flag.BoolVar(&diskLimit, "disk-limit", true, "Use disk usage limits")
-	flag.BoolVar(&memLimit, "mem-limit", true, "Use memory usage limits")
-	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
+	flag.BoolVar(&hardReset, "hard-reset",
+		defaults.Launcher.HardReset, "Kill and delete all instances, reset networking and exit")
+	flag.BoolVar(&diskLimit, "disk-limit",
+		defaults.Launcher.DiskLimit, "Use disk usage limits")
+	flag.BoolVar(&memLimit, "mem-limit",
+		defaults.Launcher.MemLimit, "Use memory usage limits")
+	flag.BoolVar(&simulate, "simulation",
+		defaults.Launcher.Simulation, "Launcher simulation")
 }
 
 const (
