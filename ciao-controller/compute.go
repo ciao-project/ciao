@@ -262,6 +262,7 @@ func (pager *nodeServerPager) getNodeServers(filterType pagerFilterType, filter 
 	limit int, offset int) ([]byte, error) {
 	var servers payloads.CiaoServersStats
 
+	servers.TotalServers = len(instances)
 	pageLength := 0
 
 	glog.V(2).Infof("Get nodes limit [%d] offset [%d]", limit, offset)

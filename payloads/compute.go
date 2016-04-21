@@ -219,7 +219,8 @@ type CiaoServerStats struct {
 }
 
 type CiaoServersStats struct {
-	Servers []CiaoServerStats `json:"servers"`
+	TotalServers int               `json:"total_servers"`
+	Servers      []CiaoServerStats `json:"servers"`
 }
 
 type CiaoClusterStatus struct {
