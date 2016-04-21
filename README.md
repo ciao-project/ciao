@@ -32,5 +32,11 @@ All ciao components communicate with each other via
 [SSNTP](https://github.com/01org/ciao/blob/master/ssntp/README.md) using a
 set of [payloads](https://github.com/01org/ciao/blob/master/payloads).
 
+This GitHub repository contains documentation on the
+various sub-components of ciao in their respective
+subdirectories.  A comprehensive [ciao cluster setup
+document](https://clearlinux.org/documentation/ciao-cluster-setup.html)
+is also available.
+
 The ciao development team can be reached via our [mailing
 list](https://lists.clearlinux.org/mailman/listinfo/ciao-devel).
