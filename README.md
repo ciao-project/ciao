@@ -39,4 +39,5 @@ document](https://clearlinux.org/documentation/ciao-cluster-setup.html)
 is also available.
 
 The ciao development team can be reached via our [mailing
-list](https://lists.clearlinux.org/mailman/listinfo/ciao-devel).
+list](https://lists.clearlinux.org/mailman/listinfo/ciao-devel) and on IRC
+in channel #ciao-project on [Freenode](https://freenode.net/kb/answer/chat).
