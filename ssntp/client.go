@@ -204,8 +204,8 @@ func (client *Client) attemptDial() error {
 
 	for {
 	URILoop:
-		for _, uri := range client.uris {
-			for d := 0; ; d++ {
+		for d := 0; ; d++ {
+			for _, uri := range client.uris {
 				client.log.Infof("%s connecting to %s\n", client.uuid, uri)
 				conn, err := tls.Dial(client.transport, uri, client.tls)
 
@@ -216,31 +216,30 @@ func (client *Client) attemptDial() error {
 				}
 				client.status.Unlock()
 
-				if err != nil {
-					client.log.Infof("Dial failed %s\n", err.Error())
+				if err == nil {
+					client.log.Infof("Connected\n")
+					session := newSession(&client.uuid, client.role, 0, conn)
+					client.session = session
 
-					delay := r.Int63n(delays[d%len(delays)])
-					delay++ // Avoid waiting for 0 seconds
-					client.log.Errorf("Could not connect to %s (%s) - retrying in %d seconds\n", uri, err, delay)
-
-					// Wait for delay before reconnecting or return if the client is closed
-					select {
-					case <-client.closed:
-						return fmt.Errorf("Connection closed")
-					case <-time.After(time.Duration(delay) * time.Second):
-						break
-					}
-
-					continue
+					break URILoop
 				}
 
-				client.log.Infof("Connected\n")
-				session := newSession(&client.uuid, client.role, 0, conn)
-				client.session = session
-
-				break URILoop
-
+				client.log.Errorf("Could not connect to %s (%s)\n", uri, err)
 			}
+
+			delay := r.Int63n(delays[d%len(delays)])
+			delay++ // Avoid waiting for 0 seconds
+			client.log.Errorf("All server URIs failed - retrying in %d seconds\n", delay)
+
+			// Wait for delay before reconnecting or return if the client is closed
+			select {
+			case <-client.closed:
+				return fmt.Errorf("Connection closed")
+			case <-time.After(time.Duration(delay) * time.Second):
+				break
+			}
+
+			continue
 		}
 
 		if client.session == nil {
