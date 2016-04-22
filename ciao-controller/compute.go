@@ -1297,6 +1297,9 @@ func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
 }
 
 func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+
 	var events payloads.CiaoEvents
 
 	if validateToken(context, r) == false {
@@ -1311,6 +1314,10 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 
 	for _, l := range logs {
+		if tenant != "" && tenant != l.TenantID {
+			continue
+		}
+
 		event := payloads.CiaoEvent{
 			Timestamp: l.Timestamp,
 			TenantId:  l.TenantID,
@@ -1424,6 +1431,10 @@ func createComputeAPI(context *controller) {
 
 	r.HandleFunc("/v2.1/{tenant}/quotas", func(w http.ResponseWriter, r *http.Request) {
 		listTenantQuotas(w, r, context)
+	}).Methods("GET")
+
+	r.HandleFunc("/v2.1/{tenant}/events", func(w http.ResponseWriter, r *http.Request) {
+		listEvents(w, r, context)
 	}).Methods("GET")
 
 	/* Avoid conflict with {tenant}/servers/detail */
