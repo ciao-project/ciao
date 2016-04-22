@@ -315,12 +315,6 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 		client.port = port
 	}
 
-	if len(config.URI) == 0 {
-		client.uris = append(client.uris, fmt.Sprintf("%s:%d", defaultURL, client.port))
-	} else {
-		client.uris = append(client.uris, fmt.Sprintf("%s:%d", config.URI, client.port))
-	}
-
 	if len(config.Transport) == 0 {
 		client.transport = "tcp"
 	} else {
@@ -352,7 +346,30 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 	client.ntf = ntf
 	client.tls = prepareTLSConfig(config, false)
 
-	err := client.attemptDial()
+	/* First we add the configured server URI */
+	if len(config.URI) != 0 {
+		client.uris = append(client.uris, fmt.Sprintf("%s:%d", config.URI, client.port))
+	}
+
+	/* Then we parse the CA certificate to find FQDNs and/or IPs to connect to */
+	ips, fqdns, err := parseCertificate(config)
+	if err != nil {
+		client.log.Warningf("%s", err)
+	} else {
+		/* We prefer IPs over FQDNs */
+		for _, ip := range ips {
+			client.uris = append(client.uris, fmt.Sprintf("%s:%d", ip, client.port))
+		}
+
+		for _, fqdn := range fqdns {
+			client.uris = append(client.uris, fmt.Sprintf("%s:%d", fqdn, client.port))
+		}
+	}
+
+	/* Last resort: localhost */
+	client.uris = append(client.uris, fmt.Sprintf("%s:%d", defaultURL, client.port))
+
+	err = client.attemptDial()
 	if err != nil {
 		client.log.Errorf("%s", err)
 		return err

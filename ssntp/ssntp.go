@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -772,17 +773,17 @@ func prepareTLS(caPEM, certPEM []byte, server bool) *tls.Config {
 
 	if server == true {
 		return &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			RootCAs:            certPool,
-			ClientCAs:          certPool,
-			Rand:               rand.Reader,
-			ClientAuth:         tls.RequireAndVerifyClientCert,
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      certPool,
+			ClientCAs:    certPool,
+			Rand:         rand.Reader,
+			ClientAuth:   tls.RequireAndVerifyClientCert,
 		}
 	}
 
 	return &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		RootCAs:            certPool,
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      certPool,
 	}
 }
 
@@ -832,6 +833,36 @@ func verifyRole(conn interface{}, role uint32) (bool, error) {
 	}
 
 	return false, oidError
+}
+
+func parseCertificate(config *Config) ([]string, []string, error) {
+	var fqdns []string
+	var ips []string
+	caPEM, err := ioutil.ReadFile(config.CAcert)
+	if err != nil {
+		log.Fatalf("SSNTP: Load CA certificate: %s", err)
+	}
+
+	certBlock, _ := pem.Decode(caPEM)
+	if certBlock == nil {
+		fmt.Printf("Could not decode PEM for %s\n", config.CAcert)
+	}
+
+	cert, err := x509.ParseCertificates(certBlock.Bytes)
+	if err != nil {
+		fmt.Printf("Could not parse certificate %s\n", err)
+		return nil, nil, err
+	}
+
+	for _, fqdn := range cert[0].DNSNames {
+		fqdns = append(fqdns, fqdn)
+	}
+
+	for _, ip := range cert[0].IPAddresses {
+		ips = append(ips, ip.String())
+	}
+
+	return ips, fqdns, nil
 }
 
 const nullUUID = "00000000-0000-0000-0000-000000000000"
