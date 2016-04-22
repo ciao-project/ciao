@@ -33,7 +33,7 @@ type controller struct {
 
 var cert = flag.String("cert", "/etc/pki/ciao/cert-client-localhost.pem", "Client certificate")
 var caCert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
-var serverURL = flag.String("url", "localhost", "Server URL")
+var serverURL = flag.String("url", "", "Server URL")
 var identityURL = flag.String("identity", "identity:35357", "Keystone URL")
 var serviceUser = flag.String("username", "csr", "Openstack Service Username")
 var servicePassword = flag.String("password", "", "Openstack Service Username")
