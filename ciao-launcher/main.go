@@ -94,7 +94,7 @@ var simulate bool
 var maxInstances = int(math.MaxInt32)
 
 func init() {
-	flag.StringVar(&serverURL, "server", "localhost", "URL of SSNTP server")
+	flag.StringVar(&serverURL, "server", "", "URL of SSNTP server")
 	flag.StringVar(&serverCertPath, "cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "Client certificate")
 	flag.StringVar(&clientCertPath, "cert", "/etc/pki/ciao/cert-client-localhost.pem", "CA certificate")
 	flag.StringVar(&computeNet, "compute-net", "", "Compute Subnet")
