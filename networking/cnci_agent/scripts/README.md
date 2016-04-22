@@ -7,38 +7,34 @@ Helper scripts to provision and test CNCI Images
 ## CNCI Image Provisioning ##
 
 The CNCI Image creation scripts helps you create a CNCI Image from
-a clear linux cloud image. Clear cloud images can be obtained from
+a clear linux cloud image. Clear cloud images for the CNCI can be obtained from
 
-https://download.clearlinux.org/image/
+https://download.clearlinux.org/demos/ciao/
 
 The scripts are used to provision the image with the CNCI Agent and
 the certificates it needs to connect to the ciao-scheduler.
 
-0. The image has to be preprovisoned with the following tools 
-	- dnsmasq
-	- iptables
 1. Place the appropriate certificates under the certs directory
 
 ```
 	├── certs
-	│   ├── CAcert-server-localhost.pem
-	│   ├── cert-client-localhost.pem
+	│   ├── CAcert-*.pem
+	│   ├── cert-CNCIAgent-*.pem
 ```
 
-
-2. Ensure that you have built and installed the cnci agent 
+2. Ensure that you have built and installed the cnci agent
 ```
 	cd $GOPATH/src/github.com/01org/ciao/networking/cnci_agent
    	go install
 ```
 3. Update the image
 ```
-./update_cnci_cloud_image.sh
+./generate_cnci_cloud_image.sh --image <cnci-image>
 ```
 
 This will yield a provisioned image. This can be used as a CNCI VM.
 
-## CNCI Verification ##
+## CNCI Verification (Optional)##
 
 A simple script to launch the CNCI VM using QEMU and a sample cloud-init
 configuration. The cloud-init is setup to check if the CNCI Agent can
@@ -65,7 +61,7 @@ be successfully launched within this VM
 3. Verify the successful launch of the CNCI using
    systemctl status cnci-agent
 
-An output of the form shown below indicates a successful provisoning of
+An output of the form shown below indicates a successful provisioning of
 the agent.
 
 ```
@@ -78,6 +74,5 @@ ciao@cncihostname ~ $ systemctl status cnci-agent -l
            └─229 /usr/sbin/cnci_agent -server auto -v 3
 ```
 
-Note: This boot will result in the cloud-init of the image. Hence the orginal
+Note: This boot will result in the cloud-init of the image. Hence the original
 image generated prior to the verification should be used as the CNCI image.
-

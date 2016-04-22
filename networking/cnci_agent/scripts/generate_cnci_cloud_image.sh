@@ -1,14 +1,15 @@
 #!/bin/bash
 
 #Defaults
-image="clear-7370-ciao-networking.img"
+image="clear-7520-ciao-networking.img"
 certs_dir=$GOPATH/src/github.com/01org/ciao/networking/cnci_agent/scripts/certs
 cnci_agent=$GOPATH/bin/cnci_agent
 cnci_sysd=$GOPATH/src/github.com/01org/ciao/networking/cnci_agent/scripts/cnci-agent.service
 partition="2"
 
-#The image can be downloaded from 
-#wget https://download.clearlinux.org/demos/ciao/$cnci_xz
+#The images can be downloaded from 
+#curl -O https://download.clearlinux.org/demos/ciao/"$image".xz
+#unxz "$image".xz
 
 usage="$(basename "$0") [--image clear_cnci_image_name] [-certs certificate_directory] [-agent cnci_agent_binary] [-script cnci_systemd_script] \n\n A simple script to create a CNCI Image from a clear cloud image. \n Defaults for any unspecified option are as follows \n\n --agent $cnci_agent \n --certs $certs_dir \n --image $image \n --script $cnci_sysd\n\n"
 
