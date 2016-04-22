@@ -82,7 +82,8 @@ var (
 	listCNCIs        = flag.Bool("list-cncis", false, "List all CNCIs")
 	listLength       = flag.Int("list-length", 0, "Maximum number of items in the reponse")
 	listLabels       = flag.Bool("list-labels", false, "List all trace labels")
-	listEvents       = flag.Bool("list-events", false, "List all cluster events")
+	listAllEvents    = flag.Bool("list-all-events", false, "List all cluster events")
+	listEvents       = flag.Bool("list-events", false, "List all events for a tenant")
 	dumpCNCI         = flag.Bool("dump-cnci", false, "Dump a CNCI details")
 	dumpToken        = flag.Bool("dump-token", false, "Dump keystone tokens")
 	dumpTenantID     = flag.Bool("dump-tenant-id", false, "Dump tenant UUID")
@@ -661,10 +662,15 @@ func listAllLabels() {
 
 }
 
-func listAllEvents() {
+func listClusterEvents(tenant string) {
 	var events payloads.CiaoEvents
+	var url string
 
-	url := buildComputeURL("events")
+	if tenant == "" {
+		url = buildComputeURL("events")
+	} else {
+		url = buildComputeURL("%s/events", tenant)
+	}
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
@@ -958,7 +964,15 @@ func main() {
 	}
 
 	if *listEvents == true {
-		listAllEvents()
+		if len(*tenantID) == 0 {
+			fatalf("Missing required -tenant-id parameter")
+		}
+
+		listClusterEvents(*tenantID)
+	}
+
+	if *listAllEvents == true {
+		listClusterEvents("")
 	}
 
 	if *deleteEvents == true {

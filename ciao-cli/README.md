@@ -9,7 +9,7 @@ compute API [endpoints](https://github.com/01org/ciao/blob/master/ciao-controlle
 ## Usage
 
 ```shell
-Usage of ./ciao-cli:
+Usage of ciao-cli:
   -all-instances
     	Select all instances
   -alsologtostderr
@@ -23,7 +23,9 @@ Usage of ./ciao-cli:
   -computeport int
     	Openstack Compute API port (default 8774)
   -controller string
-    	Controller URL (default "localhost")
+    	Controller URL
+  -delete-events
+    	Delete all stored Ciao events
   -delete-instance
     	Delete a Ciao instance
   -dump-cnci
@@ -48,12 +50,16 @@ Usage of ./ciao-cli:
     	Number of instances to create (default 1)
   -launch-instances
     	Launch Ciao instances
+  -list-all-events
+    	List all cluster events
   -list-cn-instances
     	List all instances for a compute node
   -list-cncis
     	List all CNCIs
   -list-cns
     	List all compute nodes
+  -list-events
+    	List all events for a tenant
   -list-instances
     	List all instances for a tenant
   -list-labels
@@ -77,7 +83,7 @@ Usage of ./ciao-cli:
   -logtostderr
     	log to standard error instead of files
   -password string
-    	Openstack Service Username (default "nova")
+    	Openstack Service Username
   -restart-instance
     	Restart a Ciao instance
   -stderrthreshold value
@@ -89,7 +95,7 @@ Usage of ./ciao-cli:
   -tenant-name string
     	Tenant name
   -username string
-    	Openstack Service Username (default "nova")
+    	Openstack Service Username
   -v value
     	log level for V logs
   -vmodule value
@@ -311,5 +317,14 @@ $GOBIN/ciao-cli -username admin -password ciao -list-labels
 $GOBIN/ciao-cli -username admin -password ciao -dump-label -instance-label start_trace_20160415
 ```
 
+### List all cluster events (Priviledged)
 
+```shell
+$GOBIN/ciao-cli -username admin -password ciao -list-all-events
+``
 
+### List all cluster events for a given tenant
+
+```shell
+$GOBIN/ciao-cli -list-events
+```
