@@ -77,7 +77,8 @@ var (
 	listQuotas       = flag.Bool("list-quotas", false, "List quotas status for a tenant")
 	listResources    = flag.Bool("list-resources", false, "List consumed resources for a tenant for the past 15mn")
 	listWorkloads    = flag.Bool("list-workloads", false, "List all workloads")
-	listTenants      = flag.Bool("list-tenants", false, "List all tenants")
+	listUserTenants  = flag.Bool("list-tenants", false, "List all tenants for a given user")
+	listTenants      = flag.Bool("list-all-tenants", false, "List all tenants")
 	listComputeNodes = flag.Bool("list-cns", false, "List all compute nodes")
 	listCNCIs        = flag.Bool("list-cncis", false, "List all CNCIs")
 	listLength       = flag.Int("list-length", 0, "Maximum number of items in the reponse")
@@ -386,6 +387,19 @@ func listAllTenants() {
 
 	for i, project := range projects.Projects {
 		fmt.Printf("Tenant [%d]\n", i+1)
+		fmt.Printf("\tUUID: %s\n", project.ID)
+		fmt.Printf("\tName: %s\n", project.Name)
+	}
+}
+
+func listUserSpecificTenants(username, password string) {
+	projects, err := getUserProjects(username, password)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	fmt.Printf("Projects for user %s\n", username)
+	for _, project := range projects {
 		fmt.Printf("\tUUID: %s\n", project.ID)
 		fmt.Printf("\tName: %s\n", project.Name)
 	}
@@ -784,6 +798,16 @@ func main() {
 			fatalf("Missing required -user parameter")
 		}
 
+		if *listTenants == true {
+			listAllTenants()
+			return
+		}
+
+		if *listUserTenants == true {
+			listUserSpecificTenants(*identityUser, *identityPassword)
+			return
+		}
+
 		if len(*tenantName) == 0 {
 			projects, err := getUserProjects(*identityUser, *identityPassword)
 			if err != nil {
@@ -884,10 +908,6 @@ func main() {
 		}
 
 		listTenantWorkloads(*tenantID)
-	}
-
-	if *listTenants == true {
-		listAllTenants()
 	}
 
 	if *listComputeNodes == true {
