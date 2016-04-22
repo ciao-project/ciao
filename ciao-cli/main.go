@@ -784,78 +784,95 @@ func getCiaoEnvVariables() {
 
 }
 
+func checkCompulsoryOptions() {
+	fatal := ""
+
+	if *identityURL == "" {
+		fatal += "Missing required identity URL\n"
+	}
+
+	if *identityUser == "" {
+		fatal += "Missing required username\n"
+	}
+
+	if *identityPassword == "" {
+		fatal += "Missing required password\n"
+	}
+
+	if *controllerURL == "" {
+		fatal += "Missing required Ciao controller URL\n"
+	}
+
+	if fatal != "" {
+		fatalf(fatal)
+	}
+}
+
 func main() {
 	flag.Parse()
 
 	getCiaoEnvVariables()
+	checkCompulsoryOptions()
 
-	if *identityURL != "" {
-		if len(*identityUser) == 0 {
-			fatalf("Missing required -user parameter")
-		}
+	/* First check if we're being asked for a tenants list */
+	if *listTenants == true {
+		listAllTenants()
+		return
+	}
 
-		if len(*identityPassword) == 0 {
-			fatalf("Missing required -user parameter")
-		}
+	if *listUserTenants == true {
+		listUserSpecificTenants(*identityUser, *identityPassword)
+		return
+	}
 
-		if *listTenants == true {
-			listAllTenants()
-			return
-		}
-
-		if *listUserTenants == true {
-			listUserSpecificTenants(*identityUser, *identityPassword)
-			return
-		}
-
-		if len(*tenantName) == 0 {
-			projects, err := getUserProjects(*identityUser, *identityPassword)
-			if err != nil {
-				fatalf(err.Error())
-			}
-
-			if len(projects) > 1 {
-				if len(*tenantID) == 0 {
-					fmt.Printf("Available projects for %s:\n", *identityUser)
-					for i, p := range projects {
-						fmt.Printf("\t Project[%d]: %s (%s)\n", i+1, p.Name, p.ID)
-					}
-					fatalf("Please specify a project to use with -tenant-name or -tenant-id")
-				} else {
-					for _, p := range projects {
-						if p.ID != *tenantID {
-							continue
-						}
-						*tenantName = p.Name
-					}
-
-					if len(*tenantName) == 0 {
-						fatalf("No tenant name for %s", *tenantID)
-					}
-				}
-			} else {
-				if len(*tenantID) != 0 && projects[0].ID != *tenantID {
-					fatalf("No tenant name for %s", *tenantID)
-				}
-
-				*tenantName = projects[0].Name
-				if len(*tenantID) == 0 {
-					*tenantID = projects[0].ID
-				}
-			}
-
-			warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
-		}
-
-		t, id, _, err := getScopedToken(*identityUser, *identityPassword, *tenantName)
+	/* If we're missing the tenant name let's try to fetch one */
+	if len(*tenantName) == 0 {
+		projects, err := getUserProjects(*identityUser, *identityPassword)
 		if err != nil {
 			fatalf(err.Error())
 		}
 
-		scopedToken = t
-		if len(*tenantID) == 0 {
-			*tenantID = id
+		if len(projects) > 1 {
+			if len(*tenantID) == 0 {
+				fmt.Printf("Available projects for %s:\n", *identityUser)
+				for i, p := range projects {
+					fmt.Printf("\t Project[%d]: %s (%s)\n", i+1, p.Name, p.ID)
+				}
+				fatalf("Please specify a project to use with -tenant-name or -tenant-id")
+			} else {
+				for _, p := range projects {
+					if p.ID != *tenantID {
+						continue
+					}
+					*tenantName = p.Name
+				}
+
+				if len(*tenantName) == 0 {
+					fatalf("No tenant name for %s", *tenantID)
+				}
+			}
+		} else {
+			if len(*tenantID) != 0 && projects[0].ID != *tenantID {
+				fatalf("No tenant name for %s", *tenantID)
+			}
+
+			*tenantName = projects[0].Name
+			if len(*tenantID) == 0 {
+				*tenantID = projects[0].ID
+			}
 		}
+
+		warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
+	}
+
+	t, id, _, err := getScopedToken(*identityUser, *identityPassword, *tenantName)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	scopedToken = t
+	if len(*tenantID) == 0 {
+		*tenantID = id
 	}
 
 	if *dumpTenantID == true {
