@@ -49,7 +49,7 @@ var enableNATssh bool
 var agentUUID string
 
 func init() {
-	flag.StringVar(&serverURL, "server", "localhost", "URL of SSNTP server, Use auto for auto discovery")
+	flag.StringVar(&serverURL, "server", "", "URL of SSNTP server, Use auto for auto discovery")
 	flag.StringVar(&serverCertPath, "cacert", "/var/lib/ciao/CAcert-server-localhost.pem", "Client certificate")
 	flag.StringVar(&clientCertPath, "cert", "/var/lib/ciao/cert-client-localhost.pem", "CA certificate")
 	flag.StringVar(&computeNet, "compute-net", "", "Compute Subnet")
