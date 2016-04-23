@@ -289,57 +289,76 @@ func (q *qemu) deleteImage() error {
 	return nil
 }
 
-func computeTapParam(vnicName string, networkNode bool) (string, *os.File, error) {
-	if !networkNode {
-		return fmt.Sprintf("tap,ifname=%s,script=no,downscript=no",
-			vnicName), nil, nil
-	}
+func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*os.File, error) {
+
+	fds := make([]*os.File, queues)
+	params := make([]string, 0, 8)
 
 	ifIndexPath := path.Join("/sys/class/net", vnicName, "ifindex")
 	fip, err := os.Open(ifIndexPath)
 	if err != nil {
 		glog.Errorf("Failed to determine tap ifname: %s", err)
-		return "", nil, err
+		return nil, nil, err
 	}
 	defer fip.Close()
 
 	scan := bufio.NewScanner(fip)
 	if !scan.Scan() {
 		glog.Error("Unable to read tap index")
-		return "", nil, fmt.Errorf("Unable to read tap index")
+		return nil, nil, fmt.Errorf("Unable to read tap index")
 	}
 
 	i, err := strconv.Atoi(scan.Text())
 	if err != nil {
 		glog.Errorf("Failed to determine tap ifname: %s", err)
-		return "", nil, err
+		return nil, nil, err
 	}
 
-	tapDev := fmt.Sprintf("/dev/tap%d", i)
+	//mq support
+	fdParam := ""
+	fdSeperator := ""
+	for q := 0; q < queues; q++ {
 
-	f, err := os.OpenFile(tapDev, os.O_RDWR, 0666)
-	if err != nil {
-		glog.Errorf("Failed to open tap device %s: %s", tapDev, err)
-		return "", nil, err
+		tapDev := fmt.Sprintf("/dev/tap%d", i)
+
+		f, err := os.OpenFile(tapDev, os.O_RDWR, 0666)
+		if err != nil {
+			glog.Errorf("Failed to open tap device %s: %s", tapDev, err)
+			return nil, nil, err
+		}
+		fds[q] = f
+		/*
+		   3, what do you mean 3.  Well, it turns out that files passed to child
+		   processes via cmd.ExtraFiles have different fds in the child and the
+		   parent.  In the child the fds are determined by the file's position
+		   in the ExtraFiles array + 3.
+		*/
+		fdParam = fmt.Sprintf("%s%s%d", fdParam, fdSeperator, q+3)
+		fdSeperator = ":"
 	}
 
-	/*
-	   3, what do you mean 3.  Well, it turns out that files passed to child
-	   processes via cmd.ExtraFiles have different fds in the child and the
-	   parent.  In the child the fds are determined by the file's position
-	   in the ExtraFiles array + 3. Since we're only specifying a single
-	   file we end up with an child fd of 3.
-	*/
-
-	return fmt.Sprintf("tap,fd=%d", 3), f, nil
+	netdev := fmt.Sprintf("type=tap,fds=%s,id=%s,vhost=on", fdParam, vnicName)
+	device := fmt.Sprintf("virtio-net-pci,netdev=%s,mq=on,vectors=%d,mac=%s", vnicName, 32, mac)
+	params = append(params, "-netdev", netdev)
+	params = append(params, "-device", device)
+	return params, fds, nil
 }
 
-func launchQemu(params []string, f *os.File) (string, error) {
+func computeTapParam(vnicName string, mac string) ([]string, error) {
+	params := make([]string, 0, 8)
+	net1Param := fmt.Sprintf("nic,model=virtio,macaddr=%s", mac)
+	net2Param := fmt.Sprintf("tap,ifname=%s,script=no,downscript=no", vnicName)
+	params = append(params, "-net", net1Param)
+	params = append(params, "-net", net2Param)
+	return params, nil
+}
+
+func launchQemu(params []string, fds []*os.File) (string, error) {
 	errStr := ""
 	cmd := exec.Command("qemu-system-x86_64", params...)
-	if f != nil {
-		glog.Infof("Adding extra file %v", f)
-		cmd.ExtraFiles = []*os.File{f}
+	if fds != nil {
+		glog.Infof("Adding extra file %v", fds)
+		cmd.ExtraFiles = fds
 	}
 
 	var stderr bytes.Buffer
@@ -355,7 +374,7 @@ func launchQemu(params []string, f *os.File) (string, error) {
 	return errStr, err
 }
 
-func launchQemuWithNC(params []string, f *os.File, ipAddress string) (int, error) {
+func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, error) {
 	var err error
 
 	tries := 0
@@ -370,7 +389,7 @@ func launchQemuWithNC(params []string, f *os.File, ipAddress string) (int, error
 		ncString := "socket,port=%d,host=%s,server,id=gnc0,server,nowait"
 		params[len(params)-1] = fmt.Sprintf(ncString, port, ipAddress)
 		var errStr string
-		errStr, err = launchQemu(params, f)
+		errStr, err = launchQemu(params, fds)
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with netcat %s %d", ipAddress, port)
@@ -387,13 +406,13 @@ func launchQemuWithNC(params []string, f *os.File, ipAddress string) (int, error
 
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to chardev error.  Relaunching without virtual console")
-		_, err = launchQemu(params[:len(params)-4], f)
+		_, err = launchQemu(params[:len(params)-4], fds)
 	}
 
 	return port, err
 }
 
-func launchQemuWithSpice(params []string, f *os.File, ipAddress string) (int, error) {
+func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int, error) {
 	var err error
 
 	tries := 0
@@ -406,7 +425,7 @@ func launchQemuWithSpice(params []string, f *os.File, ipAddress string) (int, er
 		}
 		params[len(params)-1] = fmt.Sprintf("port=%d,addr=%s,disable-ticketing", port, ipAddress)
 		var errStr string
-		errStr, err = launchQemu(params, f)
+		errStr, err = launchQemu(params, fds)
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with spicec -h %s -p %d", ipAddress, port)
@@ -425,7 +444,7 @@ func launchQemuWithSpice(params []string, f *os.File, ipAddress string) (int, er
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to spice error.  Relaunching without virtual console")
 		params = append(params[:len(params)-2], "-display", "none", "-vga", "none")
-		_, err = launchQemu(params, f)
+		_, err = launchQemu(params, fds)
 	}
 
 	return port, err
@@ -433,7 +452,7 @@ func launchQemuWithSpice(params []string, f *os.File, ipAddress string) (int, er
 
 func (q *qemu) startVM(vnicName, ipAddress string) error {
 
-	var f *os.File
+	var fds []*os.File
 
 	glog.Info("Launching qemu")
 
@@ -453,19 +472,29 @@ func (q *qemu) startVM(vnicName, ipAddress string) error {
 	}
 
 	if vnicName != "" {
-		net1Param := fmt.Sprintf("nic,model=virtio,macaddr=%s",
-			q.cfg.VnicMAC)
-		var err error
-		var net2Param string
-		net2Param, f, err = computeTapParam(vnicName, q.cfg.NetworkNode)
-		if err != nil {
-			return err
+		if q.cfg.NetworkNode {
+			var err error
+			var macvtapParam []string
+			//TODO: @mcastelino get from scheduler/controller
+			numQueues := 4
+			macvtapParam, fds, err = computeMacvtapParam(vnicName, q.cfg.VnicMAC, numQueues)
+			if err != nil {
+				return err
+			}
+			for _, f := range fds {
+				if f == nil {
+					break
+				}
+				defer f.Close()
+			}
+			params = append(params, macvtapParam...)
+		} else {
+			tapParam, err := computeTapParam(vnicName, q.cfg.VnicMAC)
+			if err != nil {
+				return err
+			}
+			params = append(params, tapParam...)
 		}
-		if f != nil {
-			defer f.Close()
-		}
-		params = append(params, "-net", net1Param)
-		params = append(params, "-net", net2Param)
 	} else {
 		params = append(params, "-net", "nic,model=virtio")
 		params = append(params, "-net", "user")
@@ -493,16 +522,16 @@ func (q *qemu) startVM(vnicName, ipAddress string) error {
 
 	if !launchWithUI.Enabled() {
 		params = append(params, "-display", "none", "-vga", "none")
-		_, err = launchQemu(params, f)
+		_, err = launchQemu(params, fds)
 	} else if launchWithUI.String() == "spice" {
 		var port int
-		port, err = launchQemuWithSpice(params, f, ipAddress)
+		port, err = launchQemuWithSpice(params, fds, ipAddress)
 		if err == nil {
 			q.vcPort = port
 		}
 	} else {
 		var port int
-		port, err = launchQemuWithNC(params, f, ipAddress)
+		port, err = launchQemuWithNC(params, fds, ipAddress)
 		if err == nil {
 			q.vcPort = port
 		}
