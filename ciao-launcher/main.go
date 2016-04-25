@@ -528,11 +528,11 @@ func setLimits() {
 
 func main() {
 
-	if getLock() != nil {
+	flag.Parse()
+
+	if simulate == false && getLock() != nil {
 		os.Exit(1)
 	}
-
-	flag.Parse()
 
 	if err := initLogger(); err != nil {
 		log.Fatalf("Unable to initialise logs: %v", err)
