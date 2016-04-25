@@ -289,6 +289,19 @@ func (q *qemu) deleteImage() error {
 	return nil
 }
 
+func cleanupFds(fds []*os.File, numFds int) {
+
+	maxFds := len(fds)
+
+	if numFds < maxFds {
+		maxFds = numFds
+	}
+
+	for i := 0; i < maxFds; i++ {
+		_ = fds[i].Close()
+	}
+}
+
 func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*os.File, error) {
 
 	fds := make([]*os.File, queues)
@@ -315,7 +328,7 @@ func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*
 	}
 
 	//mq support
-	fdParam := ""
+	var fdParam bytes.Buffer
 	fdSeperator := ""
 	for q := 0; q < queues; q++ {
 
@@ -324,6 +337,7 @@ func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*
 		f, err := os.OpenFile(tapDev, os.O_RDWR, 0666)
 		if err != nil {
 			glog.Errorf("Failed to open tap device %s: %s", tapDev, err)
+			cleanupFds(fds, q)
 			return nil, nil, err
 		}
 		fds[q] = f
@@ -333,11 +347,11 @@ func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*
 		   parent.  In the child the fds are determined by the file's position
 		   in the ExtraFiles array + 3.
 		*/
-		fdParam = fmt.Sprintf("%s%s%d", fdParam, fdSeperator, q+3)
+		fdParam.WriteString(fmt.Sprintf("%s%d", fdSeperator, q+3))
 		fdSeperator = ":"
 	}
 
-	netdev := fmt.Sprintf("type=tap,fds=%s,id=%s,vhost=on", fdParam, vnicName)
+	netdev := fmt.Sprintf("type=tap,fds=%s,id=%s,vhost=on", fdParam.String(), vnicName)
 	device := fmt.Sprintf("virtio-net-pci,netdev=%s,mq=on,vectors=%d,mac=%s", vnicName, 32, mac)
 	params = append(params, "-netdev", netdev)
 	params = append(params, "-device", device)
@@ -481,12 +495,7 @@ func (q *qemu) startVM(vnicName, ipAddress string) error {
 			if err != nil {
 				return err
 			}
-			for _, f := range fds {
-				if f == nil {
-					break
-				}
-				defer f.Close()
-			}
+			defer cleanupFds(fds, len(fds))
 			params = append(params, macvtapParam...)
 		} else {
 			tapParam, err := computeTapParam(vnicName, q.cfg.VnicMAC)
