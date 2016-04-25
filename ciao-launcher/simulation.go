@@ -39,12 +39,6 @@ type simulation struct {
 	disk int
 }
 
-var simulationMap map[string]simulation
-
-func init() {
-	simulationMap = make(map[string]simulation)
-}
-
 func (s *simulation) init(cfg *vmConfig, instanceDir string) {
 	s.cpus = cfg.Cpus
 	s.mem = cfg.Mem
@@ -107,8 +101,6 @@ func (s *simulation) startVM(vnicName, ipAddress string) error {
 	glog.Infof("startVM\n")
 
 	s.killCh = make(chan struct{})
-
-	simulationMap[s.instanceDir] = *s
 
 	return nil
 }
