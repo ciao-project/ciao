@@ -88,6 +88,7 @@ VM:
 		case <-ticker.C:
 			ticker.Stop()
 			close(s.connectedCh)
+			ticker.C = nil
 		}
 	}
 
