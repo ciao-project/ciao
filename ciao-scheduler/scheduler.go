@@ -27,6 +27,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -592,6 +593,29 @@ func (sched *ssntpSchedulerServer) ErrorNotify(uuid string, error ssntp.Error, f
 	glog.V(2).Infof("ERROR %v from %s\n", error, uuid)
 }
 
+func setLimits() {
+	var rlim syscall.Rlimit
+	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rlim)
+	if err != nil {
+		glog.Warningf("Getrlimit failed %v", err)
+		return
+	}
+
+	glog.Infof("Initial nofile limits: cur %d max %d", rlim.Cur, rlim.Max)
+
+	if rlim.Cur < rlim.Max {
+		oldCur := rlim.Cur
+		rlim.Cur = rlim.Max
+		err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rlim)
+		if err != nil {
+			glog.Warningf("Setrlimit failed %v", err)
+			rlim.Cur = oldCur
+		}
+	}
+
+	glog.Infof("Updated nofile limits: cur %d max %d", rlim.Cur, rlim.Max)
+}
+
 func heartBeat(sched *ssntpSchedulerServer) {
 	iter := 0
 	for {
@@ -699,6 +723,8 @@ func main() {
 		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
 		return
 	}
+
+	setLimits()
 
 	sched := newSsntpSchedulerServer()
 
