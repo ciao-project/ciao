@@ -264,13 +264,17 @@ func createVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) (string, string
 		var err error
 		if vnicCfg.VnicRole == libsnnet.TenantContainer {
 			vnic, event, info, err = createDockerVnicV2(vnicCfg)
+			if err != nil {
+				glog.Errorf("cn.CreateVnic failed %v", err)
+				return "", "", err
+			}
 			bridge = info.SubnetID
 		} else {
 			vnic, event, info, err = cnNet.CreateVnicV2(vnicCfg)
-		}
-		if err != nil {
-			glog.Errorf("cn.CreateVnic failed %v", err)
-			return "", "", err
+			if err != nil {
+				glog.Errorf("cn.CreateVnic failed %v", err)
+				return "", "", err
+			}
 		}
 		sendNetworkEvent(client, ssntp.TenantAdded, event)
 		name = vnic.LinkName
