@@ -83,6 +83,56 @@ type controllerStat struct {
 	uuid   string
 }
 
+func (sched *ssntpSchedulerServer) sendNodeConnectionEvent(nodeUUID, controllerUUID string, nodeType payloads.Resource, connected bool) (int, error) {
+	if connected == true {
+		payload := payloads.NodeConnected{
+			Connected: payloads.NodeConnectedEvent{
+				NodeUUID: nodeUUID,
+				NodeType: nodeType,
+			},
+		}
+
+		b, err := yaml.Marshal(&payload)
+		if err != nil {
+			return 0, err
+		}
+
+		return sched.ssntp.SendEvent(controllerUUID, ssntp.NodeConnected, b)
+	} else {
+		payload := payloads.NodeDisconnected{
+			Disconnected: payloads.NodeConnectedEvent{
+				NodeUUID: nodeUUID,
+				NodeType: nodeType,
+			},
+		}
+
+		b, err := yaml.Marshal(&payload)
+		if err != nil {
+			return 0, err
+		}
+
+		return sched.ssntp.SendEvent(controllerUUID, ssntp.NodeDisconnected, b)
+	}
+}
+
+func (sched *ssntpSchedulerServer) sendNodeConnectedEvents(nodeUUID string, nodeType payloads.Resource) {
+	sched.controllerMutex.Lock()
+	defer sched.controllerMutex.Unlock()
+
+	for _, c := range sched.controllerMap {
+		sched.sendNodeConnectionEvent(nodeUUID, c.uuid, nodeType, true)
+	}
+}
+
+func (sched *ssntpSchedulerServer) sendNodeDisconnectedEvents(nodeUUID string, nodeType payloads.Resource) {
+	sched.controllerMutex.Lock()
+	defer sched.controllerMutex.Unlock()
+
+	for _, c := range sched.controllerMap {
+		sched.sendNodeConnectionEvent(nodeUUID, c.uuid, nodeType, false)
+	}
+}
+
 func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 	switch role {
 	case ssntp.Controller:
@@ -124,6 +174,8 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 		node.uuid = uuid
 		sched.cnList = append(sched.cnList, &node)
 		sched.cnMap[uuid] = &node
+
+		sched.sendNodeConnectedEvents(uuid, payloads.ComputeNode)
 	case ssntp.NETAGENT:
 		sched.nnMutex.Lock()
 		defer sched.nnMutex.Unlock()
@@ -137,13 +189,14 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 		node.status = ssntp.CONNECTED
 		node.uuid = uuid
 		sched.nnMap[uuid] = &node
+
+		sched.sendNodeConnectedEvents(uuid, payloads.NetworkNode)
 	}
 
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
 func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
-
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
 	if sched.controllerMap[uuid] != nil {
@@ -188,6 +241,9 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 			sched.cnMRUIndex = -1
 		}
 
+		/* We need a go routine as the controller lock is taken */
+		go sched.sendNodeDisconnectedEvents(uuid, payloads.ComputeNode)
+
 		delete(sched.cnMap, uuid)
 
 		glog.V(2).Infof("Disconnect cn (uuid=%s)\n", uuid)
@@ -197,6 +253,9 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
 	sched.nnMutex.Lock()
 	defer sched.nnMutex.Unlock()
 	if sched.nnMap[uuid] != nil {
+		/* We need a go routine as the controller lock is taken */
+		go sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
+
 		//TODO: consider moving to nnInactiveMap?
 		delete(sched.nnMap, uuid)
 
