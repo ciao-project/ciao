@@ -1,3 +1,0 @@
-[submodule "vendor/github.com/docker/engine-api"]
-	path = vendor/github.com/docker/engine-api
-	url = https://github.com/docker/engine-api.git
