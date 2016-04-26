@@ -37,6 +37,7 @@ const (
 	MemMB                = "mem_mb"
 	DiskMB               = "disk_mb"
 	NetworkNode          = "network_node"
+	ComputeNode          = "compute_node"
 )
 
 const (
