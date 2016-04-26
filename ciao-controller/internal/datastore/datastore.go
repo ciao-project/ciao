@@ -941,6 +941,19 @@ func (ds *Datastore) DeleteInstance(instanceID string) error {
 	return nil
 }
 
+// DeleteNode removes a node from the node cache.
+func (ds *Datastore) DeleteNode(nodeID string) error {
+	ds.nodesLock.Lock()
+	delete(ds.nodes, nodeID)
+	ds.nodesLock.Unlock()
+
+	ds.nodeLastStatLock.Lock()
+	delete(ds.nodeLastStat, nodeID)
+	ds.nodeLastStatLock.Unlock()
+
+	return nil
+}
+
 // HandleStats makes sure that the data from the stat payload is stored.
 func (ds *Datastore) HandleStats(stat payloads.Stat) error {
 	if stat.Load != -1 {
