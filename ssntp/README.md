@@ -637,6 +637,34 @@ contains a set of frame traces.
 +----------------------------------------------------------------------------+
 ```
 
+#### NodeConnected ####
+NodeConnected events are sent by the Scheduler to notify e.g. the Controllers about
+a new compute or networking node being connected.
+The [NodeConnected event payload]
+(https://github.com/01org/ciao/blob/master/payloads/nodeconnected.go)
+contains the connected node UUID and the node type (compute or networking)
+
+```
++----------------------------------------------------------------------------+
+| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload |
+|       |       | (0x3) |  (0x6)  |                 |                        |
++----------------------------------------------------------------------------+
+```
+
+#### NodeDisconnected ####
+NodeDisconnected events are sent by the Scheduler to notify e.g. the Controllers about
+a compute or networking node disconnection.
+The [NodeDisconnected event payload]
+(https://github.com/01org/ciao/blob/master/payloads/nodeconnected.go)
+contains the disconnected node UUID and the node type (compute or networking)
+
+```
++----------------------------------------------------------------------------+
+| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload |
+|       |       | (0x3) |  (0x7)  |                 |                        |
++----------------------------------------------------------------------------+
+```
+
 ### SSNTP ERROR frames ###
 SSNTP being a fully asynchronous protocol, SSNTP entities are
 not expecting specific frames to be acknowledged or rejected.

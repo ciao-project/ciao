@@ -60,7 +60,8 @@ type Error uint8
 
 // Event is the SSNTP Event operand.
 // It can be TenantAdded, TenantRemoval, InstanceDeleted,
-// ConcentratorInstanceAdded, PublicIPAssigned or TraceReport.
+// ConcentratorInstanceAdded, PublicIPAssigned, TraceReport,
+// NodeConnected or NodeDisconnected
 type Event uint8
 
 const (
@@ -383,6 +384,32 @@ const (
 	//	|       |       | (0x3) |  (0x5)  |                 |                        |
 	//	+----------------------------------------------------------------------------+
 	TraceReport
+
+	// NodeConnected events are sent by the Scheduler to notify e.g. the Controllers about
+	// a new compute or networking node being connected.
+	// The NodeConnected event payload contains the connected node UUID and the node type
+	// (compute or networking)
+	//
+	//					 SSNTP NodeConnected Event frame
+	//
+	//	+----------------------------------------------------------------------------+
+	//	| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload |
+	//	|       |       | (0x3) |  (0x6)  |                 |                        |
+	//	+----------------------------------------------------------------------------+
+	NodeConnected
+
+	// NodeDisconnected events are sent by the Scheduler to notify e.g. the Controllers about
+	// a new compute or networking node disconnection.
+	// The NodeDisconnected event payload contains the discconnected node UUID and the node
+	// type (compute or networking)
+	//
+	//					 SSNTP NodeDisconnected Event frame
+	//
+	//	+----------------------------------------------------------------------------+
+	//	| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload |
+	//	|       |       | (0x3) |  (0x7)  |                 |                        |
+	//	+----------------------------------------------------------------------------+
+	NodeDisconnected
 )
 
 // SSNTP clients and servers can have one or several roles and are expected to declare their
@@ -542,6 +569,10 @@ func (status Event) String() string {
 		return "Public IP Assigned"
 	case TraceReport:
 		return "Trace Report"
+	case NodeConnected:
+		return "Node Connected"
+	case NodeDisconnected:
+		return "Node Disconnected"
 	}
 
 	return ""
