@@ -90,6 +90,27 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 			return
 		}
 		client.context.ds.HandleTraceReport(trace)
+
+	case ssntp.NodeConnected:
+		var nodeConnected payloads.NodeConnected
+		err := yaml.Unmarshal(payload, &nodeConnected)
+		if err != nil {
+			glog.Warning("error unmarshalling NodeConnected")
+			return
+		}
+		glog.Infof("Node %s connected", nodeConnected.Connected.NodeUUID)
+
+	case ssntp.NodeDisconnected:
+		var nodeDisconnected payloads.NodeDisconnected
+		err := yaml.Unmarshal(payload, &nodeDisconnected)
+		if err != nil {
+			glog.Warning("error unmarshalling NodeDisconnected")
+			return
+		}
+
+		glog.Infof("Node %s disconnected", nodeDisconnected.Disconnected.NodeUUID)
+		client.context.ds.DeleteNode(nodeDisconnected.Disconnected.NodeUUID)
+
 	}
 	glog.V(1).Info(string(payload))
 }
