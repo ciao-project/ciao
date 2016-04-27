@@ -49,7 +49,7 @@ If you want to work on github.com/01org/ciao and your fork on the same workstati
 2. mkdir -p ~/go-fork/src/github.com/01org (replacing go-fork with your preferred location)
 3. export GOPATH=~/go-fork
 4. cd $GOPATH/src/github.com/01org
-5. git clone https://github.com/<github-username>/ciao.git (replace <github-username> with your username)
+5. git clone https://github.com/\<github-username\>/ciao.git (replace \<github-username\> with your username)
 6. cd ciao
 7. go install ./...
 
