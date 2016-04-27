@@ -1,0 +1,11 @@
+language: go
+
+go:
+    - 1.6
+    - tip
+
+go_import_path: github.com/01org/ciao
+
+# We'll skip the networking and ssntp tests for now
+
+script: go test -v github.com/01org/ciao/ciao-controller github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/payloads
