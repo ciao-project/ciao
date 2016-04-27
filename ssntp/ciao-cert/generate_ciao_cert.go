@@ -232,7 +232,7 @@ func main() {
 		// Need to fetch the public and private key from the signer
 		bytesCert, err := ioutil.ReadFile(*serverCert)
 		if err != nil {
-			log.Fatal("Could not load %s", *serverCert)
+			log.Fatalf("Could not load %s", *serverCert)
 		}
 
 		// Parent public key first
