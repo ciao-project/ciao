@@ -56,6 +56,14 @@ type ConfigureScheduler struct {
 	ConfigStorageURI  string      `yaml:"storage_uri"`
 }
 
+type ConfigureController struct {
+	ComputePort      int    `yaml:"compute_port"`
+	ComputeCACert    string `yaml:"compute_ca"`
+	ComputeCert      string `yaml:"compute_cert"`
+	IdentityUser     string `yaml:"identity_user"`
+	IdentityPassword string `yaml:"identity_password"`
+}
+
 type ConfigureLauncher struct {
 	ComputeNetwork    string `yaml:"compute_net"`
 	ManagementNetwork string `yaml:"mgmt_net"`
@@ -69,10 +77,11 @@ type ConfigureService struct {
 }
 
 type ConfigurePayload struct {
-	Scheduler       ConfigureScheduler `yaml:"scheduler"`
-	Launcher        ConfigureLauncher  `yaml:"launcher"`
-	ImageService    ConfigureService   `yaml:"image_service"`
-	IdentityService ConfigureService   `yaml:"identity_service"`
+	Scheduler       ConfigureScheduler  `yaml:"scheduler"`
+	Controller      ConfigureController `yaml:"controller"`
+	Launcher        ConfigureLauncher   `yaml:"launcher"`
+	ImageService    ConfigureService    `yaml:"image_service"`
+	IdentityService ConfigureService    `yaml:"identity_service"`
 }
 
 type Configure struct {

@@ -17,6 +17,7 @@
 package payloads
 
 import (
+	"fmt"
 	"testing"
 
 	"gopkg.in/yaml.v2"
@@ -27,12 +28,23 @@ const glanceURL = "http://glance.example.com"
 const computeNet = "192.168.1.110"
 const mgmtNet = "192.168.1.111"
 const storageURI = "/etc/ciao/ciao.json"
+const identityUser = "controller"
+const identityPassword = "ciao"
+const computePort = 443
+const computeCert = "/etc/pki/ciao/compute_key.pem"
+const computeCA = "/etc/pki/ciao/compute_ca.pem"
 
 var configureYaml = "" +
 	"configure:\n" +
 	"  scheduler:\n" +
 	"    storage_type: " + Filesystem.String() + "\n" +
 	"    storage_uri: " + storageURI + "\n" +
+	"  controller:\n" +
+	"    compute_port: " + fmt.Sprintf("%d", computePort) + "\n" +
+	"    compute_ca: " + computeCA + "\n" +
+	"    compute_cert: " + computeCert + "\n" +
+	"    identity_user: " + identityUser + "\n" +
+	"    identity_password: " + identityPassword + "\n" +
 	"  launcher:\n" +
 	"    compute_net: " + computeNet + "\n" +
 	"    mgmt_net: " + mgmtNet + "\n" +
@@ -72,6 +84,10 @@ func TestConfigureUnmarshal(t *testing.T) {
 	if cfg.Configure.Scheduler.ConfigStorageType != Filesystem {
 		t.Errorf("Wrong scheduler storage type [%s]", cfg.Configure.Scheduler.ConfigStorageType)
 	}
+
+	if cfg.Configure.Controller.ComputePort != computePort {
+		t.Errorf("Wrong controller compute port [%s]", cfg.Configure.Controller.ComputePort)
+	}
 }
 
 func TestConfigureMarshal(t *testing.T) {
@@ -87,6 +103,12 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Launcher.ManagementNetwork = mgmtNet
 	cfg.Configure.Launcher.DiskLimit = false
 	cfg.Configure.Launcher.MemoryLimit = false
+
+	cfg.Configure.Controller.ComputePort = computePort
+	cfg.Configure.Controller.ComputeCACert = computeCA
+	cfg.Configure.Controller.ComputeCert = computeCert
+	cfg.Configure.Controller.IdentityUser = identityUser
+	cfg.Configure.Controller.IdentityPassword = identityPassword
 
 	cfg.Configure.Scheduler.ConfigStorageType = Filesystem
 	cfg.Configure.Scheduler.ConfigStorageURI = storageURI
