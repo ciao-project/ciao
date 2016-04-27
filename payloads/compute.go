@@ -183,7 +183,7 @@ type CiaoUsage struct {
 }
 
 type CiaoUsageHistory struct {
-	Usages []CiaoUsage `json: usage`
+	Usages []CiaoUsage `json:"usage"`
 }
 
 type CiaoCNCISubnet struct {
