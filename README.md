@@ -1,4 +1,6 @@
-Ciao Project
+#Ciao Project
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/01org/ciao)](https://goreportcard.com/report/github.com/01org/ciao)
 
 Ciao is the "Cloud Integrated Advanced Orchestrator".  Its goal is
 to provide an easy to deploy, secure, scalable cloud orchestration
