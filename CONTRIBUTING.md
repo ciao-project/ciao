@@ -42,3 +42,15 @@ For example:
 ## Pull requests
 
 We accept github pull requests.
+
+If you want to work on github.com/01org/ciao and your fork on the same workstation you will need to use multiple GOPATHs.  Assuming this is the case
+
+1. Open a terminal
+2. mkdir -p ~/go-fork/src/github.com/01org (replacing go-fork with your preferred location)
+3. export GOPATH=~/go-fork
+4. cd $GOPATH/src/github.com/01org
+5. git clone https://github.com/<github-username>/ciao.git (replace <github-username> with your username)
+6. cd ciao
+7. go install ./...
+
+Once you've finished making your changes push them to your fork and send the PR via the github UI.  If you don't need to maintain the github.com/01org/ciao repo and your fork on the same workstation you can skip steps 2 and 3.
