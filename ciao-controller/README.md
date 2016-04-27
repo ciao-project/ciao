@@ -21,7 +21,7 @@ and receives node and workload statistics from
 [ciao-launcher](https://github.com/01org/ciao/tree/master/ciao-launcher).
 
 Controller integrates with Keystone to allow isolation both between
-tenants of a cloud and the adminstrators of that cloud.  Users within
+tenants of a cloud and the administrators of that cloud.  Users within
 distinct tenants are also isolated from each other.  Tenant users can
 access usage statistics for their tenant workloads and issue commands
 to manage their workloads.  Admin users can access usage statistics for

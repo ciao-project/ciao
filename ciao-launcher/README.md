@@ -160,7 +160,7 @@ information such as image-id
 but is not currently running
 
 - image\_failure: If launcher is unable to prepare the file for the instance, e.g., the
-image_uuid refers to an non-existant backing image
+image_uuid refers to an non-existent backing image
 
 - network_failure: It was not possible to initialise networking for the instance
 
@@ -349,7 +349,7 @@ Once drained, the events are deleted from inside the ciao-launcher-server.
 Running subsequent drain commands will return nothing, assuming that no
 new events have been generated.
 
-Finally, you can connect mulitple ciao-launchers to the ciao-server-launcher
+Finally, you can connect multiple ciao-launchers to the ciao-server-launcher
 instance.  If you do this you need to specify which launcher you would like
 to command when issuing a command via ciaolc.  This can be done via the 
 --client option.

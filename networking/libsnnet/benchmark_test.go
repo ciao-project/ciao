@@ -37,7 +37,7 @@ import (
 //the VNIC.
 //Hence the benchmarked time includes the time it takes to
 //create and delete the VNIC (not just create).
-//However the deletes are more efficent than creates
+//However the deletes are more efficient than creates
 //This does not truly measure the cost of synchrnoization
 //when multiple launcher threads are creating VNIC simulatenously.
 //However based on current measurements the cost of a channel based

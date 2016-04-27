@@ -28,7 +28,7 @@ import (
 
 // Cnci represents a Concentrator for a single tenant
 // All subnets belonging to this tenant that are handled
-// by this concentrator. A seperate bridge will be setup
+// by this concentrator. A separate bridge will be setup
 // for each subnet with its own dnsmasq service
 // Traffic is routable between tenant bridges
 type Cnci struct {
@@ -43,7 +43,7 @@ type Cnci struct {
 
 	//APITimeout specifies the amount of time the API will wait for netlink
 	//operations to complete. When multiple go routines  invoke the API
-	//simulatenously certian netlink calls suffer higher latencies
+	//simulatenously certain netlink calls suffer higher latencies
 	APITimeout time.Duration
 
 	// IPAddress of the concentrator that is routable

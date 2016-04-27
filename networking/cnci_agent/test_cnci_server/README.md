@@ -15,6 +15,6 @@ has to be run a machine that is different from the one that is hosting the
 CNCI VM. 
 
 This is required as the CNCI VM uses macvatap for networking and macvtap 
-traffic cannot be recieved by the host whichout complex network plumbing
+traffic cannot be received by the host whichout complex network plumbing
 
 

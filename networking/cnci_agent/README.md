@@ -44,7 +44,7 @@ sends the associated CNCI IP address that handles the tenant traffic for this
 workload as part of the payload definition to the cia-launcher.
 
 The launcher creates the VNIC (Virtual Network Interface) on a compute 
-node in reponse to a workload being launched by the ciao-launcher
+node in response to a workload being launched by the ciao-launcher
 
 When the VNIC is instantiated the networking library checks if it is the 
 first (only) instance of that tenant subnet on that CN at that point in time.

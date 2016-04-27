@@ -290,7 +290,7 @@ is the same as the STOP one.
 
 #### AssignPublicIP ####
 AssingPublicIP is a command sent by the Controller to assign
-a publically routable IP to a given instance. It is sent
+a publicly routable IP to a given instance. It is sent
 to the Scheduler and must be forwarded to the right CNCI.
 
 The public IP is fetched from a pre-allocated pool
@@ -310,7 +310,7 @@ the allocated public IP and the instance private IP and MAC.
 
 #### ReleasePublicIP ####
 ReleasePublicIP is a command sent by the Controller to release
-a publically routable IP from a given instance. It is sent
+a publicly routable IP from a given instance. It is sent
 to the Scheduler and must be forwarded to the right CNCI.
 
 The released public IP is added back to the Controller managed
@@ -341,7 +341,7 @@ CONFIGURE commands should be sent in the following cases:
 
 * At cloud boot time, as a broadcast command.
 * For every cloud configuration change.
-* Everytime a new agent joins the SSNTP network.
+* Every time a new agent joins the SSNTP network.
 
 The [CONFIGURE YAML payload]
 (https://github.com/01org/ciao/blob/master/payloads/configure.go)
@@ -553,7 +553,7 @@ instance has been deleted.
 While the scheduler and the Controller could infer that piece
 of information from the next STATS command (The deleted
 instance would no longer be there) it is safer, simpler
-and less error prone to explicitely send this event.
+and less error prone to explicitly send this event.
 
 A [InstanceDeleted event payload]
 (https://github.com/01org/ciao/blob/master/payloads/instancedeleted.go)

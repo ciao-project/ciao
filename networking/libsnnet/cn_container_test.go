@@ -338,7 +338,7 @@ func TestCNContainer_Base(t *testing.T) {
 		}
 	}
 
-	//Second VNIC creation - Should suceed
+	//Second VNIC creation - Should succeed
 	if vnic, ssntpEvent, cInfo, err := cn.CreateVnicV2(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {

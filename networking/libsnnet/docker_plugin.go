@@ -92,7 +92,7 @@ Note: The launcher should be launched prior to the docker daemon.
 	  (Yes. We call docker and docker calls us back)
 
 5. (Launcher) will then request docker to create & launch the container,
-   again fully specifing the networking configuration.
+   again fully specifying the networking configuration.
 
    docker run -it --net=<subnet.Name> --ip=<instance.IP> --mac-address=<instance.MacAddresss> busybox
 
