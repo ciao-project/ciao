@@ -26,9 +26,13 @@ const keystoneURL = "http://keystone.example.com"
 const glanceURL = "http://glance.example.com"
 const computeNet = "192.168.1.110"
 const mgmtNet = "192.168.1.111"
+const storageURI = "/etc/ciao/ciao.json"
 
 var configureYaml = "" +
 	"configure:\n" +
+	"  scheduler:\n" +
+	"    storage_type: " + Filesystem.String() + "\n" +
+	"    storage_uri: " + storageURI + "\n" +
 	"  launcher:\n" +
 	"    compute_net: " + computeNet + "\n" +
 	"    mgmt_net: " + mgmtNet + "\n" +
@@ -64,6 +68,10 @@ func TestConfigureUnmarshal(t *testing.T) {
 	if cfg.Configure.Launcher.ComputeNetwork != computeNet {
 		t.Errorf("Wrong launcher compute network [%s]", cfg.Configure.Launcher.ComputeNetwork)
 	}
+
+	if cfg.Configure.Scheduler.ConfigStorageType != Filesystem {
+		t.Errorf("Wrong scheduler storage type [%s]", cfg.Configure.Scheduler.ConfigStorageType)
+	}
 }
 
 func TestConfigureMarshal(t *testing.T) {
@@ -79,6 +87,9 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Launcher.ManagementNetwork = mgmtNet
 	cfg.Configure.Launcher.DiskLimit = false
 	cfg.Configure.Launcher.MemoryLimit = false
+
+	cfg.Configure.Scheduler.ConfigStorageType = Filesystem
+	cfg.Configure.Scheduler.ConfigStorageURI = storageURI
 
 	y, err := yaml.Marshal(&cfg)
 	if err != nil {

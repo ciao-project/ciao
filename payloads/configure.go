@@ -17,10 +17,16 @@
 package payloads
 
 type ServiceType string
+type StorageType string
 
 const (
 	Glance   ServiceType = "glance"
 	Keystone ServiceType = "keystone"
+)
+
+const (
+	Filesystem StorageType = "file"
+	Etcd       StorageType = "etcd"
 )
 
 func (s ServiceType) String() string {
@@ -32,6 +38,22 @@ func (s ServiceType) String() string {
 	}
 
 	return ""
+}
+
+func (s StorageType) String() string {
+	switch s {
+	case Filesystem:
+		return "file"
+	case Etcd:
+		return "etcd"
+	}
+
+	return ""
+}
+
+type ConfigureScheduler struct {
+	ConfigStorageType StorageType `yaml:"storage_type"`
+	ConfigStorageURI  string      `yaml:"storage_uri"`
 }
 
 type ConfigureLauncher struct {
@@ -47,9 +69,10 @@ type ConfigureService struct {
 }
 
 type ConfigurePayload struct {
-	Launcher        ConfigureLauncher `yaml:"launcher"`
-	ImageService    ConfigureService  `yaml:"image_service"`
-	IdentityService ConfigureService  `yaml:"identity_service"`
+	Scheduler       ConfigureScheduler `yaml:"scheduler"`
+	Launcher        ConfigureLauncher  `yaml:"launcher"`
+	ImageService    ConfigureService   `yaml:"image_service"`
+	IdentityService ConfigureService   `yaml:"identity_service"`
 }
 
 type Configure struct {
