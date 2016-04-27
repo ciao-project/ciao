@@ -135,7 +135,7 @@ const (
 	//	+----------------------------------------------------------------------------+
 	STATS
 
-	// EVACUATE is intented to ask a specific CIAO agent to evacuate its compute
+	// EVACUATE is intended to ask a specific CIAO agent to evacuate its compute
 	// node, i.e. stop and migrate all of the current workloads he's monitoring on
 	// this node. The payload for this command is a YAML formatted description of the
 	// next state to reach after evacuation is done. It could be 'shutdown' for shutting
@@ -163,7 +163,7 @@ const (
 
 	// RESTART is a command sent to CIAO CN Agents for restarting an instance that was
 	// previously STOPped. This command is only relevant for persistent workloads since
-	// non persistent ones are implicitely deleted when STOPped and thus can not be
+	// non persistent ones are implicitly deleted when STOPped and thus can not be
 	// RESTARTed.
 	// The RESTART command payload uses the same YAML schema as the STOP command one, i.e.
 	// an instance UUID and an agent UUID.
@@ -175,7 +175,7 @@ const (
 	RESTART
 
 	// AssignPublicIP is a command sent by the Controller to assign
-	// a publically routable IP to a given instance. It is sent
+	// a publicly routable IP to a given instance. It is sent
 	// to the Scheduler and must be forwarded to the right CNCI.
 	//
 	// The public IP is fetched from a pre-allocated pool
@@ -193,7 +193,7 @@ const (
 	AssignPublicIP
 
 	// ReleasePublicIP is a command sent by the Controller to release
-	// a publically routable IP from a given instance. It is sent
+	// a publicly routable IP from a given instance. It is sent
 	// to the Scheduler and must be forwarded to the right CNCI.
 	//
 	// The released public IP is added back to the Controller managed
@@ -319,7 +319,7 @@ const (
 	// InstanceDeleted is sent by workload agents to notify the scheduler and the Controller that a
 	// previously running instance has been deleted. While the scheduler and the Controller could infer
 	// that information from the next STATS command (The deleted instance would no longer be there)
-	// it is safer, simpler and less error prone to explicitely send this event.
+	// it is safer, simpler and less error prone to explicitly send this event.
 	//
 	//					 SSNTP InstanceDeleted Event frame
 	//

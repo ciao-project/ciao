@@ -36,7 +36,7 @@ type ClientNotifier interface {
 	ConnectNotify()
 
 	// DisconnectNotify notifies of a SSNTP server disconnection.
-	// SSNTP Client implementations are not supposed to explicitely
+	// SSNTP Client implementations are not supposed to explicitly
 	// reconnect, the SSNTP protocol will handle the reconnection.
 	DisconnectNotify()
 
