@@ -67,7 +67,7 @@ func (ts *testServer) ConnectNotify(uuid string, role uint32) {
 	server.Lock()
 	defer server.Unlock()
 
-	if role != ssntp.AGENT {
+	if !(role == ssntp.AGENT || role == ssntp.NETAGENT) {
 		return
 	}
 
