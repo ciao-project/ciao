@@ -71,7 +71,7 @@ type Frame struct {
 	Payload       []byte
 }
 
-// ConnectFrame is the SSNPT connection frame structure.
+// ConnectFrame is the SSNTP connection frame structure.
 type ConnectFrame struct {
 	Major       uint8
 	Minor       uint8
