@@ -1,0 +1,9 @@
+{
+    "server": "localhost3",
+    "cacert": "/etc/pki/ciao/CAcert-server-localhost.pem",
+    "cert": "/etc/pki/ciao/cert-client-localhost.pem",
+    "compute-net":  "",
+    "mgmt-net":  "",
+    "disk-limit": true,
+    "mem-limit": true
+}

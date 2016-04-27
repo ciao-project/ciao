@@ -33,6 +33,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/01org/ciao/config"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 )
@@ -93,17 +94,60 @@ var memLimit bool
 var simulate bool
 var maxInstances = int(math.MaxInt32)
 
+type LauncherConfig struct {
+	Server      string `json:"server"`
+	CACert      string `json:"cacert"`
+	Cert        string `json:"cert"`
+	ComputeNet  string `json:"compute-net"`
+	MgmtNet     string `json:"mgmt-net"`
+	DiskLimit   bool   `json:"disk-limit"`
+	MemLimit    bool   `json:"mem-limit"`
+}
+
+func (launcher *LauncherConfig) initLauncher(){
+	launcher.Server     = "localhost"
+	launcher.CACert     = "/etc/pki/ciao/CAcert-server-localhost.pem"
+	launcher.Cert       = "/etc/pki/ciao/cert-client-localhost.pem"
+	launcher.DiskLimit  = true
+	launcher.MemLimit = true
+}
+
+func (launcher *LauncherConfig) logValues(){
+	glog.Infof("Server     : %v", launcher.Server)
+	glog.Infof("CACert     : %v", launcher.CACert)
+	glog.Infof("Cert       : %v", launcher.Cert)
+	glog.Infof("ComputeNet : %v", launcher.ComputeNet)
+	glog.Infof("MgmtNet    : %v", launcher.MgmtNet)
+	glog.Infof("DiskLimit  : %v", launcher.DiskLimit)
+	glog.Infof("MemLimit   : %v", launcher.MemLimit)
+}
+
+var defaults = LauncherConfig{}
+var configError error
+
 func init() {
-	flag.StringVar(&serverURL, "server", "", "URL of SSNTP server")
-	flag.StringVar(&serverCertPath, "cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "Client certificate")
-	flag.StringVar(&clientCertPath, "cert", "/etc/pki/ciao/cert-client-localhost.pem", "CA certificate")
-	flag.StringVar(&computeNet, "compute-net", "", "Compute Subnet")
-	flag.StringVar(&mgmtNet, "mgmt-net", "", "Management Subnet")
+	defaults.initLauncher()
+	configError = config.InitConfig(&defaults)
+
+	flag.StringVar(&serverURL, "server",
+		defaults.Server, "URL of SSNTP server")
+	flag.StringVar(&serverCertPath, "cacert",
+		defaults.CACert, "Client certificate")
+	flag.StringVar(&clientCertPath, "cert",
+		defaults.Cert, "CA certificate")
+	flag.StringVar(&computeNet, "compute-net",
+		defaults.ComputeNet, "Compute Subnet")
+	flag.StringVar(&mgmtNet, "mgmt-net",
+		defaults.MgmtNet, "Management Subnet")
 	flag.Var(&networking, "network", "Can be none, cn (compute node) or nn (network node)")
-	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
-	flag.BoolVar(&diskLimit, "disk-limit", true, "Use disk usage limits")
-	flag.BoolVar(&memLimit, "mem-limit", true, "Use memory usage limits")
-	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
+	flag.BoolVar(&hardReset, "hard-reset",
+		false, "Kill and delete all instances, reset networking and exit")
+	flag.BoolVar(&diskLimit, "disk-limit",
+		defaults.DiskLimit, "Use disk usage limits")
+	flag.BoolVar(&memLimit, "mem-limit",
+		defaults.MemLimit, "Use memory usage limits")
+	flag.BoolVar(&simulate, "simulation",
+		false, "Launcher simulation")
 }
 
 const (
@@ -537,6 +581,12 @@ func main() {
 	if err := initLogger(); err != nil {
 		log.Fatalf("Unable to initialise logs: %v", err)
 	}
+
+	if configError != nil {
+		log.Fatalf("Failure in Config files: %v", configError)
+	}
+
+	defaults.logValues()
 
 	if profileFN != nil {
 		stopProfile := profileFN()
