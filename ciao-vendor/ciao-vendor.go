@@ -209,7 +209,7 @@ func cloneRepos() error {
 		}(r.URL)
 	}
 
-	for _ = range repos {
+	for range repos {
 		rcvErr := <-errCh
 		if err == nil && rcvErr != nil {
 			err = rcvErr
@@ -283,7 +283,7 @@ func copyRepos(cwd, sourceRoot string, subPackages map[string][]*subPackage) err
 	}
 
 	var err error
-	for _ = range repos {
+	for range repos {
 		rcvErr := <-errCh
 		if err == nil && rcvErr != nil {
 			err = rcvErr
@@ -562,7 +562,7 @@ func depsByPackage(packages piList) map[string][]string {
 		}(p.name)
 	}
 
-	for _ = range packages {
+	for range packages {
 		pkgDeps := <-depsCh
 		depsMap[pkgDeps.p] = pkgDeps.deps
 	}
