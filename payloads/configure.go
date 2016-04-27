@@ -34,16 +34,24 @@ func (s ServiceType) String() string {
 	return ""
 }
 
+type ConfigureLauncher struct {
+	ComputeNetwork    string `yaml:"compute_net"`
+	ManagementNetwork string `yaml:"mgmt_net"`
+	DiskLimit         bool   `yaml:"disk_limit"`
+	MemoryLimit       bool   `yaml:"mem_limit"`
+}
+
 type ConfigureService struct {
 	Type ServiceType `yaml:"type"`
 	URL  string      `yaml:"url"`
 }
 
-type ConfigureCmd struct {
-	ImageService    ConfigureService `yaml: image_service"`
-	IdentityService ConfigureService `yaml: identity_service"`
+type ConfigurePayload struct {
+	Launcher        ConfigureLauncher `yaml:"launcher"`
+	ImageService    ConfigureService  `yaml:"image_service"`
+	IdentityService ConfigureService  `yaml:"identity_service"`
 }
 
-type CommandConfigure struct {
-	Configure ConfigureCmd `yaml:"configure"`
+type Configure struct {
+	Configure ConfigurePayload `yaml:"configure"`
 }

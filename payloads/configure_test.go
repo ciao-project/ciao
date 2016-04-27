@@ -24,18 +24,25 @@ import (
 
 const keystoneURL = "http://keystone.example.com"
 const glanceURL = "http://glance.example.com"
+const computeNet = "192.168.1.110"
+const mgmtNet = "192.168.1.111"
 
 var configureYaml = "" +
 	"configure:\n" +
-	"  imageservice:\n" +
+	"  launcher:\n" +
+	"    compute_net: " + computeNet + "\n" +
+	"    mgmt_net: " + mgmtNet + "\n" +
+	"    disk_limit: false\n" +
+	"    mem_limit: false\n" +
+	"  image_service:\n" +
 	"    type: " + Glance.String() + "\n" +
 	"    url: " + glanceURL + "\n" +
-	"  identityservice:\n" +
+	"  identity_service:\n" +
 	"    type: " + Keystone.String() + "\n" +
 	"    url: " + keystoneURL + "\n"
 
 func TestConfigureUnmarshal(t *testing.T) {
-	var cfg CommandConfigure
+	var cfg Configure
 
 	err := yaml.Unmarshal([]byte(configureYaml), &cfg)
 	if err != nil {
@@ -45,15 +52,33 @@ func TestConfigureUnmarshal(t *testing.T) {
 	if cfg.Configure.ImageService.Type != Glance {
 		t.Errorf("Wrong image service type [%s]", cfg.Configure.ImageService.Type)
 	}
+
+	if cfg.Configure.IdentityService.Type != Keystone {
+		t.Errorf("Wrong identity service type [%s]", cfg.Configure.IdentityService.Type)
+	}
+
+	if cfg.Configure.Launcher.ManagementNetwork != mgmtNet {
+		t.Errorf("Wrong launcher management network [%s]", cfg.Configure.Launcher.ManagementNetwork)
+	}
+
+	if cfg.Configure.Launcher.ComputeNetwork != computeNet {
+		t.Errorf("Wrong launcher compute network [%s]", cfg.Configure.Launcher.ComputeNetwork)
+	}
 }
 
 func TestConfigureMarshal(t *testing.T) {
-	var cfg CommandConfigure
+	var cfg Configure
 
 	cfg.Configure.ImageService.Type = Glance
 	cfg.Configure.ImageService.URL = glanceURL
+
 	cfg.Configure.IdentityService.Type = Keystone
 	cfg.Configure.IdentityService.URL = keystoneURL
+
+	cfg.Configure.Launcher.ComputeNetwork = computeNet
+	cfg.Configure.Launcher.ManagementNetwork = mgmtNet
+	cfg.Configure.Launcher.DiskLimit = false
+	cfg.Configure.Launcher.MemoryLimit = false
 
 	y, err := yaml.Marshal(&cfg)
 	if err != nil {
