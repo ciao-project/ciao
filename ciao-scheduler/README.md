@@ -114,7 +114,7 @@ many workloads.
 We also assume that while a cloud administrator surely has cost
 constraints, they are unlikely to always run a general compute cloud at
 the extreme edge of capacity.  If they are providing a service for users,
-their users will expect a reasonable responce time for new work orders
+their users will expect a reasonable response time for new work orders
 and that in turn implies there is indeed capacity for new work.
 
 Finding the best fit is more important if resources are highly constrained
@@ -178,11 +178,11 @@ TODO
   utilization is above some level (eg: node load average divided by node
   online cpu count?)
 * add knob for cpu overcommit limiting: we observe notable slowness when
-  actively starting qemu vCPU's are 40x overcommited to physical CPU's.
+  actively starting qemu vCPU's are 40x overcommitted to physical CPU's.
 * resource estimation: workloads will page in memory on use.  An 8GB VM
   will not necessarily consume all of that 8GB.  Tracking workloads over
   time can allow us to measure real versus requested resource usage.  A RAM
-  overcommit knob would allow the gap of unused resource to be overcommited
+  overcommit knob would allow the gap of unused resource to be overcommitted
   to other workloads.  The risk with RAM overcommit is workloads failing
   when paging fails, or workloads running from swap instead of RAM and the
   horrible performance that comes with it.  All manner of additional host

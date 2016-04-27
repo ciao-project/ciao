@@ -65,7 +65,7 @@ Usage of ciao-cli:
   -list-labels
     	List all trace labels
   -list-length int
-    	Maximum number of items in the reponse
+	Maximum number of items in the response
   -list-quotas
     	List quotas status for a tenant
   -list-resources
@@ -152,19 +152,19 @@ sudo update-ca-certificates
 
 ## Priviledged versus non priviledged CIAO users
 
-Administrators of a CIAO cluster are priviledged users that are part of the
+Administrators of a CIAO cluster are privileged users that are part of the
 `admin` or `service` projects. They are allowed to run each and every
 ciao-cli commands.
 Some ciao-cli commands are privileged and can only be run by administrators.
 
-Non priviledged commands can be run by all users. Administrators will have to specify
+Non privileged commands can be run by all users. Administrators will have to specify
 a tenant/project UUID through the -tenant-id option in order to specify against which
 CIAO tenant/project they're running the command:
 ```shell
 $GOBIN/ciao-cli -password ciao -username admin -list-instances -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
 ```
 
-Non priviledged users belonging to several tenants/projects will also have to specify
+Non privileged users belonging to several tenants/projects will also have to specify
 a tenant/project UUID or name through either the -tenant-id or -tenant-name options
 in order to specify against which CIAO tenant/project they're running the command:
 
@@ -172,8 +172,8 @@ in order to specify against which CIAO tenant/project they're running the comman
 $GOBIN/ciao-cli -username user -password ciaouser -list-instances -tenant-name project1
 ```
 
-Non priviledged users belonging to only one single tenant/project do not need to
-pass the tenant/project UUID or name when running non priviledged commands:
+Non privileged users belonging to only one single tenant/project do not need to
+pass the tenant/project UUID or name when running non privileged commands:
 
 ```shell
 $GOBIN/ciao-cli -username user -password ciaouser -list-instances
@@ -221,7 +221,7 @@ $GOBIN/ciao-cli -username admin -password ciao -list-cns
 $GOBIN/ciao-cli -username admin -password ciao -list-cncis
 ```
 
-### List all tenants/projects (Priviledged)
+### List all tenants/projects (Privileged)
 
 ```shell
 $GOBIN/ciao-cli -username admin -password ciao -list-tenants
@@ -305,19 +305,19 @@ $GOBIN/ciao-cli -delete-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
 $GOBIN/ciao-cli -delete-instance -all-instances
 ```
 
-### List all available trace labels (Priviledged)
+### List all available trace labels (Privileged)
 
 ```shell
 $GOBIN/ciao-cli -username admin -password ciao -list-labels
 ```
 
-### Dump and display trace data from a given trace label (Priviledged)
+### Dump and display trace data from a given trace label (Privileged)
 
 ```shell
 $GOBIN/ciao-cli -username admin -password ciao -dump-label -instance-label start_trace_20160415
 ```
 
-### List all cluster events (Priviledged)
+### List all cluster events (Privileged)
 
 ```shell
 $GOBIN/ciao-cli -username admin -password ciao -list-all-events

@@ -18,7 +18,7 @@ Beside the signed-off-by footer, we expect each patch to comply with the followi
 ```
        <component>: Change summary
 
-       More detailled explanation of your changes: Why and how.
+       More detailed explanation of your changes: Why and how.
        Wrap it to 72 characters.
        See [here] (http://chris.beams.io/posts/git-commit/)
        for some more good advices.
