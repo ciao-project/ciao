@@ -134,7 +134,7 @@ func handleClientConnect(server *Server, conn net.Conn) *session {
 	session := newSession(&server.uuid, server.role, connect.Role, conn)
 	session.setDest(connect.Source[:16])
 
-	connected := session.connectedFrame(server.role)
+	connected := session.connectedFrame(server.role, nil)
 
 	server.log.Infof("Sending CONNECTED\n")
 	_, writeErr := session.Write(connected)

@@ -80,6 +80,8 @@ type Client struct {
 	log Logger
 
 	trace *TraceConfig
+
+	configuration clusterConfiguration
 }
 
 func (client *Client) processSSNTPFrame(frame *Frame) {
@@ -87,6 +89,9 @@ func (client *Client) processSSNTPFrame(frame *Frame) {
 
 	switch (Type)(frame.Type) {
 	case COMMAND:
+		if (Command)(frame.Operand) == CONFIGURE {
+			client.configuration.setConfiguration(frame.Payload)
+		}
 		client.ntf.CommandNotify((Command)(frame.Operand), frame)
 	case STATUS:
 		client.ntf.StatusNotify((Status)(frame.Operand), frame)
@@ -136,7 +141,7 @@ func (client *Client) handleSSNTPServer() {
 }
 
 func (client *Client) sendConnect() (bool, error) {
-	var connected ConnectFrame
+	var connected ConnectedFrame
 	client.log.Infof("Sending CONNECT\n")
 
 	connect := client.session.connectFrame()
@@ -182,6 +187,8 @@ func (client *Client) sendConnect() (bool, error) {
 	client.status.Lock()
 	client.status.status = ssntpConnected
 	client.status.Unlock()
+
+	client.configuration.setConfiguration(connected.Payload)
 
 	client.log.Infof("Done with connection\n")
 
@@ -519,4 +526,19 @@ func (client *Client) SendTracedError(error Error, payload []byte, trace *TraceC
 // UUID exports the SSNTP client Universally Unique ID.
 func (client *Client) UUID() string {
 	return client.uuid.String()
+}
+
+// ClusterConfiguration returns the latest cluster configuration
+// payload a client received. Client should use that payload to
+// configure themselves based on the information provided to them
+// by the Scheduler or the Controller.
+// Cluster configuration payloads can come from either a CONNECTED
+// status frame or a CONFIGURE command one.
+func (client *Client) ClusterConfiguration() (payload []byte) {
+	client.configuration.RLock()
+	defer client.configuration.RUnlock()
+
+	payload = client.configuration.configuration
+
+	return
 }

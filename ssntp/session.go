@@ -74,18 +74,20 @@ func (session *session) setDest(uuid []byte) {
 	copy(session.dest[:], uuid[:16])
 }
 
-func (session *session) connectedFrame(serverRole uint32) (f *ConnectFrame) {
-	f = &ConnectFrame{
-		Major:       major,
-		Minor:       minor,
-		Type:        STATUS,
-		Operand:     byte(CONNECTED),
-		Role:        serverRole,
-		Source:      session.src[:],
-		Destination: session.dest[:],
+func (session *session) connectedFrame(serverRole uint32, payload []byte) (f *ConnectedFrame) {
+	f = &ConnectedFrame{
+		Major:         major,
+		Minor:         minor,
+		Type:          STATUS,
+		Operand:       byte(CONNECTED),
+		Role:          serverRole,
+		Source:        session.src[:],
+		Destination:   session.dest[:],
+		PayloadLength: (uint32)(len(payload)),
+		Payload:       payload,
 	}
 
-	return f
+	return
 }
 
 func (session *session) connectFrame() (f *ConnectFrame) {

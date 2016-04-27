@@ -775,6 +775,18 @@ type connectionStatus struct {
 	status ssntpStatus
 }
 
+type clusterConfiguration struct {
+	sync.RWMutex
+	configuration []byte
+}
+
+func (conf *clusterConfiguration) setConfiguration(configuration []byte) {
+	conf.Lock()
+	conf.configuration = configuration
+	conf.Unlock()
+}
+
+
 func prepareTLSConfig(config *Config, server bool) *tls.Config {
 	caPEM, err := ioutil.ReadFile(config.CAcert)
 	if err != nil {

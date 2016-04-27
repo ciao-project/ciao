@@ -82,6 +82,19 @@ type ConnectFrame struct {
 	Destination []byte
 }
 
+// ConnectedFrame is the SSNTP connected frame structure.
+type ConnectedFrame struct {
+	Major         uint8
+	Minor         uint8
+	Type          Type
+	Operand       uint8
+	Role          uint32
+	Source        []byte
+	Destination   []byte
+	PayloadLength uint32
+	Payload       []byte
+}
+
 const majorMask = 0x7f
 const pathTraceEnabled = 1 << 7
 
