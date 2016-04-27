@@ -264,7 +264,7 @@ func TestCN_ResetNetwork(t *testing.T) {
 //Tests multiple VNIC's creation
 //
 //This tests tests if multiple VNICs belonging to multiple
-//tenants can be sucessfully created and deleted on a given CN
+//tenants can be successfully created and deleted on a given CN
 //This tests also checks for the generation of the requisite
 //SSNTP message that the launcher is expected to send to the
 //CNCI via the scheduler

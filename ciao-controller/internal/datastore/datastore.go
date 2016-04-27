@@ -977,7 +977,7 @@ func (ds *Datastore) HandleTraceReport(trace payloads.Trace) error {
 	return nil
 }
 
-// GetInstanceLastStats retrieves the last instances stats recieved for this node.
+// GetInstanceLastStats retrieves the last instances stats received for this node.
 // It returns it in a format suitable for the compute API.
 func (ds *Datastore) GetInstanceLastStats(nodeID string) payloads.CiaoServersStats {
 	var serversStats payloads.CiaoServersStats
@@ -994,7 +994,7 @@ func (ds *Datastore) GetInstanceLastStats(nodeID string) payloads.CiaoServersSta
 	return serversStats
 }
 
-// GetNodeLastStats retrieves the last nodes stats recieved for this node.
+// GetNodeLastStats retrieves the last nodes stats received for this node.
 // It returns it in a format suitable for the compute API.
 func (ds *Datastore) GetNodeLastStats() payloads.CiaoComputeNodes {
 	var computeNodes payloads.CiaoComputeNodes

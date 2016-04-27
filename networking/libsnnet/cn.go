@@ -165,7 +165,7 @@ type ComputeNode struct {
 	ComputeLink []netlink.Link
 	//APITimeout specifies the amount of time the API will wait for netlink
 	//operations to complete. When multiple go routines  invoke the API
-	//simulatenously certian netlink calls suffer higher latencies
+	//simulatenously certain netlink calls suffer higher latencies
 	APITimeout time.Duration
 
 	*cnTopology
@@ -853,7 +853,7 @@ func (cn *ComputeNode) logicallyCreateVnic(vnic *Vnic) (err error) {
 }
 
 //Logically instantiates the bridge and tunnel in the topology
-//The physical devices are not yet created but thier names aliases
+//The physical devices are not yet created but their names aliases
 //are added to the topology reserving them
 //TODO: Check for global topology issues. E.g. Two tenants with same CNCI
 func (cn *ComputeNode) logicallyCreateBridge(bridge *Bridge, gre *GreTunEP, vnic *Vnic) (err error) {

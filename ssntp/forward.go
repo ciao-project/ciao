@@ -51,7 +51,7 @@ type ForwardDestination struct {
 }
 
 // AddRecipient adds a recipient to a ForwardDestination structure.
-// AddRecipient implicitely sets the forwarding decision to Forward
+// AddRecipient implicitly sets the forwarding decision to Forward
 // since adding a recipient means the frame must be forwarded.
 func (d *ForwardDestination) AddRecipient(uuid string) {
 	d.decision = Forward
