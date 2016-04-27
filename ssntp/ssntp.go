@@ -786,7 +786,6 @@ func (conf *clusterConfiguration) setConfiguration(configuration []byte) {
 	conf.Unlock()
 }
 
-
 func prepareTLSConfig(config *Config, server bool) *tls.Config {
 	caPEM, err := ioutil.ReadFile(config.CAcert)
 	if err != nil {

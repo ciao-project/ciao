@@ -77,6 +77,8 @@ type Server struct {
 	log Logger
 
 	trace *TraceConfig
+
+	configuration clusterConfiguration
 }
 
 func sendConnectionFailure(conn net.Conn) *session {
@@ -134,7 +136,10 @@ func handleClientConnect(server *Server, conn net.Conn) *session {
 	session := newSession(&server.uuid, server.role, connect.Role, conn)
 	session.setDest(connect.Source[:16])
 
-	connected := session.connectedFrame(server.role, nil)
+	/* TODO Get the CONFIGURE payload from the config package */
+	server.configuration.RLock()
+	connected := session.connectedFrame(server.role, server.configuration.configuration)
+	server.configuration.RUnlock()
 
 	server.log.Infof("Sending CONNECTED\n")
 	_, writeErr := session.Write(connected)
@@ -174,6 +179,10 @@ func handleSSNTPClient(server *Server, conn net.Conn) {
 
 		switch frame.Type {
 		case COMMAND:
+			if (Command)(frame.Operand) == CONFIGURE && session.destRole == Controller {
+				/* TODO Send the CONFIGURE payload to the config package */
+				server.configuration.setConfiguration(frame.Payload)
+			}
 			server.forwardRules.forwardFrame(server, session, (Command)(frame.Operand), &frame)
 			server.ntf.CommandNotify(uuidString, (Command)(frame.Operand), &frame)
 		case STATUS:
