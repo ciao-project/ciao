@@ -233,13 +233,16 @@ const (
 const (
 	// CONNECTED is the reply to a client CONNECT command and thus only SSNTP servers can
 	// send such frame. The CONNECTED status confirms the client that it's connected and
-	// that it should be prepared to process and send commands and statuses:
+	// that it should be prepared to process and send commands and statuses.
+	// The CONNECTED payload contains the cloud configuration data. Please refer to the
+	// CONFIGURE command frame for more details.
+	//
 	//					 SSNTP CONNECTED Status frame
 	//
-	//	+-----------------------------------------------------------------------------------------+
-	//	| Major | Minor | Type  | Operand |         Role              | Server UUID | Client UUID |
-	//	|       |       | (0x1) |  (0x0)  | (bitmask of server roles) |             |             |
-	//	+-----------------------------------------------------------------------------------------+
+	//	+--------------------------------------------------------------------------------------------------------------------+
+	//	| Major | Minor | Type  | Operand |         Role              | Server UUID | Client UUID | Payload | YAML formatted |
+	//	|       |       | (0x1) |  (0x0)  | (bitmask of server roles) |             |             |  Length |      payload   |
+	//	+--------------------------------------------------------------------------------------------------------------------+
 	CONNECTED Status = iota
 
 	// READY is a status command CIAO agents send to the scheduler to notify them about

@@ -83,12 +83,16 @@ UUIDs.
 
 2. The server asynchronously sends a CONNECTED status frame to the
    client in order to notify him about a successful connection. The
-   CONNECTED frame contains the server advertised role.
+   CONNECTED frame contains the server advertised role and the cluster
+   configuration data in its payload.
    The client must verify that the server role matches its certificate
    extended key usage attributes. If that verification fails the client
    must send a SSNTP error frame to the server where the error code is
    ConnectionFailure (0x4), and then must close the TLS connection to
    the server.
+   The client should also parse the cluster
+   [configuration data] (https://github.com/01org/ciao/blob/master/payloads/configure.go)
+   that comes in the CONNECTED payload and configure itself accordingly.
 
 3. Connection is successfully established. Both ends of the connection
    can now asynchronously send SSNTP frames.
@@ -373,13 +377,15 @@ information:
    server Role. If it does not, the client must discard and close
    the TLS connection to the server.
 
-The CONNECTED frame is payload less:
+The CONNECTED frame payload is the same as the
+[CONFIGURE one](https://github.com/01org/ciao/blob/master/payloads/configure.go)
+and contains cluster configuration data.
 
 ```
-+-----------------------------------------------------------------------------------------+
-| Major | Minor | Type  | Operand |         Role              | Server UUID | Client UUID |
-|       |       | (0x1) |  (0x0)  | (bitmask of server roles) |             |             |
-+-----------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------------------------------+
+| Major | Minor | Type  | Operand |         Role              | Server UUID | Client UUID | Payload | YAML formatted |
+|       |       | (0x1) |  (0x0)  | (bitmask of server roles) |             |             |  Length |      payload   |
++--------------------------------------------------------------------------------------------------------------------+
 ```
 
 #### READY ####
