@@ -56,9 +56,9 @@ func TestCNCI_Init(t *testing.T) {
 
 	cnciinit()
 	_, net1, _ := net.ParseCIDR(cnNetEnv)
-	_, net2, _ := net.ParseCIDR("192.168.1.0/24")
+	_, tnet, _ := net.ParseCIDR("192.168.0.0/24")
 
-	mgtNet := []net.IPNet{*net1, *net2}
+	mgtNet := []net.IPNet{*net1}
 	cnci.ManagementNet = mgtNet
 	cnci.ComputeNet = mgtNet
 
@@ -70,19 +70,19 @@ func TestCNCI_Init(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := cnci.AddRemoteSubnet(*net2, 1234, net.ParseIP("192.168.0.102")); err != nil {
+	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := cnci.AddRemoteSubnet(*net2, 1234, net.ParseIP("192.168.0.103")); err != nil {
+	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.103")); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := cnci.AddRemoteSubnet(*net2, 1234, net.ParseIP("192.168.0.104")); err != nil {
+	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.104")); err != nil {
 		t.Error(err)
 	}
 
-	if err := cnci.DelRemoteSubnet(*net2, 1234, net.ParseIP("192.168.0.102")); err != nil {
+	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
 		t.Error(err)
 	}
 
@@ -90,19 +90,19 @@ func TestCNCI_Init(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := cnci.AddRemoteSubnet(*net2, 1234, net.ParseIP("192.168.0.105")); err != nil {
+	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")); err != nil {
 		t.Error(err)
 	}
 
-	if err := cnci.DelRemoteSubnet(*net2, 1234, net.ParseIP("192.168.0.103")); err != nil {
+	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.103")); err != nil {
 		t.Error(err)
 	}
 
-	if err := cnci.DelRemoteSubnet(*net2, 1234, net.ParseIP("192.168.0.105")); err != nil {
+	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")); err != nil {
 		t.Error(err)
 	}
 
-	if err := cnci.DelRemoteSubnet(*net2, 1234, net.ParseIP("192.168.0.102")); err != nil {
+	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
 		t.Error(err)
 	}
 	if err := cnci.Shutdown(); err != nil {

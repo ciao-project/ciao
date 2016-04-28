@@ -55,13 +55,11 @@ func BenchmarkComputeNodeWorstCase(b *testing.B) {
 	}
 
 	cn.ID = "cnuuid"
-
-	_, net1, _ := net.ParseCIDR("127.0.0.0/24") //Add this so that init will pass
-	_, net2, _ := net.ParseCIDR("193.168.1.0/24")
-	_, net3, _ := net.ParseCIDR("10.3.66.0/24")
+	_, net1, _ := net.ParseCIDR("192.168.0.0/24")
+	_, tnet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML, on agent init
-	mgtNet := []net.IPNet{*net1, *net2, *net3}
+	mgtNet := []net.IPNet{*net1}
 	cn.ManagementNet = mgtNet
 	cn.ComputeNet = mgtNet
 
@@ -69,20 +67,13 @@ func BenchmarkComputeNodeWorstCase(b *testing.B) {
 		b.Fatal("cn.Init failed", err)
 	}
 
-	/* Pollutes the benchmark */
-	/*
-		if err := cn.DbRebuild(nil); err != nil {
-			b.Fatal("cn.dbRebuild failed")
-		}
-	*/
-
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
 	vnicCfg := &libsnnet.VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
-		Subnet:     *net2,
+		Subnet:     *tnet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -93,7 +84,7 @@ func BenchmarkComputeNodeWorstCase(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 
-		if vnic, ssntpEvent, err := cn.CreateVnic(vnicCfg); err != nil {
+		if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
 			b.Error("cn.CreateVnic failed", err)
 		} else {
 			//We expect a bridge creation event
@@ -102,7 +93,7 @@ func BenchmarkComputeNodeWorstCase(b *testing.B) {
 			}
 		}
 
-		if ssntpEvent, err := cn.DestroyVnic(vnicCfg); err != nil {
+		if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
 			b.Error("cn.DestroyVnic failed", err)
 		} else {
 			//We expect a bridge deletion event
@@ -134,13 +125,11 @@ func BenchmarkComputeNodeBestCase(b *testing.B) {
 	}
 
 	cn.ID = "cnuuid"
-
-	_, net1, _ := net.ParseCIDR("127.0.0.0/24") //Add this so that init will pass
-	_, net2, _ := net.ParseCIDR("193.168.1.0/24")
-	_, net3, _ := net.ParseCIDR("10.3.66.0/24")
+	_, net1, _ := net.ParseCIDR("192.168.0.0/24")
+	_, tnet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML, on agent init
-	mgtNet := []net.IPNet{*net1, *net2, *net3}
+	mgtNet := []net.IPNet{*net1}
 	cn.ManagementNet = mgtNet
 	cn.ComputeNet = mgtNet
 
@@ -158,7 +147,7 @@ func BenchmarkComputeNodeBestCase(b *testing.B) {
 		VnicIP:     net.IPv4(192, 168, 1, 11),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    macSeed,
-		Subnet:     *net2,
+		Subnet:     *tnet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuidseed",
 		InstanceID: "iuuidseed",
@@ -172,7 +161,7 @@ func BenchmarkComputeNodeBestCase(b *testing.B) {
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
-		Subnet:     *net2,
+		Subnet:     *tnet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -181,13 +170,13 @@ func BenchmarkComputeNodeBestCase(b *testing.B) {
 		ConcID:     "cnciuuid",
 	}
 
-	if vnic, ssntpEvent, err := cn.CreateVnic(vnicCfgSeed); err != nil {
+	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfgSeed); err != nil {
 		b.Error("cn.CreateVnic seed failed", err, vnic, ssntpEvent)
 	}
 
 	for i := 0; i < b.N; i++ {
 
-		if vnic, ssntpEvent, err := cn.CreateVnic(vnicCfg); err != nil {
+		if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
 			b.Error("cn.CreateVnic failed", err, vnic)
 		} else {
 			if ssntpEvent != nil {
@@ -195,7 +184,7 @@ func BenchmarkComputeNodeBestCase(b *testing.B) {
 			}
 		}
 
-		if ssntpEvent, err := cn.DestroyVnic(vnicCfg); err != nil {
+		if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
 			b.Error("cn.DestroyVnic failed", err)
 		} else {
 			if ssntpEvent != nil {
@@ -204,7 +193,7 @@ func BenchmarkComputeNodeBestCase(b *testing.B) {
 		}
 	}
 
-	if ssntpEvent, err := cn.DestroyVnic(vnicCfgSeed); err != nil {
+	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfgSeed); err != nil {
 		b.Error("cn.DestroyVnic seed failed", err, ssntpEvent)
 	}
 }

@@ -32,7 +32,7 @@ func cnConInit() {
 	cnConNetEnv = os.Getenv("SNNET_ENV")
 
 	if cnConNetEnv == "" {
-		cnConNetEnv = "10.3.66.0/24"
+		cnConNetEnv = "192.168.0.0/24"
 	}
 }
 
@@ -264,7 +264,7 @@ func TestCNContainer_Base(t *testing.T) {
 	var subnetID, iface string //Used to check that they match
 
 	// Create a VNIC: Should create bridge and tunnels
-	if vnic, ssntpEvent, cInfo, err := cn.CreateVnicV2(vnicCfg); err != nil {
+	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
 		switch {
@@ -321,7 +321,7 @@ func TestCNContainer_Base(t *testing.T) {
 	}
 
 	//Duplicate VNIC creation
-	if vnic, ssntpEvent, cInfo, err := cn.CreateVnicV2(vnicCfg); err != nil {
+	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
 		switch {
@@ -339,7 +339,7 @@ func TestCNContainer_Base(t *testing.T) {
 	}
 
 	//Second VNIC creation - Should succeed
-	if vnic, ssntpEvent, cInfo, err := cn.CreateVnicV2(vnicCfg2); err != nil {
+	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
 		switch {
@@ -374,7 +374,7 @@ func TestCNContainer_Base(t *testing.T) {
 	}
 
 	//Duplicate VNIC creation
-	if vnic, ssntpEvent, cInfo, err := cn.CreateVnicV2(vnicCfg2); err != nil {
+	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
 		switch {
@@ -392,7 +392,7 @@ func TestCNContainer_Base(t *testing.T) {
 	}
 
 	//Destroy the first one
-	if ssntpEvent, cInfo, err := cn.DestroyVnicV2(vnicCfg); err != nil {
+	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
 		switch {
@@ -405,7 +405,7 @@ func TestCNContainer_Base(t *testing.T) {
 	}
 
 	//Destroy it again
-	if ssntpEvent, cInfo, err := cn.DestroyVnicV2(vnicCfg); err != nil {
+	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
 		switch {
@@ -418,7 +418,7 @@ func TestCNContainer_Base(t *testing.T) {
 	}
 
 	// Try and destroy - should work - cInfo should be reported
-	if ssntpEvent, cInfo, err := cn.DestroyVnicV2(vnicCfg2); err != nil {
+	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
 		switch {
@@ -447,7 +447,7 @@ func TestCNContainer_Base(t *testing.T) {
 	}
 
 	//Destroy it again
-	if ssntpEvent, cInfo, err := cn.DestroyVnicV2(vnicCfg2); err != nil {
+	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
 		switch {
@@ -579,7 +579,7 @@ func TestCNContainer_Connectivity(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	_, _, cInfo, err := cn.CreateVnicV2(vnicCfg)
+	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
 	if err != nil {
 		t.Error(err)
 	}
@@ -592,7 +592,7 @@ func TestCNContainer_Connectivity(t *testing.T) {
 	//Kick off a long running container
 	dockerRunTop(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
-	_, _, cInfo2, err := cn.CreateVnicV2(vnicCfg2)
+	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -611,10 +611,10 @@ func TestCNContainer_Connectivity(t *testing.T) {
 	}
 
 	//Destroy the VNICs
-	if _, _, err := cn.DestroyVnicV2(vnicCfg); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	}
-	if _, _, err := cn.DestroyVnicV2(vnicCfg2); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	}
 
@@ -746,7 +746,7 @@ func TestCNContainer_Interop1(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	_, _, cInfo, err := cn.CreateVnicV2(vnicCfg)
+	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
 	if err != nil {
 		t.Error(err)
 	}
@@ -756,7 +756,7 @@ func TestCNContainer_Interop1(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, _, _, err = cn.CreateVnicV2(vnicCfg3)
+	_, _, _, err = cn.CreateVnic(vnicCfg3)
 	if err != nil {
 		t.Error(err)
 	}
@@ -764,12 +764,12 @@ func TestCNContainer_Interop1(t *testing.T) {
 	//Kick off a long running container
 	dockerRunTop(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
-	_, _, cInfo2, err := cn.CreateVnicV2(vnicCfg2)
+	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
 	if err != nil {
 		t.Error(err)
 	}
 
-	_, _, _, err = cn.CreateVnicV2(vnicCfg4)
+	_, _, _, err = cn.CreateVnic(vnicCfg4)
 	if err != nil {
 		t.Error(err)
 	}
@@ -787,19 +787,19 @@ func TestCNContainer_Interop1(t *testing.T) {
 		t.Error(err)
 	}
 
-	if _, _, err := cn.DestroyVnicV2(vnicCfg); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	}
-	if _, _, err := cn.DestroyVnicV2(vnicCfg2); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	}
-	if _, _, err := cn.DestroyVnicV2(vnicCfg3); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg3); err != nil {
 		t.Error(err)
 	}
 	if err := dockerNetDelete(t, cInfo.SubnetID); err != nil {
 		t.Error(err)
 	}
-	if _, _, err := cn.DestroyVnicV2(vnicCfg4); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg4); err != nil {
 		t.Error(err)
 	}
 	if err := dockerPlugin.Stop(); err != nil {
@@ -926,11 +926,11 @@ func TestCNContainer_Interop2(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	_, _, _, err := cn.CreateVnicV2(vnicCfg3)
+	_, _, _, err := cn.CreateVnic(vnicCfg3)
 	if err != nil {
 		t.Error(err)
 	}
-	_, _, cInfo, err := cn.CreateVnicV2(vnicCfg)
+	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
 	if err != nil {
 		t.Error(err)
 	}
@@ -943,7 +943,7 @@ func TestCNContainer_Interop2(t *testing.T) {
 	//Kick off a long running container
 	dockerRunTop(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
-	_, _, cInfo2, err := cn.CreateVnicV2(vnicCfg2)
+	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -960,16 +960,16 @@ func TestCNContainer_Interop2(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, _, _, err = cn.CreateVnicV2(vnicCfg4)
+	_, _, _, err = cn.CreateVnic(vnicCfg4)
 	if err != nil {
 		t.Error(err)
 	}
 
 	//Destroy the VNICs
-	if _, _, err := cn.DestroyVnicV2(vnicCfg); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	}
-	if _, _, err := cn.DestroyVnicV2(vnicCfg2); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	}
 
@@ -977,10 +977,10 @@ func TestCNContainer_Interop2(t *testing.T) {
 	if err := dockerNetDelete(t, cInfo.SubnetID); err != nil {
 		t.Error(err)
 	}
-	if _, _, err := cn.DestroyVnicV2(vnicCfg4); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg4); err != nil {
 		t.Error(err)
 	}
-	if _, _, err := cn.DestroyVnicV2(vnicCfg3); err != nil {
+	if _, _, err := cn.DestroyVnic(vnicCfg3); err != nil {
 		t.Error(err)
 	}
 	if err := dockerPlugin.Stop(); err != nil {
