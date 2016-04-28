@@ -425,7 +425,7 @@ func findDocument(lines []string) (doc *extractedDoc, endOfNextDoc int) {
 	realStart -= start
 	realEnd -= start
 
-	return &extractedDoc{lines[start:len(lines)], realStart, realEnd}, start
+	return &extractedDoc{lines[start:], realStart, realEnd}, start
 }
 
 func splitYaml(data []byte) ([]byte, []byte, []byte) {

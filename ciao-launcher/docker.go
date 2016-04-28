@@ -191,7 +191,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 		config.MacAddress = d.cfg.VnicMAC
 		hostConfig.NetworkMode = container.NetworkMode(bridge)
 		networkConfig.EndpointsConfig = map[string]*network.EndpointSettings{
-			bridge: &network.EndpointSettings{
+			bridge: {
 				IPAMConfig: &network.EndpointIPAMConfig{
 					IPv4Address: d.cfg.VnicIP,
 				},

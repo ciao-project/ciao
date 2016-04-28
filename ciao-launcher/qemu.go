@@ -669,7 +669,7 @@ DONE:
 	/* Readloop could be blocking on a send */
 
 	if eventCh != nil {
-		for _ = range eventCh {
+		for range eventCh {
 		}
 	}
 
