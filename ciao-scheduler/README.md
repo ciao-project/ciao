@@ -203,3 +203,32 @@ TODO
   * compute node location (eg: geography, rack)
   * VM or docker image cache state (ie: try to preclude network pulls at
     workload launch time)
+* NUMA:
+  * We really really do not want to export compute node topology up to
+    the workload creator.  And we really really do not want consumers
+    of the cloud trying to write workloads or applications which have
+    to have a specific NUMA hardware topology and are coded to that
+    in the hopes of somehow getting better performance...in a general
+    purpose compute cloud.  This is highly unlikely to actually lead to
+    deterministically better performance for the user workload.
+  * Nevertheless it might make sense to articulate you want for example
+    your network related workload to only run within a compute node
+    on the NUMA node that contains a specific hardware capability
+    (ie: PCI id, or...the special high performance NIC).  We could
+    address this need by running multiple normal launcher agents on
+    a compute node:  one per NUMA node (each started in a cgroup to
+    insure their process scheduling and ram placement is node local)
+    and one more for the overall node.  So a basic two socket system
+    would have three launcher agents.  Each would be aware of resources,
+    with resource over counting.  Resources consumed by the whole node
+    would automatically be observed as consumed (by something...don't
+    need to care what) from the NUMA-node-specific launcher agents.
+    Similarly NUMA-node-specific resource consumption would automatically
+    be observed as consumed (by something...don't need to care what)
+    from the whole compute node launcher agent perspective.
+  * And it may not matter anyway for this use case.  The kernel could
+    automatically (or launcher explicitly) cause page migration and IRQ/CPU
+    affinity in response to use.  Plus if the workload is significant, it
+    can get more streaming RAM bandwidth by using both nodes of two socket
+    system.
+  * Collect experimental data and decide a path.
