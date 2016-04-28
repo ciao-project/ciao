@@ -1226,9 +1226,9 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 
 	rows, err := tx.Query(query)
 	if err != nil {
-		return nil, err
-		ds.tdbLock.RUnlock()
 		tx.Rollback()
+		ds.tdbLock.RUnlock()
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -1250,6 +1250,8 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 
 		defaults, err := ds.getWorkloadDefaults(i.WorkloadID)
 		if err != nil {
+			tx.Rollback()
+			ds.tdbLock.RUnlock()
 			return nil, err
 		}
 
