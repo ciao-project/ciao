@@ -22,7 +22,7 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-// NewGreTunEP is used to initialize the gre tunnel properties
+// NewGreTunEP is used to initialize the GRE tunnel properties
 // This has to be called prior to Create() or GetDevice()
 func NewGreTunEP(id string, localIP net.IP, remoteIP net.IP, key uint32) (*GreTunEP, error) {
 	gre := &GreTunEP{}
@@ -168,7 +168,7 @@ func (g *GreTunEP) setAlias(alias string) error {
 	return nil
 }
 
-// Attach the gretunnel to a device/bridge/switch
+// Attach the GRE tunnel to a device/bridge/switch
 func (g *GreTunEP) Attach(dev interface{}) error {
 
 	if g.Link == nil || g.Link.Index == 0 {
@@ -192,7 +192,7 @@ func (g *GreTunEP) Attach(dev interface{}) error {
 	return nil
 }
 
-// Detach the GreTunnel from the device/bridge it is attached to
+// Detach the GRE Tunnel from the device/bridge it is attached to
 func (g *GreTunEP) Detach(dev interface{}) error {
 	if g.Link == nil || g.Link.Index == 0 {
 		return netError(g, "detach invalid gre link: %v", g)

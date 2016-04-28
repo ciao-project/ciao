@@ -29,7 +29,7 @@ import (
 //
 //This test created a bridge, assigns an IP to it, attaches
 //a bridge local dnsmasq process to serve DHCP and DNS on this
-//brigde. It also tests for reload of the dnsmasq, stop and
+//bridge. It also tests for reload of the dnsmasq, stop and
 //restart
 //
 //Test is expected to pass
@@ -113,7 +113,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 	defer bridge.Destroy()
 
-	// Note: Reinstantiate d each time as that
+	// Note: Re instantiate d each time as that
 	// is how it will be used
 	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Start(); err != nil {

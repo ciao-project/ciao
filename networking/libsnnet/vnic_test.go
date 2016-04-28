@@ -217,10 +217,10 @@ func TestVnicContainer_Invalid(t *testing.T) {
 
 }
 
-//Test ability to attach to an existing Vnic
+//Test ability to attach to an existing VNIC
 //
-//Tests the the ability to attach to an existing
-//vnic and perform all VNIC operations on it
+//Tests the ability to attach to an existing
+//VNIC and perform all VNIC operations on it
 //
 //Test is expected to pass
 func TestVnic_GetDevice(t *testing.T) {
@@ -249,10 +249,10 @@ func TestVnic_GetDevice(t *testing.T) {
 	}
 }
 
-//Test ability to attach to an existing Container Vnic
+//Test ability to attach to an existing Container VNIC
 //
-//Tests the the ability to attach to an existing
-//vnic and perform all VNIC operations on it
+//Tests the ability to attach to an existing
+//VNIC and perform all VNIC operations on it
 //
 //Test is expected to pass
 func TestVnicContainer_GetDevice(t *testing.T) {

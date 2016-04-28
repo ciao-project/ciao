@@ -25,7 +25,7 @@ do
 	  shift 2
 	  ;;
       -h | --help)
-	  echo -e $usage >&2
+	  echo -e "$usage" >&2
 	  exit 0
 	  ;;
       -i | --image)

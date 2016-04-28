@@ -18,7 +18,7 @@ perform any network re-configuration in the event of a launcher crash or restart
 
 Currently the library supports creation of bridges, GRE tunnels, VM and Container
 compatible interfaces (VNICs) on nodes. It also provides and the ability to 
-attach tunnels and vnics to bridges.
+attach tunnels and VNICs to bridges.
 
 The implementation also provides the ability to interconnect these bridges
 across nodes creating L2 Overlay networks.
@@ -51,5 +51,3 @@ Network needs of the CNCIs. All tenant level switching and routing for
 a given tenant is handled isolated from other tenants using the CNCI's.
 The CNCIs also implement tenant specific firewall and NAT rules. In the future
 they may be extended to perform traffic shaping.
-
- 

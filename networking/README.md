@@ -19,7 +19,7 @@ ciao-launcher when the node is booted.
 
 ### Compute Node (CN)
 
-A compute node typically runs VM and Container workloads for multiple tenants. 
+A compute node typically runs VM and Container workloads for multiple tenants.
 
 ### Network Node (NN)
 
@@ -40,7 +40,7 @@ The primary design goals of Ciao Networking are to provide
 - Fully isolated tenant overlay networks
 - Auto discovery and configuration of physical nodes
 - Auto configuration of basic tenant network properties
-- Support large number of tenants with large or small number of worloads
+- Support large number of tenants with large or small number of workloads
 - Operate on any Linux distribution by limiting the number of dependencies on
   user-space tools and leveraging Linux kernel interfaces whenever possible.
 - Provide the ability to migrate workloads from a Compute Node on demand or

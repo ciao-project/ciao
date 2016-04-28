@@ -43,7 +43,7 @@ func fwinit() {
 
 //Test firewall init for CNCI
 //
-//Performs basic checks of firewall primities
+//Performs basic checks of firewall primitives
 //Failure indicates problem with underlying dependencies
 //which could be iptables or nftables
 //
@@ -96,7 +96,7 @@ func TestFw_Ssh(t *testing.T) {
 
 //Tests setting up NAT
 //
-//Test check if a NAT rule can be setup to peform outbound
+//Test check if a NAT rule can be setup to perform outbound
 //NAT from a given internal interface to a specified
 //external interface (which has a dynamic IP, i.e DHCP)
 //

@@ -218,8 +218,8 @@ func TestCNContainer_Base(t *testing.T) {
 		t.Fatal("ERROR: Docker start failed ", err)
 	}
 
-	//Restarting docker here so the the plugin will
-	//be picked up without modifing the boot scripts
+	//Restarting docker here so the plugin will
+	//be picked up without modifying the boot scripts
 	if err := dockerRestart(t); err != nil {
 		t.Fatal("ERROR: Docker restart failed ", err)
 	}
@@ -536,8 +536,8 @@ func TestCNContainer_Connectivity(t *testing.T) {
 		t.Fatal("ERROR: Docker start failed ", err)
 	}
 
-	//Restarting docker here so the the plugin will
-	//be picked up without modifing the boot scripts
+	//Restarting docker here so the plugin will
+	//be picked up without modifying the boot scripts
 	if err := dockerRestart(t); err != nil {
 		t.Fatal("ERROR: Docker restart failed ", err)
 	}
@@ -671,8 +671,8 @@ func TestCNContainer_Interop1(t *testing.T) {
 		t.Fatal("ERROR: Docker start failed ", err)
 	}
 
-	//Restarting docker here so the the plugin will
-	//be picked up without modifing the boot scripts
+	//Restarting docker here so the plugin will
+	//be picked up without modifying the boot scripts
 	if err := dockerRestart(t); err != nil {
 		t.Fatal("ERROR: Docker restart failed ", err)
 	}
@@ -851,8 +851,8 @@ func TestCNContainer_Interop2(t *testing.T) {
 		t.Fatal("ERROR: Docker start failed ", err)
 	}
 
-	//Restarting docker here so the the plugin will
-	//be picked up without modifing the boot scripts
+	//Restarting docker here so the plugin will
+	//be picked up without modifying the boot scripts
 	if err := dockerRestart(t); err != nil {
 		t.Fatal("ERROR: Docker restart failed ", err)
 	}

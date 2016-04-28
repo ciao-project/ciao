@@ -165,7 +165,7 @@ type ComputeNode struct {
 	ComputeLink []netlink.Link
 	//APITimeout specifies the amount of time the API will wait for netlink
 	//operations to complete. When multiple go routines  invoke the API
-	//simulatenously certain netlink calls suffer higher latencies
+	//simultaneously certain netlink calls suffer higher latencies
 	APITimeout time.Duration
 
 	*cnTopology
@@ -605,7 +605,7 @@ func (cn *ComputeNode) DestroyCnciVnic(cfg *VnicConfig) error {
 //
 // If this is the first instance of a Vnic belonging to the tenant,
 // will provide a SSNTP message to be sent to the Scheduler to notify the
-// CNCI of this instantitation. This message is processed by the CNCI which
+// CNCI of this instantiation. This message is processed by the CNCI which
 // will setup the far side of the  tunnel which is required to connect this CN
 // tenant bridge to the tenant Subnet
 //
@@ -636,7 +636,7 @@ func (cn *ComputeNode) CreateVnicV2(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *C
 //
 // to ensure that the Vnic is active. In addition if this is the first instance
 // of the Vnic belonging to the tenant, will provide a SSNTP message to be
-// sent to the Scheduler to notify the CNCI of this instantitation. This
+// sent to the Scheduler to notify the CNCI of this instantiation. This
 // message is processed by the CNCI which will setup the far side of the
 // tunnel which is required to connect this CN tenant bridge to the tenant Subnet
 // Note: The caller of this function is responsible to send the message to the scheduler
@@ -808,14 +808,14 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 	cInfo.CNContainerEvent = ContainerNetworkAdd
 
 	// Now the network is ready and you can create a VM and launch it with this vnic
-	// vnic.Name is the interface name, the instanceMAC is the MAC Address
+	// vnic.Name is the interface name, the instance MAC is the MAC Address
 	// qemu-system-x86_64 ... -net nic,model=virtio,macaddr=xxxx -net tap,ifname=vnic.Name ...
 	return vnic, brCreateMsg, cInfo, nil
 }
 
 func getContainerInfo(cfg *VnicConfig, vnic *Vnic, bridge *Bridge) *ContainerInfo {
 	//TODO. Create a ciao gateway function so that in the future
-	//if we ever change our gateway algorithm it will propage everywhere
+	//if we ever change our gateway algorithm it will propagate everywhere
 	gateway := cfg.Subnet.IP.To4().Mask(cfg.Subnet.Mask)
 	gateway[3]++
 	return &ContainerInfo{
@@ -883,7 +883,7 @@ func (cn *ComputeNode) logicallyCreateBridge(bridge *Bridge, gre *GreTunEP, vnic
 	return nil
 }
 
-//Phsyically create the devices by calling into the kernel
+//Physically create the devices by calling into the kernel
 //TODO: Try to be more fault tolerant here. We may miss errors but try to
 // honor the request  e.g. If bridge exists use it and try and create tunnel
 func createAndEnableBridge(bridge *Bridge, gre *GreTunEP) error {
@@ -936,8 +936,8 @@ func apiCancelled(cancel chan interface{}) bool {
 	}
 }
 
-// DestroyVnicV2 destroys a tenant VNIC. If this happens to be the last vnic for
-// this tenant subnet on this CN, the bridge and gre tunnel will also be
+// DestroyVnicV2 destroys a tenant VNIC. If this happens to be the last VNIC for
+// this tenant subnet on this CN, the bridge and GRE tunnel will also be
 // destroyed and SSNTP message generated.
 //
 // This will replace the DestroyVnic method
@@ -975,7 +975,7 @@ func (cn *ComputeNode) DestroyVnicV2(cfg *VnicConfig) (*SsntpEventInfo, *Contain
 // this tenant subnet on this CN, the bridge and gre tunnel will also be
 // destroyed and SSNTP message generated.
 //
-// This API has been deperecated
+// This API has been deprecated
 //
 // This message needs to be sent to the CNCI which will teardown the tunnel.
 // Note: The caller of this function is responsible to send the message to the
@@ -1128,7 +1128,7 @@ func (cn *ComputeNode) ResetNetwork() error {
 		}
 	}
 
-	//Check if we see any remanants
+	//Check if we see any remnants
 	//Attempt one last time to delete them
 	links, err = netlink.LinkList()
 	var badLinks []string

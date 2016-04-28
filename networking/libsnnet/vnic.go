@@ -75,8 +75,8 @@ func (v *Vnic) PeerName() string {
 	return ""
 }
 
-// GetDevice is used to associate with an existing Vnic provided it satisfies
-// the needs of a Vnic. Returns error if the Vnic does not exist
+// GetDevice is used to associate with an existing VNIC provided it satisfies
+// the needs of a Vnic. Returns error if the VNIC does not exist
 func (v *Vnic) GetDevice() error {
 
 	if v.GlobalID == "" {
@@ -119,7 +119,7 @@ func (v *Vnic) GetDevice() error {
 	return nil
 }
 
-// Create instantiates new vnic
+// Create instantiates new VNIC
 func (v *Vnic) Create() error {
 	var err error
 
@@ -200,7 +200,7 @@ func (v *Vnic) Create() error {
 	return nil
 }
 
-// Destroy a vnic
+// Destroy a VNIC
 func (v *Vnic) Destroy() error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
@@ -215,7 +215,7 @@ func (v *Vnic) Destroy() error {
 
 }
 
-// Attach the vnic to a bridge or a switch. Will return error if the vnic
+// Attach the VNIC to a bridge or a switch. Will return error if the VNIC
 // incapable of binding to the specified device
 func (v *Vnic) Attach(dev interface{}) error {
 
@@ -239,7 +239,7 @@ func (v *Vnic) Attach(dev interface{}) error {
 	return nil
 }
 
-// Detach the vnic from the device it is attached to
+// Detach the VNIC from the device it is attached to
 func (v *Vnic) Detach(dev interface{}) error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
@@ -263,7 +263,7 @@ func (v *Vnic) Detach(dev interface{}) error {
 	return nil
 }
 
-// Enable the vnic
+// Enable the VNIC
 func (v *Vnic) Enable() error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
@@ -278,7 +278,7 @@ func (v *Vnic) Enable() error {
 
 }
 
-// Disable the vnic
+// Disable the VNIC
 func (v *Vnic) Disable() error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {

@@ -29,19 +29,19 @@ import (
 //to instantiate a VNIC on a node that does not have that
 //tenant subnet present
 //This means that there will be bridge created, a GRE tunnel
-//created and a tap inteface created and they are all linked
+//created and a tap interface created and they are all linked
 //to one another. Additionally a SSNTP event is also generated
 //Based on current observation most of the time is spent in the
 //kernel processing the netlink message
 //To ensure that we do not pollute the test system we delete
 //the VNIC.
-//Hence the benchmarked time includes the time it takes to
+//Hence the benchmark time includes the time it takes to
 //create and delete the VNIC (not just create).
 //However the deletes are more efficient than creates
-//This does not truly measure the cost of synchrnoization
-//when multiple launcher threads are creating VNIC simulatenously.
+//This does not truly measure the cost of synchronization
+//when multiple launcher threads are creating VNIC simultaneously.
 //However based on current measurements the cost of a channel based
-//sync is about 10ms (for a uncontended channel). The mutex is almost
+//sync is about 10ms (for a un-contended channel). The mutex is almost
 //free when un-contended
 //
 //Test should pass ok
@@ -119,7 +119,7 @@ func BenchmarkComputeNodeWorstCase(b *testing.B) {
 //to instantiate a VNIC on a node that already has that
 //tenant subnet present
 //Hence this is just the cost to create the tap and link
-//it to the brigde.
+//it to the bridge.
 //As mentioned before this also deletes the VNIC.
 //Hence the cost includes the cost to create and delete the VNIC
 //

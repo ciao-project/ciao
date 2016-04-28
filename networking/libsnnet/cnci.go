@@ -43,7 +43,7 @@ type Cnci struct {
 
 	//APITimeout specifies the amount of time the API will wait for netlink
 	//operations to complete. When multiple go routines  invoke the API
-	//simulatenously certain netlink calls suffer higher latencies
+	//simultaneously certain netlink calls suffer higher latencies
 	APITimeout time.Duration
 
 	// IPAddress of the concentrator that is routable
@@ -51,7 +51,7 @@ type Cnci struct {
 	// performed using the datacenter DHCP
 	IP net.IP
 
-	// Public IPAddress this concentator is assigned
+	// Public IPAddress this concentrator is assigned
 	PublicIPs   []net.IP
 	PublicIPMap map[string]net.IP //Key is public IPNet
 
@@ -197,7 +197,7 @@ func (cnci *Cnci) Init() error {
 //crashes and loses network topology information.
 //It can also be called, to rebuild the network topology on demand.
 //TODO: Restarting the DNS Masq here - Define a re-attach method
-//TODO: Log failures when making best effort progress - fmt.Printxxx
+//TODO: Log failures when making best effort progress 
 func (cnci *Cnci) RebuildTopology() error {
 
 	if cnci.NetworkConfig == nil || cnci.topology == nil {

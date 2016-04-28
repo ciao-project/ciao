@@ -78,8 +78,8 @@ Note: The launcher should be launched prior to the docker daemon.
 	subnets between tenants. Otherwise the default IPAM driver meets our needs.
 
 
-	Note: Fully speccing the network creation and handing control to the
-	ciao driver (-d) makes docker a passthro for networking.
+	Note: Fully specifying the network creation and handing control to the
+	ciao driver (-d) makes docker a pass thru for networking.
 	Note: The docker IPAM seems to try to setup its own gateway. WHY?
 
 	In the future any more information we need can also be sent as more
@@ -101,13 +101,13 @@ Note: The launcher should be launched prior to the docker daemon.
 	remote IPAM plugin. Without this we cannot use our IPAM driver
 
 6. The ciao docker plugin acts as both a network and IPAM remote plugin.
-   It handles all the requests. Some of the more imporant ones are
+   It handles all the requests. Some of the more important ones are
      a. EndPointCreate: If the container is being created for the first time
         As we have already created the VNIC, we only need to cache the endpoint id to instance map
 	 b. Join: When the end point is being placed inside the container
 	    On Join the plugin will return back to docker the following information
            - name of the veth pair to place within the container
-	       - the ethernet device name prefix to be assigned to the logic interface
+	       - the Ethernet device name prefix to be assigned to the logic interface
 		     within the container (e.g. eth or eno)
 	  	   - the default gw for the container
 		   - any other static routes to be added within the container (if needed)
@@ -122,7 +122,7 @@ Note: The launcher should be launched prior to the docker daemon.
 */
 
 //DockerPluginCfg controls plugin attributes
-//these may be overidden by the caller if needed
+//these may be overridden by the caller if needed
 var DockerPluginCfg = struct {
 	Name    string
 	Dir     string
@@ -192,7 +192,7 @@ type DockerNwMap struct {
 type DockerPlugin struct {
 	DockerDBProvider //Database used to persist the Docker to ciao Mapping
 	//This is needed as the Docker Daemon and ciao have
-	//different lifecycles and UUIDs
+	//different life cycles and UUIDs
 	*mux.Router
 	*graceful.Server
 	DockerEpMap
@@ -813,7 +813,7 @@ func (d *DockerPlugin) Start() error {
 
 //Stop the DockerPlugin
 //The DockerPlugin has to be stopped after the Docker Daemon
-//has been stopped. If the the plugin is stopped when the docker
+//has been stopped. If the plugin is stopped when the docker
 //daemon is still active the docker daemon has a timeout and
 //retry mechanism. Hence if the docker plugin is restarted
 //within the retry windows, the docker APIs will still succeed
@@ -825,7 +825,7 @@ func (d *DockerPlugin) Stop() error {
 
 //Close the DockerPlugin
 //This has to be called if the caller has ever performed an Init()
-//failing to close may lead to database curruption
+//failing to close may lead to database corruption
 func (d *DockerPlugin) Close() error {
 	return d.DbClose()
 }

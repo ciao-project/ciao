@@ -21,12 +21,12 @@ bridge and tunnel creation on a compute node.
 
 ### CNCI Provisioning ###
 
-A CNCI VM is provisoned by the ciao-controller to handle and isolate traffic
+A CNCI VM is provisioned by the ciao-controller to handle and isolate traffic
 for subnets that belong to a specific tenant.
 
 ### CNCI Registration ###
 
-When the CNCI VM boots up (at each bootup or restart) the CNCI Agent
+When the CNCI VM boots up (at each boot up or restart) the CNCI Agent
 notifies the ciao-scheduler using SSNTP that it is active and handles
 tenant subnets for a specific tenant. The scheduler in turn notifies the 
 controller of the CNCI IP address.
@@ -34,7 +34,7 @@ controller of the CNCI IP address.
 The ciao-controller associates this IP address with the appropriate 
 tenant (subnets).
 
-At this point the CNCI is registered with the ciao-controller to handle the 
+At this point the CNCI is registered with the ciao-controller to handle 
 a specific set of tenant subnets
 
 ### Compute Node Subnet Creation and Registration ###
@@ -60,7 +60,7 @@ CNCI all via SSNTP.
 
 ### CNCI Subnet Creation ###
 
-When the CNCI sees a Remote Subnet Reqisration message it links the remote
+When the CNCI sees a Remote Subnet Registration message it links the remote
 subnet to the appropriate subnet bridge on the CNCI. 
 
 The CNCI agent manages the bridges, routing, NAT and traffic for all tenant

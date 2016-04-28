@@ -112,11 +112,11 @@ const (
 )
 
 // Network describes the configuration of the data center network.
-// This is the physical configurtion of the data center.
+// This is the physical configuration of the data center.
 // The Management Networks carry management/control SSNTP traffic
 // The Compute Network carries tenant traffic.
-// In a simplistic configuratIon the management nework and the compute networks
-// may be one and and the same.
+// In a simplistic configuration the management network and the compute networks
+// may be one and the same.
 type Network struct {
 	ManagementNet []net.IPNet // Enumerates all possible management subnets
 	ComputeNet    []net.IPNet // Enumerates all possible compute subnets
@@ -140,7 +140,7 @@ type Attrs struct {
 
 // Netdev ciao generic network device representation.
 // Any of these methods can be invoked provided a NewXXX
-// has been performed to instatiate the device
+// has been performed to instantiate the device
 type Netdev interface {
 	Create() error    // Create the device that does not exist
 	GetDevice() error // Associate with an existing device

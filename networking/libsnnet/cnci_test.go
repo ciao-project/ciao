@@ -14,12 +14,6 @@
 // limitations under the License.
 //
 
-// and a concentator instance CNCI.
-// The CN code will be abstracted and presented as a API that can be used
-// by the launcher to create a VNIC
-// The CNCI code will be run within a CNCI daemon that listens to messages on
-// on SNTP
-
 package libsnnet_test
 
 import (
@@ -125,7 +119,7 @@ func TestCNCI_Init(t *testing.T) {
 //kernel features and applications (like dnsmasq,
 //netlink) that the CNCI API relies on
 //The goal of this test is to ensure we can rebase our
-//depdencies and catch any dependency errors
+//dependencies and catch any dependency errors
 //
 //Test is expected to pass
 func TestCNCI_Internal(t *testing.T) {

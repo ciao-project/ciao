@@ -156,7 +156,7 @@ func TestCN_Scaling(t *testing.T) {
 //This test creates multiple VNICs belonging to multiple tenants
 //It then uses the ResetNetwork API to reset the node's networking
 //state to a clean state (as in reset). This test also check that
-//the API can be called midway through a node's lifecyle and
+//the API can be called midway through a node's lifecycle and
 //the DbRebuild API can be used to re-construct the node's
 //networking state
 //
@@ -435,7 +435,7 @@ func TestCN_Negative(t *testing.T) {
 		vnicName = vnic.LinkName
 	}
 
-	//Try and create a duplicate. should work
+	//Try and create a duplicate. Should work
 	if vnic, ssntpEvent, _, err := cn.CreateVnicV2(vnicCfg); err != nil {
 		t.Error("ERROR: cn.CreateVnicV2  failed", err)
 	} else {
@@ -1027,9 +1027,6 @@ func TestCN_Whitebox(t *testing.T) {
 			t.Errorf("Bridge enable failed: %v", err)
 		}
 
-		// At this point connect to the CNCI and request creation
-		// of the other end of the tunnel
-		// This may take a while and may need backoff and retry
 	}
 
 	// Create the VNIC for the instance
