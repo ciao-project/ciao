@@ -113,7 +113,7 @@ func main() {
 		switch *operationIn {
 		case "create":
 			fmt.Println("Creating VNIC for Workload")
-			if vnic, ssntpEvent, err := cn.CreateVnic(vnicCfg); err != nil {
+			if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
 				fmt.Println(err)
 				os.Exit(-1)
 			} else {
@@ -126,7 +126,7 @@ func main() {
 			}
 		case "delete":
 			fmt.Println("Deleting VNIC for Workload")
-			if ssntpEvent, err := cn.DestroyVnic(vnicCfg); err != nil {
+			if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
 				fmt.Println(err)
 				os.Exit(-1)
 			} else {

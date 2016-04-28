@@ -197,10 +197,10 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
 
 			defer logTime(t, time.Now(), "Create VNIC")
 
-			if _, _, _, err := cn.CreateVnicV2(vnicCfg); err != nil {
+			if _, _, _, err := cn.CreateVnic(vnicCfg); err != nil {
 				if !modelCancel {
 					//We expect failures only when we have cancellations
-					t.Error("ERROR: cn.CreateVnicV2  failed", vnicCfg, err)
+					t.Error("ERROR: cn.CreateVnic  failed", vnicCfg, err)
 				}
 			}
 
@@ -223,10 +223,10 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
 				return
 			}
 			defer logTime(t, time.Now(), "Destroy VNIC")
-			if _, _, err := cn.DestroyVnicV2(vnicCfg); err != nil {
+			if _, _, err := cn.DestroyVnic(vnicCfg); err != nil {
 				if !modelCancel {
 					//We expect failures only when we have cancellations
-					t.Error("ERROR: cn.DestroyVnicV2 failed event", vnicCfg, err)
+					t.Error("ERROR: cn.DestroyVnic failed event", vnicCfg, err)
 				}
 			}
 		}(vnicCfg)
@@ -551,10 +551,10 @@ func Docker_Serial(netType dockerNetType, t *testing.T) {
 			}
 
 			// Create a VNIC: Should create bridge and tunnels
-			if _, _, cInfo, err := cn.CreateVnicV2(vnicCfg); err != nil {
+			if _, _, cInfo, err := cn.CreateVnic(vnicCfg); err != nil {
 				t.Error(err)
 			} else {
-				defer cn.DestroyVnicV2(vnicCfg)
+				defer cn.DestroyVnic(vnicCfg)
 
 				if cInfo.CNContainerEvent == libsnnet.ContainerNetworkAdd {
 					if err := dockerNetCreate(t, cInfo.Subnet, cInfo.Gateway,

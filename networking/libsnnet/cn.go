@@ -590,7 +590,7 @@ func (cn *ComputeNode) DestroyCnciVnic(cfg *VnicConfig) error {
 	return nil
 }
 
-// CreateVnicV2 creates a tenant VNIC that can be used by containers
+// CreateVnic creates a tenant VNIC that can be used by containers
 // or VMs
 // This will replace CreateVnic
 //
@@ -610,7 +610,7 @@ func (cn *ComputeNode) DestroyCnciVnic(cfg *VnicConfig) error {
 // tenant bridge to the tenant Subnet
 //
 // Note: The caller of this function is responsible to send the message to the scheduler
-func (cn *ComputeNode) CreateVnicV2(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
+func (cn *ComputeNode) CreateVnic(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
 	/* TODO: Need to figure out a better way to set MTU for containers */
 	if cfg.VnicRole == TenantContainer {
 		if cfg.MTU == 0 {
@@ -628,24 +628,6 @@ func (cn *ComputeNode) CreateVnicV2(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *C
 	}
 
 	return cn.createVnicInternal(cfg)
-}
-
-// CreateVnic creates a tenant VM VNIC and sets all the underlying framework
-//
-// This version of the API has been deprecated
-//
-// to ensure that the Vnic is active. In addition if this is the first instance
-// of the Vnic belonging to the tenant, will provide a SSNTP message to be
-// sent to the Scheduler to notify the CNCI of this instantiation. This
-// message is processed by the CNCI which will setup the far side of the
-// tunnel which is required to connect this CN tenant bridge to the tenant Subnet
-// Note: The caller of this function is responsible to send the message to the scheduler
-func (cn *ComputeNode) CreateVnic(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, error) {
-	if cfg.VnicRole != TenantVM {
-		return nil, nil, NewAPIError("invalid vnic role")
-	}
-	v, s, _, err := cn.createVnicInternal(cfg)
-	return v, s, err
 }
 
 func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
@@ -936,7 +918,7 @@ func apiCancelled(cancel chan interface{}) bool {
 	}
 }
 
-// DestroyVnicV2 destroys a tenant VNIC. If this happens to be the last VNIC for
+// DestroyVnic destroys a tenant VNIC. If this happens to be the last VNIC for
 // this tenant subnet on this CN, the bridge and GRE tunnel will also be
 // destroyed and SSNTP message generated.
 //
@@ -948,7 +930,7 @@ func apiCancelled(cancel chan interface{}) bool {
 // If the ContainerInfo is set, the container logical network has to
 // be deleted using the command line or API equivalent of
 // docker network rm ContainerInfo.SubnetID>
-func (cn *ComputeNode) DestroyVnicV2(cfg *VnicConfig) (*SsntpEventInfo, *ContainerInfo, error) {
+func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, *ContainerInfo, error) {
 	var cInfo *ContainerInfo
 
 	cn.apiThrottleSem <- 1
@@ -960,7 +942,7 @@ func (cn *ComputeNode) DestroyVnicV2(cfg *VnicConfig) (*SsntpEventInfo, *Contain
 		return nil, nil, NewAPIError("API Cancelled for " + cfg.VnicID)
 	}
 
-	s, err := cn.DestroyVnic(cfg)
+	s, err := cn.destroyVnicInternal(cfg)
 	if s != nil && s.containerSubnetID != "" {
 		cInfo = &ContainerInfo{
 			CNContainerEvent: ContainerNetworkDel,
@@ -980,7 +962,7 @@ func (cn *ComputeNode) DestroyVnicV2(cfg *VnicConfig) (*SsntpEventInfo, *Contain
 // This message needs to be sent to the CNCI which will teardown the tunnel.
 // Note: The caller of this function is responsible to send the message to the
 // scheduler or CNCI
-func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, error) {
+func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, error) {
 	var brDeleteMsg *SsntpEventInfo
 
 	if cfg == nil || cn.cnTopology == nil {

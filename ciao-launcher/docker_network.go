@@ -40,7 +40,7 @@ func init() {
 	dockerNetworkMap.networks = make(map[string]*dockerNetworkState)
 }
 
-func createDockerVnicV2(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet.SsntpEventInfo, *libsnnet.ContainerInfo, error) {
+func createDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet.SsntpEventInfo, *libsnnet.ContainerInfo, error) {
 	dockerNetworkMap.Lock()
 	state := dockerNetworkMap.networks[vnicCfg.SubnetID]
 	if state != nil {
@@ -51,14 +51,14 @@ func createDockerVnicV2(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet
 			return nil, nil, nil, state.err
 		}
 
-		return cnNet.CreateVnicV2(vnicCfg)
+		return cnNet.CreateVnic(vnicCfg)
 	}
 	ch := make(chan struct{})
 	defer close(ch)
 	state = &dockerNetworkState{done: ch}
 	dockerNetworkMap.networks[vnicCfg.SubnetID] = state
 	dockerNetworkMap.Unlock()
-	vnic, event, info, err := cnNet.CreateVnicV2(vnicCfg)
+	vnic, event, info, err := cnNet.CreateVnic(vnicCfg)
 	state.err = err
 	if err != nil {
 		return vnic, event, info, err
@@ -79,10 +79,10 @@ func createDockerVnicV2(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet
 	return vnic, event, info, state.err
 }
 
-func destroyDockerVnicV2(vnicCfg *libsnnet.VnicConfig) (*libsnnet.SsntpEventInfo, error) {
+func destroyDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.SsntpEventInfo, error) {
 	// BUG(markus): We need to pass in a context to destroyVnic
 
-	event, info, err := cnNet.DestroyVnicV2(vnicCfg)
+	event, info, err := cnNet.DestroyVnic(vnicCfg)
 	if err != nil {
 		glog.Errorf("cn.DestroyVnic failed %v", err)
 		return event, err

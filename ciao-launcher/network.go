@@ -263,14 +263,14 @@ func createVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) (string, string
 		var info *libsnnet.ContainerInfo
 		var err error
 		if vnicCfg.VnicRole == libsnnet.TenantContainer {
-			vnic, event, info, err = createDockerVnicV2(vnicCfg)
+			vnic, event, info, err = createDockerVnic(vnicCfg)
 			if err != nil {
 				glog.Errorf("cn.CreateVnic failed %v", err)
 				return "", "", err
 			}
 			bridge = info.SubnetID
 		} else {
-			vnic, event, info, err = cnNet.CreateVnicV2(vnicCfg)
+			vnic, event, info, err = cnNet.CreateVnic(vnicCfg)
 			if err != nil {
 				glog.Errorf("cn.CreateVnic failed %v", err)
 				return "", "", err
@@ -298,9 +298,9 @@ func destroyVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) error {
 		var err error
 
 		if vnicCfg.VnicRole == libsnnet.TenantContainer {
-			event, err = destroyDockerVnicV2(vnicCfg)
+			event, err = destroyDockerVnic(vnicCfg)
 		} else {
-			event, _, err = cnNet.DestroyVnicV2(vnicCfg)
+			event, _, err = cnNet.DestroyVnic(vnicCfg)
 		}
 		if err != nil {
 			glog.Errorf("cn.DestroyVnic failed %v", err)
