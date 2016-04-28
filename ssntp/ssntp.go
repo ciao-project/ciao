@@ -55,7 +55,7 @@ type Role uint32
 // Error is the SSNTP Error operand.
 // It can be InvalidFrameType Error, StartFailure,
 // StopFailure, ConnectionFailure, RestartFailure,
-// DeleteFailure or ConnectionAborted
+// DeleteFailure, ConnectionAborted or InvalidConfiguration.
 type Error uint8
 
 // Event is the SSNTP Event operand.
@@ -481,6 +481,14 @@ const (
 	// ConnectionAborted is sent to report an SSNTP connection abortion.
 	// This is used for example when receiving bad certificates.
 	ConnectionAborted
+
+	// InvalidConfiguration is either sent by the Scheduler to report an invalid
+	// CONFIGURE payload back to the sender, or by the clients to which a CONFIGURE
+	// command has been forwarded to and that leads to configuration errors on their
+	// side.
+	// When the scheduler receives such error back from any client it should revert
+	// back to the previous valid configuration.
+	InvalidConfiguration
 )
 
 const major = 0
@@ -594,6 +602,8 @@ func (error Error) String() string {
 		return "Could not delete instance"
 	case ConnectionAborted:
 		return "SSNTP Connection aborted"
+	case InvalidConfiguration:
+		return "Cluster configuration is invalid"
 	}
 
 	return ""

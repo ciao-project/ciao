@@ -821,3 +821,20 @@ The ConnectionAborted error frame is payloadless:
 |       |       | (0x4) |  (0x6)  |     (0x0)       |
 +---------------------------------------------------+
 ```
+
+#### InvalidConfiguration ####
+The InvalidConfiguration error is either sent by the Scheduler to report
+an invalid CONFIGURE payload back to the sender, or by the clients to
+which a CONFIGURE command has been forwarded to and that leads to
+configuration errors on their side.
+When the scheduler receives such error back from any client it should revert
+back to the previous valid configuration.
+
+The InvalidConfiguration error frame contain the invalid
+[configuration data](https://github.com/01org/ciao/blob/master/payloads/configure.go) payload.
+```
++------------------------------------------------------------------------+
+| Major | Minor | Type  | Operand |  Payload Length | YAML formatted     |
+|       |       | (0x4) |  (0x7)  |                 | configuration data |
++------------------------------------------------------------------------+
+```
