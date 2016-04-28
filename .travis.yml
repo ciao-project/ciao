@@ -1,4 +1,5 @@
 language: go
+sudo: required
 
 go:
     - 1.6
@@ -6,6 +7,21 @@ go:
 
 go_import_path: github.com/01org/ciao
 
+# We need to create and install SSNTP certs for the SSNTP and controller tests
+before_script:
+   - sudo mkdir -p /etc/pki/ciao/
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server -role scheduler
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role controller
+   - sudo cp /etc/pki/ciao/CAcert-localhost.pem /etc/pki/ciao/ca_cert.crt
+   - sudo cp /etc/pki/ciao/CAcert-localhost.pem /etc/pki/ciao/CAcert-server-localhost.pem
+   - sudo cp /etc/pki/ciao/cert-Scheduler-localhost.pem /etc/pki/ciao/server.pem
+   - sudo cp /etc/pki/ciao/cert-CNAgent-localhost.pem /etc/pki/ciao/client.pem
+   - sudo cp /etc/pki/ciao/cert-Controller-localhost.pem /etc/pki/ciao/cert-client-localhost.pem
+
 # We'll skip the networking and ssntp tests for now
 
-script: go test -v github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/payloads
+script:
+   - go env
+   - go test -v github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/payloads
+   - export GOROOT=`go env GOROOT` && sudo -E $GOROOT/bin/go test -v github.com/01org/ciao/ssntp
