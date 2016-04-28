@@ -84,6 +84,7 @@ type controllerStat struct {
 }
 
 func (sched *ssntpSchedulerServer) sendNodeConnectionEvent(nodeUUID, controllerUUID string, nodeType payloads.Resource, connected bool) (int, error) {
+	/* connect */
 	if connected == true {
 		payload := payloads.NodeConnected{
 			Connected: payloads.NodeConnectedEvent{
@@ -98,21 +99,22 @@ func (sched *ssntpSchedulerServer) sendNodeConnectionEvent(nodeUUID, controllerU
 		}
 
 		return sched.ssntp.SendEvent(controllerUUID, ssntp.NodeConnected, b)
-	} else {
-		payload := payloads.NodeDisconnected{
-			Disconnected: payloads.NodeConnectedEvent{
-				NodeUUID: nodeUUID,
-				NodeType: nodeType,
-			},
-		}
-
-		b, err := yaml.Marshal(&payload)
-		if err != nil {
-			return 0, err
-		}
-
-		return sched.ssntp.SendEvent(controllerUUID, ssntp.NodeDisconnected, b)
 	}
+
+	/* disconnect */
+	payload := payloads.NodeDisconnected{
+		Disconnected: payloads.NodeConnectedEvent{
+			NodeUUID: nodeUUID,
+			NodeType: nodeType,
+		},
+	}
+
+	b, err := yaml.Marshal(&payload)
+	if err != nil {
+		return 0, err
+	}
+
+	return sched.ssntp.SendEvent(controllerUUID, ssntp.NodeDisconnected, b)
 }
 
 func (sched *ssntpSchedulerServer) sendNodeConnectedEvents(nodeUUID string, nodeType payloads.Resource) {
