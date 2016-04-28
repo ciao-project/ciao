@@ -1480,6 +1480,9 @@ func testAllocateTenantIPs(t *testing.T, nIPs int) {
 
 	// get private tenant type
 	tenant, err := ds.getTenant(newTenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if len(tenant.subnets) != (nIPs/nIPsPerSubnet)+1 {
 		t.Error("Too many subnets created")
