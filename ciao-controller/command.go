@@ -119,6 +119,10 @@ func (c *controller) startWorkload(workloadID string, tenantID string, instances
 			if !*noNetwork {
 				_ = c.addTenant(tenantID)
 				tenant, err = c.ds.GetTenant(tenantID)
+				if err != nil {
+					return nil, err
+				}
+
 				if tenant.CNCIIP == "" {
 					return nil, errors.New("Unable to Launch Tenant CNCI")
 				}
