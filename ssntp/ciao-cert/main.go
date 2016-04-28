@@ -54,6 +54,7 @@ var (
 	isElliptic   = flag.Bool("elliptic-key", false, "Use elliptic curve algorithms")
 	email        = flag.String("email", "ciao-devel@lists.clearlinux.org", "Certificate email address")
 	organization = flag.String("organization", "", "Certificates organization")
+	installDir   = flag.String("directory", ".", "Installation directory")
 )
 
 func verifyCert(CACert string, certName string) {
@@ -221,14 +222,14 @@ func main() {
 		break
 	}
 
-	CAcertName = fmt.Sprintf("CAcert-%s.pem", firstHost)
+	CAcertName = fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
 	if *isServer == true {
 		template.IsCA = true
-		certName = fmt.Sprintf("cert-%s-%s.pem", role.String(), firstHost)
+		certName = fmt.Sprintf("%s/cert-%s-%s.pem", *installDir, role.String(), firstHost)
 		parentCert = template
 		serverPrivKey = priv
 	} else {
-		certName = fmt.Sprintf("cert-%s-%s.pem", role.String(), firstHost)
+		certName = fmt.Sprintf("%s/cert-%s-%s.pem", *installDir, role.String(), firstHost)
 		// Need to fetch the public and private key from the signer
 		bytesCert, err := ioutil.ReadFile(*serverCert)
 		if err != nil {
