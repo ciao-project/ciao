@@ -24,8 +24,8 @@ before_script:
 
 script:
    - go env
-   - go test -v github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/payloads github.com/01org/ciao/ciao-controller
-   - export GOROOT=`go env GOROOT` && sudo -E $GOROOT/bin/go test -v github.com/01org/ciao/ssntp
+   - test-cases -text github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/ciao-controller github.com/01org/ciao/payloads
+   - export GOROOT=`go env GOROOT` && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -text github.com/01org/ciao/ssntp
    - docker --version
    - sudo apt-get install -o Dpkg::Options::="--force-confold" --force-yes -y docker-engine
    - docker --version
