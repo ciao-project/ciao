@@ -256,16 +256,11 @@ func newIdentityClient(config identityConfig) (*identity, error) {
 		Password:         config.servicePassword,
 		TenantName:       "service",
 		DomainID:         "default",
-		AllowReauth:      false,
+		AllowReauth:      true,
 	}
 	provider, err := openstack.AuthenticatedClient(opt)
 	if err != nil {
 		return nil, err
-	}
-
-	provider.ReauthFunc = func() error {
-		provider.TokenID = ""
-		return openstack.Authenticate(provider, opt)
 	}
 
 	v3client := openstack.NewIdentityV3(provider)
