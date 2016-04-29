@@ -33,4 +33,4 @@ script:
    - sudo apt-get install -o Dpkg::Options::="--force-confold" --force-yes -y docker-engine
    - sudo service docker start
    - docker --version
-   - sudo docker run hello-world
+   - ip a
