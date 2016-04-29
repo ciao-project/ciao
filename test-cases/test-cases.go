@@ -224,10 +224,11 @@ func findTestFiles(packs []string) ([]PackageInfo, error) {
 	return testPackages, nil
 }
 
-func runPackageTests(p *PackageTests) {
+func runPackageTests(p *PackageTests) int {
 	var output bytes.Buffer
 	var coverage string
 
+	exitCode := 0
 	results := make(map[string]*testResults)
 
 	cmd := exec.Command("go", "test", p.Name, "-v", "-cover")
@@ -257,9 +258,13 @@ func runPackageTests(p *PackageTests) {
 		if res == nil {
 			t.Result = "NOT RUN"
 			t.TimeTaken = "N/A"
+			exitCode = 1
 		} else {
 			t.Result = res.result
 			t.Pass = res.result == "PASS"
+			if !t.Pass {
+				exitCode = 1
+			}
 			t.TimeTaken = res.timeTaken
 		}
 	}
@@ -269,6 +274,8 @@ func runPackageTests(p *PackageTests) {
 	} else {
 		p.Coverage = "Unknown"
 	}
+
+	return exitCode
 }
 
 func identifyPackages(packs []string) []string {
@@ -365,8 +372,9 @@ func main() {
 	}
 
 	tests := extractTests(packages)
+	exitCode := 0
 	for _, p := range tests {
-		runPackageTests(p)
+		exitCode = exitCode | runPackageTests(p)
 	}
 
 	if textOutput {
@@ -378,4 +386,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to generate report: %s\n", err)
 	}
+
+	os.Exit(exitCode)
 }
