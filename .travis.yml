@@ -25,4 +25,4 @@ script:
    - go env
    - go test -v github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/payloads github.com/01org/ciao/ciao-controller
    - export GOROOT=`go env GOROOT` && sudo -E $GOROOT/bin/go test -v github.com/01org/ciao/ssntp
-   - go test -run NONE -short github.com/01org/ciao/networking/libsnnet
+   - go test -v -run NONE -short github.com/01org/ciao/networking/libsnnet
