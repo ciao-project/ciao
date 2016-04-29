@@ -196,7 +196,13 @@ func (cn *ComputeNode) Init() error {
 		if link.Type() != "device" &&
 			link.Type() != "bond" &&
 			link.Type() != "vlan" {
-			continue
+			if !travisCI {
+				continue
+			}
+			//Allow dummy links under travisCI
+			if link.Type() != "dummy" {
+				continue
+			}
 		}
 
 		if link.Attrs().Name == "lo" {

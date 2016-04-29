@@ -62,11 +62,11 @@ func dockerRestart(t *testing.T) error {
 
 //Will be replaced by Docker API's in launcher
 //docker run -it --net=<subnet.Name> --ip=<instance.IP> --mac-address=<instance.MacAddresss>
-//ubuntu ip addr show eth0 scope global
+//debian ip addr show eth0 scope global
 func dockerRunVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
 	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
 		"--ip="+ip.String(), "--mac-address="+mac.String(),
-		"ubuntu", "ip", "addr", "show", "eth0", "scope", "global")
+		"debian", "ip", "addr", "show", "eth0", "scope", "global")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -472,7 +472,7 @@ func TestCNContainer_Base(t *testing.T) {
 func dockerRunTop(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
 	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
 		"--ip="+ip.String(), "--mac-address="+mac.String(),
-		"ubuntu", "top", "-b", "-d1")
+		"debian", "top", "-b", "-d1")
 	go cmd.Run() // Ensures that the containers stays alive. Kludgy
 	return nil
 }
@@ -480,7 +480,7 @@ func dockerRunTop(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, su
 func dockerRunPingVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string, addr string) error {
 	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
 		"--ip="+ip.String(), "--mac-address="+mac.String(),
-		"ubuntu", "ping", "-c", "1", "192.168.111.100")
+		"debian", "ping", "-c", "1", "192.168.111.100")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -489,7 +489,7 @@ func dockerRunPingVerify(t *testing.T, name string, ip net.IP, mac net.HardwareA
 		t.Log("docker run dump \n", string(out))
 	}
 
-	if !strings.Contains(string(out), "1 received") {
+	if !strings.Contains(string(out), "1 packets received") {
 		t.Error("docker connectivity test failed", ip.String())
 	}
 	return nil

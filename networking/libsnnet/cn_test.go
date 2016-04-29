@@ -110,10 +110,13 @@ func TestCN_Scaling(t *testing.T) {
 			}
 
 			if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-				t.Error("ERROR: cn.CreateVnic  failed", err)
-			} else {
-				t.Logf("VNIC Created vnic[%v] cfg[%v] event[%v]", vnic, vnicCfg, ssntpEvent)
+				t.Error("ERROR: cn.CreateVnic  failed", err, vnic, ssntpEvent)
 			}
+			/*
+				else {
+					t.Logf("VNIC Created vnic[%v] cfg[%v] event[%v]", vnic, vnicCfg, ssntpEvent)
+				}
+			*/
 		}
 	}
 
@@ -143,10 +146,13 @@ func TestCN_Scaling(t *testing.T) {
 			}
 
 			if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-				t.Error("ERROR: cn.DestroyVnic failed event", vnicCfg, err)
-			} else {
-				t.Logf("VNIC Destroyed cfg[%v] event[%v]", vnicCfg, ssntpEvent)
+				t.Error("ERROR: cn.DestroyVnic failed event", vnicCfg, ssntpEvent, err)
 			}
+			/*
+				else {
+					t.Logf("VNIC Destroyed cfg[%v] event[%v]", vnicCfg, ssntpEvent)
+				}
+			*/
 		}
 	}
 }

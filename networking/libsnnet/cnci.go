@@ -108,7 +108,12 @@ func (cnci *Cnci) findPhyNwInterface() error {
 	for _, link := range links {
 
 		if link.Type() != "device" {
-			continue
+			if !travisCI {
+				continue
+			}
+			if link.Type() != "dummy" {
+				continue
+			}
 		}
 
 		if link.Attrs().Name == "lo" {
@@ -197,7 +202,7 @@ func (cnci *Cnci) Init() error {
 //crashes and loses network topology information.
 //It can also be called, to rebuild the network topology on demand.
 //TODO: Restarting the DNS Masq here - Define a re-attach method
-//TODO: Log failures when making best effort progress 
+//TODO: Log failures when making best effort progress
 func (cnci *Cnci) RebuildTopology() error {
 
 	if cnci.NetworkConfig == nil || cnci.topology == nil {

@@ -1,6 +1,9 @@
 language: go
 sudo: required
 
+services:
+  - docker
+
 go:
     - 1.6
     - tip
@@ -19,9 +22,14 @@ before_script:
    - sudo cp /etc/pki/ciao/cert-CNAgent-localhost.pem /etc/pki/ciao/client.pem
    - sudo cp /etc/pki/ciao/cert-Controller-localhost.pem /etc/pki/ciao/cert-client-localhost.pem
 
-# We'll skip the networking and ssntp tests for now
-
 script:
    - go env
    - go test -v github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/payloads github.com/01org/ciao/ciao-controller
    - export GOROOT=`go env GOROOT` && sudo -E $GOROOT/bin/go test -v github.com/01org/ciao/ssntp
+   - docker --version
+   - sudo apt-get install -o Dpkg::Options::="--force-confold" --force-yes -y docker-engine
+   - docker --version
+   - sudo docker pull debian
+   - sudo ip link add testdummy type dummy
+   - sudo ip addr add 198.51.100.1/24 dev testdummy
+   - export SNNET_ENV=198.51.100.0/24 && sudo -E $GOROOT/bin/go test -v -short --tags travis github.com/01org/ciao/networking/libsnnet
