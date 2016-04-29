@@ -30,7 +30,7 @@ script:
    - export GOROOT=`go env GOROOT` && sudo -E $GOROOT/bin/go test -v github.com/01org/ciao/ssntp
    - go test -v -run NONE -short github.com/01org/ciao/networking/libsnnet
    - docker --version
-   - sudo apt-get install docker-engine
+   - sudo apt-get install -y docker-engine
    - sudo service docker start
    - docker --version
    - sudo docker run hello-world
