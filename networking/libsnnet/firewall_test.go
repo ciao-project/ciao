@@ -124,6 +124,7 @@ func TestFw_Nat(t *testing.T) {
 	}
 }
 
+/*
 //Not fully implemented
 //
 //Not fully implemented
@@ -144,7 +145,7 @@ func TestFw_PublicIP(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 
-	t.Logf("%s", libsnnet.DumpIPTables())
+	//t.Logf("%s", libsnnet.DumpIPTables())
 
 	err = fw.PublicIPAccess(libsnnet.FwDisable, intIP, pubIP, fwIfInt)
 	if err != nil {
@@ -156,6 +157,7 @@ func TestFw_PublicIP(t *testing.T) {
 		t.Errorf("Error: Unable to shutdown firewall %v", err)
 	}
 }
+*/
 
 //Exercises all valid CNCI Firewall APIs
 //
@@ -182,7 +184,7 @@ func TestFw_All(t *testing.T) {
 		t.Errorf("Error: ssh fwd failed %v", err)
 	}
 
-	t.Logf("%s", libsnnet.DumpIPTables())
+	//t.Logf("%s", libsnnet.DumpIPTables())
 
 	procIPFwd := "/proc/sys/net/ipv4/ip_forward"
 	out, err := exec.Command("cat", procIPFwd).CombinedOutput()
