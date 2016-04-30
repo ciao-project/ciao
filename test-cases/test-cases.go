@@ -32,6 +32,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"text/tabwriter"
 	"text/template"
 )
 
@@ -98,9 +99,15 @@ var resultRegexp *regexp.Regexp
 var coverageRegexp *regexp.Regexp
 
 var cssPath string
+var textOutput bool
+var short bool
+var tags string
 
 func init() {
 	flag.StringVar(&cssPath, "css", "", "Full path to CSS file")
+	flag.BoolVar(&textOutput, "text", false, "Output text instead of HTML")
+	flag.BoolVar(&short, "short", false, "If true -short is passed to go test")
+	flag.StringVar(&tags, "tags", "", "Build tags to pass to go test")
 	resultRegexp = regexp.MustCompile(`--- (FAIL|PASS): ([^\s]+) \(([^\)]+)\)`)
 	coverageRegexp = regexp.MustCompile(`^coverage: ([^\s]+)`)
 }
@@ -197,10 +204,12 @@ func extractTests(packages []PackageInfo) []*PackageTests {
 	return pts
 }
 
-func findTestFiles(pack string) ([]PackageInfo, error) {
+func findTestFiles(packs []string) ([]PackageInfo, error) {
 	var output bytes.Buffer
 	fmt.Fprintln(&output, "[")
-	cmd := exec.Command("go", "list", "-f", goListTemplate, pack)
+	listArgs := []string{"list", "-f", goListTemplate}
+	listArgs = append(listArgs, packs...)
+	cmd := exec.Command("go", listArgs...)
 	cmd.Stdout = &output
 	err := cmd.Run()
 	if err != nil {
@@ -219,13 +228,21 @@ func findTestFiles(pack string) ([]PackageInfo, error) {
 	return testPackages, nil
 }
 
-func runPackageTests(p *PackageTests) {
+func runPackageTests(p *PackageTests) int {
 	var output bytes.Buffer
 	var coverage string
 
+	exitCode := 0
 	results := make(map[string]*testResults)
+	args := []string{"test", p.Name, "-v", "-cover"}
+	if short {
+		args = append(args, "-short")
+	}
+	if tags != "" {
+		args = append(args, "-tags", tags)
+	}
 
-	cmd := exec.Command("go", "test", p.Name, "-v", "-cover")
+	cmd := exec.Command("go", args...)
 	cmd.Stdout = &output
 	_ = cmd.Run()
 
@@ -252,9 +269,13 @@ func runPackageTests(p *PackageTests) {
 		if res == nil {
 			t.Result = "NOT RUN"
 			t.TimeTaken = "N/A"
+			exitCode = 1
 		} else {
 			t.Result = res.result
 			t.Pass = res.result == "PASS"
+			if !t.Pass {
+				exitCode = 1
+			}
 			t.TimeTaken = res.timeTaken
 		}
 	}
@@ -264,17 +285,25 @@ func runPackageTests(p *PackageTests) {
 	} else {
 		p.Coverage = "Unknown"
 	}
+
+	return exitCode
 }
 
-func main() {
-
-	flag.Parse()
-
-	pack := flag.Arg(0)
-	if pack == "" {
-		pack = "."
+func identifyPackages(packs []string) []string {
+	if len(packs) == 0 {
+		packs = []string{"."}
+	} else if len(packs) > 1 {
+		for _, p := range packs {
+			if p == "./..." {
+				packs = []string{p}
+				break
+			}
+		}
 	}
+	return packs
+}
 
+func generateHTMLReport(tests []*PackageTests) error {
 	var css string
 	if cssPath != "" {
 		cssBytes, err := ioutil.ReadFile(cssPath)
@@ -286,29 +315,88 @@ func main() {
 		}
 	}
 
-	packages, err := findTestFiles(pack)
-	if err != nil {
-		log.Fatalf("Unable to discover test files: %s", err)
-	}
-
-	tests := extractTests(packages)
-	for _, p := range tests {
-		runPackageTests(p)
-	}
-
 	tmpl, err := template.New("tests").Parse(htmlTemplate)
 	if err != nil {
 		log.Fatalf("Unable to parse html template: %s\n", err)
 	}
 
-	err = tmpl.Execute(os.Stdout, &struct {
+	return tmpl.Execute(os.Stdout, &struct {
 		Tests []*PackageTests
 		CSS   string
 	}{
 		tests,
 		css,
 	})
+}
+
+func findCommonPrefix(tests []*PackageTests) string {
+	if len(tests) == 0 {
+		return ""
+	}
+
+	pkgName := tests[0].Name
+OUTER:
+	for {
+		index := strings.LastIndex(pkgName, "/")
+		if index == -1 {
+			return ""
+		}
+		pkgName := pkgName[:index+1]
+
+		var i int
+		for i = 1; i < len(tests); i++ {
+			if !strings.HasPrefix(tests[i].Name, pkgName) {
+				continue OUTER
+			}
+		}
+		return pkgName
+	}
+}
+
+func generateTextReport(tests []*PackageTests) error {
+	prefix := findCommonPrefix(tests)
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 1, ' ', 0)
+	fmt.Fprintln(w, "Package\tTest Case\tTime Taken\tResult\t")
+	for _, p := range tests {
+		pkgName := p.Name[len(prefix):]
+		for _, t := range p.Tests {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n", pkgName,
+				t.Name, t.TimeTaken, t.Result)
+		}
+	}
+	_ = w.Flush()
+	fmt.Println()
+
+	return nil
+}
+
+func main() {
+
+	flag.Parse()
+
+	packs := identifyPackages(flag.Args())
+
+	packages, err := findTestFiles(packs)
+	if err != nil {
+		log.Fatalf("Unable to discover test files: %s", err)
+	}
+
+	tests := extractTests(packages)
+	exitCode := 0
+	for _, p := range tests {
+		exitCode = exitCode | runPackageTests(p)
+	}
+
+	if textOutput {
+		err = generateTextReport(tests)
+	} else {
+		err = generateHTMLReport(tests)
+	}
+
 	if err != nil {
 		log.Fatalf("Unable to generate report: %s\n", err)
 	}
+
+	os.Exit(exitCode)
 }
