@@ -100,10 +100,14 @@ var coverageRegexp *regexp.Regexp
 
 var cssPath string
 var textOutput bool
+var short bool
+var tags string
 
 func init() {
 	flag.StringVar(&cssPath, "css", "", "Full path to CSS file")
 	flag.BoolVar(&textOutput, "text", false, "Output text instead of HTML")
+	flag.BoolVar(&short, "short", false, "If true -short is passed to go test")
+	flag.StringVar(&tags, "tags", "", "Build tags to pass to go test")
 	resultRegexp = regexp.MustCompile(`--- (FAIL|PASS): ([^\s]+) \(([^\)]+)\)`)
 	coverageRegexp = regexp.MustCompile(`^coverage: ([^\s]+)`)
 }
@@ -230,8 +234,15 @@ func runPackageTests(p *PackageTests) int {
 
 	exitCode := 0
 	results := make(map[string]*testResults)
+	args := []string{"test", p.Name, "-v", "-cover"}
+	if short {
+		args = append(args, "-short")
+	}
+	if tags != "" {
+		args = append(args, "-tags", tags)
+	}
 
-	cmd := exec.Command("go", "test", p.Name, "-v", "-cover")
+	cmd := exec.Command("go", args...)
 	cmd.Stdout = &output
 	_ = cmd.Run()
 
