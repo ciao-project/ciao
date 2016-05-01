@@ -64,6 +64,11 @@ type testResults struct {
 	timeTaken string
 }
 
+type colouredRow struct {
+	ansiSeq string
+	columns []string
+}
+
 const goListTemplate = `{
 "name" : "{{.ImportPath}}",
 "path" : "{{.Dir}}",
@@ -102,12 +107,14 @@ var cssPath string
 var textOutput bool
 var short bool
 var tags string
+var colour bool
 
 func init() {
 	flag.StringVar(&cssPath, "css", "", "Full path to CSS file")
 	flag.BoolVar(&textOutput, "text", false, "Output text instead of HTML")
 	flag.BoolVar(&short, "short", false, "If true -short is passed to go test")
 	flag.StringVar(&tags, "tags", "", "Build tags to pass to go test")
+	flag.BoolVar(&colour, "colour", true, "If true failed tests are coloured red in text mode")
 	resultRegexp = regexp.MustCompile(`--- (FAIL|PASS): ([^\s]+) \(([^\)]+)\)`)
 	coverageRegexp = regexp.MustCompile(`^coverage: ([^\s]+)`)
 }
@@ -353,7 +360,56 @@ OUTER:
 	}
 }
 
-func generateTextReport(tests []*PackageTests) error {
+func generateColourTextReport(tests []*PackageTests) {
+	prefix := findCommonPrefix(tests)
+	table := make([]colouredRow, 0, 128)
+	table = append(table, colouredRow{
+		"",
+		[]string{"Package", "Test Case", "Time Taken", "Result"},
+	})
+	colWidth := []int{0, 0, 0, 0}
+	for i := range colWidth {
+		colWidth[i] = len(table[0].columns[i])
+	}
+
+	coloured := false
+	for _, p := range tests {
+		pkgName := p.Name[len(prefix):]
+		for _, t := range p.Tests {
+			row := colouredRow{}
+			if !t.Pass && !coloured {
+				row.ansiSeq = fmt.Sprintf("%c[%dm", 0x1b, 31)
+				coloured = true
+			} else if t.Pass && coloured {
+				coloured = false
+				row.ansiSeq = fmt.Sprintf("%c[%dm", 0x1b, 0)
+			}
+			row.columns = []string{pkgName, t.Name, t.TimeTaken, t.Result}
+			for i := range colWidth {
+				if colWidth[i] < len(row.columns[i]) {
+					colWidth[i] = len(row.columns[i])
+				}
+			}
+			table = append(table, row)
+		}
+	}
+
+	for _, row := range table {
+		fmt.Printf("%s", row.ansiSeq)
+		for i, col := range row.columns {
+			fmt.Printf(col)
+			fmt.Printf("%s", strings.Repeat(" ", colWidth[i]-len(col)))
+			fmt.Printf(" ")
+		}
+		fmt.Println("")
+	}
+
+	if coloured {
+		fmt.Printf("%c[%dm\n", 0x1b, 0)
+	}
+}
+
+func generateTextReport(tests []*PackageTests) {
 	prefix := findCommonPrefix(tests)
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 1, ' ', 0)
@@ -367,8 +423,6 @@ func generateTextReport(tests []*PackageTests) error {
 	}
 	_ = w.Flush()
 	fmt.Println()
-
-	return nil
 }
 
 func main() {
@@ -389,7 +443,11 @@ func main() {
 	}
 
 	if textOutput {
-		err = generateTextReport(tests)
+		if colour {
+			generateColourTextReport(tests)
+		} else {
+			generateTextReport(tests)
+		}
 	} else {
 		err = generateHTMLReport(tests)
 	}
