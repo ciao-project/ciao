@@ -680,17 +680,24 @@ func (ds *sqliteDB) disconnect() {
 }
 
 func (ds *sqliteDB) logEvent(tenantID string, eventType string, message string) error {
-	glog.V(2).Info("log event: ", message)
-	cmd := `INSERT INTO log (tenant_id, type, message)
-		VALUES('%s', '%s', '%s');`
+	datastore := ds.getTableDB("log")
 
 	ds.tdbLock.Lock()
 
-	str := fmt.Sprintf(cmd, tenantID, eventType, message)
-	err := ds.exec(ds.getTableDB("log"), str)
+	tx, err := datastore.Begin()
 	if err != nil {
-		glog.V(2).Info("could not log event: ", message, " ", err)
+		ds.tdbLock.Unlock()
+		return err
 	}
+
+	_, err = tx.Exec("INSERT INTO log (tenant_id, type, message) VALUES (?, ?, ?)", tenantID, eventType, message)
+	if err != nil {
+		tx.Rollback()
+		ds.tdbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
 
 	ds.tdbLock.Unlock()
 
@@ -1004,10 +1011,23 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 func (ds *sqliteDB) updateTenant(t *tenant) error {
 	db := ds.getTableDB("tenants")
 
-	cmd := fmt.Sprintf("UPDATE tenants SET cnci_id = '%s', cnci_mac = '%s', cnci_ip = '%s' WHERE id = '%s'", t.CNCIID, t.CNCIMAC, t.CNCIIP, t.ID)
-
 	ds.dbLock.Lock()
-	err := ds.exec(db, cmd)
+
+	tx, err := db.Begin()
+	if err != nil {
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE tenants SET cnci_id = ?, cnci_mac = ?, cnci_ip = ? WHERE id = ?", t.CNCIID, t.CNCIMAC, t.CNCIIP, t.ID)
+	if err != nil {
+		tx.Rollback()
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
+
 	ds.dbLock.Unlock()
 
 	return err
@@ -1097,11 +1117,8 @@ func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt int, rest int) erro
 		return err
 	}
 
-	cmd := `INSERT INTO tenant_network VALUES('%s', %d, %d);`
-	str := fmt.Sprintf(cmd, tenantID, subnetInt, rest)
-	_, err = tx.Exec(str)
+	_, err = tx.Exec("INSERT INTO tenant_network VALUES(?, ?, ?)", tenantID, subnetInt, rest)
 	if err != nil {
-		glog.Warning(cmd, err)
 		tx.Rollback()
 		ds.dbLock.Unlock()
 		return err
@@ -1116,10 +1133,21 @@ func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt int, rest int) erro
 func (ds *sqliteDB) releaseTenantIP(tenantID string, subnetInt int, rest int) error {
 	datastore := ds.getTableDB("tenant_network")
 
-	cmd := fmt.Sprintf("DELETE FROM tenant_network WHERE tenant_id = '%s' AND subnet = %d AND rest = %d", tenantID, subnetInt, rest)
-
 	ds.dbLock.Lock()
-	err := ds.exec(datastore, cmd)
+	tx, err := datastore.Begin()
+	if err != nil {
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM tenant_network WHERE tenant_id = ? AND subnet = ? AND rest = ?", tenantID, subnetInt, rest)
+	if err != nil {
+		tx.Rollback()
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
 	ds.dbLock.Unlock()
 
 	return err
@@ -1424,56 +1452,101 @@ func (ds *sqliteDB) addInstance(instance *types.Instance) error {
 		return err
 	}
 
-	ds.addUsage(instance.ID, instance.Usage)
-
-	return nil
+	return ds.addUsage(instance.ID, instance.Usage)
 }
 
 func (ds *sqliteDB) removeInstance(instanceID string) error {
-	cmd1 := fmt.Sprintf("DELETE FROM instances WHERE id = '%s';", instanceID)
-	cmd2 := fmt.Sprintf("DELETE FROM usage WHERE instance_id = '%s';", instanceID)
+	datastore := ds.getTableDB("instances")
 
 	ds.dbLock.Lock()
-	err := ds.exec(ds.getTableDB("instances"), cmd1)
+
+	tx, err := datastore.Begin()
 	if err != nil {
+		ds.tdbLock.Unlock()
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM instances WHERE id = ?", instanceID)
+	if err != nil {
+		tx.Rollback()
 		ds.dbLock.Unlock()
 		return err
 	}
 
-	err = ds.exec(ds.getTableDB("usage"), cmd2)
+	_, err = tx.Exec("DELETE FROM usage WHERE instance_id = ?", instanceID)
+	if err != nil {
+		tx.Rollback()
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
+
 	ds.dbLock.Unlock()
 
 	return err
 }
 
-func (ds *sqliteDB) addUsage(instanceID string, usage map[string]int) {
+func (ds *sqliteDB) addUsage(instanceID string, usage map[string]int) error {
+	datastore := ds.getTableDB("usage")
+
+	ds.dbLock.Lock()
+
+	tx, err := datastore.Begin()
+	if err != nil {
+		ds.dbLock.Unlock()
+		return err
+	}
+
 	cmd := `INSERT INTO usage (instance_id, resource_id, value)
-		SELECT '%s', resources.id, %d FROM resources
-		WHERE name = '%s';`
+		SELECT ?, resources.id, ?
+		FROM resources
+		WHERE name = ?`
+
+	stmt, err := tx.Prepare(cmd)
+	if err != nil {
+		tx.Rollback()
+		ds.tdbLock.Unlock()
+		return err
+	}
+
+	defer stmt.Close()
 
 	for key, val := range usage {
-		str := fmt.Sprintf(cmd, instanceID, val, key)
-
-		ds.dbLock.Lock()
-		err := ds.exec(ds.getTableDB("usage"), str)
-		ds.dbLock.Unlock()
+		_, err := stmt.Exec(instanceID, val, key)
 
 		if err != nil {
 			glog.V(2).Info(err)
 			// but keep going
 		}
 	}
+
+	tx.Commit()
+
+	ds.dbLock.Unlock()
+
+	return nil
 }
 
 func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) error {
-	cmd := `INSERT INTO node_statistics (node_id, mem_total_mb, mem_available_mb, disk_total_mb, disk_available_mb, load, cpus_online)
-		VALUES('%s', %d, %d, %d, %d, %d, %d);`
-
-	str := fmt.Sprintf(cmd, stat.NodeUUID, stat.MemTotalMB, stat.MemAvailableMB, stat.DiskTotalMB, stat.DiskAvailableMB, stat.Load, stat.CpusOnline)
+	datastore := ds.getTableDB("node_statistics")
 
 	ds.tdbLock.Lock()
 
-	err := ds.exec(ds.getTableDB("node_statistics"), str)
+	tx, err := datastore.Begin()
+	if err != nil {
+		ds.tdbLock.Unlock()
+		return err
+	}
+
+	_, err = tx.Exec("INSERT INTO node_statistics (node_id, mem_total_mb, mem_available_mb, disk_total_mb, disk_available_mb, load, cpus_online) VALUES(?, ?, ?, ?, ?, ?, ?)", stat.NodeUUID, stat.MemTotalMB, stat.MemAvailableMB, stat.DiskTotalMB, stat.DiskAvailableMB, stat.Load, stat.CpusOnline)
+	if err != nil {
+		tx.Rollback()
+		ds.tdbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
 
 	ds.tdbLock.Unlock()
 
@@ -1531,12 +1604,10 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 		return err
 	}
 
-	cmd := `INSERT INTO frame_statistics (label, type, operand, start_timestamp, end_timestamp)
-		VALUES('%s', '%s', '%s', '%s', '%s')`
+	query := `INSERT INTO frame_statistics (label, type, operand, start_timestamp, end_timestamp)
+		  VALUES(?, ?, ?, ?, ?)`
 
-	str := fmt.Sprintf(cmd, stat.Label, stat.Type, stat.Operand, stat.StartTimestamp, stat.EndTimestamp)
-
-	_, err = tx.Exec(str)
+	_, err = tx.Exec(query, stat.Label, stat.Type, stat.Operand, stat.StartTimestamp, stat.EndTimestamp)
 	if err != nil {
 		tx.Rollback()
 		ds.tdbLock.Unlock()
@@ -1556,10 +1627,9 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 		t := stat.Nodes[index]
 
 		cmd := `INSERT INTO trace_data (frame_id, ssntp_uuid, tx_timestamp, rx_timestamp)
-			VALUES(%d, '%s', '%s', '%s');`
+			VALUES(?, ?, ?, ?);`
 
-		str := fmt.Sprintf(cmd, id, t.SSNTPUUID, t.TxTimestamp, t.RxTimestamp)
-		_, err = tx.Exec(str)
+		_, err = tx.Exec(cmd, id, t.SSNTPUUID, t.TxTimestamp, t.RxTimestamp)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.Unlock()
