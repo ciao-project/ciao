@@ -23,6 +23,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -778,6 +779,8 @@ func listServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	sort.Sort(types.SortedInstancesByID(instances))
 
 	pager := serverPager{
 		context:   context,

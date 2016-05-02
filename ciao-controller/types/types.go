@@ -46,6 +46,13 @@ type Instance struct {
 	Usage      map[string]int `json:"-"`
 }
 
+// SortedInstancesByID implements sort.Interface for Instance by ID string
+type SortedInstancesByID []*Instance
+
+func (s SortedInstancesByID) Len() int           { return len(s) }
+func (s SortedInstancesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s SortedInstancesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
+
 type Tenant struct {
 	ID        string
 	Name      string
