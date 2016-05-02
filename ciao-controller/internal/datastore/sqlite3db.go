@@ -1421,10 +1421,12 @@ func (ds *sqliteDB) addInstance(instance *types.Instance) error {
 	ds.dbLock.Unlock()
 
 	if err != nil {
-		ds.addUsage(instance.ID, instance.Usage)
+		return err
 	}
 
-	return err
+	ds.addUsage(instance.ID, instance.Usage)
+
+	return nil
 }
 
 func (ds *sqliteDB) removeInstance(instanceID string) error {
