@@ -14,15 +14,13 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"fmt"
 	"net"
 	"os"
 	"testing"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 var cnciNetEnv string
@@ -44,12 +42,12 @@ func cnciinit() {
 //
 //Test should pass ok
 func TestCNCI_Init(t *testing.T) {
-	cnci := &libsnnet.Cnci{}
+	cnci := &Cnci{}
 
-	cnci.NetworkConfig = &libsnnet.NetworkConfig{
+	cnci.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cnci.ID = "cnciuuid"
@@ -141,28 +139,28 @@ func TestCNCI_Internal(t *testing.T) {
 
 	// Create the CNCI aggregation bridge
 	bridgeAlias := fmt.Sprintf("br_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
-	bridge, _ := libsnnet.NewBridge(bridgeAlias)
+	bridge, _ := newBridge(bridgeAlias)
 
-	if err := bridge.Create(); err != nil {
+	if err := bridge.create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
 	}
-	defer bridge.Destroy()
+	defer bridge.destroy()
 
-	if err := bridge.Enable(); err != nil {
+	if err := bridge.enable(); err != nil {
 		t.Errorf("Bridge enable failed: %v", err)
 	}
 
 	// Attach the DNS masq against the CNCI bridge. This gives it an IP address
-	d, err := libsnnet.NewDnsmasq(bridgeAlias, tenantUUID, subnet, reserved, bridge)
+	d, err := newDnsmasq(bridgeAlias, tenantUUID, subnet, reserved, bridge)
 
 	if err != nil {
 		t.Errorf("DNS Masq New failed: %v", err)
 	}
 
-	if err := d.Start(); err != nil {
+	if err := d.start(); err != nil {
 		t.Errorf("DNS Masq Start: %v", err)
 	}
-	defer d.Stop()
+	defer d.stop()
 
 	// At this time the bridge is ready waiting for tunnels to be created
 	// The next step will happen each time a tenant bridge is created for
@@ -178,18 +176,18 @@ func TestCNCI_Internal(t *testing.T) {
 	remote := cnIP
 	key := subnetKey
 
-	gre, _ := libsnnet.NewGreTunEP(greAlias, local, remote, key)
+	gre, _ := newGreTunEP(greAlias, local, remote, key)
 
-	if err := gre.Create(); err != nil {
+	if err := gre.create(); err != nil {
 		t.Errorf("GRE Tunnel Creation failed: %v", err)
 	}
-	defer gre.Destroy()
+	defer gre.destroy()
 
-	if err := gre.Attach(bridge); err != nil {
+	if err := gre.attach(bridge); err != nil {
 		t.Errorf("GRE Tunnel attach failed: %v", err)
 	}
 
-	if err := gre.Enable(); err != nil {
+	if err := gre.enable(); err != nil {
 		t.Errorf("GRE Tunnel enable failed: %v", err)
 	}
 }

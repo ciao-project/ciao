@@ -389,14 +389,14 @@ func handlerCreateEndpoint(d *DockerPlugin, w http.ResponseWriter, r *http.Reque
 	//We can also get this directly from the SDN controller.
 	//However that will prevent the plugin from being its own service
 	//in the future
-	vnic, err := NewContainerVnic(vnicID)
+	vnic, err := newContainerVnic(vnicID)
 	if err != nil {
 		resp.Err = "Error: invalid interface " + err.Error()
 		sendResponse(resp, w)
 		return
 	}
 
-	if err := vnic.GetDevice(); err != nil {
+	if err := vnic.getDevice(); err != nil {
 		resp.Err = "Error: invalid interface " + err.Error()
 		sendResponse(resp, w)
 		return
@@ -408,8 +408,8 @@ func handlerCreateEndpoint(d *DockerPlugin, w http.ResponseWriter, r *http.Reque
 	d.DockerEpMap.m[req.EndpointID] = &DockerEpVal{
 		ID:    vnicID,
 		IP:    req.Interface.Address,
-		Hveth: vnic.InterfaceName(),
-		Cveth: vnic.PeerName(),
+		Hveth: vnic.interfaceName(),
+		Cveth: vnic.peerName(),
 	}
 
 	if err := d.DbAdd(tableEndPointMap, req.EndpointID, d.DockerEpMap.m[req.EndpointID]); err != nil {

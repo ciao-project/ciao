@@ -139,23 +139,23 @@ type Attrs struct {
 }
 
 // Netdev ciao generic network device representation.
-// Any of these methods can be invoked provided a NewXXX
+// Any of these methods can be invoked provided a newXXX
 // has been performed to instantiate the device
-type Netdev interface {
-	Create() error    // Create the device that does not exist
-	GetDevice() error // Associate with an existing device
-	Destroy() error   // Destroy the device
-	Enable() error    // Enable/Activate the device
-	Disable() error   // Disable/Deactivate the device
+type netdev interface {
+	create() error    // Create the device that does not exist
+	getDevice() error // Associate with an existing device
+	destroy() error   // Destroy the device
+	enable() error    // Enable/Activate the device
+	disable() error   // Disable/Deactivate the device
 }
 
 // Attachable is a Netdev that can be attached to another.
 // VNICs and GRE Tunnels can be attached to Bridges today.
 // The routine perform basic error checks to ensure that
 // they are compatible in the ciao networking setup
-type Attachable interface {
-	Attach(*Netdev) error // Attach the device to the specified Netdev
-	Detach(*Netdev) error // Detach the device to the specified Netdev
+type attachable interface {
+	attach(*netdev) error // Attach the device to the specified Netdev
+	detach(*netdev) error // Detach the device to the specified Netdev
 }
 
 // Bridge represents a ciao Bridge

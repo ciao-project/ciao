@@ -67,7 +67,7 @@ func validSnPrefix(s string) bool {
 // When uniqueness is specified error will be returned
 // if it is not possible to generate a locally unique name within
 // a finite number of retries
-func GenIface(device interface{}, unique bool) (string, error) {
+func genIface(device interface{}, unique bool) (string, error) {
 	var prefix string
 
 	switch d := device.(type) {

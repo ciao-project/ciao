@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"net"
@@ -22,8 +22,6 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 var cnConNetEnv string
@@ -197,12 +195,12 @@ func dockerNetInfo(t *testing.T, subnetID string) error {
 //
 //Test is expected to pass
 func TestCNContainer_Base(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -221,7 +219,7 @@ func TestCNContainer_Base(t *testing.T) {
 		t.Fatal("ERROR: cn.dbRebuild failed")
 	}
 
-	dockerPlugin := libsnnet.NewDockerPlugin()
+	dockerPlugin := NewDockerPlugin()
 	if err := dockerPlugin.Init(); err != nil {
 		t.Fatal("ERROR: Docker Init failed ", err)
 	}
@@ -245,8 +243,8 @@ func TestCNContainer_Base(t *testing.T) {
 	tip2 := net.ParseIP("192.168.111.102")
 	cip := net.ParseIP("192.168.200.200")
 
-	vnicCfg := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantContainer,
+	vnicCfg := &VnicConfig{
+		VnicRole:   TenantContainer,
 		VnicIP:     tip,
 		ConcIP:     cip,
 		VnicMAC:    mac,
@@ -259,8 +257,8 @@ func TestCNContainer_Base(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	vnicCfg2 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantContainer,
+	vnicCfg2 := &VnicConfig{
+		VnicRole:   TenantContainer,
 		VnicIP:     tip2,
 		ConcIP:     cip,
 		VnicMAC:    mac2,
@@ -282,11 +280,11 @@ func TestCNContainer_Base(t *testing.T) {
 		switch {
 		case ssntpEvent == nil:
 			t.Error("ERROR: expected SSNTP Event")
-		case ssntpEvent.Event != libsnnet.SsntpTunAdd:
+		case ssntpEvent.Event != SsntpTunAdd:
 			t.Errorf("ERROR: cn.CreateVnic event population errror %v ", err)
 		case cInfo == nil:
 			t.Error("ERROR: expected Container Event")
-		case cInfo.CNContainerEvent != libsnnet.ContainerNetworkAdd:
+		case cInfo.CNContainerEvent != ContainerNetworkAdd:
 			t.Error("ERROR: Expected network add", ssntpEvent, cInfo)
 		case cInfo.SubnetID == "":
 			t.Error("ERROR: expected Container SubnetID")
@@ -303,7 +301,7 @@ func TestCNContainer_Base(t *testing.T) {
 
 		//Cache the first subnet ID we see. All subsequent should have the same
 		subnetID = cInfo.SubnetID
-		iface = vnic.InterfaceName()
+		iface = vnic.interfaceName()
 		if iface == "" {
 			t.Error("ERROR: cn.CreateVnic interface population errror", vnic)
 		}
@@ -343,10 +341,10 @@ func TestCNContainer_Base(t *testing.T) {
 			t.Error("ERROR: DUP expected Container Info", vnic)
 		case cInfo.SubnetID != subnetID:
 			t.Error("ERROR: DUP SubnetID mismatch", ssntpEvent, cInfo)
-		case cInfo.CNContainerEvent != libsnnet.ContainerNetworkInfo:
+		case cInfo.CNContainerEvent != ContainerNetworkInfo:
 			t.Error("ERROR: DUP Expected network info", ssntpEvent, cInfo)
-		case iface != vnic.InterfaceName():
-			t.Errorf("ERROR: DUP interface mismatch [%v] [%v]", iface, vnic.InterfaceName())
+		case iface != vnic.interfaceName():
+			t.Errorf("ERROR: DUP interface mismatch [%v] [%v]", iface, vnic.interfaceName())
 		}
 	}
 
@@ -361,13 +359,13 @@ func TestCNContainer_Base(t *testing.T) {
 			t.Error("ERROR: VNIC2 expected Container Info", vnic)
 		case cInfo.SubnetID != subnetID:
 			t.Error("ERROR: VNIC2 SubnetID mismatch", ssntpEvent, cInfo)
-		case cInfo.CNContainerEvent != libsnnet.ContainerNetworkInfo:
+		case cInfo.CNContainerEvent != ContainerNetworkInfo:
 			t.Error("ERROR: VNIC2 Expected network info", ssntpEvent, cInfo)
 		}
 
 		debugPrint(t, "VNIC2 created =", vnic.LinkName, ssntpEvent, cInfo)
 
-		iface = vnic.InterfaceName()
+		iface = vnic.interfaceName()
 		if iface == "" {
 			t.Error("ERROR: cn.CreateVnic interface population errror", vnic)
 		}
@@ -396,10 +394,10 @@ func TestCNContainer_Base(t *testing.T) {
 			t.Error("ERROR: DUP expected Container Info", vnic)
 		case cInfo.SubnetID != subnetID:
 			t.Error("ERROR: DUP SubnetID mismatch", ssntpEvent, cInfo)
-		case cInfo.CNContainerEvent != libsnnet.ContainerNetworkInfo:
+		case cInfo.CNContainerEvent != ContainerNetworkInfo:
 			t.Error("ERROR: DUP Expected network info", ssntpEvent, cInfo)
-		case iface != vnic.InterfaceName():
-			t.Errorf("ERROR: DUP interface mismatch [%v] [%v]", iface, vnic.InterfaceName())
+		case iface != vnic.interfaceName():
+			t.Errorf("ERROR: DUP interface mismatch [%v] [%v]", iface, vnic.interfaceName())
 		}
 	}
 
@@ -440,7 +438,7 @@ func TestCNContainer_Base(t *testing.T) {
 			t.Error("ERROR: DELETE expected Container Event")
 		case cInfo.SubnetID != subnetID:
 			t.Error("ERROR: DELETE SubnetID mismatch", ssntpEvent, cInfo)
-		case cInfo.CNContainerEvent != libsnnet.ContainerNetworkDel:
+		case cInfo.CNContainerEvent != ContainerNetworkDel:
 			t.Error("ERROR: DELETE Expected network delete", ssntpEvent, cInfo)
 		}
 		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
@@ -515,12 +513,12 @@ func dockerRunPingVerify(t *testing.T, name string, ip net.IP, mac net.HardwareA
 //
 //Test is expected to pass
 func TestCNContainer_Connectivity(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -539,7 +537,7 @@ func TestCNContainer_Connectivity(t *testing.T) {
 		t.Fatal("ERROR: cn.dbRebuild failed")
 	}
 
-	dockerPlugin := libsnnet.NewDockerPlugin()
+	dockerPlugin := NewDockerPlugin()
 	if err := dockerPlugin.Init(); err != nil {
 		t.Fatal("ERROR: Docker Init failed ", err)
 	}
@@ -563,8 +561,8 @@ func TestCNContainer_Connectivity(t *testing.T) {
 	tip2 := net.ParseIP("192.168.111.102")
 	cip := net.ParseIP("192.168.200.200")
 
-	vnicCfg := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantContainer,
+	vnicCfg := &VnicConfig{
+		VnicRole:   TenantContainer,
 		VnicIP:     tip,
 		ConcIP:     cip,
 		VnicMAC:    mac,
@@ -577,8 +575,8 @@ func TestCNContainer_Connectivity(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	vnicCfg2 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantContainer,
+	vnicCfg2 := &VnicConfig{
+		VnicRole:   TenantContainer,
 		VnicIP:     tip2,
 		ConcIP:     cip,
 		VnicMAC:    mac2,
@@ -650,12 +648,12 @@ func TestCNContainer_Connectivity(t *testing.T) {
 //
 //Test is expected to pass
 func TestCNContainer_Interop1(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -674,7 +672,7 @@ func TestCNContainer_Interop1(t *testing.T) {
 		t.Fatal("ERROR: cn.dbRebuild failed")
 	}
 
-	dockerPlugin := libsnnet.NewDockerPlugin()
+	dockerPlugin := NewDockerPlugin()
 	if err := dockerPlugin.Init(); err != nil {
 		t.Fatal("ERROR: Docker Init failed ", err)
 	}
@@ -702,8 +700,8 @@ func TestCNContainer_Interop1(t *testing.T) {
 	mac4, _ := net.ParseMAC("CA:FE:00:04:02:03")
 	tip4 := net.ParseIP("192.168.111.104")
 
-	vnicCfg := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantContainer,
+	vnicCfg := &VnicConfig{
+		VnicRole:   TenantContainer,
 		VnicIP:     tip,
 		ConcIP:     cip,
 		VnicMAC:    mac,
@@ -716,8 +714,8 @@ func TestCNContainer_Interop1(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	vnicCfg2 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantContainer,
+	vnicCfg2 := &VnicConfig{
+		VnicRole:   TenantContainer,
 		VnicIP:     tip2,
 		ConcIP:     cip,
 		VnicMAC:    mac2,
@@ -730,8 +728,8 @@ func TestCNContainer_Interop1(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	vnicCfg3 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantVM,
+	vnicCfg3 := &VnicConfig{
+		VnicRole:   TenantVM,
 		VnicIP:     tip3,
 		ConcIP:     cip,
 		VnicMAC:    mac3,
@@ -744,8 +742,8 @@ func TestCNContainer_Interop1(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	vnicCfg4 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantVM,
+	vnicCfg4 := &VnicConfig{
+		VnicRole:   TenantVM,
 		VnicIP:     tip4,
 		ConcIP:     cip,
 		VnicMAC:    mac4,
@@ -830,12 +828,12 @@ func TestCNContainer_Interop1(t *testing.T) {
 //
 //Test is expected to pass
 func TestCNContainer_Interop2(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -854,7 +852,7 @@ func TestCNContainer_Interop2(t *testing.T) {
 		t.Fatal("ERROR: cn.dbRebuild failed")
 	}
 
-	dockerPlugin := libsnnet.NewDockerPlugin()
+	dockerPlugin := NewDockerPlugin()
 	if err := dockerPlugin.Init(); err != nil {
 		t.Fatal("ERROR: Docker Init failed ", err)
 	}
@@ -882,8 +880,8 @@ func TestCNContainer_Interop2(t *testing.T) {
 	mac4, _ := net.ParseMAC("CA:FE:00:04:02:03")
 	tip4 := net.ParseIP("192.168.111.104")
 
-	vnicCfg := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantContainer,
+	vnicCfg := &VnicConfig{
+		VnicRole:   TenantContainer,
 		VnicIP:     tip,
 		ConcIP:     cip,
 		VnicMAC:    mac,
@@ -896,8 +894,8 @@ func TestCNContainer_Interop2(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	vnicCfg2 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantContainer,
+	vnicCfg2 := &VnicConfig{
+		VnicRole:   TenantContainer,
 		VnicIP:     tip2,
 		ConcIP:     cip,
 		VnicMAC:    mac2,
@@ -910,8 +908,8 @@ func TestCNContainer_Interop2(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	vnicCfg3 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantVM,
+	vnicCfg3 := &VnicConfig{
+		VnicRole:   TenantVM,
 		VnicIP:     tip3,
 		ConcIP:     cip,
 		VnicMAC:    mac3,
@@ -924,8 +922,8 @@ func TestCNContainer_Interop2(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	vnicCfg4 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.TenantVM,
+	vnicCfg4 := &VnicConfig{
+		VnicRole:   TenantVM,
 		VnicIP:     tip4,
 		ConcIP:     cip,
 		VnicMAC:    mac4,

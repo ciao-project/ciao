@@ -24,7 +24,7 @@ import (
 
 // NewBridge is used to initialize the bridge properties
 // This has to be called prior to Create() or GetDevice()
-func NewBridge(id string) (*Bridge, error) {
+func newBridge(id string) (*Bridge, error) {
 	bridge := &Bridge{}
 	bridge.Link = &netlink.Bridge{}
 	bridge.GlobalID = id //TODO: Add other parameters
@@ -34,7 +34,7 @@ func NewBridge(id string) (*Bridge, error) {
 // GetDevice associates the bridge with an existing bridge with that GlobalId.
 // If there are multiple bridges incorrectly created with the same id, it will
 // associate the bridge with the first
-func (b *Bridge) GetDevice() error {
+func (b *Bridge) getDevice() error {
 
 	if b.GlobalID == "" {
 		return netError(b, "GetDevice: unnamed bridge")
@@ -57,7 +57,7 @@ func (b *Bridge) GetDevice() error {
 }
 
 // Create instantiates a new bridge.
-func (b *Bridge) Create() error {
+func (b *Bridge) create() error {
 
 	if b.GlobalID == "" {
 		return netError(b, "create an unnamed bridge")
@@ -66,7 +66,7 @@ func (b *Bridge) Create() error {
 	var err error
 
 	if b.LinkName == "" {
-		if b.LinkName, err = GenIface(b, true); err != nil {
+		if b.LinkName, err = genIface(b, true); err != nil {
 			return netError(b, "create %v", err)
 		}
 
@@ -93,7 +93,7 @@ func (b *Bridge) Create() error {
 
 	b.Link = brl
 	if err := b.setAlias(b.GlobalID); err != nil {
-		b.Destroy()
+		b.destroy()
 		return netError(b, "create set alias %v", err)
 	}
 
@@ -101,7 +101,7 @@ func (b *Bridge) Create() error {
 }
 
 // Destroy an existing bridge
-func (b *Bridge) Destroy() error {
+func (b *Bridge) destroy() error {
 	if b.Link == nil || b.Link.Index == 0 {
 		return netError(b, "destroy bridge unnitialized")
 	}
@@ -113,7 +113,7 @@ func (b *Bridge) Destroy() error {
 }
 
 // Enable the bridge
-func (b *Bridge) Enable() error {
+func (b *Bridge) enable() error {
 	if b.Link == nil || b.Link.Index == 0 {
 		return netError(b, "enable bridge unnitialized")
 	}
@@ -126,7 +126,7 @@ func (b *Bridge) Enable() error {
 }
 
 // Disable the bridge
-func (b *Bridge) Disable() error {
+func (b *Bridge) disable() error {
 	if b.Link == nil || b.Link.Index == 0 {
 		return netError(b, "disable bridge unnitialized")
 	}
@@ -139,7 +139,7 @@ func (b *Bridge) Disable() error {
 }
 
 // AddIP Adds an IP Address to the bridge
-func (b *Bridge) AddIP(ip *net.IPNet) error {
+func (b *Bridge) addIP(ip *net.IPNet) error {
 	if b.Link == nil || b.Link.Index == 0 {
 		return netError(b, "add ip bridge unnitialized")
 	}
@@ -154,7 +154,7 @@ func (b *Bridge) AddIP(ip *net.IPNet) error {
 }
 
 // DelIP Deletes an IP Address assigned to the bridge
-func (b *Bridge) DelIP(ip *net.IPNet) error {
+func (b *Bridge) delIP(ip *net.IPNet) error {
 
 	if b.Link == nil || b.Link.Index == 0 {
 		return netError(b, "del ip bridge unnitialized")

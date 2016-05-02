@@ -14,13 +14,11 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"net"
 	"testing"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 //Benchmarks Worst case latency of VNIC creation
@@ -46,12 +44,12 @@ import (
 //
 //Test should pass ok
 func BenchmarkComputeNodeWorstCase(b *testing.B) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -69,7 +67,7 @@ func BenchmarkComputeNodeWorstCase(b *testing.B) {
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-	vnicCfg := &libsnnet.VnicConfig{
+	vnicCfg := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
@@ -116,12 +114,12 @@ func BenchmarkComputeNodeWorstCase(b *testing.B) {
 //
 //Test should pass OK
 func BenchmarkComputeNodeBestCase(b *testing.B) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -143,7 +141,7 @@ func BenchmarkComputeNodeBestCase(b *testing.B) {
 
 	//From YAML on instance init
 	macSeed, _ := net.ParseMAC("CA:FE:00:01:02:ED")
-	vnicCfgSeed := &libsnnet.VnicConfig{
+	vnicCfgSeed := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 11),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    macSeed,
@@ -157,7 +155,7 @@ func BenchmarkComputeNodeBestCase(b *testing.B) {
 	}
 
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-	vnicCfg := &libsnnet.VnicConfig{
+	vnicCfg := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,

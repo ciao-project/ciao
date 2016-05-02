@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"fmt"
@@ -22,8 +22,6 @@ import (
 	"os"
 	"strconv"
 	"testing"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 var cnNetEnv string
@@ -53,12 +51,12 @@ func cninit() {
 //
 //Test should pass OK
 func TestCN_Scaling(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -106,7 +104,7 @@ func TestCN_Scaling(t *testing.T) {
 
 			vnicID := "vuuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
 			instanceID := "iuuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
-			vnicCfg := &libsnnet.VnicConfig{
+			vnicCfg := &VnicConfig{
 				VnicIP:     vnicIP,
 				ConcIP:     concIP,
 				VnicMAC:    mac,
@@ -137,7 +135,7 @@ func TestCN_Scaling(t *testing.T) {
 
 			vnicID := "vuuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
 			instanceID := "iuuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
-			vnicCfg := &libsnnet.VnicConfig{
+			vnicCfg := &VnicConfig{
 				VnicIP:     vnicIP,
 				ConcIP:     concIP,
 				VnicMAC:    mac,
@@ -168,12 +166,12 @@ func TestCN_Scaling(t *testing.T) {
 //
 //Test should pass OK
 func TestCN_ResetNetwork(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -196,7 +194,7 @@ func TestCN_ResetNetwork(t *testing.T) {
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-	vnicCfg := &libsnnet.VnicConfig{
+	vnicCfg := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
@@ -273,12 +271,12 @@ func TestCN_ResetNetwork(t *testing.T) {
 //
 //Test should pass OK
 func TestCN_MultiTenant(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -311,7 +309,7 @@ func TestCN_MultiTenant(t *testing.T) {
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-	vnicCfg := &libsnnet.VnicConfig{
+	vnicCfg := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
@@ -370,12 +368,12 @@ func TestCN_MultiTenant(t *testing.T) {
 //
 //Test is expected to pass
 func TestCN_Negative(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -400,7 +398,7 @@ func TestCN_Negative(t *testing.T) {
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-	vnicCfg := &libsnnet.VnicConfig{
+	vnicCfg := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
@@ -467,12 +465,12 @@ func TestCN_Negative(t *testing.T) {
 //
 //Test should pass OK
 func TestCN_AndNN(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -497,8 +495,8 @@ func TestCN_AndNN(t *testing.T) {
 
 	//From YAML on instance init
 	cnciMac, _ := net.ParseMAC("CA:FE:CC:01:02:03")
-	cnciVnicCfg := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.DataCenter,
+	cnciVnicCfg := &VnicConfig{
+		VnicRole:   DataCenter,
 		VnicMAC:    cnciMac,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -528,7 +526,7 @@ func TestCN_AndNN(t *testing.T) {
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-	vnicCfg := &libsnnet.VnicConfig{
+	vnicCfg := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
@@ -571,7 +569,7 @@ func TestCN_AndNN(t *testing.T) {
 	}
 
 	mac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
-	vnicCfg2 := &libsnnet.VnicConfig{
+	vnicCfg2 := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 2),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac2,
@@ -603,8 +601,8 @@ func TestCN_AndNN(t *testing.T) {
 	}
 
 	cnciMac2, _ := net.ParseMAC("CA:FE:CC:01:02:22")
-	cnciVnicCfg2 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.DataCenter,
+	cnciVnicCfg2 := &VnicConfig{
+		VnicRole:   DataCenter,
 		VnicMAC:    cnciMac2,
 		VnicID:     "vuuid2",
 		InstanceID: "iuuid2",
@@ -659,12 +657,12 @@ func TestCN_AndNN(t *testing.T) {
 //
 //Test is expected to pass
 func TestNN_Base(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -689,8 +687,8 @@ func TestNN_Base(t *testing.T) {
 
 	//From YAML on instance init
 	cnciMac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-	cnciVnicCfg := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.DataCenter,
+	cnciVnicCfg := &VnicConfig{
+		VnicRole:   DataCenter,
 		VnicMAC:    cnciMac,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -719,8 +717,8 @@ func TestNN_Base(t *testing.T) {
 	}
 
 	cnciMac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
-	cnciVnicCfg2 := &libsnnet.VnicConfig{
-		VnicRole:   libsnnet.DataCenter,
+	cnciVnicCfg2 := &VnicConfig{
+		VnicRole:   DataCenter,
 		VnicMAC:    cnciMac2,
 		VnicID:     "vuuid2",
 		InstanceID: "iuuid2",
@@ -746,7 +744,7 @@ func TestNN_Base(t *testing.T) {
 	}
 }
 
-func validSsntpEvent(ssntpEvent *libsnnet.SsntpEventInfo, cfg *libsnnet.VnicConfig) error {
+func validSsntpEvent(ssntpEvent *SsntpEventInfo, cfg *VnicConfig) error {
 
 	if ssntpEvent == nil {
 		return fmt.Errorf("SsntpEvent: nil")
@@ -791,12 +789,12 @@ func validSsntpEvent(ssntpEvent *libsnnet.SsntpEventInfo, cfg *libsnnet.VnicConf
 //
 //Test is expected to pass
 func TestCN_Base(t *testing.T) {
-	cn := &libsnnet.ComputeNode{}
+	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &libsnnet.NetworkConfig{
+	cn.NetworkConfig = &NetworkConfig{
 		ManagementNet: nil,
 		ComputeNet:    nil,
-		Mode:          libsnnet.GreTunnel,
+		Mode:          GreTunnel,
 	}
 
 	cn.ID = "cnuuid"
@@ -830,7 +828,7 @@ func TestCN_Base(t *testing.T) {
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
-	vnicCfg := &libsnnet.VnicConfig{
+	vnicCfg := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
@@ -857,7 +855,7 @@ func TestCN_Base(t *testing.T) {
 			if err := validSsntpEvent(ssntpEvent, vnicCfg); err != nil {
 				t.Errorf("ERROR: cn.CreateVnic event population errror %v ", err)
 			}
-			if ssntpEvent.Event != libsnnet.SsntpTunAdd {
+			if ssntpEvent.Event != SsntpTunAdd {
 				t.Error("ERROR: cn.CreateVnic event population errror", vnic, ssntpEvent)
 			}
 		}
@@ -880,7 +878,7 @@ func TestCN_Base(t *testing.T) {
 	}
 
 	mac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
-	vnicCfg2 := &libsnnet.VnicConfig{
+	vnicCfg2 := &VnicConfig{
 		VnicIP:     net.IPv4(192, 168, 1, 2),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac2,
@@ -923,7 +921,7 @@ func TestCN_Base(t *testing.T) {
 			if err := validSsntpEvent(ssntpEvent, vnicCfg); err != nil {
 				t.Errorf("ERROR: cn.DestroyVnic event population errror %v", err)
 			}
-			if ssntpEvent.Event != libsnnet.SsntpTunDel {
+			if ssntpEvent.Event != SsntpTunDel {
 				t.Error("ERROR: cn.DestroyVnic event population errror", vnicCfg, ssntpEvent)
 			}
 		}
@@ -967,36 +965,36 @@ func TestCN_Whitebox(t *testing.T) {
 
 	// Create the CN tenant bridge only if it does not exist
 	bridgeAlias := fmt.Sprintf("br_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
-	bridge, _ := libsnnet.NewBridge(bridgeAlias)
+	bridge, _ := newBridge(bridgeAlias)
 
-	if err := bridge.GetDevice(); err != nil {
+	if err := bridge.getDevice(); err != nil {
 		// First instance to land, create the bridge and tunnel
-		if err := bridge.Create(); err != nil {
+		if err := bridge.create(); err != nil {
 			t.Errorf("Bridge creation failed: %v", err)
 		}
-		defer bridge.Destroy()
+		defer bridge.destroy()
 
 		// Create the tunnel to connect to the CNCI
 		local := cnIP
 		remote := concIP
 
 		greAlias := fmt.Sprintf("gre_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
-		gre, _ := libsnnet.NewGreTunEP(greAlias, local, remote, subnetKey)
+		gre, _ := newGreTunEP(greAlias, local, remote, subnetKey)
 
-		if err := gre.Create(); err != nil {
+		if err := gre.create(); err != nil {
 			t.Errorf("GRE Tunnel Creation failed: %v", err)
 		}
-		defer gre.Destroy()
+		defer gre.destroy()
 
-		if err := gre.Attach(bridge); err != nil {
+		if err := gre.attach(bridge); err != nil {
 			t.Errorf("GRE Tunnel attach failed: %v", err)
 		}
 
-		if err := gre.Enable(); err != nil {
+		if err := gre.enable(); err != nil {
 			t.Errorf("GRE Tunnel enable failed: %v", err)
 		}
 
-		if err := bridge.Enable(); err != nil {
+		if err := bridge.enable(); err != nil {
 			t.Errorf("Bridge enable failed: %v", err)
 		}
 
@@ -1004,23 +1002,23 @@ func TestCN_Whitebox(t *testing.T) {
 
 	// Create the VNIC for the instance
 	vnicAlias := fmt.Sprintf("vnic_%s_%s_%s_%s", tenantUUID, instanceUUID, instanceMAC, concUUID)
-	vnic, _ := libsnnet.NewVnic(vnicAlias)
+	vnic, _ := newVnic(vnicAlias)
 	vnic.MACAddr = &instanceMAC
 
-	if err := vnic.Create(); err != nil {
+	if err := vnic.create(); err != nil {
 		t.Errorf("Vnic Create failed: %v", err)
 	}
-	defer vnic.Destroy()
+	defer vnic.destroy()
 
-	if err := vnic.Attach(bridge); err != nil {
+	if err := vnic.attach(bridge); err != nil {
 		t.Errorf("Vnic attach failed: %v", err)
 	}
 
-	if err := vnic.Enable(); err != nil {
+	if err := vnic.enable(); err != nil {
 		t.Errorf("Vnic enable failed: %v", err)
 	}
 
-	if err := bridge.Enable(); err != nil {
+	if err := bridge.enable(); err != nil {
 		t.Errorf("Bridge enable: %v", err)
 	}
 }

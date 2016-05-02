@@ -50,56 +50,56 @@ func TestCN_dbRebuild(t *testing.T) {
 	vnicAlias := alias.vnic
 	greAlias := alias.gre
 
-	bridge, _ := NewBridge(bridgeAlias)
+	bridge, _ := newBridge(bridgeAlias)
 
-	if err := bridge.GetDevice(); err != nil {
+	if err := bridge.getDevice(); err != nil {
 		// First instance to land, create the bridge and tunnel
-		if err := bridge.Create(); err != nil {
+		if err := bridge.create(); err != nil {
 			t.Error("Bridge creation failed: ", err)
 		}
-		defer bridge.Destroy()
+		defer bridge.destroy()
 
 		// Create the tunnel to connect to the CNCI
 		local := vnicCfg.VnicIP //Fake it for now
 		remote := vnicCfg.ConcIP
 		subnetKey := vnicCfg.SubnetKey
 
-		gre, _ := NewGreTunEP(greAlias, local, remote, uint32(subnetKey))
+		gre, _ := newGreTunEP(greAlias, local, remote, uint32(subnetKey))
 
-		if err := gre.Create(); err != nil {
+		if err := gre.create(); err != nil {
 			t.Error("GRE Tunnel Creation failed: ", err)
 		}
-		defer gre.Destroy()
+		defer gre.destroy()
 
-		if err := gre.Attach(bridge); err != nil {
+		if err := gre.attach(bridge); err != nil {
 			t.Error("GRE Tunnel attach failed: ", err)
 		}
 
 	}
 
 	// Create the VNIC for the instance
-	vnic, _ := NewVnic(vnicAlias)
+	vnic, _ := newVnic(vnicAlias)
 
-	if err := vnic.Create(); err != nil {
+	if err := vnic.create(); err != nil {
 		t.Error("Vnic Create failed: ", err)
 	}
-	defer vnic.Destroy()
+	defer vnic.destroy()
 
-	if err := vnic.Attach(bridge); err != nil {
+	if err := vnic.attach(bridge); err != nil {
 		t.Error("Vnic attach failed: ", err)
 	}
 
 	//Add a second vnic
 	vnicCfg.VnicIP = net.IPv4(192, 168, 1, 101)
 	alias1 := genCnVnicAliases(vnicCfg)
-	vnic1, _ := NewVnic(alias1.vnic)
+	vnic1, _ := newVnic(alias1.vnic)
 
-	if err := vnic1.Create(); err != nil {
+	if err := vnic1.create(); err != nil {
 		t.Error("Vnic Create failed: ", err)
 	}
-	defer vnic1.Destroy()
+	defer vnic1.destroy()
 
-	if err := vnic1.Attach(bridge); err != nil {
+	if err := vnic1.attach(bridge); err != nil {
 		t.Error("Vnic attach failed: ", err)
 	}
 

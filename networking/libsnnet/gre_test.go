@@ -36,21 +36,21 @@ func TestGre_Basic(t *testing.T) {
 	remote := local
 	key := uint32(0xF)
 
-	gre, _ := NewGreTunEP(id, local, remote, key)
+	gre, _ := newGreTunEP(id, local, remote, key)
 
-	if err := gre.Create(); err != nil {
+	if err := gre.create(); err != nil {
 		t.Errorf("GreTunnel creation failed: %v", err)
 	}
 
-	if err := gre.Enable(); err != nil {
+	if err := gre.enable(); err != nil {
 		t.Errorf("GreTunnel enable failed: %v", err)
 	}
 
-	if err := gre.Disable(); err != nil {
+	if err := gre.disable(); err != nil {
 		t.Errorf("GreTunnel disable failed: %v", err)
 	}
 
-	if err := gre.Destroy(); err != nil {
+	if err := gre.destroy(); err != nil {
 		t.Errorf("GreTunnel deletion failed: %v", err)
 	}
 }
@@ -67,32 +67,32 @@ func TestGre_Bridge(t *testing.T) {
 	remote := local
 	key := uint32(0xF)
 
-	gre, _ := NewGreTunEP(id, local, remote, key)
-	bridge, _ := NewBridge("testbridge")
+	gre, _ := newGreTunEP(id, local, remote, key)
+	bridge, _ := newBridge("testbridge")
 
-	if err := gre.Create(); err != nil {
+	if err := gre.create(); err != nil {
 		t.Errorf("Vnic Create failed: %v", err)
 	}
-	defer gre.Destroy()
+	defer gre.destroy()
 
-	if err := bridge.Create(); err != nil {
+	if err := bridge.create(); err != nil {
 		t.Errorf("Bridge Create failed: %v", err)
 	}
-	defer bridge.Destroy()
+	defer bridge.destroy()
 
-	if err := gre.Attach(bridge); err != nil {
+	if err := gre.attach(bridge); err != nil {
 		t.Errorf("GRE attach failed: %v", err)
 	}
 
-	if err := gre.Enable(); err != nil {
+	if err := gre.enable(); err != nil {
 		t.Errorf("GRE enable failed: %v", err)
 	}
 
-	if err := bridge.Enable(); err != nil {
+	if err := bridge.enable(); err != nil {
 		t.Errorf("Bridge enable failed: %v", err)
 	}
 
-	if err := gre.Detach(bridge); err != nil {
+	if err := gre.detach(bridge); err != nil {
 		t.Errorf("GRE detach failed: %v", err)
 	}
 }

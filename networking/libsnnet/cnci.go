@@ -29,7 +29,7 @@ import (
 // Cnci represents a Concentrator for a single tenant
 // All subnets belonging to this tenant that are handled
 // by this concentrator. A separate bridge will be setup
-// for each subnet with its own dnsmasq service
+// for each subnet with its own dnsmasq service.
 // Traffic is routable between tenant bridges
 type Cnci struct {
 	*NetworkConfig
@@ -249,12 +249,12 @@ func (cnci *Cnci) RebuildTopology() error {
 			continue
 		}
 
-		br, err := NewBridge(bridgeID)
+		br, err := newBridge(bridgeID)
 		if err != nil {
 			return (err)
 		}
 
-		if err = br.GetDevice(); err != nil {
+		if err = br.getDevice(); err != nil {
 			return (err)
 		}
 
@@ -321,7 +321,7 @@ func genGreAlias(subnet net.IPNet, cnIP net.IP) string {
 
 func genLinkName(device interface{}, nameMap map[string]bool) (string, error) {
 	for i := 0; i < ifaceRetryLimit; {
-		name, _ := GenIface(device, false)
+		name, _ := genIface(device, false)
 		if !nameMap[name] {
 			nameMap[name] = true
 			return name, nil
@@ -331,13 +331,13 @@ func genLinkName(device interface{}, nameMap map[string]bool) (string, error) {
 }
 
 func startDnsmasq(bridge *Bridge, tenant string, subnet net.IPNet) (*Dnsmasq, error) {
-	dns, err := NewDnsmasq(bridge.GlobalID, tenant, subnet, 0, bridge)
+	dns, err := newDnsmasq(bridge.GlobalID, tenant, subnet, 0, bridge)
 	if err != nil {
 		return nil, fmt.Errorf("NewDnsmasq failed %v", err)
 	}
 
-	if _, err = dns.Attach(); err != nil {
-		err = dns.Restart()
+	if _, err = dns.attach(); err != nil {
+		err = dns.restart()
 		if err != nil {
 			return nil, fmt.Errorf("dns.start failed %v", err)
 		}
@@ -346,10 +346,10 @@ func startDnsmasq(bridge *Bridge, tenant string, subnet net.IPNet) (*Dnsmasq, er
 }
 
 func createCnciBridge(bridge *Bridge, brInfo *bridgeInfo, tenant string, subnet net.IPNet) (err error) {
-	if err = bridge.Create(); err != nil {
+	if err = bridge.create(); err != nil {
 		return err
 	}
-	if err = bridge.Enable(); err != nil {
+	if err = bridge.enable(); err != nil {
 		return err
 	}
 	brInfo.Dnsmasq, err = startDnsmasq(bridge, tenant, subnet)
@@ -357,10 +357,10 @@ func createCnciBridge(bridge *Bridge, brInfo *bridgeInfo, tenant string, subnet 
 }
 
 func createCnciTunnel(gre *GreTunEP) (err error) {
-	if err = gre.Create(); err != nil {
+	if err = gre.create(); err != nil {
 		return err
 	}
-	if err = gre.Enable(); err != nil {
+	if err = gre.enable(); err != nil {
 		return err
 	}
 	return nil
@@ -381,8 +381,8 @@ func checkInputParams(subnet net.IPNet, subnetKey int, cnIP net.IP) error {
 }
 
 //AddRemoteSubnet attaches a remote subnet to a local bridge on the CNCI
-//If the bridge and DHCP server does not exist it will be created
-//If the tunnel exists and the bridge does not exit the bridge is created
+//If the bridge and DHCP server does not exist it will be created.
+//If the tunnel exists and the bridge does not exist the bridge is created
 //The bridge name interface name is returned if the bridge is newly created
 func (cnci *Cnci) AddRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) (string, error) {
 
@@ -390,12 +390,12 @@ func (cnci *Cnci) AddRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 		return "", err
 	}
 
-	bridge, err := NewBridge(genBridgeAlias(subnet))
+	bridge, err := newBridge(genBridgeAlias(subnet))
 	if err != nil {
 		return "", err
 	}
 
-	gre, err := NewGreTunEP(genGreAlias(subnet, cnIP), cnci.ComputeAddr[0].IPNet.IP, cnIP, uint32(subnetKey))
+	gre, err := newGreTunEP(genGreAlias(subnet, cnIP), cnci.ComputeAddr[0].IPNet.IP, cnIP, uint32(subnetKey))
 	if err != nil {
 		return "", err
 	}
@@ -482,7 +482,7 @@ func (cnci *Cnci) AddRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 		}
 	}
 
-	err = gre.Attach(bridge)
+	err = gre.attach(bridge)
 	if brExists {
 		return "", err
 	}
@@ -501,7 +501,7 @@ func (cnci *Cnci) DelRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 
 	bridgeID := genBridgeAlias(subnet)
 
-	gre, err := NewGreTunEP(genGreAlias(subnet, cnIP),
+	gre, err := newGreTunEP(genGreAlias(subnet, cnIP),
 		cnci.ComputeAddr[0].IPNet.IP,
 		cnIP, uint32(subnetKey))
 
@@ -535,7 +535,7 @@ func (cnci *Cnci) DelRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 
 	delete(cnci.topology.nameMap, gre.GlobalID)
 	delete(cnci.topology.linkMap, gre.GlobalID)
-	err = gre.Destroy()
+	err = gre.destroy()
 
 	return err
 }
@@ -548,7 +548,7 @@ func (cnci *Cnci) Shutdown() error {
 
 	for _, b := range cnci.topology.bridgeMap {
 		if b.Dnsmasq != nil {
-			if err := b.Dnsmasq.Stop(); err != nil {
+			if err := b.Dnsmasq.stop(); err != nil {
 				lasterr = err
 			}
 		} else {
@@ -559,7 +559,7 @@ func (cnci *Cnci) Shutdown() error {
 	for alias, linfo := range cnci.topology.linkMap {
 		if linfo != nil {
 			//HACKING: Better to create the right type
-			vnic, err := NewVnic(alias)
+			vnic, err := newVnic(alias)
 			if err != nil {
 				lasterr = err
 				continue
@@ -569,7 +569,7 @@ func (cnci *Cnci) Shutdown() error {
 				lasterr = err
 				continue
 			}
-			if err := vnic.Destroy(); err != nil {
+			if err := vnic.destroy(); err != nil {
 				lasterr = err
 			}
 		}

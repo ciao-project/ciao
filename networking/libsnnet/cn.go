@@ -27,7 +27,12 @@ import (
 )
 
 // NetworkConfig from YAML.
-// This is a subset of the top level data center configuration
+// This is a subset of the top level data center configuration.
+// Tenant Traffic is carried over the Compute Network.
+// Management Traffic is carried over the Management Network.
+// Both tenant and management traffic can also be carried over
+// the same network if it is not possible to have seperate
+// management and compute networks.
 type NetworkConfig struct {
 	ManagementNet []net.IPNet // Enumerates all possible management subnets
 	ComputeNet    []net.IPNet // Enumerates all possible compute subnets
@@ -40,8 +45,9 @@ type CnAPICtx struct {
 	CancelChan chan interface{}
 }
 
-// VnicConfig fram YAML
+// VnicConfig from YAML
 // All these fields originate from the Controller
+// These fields fully qualify a VNIC to be created on the NN or CN
 type VnicConfig struct {
 	// Per API Context
 	// TODO: Move this outside of the VNIC Cfg.
@@ -61,7 +67,9 @@ type VnicConfig struct {
 	ConcID     string // UUID
 }
 
-// CNSsntpEvent to be generated
+// CNSsntpEvent to be generated in response to a VNIC creation
+// This event is sent to the scheduler which will send it to
+// the appropriate CNCI
 type CNSsntpEvent int
 
 const (
@@ -89,7 +97,7 @@ type SsntpEventInfo struct {
 	// Hack: Will be removed once we drop deprecated APIs
 }
 
-// CNContainerEvent to be generated
+// CNContainerEvent to be generated when a Container VNIC is created
 type CNContainerEvent int
 
 const (
@@ -104,7 +112,9 @@ const (
 )
 
 //ContainerInfo provides details that needed by docker to create the container
-//associated with this VNIC
+//associated with this VNIC. This event is used by the launcher to instantiate
+//a logical docker network. This event is used synchronize the network state
+//with the state maintained by docker
 type ContainerInfo struct {
 	CNContainerEvent
 	SubnetID string
@@ -142,9 +152,9 @@ func initCnTopology(topology *cnTopology) {
 	topology.containerMap = make(map[string]bool)
 }
 
-//CnMaxAPIConcurrency default controls internal concurrency
-//It determines how many API's are being actively processed
-//Can be over-ridden prior to init
+//CnMaxAPIConcurrency default controls internal API concurrency.
+//It determines how many API's are being actively processed.
+//Can be over-ridden prior to init.
 var CnMaxAPIConcurrency int = 8
 
 //CnAPITimeout default controls the API timeout
@@ -483,7 +493,7 @@ func (cn *ComputeNode) dbUpdate(bridge string, vnic string, op dbOp) (int, error
 
 func (cn *ComputeNode) genLinkName(device interface{}) (string, error) {
 	for i := 0; i < ifaceRetryLimit; {
-		name, _ := GenIface(device, false)
+		name, _ := genIface(device, false)
 		if !cn.nameMap[name] {
 			cn.nameMap[name] = true
 			return name, nil
@@ -505,7 +515,7 @@ func (cn *ComputeNode) CreateCnciVnic(cfg *VnicConfig) (*CnciVnic, error) {
 		return nil, NewAPIError(err.Error())
 	}
 
-	cvnic, err := NewCnciVnic(cn.genCnciVnicAlias(cfg))
+	cvnic, err := newCnciVnic(cn.genCnciVnicAlias(cfg))
 	if err != nil {
 		return nil, NewAPIError(err.Error())
 	}
@@ -539,10 +549,10 @@ func (cn *ComputeNode) CreateCnciVnic(cfg *VnicConfig) (*CnciVnic, error) {
 	cn.cnTopology.Unlock()
 	// CS End
 
-	if err := cvnic.Create(); err != nil {
+	if err := cvnic.create(); err != nil {
 		return nil, NewFatalError(err.Error())
 	}
-	if err := cvnic.Enable(); err != nil {
+	if err := cvnic.enable(); err != nil {
 		return nil, NewFatalError(err.Error())
 	}
 
@@ -568,7 +578,7 @@ func (cn *ComputeNode) DestroyCnciVnic(cfg *VnicConfig) error {
 		return NewAPIError(err.Error())
 	}
 
-	cvnic, err := NewCnciVnic(cn.genCnciVnicAlias(cfg))
+	cvnic, err := newCnciVnic(cn.genCnciVnicAlias(cfg))
 	if err != nil {
 		return NewAPIError(err.Error())
 	}
@@ -589,7 +599,7 @@ func (cn *ComputeNode) DestroyCnciVnic(cfg *VnicConfig) error {
 	delete(cn.linkMap, cvnic.GlobalID)
 	delete(cn.nameMap, cvnic.LinkName)
 
-	if err := cvnic.Destroy(); err != nil {
+	if err := cvnic.destroy(); err != nil {
 		return NewFatalError(err.Error())
 	}
 
@@ -653,7 +663,7 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 	}
 	alias := genCnVnicAliases(cfg)
 
-	bridge, err := NewBridge(alias.bridge)
+	bridge, err := newBridge(alias.bridge)
 	if err != nil {
 		return nil, nil, nil, NewAPIError(err.Error())
 	}
@@ -661,9 +671,9 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 	var vnic *Vnic
 	switch cfg.VnicRole {
 	case TenantVM:
-		vnic, err = NewVnic(alias.vnic)
+		vnic, err = newVnic(alias.vnic)
 	case TenantContainer:
-		vnic, err = NewContainerVnic(alias.vnic)
+		vnic, err = newContainerVnic(alias.vnic)
 	}
 	if err != nil {
 		return nil, nil, nil, NewAPIError(err.Error())
@@ -672,7 +682,7 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 	vnic.MTU = cfg.MTU
 
 	local := cn.ComputeAddr[0].IPNet.IP
-	gre, err := NewGreTunEP(alias.gre, local, cfg.ConcIP, uint32(cfg.SubnetKey))
+	gre, err := newGreTunEP(alias.gre, local, cfg.ConcIP, uint32(cfg.SubnetKey))
 	if err != nil {
 		return nil, nil, nil, NewAPIError(err.Error())
 	}
@@ -875,20 +885,20 @@ func (cn *ComputeNode) logicallyCreateBridge(bridge *Bridge, gre *GreTunEP, vnic
 //TODO: Try to be more fault tolerant here. We may miss errors but try to
 // honor the request  e.g. If bridge exists use it and try and create tunnel
 func createAndEnableBridge(bridge *Bridge, gre *GreTunEP) error {
-	if err := bridge.Create(); err != nil {
+	if err := bridge.create(); err != nil {
 		return fmt.Errorf("Bridge creation failed %s %s", bridge.GlobalID, err.Error())
 	}
-	if err := gre.Create(); err != nil {
+	if err := gre.create(); err != nil {
 		return fmt.Errorf("GRE creation failed %s %s", gre.GlobalID, err.Error())
 	}
-	if err := gre.Attach(bridge); err != nil {
+	if err := gre.attach(bridge); err != nil {
 		return fmt.Errorf("GRE attach failed %s %s %s", gre.GlobalID, bridge.GlobalID, err.Error())
 	}
 
-	if err := gre.Enable(); err != nil {
+	if err := gre.enable(); err != nil {
 		return fmt.Errorf("GRE enable failed %s %s %s", gre.GlobalID, bridge.GlobalID, err.Error())
 	}
-	if err := bridge.Enable(); err != nil {
+	if err := bridge.enable(); err != nil {
 		return fmt.Errorf("Bridge enable failed %s %s %s", gre.GlobalID, bridge.GlobalID, err.Error())
 	}
 	return nil
@@ -896,20 +906,20 @@ func createAndEnableBridge(bridge *Bridge, gre *GreTunEP) error {
 
 //Physically create the VNIC and attach it to the bridge
 func createAndEnableVnic(vnic *Vnic, bridge *Bridge) error {
-	if err := vnic.Create(); err != nil {
+	if err := vnic.create(); err != nil {
 		return fmt.Errorf("VNIC creation failed %s %s", vnic.GlobalID, err.Error())
 	}
-	if err := vnic.SetHardwareAddr(*vnic.MACAddr); err != nil {
+	if err := vnic.setHardwareAddr(*vnic.MACAddr); err != nil {
 		return fmt.Errorf("VNIC Set MAC Address %s %s", vnic.GlobalID, err.Error())
 	}
-	if err := vnic.SetMTU(vnic.MTU); err != nil {
+	if err := vnic.setMTU(vnic.MTU); err != nil {
 		return fmt.Errorf("VNIC Set MTU Address %s %s", vnic.GlobalID, err.Error())
 	}
-	if err := vnic.Attach(bridge); err != nil {
+	if err := vnic.attach(bridge); err != nil {
 		return fmt.Errorf("VNIC attach failed %s %s %s", vnic.GlobalID, bridge.GlobalID, err.Error())
 	}
 	vnic.BridgeID = bridge.LinkName
-	if err := vnic.Enable(); err != nil {
+	if err := vnic.enable(); err != nil {
 		return fmt.Errorf("VNIC enable failed %s %s %s", vnic.GlobalID, bridge.GlobalID, err.Error())
 	}
 	return nil
@@ -980,7 +990,7 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 	}
 
 	alias := genCnVnicAliases(cfg)
-	vnic, err := NewVnic(alias.vnic)
+	vnic, err := newVnic(alias.vnic)
 	if err != nil {
 		return nil, NewAPIError(err.Error())
 	}
@@ -1000,7 +1010,7 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 	if err != nil {
 		return nil, NewFatalError(vnic.GlobalID + err.Error())
 	}
-	err = vnic.Destroy()
+	err = vnic.destroy()
 	if err != nil {
 		return nil, NewFatalError(err.Error())
 	}
@@ -1016,12 +1026,12 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 		return nil, nil
 	}
 
-	bridge, err := NewBridge(alias.bridge)
+	bridge, err := newBridge(alias.bridge)
 	if err != nil {
 		return nil, NewFatalError(err.Error())
 	}
 
-	gre, err := NewGreTunEP(alias.gre, nil, nil, 0)
+	gre, err := newGreTunEP(alias.gre, nil, nil, 0)
 	if err != nil {
 		return nil, NewFatalError(err.Error())
 	}
@@ -1046,7 +1056,7 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 			return nil, NewFatalError(gre.GlobalID + err.Error())
 		}
 
-		err := gre.Destroy()
+		err := gre.destroy()
 		if err != nil {
 			return nil, NewFatalError("gre destroy " + gre.GlobalID + err.Error())
 		}
@@ -1065,7 +1075,7 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 			return nil, NewFatalError(bridge.GlobalID + err.Error())
 		}
 
-		if err := bridge.Destroy(); err != nil {
+		if err := bridge.destroy(); err != nil {
 			return nil, NewFatalError("bridge destroy failed " + err.Error())
 		}
 		// We delete the container network when the bridge is deleted

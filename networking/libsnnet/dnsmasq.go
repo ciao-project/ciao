@@ -29,8 +29,7 @@ import (
 	"syscall"
 )
 
-//Paths for various configuration and status files
-//TODO: Set these up to correct defaults
+//Various configuration options
 const (
 	pidPath    = "/tmp/"
 	leasePath  = "/tmp/"
@@ -40,6 +39,8 @@ const (
 //	CONFIG_PATH = "/etc/"
 //	PID_PATH = "/var/run/"
 )
+
+//TODO: Set these up above to correct defaults
 
 // Dnsmasq contains all the information required to spawn
 // a dnsmasq process on behalf of a tenant on a concentrator
@@ -59,8 +60,8 @@ type Dnsmasq struct {
 	dhcpSize  int
 	subnet    net.IP    // The DHCP addresses will be served from this subnet
 	gateway   net.IPNet // The address of the bridge. Will also be default gw to the instances
-	start     net.IP    // First address in the DHCP range Skipping ReservedIPs
-	end       net.IP    // Last address in the DHCP range excluding broadcast
+	startIP   net.IP    // First address in the DHCP range Skipping ReservedIPs
+	endIP     net.IP    // Last address in the DHCP range excluding broadcast
 	confFile  string
 	pidFile   string
 	leaseFile string
@@ -70,7 +71,7 @@ type Dnsmasq struct {
 // NewDnsmasq initializes a new dnsmasq instance and attaches it to the specified bridge
 // The dnsmasq object is initialized but no operations have been executed or files created
 // This is a pure in-memory operation
-func NewDnsmasq(id string, tenant string, subnet net.IPNet, reserved int, b *Bridge) (*Dnsmasq, error) {
+func newDnsmasq(id string, tenant string, subnet net.IPNet, reserved int, b *Bridge) (*Dnsmasq, error) {
 	if b == nil {
 		return nil, fmt.Errorf("invalid bridge")
 	}
@@ -101,7 +102,7 @@ func NewDnsmasq(id string, tenant string, subnet net.IPNet, reserved int, b *Bri
 
 // Start the dnsmasq service
 // This creates the actual files and performs configuration
-func (d *Dnsmasq) Start() error {
+func (d *Dnsmasq) start() error {
 	if err := d.createConfigFile(); err != nil {
 		return fmt.Errorf("d.createConfigFile failed %v", err)
 	}
@@ -110,9 +111,9 @@ func (d *Dnsmasq) Start() error {
 		return fmt.Errorf("d.createHostsFile failed %v", err)
 	}
 
-	if err := d.Dev.AddIP(&d.gateway); err != nil {
-		d.Dev.DelIP(&d.gateway) //TODO: check it already has the IP
-		if err = d.Dev.AddIP(&d.gateway); err != nil {
+	if err := d.Dev.addIP(&d.gateway); err != nil {
+		d.Dev.delIP(&d.gateway) //TODO: check it already has the IP
+		if err = d.Dev.addIP(&d.gateway); err != nil {
 			return fmt.Errorf("d.Dev.AddIP failed %v %v", err, d.gateway.String())
 		}
 	}
@@ -127,7 +128,7 @@ func (d *Dnsmasq) Start() error {
 // Attach to an existing service
 // Returns -1 and error on failure
 // Returns pid of current process on success
-func (d *Dnsmasq) Attach() (int, error) {
+func (d *Dnsmasq) attach() (int, error) {
 	pid, err := d.getPid()
 
 	if err != nil {
@@ -141,10 +142,10 @@ func (d *Dnsmasq) Attach() (int, error) {
 }
 
 // Stop the dnsmasq service
-func (d *Dnsmasq) Stop() error {
+func (d *Dnsmasq) stop() error {
 	var cumError []error
 
-	pid, err := d.Attach()
+	pid, err := d.attach()
 
 	if err != nil {
 		cumError = append(cumError, fmt.Errorf("Process does not exist %v", err))
@@ -160,7 +161,7 @@ func (d *Dnsmasq) Stop() error {
 		}
 	}
 
-	if err = d.Dev.DelIP(&d.gateway); err != nil {
+	if err = d.Dev.delIP(&d.gateway); err != nil {
 		cumError = append(cumError, fmt.Errorf("Unable to delete bridge IP %v", err))
 	}
 
@@ -184,10 +185,10 @@ func (d *Dnsmasq) Stop() error {
 }
 
 // Restart will stop and restart a new instance of dnsmasq
-func (d *Dnsmasq) Restart() error {
-	d.Stop() //Ignore any errors
+func (d *Dnsmasq) restart() error {
+	d.stop() //Ignore any errors
 
-	if err := d.Start(); err != nil {
+	if err := d.start(); err != nil {
 		return fmt.Errorf("d.Start failed %v", err)
 	}
 	return nil
@@ -195,9 +196,9 @@ func (d *Dnsmasq) Restart() error {
 
 // Reload is called to update the configuration of the dnsmasq
 // service. It is typically called when its configuration is updated
-func (d *Dnsmasq) Reload() error {
+func (d *Dnsmasq) reload() error {
 
-	pid, err := d.Attach()
+	pid, err := d.attach()
 	if err != nil {
 		return err
 	}
@@ -223,7 +224,7 @@ func (d *Dnsmasq) Reload() error {
 // instance is added to the subnet served by this dnsmasq service.
 // Reload() has to be invoked to activate this entry is the service is already
 // running
-func (d *Dnsmasq) AddDhcpEntry(entry *DhcpEntry) error {
+func (d *Dnsmasq) addDhcpEntry(entry *DhcpEntry) error {
 	d.IPMap[entry.MACAddr.String()] = entry
 	return nil
 }
@@ -271,21 +272,21 @@ func (d *Dnsmasq) getSubnetConfiguration() error {
 
 	d.gateway.IP = d.TenantNet.IP.To4().Mask(d.TenantNet.Mask)
 	d.gateway.Mask = d.TenantNet.Mask
-	d.start = d.TenantNet.IP.To4().Mask(d.TenantNet.Mask)
-	d.end = d.TenantNet.IP.To4().Mask(d.TenantNet.Mask)
+	d.startIP = d.TenantNet.IP.To4().Mask(d.TenantNet.Mask)
+	d.endIP = d.TenantNet.IP.To4().Mask(d.TenantNet.Mask)
 	//End Hack
 
 	//Skip the network address
 	d.gateway.IP[3]++
 
 	//Designate the first IP after network, gateway and reserved range
-	startU32 := binary.BigEndian.Uint32(d.start)
+	startU32 := binary.BigEndian.Uint32(d.startIP)
 	startU32 += uint32(2 + d.ReservedIPs)
-	binary.BigEndian.PutUint32(d.start, startU32)
+	binary.BigEndian.PutUint32(d.startIP, startU32)
 
-	endU32 := binary.BigEndian.Uint32(d.end)
+	endU32 := binary.BigEndian.Uint32(d.endIP)
 	endU32 += startU32 + uint32(d.dhcpSize)
-	binary.BigEndian.PutUint32(d.end, endU32)
+	binary.BigEndian.PutUint32(d.endIP, endU32)
 
 	//Generate all valid IPs in this subnet and pre-assign a MAC address
 	for i := 0; i < d.dhcpSize; i++ {
@@ -304,7 +305,7 @@ func (d *Dnsmasq) getSubnetConfiguration() error {
 			IPAddr:  vIP,
 		}
 
-		if err := d.AddDhcpEntry(dhcpEntry); err != nil {
+		if err := d.addDhcpEntry(dhcpEntry); err != nil {
 			return err
 		}
 	}

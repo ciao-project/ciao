@@ -26,7 +26,7 @@ import (
 
 // NewVnic is used to initialize the Vnic properties
 // This has to be called prior to Create() or GetDevice()
-func NewVnic(id string) (*Vnic, error) {
+func newVnic(id string) (*Vnic, error) {
 	Vnic := &Vnic{}
 	Vnic.Link = &netlink.GenericLink{}
 	Vnic.GlobalID = id
@@ -36,7 +36,7 @@ func NewVnic(id string) (*Vnic, error) {
 
 // NewContainerVnic is used to initialize a container Vnic properties
 // This has to be called prior to Create() or GetDevice()
-func NewContainerVnic(id string) (*Vnic, error) {
+func newContainerVnic(id string) (*Vnic, error) {
 	Vnic := &Vnic{}
 	Vnic.Link = &netlink.Veth{}
 	Vnic.GlobalID = id
@@ -47,12 +47,12 @@ func NewContainerVnic(id string) (*Vnic, error) {
 //InterfaceName is used to retrieve the name of the physical interface to
 //which the VM or the container needs to be connected to
 //Returns "" if the link is not setup
-func (v *Vnic) InterfaceName() string {
+func (v *Vnic) interfaceName() string {
 	switch v.Role {
 	case TenantVM:
 		return v.LinkName
 	case TenantContainer:
-		return v.PeerName()
+		return v.peerName()
 	default:
 		return ""
 	}
@@ -61,7 +61,7 @@ func (v *Vnic) InterfaceName() string {
 //PeerName is used to retrieve the peer name
 //Returns "" if the link is not setup or if the link
 //has no peer
-func (v *Vnic) PeerName() string {
+func (v *Vnic) peerName() string {
 	if v.Role != TenantContainer {
 		return v.LinkName
 	}
@@ -77,7 +77,7 @@ func (v *Vnic) PeerName() string {
 
 // GetDevice is used to associate with an existing VNIC provided it satisfies
 // the needs of a Vnic. Returns error if the VNIC does not exist
-func (v *Vnic) GetDevice() error {
+func (v *Vnic) getDevice() error {
 
 	if v.GlobalID == "" {
 		return netError(v, "get device unnamed vnic")
@@ -120,7 +120,7 @@ func (v *Vnic) GetDevice() error {
 }
 
 // Create instantiates new VNIC
-func (v *Vnic) Create() error {
+func (v *Vnic) create() error {
 	var err error
 
 	if v.GlobalID == "" {
@@ -135,7 +135,7 @@ func (v *Vnic) Create() error {
 	}
 
 	if v.LinkName == "" {
-		if v.LinkName, err = GenIface(v, true); err != nil {
+		if v.LinkName, err = genIface(v, true); err != nil {
 			return netError(v, "create geniface %v %v", v.GlobalID, err)
 		}
 
@@ -173,7 +173,7 @@ func (v *Vnic) Create() error {
 			LinkAttrs: netlink.LinkAttrs{
 				Name: v.LinkName,
 			},
-			PeerName: v.PeerName(),
+			PeerName: v.peerName(),
 		}
 
 		if err := netlink.LinkAdd(veth); err != nil {
@@ -193,7 +193,7 @@ func (v *Vnic) Create() error {
 	}
 
 	if err := v.setAlias(v.GlobalID); err != nil {
-		v.Destroy()
+		v.destroy()
 		return netError(v, "create set alias %v %v", v.GlobalID, err)
 	}
 
@@ -201,7 +201,7 @@ func (v *Vnic) Create() error {
 }
 
 // Destroy a VNIC
-func (v *Vnic) Destroy() error {
+func (v *Vnic) destroy() error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
 		return netError(v, "destroy unnitialized")
@@ -217,7 +217,7 @@ func (v *Vnic) Destroy() error {
 
 // Attach the VNIC to a bridge or a switch. Will return error if the VNIC
 // incapable of binding to the specified device
-func (v *Vnic) Attach(dev interface{}) error {
+func (v *Vnic) attach(dev interface{}) error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
 		return netError(v, "attach unnitialized")
@@ -240,7 +240,7 @@ func (v *Vnic) Attach(dev interface{}) error {
 }
 
 // Detach the VNIC from the device it is attached to
-func (v *Vnic) Detach(dev interface{}) error {
+func (v *Vnic) detach(dev interface{}) error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
 		return netError(v, "detach unnitialized")
@@ -264,7 +264,7 @@ func (v *Vnic) Detach(dev interface{}) error {
 }
 
 // Enable the VNIC
-func (v *Vnic) Enable() error {
+func (v *Vnic) enable() error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
 		return netError(v, "enable unnitialized")
@@ -279,7 +279,7 @@ func (v *Vnic) Enable() error {
 }
 
 // Disable the VNIC
-func (v *Vnic) Disable() error {
+func (v *Vnic) disable() error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
 		return netError(v, "disable unnitialized")
@@ -293,7 +293,7 @@ func (v *Vnic) Disable() error {
 }
 
 //SetMTU of the interface
-func (v *Vnic) SetMTU(mtu int) error {
+func (v *Vnic) setMTU(mtu int) error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
 		return netError(v, "disable unnitialized")
@@ -309,7 +309,7 @@ func (v *Vnic) SetMTU(mtu int) error {
 		}
 		peerVeth := &netlink.Veth{
 			LinkAttrs: netlink.LinkAttrs{
-				Name: v.PeerName(),
+				Name: v.peerName(),
 			},
 			PeerName: v.LinkName,
 		}
@@ -322,7 +322,7 @@ func (v *Vnic) SetMTU(mtu int) error {
 }
 
 //SetHardwareAddr of the interface
-func (v *Vnic) SetHardwareAddr(addr net.HardwareAddr) error {
+func (v *Vnic) setHardwareAddr(addr net.HardwareAddr) error {
 
 	if v.Link == nil || v.Link.Attrs().Index == 0 {
 		return netError(v, "disable unnitialized")
@@ -335,7 +335,7 @@ func (v *Vnic) SetHardwareAddr(addr net.HardwareAddr) error {
 		/* Need to set the MAC on the container side */
 		peerVeth := &netlink.Veth{
 			LinkAttrs: netlink.LinkAttrs{
-				Name: v.PeerName(),
+				Name: v.peerName(),
 			},
 			PeerName: v.LinkName,
 		}

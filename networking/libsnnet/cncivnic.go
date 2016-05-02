@@ -24,7 +24,7 @@ import (
 
 // NewCnciVnic is used to initialize the CnciVnic properties
 // This has to be called prior to Create() or GetDevice()
-func NewCnciVnic(id string) (*CnciVnic, error) {
+func newCnciVnic(id string) (*CnciVnic, error) {
 	CnciVnic := &CnciVnic{}
 	CnciVnic.Link = &netlink.Macvtap{}
 	CnciVnic.Link.Mode = netlink.MACVLAN_MODE_VEPA
@@ -39,7 +39,7 @@ func NewCnciVnic(id string) (*CnciVnic, error) {
 
 // GetDevice is used to associate with an existing CnciVnic provided it satisfies
 // the needs of a CnciVnic. Returns error if the CnciVnic does not exist
-func (v *CnciVnic) GetDevice() error {
+func (v *CnciVnic) getDevice() error {
 
 	if v.GlobalID == "" {
 		return netError(v, "getdevice unnamed cnci vnic")
@@ -65,7 +65,7 @@ func (v *CnciVnic) GetDevice() error {
 }
 
 // Create instantiates new vnic
-func (v *CnciVnic) Create() error {
+func (v *CnciVnic) create() error {
 	var err error
 
 	if v.GlobalID == "" {
@@ -73,7 +73,7 @@ func (v *CnciVnic) Create() error {
 	}
 
 	if v.LinkName == "" {
-		if v.LinkName, err = GenIface(v, true); err != nil {
+		if v.LinkName, err = genIface(v, true); err != nil {
 			return netError(v, "create geniface %v %v", v.GlobalID, err)
 		}
 
@@ -104,13 +104,13 @@ func (v *CnciVnic) Create() error {
 	v.Link = vl
 
 	if err := v.setAlias(v.GlobalID); err != nil {
-		v.Destroy()
+		v.destroy()
 		return netError(v, "create set alias %v %v", v.GlobalID, err)
 	}
 
 	if v.MACAddr != nil {
 		if err := v.setHardwareAddr(*v.MACAddr); err != nil {
-			v.Destroy()
+			v.destroy()
 			return netError(v, "create set hardware addr %v %v %v", v.MACAddr.String(), v.GlobalID, err)
 		}
 	}
@@ -119,7 +119,7 @@ func (v *CnciVnic) Create() error {
 }
 
 // Destroy a vnic
-func (v *CnciVnic) Destroy() error {
+func (v *CnciVnic) destroy() error {
 
 	if v.Link == nil {
 		return netError(v, "destroy invalid Link: %v", v)
@@ -134,7 +134,7 @@ func (v *CnciVnic) Destroy() error {
 }
 
 // Enable the vnic
-func (v *CnciVnic) Enable() error {
+func (v *CnciVnic) enable() error {
 
 	if v.Link == nil {
 		return netError(v, "enable invalid link: %v", v)
@@ -149,7 +149,7 @@ func (v *CnciVnic) Enable() error {
 }
 
 // Disable the vnic
-func (v *CnciVnic) Disable() error {
+func (v *CnciVnic) disable() error {
 
 	if v.Link == nil {
 		return netError(v, "disable invalid link: %v", v)
