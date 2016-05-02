@@ -86,7 +86,7 @@ func newInstance(context *controller, tenantID string, workload *types.Workload)
 func (i *instance) Add() error {
 	if i.CNCI == false {
 		ds := i.context.ds
-		go ds.AddInstance(&i.Instance)
+		ds.AddInstance(&i.Instance)
 	} else {
 		i.context.ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}

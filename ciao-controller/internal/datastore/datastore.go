@@ -770,7 +770,10 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 
 	ds.tenantsLock.Unlock()
 
-	return ds.db.addInstance(instance)
+	// update database asynchronously
+	go ds.db.addInstance(instance)
+
+	return nil
 }
 
 // RestartFailure logs a RestartFailure in the datastore
