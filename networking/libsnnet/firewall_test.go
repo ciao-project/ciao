@@ -14,15 +14,13 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"net"
 	"os"
 	"os/exec"
 	"testing"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 var fwIf, fwIfInt string
@@ -50,7 +48,7 @@ func fwinit() {
 //Test should pass
 func TestFw_Init(t *testing.T) {
 	fwinit()
-	fw, err := libsnnet.InitFirewall(fwIf)
+	fw, err := InitFirewall(fwIf)
 
 	if err != nil {
 		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
@@ -69,19 +67,19 @@ func TestFw_Init(t *testing.T) {
 //Test should pass
 func TestFw_Ssh(t *testing.T) {
 	fwinit()
-	fw, err := libsnnet.InitFirewall(fwIf)
+	fw, err := InitFirewall(fwIf)
 	if err != nil {
 		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
 	}
 
-	err = fw.ExtPortAccess(libsnnet.FwEnable, "tcp", fwIf, 12345,
+	err = fw.ExtPortAccess(FwEnable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
 
 	if err != nil {
 		t.Errorf("Error: ssh fwd failed %v", err)
 	}
 
-	err = fw.ExtPortAccess(libsnnet.FwDisable, "tcp", fwIf, 12345,
+	err = fw.ExtPortAccess(FwDisable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
 
 	if err != nil {
@@ -103,17 +101,17 @@ func TestFw_Ssh(t *testing.T) {
 //Test is expected to pass
 func TestFw_Nat(t *testing.T) {
 	fwinit()
-	fw, err := libsnnet.InitFirewall(fwIf)
+	fw, err := InitFirewall(fwIf)
 	if err != nil {
 		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
 	}
 
-	err = fw.ExtFwding(libsnnet.FwEnable, fwIf, fwIfInt)
+	err = fw.ExtFwding(FwEnable, fwIf, fwIfInt)
 	if err != nil {
 		t.Errorf("Error: NAT failed %v", err)
 	}
 
-	err = fw.ExtFwding(libsnnet.FwDisable, fwIf, fwIfInt)
+	err = fw.ExtFwding(FwDisable, fwIf, fwIfInt)
 	if err != nil {
 		t.Errorf("Error: NAT disable failed %v", err)
 	}
@@ -132,7 +130,7 @@ func TestFw_Nat(t *testing.T) {
 //Expected to pass
 func TestFw_PublicIP(t *testing.T) {
 	fwinit()
-	fw, err := libsnnet.InitFirewall(fwIf)
+	fw, err := InitFirewall(fwIf)
 	if err != nil {
 		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
 	}
@@ -140,14 +138,12 @@ func TestFw_PublicIP(t *testing.T) {
 	intIP := net.ParseIP("192.168.0.101")
 	pubIP := net.ParseIP("192.168.0.131")
 
-	err = fw.PublicIPAccess(libsnnet.FwEnable, intIP, pubIP, fwIfInt)
+	err = fw.PublicIPAccess(FwEnable, intIP, pubIP, fwIfInt)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
-	//t.Logf("%s", libsnnet.DumpIPTables())
-
-	err = fw.PublicIPAccess(libsnnet.FwDisable, intIP, pubIP, fwIfInt)
+	err = fw.PublicIPAccess(FwDisable, intIP, pubIP, fwIfInt)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -167,42 +163,38 @@ func TestFw_PublicIP(t *testing.T) {
 //Test is expected to pass
 func TestFw_All(t *testing.T) {
 	fwinit()
-	fw, err := libsnnet.InitFirewall(fwIf)
+	fw, err := InitFirewall(fwIf)
 	if err != nil {
 		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
 	}
 
-	err = fw.ExtFwding(libsnnet.FwEnable, fwIf, fwIfInt)
+	err = fw.ExtFwding(FwEnable, fwIf, fwIfInt)
 	if err != nil {
 		t.Errorf("Error: NAT failed %v", err)
 	}
 
-	err = fw.ExtPortAccess(libsnnet.FwEnable, "tcp", fwIf, 12345,
+	err = fw.ExtPortAccess(FwEnable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
 
 	if err != nil {
 		t.Errorf("Error: ssh fwd failed %v", err)
 	}
 
-	//t.Logf("%s", libsnnet.DumpIPTables())
-
 	procIPFwd := "/proc/sys/net/ipv4/ip_forward"
 	out, err := exec.Command("cat", procIPFwd).CombinedOutput()
 
 	if err != nil {
-		t.Errorf("unable to dump ip_forward %v", err)
-	} else {
-		t.Logf("ip_forward =[%s]", string(out))
+		t.Errorf("unable to dump ip_forward %v", err, out)
 	}
 
-	err = fw.ExtPortAccess(libsnnet.FwDisable, "tcp", fwIf, 12345,
+	err = fw.ExtPortAccess(FwDisable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
 
 	if err != nil {
 		t.Errorf("Error: ssh fwd disable failed %v", err)
 	}
 
-	err = fw.ExtFwding(libsnnet.FwDisable, fwIf, fwIfInt)
+	err = fw.ExtFwding(FwDisable, fwIf, fwIfInt)
 	if err != nil {
 		t.Errorf("Error: NAT disable failed %v", err)
 	}

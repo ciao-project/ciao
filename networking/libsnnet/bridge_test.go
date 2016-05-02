@@ -14,13 +14,11 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"strings"
 	"testing"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 //Test all Bridge primitives
@@ -32,13 +30,13 @@ import (
 //Test is expected to pass
 func TestBridge_Basic(t *testing.T) {
 
-	bridge, _ := libsnnet.NewBridge("go_testbr")
+	bridge, _ := NewBridge("go_testbr")
 
 	if err := bridge.Create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
 	}
 
-	bridge1, _ := libsnnet.NewBridge("go_testbr")
+	bridge1, _ := NewBridge("go_testbr")
 
 	if err := bridge1.GetDevice(); err != nil {
 		t.Errorf("Bridge Get Device failed: %v", err)
@@ -65,7 +63,7 @@ func TestBridge_Basic(t *testing.T) {
 //
 //Test is expected to pass
 func TestBridge_Dup(t *testing.T) {
-	bridge, _ := libsnnet.NewBridge("go_testbr")
+	bridge, _ := NewBridge("go_testbr")
 
 	if err := bridge.Create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
@@ -73,7 +71,7 @@ func TestBridge_Dup(t *testing.T) {
 
 	defer bridge.Destroy()
 
-	bridge1, _ := libsnnet.NewBridge("go_testbr")
+	bridge1, _ := NewBridge("go_testbr")
 	if err := bridge1.Create(); err == nil {
 		t.Errorf("Duplicate Bridge creation: %v", err)
 	}
@@ -87,7 +85,7 @@ func TestBridge_Dup(t *testing.T) {
 //
 //Test is expected to pass
 func TestBridge_Invalid(t *testing.T) {
-	bridge, err := libsnnet.NewBridge("go_testbr")
+	bridge, err := NewBridge("go_testbr")
 
 	if err = bridge.GetDevice(); err == nil {
 		t.Errorf("Non existing bridge: %v", bridge)
@@ -129,13 +127,13 @@ func TestBridge_Invalid(t *testing.T) {
 //
 //Test is expected to pass
 func TestBridge_GetDevice(t *testing.T) {
-	bridge, _ := libsnnet.NewBridge("go_testbr")
+	bridge, _ := NewBridge("go_testbr")
 
 	if err := bridge.Create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
 	}
 
-	bridge1, _ := libsnnet.NewBridge("go_testbr")
+	bridge1, _ := NewBridge("go_testbr")
 
 	if err := bridge1.GetDevice(); err != nil {
 		t.Errorf("Bridge Get Device failed: %v", err)

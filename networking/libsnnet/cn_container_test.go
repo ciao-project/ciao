@@ -27,12 +27,24 @@ import (
 )
 
 var cnConNetEnv string
+var cnDebug = false
 
 func cnConInit() {
 	cnConNetEnv = os.Getenv("SNNET_ENV")
 
 	if cnConNetEnv == "" {
 		cnConNetEnv = "192.168.0.0/24"
+	}
+
+	debug := os.Getenv("SNNET_DEBUG")
+	if debug != "" && debug != "false" {
+		cnDebug = true
+	}
+}
+
+func debugPrint(t *testing.T, args ...interface{}) {
+	if cnDebug {
+		t.Log(args)
 	}
 }
 
@@ -42,7 +54,7 @@ func linkDump(t *testing.T) error {
 	if err != nil {
 		t.Errorf("unable to dump link %v", err)
 	} else {
-		t.Log("dumping link info \n", string(out))
+		debugPrint(t, "dumping link info \n", string(out))
 	}
 
 	return err
@@ -56,7 +68,7 @@ func dockerRestart(t *testing.T) error {
 			t.Error("docker restart", err)
 		}
 	}
-	t.Log("docker restart\n", string(out))
+	debugPrint(t, "docker restart\n", string(out))
 	return err
 }
 
@@ -72,7 +84,7 @@ func dockerRunVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr,
 	if err != nil {
 		t.Error("docker run failed", cmd, err)
 	} else {
-		t.Log("docker run dump \n", string(out))
+		debugPrint(t, "docker run dump \n", string(out))
 	}
 
 	if !strings.Contains(string(out), ip.String()) {
@@ -96,14 +108,14 @@ func dockerContainerDelete(t *testing.T, name string) error {
 	if err != nil {
 		t.Error("docker container stop failed", name, err)
 	} else {
-		t.Log("docker container stop= \n", string(out))
+		debugPrint(t, "docker container stop= \n", string(out))
 	}
 
 	out, err = exec.Command("docker", "rm", name).CombinedOutput()
 	if err != nil {
 		t.Error("docker container delete failed", name, err)
 	} else {
-		t.Log("docker container delete= \n", string(out))
+		debugPrint(t, "docker container delete= \n", string(out))
 	}
 	return err
 }
@@ -113,14 +125,14 @@ func dockerContainerInfo(t *testing.T, name string) error {
 	if err != nil {
 		t.Error("docker ps -a", err)
 	} else {
-		t.Log("docker =\n", string(out))
+		debugPrint(t, "docker =\n", string(out))
 	}
 
 	out, err = exec.Command("docker", "inspect", name).CombinedOutput()
 	if err != nil {
 		t.Error("docker network inspect", name, err)
 	} else {
-		t.Log("docker network inspect \n", string(out))
+		debugPrint(t, "docker network inspect \n", string(out))
 	}
 	return err
 }
@@ -141,7 +153,7 @@ func dockerNetCreate(t *testing.T, subnet net.IPNet, gw net.IP, bridge string, s
 	if err != nil {
 		t.Error("docker network create failed", err)
 	} else {
-		t.Log("docker network create \n", string(out))
+		debugPrint(t, "docker network create \n", string(out))
 	}
 	return err
 }
@@ -153,7 +165,7 @@ func dockerNetDelete(t *testing.T, subnetID string) error {
 	if err != nil {
 		t.Error("docker network delete failed", err)
 	} else {
-		t.Log("docker network delete=", string(out))
+		debugPrint(t, "docker network delete=", string(out))
 	}
 	return err
 }
@@ -162,7 +174,7 @@ func dockerNetList(t *testing.T) error {
 	if err != nil {
 		t.Error("docker network ls", err)
 	} else {
-		t.Log("docker network ls= \n", string(out))
+		debugPrint(t, "docker network ls= \n", string(out))
 	}
 	return err
 }
@@ -172,7 +184,7 @@ func dockerNetInfo(t *testing.T, subnetID string) error {
 	if err != nil {
 		t.Error("docker network inspect", err)
 	} else {
-		t.Log("docker network inspect=", string(out))
+		debugPrint(t, "docker network inspect=", string(out))
 	}
 	return err
 }
@@ -298,7 +310,7 @@ func TestCNContainer_Base(t *testing.T) {
 
 		//Launcher will attach to this name and send out the event
 		//Launcher will also create the logical docker network
-		t.Log("VNIC created =", vnic.LinkName, ssntpEvent, cInfo)
+		debugPrint(t, "VNIC created =", vnic.LinkName, ssntpEvent, cInfo)
 
 		if err := linkDump(t); err != nil {
 			t.Errorf("unable to dump link %v", err)
@@ -353,7 +365,7 @@ func TestCNContainer_Base(t *testing.T) {
 			t.Error("ERROR: VNIC2 Expected network info", ssntpEvent, cInfo)
 		}
 
-		t.Log("VNIC2 created =", vnic.LinkName, ssntpEvent, cInfo)
+		debugPrint(t, "VNIC2 created =", vnic.LinkName, ssntpEvent, cInfo)
 
 		iface = vnic.InterfaceName()
 		if iface == "" {
@@ -401,7 +413,7 @@ func TestCNContainer_Base(t *testing.T) {
 		case cInfo != nil:
 			t.Error("ERROR: DELETE unexpected Container Event")
 		}
-		t.Log("VNIC deleted event", ssntpEvent, cInfo)
+		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
 	}
 
 	//Destroy it again
@@ -414,7 +426,7 @@ func TestCNContainer_Base(t *testing.T) {
 		case cInfo != nil:
 			t.Error("ERROR: DELETE unexpected Container event", cInfo)
 		}
-		t.Log("VNIC deleted event", ssntpEvent, cInfo)
+		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
 	}
 
 	// Try and destroy - should work - cInfo should be reported
@@ -431,7 +443,7 @@ func TestCNContainer_Base(t *testing.T) {
 		case cInfo.CNContainerEvent != libsnnet.ContainerNetworkDel:
 			t.Error("ERROR: DELETE Expected network delete", ssntpEvent, cInfo)
 		}
-		t.Log("VNIC deleted event", ssntpEvent, cInfo)
+		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
 
 		if err := linkDump(t); err != nil {
 			t.Errorf("unable to dump link %v", err)
@@ -456,7 +468,7 @@ func TestCNContainer_Base(t *testing.T) {
 		case cInfo != nil:
 			t.Error("ERROR: unexpected Container event", cInfo)
 		}
-		t.Log("VNIC deleted event", ssntpEvent, cInfo)
+		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
 	}
 
 	if err := dockerPlugin.Stop(); err != nil {
@@ -486,7 +498,7 @@ func dockerRunPingVerify(t *testing.T, name string, ip net.IP, mac net.HardwareA
 	if err != nil {
 		t.Error("docker run failed", cmd, err)
 	} else {
-		t.Log("docker run dump \n", string(out))
+		debugPrint(t, "docker run dump \n", string(out))
 	}
 
 	if !strings.Contains(string(out), "1 packets received") {

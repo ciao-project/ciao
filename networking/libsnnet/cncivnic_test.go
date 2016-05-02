@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"fmt"
@@ -23,8 +23,6 @@ import (
 	"testing"
 
 	"github.com/vishvananda/netlink"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 //Just pick the first physical interface with an IP
@@ -65,7 +63,7 @@ func getFirstPhyDevice() (int, error) {
 //Test is expected to pass
 func TestCnciVnic_Basic(t *testing.T) {
 
-	cnciVnic, _ := libsnnet.NewCnciVnic("testcnciVnic")
+	cnciVnic, _ := NewCnciVnic("testcnciVnic")
 
 	pIndex, err := getFirstPhyDevice()
 
@@ -101,7 +99,7 @@ func TestCnciVnic_Basic(t *testing.T) {
 //
 //Test is expected to pass
 func TestCnciVnic_Dup(t *testing.T) {
-	cnciVnic, _ := libsnnet.NewCnciVnic("testcnciVnic")
+	cnciVnic, _ := NewCnciVnic("testcnciVnic")
 
 	pIndex, err := getFirstPhyDevice()
 	if err != nil {
@@ -115,7 +113,7 @@ func TestCnciVnic_Dup(t *testing.T) {
 
 	defer cnciVnic.Destroy()
 
-	cnciVnic1, _ := libsnnet.NewCnciVnic("testcnciVnic")
+	cnciVnic1, _ := NewCnciVnic("testcnciVnic")
 	cnciVnic1.Link.ParentIndex = pIndex
 
 	if err := cnciVnic1.Create(); err == nil {
@@ -131,7 +129,7 @@ func TestCnciVnic_Dup(t *testing.T) {
 //
 //Test is expected to pass
 func TestCnciVnic_Invalid(t *testing.T) {
-	cnciVnic, err := libsnnet.NewCnciVnic("testcnciVnic")
+	cnciVnic, err := NewCnciVnic("testcnciVnic")
 
 	if err = cnciVnic.GetDevice(); err == nil {
 		t.Errorf("Non existent device: %v", cnciVnic)
@@ -170,7 +168,7 @@ func TestCnciVnic_Invalid(t *testing.T) {
 //
 //Test is expected to pass
 func TestCnciVnic_GetDevice(t *testing.T) {
-	cnciVnic1, _ := libsnnet.NewCnciVnic("testcnciVnic")
+	cnciVnic1, _ := NewCnciVnic("testcnciVnic")
 
 	pIndex, err := getFirstPhyDevice()
 	if err != nil {
@@ -182,7 +180,7 @@ func TestCnciVnic_GetDevice(t *testing.T) {
 		t.Errorf("CnciVnic creation failed: %v", err)
 	}
 
-	cnciVnic, _ := libsnnet.NewCnciVnic("testcnciVnic")
+	cnciVnic, _ := NewCnciVnic("testcnciVnic")
 
 	if err := cnciVnic.GetDevice(); err != nil {
 		t.Errorf("CnciVnic Get Device failed: %v", err)

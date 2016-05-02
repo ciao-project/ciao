@@ -22,25 +22,6 @@ import (
 	"testing"
 )
 
-/*
-func TestIfaceCollusion(t *testing.T) {
-	imap := make(map[string]bool)
-
-	const ifaceLimit = 32 * 1024
-
-	for i := 0; i < ifaceLimit; i++ {
-		name, err := genIface(&Vnic{})
-
-		if err != nil {
-			t.Errorf("unknown error %v %v", i, err)
-		}
-		if imap[name] {
-			t.Errorf("ignore failure: Collusion detected at %v for %v", i, name)
-		}
-		imap[name] = true
-	}
-} */
-
 //Tests the implementation of the db rebuild from aliases
 //
 //This test uses a mix of primitives and APIs to check

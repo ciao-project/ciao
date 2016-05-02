@@ -517,7 +517,7 @@ func (cnci *Cnci) DelRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 
 	if !present {
 		//TODO: Log this and continue
-		fmt.Println("Deleting non existent tunnel ", gre.GlobalID)
+		//fmt.Println("Deleting non existent tunnel ", gre.GlobalID)
 		return nil
 	}
 

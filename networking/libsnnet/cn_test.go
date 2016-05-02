@@ -28,6 +28,16 @@ import (
 
 var cnNetEnv string
 
+//ScaleCfg is used to setup test parameters for
+//testing scaling of network interface creation
+//The *Short are used when running go test --short
+var ScaleCfg = struct {
+	MaxBridgesShort int
+	MaxVnicsShort   int
+	MaxBridgesLong  int
+	MaxVnicsLong    int
+}{2, 64, 8, 64}
+
 func cninit() {
 	cnNetEnv = os.Getenv("SNNET_ENV")
 
@@ -77,11 +87,11 @@ func TestCN_Scaling(t *testing.T) {
 
 	var maxBridges, maxVnics int
 	if testing.Short() {
-		maxBridges = scaleCfg.maxBridgesShort
-		maxVnics = scaleCfg.maxVnicsShort
+		maxBridges = ScaleCfg.MaxBridgesShort
+		maxVnics = ScaleCfg.MaxVnicsShort
 	} else {
-		maxBridges = scaleCfg.maxBridgesLong
-		maxVnics = scaleCfg.maxVnicsLong
+		maxBridges = ScaleCfg.MaxBridgesLong
+		maxVnics = ScaleCfg.MaxVnicsLong
 	}
 
 	for s3 := 1; s3 <= maxBridges; s3++ {
@@ -112,11 +122,6 @@ func TestCN_Scaling(t *testing.T) {
 			if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
 				t.Error("ERROR: cn.CreateVnic  failed", err, vnic, ssntpEvent)
 			}
-			/*
-				else {
-					t.Logf("VNIC Created vnic[%v] cfg[%v] event[%v]", vnic, vnicCfg, ssntpEvent)
-				}
-			*/
 		}
 	}
 
@@ -148,11 +153,6 @@ func TestCN_Scaling(t *testing.T) {
 			if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
 				t.Error("ERROR: cn.DestroyVnic failed event", vnicCfg, ssntpEvent, err)
 			}
-			/*
-				else {
-					t.Logf("VNIC Destroyed cfg[%v] event[%v]", vnicCfg, ssntpEvent)
-				}
-			*/
 		}
 	}
 }
@@ -215,7 +215,6 @@ func TestCN_ResetNetwork(t *testing.T) {
 		if ssntpEvent == nil {
 			t.Error("ERROR: cn.CreateVnic expected event", vnic)
 		}
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 	}
 
 	vnicCfg.TenantID = "tuuid2"
@@ -227,7 +226,6 @@ func TestCN_ResetNetwork(t *testing.T) {
 		if ssntpEvent == nil {
 			t.Error("ERROR: cn.CreateVnic expected event", vnic)
 		}
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 	}
 
 	if err := cn.ResetNetwork(); err != nil {
@@ -246,7 +244,6 @@ func TestCN_ResetNetwork(t *testing.T) {
 		if ssntpEvent == nil {
 			t.Error("ERROR: cn.CreateVnic expected event", vnic)
 		}
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 	}
 
 	vnicCfg.TenantID = "tuuid2"
@@ -258,7 +255,6 @@ func TestCN_ResetNetwork(t *testing.T) {
 		if ssntpEvent == nil {
 			t.Error("ERROR: cn.CreateVnic expected event", vnic)
 		}
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 	}
 
 	if err := cn.ResetNetwork(); err != nil {
@@ -334,7 +330,6 @@ func TestCN_MultiTenant(t *testing.T) {
 		if ssntpEvent == nil {
 			t.Error("ERROR: cn.CreateVnic expected event", vnic)
 		}
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 	}
 
 	vnicCfg.TenantID = "tuuid2"
@@ -346,7 +341,6 @@ func TestCN_MultiTenant(t *testing.T) {
 		if ssntpEvent == nil {
 			t.Error("ERROR: cn.CreateVnic expected event", vnic)
 		}
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 	}
 
 	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
@@ -420,7 +414,7 @@ func TestCN_Negative(t *testing.T) {
 	}
 
 	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Log("ERROR: cn.CreateVnic should have failed", err)
+		debugPrint(t, "cn.CreateVnic failed as expected: ", err)
 	} else {
 		//Launcher will attach to this name and send out the event
 		t.Error("Failure expected VNIC created =", vnic.LinkName, ssntpEvent)
@@ -437,7 +431,6 @@ func TestCN_Negative(t *testing.T) {
 		if ssntpEvent == nil {
 			t.Error("ERROR: cn.CreateVnic expected event", vnic)
 		}
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 		vnicName = vnic.LinkName
 	}
 
@@ -448,7 +441,6 @@ func TestCN_Negative(t *testing.T) {
 		if ssntpEvent != nil {
 			t.Error("ERROR: cn.CreateVnic unexpected event", vnic, vnicCfg, ssntpEvent)
 		}
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 		if vnicName != vnic.LinkName {
 			t.Error("ERROR: VNIC names do not match", vnicName, vnic.LinkName)
 		}
@@ -519,7 +511,6 @@ func TestCN_AndNN(t *testing.T) {
 		t.Error("ERROR: cn.CreateCnciVnic failed", err)
 	} else {
 		//Launcher will attach to this name and send out the event
-		t.Log("VNIC1 created =", cnciVnic.LinkName)
 		cnciVnic1Name = cnciVnic.LinkName
 	}
 
@@ -528,14 +519,12 @@ func TestCN_AndNN(t *testing.T) {
 	if cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg); err != nil {
 		t.Error("ERROR: cn.CreateVnic duplicate failed", err)
 	} else {
-		t.Log("VNIC1 duplicate created =", cnciVnic.LinkName)
 		cnciVnic1DupName = cnciVnic.LinkName
 	}
 
 	if cnciVnic1Name != cnciVnic1DupName {
 		t.Error("ERROR: cn.CreateCnciVnic VNIC1 and VNIC1 Dup interface names do not match", cnciVnic1Name, cnciVnic1DupName)
 	}
-	t.Log("cn.CreateVnic VNIC1 and VNIC1 Dup interface names", cnciVnic1Name, cnciVnic1DupName)
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
@@ -562,7 +551,6 @@ func TestCN_AndNN(t *testing.T) {
 			t.Error("ERROR: cn.CreateVnic expected event", vnic, ssntpEvent)
 		}
 		//Launcher will attach to this name and send out the event
-		t.Log("VNIC1 created =", vnic.LinkName, ssntpEvent)
 		vnic1Name = vnic.LinkName
 	}
 
@@ -575,14 +563,12 @@ func TestCN_AndNN(t *testing.T) {
 			t.Error("ERROR: cn.CreateVnic duplicate unexpected event", vnic, ssntpEvent)
 		}
 		//Launcher will attach to this name and send out the event
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 		vnic1DupName = vnic.LinkName
 	}
 
 	if vnic1Name != vnic1DupName {
 		t.Error("ERROR: cn.CreateVnic VNIC1 and VNIC2 interface names do not match", vnic1Name, vnic1DupName)
 	}
-	t.Log("cn.CreateVnic VNIC1 and VNIC2 interface names", vnic1Name, vnic1DupName)
 
 	mac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
 	vnicCfg2 := &libsnnet.VnicConfig{
@@ -607,7 +593,6 @@ func TestCN_AndNN(t *testing.T) {
 			t.Error("ERROR: cn.CreateVnic VNIC2 unexpected event", vnic, ssntpEvent)
 		}
 		//Launcher will attach to this name and send out the event
-		t.Log("VNIC2 created =", vnic.LinkName, ssntpEvent)
 	}
 
 	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
@@ -627,12 +612,10 @@ func TestCN_AndNN(t *testing.T) {
 	}
 
 	// Create and destroy a second VNIC
-	if cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg2); err != nil {
+	if _, err := cn.CreateCnciVnic(cnciVnicCfg2); err != nil {
 		t.Error("ERROR: cn.CreateVnic VNIC2 failed", err)
-	} else {
-		//Launcher will attach to this name
-		t.Log("VNIC2 created =", cnciVnic.LinkName)
 	}
+
 	if err := cn.DestroyCnciVnic(cnciVnicCfg2); err != nil {
 		t.Error("ERROR: cn.DestroyCnciVnic VNIC2 destroy attempt failed", err)
 	}
@@ -656,7 +639,6 @@ func TestCN_AndNN(t *testing.T) {
 			t.Error("ERROR: cn.DestroyVnic VNIC1 expected event")
 		}
 		//Launcher will send this event out
-		t.Log("cn.Destroy VNIC1 ssntp event", ssntpEvent)
 	}
 
 	// Try and destroy it again - should work
@@ -721,7 +703,6 @@ func TestNN_Base(t *testing.T) {
 		t.Error("ERROR: cn.CreateCnciVnic failed", err)
 	} else {
 		//Launcher will attach to this name and send out the event
-		t.Log("VNIC1 created =", cnciVnic.LinkName)
 		cnciVnic1Name = cnciVnic.LinkName
 	}
 
@@ -730,14 +711,12 @@ func TestNN_Base(t *testing.T) {
 	if cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg); err != nil {
 		t.Error("ERROR: cn.CreateVnic duplicate failed", err)
 	} else {
-		t.Log("VNIC1 duplicate created =", cnciVnic.LinkName)
 		cnciVnic1DupName = cnciVnic.LinkName
 	}
 
 	if cnciVnic1Name != cnciVnic1DupName {
 		t.Error("ERROR: cn.CreateCnciVnic VNIC1 and VNIC1 Dup interface names do not match", cnciVnic1Name, cnciVnic1DupName)
 	}
-	t.Log("cn.CreateVnic VNIC1 and VNIC1 Dup interface names", cnciVnic1Name, cnciVnic1DupName)
 
 	cnciMac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
 	cnciVnicCfg2 := &libsnnet.VnicConfig{
@@ -749,11 +728,8 @@ func TestNN_Base(t *testing.T) {
 	}
 
 	// Create and destroy a second VNIC
-	if cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg2); err != nil {
+	if _, err := cn.CreateCnciVnic(cnciVnicCfg2); err != nil {
 		t.Error("ERROR: cn.CreateVnic VNIC2 failed", err)
-	} else {
-		//Launcher will attach to this name
-		t.Log("VNIC2 created =", cnciVnic.LinkName)
 	}
 	if err := cn.DestroyCnciVnic(cnciVnicCfg2); err != nil {
 		t.Error("ERROR: cn.DestroyCnciVnic VNIC2 destroy attempt failed", err)
@@ -885,8 +861,6 @@ func TestCN_Base(t *testing.T) {
 				t.Error("ERROR: cn.CreateVnic event population errror", vnic, ssntpEvent)
 			}
 		}
-		//Launcher will attach to this name and send out the event
-		t.Log("VNIC1 created =", vnic.LinkName, ssntpEvent)
 		vnic1Name = vnic.LinkName
 	}
 
@@ -898,15 +872,12 @@ func TestCN_Base(t *testing.T) {
 		if ssntpEvent != nil {
 			t.Error("ERROR: cn.CreateVnic duplicate unexpected event", vnic, ssntpEvent)
 		}
-		//Launcher will attach to this name and send out the event
-		t.Log("VNIC1 duplicate created =", vnic.LinkName, ssntpEvent)
 		vnic1DupName = vnic.LinkName
 	}
 
 	if vnic1Name != vnic1DupName {
 		t.Error("ERROR: cn.CreateVnic VNIC1 and VNIC2 interface names do not match", vnic1Name, vnic1DupName)
 	}
-	t.Log("cn.CreateVnic VNIC1 and VNIC2 interface names", vnic1Name, vnic1DupName)
 
 	mac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
 	vnicCfg2 := &libsnnet.VnicConfig{
@@ -930,8 +901,6 @@ func TestCN_Base(t *testing.T) {
 		if ssntpEvent != nil {
 			t.Error("ERROR: cn.CreateVnic VNIC2 unexpected event", vnic, ssntpEvent)
 		}
-		//Launcher will attach to this name and send out the event
-		t.Log("VNIC2 created =", vnic.LinkName, ssntpEvent)
 	}
 
 	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
@@ -958,8 +927,6 @@ func TestCN_Base(t *testing.T) {
 				t.Error("ERROR: cn.DestroyVnic event population errror", vnicCfg, ssntpEvent)
 			}
 		}
-		//Launcher will send this event out
-		t.Log("cn.Destroy VNIC1 ssntp event", ssntpEvent)
 	}
 
 	// Try and destroy it again - should work

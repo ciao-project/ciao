@@ -14,15 +14,13 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"io/ioutil"
 	"net"
 	"strconv"
 	"testing"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 //Test normal operation DCHP/DNS server setup for a CNCI
@@ -43,14 +41,14 @@ func TestDnsmasq_Basic(t *testing.T) {
 		Mask: net.IPv4Mask(255, 255, 255, 0),
 	}
 
-	bridge, _ := libsnnet.NewBridge("dns_testbr")
+	bridge, _ := NewBridge("dns_testbr")
 
 	if err := bridge.Create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
 	}
 	defer bridge.Destroy()
 
-	d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge)
+	d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge)
 	if err != nil {
 		t.Errorf("DNS Masq New failed: %v", err)
 	}
@@ -106,7 +104,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 		Mask: net.IPv4Mask(255, 255, 255, 0),
 	}
 
-	bridge, _ := libsnnet.NewBridge("dns_testbr")
+	bridge, _ := NewBridge("dns_testbr")
 
 	if err := bridge.Create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
@@ -115,7 +113,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 
 	// Note: Re instantiate d each time as that
 	// is how it will be used
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Start(); err != nil {
 			t.Errorf("DNS Masq Start: %v", err)
 		}
@@ -124,22 +122,23 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	//Attach should work
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if pid, err := d.Attach(); err != nil {
 			t.Errorf("DNS Masq attach should not have failed %v", err)
 		} else {
-			t.Logf("attached to pid %v", pid)
 			pidStr := strconv.Itoa(pid)
 			fileName := "/proc/" + pidStr + "/cmdline"
 			contents, err := ioutil.ReadFile(fileName)
-			t.Logf("File [%v] has %v %v", fileName, string(contents), err)
+			if err != nil {
+				t.Error("Unable do read dns masq config file ", contents, err)
+			}
 		}
 	} else {
 		t.Errorf("DNS Masq New failed: %v", err)
 	}
 
 	//Restart should work
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Restart(); err != nil {
 			t.Errorf("DNS Masq Restart failed: %v", err)
 		}
@@ -148,7 +147,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	//Reload should work
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Reload(); err != nil {
 			t.Errorf("DNS Masq Reload failed: %v", err)
 		}
@@ -157,7 +156,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	// Duplicate creation
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Start(); err == nil {
 			t.Errorf("DNS Masq Started twice")
 		}
@@ -166,7 +165,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	// Stop it
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Stop(); err != nil {
 			t.Errorf("DNS Masq Stop: %v", err)
 		}
@@ -175,7 +174,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	//Attach should fail
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if pid, err := d.Attach(); err == nil {
 			t.Errorf("DNS Masq attach should have failed %v", pid)
 			pidStr := strconv.Itoa(pid)
@@ -188,7 +187,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	//Stop should fail
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Stop(); err == nil {
 			t.Errorf("DNS Masq Stop should fail")
 		}
@@ -197,7 +196,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	//Reload should fail
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Reload(); err == nil {
 			t.Errorf("DNS Masq Reload should have failed")
 		}
@@ -206,7 +205,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	//Restart should not fail
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Restart(); err != nil {
 			t.Errorf("DNS Masq Restart should have failed %v", err)
 		}
@@ -215,7 +214,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	}
 
 	// Stop it
-	if d, err := libsnnet.NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
+	if d, err := NewDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
 		if err := d.Stop(); err != nil {
 			t.Errorf("DNS Masq Stop failed: %v", err)
 		}

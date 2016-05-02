@@ -14,13 +14,11 @@
 // limitations under the License.
 //
 
-package libsnnet_test
+package libsnnet
 
 import (
 	"net"
 	"testing"
-
-	"github.com/01org/ciao/networking/libsnnet"
 )
 
 //Test all GRE tunnel primitives
@@ -38,7 +36,7 @@ func TestGre_Basic(t *testing.T) {
 	remote := local
 	key := uint32(0xF)
 
-	gre, _ := libsnnet.NewGreTunEP(id, local, remote, key)
+	gre, _ := NewGreTunEP(id, local, remote, key)
 
 	if err := gre.Create(); err != nil {
 		t.Errorf("GreTunnel creation failed: %v", err)
@@ -69,8 +67,8 @@ func TestGre_Bridge(t *testing.T) {
 	remote := local
 	key := uint32(0xF)
 
-	gre, _ := libsnnet.NewGreTunEP(id, local, remote, key)
-	bridge, _ := libsnnet.NewBridge("testbridge")
+	gre, _ := NewGreTunEP(id, local, remote, key)
+	bridge, _ := NewBridge("testbridge")
 
 	if err := gre.Create(); err != nil {
 		t.Errorf("Vnic Create failed: %v", err)
