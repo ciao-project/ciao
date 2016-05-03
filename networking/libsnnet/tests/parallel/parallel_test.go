@@ -42,7 +42,7 @@ var scaleCfg = struct {
 	maxVnicsShort   int
 	maxBridgesLong  int
 	maxVnicsLong    int
-}{2, 64, 200, 32}
+}{2, 8, 200, 32}
 
 const (
 	allRoles = libsnnet.TenantContainer + libsnnet.TenantVM
@@ -52,7 +52,7 @@ func cninit() {
 	cnNetEnv = os.Getenv("SNNET_ENV")
 
 	if cnNetEnv == "" {
-		cnNetEnv = "10.3.66.0/24"
+		cnNetEnv = "127.0.0.1/24"
 	}
 
 	if cnParallel {
@@ -82,7 +82,6 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
 	cn.ID = "cnuuid"
 
 	cninit()
-	t.Log("Network =", cnNetEnv)
 
 	_, mnet, _ := net.ParseCIDR(cnNetEnv)
 
@@ -255,28 +254,14 @@ func TestCNVMContainer_Cancel(t *testing.T) {
 
 //Docker Testing
 //TODO: Place all docker utility functions in a single file
-
-func linkDump(t *testing.T) error {
-	out, err := exec.Command("ip", "-d", "link").CombinedOutput()
-
-	if err != nil {
-		t.Errorf("unable to dump link %v", err)
-	} else {
-		t.Log("dumping link info \n", string(out))
-	}
-
-	return err
-}
-
 func dockerRestart(t *testing.T) error {
 	out, err := exec.Command("service", "docker", "restart").CombinedOutput()
 	if err != nil {
 		out, err = exec.Command("systemctl", "restart", "docker").CombinedOutput()
 		if err != nil {
-			t.Error("docker restart", err)
+			t.Error("docker restart", string(out), err)
 		}
 	}
-	t.Log("docker restart\n", string(out))
 	return err
 }
 
@@ -290,9 +275,7 @@ func dockerRunNetNone(t *testing.T, name string, ip net.IP, mac net.HardwareAddr
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		t.Error("docker run failed", cmd, err)
-	} else {
-		t.Log("docker run dump \n", string(out))
+		t.Error("docker run failed", cmd, string(out), err)
 	}
 
 	if err := dockerContainerInfo(t, name); err != nil {
@@ -312,9 +295,7 @@ func dockerRunNetDocker(t *testing.T, name string, ip net.IP, mac net.HardwareAd
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		t.Error("docker run failed", cmd, err)
-	} else {
-		t.Log("docker run dump \n", string(out))
+		t.Error("docker run failed", cmd, string(out), err)
 	}
 
 	if err := dockerContainerInfo(t, name); err != nil {
@@ -336,9 +317,7 @@ func dockerRunVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr,
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		t.Error("docker run failed", cmd, err)
-	} else {
-		t.Log("docker run dump \n", string(out))
+		t.Error("docker run failed", cmd, string(out), err)
 	}
 
 	if !strings.Contains(string(out), ip.String()) {
@@ -361,16 +340,12 @@ func dockerContainerDelete(t *testing.T, name string) error {
 	defer logTime(t, time.Now(), "dockerContainerDelete")
 	out, err := exec.Command("docker", "stop", name).CombinedOutput()
 	if err != nil {
-		t.Error("docker container stop failed", name, err)
-	} else {
-		t.Log("docker container stop= \n", string(out))
+		t.Error("docker container stop failed", name, string(out), err)
 	}
 
 	out, err = exec.Command("docker", "rm", name).CombinedOutput()
 	if err != nil {
-		t.Error("docker container delete failed", name, err)
-	} else {
-		t.Log("docker container delete= \n", string(out))
+		t.Error("docker container delete failed", name, string(out), err)
 	}
 	return err
 }
@@ -379,16 +354,12 @@ func dockerContainerInfo(t *testing.T, name string) error {
 	defer logTime(t, time.Now(), "dockerContainerInfo")
 	out, err := exec.Command("docker", "ps", "-a").CombinedOutput()
 	if err != nil {
-		t.Error("docker ps -a", err)
-	} else {
-		t.Log("docker =\n", string(out))
+		t.Error("docker ps -a", string(out), err)
 	}
 
 	out, err = exec.Command("docker", "inspect", name).CombinedOutput()
 	if err != nil {
-		t.Error("docker network inspect", name, err)
-	} else {
-		t.Log("docker network inspect \n", string(out))
+		t.Error("docker network inspect", name, string(out), err)
 	}
 	return err
 }
@@ -408,9 +379,7 @@ func dockerNetCreate(t *testing.T, subnet net.IPNet, gw net.IP, bridge string, s
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		t.Error("docker network create failed", err)
-	} else {
-		t.Log("docker network create \n", string(out))
+		t.Error("docker network create failed", string(out), err)
 	}
 	return err
 }
@@ -421,19 +390,16 @@ func dockerNetDelete(t *testing.T, subnetID string) error {
 	defer logTime(t, time.Now(), "dockerNetDelete")
 	out, err := exec.Command("docker", "network", "rm", subnetID).CombinedOutput()
 	if err != nil {
-		t.Error("docker network delete failed", err)
-	} else {
-		t.Log("docker network delete=", string(out))
+		t.Error("docker network delete failed", string(out), err)
 	}
 	return err
 }
+
 func dockerNetList(t *testing.T) error {
 	defer logTime(t, time.Now(), "dockerNetList")
 	out, err := exec.Command("docker", "network", "ls").CombinedOutput()
 	if err != nil {
-		t.Error("docker network ls", err)
-	} else {
-		t.Log("docker network ls= \n", string(out))
+		t.Error("docker network ls", string(out), err)
 	}
 	return err
 }
@@ -442,9 +408,7 @@ func dockerNetInfo(t *testing.T, subnetID string) error {
 	defer logTime(t, time.Now(), "dockerNetInfo")
 	out, err := exec.Command("docker", "network", "inspect", subnetID).CombinedOutput()
 	if err != nil {
-		t.Error("docker network inspect", err)
-	} else {
-		t.Log("docker network inspect=", string(out))
+		t.Error("docker network inspect", string(out), err)
 	}
 	return err
 }
@@ -477,7 +441,6 @@ func Docker_Serial(netType dockerNetType, t *testing.T) {
 	cn.ID = "cnuuid"
 
 	cninit()
-	t.Log("Network =", cnNetEnv)
 	_, mnet, _ := net.ParseCIDR(cnNetEnv)
 
 	//From YAML, on agent init

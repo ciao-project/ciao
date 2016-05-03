@@ -16,4 +16,5 @@
 
 package libsnnet
 
+//TravisCI : Setting this flag enables dummy interface support
 var travisCI = true
