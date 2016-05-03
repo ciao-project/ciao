@@ -85,6 +85,7 @@ var (
 	listLabels       = flag.Bool("list-labels", false, "List all trace labels")
 	listAllEvents    = flag.Bool("list-all-events", false, "List all cluster events")
 	listEvents       = flag.Bool("list-events", false, "List all events for a tenant")
+	listImages       = flag.Bool("list-images", false, "List all images")
 	dumpCNCI         = flag.Bool("dump-cnci", false, "Dump a CNCI details")
 	dumpToken        = flag.Bool("dump-token", false, "Dump keystone tokens")
 	dumpTenantID     = flag.Bool("dump-tenant-id", false, "Dump tenant UUID")
@@ -99,6 +100,8 @@ var (
 	instance         = flag.String("instance", "", "Instance UUID")
 	instanceMarker   = flag.String("instance-marker", "", "Show instance list starting from the next instance after instance-marker")
 	instanceOffset   = flag.Int("instance-offset", 0, "Show instance list starting from instance #instance-offset")
+	imageName        = flag.String("image-name", "", "Instance UUID")
+	createImage      = flag.Bool("create-image", false, "Create a new image")
 	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	computeNode      = flag.String("cn", "", "Compute node UUID")
@@ -1014,5 +1017,9 @@ func main() {
 
 	if *deleteEvents == true {
 		deleteAllEvents()
+	}
+
+	if *listImages == true {
+		listTenantImages(*identityUser, *identityPassword, id)
 	}
 }
