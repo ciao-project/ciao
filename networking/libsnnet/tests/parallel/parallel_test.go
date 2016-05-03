@@ -82,6 +82,8 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
 	cn.ID = "cnuuid"
 
 	cninit()
+	t.Log("Network =", cnNetEnv)
+
 	_, mnet, _ := net.ParseCIDR(cnNetEnv)
 
 	//From YAML, on agent init
@@ -279,12 +281,12 @@ func dockerRestart(t *testing.T) error {
 }
 
 //Will be replaced by Docker API's in launcher
-//docker run -it --net=none ubuntu ip addr show lo
+//docker run -it --net=none debian ip addr show lo
 func dockerRunNetNone(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
 	defer logTime(t, time.Now(), "dockerRunNetNone")
 
 	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net=none",
-		"ubuntu", "ip", "addr", "show", "lo")
+		"debian", "ip", "addr", "show", "lo")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -301,12 +303,12 @@ func dockerRunNetNone(t *testing.T, name string, ip net.IP, mac net.HardwareAddr
 }
 
 //Will be replaced by Docker API's in launcher
-//docker run -it ubuntu ip addr show lo
+//docker run -it debian ip addr show lo
 func dockerRunNetDocker(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
 	defer logTime(t, time.Now(), "dockerRunNetDocker")
 
 	cmd := exec.Command("docker", "run", "--name", ip.String(),
-		"ubuntu", "ip", "addr", "show", "lo")
+		"debian", "ip", "addr", "show", "lo")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -324,13 +326,13 @@ func dockerRunNetDocker(t *testing.T, name string, ip net.IP, mac net.HardwareAd
 
 //Will be replaced by Docker API's in launcher
 //docker run -it --net=<subnet.Name> --ip=<instance.IP> --mac-address=<instance.MacAddresss>
-//ubuntu ip addr show eth0 scope global
+//debian ip addr show eth0 scope global
 func dockerRunVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
 	defer logTime(t, time.Now(), "dockerRunVerify")
 
 	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
 		"--ip="+ip.String(), "--mac-address="+mac.String(),
-		"ubuntu", "ip", "addr", "show", "eth0", "scope", "global")
+		"debian", "ip", "addr", "show", "eth0", "scope", "global")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -475,6 +477,7 @@ func Docker_Serial(netType dockerNetType, t *testing.T) {
 	cn.ID = "cnuuid"
 
 	cninit()
+	t.Log("Network =", cnNetEnv)
 	_, mnet, _ := net.ParseCIDR(cnNetEnv)
 
 	//From YAML, on agent init

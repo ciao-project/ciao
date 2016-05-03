@@ -64,7 +64,7 @@ unit test framework. The tests can be run as follows
 sudo ip link add testdummy type dummy
 sudo ip addr add 198.51.100.1/24 dev testdummy
 export SNNET_ENV=198.51.100.0/24
-sudo -E go test --short -v
+sudo -E go test --tags travis -v --short
 ```
 
 Note: Some of the API's require Docker 1.11+ to be installed on the test system.
