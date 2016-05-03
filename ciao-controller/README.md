@@ -25,7 +25,7 @@ tenants of a cloud and the administrators of that cloud.  Users within
 distinct tenants are also isolated from each other.  Tenant users can
 access usage statistics for their tenant workloads and issue commands
 to manage their workloads.  Admin users can access usage statistics for
-the the overall cloud infrastructure and issue commands to manage it.
+the overall cloud infrastructure and issue commands to manage it.
 
 When a first workload is launched for a tenant,
 ciao-controller automatically prepares a [CNCI

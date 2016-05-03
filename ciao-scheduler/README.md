@@ -4,7 +4,7 @@ Ciao Scheduler
 The ciao scheduler implements an
 [SSNTP](https://github.com/01org/ciao/tree/master/ssntp) server to
 receive workloads from the ciao controller system(s), to receive status
-changes regarding caio compute node (CN) resources and launched workload
+changes regarding ciao compute node (CN) resources and launched workload
 instances, and to reply to nodes who've checked in by giving them work.
 
 
