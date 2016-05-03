@@ -313,7 +313,7 @@ func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*
 		glog.Errorf("Failed to determine tap ifname: %s", err)
 		return nil, nil, err
 	}
-	defer fip.Close()
+	defer func() { _ = fip.Close() }()
 
 	scan := bufio.NewScanner(fip)
 	if !scan.Scan() {
@@ -347,7 +347,9 @@ func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*
 		   parent.  In the child the fds are determined by the file's position
 		   in the ExtraFiles array + 3.
 		*/
-		fdParam.WriteString(fmt.Sprintf("%s%d", fdSeperator, q+3))
+
+		// bytes.WriteString does not return an error
+		_, _ = fdParam.WriteString(fmt.Sprintf("%s%d", fdSeperator, q+3))
 		fdSeperator = ":"
 	}
 
@@ -571,7 +573,7 @@ func qmpConnect(qmpChannel chan string, instance, instanceDir string, closedCh c
 
 	defer func() {
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 		if closedCh != nil {
 			close(closedCh)
@@ -663,7 +665,7 @@ DONE:
 		}
 	}
 
-	conn.Close()
+	_ = conn.Close()
 	conn = nil
 
 	/* Readloop could be blocking on a send */
@@ -774,7 +776,7 @@ func qemuKillInstance(instanceDir string) {
 		return
 	}
 
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	_, err = fmt.Fprintln(conn, "{ \"execute\": \"qmp_capabilities\" }")
 	if err != nil {

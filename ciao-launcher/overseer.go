@@ -653,7 +653,7 @@ func startOverseer(wg *sync.WaitGroup, ac *agentClient) chan<- interface{} {
 	diskSpaceAllocated := 0
 	memoryAllocated := 0
 
-	filepath.Walk(instancesDir, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(instancesDir, func(path string, info os.FileInfo, err error) error {
 		if path == instancesDir {
 			return nil
 		}

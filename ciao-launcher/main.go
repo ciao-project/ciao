@@ -410,7 +410,9 @@ func initLogger() error {
 	}
 
 	if logDirFlag.Value.String() == "" {
-		logDirFlag.Value.Set(logDir)
+		if err := logDirFlag.Value.Set(logDir); err != nil {
+			return err
+		}
 	}
 
 	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
@@ -453,7 +455,7 @@ func purgeLauncherState() {
 		}
 	}
 
-	filepath.Walk(instancesDir, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(instancesDir, func(path string, info os.FileInfo, err error) error {
 		if path == instancesDir {
 			return nil
 		}

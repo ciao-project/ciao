@@ -82,7 +82,9 @@ func initDockerNetworking(ctx context.Context) error {
 	}
 
 	if err := dockerPlugin.Start(); err != nil {
-		dockerPlugin.Close()
+		if err := dockerPlugin.Close(); err != nil {
+			glog.Warningf("Failed to close docker plugin: %v ", err)
+		}
 		glog.Warningf("Docker start failed: %v ", err)
 		return err
 	}

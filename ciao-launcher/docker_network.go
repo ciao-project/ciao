@@ -89,7 +89,12 @@ func destroyDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.SsntpEventInfo, 
 	}
 
 	if info != nil {
-		destroyDockerNetwork(context.Background(), info.SubnetID)
+		// This is one of these weird cases we will have with
+		// docker in which some launcher and libssnet state gets out of
+		// sync with docker.  Launcher needs a cleanup routine that detects
+		// these inconsistencies and cleans up:
+		// https://github.com/01org/ciao/issues/4
+		_ = destroyDockerNetwork(context.Background(), info.SubnetID)
 		dockerNetworkMap.Lock()
 		delete(dockerNetworkMap.networks, vnicCfg.SubnetID)
 		dockerNetworkMap.Unlock()
