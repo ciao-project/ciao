@@ -567,57 +567,56 @@ func (q *qemu) lostVM() {
 	q.prevCPUTime = -1
 }
 
-func qmpConnect(qmpChannel chan string, instance, instanceDir string, closedCh chan struct{},
-	connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) {
-	var conn net.Conn
+func readLoop(instance string, eventCh chan string, scanner *bufio.Scanner) {
+	for scanner.Scan() {
+		text := scanner.Text()
+		if glog.V(1) {
+			glog.Info(text)
+		}
+		eventCh <- scanner.Text()
+	}
+	glog.Infof("Quitting %s read Loop", instance)
+	close(eventCh)
+}
+
+func connectToVM(instance, instanceDir string, eventCh chan string, connectedCh chan struct{}) (net.Conn, error) {
+	qmpSocket := path.Join(instanceDir, "socket")
+	conn, err := net.DialTimeout("unix", qmpSocket, time.Second*30)
+	if err != nil {
+		glog.Errorf("Unable to open qmp socket for instance %s: %v", instance, err)
+		return nil, err
+	}
 
 	defer func() {
 		if conn != nil {
 			_ = conn.Close()
 		}
-		if closedCh != nil {
-			close(closedCh)
-		}
-		glog.Infof("Monitor function for %s exitting", instance)
-		wg.Done()
 	}()
-
-	qmpSocket := path.Join(instanceDir, "socket")
-	conn, err := net.DialTimeout("unix", qmpSocket, time.Second*30)
-	if err != nil {
-		glog.Errorf("Unable to open qmp socket for instance %s: %v", instance, err)
-		return
-	}
 
 	scanner := bufio.NewScanner(conn)
 	_, err = fmt.Fprintln(conn, "{ \"execute\": \"qmp_capabilities\" }")
 	if err != nil {
 		glog.Errorf("Unable to send qmp_capabilities to instance %s: %v", instance, err)
-		return
+		return nil, err
 	}
 
 	/* TODO check return value and implement timeout */
 
 	if !scanner.Scan() {
-		glog.Errorf("qmp_capabilities failed on instance %s", instance)
-		return
+		err := fmt.Errorf("qmp_capabilities failed on instance %s", instance)
+		glog.Errorf("%v", err)
+		return nil, err
 	}
 
 	close(connectedCh)
 
-	eventCh := make(chan string)
-	go func() {
-		for scanner.Scan() {
-			text := scanner.Text()
-			if glog.V(1) {
-				glog.Info(text)
-			}
-			eventCh <- scanner.Text()
-		}
-		glog.Infof("Quitting %s read Loop", instance)
-		close(eventCh)
-	}()
+	go readLoop(instance, eventCh, scanner)
+	retval := conn
+	conn = nil
+	return retval, nil
+}
 
+func qmpLoop(instance string, conn net.Conn, qmpChannel chan string, eventCh chan string, closedCh chan struct{}) (chan string, chan struct{}) {
 	waitForShutdown := false
 	quitting := false
 
@@ -635,7 +634,7 @@ DONE:
 			}
 			if cmd == virtualizerStopCmd {
 				glog.Info("Sending STOP")
-				_, err = fmt.Fprintln(conn, "{ \"execute\": \"quit\" }")
+				_, err := fmt.Fprintln(conn, "{ \"execute\": \"quit\" }")
 				if err != nil {
 					glog.Errorf("Unable to send power down command to %s: %v\n", instance, err)
 				} else {
@@ -665,8 +664,31 @@ DONE:
 		}
 	}
 
+	return eventCh, closedCh
+}
+
+func qmpConnect(qmpChannel chan string, instance, instanceDir string, closedCh chan struct{},
+	connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) {
+	var conn net.Conn
+
+	defer func() {
+		if closedCh != nil {
+			close(closedCh)
+		}
+		glog.Infof("Monitor function for %s exitting", instance)
+		wg.Done()
+	}()
+
+	eventCh := make(chan string)
+	conn, err := connectToVM(instance, instanceDir, eventCh, connectedCh)
+	if err != nil {
+		glog.Infof("Monitor function for %s exitting with err: %v", instance, err)
+		return
+	}
+
+	eventCh, closedCh = qmpLoop(instance, conn, qmpChannel, eventCh, closedCh)
+
 	_ = conn.Close()
-	conn = nil
 
 	/* Readloop could be blocking on a send */
 
