@@ -118,6 +118,12 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 				"id": "10a2e6e717a245d9acad3e5f97aeca3d",
 				"name": "admin"
 			},
+			"roles": [
+				{
+					"id" : "12345",
+					"name" : "admin"
+				}
+			],
 			"project": {
 				"domain": {
 					"id": "default",

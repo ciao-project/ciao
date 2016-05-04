@@ -125,3 +125,51 @@ func TestListServerDetailsTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestListServerDetailsWorkload(t *testing.T) {
+	// get a valid workload ID
+	wls, err := context.ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No valid workloads")
+	}
+
+	servers := testCreateServer(t, 10)
+	if servers.TotalServers != 10 {
+		t.Fatal("failed to create enough servers")
+	}
+
+	url := computeURL + "/v2.1/flavors/" + wls[0].ID + "/servers/detail"
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Set("X-Auth-Token", "imavalidtoken")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Fatal(string(body))
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var s payloads.ComputeServers
+	err = json.Unmarshal(body, &s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if s.TotalServers < 10 {
+		t.Fatal("Did not return correct number of servers")
+	}
+}
