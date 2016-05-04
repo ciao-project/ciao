@@ -377,7 +377,7 @@ func generateColourTextReport(tests []*PackageTests) {
 		pkgName := p.Name[len(prefix):]
 		for _, t := range p.Tests {
 			row := colouredRow{}
-			if !t.Pass && !coloured {
+			if !t.Pass {
 				row.ansiSeq = fmt.Sprintf("%c[%dm", 0x1b, 31)
 				coloured = true
 			} else if t.Pass && coloured {
