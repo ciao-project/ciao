@@ -807,7 +807,7 @@ func main() {
 	r.HandleFunc("/NetworkDriver.DiscoverNew", handlerDiscoverNew)
 	r.HandleFunc("/NetworkDriver.DiscoverDelete", handlerDiscoverDelete)
 	r.HandleFunc("/NetworkDriver.ProgramExternalConnectivity", handlerExternalConnectivity)
-	r.HandleFunc("/NetworkDriver.RevokeExternalConnectivity", handlerExternalConnectivity)
+	r.HandleFunc("/NetworkDriver.RevokeExternalConnectivity", handlerRevokeExternalConnectivity)
 
 	r.HandleFunc("/IpamDriver.GetCapabilities", ipamGetCapabilities)
 	r.HandleFunc("/IpamDriver.GetDefaultAddressSpaces", ipamGetDefaultAddressSpaces)

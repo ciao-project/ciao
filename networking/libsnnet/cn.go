@@ -277,10 +277,9 @@ func (cn *ComputeNode) Init() error {
 }
 
 type vnicAliases struct {
-	bridge   string
-	vnic     string
-	vnicPeer string
-	gre      string
+	bridge string
+	vnic   string
+	gre    string
 }
 
 const (
@@ -364,8 +363,6 @@ const (
 	dbDelVnic
 	dbInsBr
 	dbDelBr
-	dbInsIf
-	dbDelIf
 )
 
 //DbRebuild the CN network database using the information contained

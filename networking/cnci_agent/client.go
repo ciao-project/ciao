@@ -43,7 +43,6 @@ var serverCertPath string
 var clientCertPath string
 var computeNet string
 var mgmtNet string
-var dhcpStrict bool
 var enableNetwork bool
 var enableNATssh bool
 var agentUUID string
@@ -60,11 +59,9 @@ func init() {
 }
 
 const (
-	lockDir     = "/tmp/lock/ciao"
-	logDir      = "/var/lib/ciao/logs/cnci_agent"
-	lockFile    = "cnci-agent.lock"
-	statsPeriod = 30
-
+	lockDir       = "/tmp/lock/ciao"
+	logDir        = "/var/lib/ciao/logs/cnci_agent"
+	lockFile      = "cnci-agent.lock"
 	interfacesDir = "/var/lib/ciao/network/interfaces"
 )
 

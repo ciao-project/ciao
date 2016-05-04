@@ -775,7 +775,7 @@ func (d *DockerPlugin) Init() error {
 	r.HandleFunc("/NetworkDriver.DiscoverNew", DockerHandler(d, handlerDiscoverNew))
 	r.HandleFunc("/NetworkDriver.DiscoverDelete", DockerHandler(d, handlerDiscoverDelete))
 	r.HandleFunc("/NetworkDriver.ProgramExternalConnectivity", DockerHandler(d, handlerExternalConnectivity))
-	r.HandleFunc("/NetworkDriver.RevokeExternalConnectivity", DockerHandler(d, handlerExternalConnectivity))
+	r.HandleFunc("/NetworkDriver.RevokeExternalConnectivity", DockerHandler(d, handlerRevokeExternalConnectivity))
 
 	r.HandleFunc("/IpamDriver.GetCapabilities", DockerHandler(d, ipamGetCapabilities))
 	r.HandleFunc("/IpamDriver.GetDefaultAddressSpaces", DockerHandler(d, ipamGetDefaultAddressSpaces))
