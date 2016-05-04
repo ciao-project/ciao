@@ -384,7 +384,7 @@ func (f *Firewall) PublicIPAccess(action FwAction,
 			}
 		}
 
-		return nil
+		return err
 
 	case FwDisable:
 		err := ipAssign(FwDisable, publicIP, extInterface)
