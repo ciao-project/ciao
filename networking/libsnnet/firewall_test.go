@@ -184,7 +184,7 @@ func TestFw_All(t *testing.T) {
 	out, err := exec.Command("cat", procIPFwd).CombinedOutput()
 
 	if err != nil {
-		t.Errorf("unable to dump ip_forward %v", err, out)
+		t.Errorf("unable to dump ip_forward %v, %v", err, out)
 	}
 
 	err = fw.ExtPortAccess(FwDisable, "tcp", fwIf, 12345,
