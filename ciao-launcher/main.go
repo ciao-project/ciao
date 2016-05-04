@@ -528,6 +528,59 @@ func setLimits() {
 	maxInstances = int(rlim.Cur / 5)
 }
 
+func startLauncher() int {
+	doneCh := make(chan struct{})
+	statusCh := make(chan struct{})
+	signalCh := make(chan os.Signal, 1)
+	timeoutCh := make(chan struct{})
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+	if networking.Enabled() {
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		ch := initNetworking(ctx)
+		select {
+		case <-signalCh:
+			glog.Info("Received terminating signal.  Quitting")
+			cancelFunc()
+			return 1
+		case err := <-ch:
+			if err != nil {
+				glog.Errorf("Failed to init network: %v\n", err)
+				return 1
+			}
+		}
+
+		defer shutdownNetwork()
+	}
+
+	go connectToServer(doneCh, statusCh)
+
+DONE:
+	for {
+		select {
+		case <-signalCh:
+			glog.Info("Received terminating signal.  Waiting for server loop to quit")
+			close(doneCh)
+			go func() {
+				time.Sleep(time.Second)
+				timeoutCh <- struct{}{}
+			}()
+		case <-statusCh:
+			glog.Info("Server Loop quit cleanly")
+			break DONE
+		case <-timeoutCh:
+			glog.Warning("Server Loop did not exit within 1 second quitting")
+			glog.Flush()
+
+			/* We panic here to see which naughty go routines are still running. */
+
+			panic("Server Loop did not exit within 1 second quitting")
+		}
+	}
+
+	return 0
+}
+
 func main() {
 
 	flag.Parse()
@@ -567,54 +620,5 @@ func main() {
 		glog.Fatalf("Unable to create mandatory dirs: %v", err)
 	}
 
-	doneCh := make(chan struct{})
-	statusCh := make(chan struct{})
-	signalCh := make(chan os.Signal, 1)
-	timeoutCh := make(chan struct{})
-	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-
-	if networking.Enabled() {
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		ch := initNetworking(ctx)
-		select {
-		case <-signalCh:
-			glog.Info("Received terminating signal.  Quitting")
-			cancelFunc()
-			os.Exit(1)
-		case err := <-ch:
-			if err != nil {
-				glog.Errorf("Failed to init network: %v\n", err)
-				os.Exit(1)
-			}
-		}
-	}
-
-	go connectToServer(doneCh, statusCh)
-
-DONE:
-	for {
-		select {
-		case <-signalCh:
-			glog.Info("Received terminating signal.  Waiting for server loop to quit")
-			close(doneCh)
-			go func() {
-				time.Sleep(time.Second)
-				timeoutCh <- struct{}{}
-			}()
-		case <-statusCh:
-			glog.Info("Server Loop quit cleanly")
-			break DONE
-		case <-timeoutCh:
-			glog.Warning("Server Loop did not exit within 1 second quitting")
-			glog.Flush()
-
-			/* We panic here to see which naughty go routines are still running. */
-
-			panic("Server Loop did not exit within 1 second quitting")
-		}
-	}
-
-	if networking.Enabled() {
-		shutdownNetwork()
-	}
+	os.Exit(startLauncher())
 }
