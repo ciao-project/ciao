@@ -19,7 +19,7 @@ func dumpImage(i *images.Image) {
 	fmt.Printf("\tMinimal memory [%d MB]\n", i.MinRAMMegabytes)
 }
 
-func listTenantImages(username, password, tenant string) {
+func imageServiceClient(username, password, tenant string) (*gophercloud.ServiceClient, error) {
 	opt := gophercloud.AuthOptions{
 		IdentityEndpoint: *identityURL + "/v3/",
 		Username:         username,
@@ -31,14 +31,17 @@ func listTenantImages(username, password, tenant string) {
 
 	provider, err := openstack.AuthenticatedClient(opt)
 	if err != nil {
-		fatalf("Could not get AuthenticatedClient %s\n", err)
+		errorf("Could not get AuthenticatedClient %s\n", err)
 	}
 
-	client, err := openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{
+	return openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{
 		Name:   "glance",
 		Region: "RegionOne",
 	})
+}
 
+func listTenantImages(username, password, tenant string) {
+	client, err := imageServiceClient(username, password, tenant)
 	if err != nil {
 		fatalf("Could not get Image service client [%s]\n", err)
 	}
@@ -58,4 +61,26 @@ func listTenantImages(username, password, tenant string) {
 
 		return false, nil
 	})
+}
+
+func createTenantImage(username, password, tenant, name string) {
+	client, err := imageServiceClient(username, password, tenant)
+	if err != nil {
+		fatalf("Could not get Image service client [%s]\n", err)
+	}
+
+	opts := images.CreateOpts{
+		Name:             name,
+		DiskFormat:       "qcow2",
+		MinDiskGigabytes: 8,
+		MinRAMMegabytes:  512,
+	}
+
+	image, err := images.Create(client, opts).Extract()
+	if err != nil {
+		fatalf("Could not create image [%s]\n", err)
+	}
+
+	fmt.Printf("Created image:\n")
+	dumpImage(image)
 }
