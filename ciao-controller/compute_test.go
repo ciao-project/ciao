@@ -23,7 +23,7 @@ import (
 	"testing"
 )
 
-func TestCreateServer(t *testing.T) {
+func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 	tenant, err := context.ds.GetTenant(computeTestUser)
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +38,7 @@ func TestCreateServer(t *testing.T) {
 	url := computeURL + "/v2.1/" + tenant.ID + "/servers"
 
 	var server payloads.ComputeCreateServer
-	server.Server.MaxInstances = 1
+	server.Server.MaxInstances = n
 	server.Server.Workload = wls[0].ID
 
 	b, err := json.Marshal(server)
@@ -73,9 +73,55 @@ func TestCreateServer(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if servers.TotalServers != n {
+		t.Fatal(err)
+	}
+
+	return servers
+}
+
+func TestCreateSingleServer(t *testing.T) {
+	_ = testCreateServer(t, 1)
+}
+
+func TestListServerDetailsTenant(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
 		t.Fatal(err)
 	}
 
-	return
+	url := computeURL + "/v2.1/" + tenant.ID + "/servers/detail"
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Set("X-Auth-Token", "imavalidtoken")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatal(err)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var s payloads.ComputeServers
+	err = json.Unmarshal(body, &s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if s.TotalServers < 1 {
+		t.Fatal(err)
+	}
 }
