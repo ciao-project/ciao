@@ -1022,4 +1022,11 @@ func main() {
 	if *listImages == true {
 		listTenantImages(*identityUser, *identityPassword, id)
 	}
+
+	if *createImage == true {
+		if *imageName == "" {
+			fatalf("Missing required -image-name parameter")
+		}
+		createTenantImage(*identityUser, *identityPassword, id, *imageName)
+	}
 }
