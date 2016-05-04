@@ -228,6 +228,34 @@ func (id *instanceData) logStartTrace() {
 	glog.Info("=========================================")
 }
 
+func (id *instanceData) instanceCommand(cmd interface{}) bool {
+	select {
+	case <-id.doneCh:
+		return false
+	default:
+	}
+
+	switch cmd := cmd.(type) {
+	case *insStartCmd:
+		id.rcvStamp = cmd.rcvStamp
+		id.startCommand(cmd)
+	case *insRestartCmd:
+		id.restartCommand(cmd)
+	case *insMonitorCmd:
+		id.monitorCommand(cmd)
+	case *insStopCmd:
+		id.stopCommand(cmd)
+	case *insDeleteCmd:
+		if id.deleteCommand(cmd) {
+			return false
+		}
+	default:
+		glog.Warning("Unknown command")
+	}
+
+	return true
+}
+
 func (id *instanceData) instanceLoop() {
 
 	id.vm.init(id.cfg, id.instanceDir)
@@ -245,28 +273,8 @@ DONE:
 			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
 			id.statsTimer = time.After(time.Second * statsPeriod)
 		case cmd := <-id.cmdCh:
-			select {
-			case <-id.doneCh:
+			if !id.instanceCommand(cmd) {
 				break DONE
-			default:
-			}
-
-			switch cmd := cmd.(type) {
-			case *insStartCmd:
-				id.rcvStamp = cmd.rcvStamp
-				id.startCommand(cmd)
-			case *insRestartCmd:
-				id.restartCommand(cmd)
-			case *insMonitorCmd:
-				id.monitorCommand(cmd)
-			case *insStopCmd:
-				id.stopCommand(cmd)
-			case *insDeleteCmd:
-				if id.deleteCommand(cmd) {
-					break DONE
-				}
-			default:
-				glog.Warning("Unknown command")
 			}
 		case <-id.monitorCloseCh:
 			// Means we've lost VM for now
