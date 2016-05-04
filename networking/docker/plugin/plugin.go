@@ -68,11 +68,15 @@ func init() {
 	dbFile = "/tmp/bolt.db"
 }
 
-func sendResponse(resp interface{}, w http.ResponseWriter) error {
+//We should never see any errors in this function
+func sendResponse(resp interface{}, w http.ResponseWriter) {
 	rb, err := json.Marshal(resp)
+	if err != nil {
+		glog.Errorf("unable to marshal response %v", err)
+	}
 	glog.Infof("Sending response := %v, %v", resp, err)
 	fmt.Fprintf(w, "%s", rb)
-	return err
+	return
 }
 
 func getBody(r *http.Request) ([]byte, error) {
@@ -89,7 +93,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handlerPluginActivate(w http.ResponseWriter, r *http.Request) {
-	getBody(r)
+	_, _ = getBody(r)
 	//TODO: Where is this encoding?
 	resp := `{
     "Implements": ["NetworkDriver", "IpamDriver"]
@@ -98,7 +102,7 @@ func handlerPluginActivate(w http.ResponseWriter, r *http.Request) {
 }
 
 func handlerGetCapabilities(w http.ResponseWriter, r *http.Request) {
-	getBody(r)
+	_, _ = getBody(r)
 	resp := api.GetCapabilityResponse{Scope: "local"}
 	sendResponse(resp, w)
 }
@@ -513,14 +517,18 @@ func handlerRevokeExternalConnectivity(w http.ResponseWriter, r *http.Request) {
 }
 
 func ipamGetCapabilities(w http.ResponseWriter, r *http.Request) {
-	getBody(r)
+	if _, err := getBody(r); err != nil {
+		glog.Infof("ipamGetCapabilities: unable to get request body [%v]", err)
+	}
 	resp := ipamapi.GetCapabilityResponse{RequiresMACAddress: true}
 	sendResponse(resp, w)
 }
 
 func ipamGetDefaultAddressSpaces(w http.ResponseWriter, r *http.Request) {
 	resp := ipamapi.GetAddressSpacesResponse{}
-	getBody(r)
+	if _, err := getBody(r); err != nil {
+		glog.Infof("ipamGetDefaultAddressSpaces: unable to get request body [%v]", err)
+	}
 
 	resp.GlobalDefaultAddressSpace = ""
 	resp.LocalDefaultAddressSpace = ""
@@ -743,7 +751,7 @@ func initDb() error {
 	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("nwMap"))
 
-		b.ForEach(func(k, v []byte) error {
+		err := b.ForEach(func(k, v []byte) error {
 			vr := bytes.NewReader(v)
 			nVal := &nwVal{}
 			if err := gob.NewDecoder(vr).Decode(nVal); err != nil {
@@ -753,13 +761,13 @@ func initDb() error {
 			glog.Infof("nwMap key=%v, value=%v\n", string(k), nVal)
 			return nil
 		})
-		return nil
+		return err
 	})
 
 	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("epMap"))
 
-		b.ForEach(func(k, v []byte) error {
+		err := b.ForEach(func(k, v []byte) error {
 			vr := bytes.NewReader(v)
 			eVal := &epVal{}
 			if err := gob.NewDecoder(vr).Decode(eVal); err != nil {
@@ -769,7 +777,7 @@ func initDb() error {
 			glog.Infof("epMap key=%v, value=%v\n", string(k), eVal)
 			return nil
 		})
-		return nil
+		return err
 	})
 
 	return err
@@ -779,9 +787,12 @@ func main() {
 	flag.Parse()
 
 	if err := initDb(); err != nil {
-		glog.Fatalf("db init failed, quitting %v", err)
+		glog.Fatalf("db init failed, quitting [%v]", err)
 	}
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		glog.Errorf("unable to close database [%v]", err)
+	}()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/Plugin.Activate", handlerPluginActivate)
@@ -806,5 +817,8 @@ func main() {
 	r.HandleFunc("/IpamDriver.ReleaseAddress", ipamReleaseAddress)
 
 	r.HandleFunc("/", handler)
-	http.ListenAndServe("127.0.0.1:9999", r)
+	err := http.ListenAndServe("127.0.0.1:9999", r)
+	if err != nil {
+		glog.Errorf("docker plugin http server failed, [%v]", err)
+	}
 }

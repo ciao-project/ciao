@@ -138,23 +138,23 @@ func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
 	//Also create a table to drive this with type, type, payload
 	if role == ssntp.CNCIAGENT {
 		payload, _ := tenantAddedMarshal()
-		server.ssntp.SendEvent(uuid, ssntp.TenantAdded, payload)
+		_, _ = server.ssntp.SendEvent(uuid, ssntp.TenantAdded, payload)
 		time.Sleep(time.Second)
 
 		payload, _ = assignPublicIPMarshal()
-		server.ssntp.SendCommand(uuid, ssntp.AssignPublicIP, payload)
+		_, _ = server.ssntp.SendCommand(uuid, ssntp.AssignPublicIP, payload)
 		time.Sleep(time.Second)
 
 		payload, _ = releasePublicIPMarshal()
-		server.ssntp.SendCommand(uuid, ssntp.ReleasePublicIP, payload)
+		_, _ = server.ssntp.SendCommand(uuid, ssntp.ReleasePublicIP, payload)
 		time.Sleep(time.Second)
 
 		payload, _ = tenantRemovedMarshal()
-		server.ssntp.SendEvent(uuid, ssntp.TenantRemoved, payload)
+		_, _ = server.ssntp.SendEvent(uuid, ssntp.TenantRemoved, payload)
 		time.Sleep(time.Second)
 
 		payload, _ = tenantAddedMarshal()
-		server.ssntp.SendEvent(uuid, ssntp.TenantAdded, payload)
+		_, _ = server.ssntp.SendEvent(uuid, ssntp.TenantAdded, payload)
 		time.Sleep(time.Second)
 	}
 
@@ -222,7 +222,7 @@ func main() {
 		if err != nil {
 			fmt.Print(err)
 		}
-		pprof.StartCPUProfile(f)
+		_ = pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
 
@@ -238,5 +238,5 @@ func main() {
 		},
 	}
 
-	server.ssntp.Serve(&config, server)
+	_ = server.ssntp.Serve(&config, server)
 }

@@ -172,7 +172,7 @@ func Routing(action FwAction) error {
 	if err != nil {
 		return fmt.Errorf("Routing: Unable to open %v %v", procIPFwd, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	switch action {
 	case FwEnable:

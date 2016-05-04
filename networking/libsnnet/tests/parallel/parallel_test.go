@@ -462,12 +462,12 @@ func DockerSerial(netType dockerNetType, t *testing.T) {
 	if err := dockerPlugin.Init(); err != nil {
 		t.Fatal("ERROR: Docker Init failed ", err)
 	}
-	defer dockerPlugin.Close()
+	defer func() { _ = dockerPlugin.Close() }()
 
 	if err := dockerPlugin.Start(); err != nil {
 		t.Fatal("ERROR: Docker start failed ", err)
 	}
-	defer dockerPlugin.Stop()
+	defer func() { _ = dockerPlugin.Stop() }()
 
 	//Restarting docker here so the the plugin will
 	//be picked up without modifing the boot scripts
@@ -520,14 +520,14 @@ func DockerSerial(netType dockerNetType, t *testing.T) {
 			if _, _, cInfo, err := cn.CreateVnic(vnicCfg); err != nil {
 				t.Error(err)
 			} else {
-				defer cn.DestroyVnic(vnicCfg)
+				defer func() { _, _, _ = cn.DestroyVnic(vnicCfg) }()
 
 				if cInfo.CNContainerEvent == libsnnet.ContainerNetworkAdd {
 					if err := dockerNetCreate(t, cInfo.Subnet, cInfo.Gateway,
 						cInfo.Bridge, cInfo.SubnetID); err != nil {
 						t.Error("ERROR: docker network", cInfo, err)
 					} else {
-						defer dockerNetDelete(t, cInfo.SubnetID)
+						defer func() { _ = dockerNetDelete(t, cInfo.SubnetID) }()
 					}
 				}
 
@@ -545,7 +545,7 @@ func DockerSerial(netType dockerNetType, t *testing.T) {
 						t.Error("ERROR: docker run", cInfo, err)
 					}
 				}
-				defer dockerContainerDelete(t, vnicCfg.VnicIP.String())
+				defer func() { _ = dockerContainerDelete(t, vnicCfg.VnicIP.String()) }()
 			}
 		}
 	}

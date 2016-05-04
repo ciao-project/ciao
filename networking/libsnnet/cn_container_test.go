@@ -479,12 +479,12 @@ func TestCNContainer_Base(t *testing.T) {
 
 }
 
-func dockerRunTop(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
+func dockerRunTop(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) {
 	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
 		"--ip="+ip.String(), "--mac-address="+mac.String(),
 		"debian", "top", "-b", "-d1")
-	go cmd.Run() // Ensures that the containers stays alive. Kludgy
-	return nil
+	go func() { _ = cmd.Run() }() // Ensures that the containers stays alive. Kludgy
+	return
 }
 
 func dockerRunPingVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string, addr string) error {

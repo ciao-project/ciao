@@ -104,14 +104,15 @@ func (v *CnciVnic) create() error {
 	v.Link = vl
 
 	if err := v.setAlias(v.GlobalID); err != nil {
-		v.destroy()
-		return netError(v, "create set alias %v %v", v.GlobalID, err)
+		err1 := v.destroy()
+		return netError(v, "create set alias [%v] [%v] [%v]", v.GlobalID, err, err1)
 	}
 
 	if v.MACAddr != nil {
 		if err := v.setHardwareAddr(*v.MACAddr); err != nil {
-			v.destroy()
-			return netError(v, "create set hardware addr %v %v %v", v.MACAddr.String(), v.GlobalID, err)
+			err1 := v.destroy()
+			return netError(v, "create set hardware addr [%v] [%v] [%v] [%v]",
+				v.MACAddr.String(), v.GlobalID, err, err1)
 		}
 	}
 

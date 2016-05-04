@@ -144,7 +144,7 @@ func TestCNCI_Internal(t *testing.T) {
 	if err := bridge.create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
 	}
-	defer bridge.destroy()
+	defer func() { _ = bridge.destroy() }()
 
 	if err := bridge.enable(); err != nil {
 		t.Errorf("Bridge enable failed: %v", err)
@@ -160,7 +160,7 @@ func TestCNCI_Internal(t *testing.T) {
 	if err := d.start(); err != nil {
 		t.Errorf("DNS Masq Start: %v", err)
 	}
-	defer d.stop()
+	defer func() { _ = d.stop() }()
 
 	// At this time the bridge is ready waiting for tunnels to be created
 	// The next step will happen each time a tenant bridge is created for
@@ -181,7 +181,7 @@ func TestCNCI_Internal(t *testing.T) {
 	if err := gre.create(); err != nil {
 		t.Errorf("GRE Tunnel Creation failed: %v", err)
 	}
-	defer gre.destroy()
+	defer func() { _ = gre.destroy() }()
 
 	if err := gre.attach(bridge); err != nil {
 		t.Errorf("GRE Tunnel attach failed: %v", err)

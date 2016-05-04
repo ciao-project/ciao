@@ -73,12 +73,12 @@ func TestGre_Bridge(t *testing.T) {
 	if err := gre.create(); err != nil {
 		t.Errorf("Vnic Create failed: %v", err)
 	}
-	defer gre.destroy()
+	defer func() { _ = gre.destroy() }()
 
 	if err := bridge.create(); err != nil {
 		t.Errorf("Bridge Create failed: %v", err)
 	}
-	defer bridge.destroy()
+	defer func() { _ = bridge.destroy() }()
 
 	if err := gre.attach(bridge); err != nil {
 		t.Errorf("GRE attach failed: %v", err)

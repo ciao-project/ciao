@@ -193,7 +193,7 @@ func (v *Vnic) create() error {
 	}
 
 	if err := v.setAlias(v.GlobalID); err != nil {
-		v.destroy()
+		_ = v.destroy()
 		return netError(v, "create set alias %v %v", v.GlobalID, err)
 	}
 

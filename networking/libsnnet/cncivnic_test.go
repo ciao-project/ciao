@@ -111,7 +111,7 @@ func TestCnciVnic_Dup(t *testing.T) {
 		t.Errorf("CnciVnic creation failed: %v", err)
 	}
 
-	defer cnciVnic.destroy()
+	defer func() { _ = cnciVnic.destroy() }()
 
 	cnciVnic1, _ := newCnciVnic("testcnciVnic")
 	cnciVnic1.Link.ParentIndex = pIndex

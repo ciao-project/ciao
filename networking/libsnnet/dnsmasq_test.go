@@ -46,7 +46,7 @@ func TestDnsmasq_Basic(t *testing.T) {
 	if err := bridge.create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
 	}
-	defer bridge.destroy()
+	defer func() { _ = bridge.destroy() }()
 
 	d, err := newDnsmasq(id, tenant, subnet, reserved, bridge)
 	if err != nil {
@@ -109,7 +109,7 @@ func TestDnsmasq_Negative(t *testing.T) {
 	if err := bridge.create(); err != nil {
 		t.Errorf("Bridge creation failed: %v", err)
 	}
-	defer bridge.destroy()
+	defer func() { _ = bridge.destroy() }()
 
 	// Note: Re instantiate d each time as that
 	// is how it will be used

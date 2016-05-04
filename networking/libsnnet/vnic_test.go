@@ -104,7 +104,7 @@ func TestVnic_Dup(t *testing.T) {
 		t.Errorf("Vnic creation failed: %v", err)
 	}
 
-	defer vnic.destroy()
+	defer func() { _ = vnic.destroy() }()
 
 	vnic1, _ := newVnic("testvnic")
 
@@ -127,7 +127,7 @@ func TestVnicContainer_Dup(t *testing.T) {
 		t.Errorf("Vnic creation failed: %v", err)
 	}
 
-	defer vnic.destroy()
+	defer func() { _ = vnic.destroy() }()
 
 	vnic1, _ := newVnic("testconvnic")
 
@@ -292,12 +292,12 @@ func TestVnic_Bridge(t *testing.T) {
 		t.Errorf("Vnic Create failed: %v", err)
 	}
 
-	defer vnic.destroy()
+	defer func() { _ = vnic.destroy() }()
 
 	if err := bridge.create(); err != nil {
 		t.Errorf("Vnic Create failed: %v", err)
 	}
-	defer bridge.destroy()
+	defer func() { _ = bridge.destroy() }()
 
 	if err := vnic.attach(bridge); err != nil {
 		t.Errorf("Vnic attach failed: %v", err)
@@ -330,12 +330,12 @@ func TestVnicContainer_Bridge(t *testing.T) {
 		t.Errorf("Vnic Create failed: %v", err)
 	}
 
-	defer vnic.destroy()
+	defer func() { _ = vnic.destroy() }()
 
 	if err := bridge.create(); err != nil {
 		t.Errorf("Vnic Create failed: %v", err)
 	}
-	defer bridge.destroy()
+	defer func() { _ = bridge.destroy() }()
 
 	if err := vnic.attach(bridge); err != nil {
 		t.Errorf("Vnic attach failed: %v", err)

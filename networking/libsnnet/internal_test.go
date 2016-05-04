@@ -57,7 +57,7 @@ func TestCN_dbRebuild(t *testing.T) {
 		if err := bridge.create(); err != nil {
 			t.Error("Bridge creation failed: ", err)
 		}
-		defer bridge.destroy()
+		defer func(b *Bridge) { _ = b.destroy() }(bridge)
 
 		// Create the tunnel to connect to the CNCI
 		local := vnicCfg.VnicIP //Fake it for now
@@ -69,7 +69,7 @@ func TestCN_dbRebuild(t *testing.T) {
 		if err := gre.create(); err != nil {
 			t.Error("GRE Tunnel Creation failed: ", err)
 		}
-		defer gre.destroy()
+		defer func() { _ = gre.destroy() }()
 
 		if err := gre.attach(bridge); err != nil {
 			t.Error("GRE Tunnel attach failed: ", err)
@@ -83,7 +83,7 @@ func TestCN_dbRebuild(t *testing.T) {
 	if err := vnic.create(); err != nil {
 		t.Error("Vnic Create failed: ", err)
 	}
-	defer vnic.destroy()
+	defer func() { _ = vnic.destroy() }()
 
 	if err := vnic.attach(bridge); err != nil {
 		t.Error("Vnic attach failed: ", err)
@@ -97,7 +97,7 @@ func TestCN_dbRebuild(t *testing.T) {
 	if err := vnic1.create(); err != nil {
 		t.Error("Vnic Create failed: ", err)
 	}
-	defer vnic1.destroy()
+	defer func() { _ = vnic1.destroy() }()
 
 	if err := vnic1.attach(bridge); err != nil {
 		t.Error("Vnic attach failed: ", err)

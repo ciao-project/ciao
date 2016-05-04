@@ -69,7 +69,7 @@ func TestBridge_Dup(t *testing.T) {
 		t.Errorf("Bridge creation failed: %v", err)
 	}
 
-	defer bridge.destroy()
+	defer func() { _ = bridge.destroy() }()
 
 	bridge1, _ := newBridge("go_testbr")
 	if err := bridge1.create(); err == nil {

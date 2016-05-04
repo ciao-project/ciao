@@ -972,7 +972,7 @@ func TestCN_Whitebox(t *testing.T) {
 		if err := bridge.create(); err != nil {
 			t.Errorf("Bridge creation failed: %v", err)
 		}
-		defer bridge.destroy()
+		defer func() { _ = bridge.destroy() }()
 
 		// Create the tunnel to connect to the CNCI
 		local := cnIP
@@ -984,7 +984,7 @@ func TestCN_Whitebox(t *testing.T) {
 		if err := gre.create(); err != nil {
 			t.Errorf("GRE Tunnel Creation failed: %v", err)
 		}
-		defer gre.destroy()
+		defer func() { _ = gre.destroy() }()
 
 		if err := gre.attach(bridge); err != nil {
 			t.Errorf("GRE Tunnel attach failed: %v", err)
@@ -1008,7 +1008,7 @@ func TestCN_Whitebox(t *testing.T) {
 	if err := vnic.create(); err != nil {
 		t.Errorf("Vnic Create failed: %v", err)
 	}
-	defer vnic.destroy()
+	defer func() { _ = vnic.destroy() }()
 
 	if err := vnic.attach(bridge); err != nil {
 		t.Errorf("Vnic attach failed: %v", err)

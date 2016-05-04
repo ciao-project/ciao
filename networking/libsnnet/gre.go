@@ -108,7 +108,7 @@ func (g *GreTunEP) create() error {
 	g.Link = gl
 
 	if err := g.setAlias(g.GlobalID); err != nil {
-		g.destroy()
+		_ = g.destroy()
 		return netError(g, "create link set alias %v %v", g.GlobalID, err)
 	}
 

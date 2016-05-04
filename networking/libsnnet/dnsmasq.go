@@ -112,7 +112,7 @@ func (d *Dnsmasq) start() error {
 	}
 
 	if err := d.Dev.addIP(&d.gateway); err != nil {
-		d.Dev.delIP(&d.gateway) //TODO: check it already has the IP
+		_ = d.Dev.delIP(&d.gateway) //TODO: check it already has the IP
 		if err = d.Dev.addIP(&d.gateway); err != nil {
 			return fmt.Errorf("d.Dev.AddIP failed %v %v", err, d.gateway.String())
 		}
@@ -171,7 +171,7 @@ func (d *Dnsmasq) stop() error {
 	if err = os.Remove(d.hostsFile); err != nil {
 		cumError = append(cumError, fmt.Errorf("Unable to delete file %v %v", d.hostsFile, err))
 	}
-	os.Remove(d.leaseFile)
+	_ = os.Remove(d.leaseFile)
 
 	if cumError != nil {
 		allErrors := ""
@@ -186,7 +186,7 @@ func (d *Dnsmasq) stop() error {
 
 // Restart will stop and restart a new instance of dnsmasq
 func (d *Dnsmasq) restart() error {
-	d.stop() //Ignore any errors
+	_ = d.stop() //Ignore any errors
 
 	if err := d.start(); err != nil {
 		return fmt.Errorf("d.Start failed %v", err)
@@ -318,7 +318,7 @@ func (d *Dnsmasq) createHostsFile() error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	for _, e := range d.IPMap {
 		s := fmt.Sprintf("%s,%s", e.MACAddr, e.IPAddr)
@@ -331,8 +331,7 @@ func (d *Dnsmasq) createHostsFile() error {
 		}
 	}
 
-	file.Sync()
-	return nil
+	return file.Sync()
 }
 
 func (d *Dnsmasq) createConfigFile() error {
@@ -371,7 +370,7 @@ func (d *Dnsmasq) createConfigFile() error {
 	if err != nil {
 		return fmt.Errorf("Unable to create file %v %v", d.confFile, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	for _, s := range params {
 		if _, err := file.WriteString(s); err != nil {
@@ -379,9 +378,7 @@ func (d *Dnsmasq) createConfigFile() error {
 		}
 	}
 
-	file.Sync()
-
-	return nil
+	return file.Sync()
 }
 
 func (d *Dnsmasq) launch() error {
@@ -391,10 +388,7 @@ func (d *Dnsmasq) launch() error {
 	cmd := exec.Command(prog, args)
 	_, err := cmd.Output()
 
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (d *Dnsmasq) getPid() (int, error) {

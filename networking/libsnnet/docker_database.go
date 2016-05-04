@@ -95,7 +95,7 @@ func (db *dbProvider) DbMapRebuild(table string, dockerMap interface{}) error {
 	err := db.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(table))
 
-		b.ForEach(func(k, v []byte) error {
+		err := b.ForEach(func(k, v []byte) error {
 			vr := bytes.NewReader(v)
 
 			switch dmap := dockerMap.(type) {
@@ -118,7 +118,7 @@ func (db *dbProvider) DbMapRebuild(table string, dockerMap interface{}) error {
 
 			return nil
 		})
-		return nil
+		return err
 	})
 	return err
 }

@@ -93,8 +93,8 @@ func (b *Bridge) create() error {
 
 	b.Link = brl
 	if err := b.setAlias(b.GlobalID); err != nil {
-		b.destroy()
-		return netError(b, "create set alias %v", err)
+		err1 := b.destroy()
+		return netError(b, "create set alias [%v] [%v]", err, err1)
 	}
 
 	return nil

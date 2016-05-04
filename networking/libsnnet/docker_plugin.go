@@ -199,11 +199,11 @@ type DockerPlugin struct {
 	DockerNwMap
 }
 
-func sendResponse(resp interface{}, w http.ResponseWriter) error {
+func sendResponse(resp interface{}, w http.ResponseWriter) {
 	rb, err := json.Marshal(resp)
 	glog.Infof("Sending response := %v, %v", resp, err)
 	fmt.Fprintf(w, "%s", rb)
-	return err
+	return
 }
 
 func getBody(r *http.Request) ([]byte, error) {
@@ -220,7 +220,7 @@ func handler(d *DockerPlugin, w http.ResponseWriter, r *http.Request) {
 }
 
 func handlerPluginActivate(d *DockerPlugin, w http.ResponseWriter, r *http.Request) {
-	getBody(r)
+	_, _ = getBody(r)
 	//TODO: Where is this encoding?
 	resp := `{
     "Implements": ["NetworkDriver", "IpamDriver"]
@@ -229,7 +229,7 @@ func handlerPluginActivate(d *DockerPlugin, w http.ResponseWriter, r *http.Reque
 }
 
 func handlerGetCapabilities(d *DockerPlugin, w http.ResponseWriter, r *http.Request) {
-	getBody(r)
+	_, _ = getBody(r)
 	resp := api.GetCapabilityResponse{Scope: "local"}
 	sendResponse(resp, w)
 }
@@ -595,14 +595,14 @@ func handlerRevokeExternalConnectivity(d *DockerPlugin, w http.ResponseWriter, r
 }
 
 func ipamGetCapabilities(d *DockerPlugin, w http.ResponseWriter, r *http.Request) {
-	getBody(r)
+	_, _ = getBody(r)
 	resp := ipamapi.GetCapabilityResponse{RequiresMACAddress: true}
 	sendResponse(resp, w)
 }
 
 func ipamGetDefaultAddressSpaces(d *DockerPlugin, w http.ResponseWriter, r *http.Request) {
 	resp := ipamapi.GetAddressSpacesResponse{}
-	getBody(r)
+	_, _ = getBody(r)
 
 	resp.GlobalDefaultAddressSpace = ""
 	resp.LocalDefaultAddressSpace = ""
@@ -804,9 +804,10 @@ func (d *DockerPlugin) Start() error {
 
 	go func() {
 		glog.Infof("Starting HTTP Server")
-		//err := http.ListenAndServe(dockerPluginCfg.Addr, d.Router)
-		//glog.Error("Unable to start HTTP Server [%v]", err)
-		d.Server.ListenAndServe()
+		err := d.Server.ListenAndServe()
+		if err != nil {
+			glog.Errorf("Unable to start HTTP Server [%v]", err)
+		}
 	}()
 	return nil
 }
