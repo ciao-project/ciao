@@ -100,8 +100,11 @@ var (
 	instance         = flag.String("instance", "", "Instance UUID")
 	instanceMarker   = flag.String("instance-marker", "", "Show instance list starting from the next instance after instance-marker")
 	instanceOffset   = flag.Int("instance-offset", 0, "Show instance list starting from instance #instance-offset")
-	imageName        = flag.String("image-name", "", "Instance UUID")
+	imageName        = flag.String("image-name", "", "Image name")
+	imageID          = flag.String("image-id", "", "Image UUID")
+	imagePath        = flag.String("image-path", "", "Image file path")
 	createImage      = flag.Bool("create-image", false, "Create a new image")
+	uploadImage      = flag.Bool("upload-image", false, "Upload an image")
 	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	computeNode      = flag.String("cn", "", "Compute node UUID")
@@ -1028,5 +1031,15 @@ func main() {
 			fatalf("Missing required -image-name parameter")
 		}
 		createTenantImage(*identityUser, *identityPassword, id, *imageName)
+	}
+
+	if *uploadImage == true {
+		if *imageID == "" {
+			fatalf("Missing required -image-id parameter")
+		}
+		if *imagePath == "" {
+			fatalf("Missing required -image-path parameter")
+		}
+		uploadTenantImage(*identityUser, *identityPassword, id, *imageID, *imagePath)
 	}
 }

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
@@ -10,13 +12,14 @@ import (
 )
 
 func dumpImage(i *images.Image) {
-	fmt.Printf("\tName           [%s]\n", i.Name)
-	fmt.Printf("\tSize           [%d bytes]\n", i.SizeBytes)
-	fmt.Printf("\tUUID           [%s]\n", i.ID)
-	fmt.Printf("\tOwner          [%s]\n", i.Owner)
-	fmt.Printf("\tDisk format    [%s]\n", i.DiskFormat)
-	fmt.Printf("\tMinimal disk   [%d GB]\n", i.MinDiskGigabytes)
-	fmt.Printf("\tMinimal memory [%d MB]\n", i.MinRAMMegabytes)
+	fmt.Printf("\tName             [%s]\n", i.Name)
+	fmt.Printf("\tSize             [%d bytes]\n", i.SizeBytes)
+	fmt.Printf("\tUUID             [%s]\n", i.ID)
+	fmt.Printf("\tOwner            [%s]\n", i.Owner)
+	fmt.Printf("\tDisk format      [%s]\n", i.DiskFormat)
+	fmt.Printf("\tContainer format [%s]\n", i.ContainerFormat)
+	fmt.Printf("\tMinimal disk     [%d GB]\n", i.MinDiskGigabytes)
+	fmt.Printf("\tMinimal memory   [%d MB]\n", i.MinRAMMegabytes)
 }
 
 func imageServiceClient(username, password, tenant string) (*gophercloud.ServiceClient, error) {
@@ -71,6 +74,7 @@ func createTenantImage(username, password, tenant, name string) {
 
 	opts := images.CreateOpts{
 		Name:             name,
+		ContainerFormat:  "bare",
 		DiskFormat:       "qcow2",
 		MinDiskGigabytes: 8,
 		MinRAMMegabytes:  512,
@@ -83,4 +87,29 @@ func createTenantImage(username, password, tenant, name string) {
 
 	fmt.Printf("Created image:\n")
 	dumpImage(image)
+}
+
+func uploadTenantImage(username, password, tenant, imageID, filePath string) {
+	client, err := imageServiceClient(username, password, tenant)
+	if err != nil {
+		fatalf("Could not get Image service client [%s]\n", err)
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		fatalf("Could not open %s [%s]", filePath, err)
+	}
+	defer file.Close()
+
+	fileInfo, _ := file.Stat()
+	var size int64 = fileInfo.Size()
+	buffer := make([]byte, size)
+
+	file.Read(buffer)
+	fileBytes := bytes.NewReader(buffer)
+
+	res := images.Upload(client, imageID, fileBytes)
+	if res.Err != nil {
+		fatalf("Could not upload %s [%s]", filePath, res.Err)
+	}
 }
