@@ -31,8 +31,12 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 
 	// get a valid workload ID
 	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
+	if err != nil {
 		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No valid workloads")
 	}
 
 	url := computeURL + "/v2.1/" + tenant.ID + "/servers"
@@ -58,7 +62,7 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusAccepted {
-		t.Fatal(err)
+		t.Fatalf("expected response code: %d, got %d", http.StatusAccepted, resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -74,7 +78,7 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 	}
 
 	if servers.TotalServers != n {
-		t.Fatal(err)
+		t.Fatal("Not enough servers returned")
 	}
 
 	return servers
