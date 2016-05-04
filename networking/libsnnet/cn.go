@@ -155,7 +155,7 @@ func initCnTopology(topology *cnTopology) {
 //CnMaxAPIConcurrency default controls internal API concurrency.
 //It determines how many API's are being actively processed.
 //Can be over-ridden prior to init.
-var CnMaxAPIConcurrency int = 8
+var CnMaxAPIConcurrency = 8
 
 //CnAPITimeout default controls the API timeout
 const (

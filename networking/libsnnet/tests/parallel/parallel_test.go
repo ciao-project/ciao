@@ -31,7 +31,7 @@ import (
 )
 
 var cnNetEnv string
-var cnParallel bool = true
+var cnParallel = true
 
 //Controls the number of go routines that concurrently invoke Network APIs
 //This checks that the internal throttling is working
@@ -67,7 +67,7 @@ func logTime(t *testing.T, start time.Time, fn string) {
 	t.Logf("function %s took %s", fn, elapsedTime)
 }
 
-func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
+func CNAPIParallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
 
 	var sem = make(chan int, cnMaxOutstanding)
 
@@ -237,19 +237,19 @@ func CNAPI_Parallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
 }
 
 func TestCNContainer_Parallel(t *testing.T) {
-	CNAPI_Parallel(t, libsnnet.TenantContainer, false)
+	CNAPIParallel(t, libsnnet.TenantContainer, false)
 }
 
 func TestCNVM_Parallel(t *testing.T) {
-	CNAPI_Parallel(t, libsnnet.TenantVM, false)
+	CNAPIParallel(t, libsnnet.TenantVM, false)
 }
 
 func TestCNVMContainer_Parallel(t *testing.T) {
-	CNAPI_Parallel(t, libsnnet.TenantContainer+libsnnet.TenantVM, false)
+	CNAPIParallel(t, libsnnet.TenantContainer+libsnnet.TenantVM, false)
 }
 
 func TestCNVMContainer_Cancel(t *testing.T) {
-	CNAPI_Parallel(t, libsnnet.TenantContainer+libsnnet.TenantVM, true)
+	CNAPIParallel(t, libsnnet.TenantContainer+libsnnet.TenantVM, true)
 }
 
 //Docker Testing
@@ -428,8 +428,8 @@ const (
 //any issues with plugin responsiveness
 //
 //Test is expected to pass
-func Docker_Serial(netType dockerNetType, t *testing.T) {
-	defer logTime(t, time.Now(), "TestDocker_Serial")
+func DockerSerial(netType dockerNetType, t *testing.T) {
+	defer logTime(t, time.Now(), "TestDockerSerial")
 	cn := &libsnnet.ComputeNode{}
 
 	cn.NetworkConfig = &libsnnet.NetworkConfig{
@@ -559,7 +559,7 @@ func Docker_Serial(netType dockerNetType, t *testing.T) {
 //
 //Test is expected to pass
 func TestDockerNetCiao_Serial(t *testing.T) {
-	Docker_Serial(netCiao, t)
+	DockerSerial(netCiao, t)
 }
 
 //Tests launch of Docker containers at scale (serially)
@@ -571,7 +571,7 @@ func TestDockerNetCiao_Serial(t *testing.T) {
 //
 //Test is expected to pass
 func TestDockerNetNone_Serial(t *testing.T) {
-	Docker_Serial(netDockerNone, t)
+	DockerSerial(netDockerNone, t)
 }
 
 //Tests launch of Docker containers at scale (serially)
@@ -583,5 +583,5 @@ func TestDockerNetNone_Serial(t *testing.T) {
 //
 //Test is expected to pass
 func TestDockerNetDocker_Serial(t *testing.T) {
-	Docker_Serial(netDockerDefault, t)
+	DockerSerial(netDockerDefault, t)
 }
