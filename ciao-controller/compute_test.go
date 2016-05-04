@@ -111,7 +111,7 @@ func TestListServerDetailsTenant(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Fatal(err)
+		t.Fatalf("expected response code: %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -126,7 +126,7 @@ func TestListServerDetailsTenant(t *testing.T) {
 	}
 
 	if s.TotalServers < 1 {
-		t.Fatal(err)
+		t.Fatal("Not enough servers returned")
 	}
 }
 
