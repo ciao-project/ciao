@@ -512,6 +512,27 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 	return
 }
 
+func addComputeTestTenant() (tenant *types.Tenant, err error) {
+	/* add a new tenant */
+	tenant, err = context.ds.AddTenant(computeTestUser)
+	if err != nil {
+		return
+	}
+
+	// Add fake CNCI
+	err = context.ds.AddTenantCNCI(computeTestUser, uuid.Generate().String(), tenant.CNCIMAC)
+	if err != nil {
+		return
+	}
+
+	err = context.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.2")
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func BenchmarkStartSingleWorkload(b *testing.B) {
 	var err error
 
@@ -1444,9 +1465,15 @@ func TestNoNetwork(t *testing.T) {
 var testClients []*ssntpTestClient
 var context *controller
 var server ssntpTestServer
+var computeURL string
+var testIdentityURL string
+
+const computeTestUser = "f452bbc7-5076-44d5-922c-3b9d2ce1503f"
 
 func TestMain(m *testing.M) {
 	flag.Parse()
+
+	computeURL = "https://localhost:" + strconv.Itoa(*computeAPIPort)
 
 	// create fake ssntp server
 	startTestServer(&server)
@@ -1478,6 +1505,28 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		os.Exit(1)
 	}
+
+	id := startIdentityTestServer()
+	defer id.Close()
+
+	idConfig := identityConfig{
+		endpoint:        id.URL,
+		serviceUserName: "test",
+		servicePassword: "iheartciao",
+	}
+
+	testIdentityURL = id.URL
+
+	context.id, err = newIdentityClient(idConfig)
+	if err != nil {
+		fmt.Println(err)
+		// keep going anyway - any compute api tests will fail.
+	}
+
+	_, _ = addComputeTestTenant()
+	go createComputeAPI(context)
+
+	time.Sleep(1 * time.Second)
 
 	code := m.Run()
 
