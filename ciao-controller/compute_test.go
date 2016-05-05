@@ -366,3 +366,50 @@ func TestListFlavors(t *testing.T) {
 		t.Fatal("Flavor information didn't match workload information")
 	}
 }
+
+func TestShowFlavorDetails(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tURL := computeURL + "/v2.1/" + tenant.ID + "/flavors/"
+
+	wls, err := context.ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, w := range wls {
+		details := payloads.FlavorDetails{
+			OsFlavorAccessIsPublic: true,
+			ID:   w.ID,
+			Disk: w.ImageID,
+			Name: w.Description,
+		}
+
+		defaults := w.Defaults
+		for r := range defaults {
+			switch defaults[r].Type {
+			case payloads.VCPUs:
+				details.Vcpus = defaults[r].Value
+			case payloads.MemMB:
+				details.RAM = defaults[r].Value
+			}
+		}
+
+		url := tURL + w.ID
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+		var f payloads.ComputeFlavorDetails
+
+		err = json.Unmarshal(body, &f)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if reflect.DeepEqual(details, f.Flavor) == false {
+			t.Fatal("Flavor details not correct")
+		}
+	}
+}
