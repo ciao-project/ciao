@@ -233,6 +233,8 @@ func TestDeleteServer(t *testing.T) {
 		t.Fatal("Not enough servers returned")
 	}
 
+	time.Sleep(1 * time.Second)
+
 	for _, s1 := range s.Servers {
 		url := tURL + s1.ID
 		if s1.HostID != "" {
