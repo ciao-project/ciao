@@ -288,3 +288,41 @@ func TestServersActionStart(t *testing.T) {
 
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b)
 }
+
+func TestServersActionStop(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	url := computeURL + "/v2.1/" + tenant.ID + "/servers/action"
+
+	client := newTestClient(0, ssntp.AGENT)
+	defer client.ssntp.Close()
+
+	servers := testCreateServer(t, 1)
+	if servers.TotalServers != 1 {
+		t.Fatal(err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	client.sendStats()
+
+	time.Sleep(1 * time.Second)
+
+	var ids []string
+	ids = append(ids, servers.Servers[0].ID)
+
+	cmd := payloads.CiaoServersAction{
+		Action:    "os-stop",
+		ServerIDs: ids,
+	}
+
+	b, err := json.Marshal(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b)
+}
