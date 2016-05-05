@@ -21,6 +21,9 @@ before_script:
    - sudo cp /etc/pki/ciao/cert-Scheduler-localhost.pem /etc/pki/ciao/server.pem
    - sudo cp /etc/pki/ciao/cert-CNAgent-localhost.pem /etc/pki/ciao/client.pem
    - sudo cp /etc/pki/ciao/cert-Controller-localhost.pem /etc/pki/ciao/cert-client-localhost.pem
+   - sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/pki/ciao/ciao-controller-key.pem -out /etc/pki/ciao/ciao-controller-cacert.pem -subj '/CN=localhost/O=CIAO test server/C=US'
+   - sudo cp /etc/pki/ciao/ciao-controller-cacert.pem /usr/local/share/ca-certificates/ciao-controller-cacert.crt
+   - sudo update-ca-certificates
 
 script:
    - go env
