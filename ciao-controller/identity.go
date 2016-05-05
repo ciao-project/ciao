@@ -154,39 +154,6 @@ func (r getResult) extractRoles() (*Roles, error) {
 	return &Roles{Entries: response.Token.ValidRoles}, nil
 }
 
-// validate
-// Confirm that the token has access to the Project they are requesting
-// an operation on, and that they have a role which permits them to
-// access this api.
-func (i *identity) validate(token string, tenantID string, role string) bool {
-	r := v3tokens.Get(i.scV3, token)
-
-	result := getResult{r}
-
-	p, err := result.extractProject()
-	if err != nil {
-		return false
-	}
-
-	if p.ID != tenantID {
-		glog.V(2).Info("expected ", tenantID, " got ", p.ID)
-		return false
-	}
-
-	roles, err := result.extractRoles()
-	if err != nil {
-		return false
-	}
-
-	for i := range roles.Entries {
-		if roles.Entries[i].Name == role {
-			return true
-		}
-	}
-
-	return false
-}
-
 // validateServices
 // Validates that a given user belonging to a tenant
 // can access a service specified by its type and name.
