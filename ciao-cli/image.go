@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/rackspace/gophercloud"
@@ -112,4 +113,23 @@ func uploadTenantImage(username, password, tenant, imageID, filePath string) {
 	if res.Err != nil {
 		fatalf("Could not upload %s [%s]", filePath, res.Err)
 	}
+}
+
+func downloadTenantImage(username, password, tenant, imageID string) {
+	client, err := imageServiceClient(username, password, tenant)
+	if err != nil {
+		fatalf("Could not get Image service client [%s]\n", err)
+	}
+
+	r, err := images.Download(client, imageID).Extract()
+	if err != nil {
+		fatalf("Could not download image [%s]\n", err)
+	}
+
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		fatalf("Could not read [%s]\n", err)
+	}
+
+	fmt.Printf("%s\n", b)
 }
