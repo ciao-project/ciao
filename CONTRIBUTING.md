@@ -54,3 +54,17 @@ If you want to work on github.com/01org/ciao and your fork on the same workstati
 7. go install ./...
 
 Once you've finished making your changes push them to your fork and send the PR via the github UI.  If you don't need to maintain the github.com/01org/ciao repo and your fork on the same workstation you can skip steps 2 and 3.
+
+## Issue tracking
+
+If you have a problem, please let us know.  IRC is a perfectly fine place
+to quickly informally bring something up, if you get a response.  The
+[mailing list](https://lists.clearlinux.org/mailman/listinfo/ciao-devel)
+is a more durable communication channel.
+
+If it's a bug not already documented, by all means please [open an
+issue in github](https://github.com/01org/ciao/issues/new) so we all get visibility
+the problem and work toward resolution.
+
+For feature requests we're also using github issues, with the label
+"enhancement".
