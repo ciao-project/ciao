@@ -24,6 +24,32 @@ import (
 	"testing"
 )
 
+func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse int, data []byte) []byte {
+	req, err := http.NewRequest(method, URL, bytes.NewBuffer(data))
+	req.Header.Set("X-Auth-Token", "imavalidtoken")
+	if data != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != expectedResponse {
+		t.Fatalf("expected response code: %d, got %d", expectedResponse, resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return body
+}
+
 func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 	tenant, err := context.ds.GetTenant(computeTestUser)
 	if err != nil {
@@ -51,25 +77,7 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 		t.Fatal(err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(b))
-	req.Header.Set("X-Auth-Token", "imavalidtoken")
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusAccepted {
-		t.Fatalf("expected response code: %d, got %d", http.StatusAccepted, resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	body := testHTTPRequest(t, "POST", url, http.StatusAccepted, b)
 
 	var servers payloads.ComputeServers
 
@@ -87,27 +95,11 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 
 func testListServerDetailsTenant(t *testing.T, tenantID string) payloads.ComputeServers {
 	url := computeURL + "/v2.1/" + tenantID + "/servers/detail"
-	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Set("X-Auth-Token", "imavalidtoken")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected response code: %d, got %d", http.StatusOK, resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
 	var s payloads.ComputeServers
-	err = json.Unmarshal(body, &s)
+	err := json.Unmarshal(body, &s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,25 +146,8 @@ func TestListServerDetailsWorkload(t *testing.T) {
 	}
 
 	url := computeURL + "/v2.1/flavors/" + wls[0].ID + "/servers/detail"
-	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Set("X-Auth-Token", "imavalidtoken")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		t.Fatal(string(body))
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
 	var s payloads.ComputeServers
 	err = json.Unmarshal(body, &s)
@@ -205,26 +180,9 @@ func TestShowServerDetails(t *testing.T) {
 	}
 
 	for _, s1 := range s.Servers {
-		URL := tURL + s1.ID
+		url := tURL + s1.ID
 
-		req, err := http.NewRequest("GET", URL, nil)
-		req.Header.Set("X-Auth-Token", "imavalidtoken")
-
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected response code: %d, got %d", http.StatusOK, resp.StatusCode)
-		}
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
 		var s2 payloads.ComputeServer
 		err = json.Unmarshal(body, &s2)
