@@ -16,6 +16,7 @@ func dumpImage(i *images.Image) {
 	fmt.Printf("\tName             [%s]\n", i.Name)
 	fmt.Printf("\tSize             [%d bytes]\n", i.SizeBytes)
 	fmt.Printf("\tUUID             [%s]\n", i.ID)
+	fmt.Printf("\tStatus           [%s]\n", i.Status)
 	fmt.Printf("\tOwner            [%s]\n", i.Owner)
 	fmt.Printf("\tDisk format      [%s]\n", i.DiskFormat)
 	fmt.Printf("\tContainer format [%s]\n", i.ContainerFormat)
