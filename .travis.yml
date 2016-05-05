@@ -33,7 +33,7 @@ script:
    - sudo docker pull debian
    - sudo ip link add testdummy type dummy
    - sudo ip addr add 198.51.100.1/24 dev testdummy
-   - test-cases -text github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/ciao-controller github.com/01org/ciao/payloads
+   - test-cases -text github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/ciao-controller github.com/01org/ciao/payloads github.com/01org/ciao/ciao-controller/internal/datastore
    - export GOROOT=`go env GOROOT` && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -text github.com/01org/ciao/ssntp
    - go get github.com/google/gofuzz
    - export GOROOT=`go env GOROOT` && export SNNET_ENV=198.51.100.0/24 && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -text -short -tags travis github.com/01org/ciao/networking/libsnnet
