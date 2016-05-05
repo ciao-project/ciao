@@ -84,22 +84,8 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 	return servers
 }
 
-func TestCreateSingleServer(t *testing.T) {
-	_ = testCreateServer(t, 1)
-}
-
-func TestListServerDetailsTenant(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	servers := testCreateServer(t, 1)
-	if servers.TotalServers != 1 {
-		t.Fatal(err)
-	}
-
-	url := computeURL + "/v2.1/" + tenant.ID + "/servers/detail"
+func testListServerDetailsTenant(t *testing.T, tenantID string) payloads.ComputeServers {
+	url := computeURL + "/v2.1/" + tenantID + "/servers/detail"
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("X-Auth-Token", "imavalidtoken")
 
@@ -124,6 +110,26 @@ func TestListServerDetailsTenant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	return s
+}
+
+func TestCreateSingleServer(t *testing.T) {
+	_ = testCreateServer(t, 1)
+}
+
+func TestListServerDetailsTenant(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	servers := testCreateServer(t, 1)
+	if servers.TotalServers != 1 {
+		t.Fatal(err)
+	}
+
+	s := testListServerDetailsTenant(t, tenant.ID)
 
 	if s.TotalServers < 1 {
 		t.Fatal("Not enough servers returned")
