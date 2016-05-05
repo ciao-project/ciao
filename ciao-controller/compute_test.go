@@ -543,3 +543,33 @@ func TestListEventsTenant(t *testing.T) {
 		t.Fatal("Tenant events not correct")
 	}
 }
+
+func TestListNodeServers(t *testing.T) {
+	computeNodes := context.ds.GetNodeLastStats()
+
+	for _, n := range computeNodes.Nodes {
+		instances, err := context.ds.GetAllInstancesByNode(n.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		url := computeURL + "/v2.1/nodes/" + n.ID + "/servers/detail"
+
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+		var result payloads.CiaoServersStats
+
+		err = json.Unmarshal(body, &result)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if result.TotalServers != len(instances) {
+			t.Fatal("Incorrect number of servers")
+		}
+
+		// TBD: make sure result exactly matches expected results.
+		// this isn't done now because the list of instances is
+		// possibly out of order
+	}
+}
