@@ -39,7 +39,14 @@ func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse i
 	defer resp.Body.Close()
 
 	if resp.StatusCode != expectedResponse {
-		t.Fatalf("expected response code: %d, got %d", expectedResponse, resp.StatusCode)
+		var msg string
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err == nil {
+			msg = string(body)
+		}
+
+		t.Fatalf("expected: %d, got: %d, msg: %s", expectedResponse, resp.StatusCode, msg)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
