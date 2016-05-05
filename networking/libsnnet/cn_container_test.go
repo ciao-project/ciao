@@ -18,33 +18,10 @@ package libsnnet
 
 import (
 	"net"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
 )
-
-var cnConNetEnv string
-var cnDebug = false
-
-func cnConInit() {
-	cnConNetEnv = os.Getenv("SNNET_ENV")
-
-	if cnConNetEnv == "" {
-		cnConNetEnv = "192.168.0.0/24"
-	}
-
-	debug := os.Getenv("SNNET_DEBUG")
-	if debug != "" && debug != "false" {
-		cnDebug = true
-	}
-}
-
-func debugPrint(t *testing.T, args ...interface{}) {
-	if cnDebug {
-		t.Log(args)
-	}
-}
 
 func linkDump(t *testing.T) error {
 	out, err := exec.Command("ip", "-d", "link").CombinedOutput()
@@ -195,28 +172,9 @@ func dockerNetInfo(t *testing.T, subnetID string) error {
 //
 //Test is expected to pass
 func TestCNContainer_Base(t *testing.T) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
-	}
-
-	cn.ID = "cnuuid"
-	cnConInit()
-	_, mnet, _ := net.ParseCIDR(cnConNetEnv)
-
-	mgtNet := []net.IPNet{*mnet}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
 
 	dockerPlugin := NewDockerPlugin()
@@ -513,28 +471,9 @@ func dockerRunPingVerify(t *testing.T, name string, ip net.IP, mac net.HardwareA
 //
 //Test is expected to pass
 func TestCNContainer_Connectivity(t *testing.T) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
-	}
-
-	cn.ID = "cnuuid"
-	cnConInit()
-	_, mnet, _ := net.ParseCIDR(cnConNetEnv)
-
-	mgtNet := []net.IPNet{*mnet}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
 
 	dockerPlugin := NewDockerPlugin()
@@ -648,28 +587,9 @@ func TestCNContainer_Connectivity(t *testing.T) {
 //
 //Test is expected to pass
 func TestCNContainer_Interop1(t *testing.T) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
-	}
-
-	cn.ID = "cnuuid"
-	cnConInit()
-	_, mnet, _ := net.ParseCIDR(cnConNetEnv)
-
-	mgtNet := []net.IPNet{*mnet}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
 
 	dockerPlugin := NewDockerPlugin()
@@ -828,28 +748,9 @@ func TestCNContainer_Interop1(t *testing.T) {
 //
 //Test is expected to pass
 func TestCNContainer_Interop2(t *testing.T) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
-	}
-
-	cn.ID = "cnuuid"
-	cnConInit()
-	_, mnet, _ := net.ParseCIDR(cnConNetEnv)
-
-	mgtNet := []net.IPNet{*mnet}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
 
 	dockerPlugin := NewDockerPlugin()
@@ -936,7 +837,7 @@ func TestCNContainer_Interop2(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	_, _, _, err := cn.CreateVnic(vnicCfg3)
+	_, _, _, err = cn.CreateVnic(vnicCfg3)
 	if err != nil {
 		t.Error(err)
 	}

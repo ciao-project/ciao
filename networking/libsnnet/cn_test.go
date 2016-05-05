@@ -24,7 +24,14 @@ import (
 	"testing"
 )
 
-var cnNetEnv string
+var snTestNet string
+var snTestDebug = false
+
+func debugPrint(t *testing.T, args ...interface{}) {
+	if snTestDebug {
+		t.Log(args)
+	}
+}
 
 //ScaleCfg is used to setup test parameters for
 //testing scaling of network interface creation
@@ -36,12 +43,49 @@ var ScaleCfg = struct {
 	MaxVnicsLong    int
 }{2, 64, 8, 64}
 
-func cninit() {
-	cnNetEnv = os.Getenv("SNNET_ENV")
-
-	if cnNetEnv == "" {
-		cnNetEnv = "192.168.0.0/24"
+func snTestInit() {
+	snTestNet = os.Getenv("SNNET_ENV")
+	if snTestNet == "" {
+		snTestNet = "127.0.0.1/24"
 	}
+
+	debug := os.Getenv("SNNET_DEBUG")
+	if debug != "" && debug != "false" {
+		snTestDebug = true
+	}
+}
+
+func cnTestInit() (*ComputeNode, error) {
+	snTestInit()
+
+	_, testNet, err := net.ParseCIDR(snTestNet)
+	if err != nil {
+		return nil, err
+	}
+
+	netConfig := &NetworkConfig{
+		ManagementNet: []net.IPNet{*testNet},
+		ComputeNet:    []net.IPNet{*testNet},
+		Mode:          GreTunnel,
+	}
+
+	cn := &ComputeNode{
+		ID:            "TestCNUUID",
+		NetworkConfig: netConfig,
+	}
+
+	if err := cn.Init(); err != nil {
+		return nil, err
+	}
+	if err := cn.ResetNetwork(); err != nil {
+		return nil, err
+	}
+	if err := cn.DbRebuild(nil); err != nil {
+		return nil, err
+	}
+
+	return cn, nil
+
 }
 
 //Tests the scaling of the CN VNIC Creation
@@ -51,32 +95,10 @@ func cninit() {
 //
 //Test should pass OK
 func TestCN_Scaling(t *testing.T) {
-	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
-	}
-
-	cn.ID = "cnuuid"
-
-	cninit()
-	_, mnet, _ := net.ParseCIDR(cnNetEnv)
-
-	//From YAML, on agent init
-	mgtNet := []net.IPNet{*mnet}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-	if err := cn.ResetNetwork(); err != nil {
-		t.Error("ERROR: cn.ResetNetwork failed", err)
-	}
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
 
 	//From YAML on instance init
@@ -94,7 +116,7 @@ func TestCN_Scaling(t *testing.T) {
 
 	for s3 := 1; s3 <= maxBridges; s3++ {
 		s4 := 0
-		_, tenantNet, _ := net.ParseCIDR("193.168." + strconv.Itoa(s3) + "." + strconv.Itoa(s4) + "/24")
+		_, tenantNet, _ := net.ParseCIDR("192.168." + strconv.Itoa(s3) + "." + strconv.Itoa(s4) + "/24")
 		subnetID := "suuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
 
 		for s4 := 2; s4 <= maxVnics; s4++ {
@@ -125,7 +147,7 @@ func TestCN_Scaling(t *testing.T) {
 
 	for s3 := 1; s3 <= maxBridges; s3++ {
 		s4 := 0
-		_, tenantNet, _ := net.ParseCIDR("193.168." + strconv.Itoa(s3) + "." + strconv.Itoa(s4) + "/24")
+		_, tenantNet, _ := net.ParseCIDR("192.168." + strconv.Itoa(s3) + "." + strconv.Itoa(s4) + "/24")
 		subnetID := "suuid_" + strconv.Itoa(s3) + "_" + strconv.Itoa(s4)
 
 		for s4 := 2; s4 <= maxVnics; s4++ {
@@ -166,31 +188,13 @@ func TestCN_Scaling(t *testing.T) {
 //
 //Test should pass OK
 func TestCN_ResetNetwork(t *testing.T) {
-	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
 
-	cn.ID = "cnuuid"
-
-	_, net2, _ := net.ParseCIDR("193.168.1.0/24")
-	cninit()
-	_, net3, _ := net.ParseCIDR(cnNetEnv)
-
-	//From YAML, on agent init
-	mgtNet := []net.IPNet{*net2, *net3}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-	if err := cn.ResetNetwork(); err != nil {
-		t.Error("ERROR: cn.ResetNetwork failed", err)
-	}
+	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
@@ -198,7 +202,7 @@ func TestCN_ResetNetwork(t *testing.T) {
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
-		Subnet:     *net2,
+		Subnet:     *tenantNet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -271,41 +275,12 @@ func TestCN_ResetNetwork(t *testing.T) {
 //
 //Test should pass OK
 func TestCN_MultiTenant(t *testing.T) {
-	cn := &ComputeNode{}
 
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
-
-	cn.ID = "cnuuid"
-
-	//_, net1, _ := net.ParseCIDR("127.0.0.0/24")
-	_, net2, _ := net.ParseCIDR("193.168.1.0/24")
-	cninit()
-	_, net3, _ := net.ParseCIDR(cnNetEnv)
-
-	//From YAML, on agent init
-	mgtNet := []net.IPNet{*net2, *net3}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-	if err := cn.ResetNetwork(); err != nil {
-		t.Error("ERROR: cn.ResetNetwork failed", err)
-	}
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
-	}
-	if err := cn.ResetNetwork(); err != nil {
-		t.Error("ERROR: cn.ResetNetwork failed", err)
-	}
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
-	}
+	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
@@ -313,7 +288,7 @@ func TestCN_MultiTenant(t *testing.T) {
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
-		Subnet:     *net2,
+		Subnet:     *tenantNet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -368,33 +343,11 @@ func TestCN_MultiTenant(t *testing.T) {
 //
 //Test is expected to pass
 func TestCN_Negative(t *testing.T) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
-
-	cn.ID = "cnuuid"
-
-	//_, net1, _ := net.ParseCIDR("127.0.0.0/24")
-	_, net2, _ := net.ParseCIDR("193.168.1.0/24")
-	cninit()
-	_, net3, _ := net.ParseCIDR(cnNetEnv)
-
-	//From YAML, on agent init
-	mgtNet := []net.IPNet{*net2, *net3}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
-	}
+	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
@@ -402,7 +355,7 @@ func TestCN_Negative(t *testing.T) {
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
-		Subnet:     *net2,
+		Subnet:     *tenantNet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -465,33 +418,11 @@ func TestCN_Negative(t *testing.T) {
 //
 //Test should pass OK
 func TestCN_AndNN(t *testing.T) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
-
-	cn.ID = "cnuuid"
-
-	//_, net1, _ := net.ParseCIDR("127.0.0.0/24") //Add this so that init will pass
-	_, net1, _ := net.ParseCIDR("192.168.0.0/24")
-	_, net2, _ := net.ParseCIDR("192.168.1.0/24")
-	cninit()
-	_, net3, _ := net.ParseCIDR(cnNetEnv)
-
-	mgtNet := []net.IPNet{*net1, *net2, *net3}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
-	}
+	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
 	cnciMac, _ := net.ParseMAC("CA:FE:CC:01:02:03")
@@ -530,7 +461,7 @@ func TestCN_AndNN(t *testing.T) {
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
-		Subnet:     *net2,
+		Subnet:     *tenantNet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -573,7 +504,7 @@ func TestCN_AndNN(t *testing.T) {
 		VnicIP:     net.IPv4(192, 168, 1, 2),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac2,
-		Subnet:     *net2,
+		Subnet:     *tenantNet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid2",
 		InstanceID: "iuuid2",
@@ -657,32 +588,9 @@ func TestCN_AndNN(t *testing.T) {
 //
 //Test is expected to pass
 func TestNN_Base(t *testing.T) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
-	}
-
-	cn.ID = "cnuuid"
-
-	//_, net1, _ := net.ParseCIDR("127.0.0.0/24") //Add this so that init will pass
-	_, net1, _ := net.ParseCIDR("193.168.0.0/24")
-	_, net2, _ := net.ParseCIDR("193.168.1.0/24")
-	cninit()
-	_, net3, _ := net.ParseCIDR(cnNetEnv)
-
-	mgtNet := []net.IPNet{*net1, *net2, *net3}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
 
 	//From YAML on instance init
@@ -789,42 +697,11 @@ func validSsntpEvent(ssntpEvent *SsntpEventInfo, cfg *VnicConfig) error {
 //
 //Test is expected to pass
 func TestCN_Base(t *testing.T) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
+	cn, err := cnTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
 	}
-
-	cn.ID = "cnuuid"
-
-	_, net1, _ := net.ParseCIDR("127.0.0.0/24") //Add this so that init will pass
-	_, net2, _ := net.ParseCIDR("193.168.1.0/24")
-	cninit()
-	_, net3, _ := net.ParseCIDR(cnNetEnv)
-
-	mgtNet := []net.IPNet{*net2}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	//Negative
-	if err := cn.Init(); err == nil {
-		t.Error("ERROR: cn.Init failed", err)
-	}
-
-	//From YAML, on agent init
-	mgtNet = []net.IPNet{*net1, *net2, *net3}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		t.Fatal("ERROR: cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
-	}
+	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
@@ -832,7 +709,7 @@ func TestCN_Base(t *testing.T) {
 		VnicIP:     net.IPv4(192, 168, 1, 100),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac,
-		Subnet:     *net2,
+		Subnet:     *tenantNet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid",
 		InstanceID: "iuuid",
@@ -882,7 +759,7 @@ func TestCN_Base(t *testing.T) {
 		VnicIP:     net.IPv4(192, 168, 1, 2),
 		ConcIP:     net.IPv4(192, 168, 1, 1),
 		VnicMAC:    mac2,
-		Subnet:     *net2,
+		Subnet:     *tenantNet,
 		SubnetKey:  0xF,
 		VnicID:     "vuuid2",
 		InstanceID: "iuuid2",

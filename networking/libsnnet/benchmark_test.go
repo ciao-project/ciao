@@ -44,26 +44,12 @@ import (
 //
 //Test should pass ok
 func BenchmarkComputeNodeWorstCase(b *testing.B) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
+	cn, err := cnTestInit()
+	if err != nil {
+		b.Fatal("ERROR: Init failed", err)
 	}
 
-	cn.ID = "cnuuid"
-	_, net1, _ := net.ParseCIDR("192.168.0.0/24")
 	_, tnet, _ := net.ParseCIDR("192.168.1.0/24")
-
-	//From YAML, on agent init
-	mgtNet := []net.IPNet{*net1}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		b.Fatal("cn.Init failed", err)
-	}
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
@@ -114,30 +100,11 @@ func BenchmarkComputeNodeWorstCase(b *testing.B) {
 //
 //Test should pass OK
 func BenchmarkComputeNodeBestCase(b *testing.B) {
-	cn := &ComputeNode{}
-
-	cn.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
+	cn, err := cnTestInit()
+	if err != nil {
+		b.Fatal("ERROR: Init failed", err)
 	}
-
-	cn.ID = "cnuuid"
-	_, net1, _ := net.ParseCIDR("192.168.0.0/24")
 	_, tnet, _ := net.ParseCIDR("192.168.1.0/24")
-
-	//From YAML, on agent init
-	mgtNet := []net.IPNet{*net1}
-	cn.ManagementNet = mgtNet
-	cn.ComputeNet = mgtNet
-
-	if err := cn.Init(); err != nil {
-		b.Fatal("cn.Init failed", err)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		b.Fatal("cn.dbRebuild failed")
-	}
 
 	//From YAML on instance init
 	macSeed, _ := net.ParseMAC("CA:FE:00:01:02:ED")

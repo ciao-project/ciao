@@ -19,18 +19,37 @@ package libsnnet
 import (
 	"fmt"
 	"net"
-	"os"
 	"testing"
 )
 
-var cnciNetEnv string
+func cnciTestInit() (*Cnci, error) {
+	snTestInit()
 
-func cnciinit() {
-	cnciNetEnv = os.Getenv("SNNET_ENV")
-
-	if cnNetEnv == "" {
-		cnNetEnv = "10.3.66.0/24"
+	_, testNet, err := net.ParseCIDR(snTestNet)
+	if err != nil {
+		return nil, err
 	}
+
+	netConfig := &NetworkConfig{
+		ManagementNet: []net.IPNet{*testNet},
+		ComputeNet:    []net.IPNet{*testNet},
+		Mode:          GreTunnel,
+	}
+
+	cnci := &Cnci{
+		ID:            "TestCNUUID",
+		NetworkConfig: netConfig,
+	}
+
+	if err := cnci.Init(); err != nil {
+		return nil, err
+	}
+	if err := cnci.RebuildTopology(); err != nil {
+		return nil, err
+	}
+
+	return cnci, nil
+
 }
 
 //Tests all CNCI APIs
@@ -42,31 +61,13 @@ func cnciinit() {
 //
 //Test should pass ok
 func TestCNCI_Init(t *testing.T) {
-	cnci := &Cnci{}
 
-	cnci.NetworkConfig = &NetworkConfig{
-		ManagementNet: nil,
-		ComputeNet:    nil,
-		Mode:          GreTunnel,
+	cnci, err := cnciTestInit()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	cnci.ID = "cnciuuid"
-
-	cnciinit()
-	_, net1, _ := net.ParseCIDR(cnNetEnv)
 	_, tnet, _ := net.ParseCIDR("192.168.0.0/24")
-
-	mgtNet := []net.IPNet{*net1}
-	cnci.ManagementNet = mgtNet
-	cnci.ComputeNet = mgtNet
-
-	if err := cnci.Init(); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := cnci.RebuildTopology(); err != nil {
-		t.Fatal(err)
-	}
 
 	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
 		t.Error(err)
