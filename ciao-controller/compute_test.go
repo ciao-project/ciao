@@ -20,6 +20,7 @@ import (
 	"github.com/01org/ciao/payloads"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"testing"
 )
 
@@ -181,5 +182,58 @@ func TestListServerDetailsWorkload(t *testing.T) {
 
 	if s.TotalServers < 10 {
 		t.Fatal("Did not return correct number of servers")
+	}
+}
+
+func TestShowServerDetails(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tURL := computeURL + "/v2.1/" + tenant.ID + "/servers/"
+
+	servers := testCreateServer(t, 1)
+	if servers.TotalServers != 1 {
+		t.Fatal(err)
+	}
+
+	s := testListServerDetailsTenant(t, tenant.ID)
+
+	if s.TotalServers < 1 {
+		t.Fatal("Not enough servers returned")
+	}
+
+	for _, s1 := range s.Servers {
+		URL := tURL + s1.ID
+
+		req, err := http.NewRequest("GET", URL, nil)
+		req.Header.Set("X-Auth-Token", "imavalidtoken")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected response code: %d, got %d", http.StatusOK, resp.StatusCode)
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var s2 payloads.ComputeServer
+		err = json.Unmarshal(body, &s2)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if reflect.DeepEqual(s1, s2.Server) == false {
+			t.Fatal("Server details not correct")
+		}
 	}
 }
