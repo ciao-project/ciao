@@ -21,6 +21,7 @@ import (
 	"github.com/01org/ciao/ssntp"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
@@ -411,5 +412,43 @@ func TestShowFlavorDetails(t *testing.T) {
 		if reflect.DeepEqual(details, f.Flavor) == false {
 			t.Fatal("Flavor details not correct")
 		}
+	}
+}
+
+func TestListTenantResources(t *testing.T) {
+	var usage payloads.CiaoUsageHistory
+
+	endTime := time.Now()
+	startTime := endTime.Add(-15 * time.Minute)
+
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tURL := computeURL + "/v2.1/" + tenant.ID + "/resources?"
+
+	usage.Usages, err = context.ds.GetTenantUsage(tenant.ID, startTime, endTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v := url.Values{}
+	v.Add("start_date", startTime.Format(time.RFC3339))
+	v.Add("end_date", endTime.Format(time.RFC3339))
+
+	tURL += v.Encode()
+
+	body := testHTTPRequest(t, "GET", tURL, http.StatusOK, nil)
+
+	var result payloads.CiaoUsageHistory
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(usage, result) == false {
+		t.Fatal("Tenant usage not correct")
 	}
 }
