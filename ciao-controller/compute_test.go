@@ -500,3 +500,46 @@ func TestListTenantQuotas(t *testing.T) {
 		t.Fatal("Tenant quotas not correct")
 	}
 }
+
+func TestListEventsTenant(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	url := computeURL + "/v2.1/" + tenant.ID + "/events"
+
+	var expected payloads.CiaoEvents
+
+	logs, err := context.ds.GetEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, l := range logs {
+		if tenant.ID != l.TenantID {
+			continue
+		}
+
+		event := payloads.CiaoEvent{
+			Timestamp: l.Timestamp,
+			TenantId:  l.TenantID,
+			EventType: l.EventType,
+			Message:   l.Message,
+		}
+		expected.Events = append(expected.Events, event)
+	}
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var result payloads.CiaoEvents
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(expected, result) == false {
+		t.Fatal("Tenant events not correct")
+	}
+}
