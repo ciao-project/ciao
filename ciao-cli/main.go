@@ -105,6 +105,7 @@ var (
 	imagePath        = flag.String("image-path", "", "Image file path")
 	createImage      = flag.Bool("create-image", false, "Create a new image")
 	uploadImage      = flag.Bool("upload-image", false, "Upload an image")
+	downloadImage    = flag.Bool("download-image", false, "Download an image")
 	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	computeNode      = flag.String("cn", "", "Compute node UUID")
@@ -1041,5 +1042,12 @@ func main() {
 			fatalf("Missing required -image-path parameter")
 		}
 		uploadTenantImage(*identityUser, *identityPassword, id, *imageID, *imagePath)
+	}
+
+	if *downloadImage == true {
+		if *imageID == "" {
+			fatalf("Missing required -image-id parameter")
+		}
+		downloadTenantImage(*identityUser, *identityPassword, id, *imageID)
 	}
 }
