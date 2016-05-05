@@ -18,10 +18,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp"
 	"io/ioutil"
 	"net/http"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse int, data []byte) []byte {
@@ -200,5 +202,43 @@ func TestShowServerDetails(t *testing.T) {
 		if reflect.DeepEqual(s1, s2.Server) == false {
 			t.Fatal("Server details not correct")
 		}
+	}
+}
+
+func TestDeleteServer(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// instances have to be assigned to a node to be deleted
+	client := newTestClient(0, ssntp.AGENT)
+	defer client.ssntp.Close()
+
+	tURL := computeURL + "/v2.1/" + tenant.ID + "/servers/"
+
+	servers := testCreateServer(t, 10)
+	if servers.TotalServers != 10 {
+		t.Fatal(err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	client.sendStats()
+
+	s := testListServerDetailsTenant(t, tenant.ID)
+
+	if s.TotalServers < 1 {
+		t.Fatal("Not enough servers returned")
+	}
+
+	for _, s1 := range s.Servers {
+		url := tURL + s1.ID
+		if s1.HostID != "" {
+			_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil)
+		} else {
+			_ = testHTTPRequest(t, "DELETE", url, http.StatusInternalServerError, nil)
+		}
+
 	}
 }
