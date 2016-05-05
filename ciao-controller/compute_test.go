@@ -326,3 +326,43 @@ func TestServersActionStop(t *testing.T) {
 
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b)
 }
+
+func TestListFlavors(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	url := computeURL + "/v2.1/" + tenant.ID + "/flavors"
+
+	wls, err := context.ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var flavors payloads.ComputeFlavors
+	err = json.Unmarshal(body, &flavors)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(flavors.Flavors) != len(wls) {
+		t.Fatal("Incorrect number of flavors returned")
+	}
+
+	var matched int
+
+	for _, f := range flavors.Flavors {
+		for _, w := range wls {
+			if w.ID == f.ID && w.Description == f.Name {
+				matched++
+			}
+		}
+	}
+
+	if matched != len(wls) {
+		t.Fatal("Flavor information didn't match workload information")
+	}
+}
