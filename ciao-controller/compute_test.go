@@ -452,3 +452,51 @@ func TestListTenantResources(t *testing.T) {
 		t.Fatal("Tenant usage not correct")
 	}
 }
+
+func TestListTenantQuotas(t *testing.T) {
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	url := computeURL + "/v2.1/" + tenant.ID + "/quotas"
+
+	var expected payloads.CiaoTenantResources
+
+	for _, resource := range tenant.Resources {
+		switch resource.Rtype {
+		case instances:
+			expected.InstanceLimit = resource.Limit
+			expected.InstanceUsage = resource.Usage
+
+		case vcpu:
+			expected.VCPULimit = resource.Limit
+			expected.VCPUUsage = resource.Usage
+
+		case memory:
+			expected.MemLimit = resource.Limit
+			expected.MemUsage = resource.Usage
+
+		case disk:
+			expected.DiskLimit = resource.Limit
+			expected.DiskUsage = resource.Usage
+		}
+	}
+
+	expected.ID = tenant.ID
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var result payloads.CiaoTenantResources
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected.Timestamp = result.Timestamp
+
+	if reflect.DeepEqual(expected, result) == false {
+		t.Fatal("Tenant quotas not correct")
+	}
+}
