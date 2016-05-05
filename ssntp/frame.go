@@ -187,6 +187,27 @@ func (f ConnectFrame) String() string {
 		f.Major, f.Minor, (Type)(f.Type), op, (*Role)(&f.Role), src, dest)
 }
 
+func (f ConnectedFrame) String() string {
+	var dest, src uuid.UUID
+	var op string
+	t := f.Type
+
+	switch t {
+	case COMMAND:
+		op = (Command)(f.Operand).String()
+	case STATUS:
+		op = (Status)(f.Operand).String()
+	case ERROR:
+		op = fmt.Sprintf("%d", f.Operand)
+	}
+
+	copy(src[:], f.Source[:16])
+	copy(dest[:], f.Destination[:16])
+
+	return fmt.Sprintf("\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tRole %s\n\tSource %s\n\tDestination %s\n",
+		f.Major, f.Minor, (Type)(f.Type), op, (*Role)(&f.Role), src, dest)
+}
+
 func (f *Frame) addPathNode(session *session) {
 	if f.PathTrace() == false {
 		return
