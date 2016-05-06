@@ -857,3 +857,18 @@ func TestListEvents(t *testing.T) {
 		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
 	}
 }
+
+func TestClearEvents(t *testing.T) {
+	url := computeURL + "/v2.1/events"
+
+	_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil)
+
+	logs, err := context.ds.GetEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(logs) != 0 {
+		t.Fatal("Logs not cleared")
+	}
+}
