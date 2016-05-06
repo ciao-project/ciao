@@ -823,3 +823,37 @@ func TestListTraces(t *testing.T) {
 		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
 	}
 }
+
+func TestListEvents(t *testing.T) {
+	url := computeURL + "/v2.1/events"
+
+	var expected payloads.CiaoEvents
+
+	logs, err := context.ds.GetEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, l := range logs {
+		event := payloads.CiaoEvent{
+			Timestamp: l.Timestamp,
+			TenantId:  l.TenantID,
+			EventType: l.EventType,
+			Message:   l.Message,
+		}
+		expected.Events = append(expected.Events, event)
+	}
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var result payloads.CiaoEvents
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(expected, result) == false {
+		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
+	}
+}
