@@ -17,12 +17,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 )
@@ -609,5 +611,49 @@ func TestListTenants(t *testing.T) {
 
 	if reflect.DeepEqual(expected, result) == false {
 		t.Fatal("Tenant list not correct")
+	}
+}
+
+func TestListNodes(t *testing.T) {
+	expected := context.ds.GetNodeLastStats()
+
+	summary, err := context.ds.GetNodeSummary()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, node := range summary {
+		for i := range expected.Nodes {
+			if expected.Nodes[i].ID != node.NodeID {
+				continue
+			}
+
+			expected.Nodes[i].TotalInstances = node.TotalInstances
+			expected.Nodes[i].TotalRunningInstances = node.TotalRunningInstances
+			expected.Nodes[i].TotalPendingInstances = node.TotalPendingInstances
+			expected.Nodes[i].TotalPausedInstances = node.TotalPausedInstances
+			expected.Nodes[i].Timestamp = time.Time{}
+		}
+	}
+
+	sort.Sort(types.SortedComputeNodesByID(expected.Nodes))
+
+	url := computeURL + "/v2.1/nodes"
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var result payloads.CiaoComputeNodes
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range result.Nodes {
+		result.Nodes[i].Timestamp = time.Time{}
+	}
+
+	if reflect.DeepEqual(expected.Nodes, result.Nodes) == false {
+		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
 	}
 }
