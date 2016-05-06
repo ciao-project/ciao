@@ -46,12 +46,20 @@ func TestGre_Basic(t *testing.T) {
 		t.Errorf("GreTunnel enable failed: %v", err)
 	}
 
+	if err := gre.getDevice(); err != nil {
+		t.Errorf("GreTunnel enable failed: %v", err)
+	}
+
 	if err := gre.disable(); err != nil {
 		t.Errorf("GreTunnel disable failed: %v", err)
 	}
 
 	if err := gre.destroy(); err != nil {
 		t.Errorf("GreTunnel deletion failed: %v", err)
+	}
+
+	if err := gre.destroy(); err == nil {
+		t.Errorf("GreTunnel deletion should have failed")
 	}
 }
 
@@ -83,6 +91,10 @@ func TestGre_Bridge(t *testing.T) {
 	if err := gre.attach(bridge); err != nil {
 		t.Errorf("GRE attach failed: %v", err)
 	}
+	//Duplicate
+	if err := gre.attach(bridge); err != nil {
+		t.Errorf("GRE attach failed: %v", err)
+	}
 
 	if err := gre.enable(); err != nil {
 		t.Errorf("GRE enable failed: %v", err)
@@ -94,5 +106,55 @@ func TestGre_Bridge(t *testing.T) {
 
 	if err := gre.detach(bridge); err != nil {
 		t.Errorf("GRE detach failed: %v", err)
+	}
+
+	//Duplicate
+	if err := gre.detach(bridge); err != nil {
+		t.Errorf("GRE detach failed: %v", err)
+	}
+
+}
+
+//Tests failure paths in the GRE tunnel
+//
+//Tests failure paths in the GRE tunnel
+//
+//Test is expected to pass
+func TestGre_Negative(t *testing.T) {
+	id := "testgretap"
+	local := net.ParseIP("127.0.0.1")
+	remote := local
+	key := uint32(0xF)
+
+	gre, _ := newGreTunEP(id, local, remote, key)
+	greDupl, _ := newGreTunEP(id, local, remote, key)
+
+	if err := gre.create(); err != nil {
+		t.Errorf("GreTunnel creation failed: %v", err)
+	}
+
+	if err := greDupl.create(); err == nil {
+		t.Errorf("GreTunnel creation should have failed")
+	}
+	if err := greDupl.enable(); err == nil {
+		t.Errorf("GreTunnel creation should have failed")
+	}
+	if err := greDupl.disable(); err == nil {
+		t.Errorf("GreTunnel creation should have failed")
+	}
+	if err := greDupl.destroy(); err == nil {
+		t.Errorf("GreTunnel creation should have failed")
+	}
+
+	if err := gre.enable(); err != nil {
+		t.Errorf("GreTunnel enable failed: %v", err)
+	}
+
+	if err := gre.disable(); err != nil {
+		t.Errorf("GreTunnel disable failed: %v", err)
+	}
+
+	if err := gre.destroy(); err != nil {
+		t.Errorf("GreTunnel deletion failed: %v", err)
 	}
 }

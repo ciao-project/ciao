@@ -54,6 +54,10 @@ func TestBridge_Basic(t *testing.T) {
 		t.Errorf("Bridge deletion failed: %v", err)
 	}
 
+	if err := bridge.destroy(); err == nil {
+		t.Errorf("Bridge deletion should have failed")
+	}
+
 }
 
 //Duplicate bridge detection

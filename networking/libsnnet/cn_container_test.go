@@ -119,7 +119,7 @@ func dockerContainerInfo(t *testing.T, name string) error {
 //The IPAM driver needs top of the tree Docker (which needs special build)
 //is not tested yet
 func dockerNetCreate(t *testing.T, subnet net.IPNet, gw net.IP, bridge string, subnetID string) error {
-	cmd := exec.Command("docker", "network", "create", "-d=ciao",
+	cmd := exec.Command("docker", "network", "create", "-d=ciao", "--ipam-driver=ciao",
 		"--subnet="+subnet.String(), "--gateway="+gw.String(),
 		"--opt", "bridge="+bridge, subnetID)
 

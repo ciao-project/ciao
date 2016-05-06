@@ -72,6 +72,10 @@ func TestCNCI_Init(t *testing.T) {
 	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
 		t.Error(err)
 	}
+	//Duplicate
+	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
+		t.Error(err)
+	}
 
 	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.103")); err != nil {
 		t.Error(err)
@@ -88,6 +92,10 @@ func TestCNCI_Init(t *testing.T) {
 	if err := cnci.RebuildTopology(); err != nil {
 		t.Fatal(err)
 	}
+	//Duplicate
+	if err := cnci.RebuildTopology(); err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")); err != nil {
 		t.Error(err)
@@ -100,10 +108,18 @@ func TestCNCI_Init(t *testing.T) {
 	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")); err != nil {
 		t.Error(err)
 	}
+	//Duplicate
+	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")); err != nil {
+		t.Error(err)
+	}
 
 	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
 		t.Error(err)
 	}
+	if err := cnci.Shutdown(); err != nil {
+		t.Fatal(err)
+	}
+	//Duplicate
 	if err := cnci.Shutdown(); err != nil {
 		t.Fatal(err)
 	}

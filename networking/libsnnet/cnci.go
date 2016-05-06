@@ -546,14 +546,20 @@ func (cnci *Cnci) DelRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 func (cnci *Cnci) Shutdown() error {
 	var lasterr error
 
-	for _, b := range cnci.topology.bridgeMap {
+	cnci.topology.Lock()
+	defer cnci.topology.Unlock()
+
+	for id, b := range cnci.topology.bridgeMap {
 		if b.Dnsmasq != nil {
 			if err := b.Dnsmasq.stop(); err != nil {
 				lasterr = err
+				continue
 			}
 		} else {
 			lasterr = fmt.Errorf("invalid dnsmasq %v", b)
+			continue
 		}
+		delete(cnci.topology.bridgeMap, id)
 	}
 
 	for alias, linfo := range cnci.topology.linkMap {
@@ -571,7 +577,10 @@ func (cnci *Cnci) Shutdown() error {
 			}
 			if err := vnic.destroy(); err != nil {
 				lasterr = err
+				continue
 			}
+			delete(cnci.topology.linkMap, alias)
+			delete(cnci.topology.nameMap, alias)
 		}
 	}
 

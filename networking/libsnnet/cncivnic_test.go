@@ -89,6 +89,9 @@ func TestCnciVnic_Basic(t *testing.T) {
 	if err := cnciVnic.destroy(); err != nil {
 		t.Errorf("CnciVnic deletion failed: %v", err)
 	}
+	if err := cnciVnic.destroy(); err == nil {
+		t.Errorf("CnciVnic deletion should have failed")
+	}
 
 }
 
@@ -109,6 +112,9 @@ func TestCnciVnic_Dup(t *testing.T) {
 
 	if err := cnciVnic.create(); err != nil {
 		t.Errorf("CnciVnic creation failed: %v", err)
+	}
+	if err := cnciVnic.create(); err == nil {
+		t.Errorf("CnciVnic creation should have failed")
 	}
 
 	defer func() { _ = cnciVnic.destroy() }()
