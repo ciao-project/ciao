@@ -740,3 +740,54 @@ func TestListCNCIs(t *testing.T) {
 		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
 	}
 }
+
+func TestListCNCIDetails(t *testing.T) {
+	cncis, err := context.ds.GetTenantCNCISummary("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, cnci := range cncis {
+		var expected payloads.CiaoCNCI
+
+		cncis, err := context.ds.GetTenantCNCISummary(cnci.InstanceID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(cncis) > 0 {
+			var subnets []payloads.CiaoCNCISubnet
+			cnci := cncis[0]
+
+			for _, subnet := range cnci.Subnets {
+				subnets = append(subnets,
+					payloads.CiaoCNCISubnet{
+						Subnet: subnet,
+					},
+				)
+			}
+
+			expected = payloads.CiaoCNCI{
+				ID:       cnci.InstanceID,
+				TenantID: cnci.TenantID,
+				IPv4:     cnci.IPAddress,
+				Subnets:  subnets,
+			}
+		}
+
+		url := computeURL + "/v2.1/cncis/" + cnci.InstanceID + "/detail"
+
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+		var result payloads.CiaoCNCI
+
+		err = json.Unmarshal(body, &result)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if reflect.DeepEqual(expected, result) == false {
+			t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
+		}
+	}
+}
