@@ -575,3 +575,39 @@ func TestListNodeServers(t *testing.T) {
 		// possibly out of order
 	}
 }
+
+func TestListTenants(t *testing.T) {
+	tenants, err := context.ds.GetAllTenants()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var expected payloads.CiaoComputeTenants
+
+	for _, tenant := range tenants {
+		expected.Tenants = append(expected.Tenants,
+			struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			}{
+				ID:   tenant.ID,
+				Name: tenant.Name,
+			},
+		)
+	}
+
+	url := computeURL + "/v2.1/tenants"
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var result payloads.CiaoComputeTenants
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(expected, result) == false {
+		t.Fatal("Tenant list not correct")
+	}
+}
