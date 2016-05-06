@@ -657,3 +657,37 @@ func TestListNodes(t *testing.T) {
 		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
 	}
 }
+
+func TestNodeSummary(t *testing.T) {
+	var expected payloads.CiaoClusterStatus
+
+	computeNodes := context.ds.GetNodeLastStats()
+
+	expected.Status.TotalNodes = len(computeNodes.Nodes)
+	for _, node := range computeNodes.Nodes {
+		if node.Status == ssntp.READY.String() {
+			expected.Status.TotalNodesReady++
+		} else if node.Status == ssntp.FULL.String() {
+			expected.Status.TotalNodesFull++
+		} else if node.Status == ssntp.OFFLINE.String() {
+			expected.Status.TotalNodesOffline++
+		} else if node.Status == ssntp.MAINTENANCE.String() {
+			expected.Status.TotalNodesMaintenance++
+		}
+	}
+
+	url := computeURL + "/v2.1/nodes/summary"
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var result payloads.CiaoClusterStatus
+
+	err := json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(expected, result) == false {
+		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
+	}
+}
