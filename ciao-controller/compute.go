@@ -1071,6 +1071,8 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 		}
 	}
 
+	sort.Sort(types.SortedComputeNodesByID(computeNodes.Nodes))
+
 	pager := nodePager{
 		context: context,
 		nodes:   computeNodes.Nodes,

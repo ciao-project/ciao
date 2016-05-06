@@ -53,6 +53,13 @@ func (s SortedInstancesByID) Len() int           { return len(s) }
 func (s SortedInstancesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s SortedInstancesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
 
+// SortedComputeNodesByID implements sort.Interface for Node by ID string
+type SortedComputeNodesByID []payloads.CiaoComputeNode
+
+func (s SortedComputeNodesByID) Len() int           { return len(s) }
+func (s SortedComputeNodesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s SortedComputeNodesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
+
 type Tenant struct {
 	ID        string
 	Name      string
