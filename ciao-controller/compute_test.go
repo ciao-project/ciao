@@ -691,3 +691,52 @@ func TestNodeSummary(t *testing.T) {
 		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
 	}
 }
+
+func TestListCNCIs(t *testing.T) {
+	var expected payloads.CiaoCNCIs
+
+	cncis, err := context.ds.GetTenantCNCISummary("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var subnets []payloads.CiaoCNCISubnet
+
+	for _, cnci := range cncis {
+		if cnci.InstanceID == "" {
+			continue
+		}
+
+		for _, subnet := range cnci.Subnets {
+			subnets = append(subnets,
+				payloads.CiaoCNCISubnet{
+					Subnet: subnet,
+				},
+			)
+		}
+
+		expected.CNCIs = append(expected.CNCIs,
+			payloads.CiaoCNCI{
+				ID:       cnci.InstanceID,
+				TenantID: cnci.TenantID,
+				IPv4:     cnci.IPAddress,
+				Subnets:  subnets,
+			},
+		)
+	}
+
+	url := computeURL + "/v2.1/cncis"
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var result payloads.CiaoCNCIs
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(expected, result) == false {
+		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
+	}
+}
