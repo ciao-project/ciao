@@ -332,6 +332,32 @@ func TestServersActionStop(t *testing.T) {
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b)
 }
 
+func TestServerActionStop(t *testing.T) {
+	action := "os-stop"
+
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client := newTestClient(0, ssntp.AGENT)
+	defer client.ssntp.Close()
+
+	servers := testCreateServer(t, 1)
+	if servers.TotalServers != 1 {
+		t.Fatal(err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	client.sendStats()
+
+	time.Sleep(1 * time.Second)
+
+	url := computeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
+	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
+}
+
 func TestListFlavors(t *testing.T) {
 	tenant, err := context.ds.GetTenant(computeTestUser)
 	if err != nil {
