@@ -872,3 +872,46 @@ func TestClearEvents(t *testing.T) {
 		t.Fatal("Logs not cleared")
 	}
 }
+
+func TestTraceData(t *testing.T) {
+	summaries, err := context.ds.GetBatchFrameSummary()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, s := range summaries {
+		var expected payloads.CiaoTraceData
+
+		batchStats, err := context.ds.GetBatchFrameStatistics(s.BatchID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		expected.Summary = payloads.CiaoBatchFrameStat{
+			NumInstances:             batchStats[0].NumInstances,
+			TotalElapsed:             batchStats[0].TotalElapsed,
+			AverageElapsed:           batchStats[0].AverageElapsed,
+			AverageControllerElapsed: batchStats[0].AverageControllerElapsed,
+			AverageLauncherElapsed:   batchStats[0].AverageLauncherElapsed,
+			AverageSchedulerElapsed:  batchStats[0].AverageSchedulerElapsed,
+			VarianceController:       batchStats[0].VarianceController,
+			VarianceLauncher:         batchStats[0].VarianceLauncher,
+			VarianceScheduler:        batchStats[0].VarianceScheduler,
+		}
+
+		url := computeURL + "/v2.1/traces/" + s.BatchID
+
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+		var result payloads.CiaoTraceData
+
+		err = json.Unmarshal(body, &result)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if reflect.DeepEqual(expected, result) == false {
+			t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
+		}
+	}
+}
