@@ -791,3 +791,35 @@ func TestListCNCIDetails(t *testing.T) {
 		}
 	}
 }
+
+func TestListTraces(t *testing.T) {
+	var expected payloads.CiaoTracesSummary
+
+	summaries, err := context.ds.GetBatchFrameSummary()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, s := range summaries {
+		summary := payloads.CiaoTraceSummary{
+			Label:     s.BatchID,
+			Instances: s.NumInstances,
+		}
+		expected.Summaries = append(expected.Summaries, summary)
+	}
+
+	url := computeURL + "/v2.1/traces"
+
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+
+	var result payloads.CiaoTracesSummary
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(expected, result) == false {
+		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
+	}
+}
