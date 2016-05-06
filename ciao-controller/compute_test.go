@@ -358,6 +358,57 @@ func TestServerActionStop(t *testing.T) {
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
 }
 
+func TestServerActionStart(t *testing.T) {
+	action := "os-start"
+
+	tenant, err := context.ds.GetTenant(computeTestUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client := newTestClient(0, ssntp.AGENT)
+	defer client.ssntp.Close()
+
+	servers := testCreateServer(t, 1)
+	if servers.TotalServers != 1 {
+		t.Fatal(err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	client.sendStats()
+
+	time.Sleep(1 * time.Second)
+
+	c := make(chan cmdResult)
+	server.addCmdChan(ssntp.STOP, c)
+
+	err = context.stopInstance(servers.Servers[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case result := <-c:
+		if result.err != nil {
+			t.Fatal("Error parsing command yaml")
+		}
+
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for STOP command")
+	}
+
+	time.Sleep(1 * time.Second)
+
+	client.sendStats()
+
+	time.Sleep(1 * time.Second)
+
+	url := computeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
+
+	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
+}
+
 func TestListFlavors(t *testing.T) {
 	tenant, err := context.ds.GetTenant(computeTestUser)
 	if err != nil {
