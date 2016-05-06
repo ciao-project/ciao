@@ -112,18 +112,6 @@ func (server *ssntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 					break
 				}
 			}
-
-			if nn {
-				server.netClientsLock.RLock()
-				for key := range server.netClients {
-					server.ssntp.SendCommand(key, command, frame.Payload)
-					break
-				}
-				server.netClientsLock.RUnlock()
-			} else if len(server.clients) > 0 {
-				index := rand.Intn(len(server.clients))
-				server.ssntp.SendCommand(server.clients[index], command, frame.Payload)
-			}
 		}
 
 		if ok {
@@ -205,6 +193,42 @@ func (server *ssntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 func (server *ssntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame *ssntp.Frame) {
 }
 
+func (server *ssntpTestServer) CommandForward(uuid string, command ssntp.Command, frame *ssntp.Frame) (dest ssntp.ForwardDestination) {
+	var startCmd payloads.Start
+	var nn bool
+
+	payload := frame.Payload
+
+	err := yaml.Unmarshal(payload, &startCmd)
+
+	if err != nil {
+		return
+	}
+
+	resources := startCmd.Start.RequestedResources
+
+	for i := range resources {
+		if resources[i].Type == payloads.NetworkNode {
+			nn = true
+			break
+		}
+	}
+
+	if nn {
+		server.netClientsLock.RLock()
+		for key := range server.netClients {
+			dest.AddRecipient(key)
+			break
+		}
+		server.netClientsLock.RUnlock()
+	} else if len(server.clients) > 0 {
+		index := rand.Intn(len(server.clients))
+		dest.AddRecipient(server.clients[index])
+	}
+
+	return
+}
+
 type ssntpTestClient struct {
 	ssntp             ssntp.Client
 	name              string
@@ -218,6 +242,16 @@ type ssntpTestClient struct {
 	stopFailReason    payloads.StopFailureReason
 	restartFail       bool
 	restartFailReason payloads.RestartFailureReason
+	traces            []*ssntp.Frame
+
+	cmdChans     map[ssntp.Command]chan cmdResult
+	cmdChansLock *sync.Mutex
+}
+
+func (client *ssntpTestClient) addCmdChan(cmd ssntp.Command, c chan cmdResult) {
+	client.cmdChansLock.Lock()
+	client.cmdChans[cmd] = c
+	client.cmdChansLock.Unlock()
 }
 
 func (client *ssntpTestClient) ConnectNotify() {
@@ -233,18 +267,34 @@ func (client *ssntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 	var start payloads.Start
 	payload := frame.Payload
 
+	var result cmdResult
+
+	if frame.Trace != nil {
+		frame.SetEndStamp()
+		client.traces = append(client.traces, frame)
+	}
+
+	client.cmdChansLock.Lock()
+	c, ok := client.cmdChans[command]
+	client.cmdChansLock.Unlock()
+
 	switch command {
 	case ssntp.START:
 		err := yaml.Unmarshal(payload, &start)
 		if err != nil {
-			return
+			result.err = err
+			break
 		}
+
+		result.instanceUUID = start.Start.InstanceUUID
+		result.tenantUUID = start.Start.TenantUUID
 
 		if client.role == ssntp.NETAGENT {
 			networking := start.Start.Networking
 
 			client.sendConcentratorAddedEvent(start.Start.InstanceUUID, start.Start.TenantUUID, networking.VnicMAC)
-			return
+			result.cnci = true
+			break
 		}
 
 		if !client.startFail {
@@ -299,6 +349,18 @@ func (client *ssntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 			client.sendRestartFailure(restartCmd.Restart.InstanceUUID, client.restartFailReason)
 		}
 	}
+
+	if ok {
+		client.cmdChansLock.Lock()
+		delete(client.cmdChans, command)
+		client.cmdChansLock.Unlock()
+
+		c <- result
+
+		close(c)
+	}
+
+	return
 }
 
 func (client *ssntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
@@ -313,6 +375,9 @@ func newTestClient(num int, role ssntp.Role) *ssntpTestClient {
 		uuid: uuid.Generate().String(),
 		role: role,
 	}
+
+	client.cmdChans = make(map[ssntp.Command]chan cmdResult)
+	client.cmdChansLock = &sync.Mutex{}
 
 	config := &ssntp.Config{
 		Role:   uint32(role),
@@ -348,6 +413,32 @@ func (client *ssntpTestClient) sendStats() {
 	}
 
 	_, err = client.ssntp.SendCommand(ssntp.STATS, y)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (client *ssntpTestClient) sendTrace() {
+	var s payloads.Trace
+
+	for _, f := range client.traces {
+		t, err := f.DumpTrace()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		s.Frames = append(s.Frames, *t)
+	}
+
+	payload, err := yaml.Marshal(&s)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	client.traces = nil
+
+	_, err = client.ssntp.SendEvent(ssntp.TraceReport, payload)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -483,6 +574,14 @@ func startTestServer(server *ssntpTestServer) {
 			},
 			{
 				Operand: ssntp.RestartFailure,
+				Dest:    ssntp.Controller,
+			},
+			{
+				Operand:        ssntp.START,
+				CommandForward: server,
+			},
+			{
+				Operand: ssntp.TraceReport,
 				Dest:    ssntp.Controller,
 			},
 		},
@@ -725,6 +824,11 @@ func TestStartWorkload(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timeout waiting for START command")
 	}
+}
+
+func TestStartTracedWorkload(t *testing.T) {
+	client := testStartTracedWorkload(t)
+	defer client.ssntp.Close()
 }
 
 func TestStartWorkloadLaunchCNCI(t *testing.T) {
@@ -1460,6 +1564,48 @@ func TestNoNetwork(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timeout waiting for START command")
 	}
+}
+
+func testStartTracedWorkload(t *testing.T) *ssntpTestClient {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client := newTestClient(0, ssntp.AGENT)
+
+	wls, err := context.ds.GetWorkloads()
+	if err != nil || len(wls) == 0 {
+		t.Fatal(err)
+	}
+
+	c := make(chan cmdResult)
+	client.addCmdChan(ssntp.START, c)
+
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, true, "testtrace1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(instances) != 1 {
+		t.Fatal(err)
+	}
+
+	select {
+	case result := <-c:
+		if result.err != nil {
+			t.Fatal("Error parsing command yaml")
+		}
+
+		if result.instanceUUID != instances[0].ID {
+			t.Fatal("Did not get correct Instance ID")
+		}
+
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for START command")
+	}
+
+	return client
 }
 
 var testClients []*ssntpTestClient

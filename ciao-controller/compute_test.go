@@ -795,6 +795,13 @@ func TestListCNCIDetails(t *testing.T) {
 func TestListTraces(t *testing.T) {
 	var expected payloads.CiaoTracesSummary
 
+	client := testStartTracedWorkload(t)
+	defer client.ssntp.Close()
+
+	client.sendTrace()
+
+	time.Sleep(2 * time.Second)
+
 	summaries, err := context.ds.GetBatchFrameSummary()
 	if err != nil {
 		t.Fatal(err)
@@ -874,6 +881,13 @@ func TestClearEvents(t *testing.T) {
 }
 
 func TestTraceData(t *testing.T) {
+	client := testStartTracedWorkload(t)
+	defer client.ssntp.Close()
+
+	client.sendTrace()
+
+	time.Sleep(2 * time.Second)
+
 	summaries, err := context.ds.GetBatchFrameSummary()
 	if err != nil {
 		t.Fatal(err)
