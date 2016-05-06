@@ -24,7 +24,6 @@ import (
 	"strconv"
 
 	"github.com/coreos/go-iptables/iptables"
-	"github.com/vishvananda/netlink"
 )
 
 /* https://wiki.archlinux.org/index.php/iptables
@@ -79,18 +78,6 @@ const (
 	//FwEnable enables
 	FwEnable
 )
-
-//String representing the firewall action
-func (f *FwAction) String() string {
-	switch *f {
-	case FwEnable:
-		return "Enable"
-	case FwDisable:
-		return "Disable"
-	default:
-		return "Invalid value"
-	}
-}
 
 //Firewall defines a single firewall instance
 type Firewall struct {
@@ -289,6 +276,8 @@ func (f *Firewall) ExtPortAccess(action FwAction, protocol string, extDevice str
 	return nil
 }
 
+/* Not implemented
+
 func ipAssign(action FwAction, ip net.IP, iface string) error {
 
 	link, err := netlink.LinkByName(iface)
@@ -341,6 +330,10 @@ func ipAssign(action FwAction, ip net.IP, iface string) error {
 	return nil
 
 }
+
+*/
+
+/* Not implemented
 
 //PublicIPAccess Enables/Disables public access to an internal IP
 //TODO: Consider NATing only when exiting
@@ -422,6 +415,8 @@ func (f *Firewall) PublicIPAccess(action FwAction,
 		return fmt.Errorf("Invalid parameter %v", action)
 	}
 }
+
+*/
 
 //DumpIPTables provides a utility routine that returns
 //the current state of the iptables

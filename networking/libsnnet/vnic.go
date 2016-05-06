@@ -208,7 +208,7 @@ func (v *Vnic) destroy() error {
 	}
 
 	if err := netlink.LinkDel(v.Link); err != nil {
-		return netError(v, "destroy link del %v", err)
+		return netError(v, "destroy link [%v] del [%v]", v.LinkName, err)
 	}
 
 	return nil

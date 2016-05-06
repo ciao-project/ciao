@@ -42,6 +42,16 @@ func TestVnic_Basic(t *testing.T) {
 		t.Errorf("Vnic Get Device failed: %v", err)
 	}
 
+	if vnic.interfaceName() == "" {
+		t.Errorf("Vnic Unable to retrieve interface name")
+	}
+
+	if vnic.peerName() != vnic.interfaceName() {
+		t.Errorf("Vnic invalid peer or interface name [%v] [%v]",
+			vnic.peerName(),
+			vnic.interfaceName())
+	}
+
 	if err := vnic.enable(); err != nil {
 		t.Errorf("Vnic enable failed: %v", err)
 	}
@@ -52,6 +62,10 @@ func TestVnic_Basic(t *testing.T) {
 
 	if err := vnic.destroy(); err != nil {
 		t.Errorf("Vnic deletion failed: %v", err)
+	}
+
+	if err := vnic.destroy(); err == nil {
+		t.Errorf("Vnic deletion should have failed")
 	}
 
 }
@@ -121,7 +135,7 @@ func TestVnic_Dup(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnicContainer_Dup(t *testing.T) {
-	vnic, _ := newVnic("testconvnic")
+	vnic, _ := newContainerVnic("testconvnic")
 
 	if err := vnic.create(); err != nil {
 		t.Errorf("Vnic creation failed: %v", err)
@@ -129,7 +143,7 @@ func TestVnicContainer_Dup(t *testing.T) {
 
 	defer func() { _ = vnic.destroy() }()
 
-	vnic1, _ := newVnic("testconvnic")
+	vnic1, _ := newContainerVnic("testconvnic")
 
 	if err := vnic1.create(); err == nil {
 		t.Errorf("Duplicate Vnic creation: %v", err)
@@ -232,6 +246,22 @@ func TestVnic_GetDevice(t *testing.T) {
 
 	if err := vnic.getDevice(); err != nil {
 		t.Errorf("Vnic Get Device failed: %v", err)
+	}
+
+	if vnic.interfaceName() == "" {
+		t.Errorf("Vnic interafaceName failed")
+	}
+
+	if vnic.interfaceName() != vnic1.interfaceName() {
+		t.Errorf("Vnic interafaceName mismatch")
+	}
+
+	if vnic1.peerName() == "" {
+		t.Errorf("Vnic peerName failed")
+	}
+
+	if vnic1.peerName() != vnic.peerName() {
+		t.Errorf("Vnic peerName mismatch")
 	}
 
 	if err := vnic.enable(); err != nil {

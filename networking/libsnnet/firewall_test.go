@@ -187,11 +187,25 @@ func TestFw_All(t *testing.T) {
 		t.Errorf("unable to dump ip_forward %v, %v", err, out)
 	}
 
+	if string(out) != "1\n" {
+		t.Errorf("unable to set ip_forward [%v]", string(out))
+	}
+
 	err = fw.ExtPortAccess(FwDisable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
 
 	if err != nil {
 		t.Errorf("Error: ssh fwd disable failed %v", err)
+	}
+
+	_, err = DebugSSHPortForIP(net.ParseIP("192.168.1.101"))
+	if err != nil {
+		t.Errorf("Error: debug ssh port failed %v", err)
+	}
+
+	table := DumpIPTables()
+	if table == "" {
+		t.Errorf("Error: IP Table dump failed")
 	}
 
 	err = fw.ExtFwding(FwDisable, fwIf, fwIfInt)
