@@ -227,13 +227,13 @@ func TestDeleteServer(t *testing.T) {
 
 	client.sendStats()
 
+	time.Sleep(2 * time.Second)
+
 	s := testListServerDetailsTenant(t, tenant.ID)
 
 	if s.TotalServers < 1 {
 		t.Fatal("Not enough servers returned")
 	}
-
-	time.Sleep(1 * time.Second)
 
 	for _, s1 := range s.Servers {
 		url := tURL + s1.ID
