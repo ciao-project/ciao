@@ -8,7 +8,7 @@ go:
     - 1.6
     - tip
 
-#go_import_path: github.com/01org/ciao
+go_import_path: github.com/01org/ciao
 
 # We need to create and install SSNTP certs for the SSNTP and controller tests
 before_script:
