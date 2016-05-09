@@ -14,7 +14,7 @@
 // limitations under the License.
 */
 
-// ciao-launcher is ssntp agent that runs on compute and network nodes.
+// ciao-launcher is an ssntp agent that runs on compute and network nodes.
 // Its primary purpose is to launch and manage containers and virtual
 // machines.  For more information on installing and running ciao-launcher
 // see https://github.com/01org/ciao/blob/master/ciao-launcher/README.md
