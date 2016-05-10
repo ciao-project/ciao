@@ -16,22 +16,35 @@
 
 package payloads
 
+// DeleteFailureReason denotes the underlying error that prevented
+// an SSNTP DELETE command from deleting a running instance.
 type DeleteFailureReason string
 
 const (
-	DeleteNoInstance     DeleteFailureReason = "no_instance"
-	DeleteInvalidPayload                     = "invalid_payload"
-	DeleteInvalidData                        = "invalid_data"
+	// DeleteNoInstance indicates that an instance could not be deleted
+	// as it does not exist on the node to which the DELETE command was
+	// sent.
+	DeleteNoInstance DeleteFailureReason = "no_instance"
+
+	// DeleteInvalidPayload indicates that the payload of the SSNTP
+	// DELETE command was corrupt and could not be unmarshalled.
+	DeleteInvalidPayload = "invalid_payload"
+
+	// DeleteInvalidData is returned by ciao-launcher if the contents
+	// of the DELETE payload are incorrect, e.g., the instance_uuid
+	// is missing.
+	DeleteInvalidData = "invalid_data"
 )
 
+// ErrorDeleteFailure represents the unmarshalled version of the contents of a
+// SSNTP ERROR frame whose type is set to ssntp.DeleteFailure.
 type ErrorDeleteFailure struct {
-	InstanceUUID string              `yaml:"instance_uuid"`
-	Reason       DeleteFailureReason `yaml:"reason"`
-}
+	// InstanceUUID is the UUID of the instance that could not be deleted.
+	InstanceUUID string `yaml:"instance_uuid"`
 
-func (s *ErrorDeleteFailure) Init() {
-	s.InstanceUUID = ""
-	s.Reason = ""
+	// Reason provides the reason for the delete failure, e.g.,
+	// DeleteNoInstance.
+	Reason DeleteFailureReason `yaml:"reason"`
 }
 
 func (r DeleteFailureReason) String() string {

@@ -16,26 +16,53 @@
 
 package payloads
 
+// RestartFailureReason denotes the underlying error that prevented
+// an SSNTP RESTART command from booting up an existing instance on a CN
+// or a NN.
 type RestartFailureReason string
 
 const (
-	RestartNoInstance      RestartFailureReason = "no_instance"
-	RestartInvalidPayload                       = "invalid_payload"
-	RestartInvalidData                          = "invalid_data"
-	RestartAlreadyRunning                       = "already_running"
-	RestartInstanceCorrupt                      = "instance_corrupt"
-	RestartLaunchFailure                        = "launch_failure"
-	RestartNetworkFailure                       = "network_failure"
+	// RestartNoInstance indicates that an instance could not be restarted
+	// as it does not exist on the node to which the RESTART command was
+	// sent.
+	RestartNoInstance RestartFailureReason = "no_instance"
+
+	// RestartInvalidPayload indicates that the payload of the SSNTP
+	// RESTART command was corrupt and could not be unmarshalled.
+	RestartInvalidPayload = "invalid_payload"
+
+	// RestartInvalidData is returned by ciao-launcher if the contents
+	// of the RESTART payload are incorrect, e.g., the instance_uuid
+	// is missing.
+	RestartInvalidData = "invalid_data"
+
+	// RestartAlreadyRunning indicates that an attempt was made to restart
+	// a running instance.
+	RestartAlreadyRunning = "already_running"
+
+	// RestartInstanceCorrupt indicates that it was impossible to restart
+	// an instance as the state of that instance stored on the node has
+	// become corrupted.
+	RestartInstanceCorrupt = "instance_corrupt"
+
+	// RestartLaunchFailure indicates that it was not possible to restart
+	// the instance, for example, the call to docker start fails.
+	RestartLaunchFailure = "launch_failure"
+
+	// RestartNetworkFailure indicates that it was not possible to
+	// initialise networking for the instance before restarting it.
+	RestartNetworkFailure = "network_failure"
 )
 
+// ErrorRestartFailure represents the unmarshalled version of the contents of a
+// SSNTP ERROR frame whose type is set to ssntp.RestartFailure.
 type ErrorRestartFailure struct {
-	InstanceUUID string               `yaml:"instance_uuid"`
-	Reason       RestartFailureReason `yaml:"reason"`
-}
+	// InstanceUUID is the UUID of the instance that could not be started.
+	InstanceUUID string `yaml:"instance_uuid"`
 
-func (s *ErrorRestartFailure) Init() {
-	s.InstanceUUID = ""
-	s.Reason = ""
+	// Reason provides the reason for the restart failure, e.g.,
+	// RestartLaunchFailure.
+	Reason RestartFailureReason `yaml:"reason"`
 }
 
 func (r RestartFailureReason) String() string {

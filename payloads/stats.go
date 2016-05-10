@@ -16,9 +16,15 @@
 
 package payloads
 
+// InstanceStat contains information about the state of an indiviual
+// instance in a ciao cluster.
 type InstanceStat struct {
+
+	// UUID of the instance to which this stats structure pertains
 	InstanceUUID string `yaml:"instance_uuid"`
-	State        string `yaml:"state"`
+
+	// State of the instance, e.g., running, pending, exited
+	State string `yaml:"state"`
 
 	// IP address to use to connect to instance via SSH.  This
 	// is actually the IP address of the CNCI VM.
@@ -45,33 +51,78 @@ type InstanceStat struct {
 	CPUUsage int `yaml:"cpu_usage"`
 }
 
+// NetworkStat contains information about a single network interface present on
+// a ciao compute or network node.
 type NetworkStat struct {
 	NodeIP  string `yaml:"ip"`
 	NodeMAC string `yaml:"mac"`
 }
 
+// Stat represents a snapshot of the state of a compute or a network node.  This
+// information is sent periodically by ciao-launcher to the scheduler.
 type Stat struct {
-	NodeUUID        string `yaml:"node_uuid"`
-	Status          string `yaml:"status"`
-	MemTotalMB      int    `yaml:"mem_total_mb"`
-	MemAvailableMB  int    `yaml:"mem_available_mb"`
-	DiskTotalMB     int    `yaml:"disk_total_mb"`
-	DiskAvailableMB int    `yaml:"disk_available_mb"`
-	Load            int    `yaml:"load"`
-	CpusOnline      int    `yaml:"cpus_online"`
-	NodeHostName    string `yaml:"hostname"`
-	Networks        []NetworkStat
-	Instances       []InstanceStat
+	// The UUID of the launcher instance from which the Stats structure
+	// originated
+	NodeUUID string `yaml:"node_uuid"`
+
+	// The Status of the node, e.g., READY or FULL
+	Status string `yaml:"status"`
+
+	// Total amount of RAM available on a CN or NN
+	MemTotalMB int `yaml:"mem_total_mb"`
+
+	// Memory currently available on a CN or NN, computed from
+	// proc/meminfo:MemFree + Active(file) + Inactive(file)
+	MemAvailableMB int `yaml:"mem_available_mb"`
+
+	// Size of the CN/NN RootFS in MB
+	DiskTotalMB int `yaml:"disk_total_mb"`
+
+	// MBs available in the RootFS of the CN/NN
+	DiskAvailableMB int `yaml:"disk_available_mb"`
+
+	// Load of CN/NN, taken from /proc/loadavg (Average over last minute
+	// reported
+	Load int `yaml:"load"`
+
+	// Number of CPUs present in the CN/NN.  Derived from the number of
+	// cpu[0-9]+ entries in /proc/stat
+	CpusOnline int `yaml:"cpus_online"`
+
+	// Hostname of the CN/NN
+	NodeHostName string `yaml:"hostname"`
+
+	// Array containing one entry for each network interface present on the
+	// CN/NN
+	Networks []NetworkStat
+
+	// Array containing statistics information for each instance hosted by
+	// the CN/NN
+	Instances []InstanceStat
 }
 
 const (
-	Pending    = "pending"
-	Running    = "running"
-	Exited     = "exited"
+	// Pending indicates that ciao-launcher has not yet ascertained the
+	// state of a given instance.  This can happen, either because the
+	// instance is in the process of being created, or ciao-launcher itself
+	// has just started and is still gathering information about the
+	// existing instances.
+	Pending = "pending"
+
+	// Running indicates an instance is running
+	Running = "running"
+
+	// Exited indicates that an instance has been successfully created but
+	// is not currently running, either because it failed to start or was
+	// explicitly stopped by a STOP command or perhaps by a CN reboot.
+	Exited = "exited"
+	// ExitFailed is not currently used
 	ExitFailed = "exit_failed"
+	// ExitPaused is not currently used
 	ExitPaused = "exit_paused"
 )
 
+// Init initialises instances of the Stat structure.
 func (s *Stat) Init() {
 	s.NodeUUID = ""
 	s.MemTotalMB = -1

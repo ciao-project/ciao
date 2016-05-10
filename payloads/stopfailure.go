@@ -16,23 +16,41 @@
 
 package payloads
 
+// StopFailureReason denotes the underlying error that prevented
+// an SSNTP STOP command from stopping a running instance.
 type StopFailureReason string
 
 const (
-	StopNoInstance     StopFailureReason = "no_instance"
-	StopInvalidPayload                   = "invalid_payload"
-	StopInvalidData                      = "invalid_data"
-	StopAlreadyStopped                   = "already_stopped"
+	// StopNoInstance indicates that an instance could not be stopped
+	// as it does not exist on the node to which the STOP command was
+	// sent.
+	StopNoInstance StopFailureReason = "no_instance"
+
+	// StopInvalidPayload indicates that the payload of the SSNTP
+	// STOP command was corrupt and could not be unmarshalled.
+	StopInvalidPayload = "invalid_payload"
+
+	// StopInvalidData is returned by ciao-launcher if the contents
+	// of the STOP payload are incorrect, e.g., the instance_uuid
+	// is missing.
+	StopInvalidData = "invalid_data"
+
+	// StopAlreadyStopped indicates that the instance does exist on the
+	// node to which the STOP command was sent, but that it
+	// is not currently running, e.g., it's status is either exited or
+	// pending.
+	StopAlreadyStopped = "already_stopped"
 )
 
+// ErrorStopFailure represents the unmarshalled version of the contents of a
+// SSNTP ERROR frame whose type is set to ssntp.StopFailure.
 type ErrorStopFailure struct {
-	InstanceUUID string            `yaml:"instance_uuid"`
-	Reason       StopFailureReason `yaml:"reason"`
-}
+	// InstanceUUID is the UUID of the instance that could not be stopped.
+	InstanceUUID string `yaml:"instance_uuid"`
 
-func (s *ErrorStopFailure) Init() {
-	s.InstanceUUID = ""
-	s.Reason = ""
+	// Reason provides the reason for the stop failure, e.g.,
+	// StopAlreadyStopped.
+	Reason StopFailureReason `yaml:"reason"`
 }
 
 func (r StopFailureReason) String() string {

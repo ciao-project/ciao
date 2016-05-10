@@ -16,30 +16,73 @@
 
 package payloads
 
+// StartFailureReason denotes the underlying error that prevented
+// an SSNTP START command from launching a new instance on a CN
+// or a NN.  Most, but not all, of these errors are returned by
+// ciao-launcher
 type StartFailureReason string
 
 const (
-	FullCloud       StartFailureReason = "full_cloud"
-	FullComputeNode                    = "full_cn"
-	NoComputeNodes                     = "no_cn"
-	NoNetworkNodes                     = "no_net_cn"
-	InvalidPayload                     = "invalid_payload"
-	InvalidData                        = "invalid_data"
-	AlreadyRunning                     = "already_running"
-	InstanceExists                     = "instance_exists"
-	ImageFailure                       = "image_failure"
-	LaunchFailure                      = "launch_failure"
-	NetworkFailure                     = "network_failure"
+	// FullCloud is returned by the scheduler when all nodes in the cluster
+	// are FULL and it is unable to satisfy a START request.
+	FullCloud StartFailureReason = "full_cloud"
+
+	// FullComputeNode indicates that the node to which the START command
+	// was sent had insufficient resources to start the requested instance.
+	FullComputeNode = "full_cn"
+
+	// NoComputeNodes is returned by the scheduler if no compute nodes are
+	// running in the cluster upon which the instance can be started.
+	NoComputeNodes = "no_cn"
+
+	// NoNetworkNodes is returned by the scheduler if no network nodes are
+	// running in the cluster upon which the instance can be started.
+	NoNetworkNodes = "no_net_cn"
+
+	// InvalidPayload indicates that the contents of the START payload are
+	// corrupt
+	InvalidPayload = "invalid_payload"
+
+	// InvalidData indicates that the start section of the payload is
+	// corrupt or missing information such as image-id
+	InvalidData = "invalid_data"
+
+	// AlreadyRunning is returned when an attempt is made to start an
+	// instance on a node upon which that very same instance is already
+	// running.
+	AlreadyRunning = "already_running"
+
+	// InstanceExists is returned when an attempt is made to start an
+	// instance on a node upon which that very same instance already
+	// exists but is not currently running.
+	InstanceExists = "instance_exists"
+
+	// ImageFailure indicates that ciao-launcher is unable to prepare
+	// the rootfs for the instance, e.g., the image_uuid refers to an
+	// non-existent backing image
+	ImageFailure = "image_failure"
+
+	// LaunchFailure indicates that the instance has been successfully
+	// created but could not be launched.  Actually, this is sort of an
+	// odd situation as the START command partially succeeded.
+	// ciao-launcher returns an error code, but the instance has been
+	// created and could be booted a later stage via the RESTART command.
+	LaunchFailure = "launch_failure"
+
+	// NetworkFailure indicates that it was not possible to initialise
+	// networking for the instance.
+	NetworkFailure = "network_failure"
 )
 
+// ErrorStartFailure represents the unmarshalled version of the contents of a
+// SSNTP ERROR frame whose type is set to ssntp.StartFailure.
 type ErrorStartFailure struct {
-	InstanceUUID string             `yaml:"instance_uuid"`
-	Reason       StartFailureReason `yaml:"reason"`
-}
+	// InstanceUUID is the UUID of the instance that could not be started.
+	InstanceUUID string `yaml:"instance_uuid"`
 
-func (s *ErrorStartFailure) Init() {
-	s.InstanceUUID = ""
-	s.Reason = ""
+	// Reason provides the reason for the start failure, e.g.,
+	// LaunchFailure.
+	Reason StartFailureReason `yaml:"reason"`
 }
 
 func (r StartFailureReason) String() string {
