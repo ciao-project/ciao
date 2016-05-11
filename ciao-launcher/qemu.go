@@ -475,15 +475,14 @@ func (q *qemu) startVM(vnicName, ipAddress string) error {
 	vmImage := path.Join(q.instanceDir, "image.qcow2")
 	qmpSocket := path.Join(q.instanceDir, "socket")
 	fileParam := fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage)
-	//BUG(markus): Should specify media type here
-	isoParam := fmt.Sprintf("file=%s,if=virtio", q.isoPath)
+	isoParam := fmt.Sprintf("file=%s,if=virtio,media=cdrom", q.isoPath)
 	qmpParam := fmt.Sprintf("unix:%s,server,nowait", qmpSocket)
 
 	params := make([]string, 0, 32)
 	params = append(params, "-drive", fileParam)
 	params = append(params, "-drive", isoParam)
 	if q.cfg.NetworkNode {
-		ciaoParam := fmt.Sprintf("file=%s,if=virtio", q.ciaoISOPath)
+		ciaoParam := fmt.Sprintf("file=%s,if=virtio,media=cdrom", q.ciaoISOPath)
 		params = append(params, "-drive", ciaoParam)
 	}
 
