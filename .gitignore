@@ -11,5 +11,5 @@ networking/docker/plugin/plugin
 networking/libsnnet/tests/cncicli/cncicli
 networking/libsnnet/tests/cncli/cncli
 networking/libsnnet/tests/snnetcli/snnetcli
-ssntp/tools/tools
+ssntp/ciao-cert/ciao-cert
 test-cases/test-cases
