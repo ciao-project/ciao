@@ -36,27 +36,57 @@ import (
 	"text/template"
 )
 
+// PackageInfo contains information about a package under test.
 type PackageInfo struct {
-	Name   string   `json:"name"`
-	Path   string   `json:"path"`
-	Files  []string `json:"files"`
+	// Name is the name of the package.
+	Name string `json:"name"`
+
+	// Path is the import path of the package.
+	Path string `json:"path"`
+
+	// File contains a list of all the test files associated with a package.
+	Files []string `json:"files"`
+
+	// XFiles contains a list of all the external test files associated with
+	// a package.
 	XFiles []string `json:"xfiles"`
 }
 
+// TestInfo contains information about an individual executed test case.
 type TestInfo struct {
-	Name           string
-	Summary        string
-	Description    string
+	// Name is the name of the test case.
+	Name string
+
+	// Summary provides a brief one line description of the test case.
+	Summary string
+
+	// Description contains a detailed description of the test case.
+	Description string
+
+	// ExpectedResult outlines the success criteria for the test case.
 	ExpectedResult string
-	Pass           bool
-	Result         string
-	TimeTaken      string
+
+	// Pass indicates whether the test case passed or not.
+	Pass bool
+
+	// Result provides the result of the test case.
+	Result string
+
+	// TimeTaken is a description of the time taken to run the test case.
+	TimeTaken string
 }
 
+// PackageTests contains information about the tests that have been executed for
+// an individual package
 type PackageTests struct {
-	Name     string
+	// Name is the name of the package.
+	Name string
+
+	// Coverage is the amount of package code covered by the test cases.
 	Coverage string
-	Tests    []*TestInfo
+
+	// Tests is an array containing information about the specific test cases.
+	Tests []*TestInfo
 }
 
 type testResults struct {
