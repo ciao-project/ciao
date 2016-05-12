@@ -604,7 +604,7 @@ func TestListEventsTenant(t *testing.T) {
 
 		event := payloads.CiaoEvent{
 			Timestamp: l.Timestamp,
-			TenantId:  l.TenantID,
+			TenantID:  l.TenantID,
 			EventType: l.EventType,
 			Message:   l.Message,
 		}
@@ -921,7 +921,7 @@ func TestListEvents(t *testing.T) {
 	for _, l := range logs {
 		event := payloads.CiaoEvent{
 			Timestamp: l.Timestamp,
-			TenantId:  l.TenantID,
+			TenantID:  l.TenantID,
 			EventType: l.EventType,
 			Message:   l.Message,
 		}

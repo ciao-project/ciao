@@ -1325,7 +1325,7 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 
 		event := payloads.CiaoEvent{
 			Timestamp: l.Timestamp,
-			TenantId:  l.TenantID,
+			TenantID:  l.TenantID,
 			EventType: l.EventType,
 			Message:   l.Message,
 		}

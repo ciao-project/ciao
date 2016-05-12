@@ -698,7 +698,7 @@ func listClusterEvents(tenant string) {
 
 	fmt.Printf("%d Ciao event(s):\n", len(events.Events))
 	for i, event := range events.Events {
-		fmt.Printf("\t[%d] %v: %s:%s (Tenant %s)\n", i+1, event.Timestamp, event.EventType, event.Message, event.TenantId)
+		fmt.Printf("\t[%d] %v: %s:%s (Tenant %s)\n", i+1, event.Timestamp, event.EventType, event.Message, event.TenantID)
 	}
 
 }

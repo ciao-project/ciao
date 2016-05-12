@@ -354,7 +354,7 @@ type CiaoTraceData struct {
 // in a ciao cluster.
 type CiaoEvent struct {
 	Timestamp time.Time `json:"time_stamp"`
-	TenantId  string    `json:"tenant_id"`
+	TenantID  string    `json:"tenant_id"`
 	EventType string    `json:"type"`
 	Message   string    `json:"message"`
 }
