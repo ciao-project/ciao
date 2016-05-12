@@ -16,6 +16,8 @@
 
 package payloads
 
+// SSNTPNode contains information about a node through which a SSNTP frame
+// has passed.
 type SSNTPNode struct {
 	SSNTPUUID   string `yaml:"ssntp_node_uuid"`
 	SSNTPRole   string `yaml:"ssntp_role"`
@@ -23,6 +25,8 @@ type SSNTPNode struct {
 	RxTimestamp string `yaml:"rx_timestamp"`
 }
 
+// FrameTrace captures trace information for an SSNTP frame
+// as it makes its way through a SSNTP cluster.
 type FrameTrace struct {
 	Label          string `yaml:"label"`
 	Type           string `yaml:"type"`
@@ -32,6 +36,9 @@ type FrameTrace struct {
 	Nodes          []SSNTPNode
 }
 
+// Trace represents the unmarshalled version of the contents of an SSNTP
+// ssntp.TraceReport event.  The structure contains tracing information
+// for an SSNTP frame.
 type Trace struct {
 	Frames []FrameTrace
 }

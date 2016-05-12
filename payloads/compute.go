@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+// PrivateAddresses contains information about a single instance network
+// interface.
 type PrivateAddresses struct {
 	Addr               string `json:"addr"`
 	OSEXTIPSMACMacAddr string `json:"OS-EXT-IPS-MAC:mac_addr"`
@@ -27,35 +29,49 @@ type PrivateAddresses struct {
 	Version            int    `json:"version"`
 }
 
+// Addresses contains information about an instance's networks.
 type Addresses struct {
 	Private []PrivateAddresses `json:"private"`
 }
 
+// Link is reserved for future use.
 type Link struct {
 	Href string `json:"href"`
 	Rel  string `json:"rel"`
 }
 
+// Flavor identifies the flavour (workload) of an instance.
 type Flavor struct {
 	ID    string `json:"id"`
 	Links []Link `json:"links"`
 }
 
+// Image identifies the base image of the instance.
 type Image struct {
 	ID    string `json:"id"`
 	Links []Link `json:"links"`
 }
 
+// SecurityGroup represents the security group of an instance.
 type SecurityGroup struct {
 	Name string `json:"name"`
 }
 
 const (
+	// ComputeStatusPending is a filter that used to select pending
+	// instances in requests to the controller.
 	ComputeStatusPending = "pending"
+
+	// ComputeStatusRunning is a filter that used to select running
+	// instances in requests to the controller.
 	ComputeStatusRunning = "running"
+
+	// ComputeStatusStopped is a filter that used to select exited
+	// instances in requests to the controller.
 	ComputeStatusStopped = "exited"
 )
 
+// Server contains information about a specific instance within a ciao cluster.
 type Server struct {
 	Addresses                        Addresses       `json:"addresses"`
 	Created                          time.Time       `json:"created"`
@@ -91,15 +107,24 @@ type Server struct {
 	SSHPort                          int             `json:"ssh_port"`
 }
 
+// ComputeServers represents the unmarshalled version of the contents of a
+// /v2.1/{tenant}/servers/detail response.  It contains information about a
+// set of instances within a ciao cluster.
 type ComputeServers struct {
 	TotalServers int      `json:"total_servers"`
 	Servers      []Server `json:"servers"`
 }
 
+// ComputeServer represents the unmarshalled version of the contents of a
+// /v2.1/{tenant}/servers/{server} response.  It contains information about a
+// specific instance within a ciao cluster.
 type ComputeServer struct {
 	Server Server `json:"server"`
 }
 
+// ComputeFlavors represents the unmarshalled version of the contents of a
+// /v2.1/{tenant}/flavors response.  It contains information about all the
+// flavors in a cluster.
 type ComputeFlavors struct {
 	Flavors []struct {
 		ID    string `json:"id"`
@@ -108,6 +133,7 @@ type ComputeFlavors struct {
 	} `json:"flavors"`
 }
 
+// FlavorDetails contains information about a specific flavor.
 type FlavorDetails struct {
 	OSFLVDISABLEDDisabled  bool   `json:"OS-FLV-DISABLED:disabled"`
 	Disk                   string `json:"disk"` /* OpenStack API says this is an int */
@@ -121,10 +147,16 @@ type FlavorDetails struct {
 	Vcpus                  int    `json:"vcpus"`
 }
 
+// ComputeFlavorDetails represents the unmarshalled version of the contents of a
+// /v2.1/{tenant}/flavors/{flavor} response.  It contains information about a
+// specific flavour.
 type ComputeFlavorDetails struct {
 	Flavor FlavorDetails `json:"flavor"`
 }
 
+// ComputeCreateServer represents the unmarshalled version of the contents of a
+// /v2.1/{tenant}/servers request.  It contains the information needed to start
+// one or more instances.
 type ComputeCreateServer struct {
 	Server struct {
 		Name         string `json:"name"`
@@ -135,6 +167,9 @@ type ComputeCreateServer struct {
 	} `json:"server"`
 }
 
+// CiaoComputeTenants represents the unmarshalled version of the contents of a
+// /v2.1/tenants response.  It contains information about the tenants in a ciao
+// cluster.
 type CiaoComputeTenants struct {
 	Tenants []struct {
 		ID   string `json:"id"`
@@ -142,6 +177,8 @@ type CiaoComputeTenants struct {
 	} `json:"tenants"`
 }
 
+// CiaoComputeNode contains status and statistic information for an individual
+// node.
 type CiaoComputeNode struct {
 	ID                    string    `json:"id"`
 	Timestamp             time.Time `json:"updated"`
@@ -158,10 +195,16 @@ type CiaoComputeNode struct {
 	TotalPausedInstances  int       `json:"total_paused_instances"`
 }
 
+// CiaoComputeNodes represents the unmarshalled version of the contents of a
+// /v2.1/nodes response.  It contains status and statistics information
+// for a set of nodes.
 type CiaoComputeNodes struct {
 	Nodes []CiaoComputeNode `json:"nodes"`
 }
 
+// CiaoTenantResources represents the unmarshalled version of the contents of a
+// /v2.1/{tenant}/quotas response.  It contains the current resource usage
+// information for a tenant.
 type CiaoTenantResources struct {
 	ID            string    `json:"id"`
 	Timestamp     time.Time `json:"updated"`
@@ -175,6 +218,7 @@ type CiaoTenantResources struct {
 	DiskUsage     int       `json:"disk_usage"`
 }
 
+// CiaoUsage contains a snapshot of resource consumption for a tenant.
 type CiaoUsage struct {
 	VCPU      int       `json:"cpus_usage"`
 	Memory    int       `json:"ram_usage"`
@@ -182,14 +226,19 @@ type CiaoUsage struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// CiaoUsageHistory represents the unmarshalled version of the contents of a
+// /v2.1/{tenant}/resources response.  It contains snapshots of usage information
+// for a given tenant over a given period of time.
 type CiaoUsageHistory struct {
 	Usages []CiaoUsage `json:"usage"`
 }
 
+// CiaoCNCISubnet contains subnet information for a CNCI.
 type CiaoCNCISubnet struct {
 	Subnet string `json:"subnet_cidr"`
 }
 
+// CiaoCNCI contains information about an individual CNCI.
 type CiaoCNCI struct {
 	ID        string           `json:"id"`
 	TenantID  string           `json:"tenant_id"`
@@ -198,14 +247,20 @@ type CiaoCNCI struct {
 	Subnets   []CiaoCNCISubnet `json:"subnets"`
 }
 
+// CiaoCNCIDetail represents the unmarshalled version of the contents of a
+// v2.1/cncis/{cnci}/detail response.  It contains information about a CNCI.
 type CiaoCNCIDetail struct {
 	CiaoCNCI `json:"cnci"`
 }
 
+// CiaoCNCIs represents the unmarshalled version of the contents of a
+// v2.1/cncis response.  It contains information about all the CNCIs
+// in the ciao cluster.
 type CiaoCNCIs struct {
 	CNCIs []CiaoCNCI `json:"cncis"`
 }
 
+// CiaoServerStats contains status information about a CN or a NN.
 type CiaoServerStats struct {
 	ID        string    `json:"id"`
 	NodeID    string    `json:"node_id"`
@@ -218,11 +273,17 @@ type CiaoServerStats struct {
 	DiskUsage int       `json:"disk_usage"`
 }
 
+// CiaoServersStats represents the unmarshalled version of the contents of a
+// v2.1/nodes/{node}/servers/detail response.  It contains general information
+// about a group of instances.
 type CiaoServersStats struct {
 	TotalServers int               `json:"total_servers"`
 	Servers      []CiaoServerStats `json:"servers"`
 }
 
+// CiaoClusterStatus represents the unmarshalled version of the contents of a
+// v2.1/nodes/summary response.  It contains information about the nodes that
+// make up a ciao cluster.
 type CiaoClusterStatus struct {
 	Status struct {
 		TotalNodes            int `json:"total_nodes"`
@@ -233,24 +294,33 @@ type CiaoClusterStatus struct {
 	} `json:"cluster"`
 }
 
+// CNCIDetail is reserved for future use.
 type CNCIDetail struct {
 	IPv4 string `json:"IPv4"`
 }
 
+// CiaoServersAction represents the unmarshalled version of the contents of a
+// v2.1/servers/action request.  It contains an action to be performed on
+// one or more instances.
 type CiaoServersAction struct {
 	Action    string   `json:"action"`
 	ServerIDs []string `json:"servers"`
 }
 
+// CiaoTraceSummary contains information about a specific SSNTP Trace label.
 type CiaoTraceSummary struct {
 	Label     string `json:"label"`
 	Instances int    `json:"instances"`
 }
 
+// CiaoTracesSummary represents the unmarshalled version of the response to a
+// v2.1/traces request.  It contains a list of all trace labels and the
+// number of instances associated with them.
 type CiaoTracesSummary struct {
 	Summaries []CiaoTraceSummary `json:"summaries"`
 }
 
+// CiaoFrameStat is reserved for future use
 type CiaoFrameStat struct {
 	ID               string  `json:"node_id"`
 	TotalElapsedTime float64 `json:"total_elapsed_time"`
@@ -259,6 +329,7 @@ type CiaoFrameStat struct {
 	SchedulerTime    float64 `json:"total_scheduler_time"`
 }
 
+// CiaoBatchFrameStat contains frame statisitics for a ciao cluster.
 type CiaoBatchFrameStat struct {
 	NumInstances             int     `json:"num_instances"`
 	TotalElapsed             float64 `json:"total_elapsed"`
@@ -271,11 +342,16 @@ type CiaoBatchFrameStat struct {
 	VarianceScheduler        float64 `json:"scheduler_variance"`
 }
 
+// CiaoTraceData represents the unmarshalled version of the response to a
+// v2.1/traces/{label} request.  It contains statistics computed from the trace
+// information of SSNTP commands sent within a ciao cluster.
 type CiaoTraceData struct {
 	Summary    CiaoBatchFrameStat `json:"summary"`
 	FramesStat []CiaoFrameStat    `json:"frames"`
 }
 
+// CiaoEvent contains information about an individual event generated
+// in a ciao cluster.
 type CiaoEvent struct {
 	Timestamp time.Time `json:"time_stamp"`
 	TenantId  string    `json:"tenant_id"`
@@ -283,6 +359,8 @@ type CiaoEvent struct {
 	Message   string    `json:"message"`
 }
 
+// CiaoEvents represents the unmarshalled version of the response to a
+// v2.1/{tenant}/event or v2.1/event request.
 type CiaoEvents struct {
 	Events []CiaoEvent `json:"events"`
 }
