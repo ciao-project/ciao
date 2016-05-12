@@ -16,6 +16,7 @@
 
 package payloads
 
+// PublicIPCommand is reserved for future use.
 type PublicIPCommand struct {
 	ConcentratorUUID string `yaml:"concentrator_uuid"`
 	TenantUUID       string `yaml:"tenant_uuid"`
@@ -25,24 +26,37 @@ type PublicIPCommand struct {
 	VnicMAC          string `yaml:"vnic_mac"`
 }
 
+// CommandAssignPublicIP is reserved for future use.
 type CommandAssignPublicIP struct {
 	AssignIP PublicIPCommand `yaml:"assign_public_ip"`
 }
 
+// CommandReleasePublicIP is reserved for future use.
 type CommandReleasePublicIP struct {
 	ReleaseIP PublicIPCommand `yaml:"release_public_ip"`
 }
 
+// PublicIPFailureReason is reserved for future use.
 type PublicIPFailureReason string
 
 const (
-	PublicIPNoInstance     PublicIPFailureReason = "no_instance"
-	PublicIPInvalidPayload                       = "invalid_payload"
-	PublicIPInvalidData                          = "invalid_data"
-	PublicIPAssignFailure                        = "assign_failure"
-	PublicIPReleaseFailure                       = "release_failure"
+	// PublicIPNoInstance is reserved for future use.
+	PublicIPNoInstance PublicIPFailureReason = "no_instance"
+
+	// PublicIPInvalidPayload is reserved for future use.
+	PublicIPInvalidPayload = "invalid_payload"
+
+	// PublicIPInvalidData is reserved for future use.
+	PublicIPInvalidData = "invalid_data"
+
+	// PublicIPAssignFailure is reserved for future use.
+	PublicIPAssignFailure = "assign_failure"
+
+	// PublicIPReleaseFailure is reserved for future use.
+	PublicIPReleaseFailure = "release_failure"
 )
 
+// ErrorPublicIPFailure is reserved for future use.
 type ErrorPublicIPFailure struct {
 	ConcentratorUUID string                `yaml:"concentrator_uuid"`
 	TenantUUID       string                `yaml:"tenant_uuid"`
@@ -51,16 +65,6 @@ type ErrorPublicIPFailure struct {
 	PrivateIP        string                `yaml:"private_ip"`
 	VnicMAC          string                `yaml:"vnic_mac"`
 	Reason           PublicIPFailureReason `yaml:"reason"`
-}
-
-func (s *ErrorPublicIPFailure) Init() {
-	s.ConcentratorUUID = ""
-	s.TenantUUID = ""
-	s.InstanceUUID = ""
-	s.Reason = ""
-	s.PublicIP = ""
-	s.PrivateIP = ""
-	s.VnicMAC = ""
 }
 
 func (r PublicIPFailureReason) String() string {

@@ -16,17 +16,26 @@
 
 package payloads
 
+// ServiceType is reserved for future use.
 type ServiceType string
+
+// StorageType is reserved for future use.
 type StorageType string
 
 const (
-	Glance   ServiceType = "glance"
+	// Glance is reserved for future use.
+	Glance ServiceType = "glance"
+
+	// Keystone is reserved for future use.
 	Keystone ServiceType = "keystone"
 )
 
 const (
+	// Filesystem is reserved for future use.
 	Filesystem StorageType = "file"
-	Etcd       StorageType = "etcd"
+
+	// Etcd is reserved for future use.
+	Etcd StorageType = "etcd"
 )
 
 func (s ServiceType) String() string {
@@ -51,11 +60,13 @@ func (s StorageType) String() string {
 	return ""
 }
 
+// ConfigureScheduler is reserved for future use.
 type ConfigureScheduler struct {
 	ConfigStorageType StorageType `yaml:"storage_type"`
 	ConfigStorageURI  string      `yaml:"storage_uri"`
 }
 
+// ConfigureController is reserved for future use.
 type ConfigureController struct {
 	ComputePort      int    `yaml:"compute_port"`
 	ComputeCACert    string `yaml:"compute_ca"`
@@ -64,6 +75,7 @@ type ConfigureController struct {
 	IdentityPassword string `yaml:"identity_password"`
 }
 
+// ConfigureLauncher is reserved for future use.
 type ConfigureLauncher struct {
 	ComputeNetwork    string `yaml:"compute_net"`
 	ManagementNetwork string `yaml:"mgmt_net"`
@@ -71,11 +83,13 @@ type ConfigureLauncher struct {
 	MemoryLimit       bool   `yaml:"mem_limit"`
 }
 
+// ConfigureService is reserved for future use.
 type ConfigureService struct {
 	Type ServiceType `yaml:"type"`
 	URL  string      `yaml:"url"`
 }
 
+// ConfigurePayload is reserved for future use.
 type ConfigurePayload struct {
 	Scheduler       ConfigureScheduler  `yaml:"scheduler"`
 	Controller      ConfigureController `yaml:"controller"`
@@ -84,6 +98,7 @@ type ConfigurePayload struct {
 	IdentityService ConfigureService    `yaml:"identity_service"`
 }
 
+// Configure is reserved for future use.
 type Configure struct {
 	Configure ConfigurePayload `yaml:"configure"`
 }

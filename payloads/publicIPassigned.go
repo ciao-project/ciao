@@ -16,6 +16,7 @@
 
 package payloads
 
+// PublicIPEvent is reserved for future use.
 type PublicIPEvent struct {
 	ConcentratorUUID string `yaml:"concentrator_uuid"`
 	InstanceUUID     string `yaml:"instance_uuid"`
@@ -23,6 +24,7 @@ type PublicIPEvent struct {
 	PrivateIP        string `yaml:"private_ip"`
 }
 
+// EventPublicIPAssigned is reserved for future use.
 type EventPublicIPAssigned struct {
 	AssignedIP PublicIPEvent `yaml:"public_ip_assigned"`
 }

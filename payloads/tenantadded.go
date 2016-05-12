@@ -16,20 +16,45 @@
 
 package payloads
 
+// TenantAddedEvent is populated by ciao-launcher whenever it creates
+// or removes a local tunnel for a tennant on a CN.  This information is
+// sent to a CNCI instance, via the scheduler.  The cnci-agent then does
+// its magic.
 type TenantAddedEvent struct {
-	AgentUUID        string `yaml:"agent_uuid"`
-	AgentIP          string `yaml:"agent_ip"`
-	TenantUUID       string `yaml:"tenant_uuid"`
-	TenantSubnet     string `yaml:"tenant_subnet"`
+	// The UUID of the ciao-launcher that generated the event.
+	AgentUUID string `yaml:"agent_uuid"`
+
+	// The IP address of the CN on which the originating agent runs.
+	AgentIP string `yaml:"agent_ip"`
+
+	// The UUID of the tennant.
+	TenantUUID string `yaml:"tenant_uuid"`
+
+	// The subnet of the Tenant.
+	TenantSubnet string `yaml:"tenant_subnet"`
+
+	// The UUID of the concentrator.
 	ConcentratorUUID string `yaml:"concentrator_uuid"`
-	ConcentratorIP   string `yaml:"concentrator_ip"`
-	SubnetKey        int    `yaml:"subnet_key"`
+
+	// The IP address of the concentrator.
+	ConcentratorIP string `yaml:"concentrator_ip"`
+
+	// The UUID of the subnet.
+	SubnetKey int `yaml:"subnet_key"`
 }
 
+// EventTenantAdded represents the unmarshalled version of the contents of an
+// SSNTP ssntp.TenantAdded event payload. The structure contains all the
+// information needed by an CNCI instance to add a remote tunnel for a
+// CN
 type EventTenantAdded struct {
 	TenantAdded TenantAddedEvent `yaml:"tenant_added"`
 }
 
+// EventTenantRemoved represents the unmarshalled version of the contents of an
+// SSNTP ssntp.TenantRemoved event payload. The structure contains all the
+// information needed by an CNCI instance to remove a remote tunnel for a
+// CN
 type EventTenantRemoved struct {
 	TenantRemoved TenantAddedEvent `yaml:"tenant_removed"`
 }

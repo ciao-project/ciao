@@ -16,10 +16,12 @@
 
 package payloads
 
+// EvacuateCmd is reserved for future use.
 type EvacuateCmd struct {
 	WorkloadAgentUUID string `yaml:"workload_agent_uuid"`
 }
 
+// Evacuate is reserved for future use.
 type Evacuate struct {
 	Evacuate EvacuateCmd `yaml:"evacuate"`
 }

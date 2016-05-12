@@ -16,16 +16,37 @@
 
 package payloads
 
+// Ready represents the unmarshalled version of the contents of an SSNTP READY
+// payload.  The structure contains information about the state of an NN or a CN
+// on which ciao-launcher is running.
 type Ready struct {
-	NodeUUID        string `yaml:"node_uuid"`
-	MemTotalMB      int    `yaml:"mem_total_mb"`
-	MemAvailableMB  int    `yaml:"mem_available_mb"`
-	DiskTotalMB     int    `yaml:"disk_total_mb"`
-	DiskAvailableMB int    `yaml:"disk_available_mb"`
-	Load            int    `yaml:"load"`
-	CpusOnline      int    `yaml:"cpus_online"`
+	// NodeUUID is the SSNTP UUID assigned to the ciao-launcher instance
+	// that transmitted the READY frame.
+	NodeUUID string `yaml:"node_uuid"`
+
+	// Total amount of RAM available on a CN or NN
+	MemTotalMB int `yaml:"mem_total_mb"`
+
+	// Memory currently available on a CN or NN, computed from
+	// proc/meminfo:MemFree + Active(file) + Inactive(file)
+	MemAvailableMB int `yaml:"mem_available_mb"`
+
+	// Size of the CN/NN RootFS in MB
+	DiskTotalMB int `yaml:"disk_total_mb"`
+
+	// MBs available in the RootFS of the CN/NN
+	DiskAvailableMB int `yaml:"disk_available_mb"`
+
+	// Load of CN/NN, taken from /proc/loadavg (Average over last minute
+	// reported).
+	Load int `yaml:"load"`
+
+	// Number of CPUs present in the CN/NN.  Derived from the number of
+	// cpu[0-9]+ entries in /proc/stat.
+	CpusOnline int `yaml:"cpus_online"`
 }
 
+// Init initialises the Ready structure.
 func (s *Ready) Init() {
 	s.NodeUUID = ""
 	s.MemTotalMB = -1

@@ -16,15 +16,26 @@
 
 package payloads
 
+// NodeConnectedEvent contains information about a node that has either
+// just connected or disconnected.
 type NodeConnectedEvent struct {
-	NodeUUID string   `yaml:"node_uuid"`
+	// SSNTP UUID of the agent running on that node.
+	NodeUUID string `yaml:"node_uuid"`
+
+	// The type of the node, e.g., NetworkNode or ComputeNode.
 	NodeType Resource `yaml:"node_type"`
 }
 
+// NodeConnected represents the unmarshalled version of the contents of an
+// SSNTP ssntp.NodeConnected event payload.   This event is sent by the
+// scheduler to the controller to inform it that a node has just connected.
 type NodeConnected struct {
 	Connected NodeConnectedEvent `yaml:"node_connected"`
 }
 
+// NodeDisconnected represents the unmarshalled version of the contents of an
+// SSNTP ssntp.NodeDisconnected event payload.   This event is sent by the
+// scheduler to the controller to inform it that a node has just disconnected.
 type NodeDisconnected struct {
 	Disconnected NodeConnectedEvent `yaml:"node_disconnected"`
 }

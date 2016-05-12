@@ -16,10 +16,15 @@
 
 package payloads
 
+// InstanceDeletedEvent contains the UUID of an instance that has just been
+// deleted.
 type InstanceDeletedEvent struct {
 	InstanceUUID string `yaml:"instance_uuid"`
 }
 
+// EventInstanceDeleted represents the unmarshalled version of the contents of
+// an SSNTP ssntp.InstanceDeleted event. This event is sent by ciao-launcher
+// when it successfully deletes an instance.
 type EventInstanceDeleted struct {
 	InstanceDeleted InstanceDeletedEvent `yaml:"instance_deleted"`
 }

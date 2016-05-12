@@ -16,6 +16,11 @@
 
 package payloads
 
+// CNCIInstanceConfig is used to pass information between a ciao-launcher
+// running on an NN and CNCI instances invoked by that launcher.  This
+// information is marshalled out to a yaml file, stored on an ISO image
+// and made available to the VM running the CNCI agent.
 type CNCIInstanceConfig struct {
+	// SchedulerAddr is the IP address of the scheduler.
 	SchedulerAddr string `yaml:"scheduler_addr"`
 }

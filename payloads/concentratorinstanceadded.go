@@ -16,6 +16,8 @@
 
 package payloads
 
+// ConcentratorInstanceAddedEvent contains information about a newly added
+// CNCI instance.
 type ConcentratorInstanceAddedEvent struct {
 	InstanceUUID    string `yaml:"instance_uuid"`
 	TenantUUID      string `yaml:"tenant_uuid"`
@@ -23,6 +25,9 @@ type ConcentratorInstanceAddedEvent struct {
 	ConcentratorMAC string `yaml:"concentrator_mac"`
 }
 
+// EventConcentratorInstanceAdded represents the unmarshalled version of the
+// contents of an SSNTP ssntp.ConcentratorInstanceAdded event.  This event is
+// sent by the cnci-agent to the controller when it connects to the scheduler.
 type EventConcentratorInstanceAdded struct {
 	CNCIAdded ConcentratorInstanceAddedEvent `yaml:"concentrator_instance_added"`
 }
