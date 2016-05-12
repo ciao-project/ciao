@@ -86,7 +86,7 @@ func TestConfigureUnmarshal(t *testing.T) {
 	}
 
 	if cfg.Configure.Controller.ComputePort != computePort {
-		t.Errorf("Wrong controller compute port [%s]", cfg.Configure.Controller.ComputePort)
+		t.Errorf("Wrong controller compute port [%d]", cfg.Configure.Controller.ComputePort)
 	}
 }
 
