@@ -72,6 +72,17 @@ type nodeStat struct {
 
 type controllerStatus uint8
 
+func (s controllerStatus) String() string {
+	switch s {
+	case controllerMaster:
+		return "MASTER"
+	case controllerBackup:
+		return "BACKUP"
+	}
+
+	return ""
+}
+
 const (
 	controllerMaster controllerStatus = iota
 	controllerBackup
@@ -677,6 +688,78 @@ func setLimits() {
 	glog.Infof("Updated nofile limits: cur %d max %d", rlim.Cur, rlim.Max)
 }
 
+func heartBeatControllers(sched *ssntpSchedulerServer) (s string) {
+	// show the first two controller's
+	controllerMax := 2
+	i := 0
+
+	sched.controllerMutex.RLock()
+	for _, controller := range sched.controllerMap {
+		controller.mutex.Lock()
+		s += fmt.Sprintf("controller-%s:", controller.uuid[:8])
+		s += controller.status.String()
+		controller.mutex.Unlock()
+
+		i++
+		if i == controllerMax {
+			break
+		}
+		if i <= controllerMax && len(sched.controllerMap) > i {
+			s += ", "
+		} else {
+			s += "\t"
+		}
+	}
+	sched.controllerMutex.RUnlock()
+
+	if i == 0 {
+		s += " -no Controller- \t\t\t\t\t"
+	} else if i < controllerMax {
+		s += "\t\t\t"
+	} else {
+		s += "\t"
+	}
+
+	return s
+}
+
+func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
+	// show the first four compute nodes
+	cnMax := 4
+	i := 0
+
+	sched.cnMutex.RLock()
+	for _, node := range sched.cnMap {
+
+		node.mutex.Lock()
+		s += fmt.Sprintf("node-%s:", node.uuid[:8])
+		s += node.status.String()
+		if node == sched.cnMRU {
+			s += "*"
+		}
+		s += ":" + fmt.Sprintf("%d/%d,%d",
+			node.memAvailMB,
+			node.memTotalMB,
+			node.load)
+		node.mutex.Unlock()
+
+		i++
+		if i == cnMax {
+			break
+		}
+		if i <= cnMax && len(sched.cnMap) > i {
+			s += ", "
+		}
+	}
+	sched.cnMutex.RUnlock()
+
+	if i == 0 {
+		s += " -no Compute Nodes-"
+	}
+
+	return s
+}
+
 func heartBeat(sched *ssntpSchedulerServer) {
 	iter := 0
 	for {
@@ -686,79 +769,21 @@ func heartBeat(sched *ssntpSchedulerServer) {
 
 		sched.controllerMutex.RLock()
 		sched.cnMutex.RLock()
-
 		if len(sched.controllerMap) == 0 && len(sched.cnMap) == 0 {
-			beatTxt += "** idle / disconnected **"
-		} else {
-			//output a column indication occasionally
-			iter++
-			if iter%22 == 0 {
-				log.Printf("Controllers\t\t\t\t\tCompute Nodes\n")
-			}
-
-			i := 0
-			// show the first two controller's
-			controllerMax := 2
-			for _, controller := range sched.controllerMap {
-				controller.mutex.Lock()
-				beatTxt += fmt.Sprintf("controller-%s:", controller.uuid[:8])
-				if controller.status == controllerMaster {
-					beatTxt += "master"
-				} else {
-					beatTxt += "backup"
-				}
-				controller.mutex.Unlock()
-				i++
-				if i == controllerMax {
-					break
-				}
-				if i <= controllerMax && len(sched.controllerMap) > i {
-					beatTxt += ", "
-				} else {
-					beatTxt += "\t"
-				}
-			}
-			if i == 0 {
-				beatTxt += " -no Controller- \t\t\t\t\t"
-			} else if i < controllerMax {
-				beatTxt += "\t\t\t"
-			} else {
-				beatTxt += "\t"
-			}
-			i = 0
-			// show the first four compute nodes
-			cnMax := 4
-			for _, node := range sched.cnMap {
-				node.mutex.Lock()
-				if node.uuid == "" {
-					beatTxt += fmt.Sprintf("node-UNKNOWN:")
-				} else {
-					beatTxt += fmt.Sprintf("node-%s:", node.uuid[:8])
-				}
-				beatTxt += node.status.String()
-				if node == sched.cnMRU {
-					beatTxt += "*"
-				}
-				beatTxt += ":" +
-					fmt.Sprintf("%d/%d,%d",
-						node.memAvailMB,
-						node.memTotalMB,
-						node.load)
-				i++
-				node.mutex.Unlock()
-				if i == cnMax {
-					break
-				}
-				if i <= cnMax && len(sched.cnMap) > i {
-					beatTxt += ", "
-				}
-			}
-			if i == 0 {
-				beatTxt += " -no Compute Nodes-"
-			}
+			beatTxt = "** idle / disconnected **"
 		}
 		sched.controllerMutex.RUnlock()
 		sched.cnMutex.RUnlock()
+
+		iter++
+		if iter%22 == 0 {
+			//output a column indication occasionally
+			log.Printf("Controllers\t\t\t\t\tCompute Nodes\n")
+		}
+
+		beatTxt = heartBeatControllers(sched)
+		beatTxt += heartBeatComputeNodes(sched)
+
 		log.Printf("%s\n", beatTxt)
 	}
 }
