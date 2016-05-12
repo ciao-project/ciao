@@ -5,8 +5,8 @@ ciao-launcher/ciao-launcher
 ciao-launcher/tests/ciao-launcher-server/ciao-launcher-server
 ciao-launcher/tests/ciaolc/ciaolc
 ciao-scheduler/ciao-scheduler
-networking/cnci_agent/cnci_agent
-networking/cnci_agent/test_cnci_server/test_cnci_server
+networking/ciao-cnci-agent/ciao-cnci-agent
+networking/ciao-cnci-agent/test_cnci_server/test_cnci_server
 networking/docker/plugin/plugin
 networking/libsnnet/tests/cncicli/cncicli
 networking/libsnnet/tests/cncli/cncli

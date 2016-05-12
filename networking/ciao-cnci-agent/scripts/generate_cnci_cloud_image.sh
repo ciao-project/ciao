@@ -2,26 +2,26 @@
 
 #Defaults
 image="clear-7520-ciao-networking.img"
-certs_dir=$GOPATH/src/github.com/01org/ciao/networking/cnci_agent/scripts/certs
-cnci_agent=$GOPATH/bin/cnci_agent
-cnci_sysd=$GOPATH/src/github.com/01org/ciao/networking/cnci_agent/scripts/cnci-agent.service
+certs_dir=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/certs
+cnci-agent=$GOPATH/bin/ciao-cnci-agent
+cnci_sysd=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service
 partition="2"
 
-#The images can be downloaded from 
+#The images can be downloaded from
 #curl -O https://download.clearlinux.org/demos/ciao/"$image".xz
 #unxz "$image".xz
 
-usage="$(basename "$0") [--image clear_cnci_image_name] [-certs certificate_directory] [-agent cnci_agent_binary] [-script cnci_systemd_script] \n\n A simple script to create a CNCI Image from a clear cloud image. \n Defaults for any unspecified option are as follows \n\n --agent $cnci_agent \n --certs $certs_dir \n --image $image \n --script $cnci_sysd\n\n"
+usage="$(basename "$0") [--image clear_cnci_image_name] [-certs certificate_directory] [-agent cnci_agent_binary] [-script cnci_systemd_script] \n\n A simple script to create a CNCI Image from a clear cloud image. \n Defaults for any unspecified option are as follows \n\n --agent $cnci-agent \n --certs $certs_dir \n --image $image \n --script $cnci_sysd\n\n"
 
 while :
 do
     case "$1" in
       -a | --agent)
-	  cnci_agent="$2" 
+	  cnci-agent="$2"
 	  shift 2
 	  ;;
       -c | --certs)
-	  certs_dir="$2" 
+	  certs_dir="$2"
 	  shift 2
 	  ;;
       -h | --help)
@@ -29,11 +29,11 @@ do
 	  exit 0
 	  ;;
       -i | --image)
-	  image="$2" 
+	  image="$2"
 	  shift 2
 	  ;;
       -s | --script)
-	  cnci_sysd="$2" 
+	  cnci_sysd="$2"
 	  shift 2
 	  ;;
       *)
@@ -52,15 +52,15 @@ echo -e "Cleaning up any artifacts"
 sudo rm -rf /mnt/tmp/var/lib/ciao
 
 echo -e "Copying agent image"
-sudo cp "$cnci_agent" /mnt/tmp/usr/sbin/
+sudo cp "$cnci-agent" /mnt/tmp/usr/sbin/
 
 echo -e "Copying agent systemd service script"
 sudo cp "$cnci_sysd" /mnt/tmp/usr/lib/systemd/system/
 
 echo -e "Installing the service"
 sudo mkdir -p /mnt/tmp/etc/systemd/system/default.target.wants
-sudo rm /mnt/tmp/etc/systemd/system/default.target.wants/cnci-agent.service
-sudo chroot /mnt/tmp /bin/bash -c "sudo ln -s /usr/lib/systemd/system/cnci-agent.service /etc/systemd/system/default.target.wants/"
+sudo rm /mnt/tmp/etc/systemd/system/default.target.wants/ciao-cnci-agent.service
+sudo chroot /mnt/tmp /bin/bash -c "sudo ln -s /usr/lib/systemd/system/ciao-cnci-agent.service /etc/systemd/system/default.target.wants/"
 
 echo -e "Copying CA certificates"
 sudo mkdir -p /mnt/tmp/var/lib/ciao/
