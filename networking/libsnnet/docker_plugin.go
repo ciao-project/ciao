@@ -79,7 +79,7 @@ Note: The launcher should be launched prior to the docker daemon.
 
 
 	Note: Fully specifying the network creation and handing control to the
-	ciao driver (-d) makes docker a pass thru for networking.
+	ciao driver (-d) makes docker a passthrough for networking.
 	Note: The docker IPAM seems to try to setup its own gateway. WHY?
 
 	In the future any more information we need can also be sent as more

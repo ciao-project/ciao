@@ -31,7 +31,7 @@ import (
 // Tenant Traffic is carried over the Compute Network.
 // Management Traffic is carried over the Management Network.
 // Both tenant and management traffic can also be carried over
-// the same network if it is not possible to have seperate
+// the same network if it is not possible to have separate
 // management and compute networks.
 type NetworkConfig struct {
 	ManagementNet []net.IPNet // Enumerates all possible management subnets
