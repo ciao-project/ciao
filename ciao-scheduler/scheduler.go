@@ -36,17 +36,17 @@ type ssntpSchedulerServer struct {
 	name  string
 	// Command & Status Reporting node(s)
 	controllerMap   map[string]*controllerStat
-	controllerMutex sync.RWMutex
+	controllerMutex sync.RWMutex // Rlock traversal of map, Lock modification of map
 	// Compute Nodes
 	cnMap      map[string]*nodeStat
 	cnList     []*nodeStat
-	cnMutex    sync.RWMutex
+	cnMutex    sync.RWMutex // Rlock traversal of map, Lock modification of map
 	cnMRU      *nodeStat
 	cnMRUIndex int
 	//cnInactiveMap      map[string]nodeStat
 	// Network Nodes
 	nnMap   map[string]*nodeStat
-	nnMutex sync.RWMutex
+	nnMutex sync.RWMutex // Rlock traversal of map, Lock modification of map
 	nnMRU   string
 }
 
@@ -129,8 +129,8 @@ func (sched *ssntpSchedulerServer) sendNodeConnectionEvent(nodeUUID, controllerU
 }
 
 func (sched *ssntpSchedulerServer) sendNodeConnectedEvents(nodeUUID string, nodeType payloads.Resource) {
-	sched.controllerMutex.Lock()
-	defer sched.controllerMutex.Unlock()
+	sched.controllerMutex.RLock()
+	defer sched.controllerMutex.RUnlock()
 
 	for _, c := range sched.controllerMap {
 		sched.sendNodeConnectionEvent(nodeUUID, c.uuid, nodeType, true)
@@ -138,8 +138,8 @@ func (sched *ssntpSchedulerServer) sendNodeConnectedEvents(nodeUUID string, node
 }
 
 func (sched *ssntpSchedulerServer) sendNodeDisconnectedEvents(nodeUUID string, nodeType payloads.Resource) {
-	sched.controllerMutex.Lock()
-	defer sched.controllerMutex.Unlock()
+	sched.controllerMutex.RLock()
+	defer sched.controllerMutex.RUnlock()
 
 	for _, c := range sched.controllerMap {
 		sched.sendNodeConnectionEvent(nodeUUID, c.uuid, nodeType, false)
@@ -211,7 +211,7 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 
 func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
 	sched.controllerMutex.Lock()
-	defer sched.controllerMutex.Unlock()
+	//BUG(121): defer sched.controllerMutex.Unlock()
 	if sched.controllerMap[uuid] != nil {
 		controller := sched.controllerMap[uuid]
 		if controller.status == controllerMaster {
@@ -230,11 +230,15 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
 		delete(sched.controllerMap, uuid)
 
 		glog.V(2).Infof("Disconnect controller (uuid=%s)\n", uuid)
+		//BUG(121): use defer
+		sched.controllerMutex.Unlock()
 		return
 	}
+	//BUG(121): use defer
+	sched.controllerMutex.Unlock()
 
 	sched.cnMutex.Lock()
-	defer sched.cnMutex.Unlock()
+	//BUG(121): defer sched.cnMutex.Unlock()
 	if sched.cnMap[uuid] != nil {
 		//TODO: consider moving to cnInactiveMap?
 		node := sched.cnMap[uuid]
@@ -260,11 +264,15 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
 		delete(sched.cnMap, uuid)
 
 		glog.V(2).Infof("Disconnect cn (uuid=%s)\n", uuid)
+		//BUG(121): use defer
+		sched.cnMutex.Unlock()
 		return
 	}
+	//BUG(121): use defer
+	sched.cnMutex.Unlock()
 
 	sched.nnMutex.Lock()
-	defer sched.nnMutex.Unlock()
+	//BUG(121): defer sched.nnMutex.Unlock()
 	if sched.nnMap[uuid] != nil {
 		/* We need a go routine as the controller lock is taken */
 		go sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
@@ -273,8 +281,12 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
 		delete(sched.nnMap, uuid)
 
 		glog.V(2).Infof("Disconnect nn (uuid=%s)\n", uuid)
+		//BUG(121): use defer
+		sched.nnMutex.Unlock()
 		return
 	}
+	//BUG(121): use defer
+	sched.nnMutex.Unlock()
 
 	glog.Warningf("Disconnect error: no ssntp client with uuid=%s\n", uuid)
 	return
