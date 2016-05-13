@@ -33,6 +33,12 @@ script:
    - sudo docker pull debian
    - sudo ip link add testdummy type dummy
    - sudo ip addr add 198.51.100.1/24 dev testdummy
+   - go get github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
+   - go list ./... | grep -v vendor | xargs -t misspell
+#  - go list ./... | grep -v vendor | xargs -t go vet
+#  - go list ./... | grep -v vendor | xargs -tL 1 golint -set_exit_status
+   - go vet github.com/01org/ciao/ciao-cli github.com/01org/ciao/ciao-controller/internal/datastore github.com/01org/ciao/ciao-controller/types github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-launcher/tests/ciao-launcher-server github.com/01org/ciao/ciao-launcher/tests/ciaolc github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/networking/cnci_agent github.com/01org/ciao/networking/cnci_agent/test_cnci_server github.com/01org/ciao/networking/libsnnet github.com/01org/ciao/networking/libsnnet/tests/cncicli github.com/01org/ciao/networking/libsnnet/tests/cncli github.com/01org/ciao/networking/libsnnet/tests/docker/plugin github.com/01org/ciao/networking/libsnnet/tests/parallel github.com/01org/ciao/payloads github.com/01org/ciao/ssntp github.com/01org/ciao/ssntp/ciao-cert github.com/01org/ciao/test-cases
+   - if [[ `go version | grep -v devel` ]] ; then go list github.com/01org/ciao/networking/... github.com/01org/ciao/ciao-controller github.com/01org/ciao/ciao-launcher/... github.com/01org/ciao/payloads github.com/01org/ciao/ssntp/... github.com/01org/ciao/test-cases github.com/01org/ciao/ciao-scheduler | xargs -tL 1 golint -set_exit_status ; fi
    - test-cases -text github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/ciao-controller/... github.com/01org/ciao/payloads
    - export GOROOT=`go env GOROOT` && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -text github.com/01org/ciao/ssntp
    - go get github.com/google/gofuzz
