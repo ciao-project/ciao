@@ -486,8 +486,8 @@ func (sched *ssntpSchedulerServer) decrementResourceUsage(node *nodeStat, worklo
 }
 
 func (sched *ssntpSchedulerServer) pickComputeNode(controllerUUID string, workload *workResources) (node *nodeStat) {
-	sched.cnMutex.Lock()
-	defer sched.cnMutex.Unlock()
+	sched.cnMutex.RLock()
+	defer sched.cnMutex.RUnlock()
 
 	if len(sched.cnList) == 0 {
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoComputeNodes)
