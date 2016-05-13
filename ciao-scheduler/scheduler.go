@@ -376,10 +376,8 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 	return workload, nil
 }
 
+// Check resource demands are satisfiable by the referenced, locked nodeStat object
 func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workResources) bool {
-	node.mutex.Lock()
-	defer node.mutex.Unlock()
-
 	// simple scheduling policy == first memory fit
 	if node.memAvailMB >= workload.memReqMB &&
 		node.status == ssntp.READY {
@@ -478,71 +476,85 @@ func (sched *ssntpSchedulerServer) fwdCmdToComputeNode(command ssntp.Command, pa
 	return
 }
 
+// Decrement resource claims for the referenced locked nodeStat object
 func (sched *ssntpSchedulerServer) decrementResourceUsage(node *nodeStat, workload *workResources) {
-	node.mutex.Lock()
-	defer node.mutex.Unlock()
-
 	node.memAvailMB -= workload.memReqMB
 }
 
+// Find suitable compute node, returning referenced to a locked nodeStat if found
 func (sched *ssntpSchedulerServer) pickComputeNode(controllerUUID string, workload *workResources) (node *nodeStat) {
 	sched.cnMutex.RLock()
 	defer sched.cnMutex.RUnlock()
 
 	if len(sched.cnList) == 0 {
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoComputeNodes)
-		return
+		return nil
 	}
 
 	/* Shortcut for 1 nodes cluster */
 	if len(sched.cnList) == 1 {
+		node := sched.cnList[0]
+		node.mutex.Lock()
 		if sched.workloadFits(sched.cnList[0], workload) == true {
-			return sched.cnList[0]
+			node.mutex.Unlock()
+			return node
 		}
+		node.mutex.Unlock()
+		return nil
 	}
 
 	/* First try nodes after the MRU */
 	if sched.cnMRUIndex != -1 && sched.cnMRUIndex < len(sched.cnList)-1 {
-		for i, n := range sched.cnList[sched.cnMRUIndex+1:] {
-			if n == sched.cnMRU {
+		for i, node := range sched.cnList[sched.cnMRUIndex+1:] {
+			node.mutex.Lock()
+			if node == sched.cnMRU {
+				node.mutex.Unlock()
 				continue
 			}
 
-			if sched.workloadFits(n, workload) == true {
+			if sched.workloadFits(node, workload) == true {
 				sched.cnMRUIndex = sched.cnMRUIndex + 1 + i
-				sched.cnMRU = n
-				return n
+				sched.cnMRU = node
+				node.mutex.Unlock()
+				return node
 			}
+			node.mutex.Unlock()
 		}
 	}
 
 	/* Then try the whole list, including the MRU */
-	for i, n := range sched.cnList {
-		if sched.workloadFits(n, workload) == true {
+	for i, node := range sched.cnList {
+		node.mutex.Lock()
+		if sched.workloadFits(node, workload) == true {
 			sched.cnMRUIndex = i
-			sched.cnMRU = n
-			return n
+			sched.cnMRU = node
+			node.mutex.Unlock()
+			return node
 		}
+		node.mutex.Unlock()
 	}
 
 	sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.FullCloud)
 	return nil
 }
 
+// Find suitable net node, returning referenced to a locked nodeStat if found
 func (sched *ssntpSchedulerServer) pickNetworkNode(controllerUUID string, workload *workResources) (node *nodeStat) {
 	sched.nnMutex.RLock()
 	defer sched.nnMutex.RUnlock()
 
 	if len(sched.nnMap) == 0 {
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoNetworkNodes)
-		return
+		return nil
 	}
 
 	// with more than one node MRU gives simplistic spread
-	for _, node = range sched.nnMap {
+	for _, node := range sched.nnMap {
+		node.mutex.Lock()
 		if (len(sched.nnMap) <= 1 || ((len(sched.nnMap) > 1) && (node.uuid != sched.nnMRU))) &&
 			sched.workloadFits(node, workload) {
 			sched.nnMRU = node.uuid
+			node.mutex.Unlock()
 			return node
 		}
 	}
@@ -586,6 +598,7 @@ func (sched *ssntpSchedulerServer) startWorkload(controllerUUID string, payload 
 		sched.decrementResourceUsage(targetNode, &workload)
 
 		dest.AddRecipient(targetNode.uuid)
+		targetNode.mutex.Unlock()
 	} else {
 		// TODO Queue the frame ?
 		dest.SetDecision(ssntp.Discard)
