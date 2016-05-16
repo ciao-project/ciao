@@ -215,6 +215,14 @@ func listAllInstances(tenant string, workload string, marker string, offset int,
 	var servers payloads.ComputeServers
 	var url string
 
+	if *listInstances == true && tenant == "" {
+		fatalf("Missing required -tenant-id parameter")
+	}
+
+	if *listWlInstances == true && workload == "" {
+		fatalf("Missing required -workload parameter")
+	}
+
 	if tenant != "" {
 		url = buildComputeURL("%s/servers/detail", tenant)
 	} else if workload != "" {
@@ -846,11 +854,11 @@ func main() {
 	}
 
 	if *listInstances == true {
-		if len(*tenantID) != 0 {
-			listAllInstances(*tenantID, "", *instanceMarker, *instanceOffset, *listLength)
-		} else {
-			fatalf("Missing required -tenant-id parameter")
-		}
+		listAllInstances(*tenantID, "", *instanceMarker, *instanceOffset, *listLength)
+	}
+
+	if *listWlInstances == true {
+		listAllInstances("", *workload, *instanceMarker, *instanceOffset, *listLength)
 	}
 
 	if *listCNInstances == true {
@@ -858,14 +866,6 @@ func main() {
 			listNodeInstances(*computeNode)
 		} else {
 			fatalf("Missing required -cn parameter")
-		}
-	}
-
-	if *listWlInstances == true {
-		if len(*workload) != 0 {
-			listAllInstances("", *workload, *instanceMarker, *instanceOffset, *listLength)
-		} else {
-			fatalf("Missing required -workload parameter")
 		}
 	}
 
