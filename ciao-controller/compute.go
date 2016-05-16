@@ -438,7 +438,7 @@ func instanceToServer(context *controller, instance *types.Instance) (payloads.S
 		},
 		Status: instance.State,
 		Addresses: payloads.Addresses{
-			[]payloads.PrivateAddresses{
+			Private: []payloads.PrivateAddresses{
 				{
 					Addr:               instance.IPAddress,
 					OSEXTIPSMACMacAddr: instance.MACAddress,
