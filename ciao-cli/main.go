@@ -599,6 +599,20 @@ func actionAllTenantInstance(tenant string, osAction string) {
 	fmt.Printf("%s all instances for tenant %s\n", osAction, tenant)
 }
 
+func actionTenantInstance(tenant string, instance string, osAction string) {
+	if tenant == "" {
+		fatalf("Missing required -tenant-id parameter")
+	}
+
+	if instance == "" {
+		actionAllTenantInstance(tenant, osAction)
+	} else if osAction == osDelete {
+		deleteTenantInstance(tenant, instance)
+	} else {
+		fatalf("Unsupported action %s for instance %s", osAction, instance)
+	}
+}
+
 func listNodeInstances(node string) {
 	if node == "" {
 		fatalf("Missing required -cn parameter")
@@ -843,6 +857,10 @@ func checkCompulsoryOptions() {
 		fatal += "Missing required Ciao controller URL\n"
 	}
 
+	if *allInstances == true && *instance != "" {
+		fatal += "All instances or one single instance ?\n"
+	}
+
 	if fatal != "" {
 		fatalf(fatal)
 	}
@@ -923,19 +941,7 @@ func main() {
 	}
 
 	if *deleteInstance == true {
-		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant-id parameter")
-		}
-
-		if len(*instance) == 0 && *allInstances == false {
-			fatalf("Missing required -instance parameter")
-		}
-
-		if *allInstances == false {
-			deleteTenantInstance(*tenantID, *instance)
-		} else {
-			actionAllTenantInstance(*tenantID, osDelete)
-		}
+		actionTenantInstance(*tenantID, *instance, osDelete)
 	}
 
 	if *dumpCNCI == true {
