@@ -26,6 +26,7 @@ import (
 	"github.com/rackspace/gophercloud/openstack/identity/v3/tokens"
 )
 
+// Project represents a tenant UUID and friendly name.
 type Project struct {
 	ID   string `mapstructure:"id"`
 	Name string `mapstructure:"name"`
@@ -35,17 +36,23 @@ type getResult struct {
 	tokens.GetResult
 }
 
+// Domain is a collection of users, groups and projects.
+// Here we only need to fetch a domain UUID and friendly name.
 type Domain struct {
 	ID   string `mapstructure:"id"`
 	Name string `mapstructure:"name"`
 }
 
+// User represents an Openstack identity (e.g. Keystone) user.
+// We fetch the user UUID, friendly name and the domain it belongs
+// to.
 type User struct {
 	ValidDomain Domain `mapstructure:"domain"`
 	ID          string `mapstructure:"id"`
 	Name        string `mapstructure:"name"`
 }
 
+// UserProjects represents the list of projects a user has access to.
 type UserProjects struct {
 	Projects []struct {
 		Description string `json:"description"`
@@ -202,6 +209,7 @@ func getUserProjects(username string, password string) ([]Project, error) {
 	return userProjects, nil
 }
 
+// IdentityProjects represents the list of all existing projects.
 type IdentityProjects struct {
 	Links struct {
 		Next     interface{} `json:"next"`
