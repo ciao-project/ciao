@@ -286,6 +286,10 @@ func limitToString(limit int) string {
 }
 
 func listTenantQuotas(tenant string) {
+	if tenant == "" {
+		fatalf("Missing required -tenant-id parameter")
+	}
+
 	var resources payloads.CiaoTenantResources
 	url := buildComputeURL("%s/quotas", tenant)
 
@@ -866,10 +870,6 @@ func main() {
 	}
 
 	if *listQuotas == true {
-		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant-id parameter")
-		}
-
 		listTenantQuotas(*tenantID)
 	}
 
