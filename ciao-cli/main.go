@@ -826,40 +826,11 @@ func main() {
 	}
 
 	/* If we're missing the tenant name let's try to fetch one */
-	if len(*tenantName) == 0 {
-		projects, err := getUserProjects(*identityUser, *identityPassword)
+	if *tenantName == "" {
+		var err error
+		*tenantName, *tenantID, err = getTenant(*identityUser, *identityPassword, *tenantID)
 		if err != nil {
 			fatalf(err.Error())
-		}
-
-		if len(projects) > 1 {
-			if len(*tenantID) == 0 {
-				fmt.Printf("Available projects for %s:\n", *identityUser)
-				for i, p := range projects {
-					fmt.Printf("\t Project[%d]: %s (%s)\n", i+1, p.Name, p.ID)
-				}
-				fatalf("Please specify a project to use with -tenant-name or -tenant-id")
-			} else {
-				for _, p := range projects {
-					if p.ID != *tenantID {
-						continue
-					}
-					*tenantName = p.Name
-				}
-
-				if len(*tenantName) == 0 {
-					fatalf("No tenant name for %s", *tenantID)
-				}
-			}
-		} else {
-			if len(*tenantID) != 0 && projects[0].ID != *tenantID {
-				fatalf("No tenant name for %s", *tenantID)
-			}
-
-			*tenantName = projects[0].Name
-			if len(*tenantID) == 0 {
-				*tenantID = projects[0].ID
-			}
 		}
 
 		warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
