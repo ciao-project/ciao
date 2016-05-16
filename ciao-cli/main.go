@@ -311,6 +311,10 @@ func listTenantQuotas(tenant string) {
 }
 
 func listTenantResources(tenant string) {
+	if tenant == "" {
+		fatalf("Missing required -tenant-id parameter")
+	}
+
 	var usage payloads.CiaoUsageHistory
 	url := buildComputeURL("%s/resources", tenant)
 
@@ -874,10 +878,6 @@ func main() {
 	}
 
 	if *listResources == true {
-		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant-id parameter")
-		}
-
 		listTenantResources(*tenantID)
 	}
 
