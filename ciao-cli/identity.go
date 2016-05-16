@@ -266,25 +266,25 @@ func getTenant(username string, password string, tenantID string) (string, strin
 				fmt.Printf("\t Project[%d]: %s (%s)\n", i+1, p.Name, p.ID)
 			}
 			return "", "", fmt.Errorf("Please specify a project to use with -tenant-name or -tenant-id")
-		} else {
-			for _, p := range projects {
-				if p.ID != tenantID {
-					continue
-				}
-				return p.Name, tenantID, nil
+		}
+
+		for _, p := range projects {
+			if p.ID != tenantID {
+				continue
 			}
-			return "", tenantID, fmt.Errorf("No tenant name for %s", tenantID)
+			return p.Name, tenantID, nil
 		}
-	} else {
-		if tenantID != "" && projects[0].ID != tenantID {
-			return "", tenantID, fmt.Errorf("No tenant name for %s", tenantID)
-		}
-
-		tenantName := projects[0].Name
-		if tenantID == "" {
-			tenantID = projects[0].ID
-		}
-
-		return tenantName, tenantID, nil
+		return "", tenantID, fmt.Errorf("No tenant name for %s", tenantID)
 	}
+
+	if tenantID != "" && projects[0].ID != tenantID {
+		return "", tenantID, fmt.Errorf("No tenant name for %s", tenantID)
+	}
+
+	tenantName := projects[0].Name
+	if tenantID == "" {
+		tenantID = projects[0].ID
+	}
+
+	return tenantName, tenantID, nil
 }
