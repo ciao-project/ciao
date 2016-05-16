@@ -505,6 +505,14 @@ func dumpCNCIDetails(cnciID string) {
 }
 
 func createTenantInstance(tenant string, workload string, instances int, label string) {
+	if tenant == "" {
+		fatalf("Missing required -tenant-id parameter")
+	}
+
+	if workload == "" {
+		fatalf("Missing required -workload parameter")
+	}
+
 	var server payloads.ComputeCreateServer
 	var servers payloads.ComputeServers
 
@@ -902,14 +910,6 @@ func main() {
 	}
 
 	if *launchInstances == true {
-		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant-id parameter")
-		}
-
-		if len(*workload) == 0 {
-			fatalf("Missing required -workload parameter")
-		}
-
 		createTenantInstance(*tenantID, *workload, *instances, *instanceLabel)
 	}
 
