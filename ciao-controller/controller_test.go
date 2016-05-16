@@ -789,41 +789,10 @@ func TestNewTenantHardwareAddr(t *testing.T) {
 }
 
 func TestStartWorkload(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var reason payloads.StartFailureReason
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
+	client, _ := testStartWorkload(t, 1, false, reason)
+	defer client.ssntp.Close()
 }
 
 func TestStartTracedWorkload(t *testing.T) {
@@ -910,54 +879,21 @@ func TestStartWorkloadLaunchCNCI(t *testing.T) {
 // network node and test that way.
 
 func TestDeleteInstance(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var reason payloads.StartFailureReason
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
-
-	client := newTestClient(0, ssntp.AGENT)
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.ssntp.Close()
 
 	time.Sleep(1 * time.Second)
 
 	client.sendStats()
 
-	c = make(chan cmdResult)
+	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.DELETE, c)
 
 	time.Sleep(1 * time.Second)
 
-	err = context.deleteInstance(instances[0].ID)
+	err := context.deleteInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -980,54 +916,20 @@ func TestDeleteInstance(t *testing.T) {
 }
 
 func TestStopInstance(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var reason payloads.StartFailureReason
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
-
-	client := newTestClient(0, ssntp.AGENT)
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
+	client, instances := testStartWorkload(t, 1, false, reason)
 
 	time.Sleep(1 * time.Second)
 
 	client.sendStats()
 
-	c = make(chan cmdResult)
+	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.STOP, c)
 
 	time.Sleep(1 * time.Second)
 
-	err = context.stopInstance(instances[0].ID)
+	err := context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1050,54 +952,21 @@ func TestStopInstance(t *testing.T) {
 }
 
 func TestRestartInstance(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var reason payloads.StartFailureReason
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
-
-	client := newTestClient(0, ssntp.AGENT)
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.ssntp.Close()
 
 	time.Sleep(1 * time.Second)
 
 	client.sendStats()
 
-	c = make(chan cmdResult)
+	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.STOP, c)
 
 	time.Sleep(1 * time.Second)
 
-	err = context.stopInstance(instances[0].ID)
+	err := context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1178,26 +1047,10 @@ func TestEvacuateNode(t *testing.T) {
 }
 
 func TestInstanceDeletedEvent(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var reason payloads.StartFailureReason
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
-
-	client := newTestClient(0, ssntp.AGENT)
-
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.ssntp.Close()
 
 	time.Sleep(1 * time.Second)
 
@@ -1205,9 +1058,7 @@ func TestInstanceDeletedEvent(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	// right now I don't have this forwarded to the client
-	// so this step is probably not necessary
-	err = context.deleteInstance(instances[0].ID)
+	err := context.deleteInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1271,93 +1122,25 @@ func TestLaunchCNCI(t *testing.T) {
 }
 
 func TestStartFailure(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
+	reason := payloads.FullCloud
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
-
-	client := newTestClient(0, ssntp.AGENT)
-	client.startFail = true
-	client.startFailReason = payloads.FullCloud
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
+	client, _ := testStartWorkload(t, 1, true, reason)
+	defer client.ssntp.Close()
 
 	// since we had a start failure, we should confirm that the
 	// instance is no longer pending in the database
-	client.ssntp.Close()
 }
 
 func TestStopFailure(t *testing.T) {
 	context.ds.ClearLog()
 
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var reason payloads.StartFailureReason
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.ssntp.Close()
 
-	client := newTestClient(0, ssntp.AGENT)
 	client.stopFail = true
 	client.stopFailReason = payloads.StopNoInstance
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
 
 	time.Sleep(1 * time.Second)
 
@@ -1365,12 +1148,12 @@ func TestStopFailure(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	c = make(chan cmdResult)
+	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.STOP, c)
 
 	time.Sleep(1 * time.Second)
 
-	err = context.stopInstance(instances[0].ID)
+	err := context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1412,45 +1195,13 @@ func TestStopFailure(t *testing.T) {
 func TestRestartFailure(t *testing.T) {
 	context.ds.ClearLog()
 
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var reason payloads.StartFailureReason
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.ssntp.Close()
 
-	client := newTestClient(0, ssntp.AGENT)
 	client.restartFail = true
 	client.restartFailReason = payloads.RestartLaunchFailure
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
 
 	time.Sleep(1 * time.Second)
 
@@ -1458,10 +1209,10 @@ func TestRestartFailure(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	c = make(chan cmdResult)
+	c := make(chan cmdResult)
 	server.addCmdChan(ssntp.STOP, c)
 
-	err = context.stopInstance(instances[0].ID)
+	err := context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1532,38 +1283,10 @@ func TestNoNetwork(t *testing.T) {
 
 	noNetwork = &nn
 
-	id := uuid.Generate().String()
+	var reason payloads.StartFailureReason
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	instances, err := context.startWorkload(wls[0].ID, id, 1, false, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(instances) != 1 {
-		t.Error(err)
-	}
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
+	client, _ := testStartWorkload(t, 1, false, reason)
+	defer client.ssntp.Close()
 }
 
 func testStartTracedWorkload(t *testing.T) *ssntpTestClient {
@@ -1606,6 +1329,50 @@ func testStartTracedWorkload(t *testing.T) *ssntpTestClient {
 	}
 
 	return client
+}
+
+func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFailureReason) (*ssntpTestClient, []*types.Instance) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client := newTestClient(0, ssntp.AGENT)
+
+	wls, err := context.ds.GetWorkloads()
+	if err != nil || len(wls) == 0 {
+		t.Fatal(err)
+	}
+
+	c := make(chan cmdResult)
+	client.addCmdChan(ssntp.START, c)
+	client.startFail = fail
+	client.startFailReason = reason
+
+	instances, err := context.startWorkload(wls[0].ID, tenant.ID, num, false, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(instances) != num {
+		t.Fatal(err)
+	}
+
+	select {
+	case result := <-c:
+		if result.err != nil {
+			t.Fatal("Error parsing command yaml")
+		}
+
+		if result.instanceUUID != instances[0].ID {
+			t.Fatal("Did not get correct Instance ID")
+		}
+
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for START command")
+	}
+
+	return client, instances
 }
 
 var testClients []*ssntpTestClient
