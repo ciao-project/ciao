@@ -656,16 +656,18 @@ const (
 	osDelete = "os-delete"
 )
 
-func startStopInstance(tenant, instance string, action action) {
-	var actionBytes []byte
+func startStopInstance(tenant, instance string, stop bool) {
+	if tenant == "" {
+		fatalf("Missing required -tenant-id parameter")
+	}
 
-	switch action {
-	case computeActionStart:
-		actionBytes = []byte(osStart)
-	case computeActionStop:
+	if instance == "" {
+		fatalf("Missing required -instance parameter")
+	}
+
+	actionBytes := []byte(osStart)
+	if stop == true {
 		actionBytes = []byte(osStop)
-	default:
-		fatalf("Unsupported action %d\n", action)
 	}
 
 	body := bytes.NewReader(actionBytes)
@@ -681,11 +683,10 @@ func startStopInstance(tenant, instance string, action action) {
 		fatalf("Instance action failed: %s", resp.Status)
 	}
 
-	switch action {
-	case computeActionStart:
-		fmt.Printf("Instance %s restarted\n", instance)
-	case computeActionStop:
+	if stop == true {
 		fmt.Printf("Instance %s stopped\n", instance)
+	} else {
+		fmt.Printf("Instance %s restarted\n", instance)
 	}
 }
 
@@ -938,20 +939,7 @@ func main() {
 	}
 
 	if *stopInstance == true || *restartInstance == true {
-		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant-id parameter")
-		}
-
-		if len(*instance) == 0 {
-			fatalf("Missing required -instance parameter")
-		}
-
-		action := computeActionStart
-		if *stopInstance == true {
-			action = computeActionStop
-		}
-
-		startStopInstance(*tenantID, *instance, action)
+		startStopInstance(*tenantID, *instance, *stopInstance)
 	}
 
 	if *listLabels == true {
