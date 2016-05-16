@@ -1194,7 +1194,7 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 // tenants.  If cnci is not null, it will only provide information about a specific
 // cnci.
 func (ds *Datastore) GetTenantCNCISummary(cnci string) ([]types.TenantCNCI, error) {
-	cncis := make([]types.TenantCNCI, 0)
+	var cncis []types.TenantCNCI
 	subnetBytes := []byte{0, 0}
 
 	ds.tenantsLock.RLock()
