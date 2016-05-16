@@ -712,11 +712,15 @@ func listAllLabels() {
 
 }
 
-func listClusterEvents(tenant string) {
+func listClusterEvents(tenant string, all bool) {
+	if all == false && tenant == "" {
+		fatalf("Missing required -tenant-id parameter")
+	}
+
 	var events payloads.CiaoEvents
 	var url string
 
-	if tenant == "" {
+	if all == true {
 		url = buildComputeURL("events")
 	} else {
 		url = buildComputeURL("%s/events", tenant)
@@ -950,16 +954,8 @@ func main() {
 		dumpTraceData(*dumpLabel)
 	}
 
-	if *listEvents == true {
-		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant-id parameter")
-		}
-
-		listClusterEvents(*tenantID)
-	}
-
-	if *listAllEvents == true {
-		listClusterEvents("")
+	if *listEvents == true || *listAllEvents == true {
+		listClusterEvents(*tenantID, *listAllEvents)
 	}
 
 	if *deleteEvents == true {
