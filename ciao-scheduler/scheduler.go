@@ -31,8 +31,8 @@ import (
 	"time"
 )
 
-var cert = flag.String("cert", "/etc/pki/ciao/cert-server-localhost.pem", "Server certificate")
-var CAcert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
+var cert = flag.String("cert", "/etc/pki/ciao/cert-Scheduler-localhost.pem", "Server certificate")
+var cacert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
 var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
 var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
 var logDir = "/var/lib/ciao/logs/scheduler"
@@ -960,7 +960,7 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 	toggleDebug(sched)
 
 	sched.config = &ssntp.Config{
-		CAcert: *CAcert,
+		CAcert: *cacert,
 		Cert:   *cert,
 		Role:   ssntp.SCHEDULER,
 	}
