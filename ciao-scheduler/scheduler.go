@@ -31,28 +31,43 @@ import (
 	"time"
 )
 
+var cert = flag.String("cert", "/etc/pki/ciao/cert-server-localhost.pem", "Server certificate")
+var CAcert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
+var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
+var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
+var logDir = "/var/lib/ciao/logs/scheduler"
+
 type ssntpSchedulerServer struct {
-	ssntp ssntp.Server
-	name  string
+	// user config overrides ------------------------------------------
+	heartbeat  bool
+	cpuprofile string
+
+	// ssntp ----------------------------------------------------------
+	config *ssntp.Config
+	ssntp  ssntp.Server
+
+	// scheduler internal state ---------------------------------------
+
 	// Command & Status Reporting node(s)
 	controllerMap   map[string]*controllerStat
-	controllerMutex sync.RWMutex // Rlock traversal of map, Lock modification of map
+	controllerMutex sync.RWMutex // Rlock traversing map, Lock modifying map
+
 	// Compute Nodes
 	cnMap      map[string]*nodeStat
 	cnList     []*nodeStat
-	cnMutex    sync.RWMutex // Rlock traversal of map, Lock modification of map
+	cnMutex    sync.RWMutex // Rlock traversing map, Lock modifying map
 	cnMRU      *nodeStat
 	cnMRUIndex int
 	//cnInactiveMap      map[string]nodeStat
+
 	// Network Nodes
 	nnMap   map[string]*nodeStat
-	nnMutex sync.RWMutex // Rlock traversal of map, Lock modification of map
+	nnMutex sync.RWMutex // Rlock traversing map, Lock modifying map
 	nnMRU   string
 }
 
 func newSsntpSchedulerServer() *ssntpSchedulerServer {
 	return &ssntpSchedulerServer{
-		name:          "Ciao Scheduler Server",
 		controllerMap: make(map[string]*controllerStat),
 		cnMap:         make(map[string]*nodeStat),
 		cnMRUIndex:    -1,
@@ -836,34 +851,9 @@ func heartBeat(sched *ssntpSchedulerServer) {
 	}
 }
 
-func main() {
-	var cert = flag.String("cert", "/etc/pki/ciao/cert-server-localhost.pem", "Server certificate")
-	var CAcert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
-	var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
-	var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
-	var logDir = "/var/lib/ciao/logs/scheduler"
-
-	flag.Parse()
-
-	logDirFlag := flag.Lookup("log_dir")
-	if logDirFlag == nil {
-		glog.Errorf("log_dir does not exist")
-		return
-	}
-	if logDirFlag.Value.String() == "" {
-		logDirFlag.Value.Set(logDir)
-	}
-	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
-		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
-		return
-	}
-
-	setLimits()
-
-	sched := newSsntpSchedulerServer()
-
-	if len(*cpuprofile) != 0 {
-		f, err := os.Create(*cpuprofile)
+func toggleDebug(sched *ssntpSchedulerServer) {
+	if len(sched.cpuprofile) != 0 {
+		f, err := os.Create(sched.cpuprofile)
 		if err != nil {
 			log.Print(err)
 		}
@@ -871,17 +861,19 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	//config.Trace = os.Stdout
-	//config.Error = os.Stdout
-	//config.DebugInterface = false
+	/* glog's --logtostderr and -v=2 are probably really what you want..
+	sched.config.Trace = os.Stdout
+	sched.config.Error = os.Stdout
+	sched.config.DebugInterface = false
+	*/
 
-	config := &ssntp.Config{
-		CAcert: *CAcert,
-		Cert:   *cert,
-		Role:   ssntp.SCHEDULER,
+	if sched.heartbeat {
+		go heartBeat(sched)
 	}
+}
 
-	config.ForwardRules = []ssntp.FrameForwardRule{
+func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
+	sched.config.ForwardRules = []ssntp.FrameForwardRule{
 		{ // all STATS commands go to all Controllers
 			Operand: ssntp.STATS,
 			Dest:    ssntp.Controller,
@@ -943,10 +935,49 @@ func main() {
 			EventForward: sched,
 		},
 	}
+}
 
-	if *heartbeat {
-		go heartBeat(sched)
+func configSchedulerServer() (sched *ssntpSchedulerServer) {
+	logDirFlag := flag.Lookup("log_dir")
+	if logDirFlag == nil {
+		glog.Errorf("log_dir does not exist")
+		return nil
+	}
+	if logDirFlag.Value.String() == "" {
+		logDirFlag.Value.Set(logDir)
+	}
+	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
+		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
+		return nil
 	}
 
-	sched.ssntp.Serve(config, sched)
+	setLimits()
+
+	sched = newSsntpSchedulerServer()
+	sched.cpuprofile = *cpuprofile
+	sched.heartbeat = *heartbeat
+
+	toggleDebug(sched)
+
+	sched.config = &ssntp.Config{
+		CAcert: *CAcert,
+		Cert:   *cert,
+		Role:   ssntp.SCHEDULER,
+	}
+
+	setSSNTPForwardRules(sched)
+
+	return sched
+}
+
+func main() {
+	flag.Parse()
+
+	sched := configSchedulerServer()
+	if sched == nil {
+		glog.Errorf("unable to configure scheduler")
+		return
+	}
+
+	sched.ssntp.Serve(sched.config, sched)
 }
