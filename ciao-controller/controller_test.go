@@ -250,8 +250,93 @@ func (client *ssntpTestClient) DisconnectNotify() {
 func (client *ssntpTestClient) StatusNotify(status ssntp.Status, frame *ssntp.Frame) {
 }
 
-func (client *ssntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp.Frame) {
+func (client *ssntpTestClient) handleStart(payload []byte) cmdResult {
+	var result cmdResult
 	var start payloads.Start
+
+	err := yaml.Unmarshal(payload, &start)
+	if err != nil {
+		result.err = err
+		return result
+	}
+
+	result.instanceUUID = start.Start.InstanceUUID
+	result.tenantUUID = start.Start.TenantUUID
+
+	if client.role == ssntp.NETAGENT {
+		networking := start.Start.Networking
+
+		client.sendConcentratorAddedEvent(start.Start.InstanceUUID, start.Start.TenantUUID, networking.VnicMAC)
+		result.cnci = true
+		return result
+	}
+
+	if !client.startFail {
+		istat := payloads.InstanceStat{
+			InstanceUUID:  start.Start.InstanceUUID,
+			State:         payloads.Running,
+			MemoryUsageMB: 0,
+			DiskUsageMB:   0,
+			CPUUsage:      0,
+		}
+
+		client.instances = append(client.instances, istat)
+	} else {
+		client.sendStartFailure(start.Start.InstanceUUID, client.startFailReason)
+	}
+
+	return result
+}
+
+func (client *ssntpTestClient) handleStop(payload []byte) cmdResult {
+	var result cmdResult
+	var stopCmd payloads.Stop
+
+	err := yaml.Unmarshal(payload, &stopCmd)
+	if err != nil {
+		result.err = err
+		return result
+	}
+
+	if !client.stopFail {
+		for i := range client.instances {
+			istat := client.instances[i]
+			if istat.InstanceUUID == stopCmd.Stop.InstanceUUID {
+				client.instances[i].State = payloads.Exited
+			}
+		}
+	} else {
+		client.sendStopFailure(stopCmd.Stop.InstanceUUID, client.stopFailReason)
+	}
+
+	return result
+}
+
+func (client *ssntpTestClient) handleRestart(payload []byte) cmdResult {
+	var result cmdResult
+	var restartCmd payloads.Restart
+
+	err := yaml.Unmarshal(payload, &restartCmd)
+	if err != nil {
+		result.err = err
+		return result
+	}
+
+	if !client.restartFail {
+		for i := range client.instances {
+			istat := client.instances[i]
+			if istat.InstanceUUID == restartCmd.Restart.InstanceUUID {
+				client.instances[i].State = payloads.Running
+			}
+		}
+	} else {
+		client.sendRestartFailure(restartCmd.Restart.InstanceUUID, client.restartFailReason)
+	}
+
+	return result
+}
+
+func (client *ssntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp.Frame) {
 	payload := frame.Payload
 
 	var result cmdResult
@@ -267,74 +352,13 @@ func (client *ssntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 	switch command {
 	case ssntp.START:
-		err := yaml.Unmarshal(payload, &start)
-		if err != nil {
-			result.err = err
-			break
-		}
-
-		result.instanceUUID = start.Start.InstanceUUID
-		result.tenantUUID = start.Start.TenantUUID
-
-		if client.role == ssntp.NETAGENT {
-			networking := start.Start.Networking
-
-			client.sendConcentratorAddedEvent(start.Start.InstanceUUID, start.Start.TenantUUID, networking.VnicMAC)
-			result.cnci = true
-			break
-		}
-
-		if !client.startFail {
-			istat := payloads.InstanceStat{
-				InstanceUUID:  start.Start.InstanceUUID,
-				State:         payloads.Running,
-				MemoryUsageMB: 0,
-				DiskUsageMB:   0,
-				CPUUsage:      0,
-			}
-
-			client.instances = append(client.instances, istat)
-		} else {
-			client.sendStartFailure(start.Start.InstanceUUID, client.startFailReason)
-		}
+		result = client.handleStart(payload)
 
 	case ssntp.STOP:
-		var stopCmd payloads.Stop
-
-		err := yaml.Unmarshal(payload, &stopCmd)
-		if err != nil {
-			return
-		}
-
-		if !client.stopFail {
-			for i := range client.instances {
-				istat := client.instances[i]
-				if istat.InstanceUUID == stopCmd.Stop.InstanceUUID {
-					client.instances[i].State = payloads.Exited
-				}
-			}
-		} else {
-			client.sendStopFailure(stopCmd.Stop.InstanceUUID, client.stopFailReason)
-		}
+		result = client.handleStop(payload)
 
 	case ssntp.RESTART:
-		var restartCmd payloads.Restart
-
-		err := yaml.Unmarshal(payload, &restartCmd)
-		if err != nil {
-			return
-		}
-
-		if !client.restartFail {
-			for i := range client.instances {
-				istat := client.instances[i]
-				if istat.InstanceUUID == restartCmd.Restart.InstanceUUID {
-					client.instances[i].State = payloads.Running
-				}
-			}
-		} else {
-			client.sendRestartFailure(restartCmd.Restart.InstanceUUID, client.restartFailReason)
-		}
+		result = client.handleRestart(payload)
 	}
 
 	if ok {
