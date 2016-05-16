@@ -371,6 +371,10 @@ func workloadDetail(tenant string, workload string) string {
 }
 
 func listTenantWorkloads(tenant string) {
+	if tenant == "" {
+		fatalf("Missing required -tenant-id parameter")
+	}
+
 	var flavors payloads.ComputeFlavors
 	if tenant == "" {
 		tenant = "faketenant"
@@ -882,10 +886,6 @@ func main() {
 	}
 
 	if *listWorkloads == true {
-		if len(*tenantID) == 0 {
-			fatalf("Missing required -tenant-id parameter")
-		}
-
 		listTenantWorkloads(*tenantID)
 	}
 
