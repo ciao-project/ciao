@@ -556,6 +556,36 @@ func getPersistentStore(config Config) (persistentStore, error) {
 	return ds, nil
 }
 
+var pSQLLiteConfig = []string{
+	"PRAGMA page_size = 32768",
+	"PRAGMA synchronous = OFF",
+	"PRAGMA temp_store = MEMORY",
+	"PRAGMA busy_timeout = 1000",
+	"PRAGMA journal_mode=WAL",
+}
+
+func (ds *sqliteDB) sqliteConnect(name string, URI string, config []string) (*sql.DB, error) {
+	datastore, err := sql.Open(name, URI)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range config {
+		_, err = datastore.Exec(config[i])
+		if err != nil {
+			glog.Warning(err)
+		}
+	}
+
+	err = datastore.Ping()
+	if err != nil {
+		glog.Warning(err)
+		return nil, err
+	}
+
+	return datastore, nil
+}
+
 // Connect creates two sqlite3 databases.  One database is for
 // persistent state that needs to be restored on restart, the
 // other is for transient data that does not need to be restored
@@ -569,57 +599,14 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 		},
 	})
 
-	connectString := persistentURI
-	datastore, err := sql.Open("sqlite_attach_tdb", connectString)
+	datastore, err := ds.sqliteConnect("sqlite_attach_tdb", persistentURI, pSQLLiteConfig)
 	if err != nil {
-		return err
-	}
-
-	ds.dbName = persistentURI
-	ds.tdbName = transientURI
-
-	_, err = datastore.Exec("PRAGMA page_size = 32768;")
-	if err != nil {
-		glog.Warning("unable to increase page size size", err)
-	}
-
-	_, err = datastore.Exec("PRAGMA synchronous = OFF")
-	if err != nil {
-		glog.Warning("unable to turn off synchronous", err)
-	}
-
-	_, err = datastore.Exec("PRAGMA temp_store = MEMORY")
-	if err != nil {
-		glog.Warning("unable to change temp_store", err)
-	}
-
-	err = datastore.Ping()
-	if err != nil {
-		glog.Warning("unable to ping database")
 		return err
 	}
 
 	ds.db = datastore
+	ds.dbName = persistentURI
 
-	// if I turn off foreign key support, I can do some work
-	// asynchronously
-	//_, err = datastore.Exec("PRAGMA foreign_keys = ON")
-	//if err != nil {
-	//	glog.Warning("unable to turn on foreign key support", err)
-	//}
-
-	// TBD - what's the best busy_timeout value (ms)?
-	_, err = datastore.Exec("PRAGMA busy_timeout = 1000")
-	if err != nil {
-		glog.Warning("unable to set busy_timeout", err)
-	}
-
-	_, err = datastore.Exec("PRAGMA journal_mode=WAL")
-	if err != nil {
-		glog.Warning("unable to set journal_mode", err)
-	}
-
-	connectString = transientURI
 	sql.Register("sqlite_attach_db", &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
 			cmd := fmt.Sprintf("ATTACH '%s' AS db", persistentURI)
@@ -627,49 +614,14 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 			return nil
 		},
 	})
-	datastore, err = sql.Open("sqlite_attach_db", connectString)
-	if err != nil {
-		return err
-	}
 
-	_, err = datastore.Exec("PRAGMA page_size = 32768;")
+	datastore, err = ds.sqliteConnect("sqlite_attach_db", transientURI, pSQLLiteConfig)
 	if err != nil {
-		glog.Warning("unable to increase page size size", err)
-	}
-
-	err = datastore.Ping()
-	if err != nil {
-		glog.Warning("unable to ping database")
 		return err
 	}
 
 	ds.tdb = datastore
-
-	_, err = datastore.Exec("PRAGMA foreign_keys = ON")
-	if err != nil {
-		glog.Warning("unable to turn on foreign key support", err)
-	}
-
-	// TBD - what's the best busy_timeout value (ms)?
-	_, err = datastore.Exec("PRAGMA busy_timeout = 500")
-	if err != nil {
-		glog.Warning("unable to set busy_timeout", err)
-	}
-
-	_, err = datastore.Exec("PRAGMA journal_mode=WAL")
-	if err != nil {
-		glog.Warning("unable to set journal_mode", err)
-	}
-
-	_, err = datastore.Exec("PRAGMA synchronous = OFF")
-	if err != nil {
-		glog.Warning("unable to turn off synchronous", err)
-	}
-
-	_, err = datastore.Exec("PRAGMA temp_store = MEMORY")
-	if err != nil {
-		glog.Warning("unable to change temp_store", err)
-	}
+	ds.tdbName = transientURI
 
 	return err
 }
