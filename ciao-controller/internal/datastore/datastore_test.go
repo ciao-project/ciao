@@ -190,7 +190,7 @@ func TestAddInstance(t *testing.T) {
 	}
 }
 
-func TestDeleteInstance(t *testing.T) {
+func TestDeleteInstanceResources(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
 		t.Error(err)
@@ -259,6 +259,39 @@ func TestDeleteInstance(t *testing.T) {
 		} else if val != before-delta {
 			t.Error("usage not reduced")
 		}
+	}
+}
+
+func TestDeleteInstanceNetwork(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Error(err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	err = ds.DeleteInstance(instance.ID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	tenantAfter, err := ds.getTenant(tenant.ID)
+	if err != nil {
+		t.Error(err)
 	}
 
 	ip := net.ParseIP(instance.IPAddress)
