@@ -112,67 +112,54 @@ func (server *ssntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 					break
 				}
 			}
+			result.instanceUUID = startCmd.Start.InstanceUUID
+			result.tenantUUID = startCmd.Start.TenantUUID
+			result.cnci = nn
 		}
-
-		if ok {
-			if err != nil {
-				result.err = err
-			} else {
-				result.instanceUUID = startCmd.Start.InstanceUUID
-				result.tenantUUID = startCmd.Start.TenantUUID
-				result.cnci = nn
-			}
-
-		}
+		result.err = err
 
 	case ssntp.DELETE:
-		if ok {
-			var delCmd payloads.Delete
+		var delCmd payloads.Delete
 
-			err := yaml.Unmarshal(payload, &delCmd)
-			if err != nil {
-				result.err = err
-			} else {
-				result.instanceUUID = delCmd.Delete.InstanceUUID
-			}
+		err := yaml.Unmarshal(payload, &delCmd)
+		result.err = err
+		if err == nil {
+			result.instanceUUID = delCmd.Delete.InstanceUUID
 		}
 
 	case ssntp.STOP:
-		if ok {
-			var stopCmd payloads.Stop
+		var stopCmd payloads.Stop
 
-			err := yaml.Unmarshal(payload, &stopCmd)
-			if err != nil {
-				result.err = err
-			} else {
-				result.instanceUUID = stopCmd.Stop.InstanceUUID
-				server.ssntp.SendCommand(stopCmd.Stop.WorkloadAgentUUID, command, frame.Payload)
-			}
+		err := yaml.Unmarshal(payload, &stopCmd)
+
+		result.err = err
+
+		if err == nil {
+			result.instanceUUID = stopCmd.Stop.InstanceUUID
+			server.ssntp.SendCommand(stopCmd.Stop.WorkloadAgentUUID, command, frame.Payload)
 		}
 
 	case ssntp.RESTART:
-		if ok {
-			var restartCmd payloads.Restart
+		var restartCmd payloads.Restart
 
-			err := yaml.Unmarshal(payload, &restartCmd)
-			if err != nil {
-				result.err = err
-			} else {
-				result.instanceUUID = restartCmd.Restart.InstanceUUID
-				server.ssntp.SendCommand(restartCmd.Restart.WorkloadAgentUUID, command, frame.Payload)
-			}
+		err := yaml.Unmarshal(payload, &restartCmd)
+
+		result.err = err
+
+		if err == nil {
+			result.instanceUUID = restartCmd.Restart.InstanceUUID
+			server.ssntp.SendCommand(restartCmd.Restart.WorkloadAgentUUID, command, frame.Payload)
 		}
 
 	case ssntp.EVACUATE:
-		if ok {
-			var evacCmd payloads.Evacuate
+		var evacCmd payloads.Evacuate
 
-			err := yaml.Unmarshal(payload, &evacCmd)
-			if err != nil {
-				result.err = err
-			} else {
-				result.nodeUUID = evacCmd.Evacuate.WorkloadAgentUUID
-			}
+		err := yaml.Unmarshal(payload, &evacCmd)
+
+		result.err = err
+
+		if err == nil {
+			result.nodeUUID = evacCmd.Evacuate.WorkloadAgentUUID
 		}
 	}
 
