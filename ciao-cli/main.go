@@ -481,6 +481,10 @@ func listAllCNCIs() {
 }
 
 func dumpCNCIDetails(cnciID string) {
+	if cnciID == "" {
+		fatalf("Missing required -cnci parameter")
+	}
+
 	var cnci payloads.CiaoCNCI
 
 	url := buildComputeURL("cncis/%s/detail", cnciID)
@@ -930,10 +934,6 @@ func main() {
 	}
 
 	if *dumpCNCI == true {
-		if len(*cnci) == 0 {
-			fatalf("Missing required -cnci parameter")
-		}
-
 		dumpCNCIDetails(*cnci)
 	}
 
