@@ -1356,47 +1356,17 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 
 	instances := make(map[string]*types.Instance)
 	for rows.Next() {
-		var id sql.NullString
-		var tenantID sql.NullString
-		var state sql.NullString
-		var workloadID sql.NullString
 		var nodeID sql.NullString
-		var macAddress sql.NullString
-		var ipAddress sql.NullString
 		var sshIP sql.NullString
 		var sshPort sql.NullInt64
 
 		i := &types.Instance{}
 
-		err = rows.Scan(&id, &tenantID, &state, &sshIP, &sshPort, &workloadID, &nodeID, &macAddress, &ipAddress)
+		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &sshIP, &sshPort, &i.WorkloadID, &nodeID, &i.MACAddress, &i.IPAddress)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
 			return nil, err
-		}
-
-		if id.Valid {
-			i.ID = id.String
-		}
-
-		if tenantID.Valid {
-			i.TenantID = tenantID.String
-		}
-
-		if state.Valid {
-			i.State = state.String
-		}
-
-		if workloadID.Valid {
-			i.WorkloadID = workloadID.String
-		}
-
-		if macAddress.Valid {
-			i.MACAddress = macAddress.String
-		}
-
-		if ipAddress.Valid {
-			i.IPAddress = ipAddress.String
 		}
 
 		if nodeID.Valid {
