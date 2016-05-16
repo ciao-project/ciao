@@ -97,6 +97,70 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 	return
 }
 
+func addTestInstanceStats(t *testing.T) ([]*types.Instance, payloads.Stat) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	var instances []*types.Instance
+
+	for i := 0; i < 10; i++ {
+		instance, err := addTestInstance(tenant, wls[0])
+		if err != nil {
+			t.Error(err)
+		}
+		instances = append(instances, instance)
+	}
+
+	var stats []payloads.InstanceStat
+
+	for i := range instances {
+		stat := payloads.InstanceStat{
+			InstanceUUID:  instances[i].ID,
+			State:         "running",
+			SSHIP:         "192.168.0.1",
+			SSHPort:       34567,
+			MemoryUsageMB: 0,
+			DiskUsageMB:   0,
+			CPUUsage:      0,
+		}
+		stats = append(stats, stat)
+	}
+	stat := payloads.Stat{
+		NodeUUID:        uuid.Generate().String(),
+		MemTotalMB:      256,
+		MemAvailableMB:  256,
+		DiskTotalMB:     1024,
+		DiskAvailableMB: 1024,
+		Load:            20,
+		CpusOnline:      4,
+		NodeHostName:    "test",
+		Instances:       stats,
+	}
+
+	err = ds.addNodeStat(stat)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = ds.addInstanceStats(stats, stat.NodeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	return instances, stat
+}
+
 func BenchmarkGetTenantNoCache(b *testing.B) {
 	/* add a new tenant */
 	tuuid := uuid.Generate().String()
@@ -406,66 +470,7 @@ func TestGetAllInstancesFromTenant(t *testing.T) {
 }
 
 func TestGetAllInstancesByNode(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Error(err)
-	}
-
-	wls, err := ds.GetWorkloads()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("No Workloads Found")
-	}
-
-	var instances []*types.Instance
-
-	for i := 0; i < 10; i++ {
-		instance, err := addTestInstance(tenant, wls[0])
-		if err != nil {
-			t.Error(err)
-		}
-		instances = append(instances, instance)
-	}
-
-	var stats []payloads.InstanceStat
-
-	for i := range instances {
-		stat := payloads.InstanceStat{
-			InstanceUUID:  instances[i].ID,
-			State:         "running",
-			SSHIP:         "192.168.0.1",
-			SSHPort:       34567,
-			MemoryUsageMB: 0,
-			DiskUsageMB:   0,
-			CPUUsage:      0,
-		}
-		stats = append(stats, stat)
-	}
-	stat := payloads.Stat{
-		NodeUUID:        uuid.Generate().String(),
-		MemTotalMB:      256,
-		MemAvailableMB:  256,
-		DiskTotalMB:     1024,
-		DiskAvailableMB: 1024,
-		Load:            20,
-		CpusOnline:      4,
-		NodeHostName:    "test",
-		Instances:       stats,
-	}
-
-	err = ds.addNodeStat(stat)
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = ds.addInstanceStats(stats, stat.NodeUUID)
-	if err != nil {
-		t.Error(err)
-	}
-
+	instances, stat := addTestInstanceStats(t)
 	newInstances, err := ds.GetAllInstancesByNode(stat.NodeUUID)
 	if err != nil {
 		t.Error(err)
@@ -488,66 +493,7 @@ func TestGetAllInstancesByNode(t *testing.T) {
 }
 
 func TestGetInstance(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Error(err)
-	}
-
-	wls, err := ds.GetWorkloads()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("No Workloads Found")
-	}
-
-	var instances []*types.Instance
-
-	for i := 0; i < 10; i++ {
-		instance, err := addTestInstance(tenant, wls[0])
-		if err != nil {
-			t.Error(err)
-		}
-		instances = append(instances, instance)
-	}
-
-	var stats []payloads.InstanceStat
-
-	for i := range instances {
-		stat := payloads.InstanceStat{
-			InstanceUUID:  instances[i].ID,
-			State:         "running",
-			SSHIP:         "192.168.0.1",
-			SSHPort:       34567,
-			MemoryUsageMB: 0,
-			DiskUsageMB:   0,
-			CPUUsage:      0,
-		}
-		stats = append(stats, stat)
-	}
-	stat := payloads.Stat{
-		NodeUUID:        uuid.Generate().String(),
-		MemTotalMB:      256,
-		MemAvailableMB:  256,
-		DiskTotalMB:     1024,
-		DiskAvailableMB: 1024,
-		Load:            20,
-		CpusOnline:      4,
-		NodeHostName:    "test",
-		Instances:       stats,
-	}
-
-	err = ds.addNodeStat(stat)
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = ds.addInstanceStats(stats, stat.NodeUUID)
-	if err != nil {
-		t.Error(err)
-	}
-
+	instances, stat := addTestInstanceStats(t)
 	instance, err := ds.GetInstance(instances[0].ID)
 	if err != nil && err != sql.ErrNoRows {
 		t.Error(err)
