@@ -111,9 +111,6 @@ func (cnci *Cnci) findPhyNwInterface() error {
 			if !travisCI {
 				continue
 			}
-			if link.Type() != "dummy" {
-				continue
-			}
 		}
 
 		if link.Attrs().Name == "lo" {

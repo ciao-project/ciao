@@ -71,7 +71,10 @@ func TestCN_Fuzz(t *testing.T) {
 //
 //Test should not crash
 func TestCNCI_Fuzz(t *testing.T) {
-	cnci, _ := cnciTestInit()
+	cnci, err := cnciTestInit()
+	if err != nil {
+		t.Fatal("ERROR: Init failed", err)
+	}
 	defer func() {
 		_ = cnci.Shutdown()
 	}()

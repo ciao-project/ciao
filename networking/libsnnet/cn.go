@@ -203,14 +203,12 @@ func (cn *ComputeNode) Init() error {
 
 	for _, link := range links {
 
-		if link.Type() != "device" &&
-			link.Type() != "bond" &&
-			link.Type() != "vlan" {
+		if !(link.Type() == "device" ||
+			link.Type() == "bond" ||
+			link.Type() == "vlan") {
+
+			//Allow all types of links under travisCI
 			if !travisCI {
-				continue
-			}
-			//Allow dummy links under travisCI
-			if link.Type() != "dummy" {
 				continue
 			}
 		}
