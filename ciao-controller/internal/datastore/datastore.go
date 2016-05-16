@@ -33,6 +33,7 @@ import (
 	"time"
 )
 
+// Config contains configuration information for the datastore.
 type Config struct {
 	PersistentURI     string
 	TransientURI      string
@@ -225,6 +226,7 @@ func (ds *Datastore) Init(config Config) error {
 	return err
 }
 
+// Exit will disconnect the backing database.
 func (ds *Datastore) Exit() {
 	ds.db.disconnect()
 }
@@ -1097,6 +1099,8 @@ func (ds *Datastore) updateTenantUsage(delta payloads.CiaoUsage, tenantID string
 	ds.tenantUsageLock.Unlock()
 }
 
+// GetTenantUsage provides statistics on actual resource usage.
+// Usage is provided between a specified time period.
 func (ds *Datastore) GetTenantUsage(tenantID string, start time.Time, end time.Time) ([]payloads.CiaoUsage, error) {
 	ds.tenantUsageLock.RLock()
 	defer ds.tenantUsageLock.RUnlock()
