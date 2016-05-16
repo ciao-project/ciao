@@ -87,7 +87,6 @@ var (
 	listEvents       = flag.Bool("list-events", false, "List all events for a tenant")
 	dumpCNCI         = flag.Bool("dump-cnci", false, "Dump a CNCI details")
 	dumpToken        = flag.Bool("dump-token", false, "Dump keystone tokens")
-	dumpTenantID     = flag.Bool("dump-tenant-id", false, "Dump tenant UUID")
 	clusterStatus    = flag.Bool("cluster-status", false, "List all compute nodes")
 	launchInstances  = flag.Bool("launch-instances", false, "Launch Ciao instances")
 	deleteInstance   = flag.Bool("delete-instance", false, "Delete a Ciao instance")
@@ -844,10 +843,6 @@ func main() {
 	scopedToken = t
 	if len(*tenantID) == 0 {
 		*tenantID = id
-	}
-
-	if *dumpTenantID == true {
-		fmt.Printf("Tenant UUID: %s\n", *tenantID)
 	}
 
 	if *listInstances == true {
