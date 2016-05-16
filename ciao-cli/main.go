@@ -576,6 +576,10 @@ func actionAllTenantInstance(tenant string, osAction string) {
 }
 
 func listNodeInstances(node string) {
+	if node == "" {
+		fatalf("Missing required -cn parameter")
+	}
+
 	var servers payloads.CiaoServersStats
 	url := buildComputeURL("nodes/%s/servers/detail", node)
 
@@ -816,6 +820,8 @@ func checkCompulsoryOptions() {
 }
 
 func main() {
+	var err error
+
 	flag.Parse()
 
 	getCiaoEnvVariables()
@@ -834,7 +840,6 @@ func main() {
 
 	/* If we're missing the tenant name let's try to fetch one */
 	if *tenantName == "" {
-		var err error
 		*tenantName, *tenantID, err = getTenant(*identityUser, *identityPassword, *tenantID)
 		if err != nil {
 			fatalf(err.Error())
@@ -843,14 +848,9 @@ func main() {
 		warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
 	}
 
-	t, id, _, err := getScopedToken(*identityUser, *identityPassword, *tenantName)
+	scopedToken, *tenantID, _, err = getScopedToken(*identityUser, *identityPassword, *tenantName)
 	if err != nil {
 		fatalf(err.Error())
-	}
-
-	scopedToken = t
-	if len(*tenantID) == 0 {
-		*tenantID = id
 	}
 
 	if *listInstances == true {
@@ -862,11 +862,7 @@ func main() {
 	}
 
 	if *listCNInstances == true {
-		if len(*computeNode) != 0 {
-			listNodeInstances(*computeNode)
-		} else {
-			fatalf("Missing required -cn parameter")
-		}
+		listNodeInstances(*computeNode)
 	}
 
 	if *listQuotas == true {
