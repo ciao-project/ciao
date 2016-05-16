@@ -812,67 +812,9 @@ func TestStartTracedWorkload(t *testing.T) {
 }
 
 func TestStartWorkloadLaunchCNCI(t *testing.T) {
-	netClient := newTestClient(0, ssntp.NETAGENT)
+	netClient, instances := testStartWorkloadLaunchCNCI(t, 1)
 
-	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
-		t.Fatal(err)
-	}
-
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	id := uuid.Generate().String()
-
-	var instances []*types.Instance
-
-	go func() {
-		instances, err = context.startWorkload(wls[0].ID, id, 1, false, "")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(instances) != 1 {
-			t.Fatal(err)
-		}
-	}()
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.tenantUUID != id {
-			t.Fatal("Did not get correct tenant ID")
-		}
-
-		if !result.cnci {
-			t.Fatal("this is not a CNCI launch request")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command for CNCI")
-	}
-
-	c = make(chan cmdResult)
-	server.addCmdChan(ssntp.START, c)
-
-	select {
-	case result := <-c:
-		if result.err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.instanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
-	}
-
-	time.Sleep(1 * time.Second)
+	id := instances[0].TenantID
 
 	tenant, err := context.ds.GetTenant(id)
 	if err != nil {
@@ -1384,6 +1326,70 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	}
 
 	return client, instances
+}
+
+func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*ssntpTestClient, []*types.Instance) {
+	netClient := newTestClient(0, ssntp.NETAGENT)
+
+	wls, err := context.ds.GetWorkloads()
+	if err != nil || len(wls) == 0 {
+		t.Fatal(err)
+	}
+
+	c := make(chan cmdResult)
+	server.addCmdChan(ssntp.START, c)
+
+	id := uuid.Generate().String()
+
+	var instances []*types.Instance
+
+	go func() {
+		instances, err = context.startWorkload(wls[0].ID, id, 1, false, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(instances) != 1 {
+			t.Fatal(err)
+		}
+	}()
+
+	select {
+	case result := <-c:
+		if result.err != nil {
+			t.Fatal("Error parsing command yaml")
+		}
+
+		if result.tenantUUID != id {
+			t.Fatal("Did not get correct tenant ID")
+		}
+
+		if !result.cnci {
+			t.Fatal("this is not a CNCI launch request")
+		}
+
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for START command for CNCI")
+	}
+
+	c = make(chan cmdResult)
+	server.addCmdChan(ssntp.START, c)
+
+	select {
+	case result := <-c:
+		if result.err != nil {
+			t.Fatal("Error parsing command yaml")
+		}
+
+		if result.instanceUUID != instances[0].ID {
+			t.Fatal("Did not get correct Instance ID")
+		}
+
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for START command")
+	}
+
+	return netClient, instances
 }
 
 var testClients []*ssntpTestClient
