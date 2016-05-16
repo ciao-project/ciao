@@ -855,7 +855,7 @@ func toggleDebug(sched *ssntpSchedulerServer) {
 	if len(sched.cpuprofile) != 0 {
 		f, err := os.Create(sched.cpuprofile)
 		if err != nil {
-			log.Print(err)
+			glog.Warningf("unable to initialize cpuprofile (%s)", err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
