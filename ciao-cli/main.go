@@ -866,6 +866,82 @@ func checkCompulsoryOptions() {
 	}
 }
 
+func cliList() {
+	if *listInstances == true {
+		listAllInstances(*tenantID, "", *instanceMarker, *instanceOffset, *listLength)
+	}
+
+	if *listWlInstances == true {
+		listAllInstances("", *workload, *instanceMarker, *instanceOffset, *listLength)
+	}
+
+	if *listCNInstances == true {
+		listNodeInstances(*computeNode)
+	}
+
+	if *listQuotas == true {
+		listTenantQuotas(*tenantID)
+	}
+
+	if *listResources == true {
+		listTenantResources(*tenantID)
+	}
+
+	if *listWorkloads == true {
+		listTenantWorkloads(*tenantID)
+	}
+
+	if *listComputeNodes == true {
+		listAllComputeNodes()
+	}
+
+	if *listCNCIs == true {
+		listAllCNCIs()
+	}
+
+	if *listLabels == true {
+		listAllLabels()
+	}
+
+	if *listEvents == true || *listAllEvents == true {
+		listClusterEvents(*tenantID, *listAllEvents)
+	}
+}
+
+func cliDump() {
+	if *clusterStatus == true {
+		dumpClusterStatus()
+	}
+
+	if *dumpCNCI == true {
+		dumpCNCIDetails(*cnci)
+	}
+
+	if *dumpLabel != "" {
+		dumpTraceData(*dumpLabel)
+	}
+}
+
+func cliActionInstances() {
+	if *launchInstances == true {
+		createTenantInstance(*tenantID, *workload, *instances, *instanceLabel)
+	}
+
+	if *deleteInstance == true {
+		actionTenantInstance(*tenantID, *instance, osDelete)
+	}
+
+	if *stopInstance == true || *restartInstance == true {
+		startStopInstance(*tenantID, *instance, *stopInstance)
+	}
+}
+
+func cliEvent() {
+	if *deleteEvents == true {
+		deleteAllEvents()
+	}
+}
+
 func main() {
 	var err error
 
@@ -900,71 +976,8 @@ func main() {
 		fatalf(err.Error())
 	}
 
-	if *listInstances == true {
-		listAllInstances(*tenantID, "", *instanceMarker, *instanceOffset, *listLength)
-	}
-
-	if *listWlInstances == true {
-		listAllInstances("", *workload, *instanceMarker, *instanceOffset, *listLength)
-	}
-
-	if *listCNInstances == true {
-		listNodeInstances(*computeNode)
-	}
-
-	if *listQuotas == true {
-		listTenantQuotas(*tenantID)
-	}
-
-	if *listResources == true {
-		listTenantResources(*tenantID)
-	}
-
-	if *listWorkloads == true {
-		listTenantWorkloads(*tenantID)
-	}
-
-	if *listComputeNodes == true {
-		listAllComputeNodes()
-	}
-
-	if *listCNCIs == true {
-		listAllCNCIs()
-	}
-
-	if *clusterStatus == true {
-		dumpClusterStatus()
-	}
-
-	if *launchInstances == true {
-		createTenantInstance(*tenantID, *workload, *instances, *instanceLabel)
-	}
-
-	if *deleteInstance == true {
-		actionTenantInstance(*tenantID, *instance, osDelete)
-	}
-
-	if *dumpCNCI == true {
-		dumpCNCIDetails(*cnci)
-	}
-
-	if *stopInstance == true || *restartInstance == true {
-		startStopInstance(*tenantID, *instance, *stopInstance)
-	}
-
-	if *listLabels == true {
-		listAllLabels()
-	}
-
-	if *dumpLabel != "" {
-		dumpTraceData(*dumpLabel)
-	}
-
-	if *listEvents == true || *listAllEvents == true {
-		listClusterEvents(*tenantID, *listAllEvents)
-	}
-
-	if *deleteEvents == true {
-		deleteAllEvents()
-	}
+	cliList()
+	cliDump()
+	cliActionInstances()
+	cliEvent()
 }
