@@ -21,6 +21,8 @@ import (
 	"time"
 )
 
+// Workload contains resource and configuration information for a user
+// workload.
 type Workload struct {
 	ID          string                       `json:"id"`
 	Description string                       `json:"description"`
@@ -32,6 +34,7 @@ type Workload struct {
 	Defaults    []payloads.RequestedResource `json:"-"`
 }
 
+// Instance contains information about an instance of a workload.
 type Instance struct {
 	ID         string         `json:"instance_id"`
 	TenantID   string         `json:"tenant_id"`
@@ -60,6 +63,7 @@ func (s SortedComputeNodesByID) Len() int           { return len(s) }
 func (s SortedComputeNodesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s SortedComputeNodesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
 
+// Tenant contains information about a tenant or project.
 type Tenant struct {
 	ID        string
 	Name      string
@@ -69,6 +73,7 @@ type Tenant struct {
 	Resources []*Resource
 }
 
+// Resource contains quota or limit information on a resource type.
 type Resource struct {
 	Rname string
 	Rtype int
@@ -76,6 +81,7 @@ type Resource struct {
 	Usage int
 }
 
+// OverLimit calculates whether a request will put a tenant over it's limit.
 func (r *Resource) OverLimit(request int) bool {
 	if r.Limit > 0 && r.Usage+request > r.Limit {
 		return true
@@ -83,6 +89,7 @@ func (r *Resource) OverLimit(request int) bool {
 	return false
 }
 
+// LogEntry stores information about events.
 type LogEntry struct {
 	Timestamp time.Time `json:"time_stamp"`
 	TenantID  string    `json:"tenant_id"`
@@ -90,6 +97,7 @@ type LogEntry struct {
 	Message   string    `json:"message"`
 }
 
+// NodeStats stores statistics for individual nodes in the cluster.
 type NodeStats struct {
 	NodeID          string    `json:"node_id"`
 	Timestamp       time.Time `json:"time_stamp"`
@@ -101,6 +109,7 @@ type NodeStats struct {
 	CpusOnline      int       `json:"cpus_online"`
 }
 
+// NodeSummary contains summary information for all nodes in the cluster.
 type NodeSummary struct {
 	NodeID                string `json:"node_id"`
 	TotalInstances        int    `json:"total_instances"`
@@ -109,6 +118,7 @@ type NodeSummary struct {
 	TotalPausedInstances  int    `json:"total_paused_instances"`
 }
 
+// TenantCNCI contains information about the CNCI instance for a tenant.
 type TenantCNCI struct {
 	TenantID   string   `json:"tenant_id"`
 	IPAddress  string   `json:"ip_address"`
@@ -117,6 +127,7 @@ type TenantCNCI struct {
 	Subnets    []string `json:"subnets"`
 }
 
+// FrameStat contains tracing information per node.
 type FrameStat struct {
 	ID               string  `json:"node_id"`
 	TotalElapsedTime float64 `json:"total_elapsed_time"`
@@ -125,6 +136,8 @@ type FrameStat struct {
 	SchedulerTime    float64 `json:"total_scheduler_time"`
 }
 
+// BatchFrameStat contains tracing information for a group of start requests
+// by label.
 type BatchFrameStat struct {
 	NumInstances             int     `json:"num_instances"`
 	TotalElapsed             float64 `json:"total_elapsed"`
@@ -137,11 +150,13 @@ type BatchFrameStat struct {
 	VarianceScheduler        float64 `json:"scheduler_variance"`
 }
 
+// BatchFrameSummary provides summary information on tracing per label.
 type BatchFrameSummary struct {
 	BatchID      string `json:"batch_id"`
 	NumInstances int    `json:"num_instances"`
 }
 
+// Node contains information about a physical node in the cluster.
 type Node struct {
 	ID       string `json:"node_id"`
 	IPAddr   string `json:"ip_address"`
