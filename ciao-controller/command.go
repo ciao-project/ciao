@@ -84,6 +84,42 @@ func (c *controller) deleteInstance(instanceID string) error {
 	return nil
 }
 
+func (c *controller) confirmTenant(tenantID string) error {
+	tenant, err := c.ds.GetTenant(tenantID)
+	if err != nil {
+		return err
+	}
+
+	if tenant == nil {
+		if *noNetwork {
+			_, err := c.ds.AddTenant(tenantID)
+			if err != nil {
+				return err
+			}
+		} else {
+
+			err = c.addTenant(tenantID)
+			if err != nil {
+				return err
+			}
+		}
+	} else if tenant.CNCIIP == "" {
+		if !*noNetwork {
+			_ = c.addTenant(tenantID)
+			tenant, err = c.ds.GetTenant(tenantID)
+			if err != nil {
+				return err
+			}
+
+			if tenant.CNCIIP == "" {
+				return errors.New("Unable to Launch Tenant CNCI")
+			}
+		}
+	}
+
+	return nil
+}
+
 func (c *controller) startWorkload(workloadID string, tenantID string, instances int, trace bool, label string) ([]*types.Instance, error) {
 	var e error
 
@@ -97,36 +133,9 @@ func (c *controller) startWorkload(workloadID string, tenantID string, instances
 	}
 
 	if !isCNCIWorkload(wl) {
-		tenant, err := c.ds.GetTenant(tenantID)
+		err := c.confirmTenant(tenantID)
 		if err != nil {
 			return nil, err
-		}
-
-		if tenant == nil {
-			if *noNetwork {
-				_, err := c.ds.AddTenant(tenantID)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-
-				err = c.addTenant(tenantID)
-				if err != nil {
-					return nil, err
-				}
-			}
-		} else if tenant.CNCIIP == "" {
-			if !*noNetwork {
-				_ = c.addTenant(tenantID)
-				tenant, err = c.ds.GetTenant(tenantID)
-				if err != nil {
-					return nil, err
-				}
-
-				if tenant.CNCIIP == "" {
-					return nil, errors.New("Unable to Launch Tenant CNCI")
-				}
-			}
 		}
 	}
 
