@@ -17,99 +17,92 @@
 package libsnnet
 
 import (
+	"fmt"
 	"net"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func linkDump(t *testing.T) error {
 	out, err := exec.Command("ip", "-d", "link").CombinedOutput()
 
 	if err != nil {
-		t.Errorf("unable to dump link %v", err)
-	} else {
-		debugPrint(t, "dumping link info \n", string(out))
+		return err
 	}
 
-	return err
+	debugPrint(t, "dumping link info \n", string(out))
+
+	return nil
 }
 
-func dockerRestart(t *testing.T) error {
-	out, err := exec.Command("service", "docker", "restart").CombinedOutput()
+func dockerRestart() error {
+	_, err := exec.Command("service", "docker", "restart").CombinedOutput()
 	if err != nil {
-		out, err = exec.Command("systemctl", "restart", "docker").CombinedOutput()
+		_, err = exec.Command("systemctl", "restart", "docker").CombinedOutput()
 		if err != nil {
-			t.Error("docker restart", err)
+			return err
 		}
 	}
-	debugPrint(t, "docker restart\n", string(out))
 	return err
 }
 
 //Will be replaced by Docker API's in launcher
 //docker run -it --net=<subnet.Name> --ip=<instance.IP> --mac-address=<instance.MacAddresss>
 //debian ip addr show eth0 scope global
-func dockerRunVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
+func dockerRunVerify(name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
 	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
 		"--ip="+ip.String(), "--mac-address="+mac.String(),
 		"debian", "ip", "addr", "show", "eth0", "scope", "global")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		t.Error("docker run failed", cmd, err)
-	} else {
-		debugPrint(t, "docker run dump \n", string(out))
+		return err
 	}
 
 	if !strings.Contains(string(out), ip.String()) {
-		t.Error("docker container IP not setup ", ip.String())
+		return fmt.Errorf("docker container IP not setup %s", ip.String())
 	}
 	if !strings.Contains(string(out), mac.String()) {
-		t.Error("docker container MAC not setup ", mac.String())
+		return fmt.Errorf("docker container MAC not setup %s", mac.String())
 	}
 	if !strings.Contains(string(out), "mtu 1400") {
-		t.Error("docker container MTU not setup ")
+		return fmt.Errorf("docker container MTU not setup")
 	}
 
-	if err := dockerContainerInfo(t, name); err != nil {
-		t.Error("docker container inspect failed", name, err.Error())
+	if err := dockerContainerInfo(name); err != nil {
+		return fmt.Errorf("docker container inspect failed %s %v", name, err.Error())
+	}
+	return nil
+}
+
+func dockerContainerDelete(name string) error {
+	_, err := exec.Command("docker", "stop", name).CombinedOutput()
+	if err != nil {
+		return err
+	}
+
+	_, err = exec.Command("docker", "rm", name).CombinedOutput()
+	if err != nil {
+		return err
 	}
 	return err
 }
 
-func dockerContainerDelete(t *testing.T, name string) error {
-	out, err := exec.Command("docker", "stop", name).CombinedOutput()
+func dockerContainerInfo(name string) error {
+	_, err := exec.Command("docker", "ps", "-a").CombinedOutput()
 	if err != nil {
-		t.Error("docker container stop failed", name, err)
-	} else {
-		debugPrint(t, "docker container stop= \n", string(out))
+		return err
 	}
 
-	out, err = exec.Command("docker", "rm", name).CombinedOutput()
+	_, err = exec.Command("docker", "inspect", name).CombinedOutput()
 	if err != nil {
-		t.Error("docker container delete failed", name, err)
-	} else {
-		debugPrint(t, "docker container delete= \n", string(out))
+		return err
 	}
-	return err
-}
-
-func dockerContainerInfo(t *testing.T, name string) error {
-	out, err := exec.Command("docker", "ps", "-a").CombinedOutput()
-	if err != nil {
-		t.Error("docker ps -a", err)
-	} else {
-		debugPrint(t, "docker =\n", string(out))
-	}
-
-	out, err = exec.Command("docker", "inspect", name).CombinedOutput()
-	if err != nil {
-		t.Error("docker network inspect", name, err)
-	} else {
-		debugPrint(t, "docker network inspect \n", string(out))
-	}
-	return err
+	return nil
 }
 
 //Will be replaced by Docker API's in launcher
@@ -118,50 +111,99 @@ func dockerContainerInfo(t *testing.T, name string) error {
 // --opt "bridge"=<ContainerInfo.Bridge> ContainerInfo.SubnetID
 //The IPAM driver needs top of the tree Docker (which needs special build)
 //is not tested yet
-func dockerNetCreate(t *testing.T, subnet net.IPNet, gw net.IP, bridge string, subnetID string) error {
+func dockerNetCreate(subnet net.IPNet, gw net.IP, bridge string, subnetID string) error {
 	cmd := exec.Command("docker", "network", "create", "-d=ciao", "--ipam-driver=ciao",
 		"--subnet="+subnet.String(), "--gateway="+gw.String(),
 		"--opt", "bridge="+bridge, subnetID)
 
-	out, err := cmd.CombinedOutput()
+	_, err := cmd.CombinedOutput()
 
 	if err != nil {
-		t.Error("docker network create failed", err)
-	} else {
-		debugPrint(t, "docker network create \n", string(out))
+		return err
 	}
 	return err
 }
 
 //Will be replaced by Docker API's in launcher
 // docker network rm ContainerInfo.SubnetID
-func dockerNetDelete(t *testing.T, subnetID string) error {
-	out, err := exec.Command("docker", "network", "rm", subnetID).CombinedOutput()
+func dockerNetDelete(subnetID string) error {
+	_, err := exec.Command("docker", "network", "rm", subnetID).CombinedOutput()
 	if err != nil {
-		t.Error("docker network delete failed", err)
-	} else {
-		debugPrint(t, "docker network delete=", string(out))
+		return err
 	}
-	return err
+	return nil
 }
-func dockerNetList(t *testing.T) error {
-	out, err := exec.Command("docker", "network", "ls").CombinedOutput()
+func dockerNetList() error {
+	_, err := exec.Command("docker", "network", "ls").CombinedOutput()
 	if err != nil {
-		t.Error("docker network ls", err)
-	} else {
-		debugPrint(t, "docker network ls= \n", string(out))
+		return err
+	}
+	return nil
+}
+
+func dockerNetInfo(subnetID string) error {
+	_, err := exec.Command("docker", "network", "inspect", subnetID).CombinedOutput()
+	if err != nil {
+		return err
 	}
 	return err
 }
 
-func dockerNetInfo(t *testing.T, subnetID string) error {
-	out, err := exec.Command("docker", "network", "inspect", subnetID).CombinedOutput()
+func dockerRunTop(name string, ip net.IP, mac net.HardwareAddr, subnetID string) {
+	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
+		"--ip="+ip.String(), "--mac-address="+mac.String(),
+		"debian", "top", "-b", "-d1")
+	go func() { _ = cmd.Run() }() // Ensures that the containers stays alive. Kludgy
+	return
+}
+
+func dockerRunPingVerify(name string, ip net.IP, mac net.HardwareAddr, subnetID string, addr string) error {
+	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
+		"--ip="+ip.String(), "--mac-address="+mac.String(),
+		"debian", "ping", "-c", "1", "192.168.111.100")
+	out, err := cmd.CombinedOutput()
+
 	if err != nil {
-		t.Error("docker network inspect", err)
-	} else {
-		debugPrint(t, "docker network inspect=", string(out))
+		return err
 	}
-	return err
+
+	if !strings.Contains(string(out), "1 packets received") {
+		return fmt.Errorf("docker connectivity test failed %s", ip.String())
+	}
+	return nil
+}
+
+func startDockerPlugin(t *testing.T) (*DockerPlugin, error) {
+
+	dockerPlugin := NewDockerPlugin()
+	if err := dockerPlugin.Init(); err != nil {
+		t.Error(err)
+		return nil, err
+	}
+
+	if err := dockerPlugin.Start(); err != nil {
+		t.Error(err)
+		return nil, err
+	}
+
+	//Restarting docker here so the plugin will
+	//be picked up without modifying the boot scripts
+	if err := dockerRestart(); err != nil {
+		t.Error(err)
+		return nil, err
+	}
+
+	return dockerPlugin, nil
+}
+
+func stopDockerPlugin(dockerPlugin *DockerPlugin) error {
+	if err := dockerPlugin.Stop(); err != nil {
+		return err
+	}
+	if err := dockerPlugin.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 //Tests typical sequence of CN Container APIs
@@ -173,24 +215,10 @@ func dockerNetInfo(t *testing.T, subnetID string) error {
 //Test is expected to pass
 func TestCNContainer_Base(t *testing.T) {
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
 
-	dockerPlugin := NewDockerPlugin()
-	if err := dockerPlugin.Init(); err != nil {
-		t.Fatal("ERROR: Docker Init failed ", err)
-	}
-
-	if err := dockerPlugin.Start(); err != nil {
-		t.Fatal("ERROR: Docker start failed ", err)
-	}
-
-	//Restarting docker here so the plugin will
-	//be picked up without modifying the boot scripts
-	if err := dockerRestart(t); err != nil {
-		t.Fatal("ERROR: Docker restart failed ", err)
-	}
+	dockerPlugin, err := startDockerPlugin(t)
+	require.Nil(t, err)
 
 	//From YAML on instance init
 	//Two VNICs on the same tenant subnet
@@ -235,74 +263,46 @@ func TestCNContainer_Base(t *testing.T) {
 	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
-		switch {
-		case ssntpEvent == nil:
-			t.Error("ERROR: expected SSNTP Event")
-		case ssntpEvent.Event != SsntpTunAdd:
-			t.Errorf("ERROR: cn.CreateVnic event population errror %v ", err)
-		case cInfo == nil:
-			t.Error("ERROR: expected Container Event")
-		case cInfo.CNContainerEvent != ContainerNetworkAdd:
-			t.Error("ERROR: Expected network add", ssntpEvent, cInfo)
-		case cInfo.SubnetID == "":
-			t.Error("ERROR: expected Container SubnetID")
-		case cInfo.Subnet.String() == "":
-			t.Error("ERROR: expected Container Subnet")
-		case cInfo.Gateway.String() == "":
-			t.Error("ERROR: expected Container Gateway")
-		case cInfo.Bridge == "":
-			t.Error("ERROR: expected Container Bridge")
+		// expected SSNTP Event
+		if assert.NotNil(t, ssntpEvent) {
+			assert.Equal(t, ssntpEvent.Event, SsntpTunAdd)
 		}
-		if err := validSsntpEvent(ssntpEvent, vnicCfg); err != nil {
-			t.Error("ERROR: cn.CreateVnic event population errror", vnic, ssntpEvent)
+		// expected Container Event
+		if assert.NotNil(t, cInfo) {
+			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkAdd)
+			assert.NotEqual(t, cInfo.SubnetID, "")
+			assert.NotEqual(t, cInfo.Subnet.String(), "")
+			assert.NotEqual(t, cInfo.Gateway.String(), "")
+			assert.NotEqual(t, cInfo.Bridge, "")
 		}
+		assert.Nil(t, validSsntpEvent(ssntpEvent, vnicCfg))
 
 		//Cache the first subnet ID we see. All subsequent should have the same
 		subnetID = cInfo.SubnetID
 		iface = vnic.interfaceName()
-		if iface == "" {
-			t.Error("ERROR: cn.CreateVnic interface population errror", vnic)
-		}
+		assert.NotEqual(t, iface, "")
 
 		//Launcher will attach to this name and send out the event
 		//Launcher will also create the logical docker network
 		debugPrint(t, "VNIC created =", vnic.LinkName, ssntpEvent, cInfo)
-
-		if err := linkDump(t); err != nil {
-			t.Errorf("unable to dump link %v", err)
-		}
+		assert.Nil(t, linkDump(t))
 
 		//Now kick off the docker commands
-		if err := dockerNetCreate(t, cInfo.Subnet, cInfo.Gateway,
-			cInfo.Bridge, cInfo.SubnetID); err != nil {
-			t.Error("ERROR: docker network", cInfo, err)
-		}
-		if err := dockerNetInfo(t, cInfo.SubnetID); err != nil {
-			t.Error("ERROR: docker network info", cInfo, err)
-		}
-		if err := dockerRunVerify(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID); err != nil {
-			t.Error("ERROR: docker run", cInfo, err)
-		}
-		if err := dockerContainerDelete(t, vnicCfg.VnicIP.String()); err != nil {
-			t.Error("ERROR: docker network delete", cInfo, err)
-		}
+		assert.Nil(t, dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
+		assert.Nil(t, dockerNetInfo(cInfo.SubnetID))
+		assert.Nil(t, dockerRunVerify(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID))
+		assert.Nil(t, dockerContainerDelete(vnicCfg.VnicIP.String()))
 	}
 
 	//Duplicate VNIC creation
 	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
-		switch {
-		case ssntpEvent != nil:
-			t.Error("ERROR: DUP unexpected SSNTP event", vnic, ssntpEvent)
-		case cInfo == nil:
-			t.Error("ERROR: DUP expected Container Info", vnic)
-		case cInfo.SubnetID != subnetID:
-			t.Error("ERROR: DUP SubnetID mismatch", ssntpEvent, cInfo)
-		case cInfo.CNContainerEvent != ContainerNetworkInfo:
-			t.Error("ERROR: DUP Expected network info", ssntpEvent, cInfo)
-		case iface != vnic.interfaceName():
-			t.Errorf("ERROR: DUP interface mismatch [%v] [%v]", iface, vnic.interfaceName())
+		assert.Nil(t, ssntpEvent, "ERROR: DUP unexpected event")
+		if assert.NotNil(t, cInfo) {
+			assert.Equal(t, cInfo.SubnetID, subnetID)
+			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkInfo)
+			assert.Equal(t, iface, vnic.interfaceName())
 		}
 	}
 
@@ -310,52 +310,27 @@ func TestCNContainer_Base(t *testing.T) {
 	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
-		switch {
-		case ssntpEvent != nil:
-			t.Error("ERROR: VNIC2 unexpected SSNTP event", vnic, ssntpEvent)
-		case cInfo == nil:
-			t.Error("ERROR: VNIC2 expected Container Info", vnic)
-		case cInfo.SubnetID != subnetID:
-			t.Error("ERROR: VNIC2 SubnetID mismatch", ssntpEvent, cInfo)
-		case cInfo.CNContainerEvent != ContainerNetworkInfo:
-			t.Error("ERROR: VNIC2 Expected network info", ssntpEvent, cInfo)
+		assert.Nil(t, ssntpEvent)
+		if assert.NotNil(t, cInfo) {
+			assert.Equal(t, cInfo.SubnetID, subnetID)
+			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkInfo)
 		}
-
-		debugPrint(t, "VNIC2 created =", vnic.LinkName, ssntpEvent, cInfo)
-
 		iface = vnic.interfaceName()
-		if iface == "" {
-			t.Error("ERROR: cn.CreateVnic interface population errror", vnic)
-		}
-
-		if err := linkDump(t); err != nil {
-			t.Errorf("unable to dump link %v", err)
-		}
-
-		if err := dockerRunVerify(t, vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
-			vnicCfg2.VnicMAC, cInfo.SubnetID); err != nil {
-			t.Error("ERROR: docker run", cInfo, err)
-		}
-		if err := dockerContainerDelete(t, vnicCfg2.VnicIP.String()); err != nil {
-			t.Error("ERROR: docker network delete", cInfo, err)
-		}
+		assert.NotEqual(t, iface, "")
+		assert.Nil(t, dockerRunVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
+			vnicCfg2.VnicMAC, cInfo.SubnetID))
+		assert.Nil(t, dockerContainerDelete(vnicCfg2.VnicIP.String()))
 	}
 
 	//Duplicate VNIC creation
 	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
-		switch {
-		case ssntpEvent != nil:
-			t.Error("ERROR: DUP unexpected SSNTP event", vnic, ssntpEvent)
-		case cInfo == nil:
-			t.Error("ERROR: DUP expected Container Info", vnic)
-		case cInfo.SubnetID != subnetID:
-			t.Error("ERROR: DUP SubnetID mismatch", ssntpEvent, cInfo)
-		case cInfo.CNContainerEvent != ContainerNetworkInfo:
-			t.Error("ERROR: DUP Expected network info", ssntpEvent, cInfo)
-		case iface != vnic.interfaceName():
-			t.Errorf("ERROR: DUP interface mismatch [%v] [%v]", iface, vnic.interfaceName())
+		assert.Nil(t, ssntpEvent)
+		if assert.NotNil(t, cInfo) {
+			assert.Equal(t, cInfo.SubnetID, subnetID)
+			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkInfo)
+			assert.Equal(t, iface, vnic.interfaceName())
 		}
 	}
 
@@ -363,104 +338,42 @@ func TestCNContainer_Base(t *testing.T) {
 	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
-		switch {
-		case ssntpEvent != nil:
-			t.Error("ERROR: DELETE unexpected SSNTP Event", ssntpEvent)
-		case cInfo != nil:
-			t.Error("ERROR: DELETE unexpected Container Event")
-		}
-		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
+		assert.Nil(t, ssntpEvent)
+		assert.Nil(t, cInfo)
 	}
 
 	//Destroy it again
 	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
-		switch {
-		case ssntpEvent != nil:
-			t.Error("ERROR: DELETE unexpected SSNTP Event", ssntpEvent)
-		case cInfo != nil:
-			t.Error("ERROR: DELETE unexpected Container event", cInfo)
-		}
-		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
+		assert.Nil(t, ssntpEvent)
+		assert.Nil(t, cInfo)
 	}
 
 	// Try and destroy - should work - cInfo should be reported
 	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
-		switch {
-		case ssntpEvent == nil:
-			t.Error("ERROR: DELETE expected SSNTP Event")
-		case cInfo == nil:
-			t.Error("ERROR: DELETE expected Container Event")
-		case cInfo.SubnetID != subnetID:
-			t.Error("ERROR: DELETE SubnetID mismatch", ssntpEvent, cInfo)
-		case cInfo.CNContainerEvent != ContainerNetworkDel:
-			t.Error("ERROR: DELETE Expected network delete", ssntpEvent, cInfo)
-		}
-		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
-
-		if err := linkDump(t); err != nil {
-			t.Errorf("unable to dump link %v", err)
+		assert.NotNil(t, ssntpEvent)
+		if assert.NotNil(t, cInfo) {
+			assert.Equal(t, cInfo.SubnetID, subnetID)
+			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkDel)
 		}
 	}
 
 	//Has to be called after the VNIC has been deleted
-	if err := dockerNetDelete(t, subnetID); err != nil {
-		t.Error("ERROR:", subnetID, err)
-	}
-	if err := dockerNetList(t); err != nil {
-		t.Error("ERROR:", err)
-	}
+	assert.Nil(t, dockerNetDelete(subnetID))
+	assert.Nil(t, dockerNetList())
 
 	//Destroy it again
 	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
-		switch {
-		case ssntpEvent != nil:
-			t.Error("ERROR: unexpected SSNTP Event", ssntpEvent)
-		case cInfo != nil:
-			t.Error("ERROR: unexpected Container event", cInfo)
-		}
-		debugPrint(t, "VNIC deleted event", ssntpEvent, cInfo)
+		assert.Nil(t, ssntpEvent)
+		assert.Nil(t, cInfo)
 	}
 
-	if err := dockerPlugin.Stop(); err != nil {
-		t.Fatal("ERROR: Docker stop failed ", err)
-	}
-
-	if err := dockerPlugin.Close(); err != nil {
-		t.Fatal("ERROR: Docker close failed ", err)
-	}
-
-}
-
-func dockerRunTop(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string) {
-	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
-		"--ip="+ip.String(), "--mac-address="+mac.String(),
-		"debian", "top", "-b", "-d1")
-	go func() { _ = cmd.Run() }() // Ensures that the containers stays alive. Kludgy
-	return
-}
-
-func dockerRunPingVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr, subnetID string, addr string) error {
-	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
-		"--ip="+ip.String(), "--mac-address="+mac.String(),
-		"debian", "ping", "-c", "1", "192.168.111.100")
-	out, err := cmd.CombinedOutput()
-
-	if err != nil {
-		t.Error("docker run failed", cmd, err)
-	} else {
-		debugPrint(t, "docker run dump \n", string(out))
-	}
-
-	if !strings.Contains(string(out), "1 packets received") {
-		t.Error("docker connectivity test failed", ip.String())
-	}
-	return nil
+	assert.Nil(t, stopDockerPlugin(dockerPlugin))
 }
 
 //Tests connectivity between two node local Containers
@@ -472,24 +385,10 @@ func dockerRunPingVerify(t *testing.T, name string, ip net.IP, mac net.HardwareA
 //Test is expected to pass
 func TestCNContainer_Connectivity(t *testing.T) {
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
 
-	dockerPlugin := NewDockerPlugin()
-	if err := dockerPlugin.Init(); err != nil {
-		t.Fatal("ERROR: Docker Init failed ", err)
-	}
-
-	if err := dockerPlugin.Start(); err != nil {
-		t.Fatal("ERROR: Docker start failed ", err)
-	}
-
-	//Restarting docker here so the plugin will
-	//be picked up without modifying the boot scripts
-	if err := dockerRestart(t); err != nil {
-		t.Fatal("ERROR: Docker restart failed ", err)
-	}
+	dockerPlugin, err := startDockerPlugin(t)
+	require.Nil(t, err)
 
 	//From YAML on instance init
 	//Two VNICs on the same tenant subnet
@@ -529,54 +428,32 @@ func TestCNContainer_Connectivity(t *testing.T) {
 	}
 
 	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	err = dockerNetCreate(t, cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
 
 	//Kick off a long running container
-	dockerRunTop(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	if err := dockerRunPingVerify(t, vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
-		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
+		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()))
 
 	//Destroy the containers
-	if err := dockerContainerDelete(t, vnicCfg.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
-	if err := dockerContainerDelete(t, vnicCfg2.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, dockerContainerDelete(vnicCfg.VnicIP.String()))
+	assert.Nil(t, dockerContainerDelete(vnicCfg2.VnicIP.String()))
 
 	//Destroy the VNICs
-	if _, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		t.Error(err)
-	}
-	if _, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
-		t.Error(err)
-	}
+	_, _, err = cn.DestroyVnic(vnicCfg)
+	assert.Nil(t, err)
+	_, _, err = cn.DestroyVnic(vnicCfg2)
+	assert.Nil(t, err)
 
 	//Destroy the network, has to be called after the VNIC has been deleted
-	if err := dockerNetDelete(t, cInfo.SubnetID); err != nil {
-		t.Error(err)
-	}
-	if err := dockerPlugin.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := dockerPlugin.Close(); err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, dockerNetDelete(cInfo.SubnetID))
+	assert.Nil(t, stopDockerPlugin(dockerPlugin))
 }
 
 //Tests VM and Container VNIC Interop
@@ -588,24 +465,10 @@ func TestCNContainer_Connectivity(t *testing.T) {
 //Test is expected to pass
 func TestCNContainer_Interop1(t *testing.T) {
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
 
-	dockerPlugin := NewDockerPlugin()
-	if err := dockerPlugin.Init(); err != nil {
-		t.Fatal("ERROR: Docker Init failed ", err)
-	}
-
-	if err := dockerPlugin.Start(); err != nil {
-		t.Fatal("ERROR: Docker start failed ", err)
-	}
-
-	//Restarting docker here so the plugin will
-	//be picked up without modifying the boot scripts
-	if err := dockerRestart(t); err != nil {
-		t.Fatal("ERROR: Docker restart failed ", err)
-	}
+	dockerPlugin, err := startDockerPlugin(t)
+	require.Nil(t, err)
 
 	//From YAML on instance init
 	//Two VNICs on the same tenant subnet
@@ -677,67 +540,46 @@ func TestCNContainer_Interop1(t *testing.T) {
 	}
 
 	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	err = dockerNetCreate(t, cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID)
-	if err != nil {
-		t.Error(err)
-	}
+	err = dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID)
+	assert.Nil(t, err)
 
 	_, _, _, err = cn.CreateVnic(vnicCfg3)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
 	//Kick off a long running container
-	dockerRunTop(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
 	_, _, _, err = cn.CreateVnic(vnicCfg4)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	if err := dockerRunPingVerify(t, vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
-		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
+		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()))
 
 	//Destroy the containers
-	if err := dockerContainerDelete(t, vnicCfg.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
-	if err := dockerContainerDelete(t, vnicCfg2.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, dockerContainerDelete(vnicCfg.VnicIP.String()))
+	assert.Nil(t, dockerContainerDelete(vnicCfg2.VnicIP.String()))
 
-	if _, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		t.Error(err)
-	}
-	if _, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
-		t.Error(err)
-	}
-	if _, _, err := cn.DestroyVnic(vnicCfg3); err != nil {
-		t.Error(err)
-	}
-	if err := dockerNetDelete(t, cInfo.SubnetID); err != nil {
-		t.Error(err)
-	}
-	if _, _, err := cn.DestroyVnic(vnicCfg4); err != nil {
-		t.Error(err)
-	}
-	if err := dockerPlugin.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := dockerPlugin.Close(); err != nil {
-		t.Fatal(err)
-	}
+	_, _, err = cn.DestroyVnic(vnicCfg)
+	assert.Nil(t, err)
+
+	_, _, err = cn.DestroyVnic(vnicCfg2)
+	assert.Nil(t, err)
+
+	_, _, err = cn.DestroyVnic(vnicCfg3)
+	assert.Nil(t, err)
+
+	err = dockerNetDelete(cInfo.SubnetID)
+	assert.Nil(t, err)
+
+	_, _, err = cn.DestroyVnic(vnicCfg4)
+	assert.Nil(t, err)
+
+	assert.Nil(t, stopDockerPlugin(dockerPlugin))
 }
 
 //Tests VM and Container VNIC Interop
@@ -749,24 +591,10 @@ func TestCNContainer_Interop1(t *testing.T) {
 //Test is expected to pass
 func TestCNContainer_Interop2(t *testing.T) {
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
 
-	dockerPlugin := NewDockerPlugin()
-	if err := dockerPlugin.Init(); err != nil {
-		t.Fatal("ERROR: Docker Init failed ", err)
-	}
-
-	if err := dockerPlugin.Start(); err != nil {
-		t.Fatal("ERROR: Docker start failed ", err)
-	}
-
-	//Restarting docker here so the plugin will
-	//be picked up without modifying the boot scripts
-	if err := dockerRestart(t); err != nil {
-		t.Fatal("ERROR: Docker restart failed ", err)
-	}
+	dockerPlugin, err := startDockerPlugin(t)
+	require.Nil(t, err)
 
 	//From YAML on instance init
 	//Two VNICs on the same tenant subnet
@@ -838,66 +666,44 @@ func TestCNContainer_Interop2(t *testing.T) {
 	}
 
 	_, _, _, err = cn.CreateVnic(vnicCfg3)
-	if err != nil {
-		t.Error(err)
-	}
-	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	err = dockerNetCreate(t, cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID)
-	if err != nil {
-		t.Error(err)
-	}
+	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
+	assert.Nil(t, err)
+
+	assert.Nil(t, dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
 
 	//Kick off a long running container
-	dockerRunTop(t, vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
-	if err != nil {
-		t.Error(err)
-	}
-	if err := dockerRunPingVerify(t, vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
-		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
+
+	assert.Nil(t, dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
+		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()))
 
 	//Destroy the containers
-	if err := dockerContainerDelete(t, vnicCfg.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
-	if err := dockerContainerDelete(t, vnicCfg2.VnicIP.String()); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, dockerContainerDelete(vnicCfg.VnicIP.String()))
+	assert.Nil(t, dockerContainerDelete(vnicCfg2.VnicIP.String()))
 
 	_, _, _, err = cn.CreateVnic(vnicCfg4)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
 	//Destroy the VNICs
-	if _, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		t.Error(err)
-	}
-	if _, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
-		t.Error(err)
-	}
+	_, _, err = cn.DestroyVnic(vnicCfg)
+	assert.Nil(t, err)
+
+	_, _, err = cn.DestroyVnic(vnicCfg2)
+	assert.Nil(t, err)
 
 	//Destroy the network, has to be called after the VNIC has been deleted
-	if err := dockerNetDelete(t, cInfo.SubnetID); err != nil {
-		t.Error(err)
-	}
-	if _, _, err := cn.DestroyVnic(vnicCfg4); err != nil {
-		t.Error(err)
-	}
-	if _, _, err := cn.DestroyVnic(vnicCfg3); err != nil {
-		t.Error(err)
-	}
-	if err := dockerPlugin.Stop(); err != nil {
-		t.Fatal(err)
-	}
-	if err := dockerPlugin.Close(); err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, dockerNetDelete(cInfo.SubnetID))
+
+	_, _, err = cn.DestroyVnic(vnicCfg4)
+	assert.Nil(t, err)
+
+	_, _, err = cn.DestroyVnic(vnicCfg3)
+	assert.Nil(t, err)
+
+	assert.Nil(t, stopDockerPlugin(dockerPlugin))
 }
