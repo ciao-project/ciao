@@ -19,9 +19,9 @@ package libsnnet
 import (
 	"fmt"
 	"net"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/vishvananda/netlink"
 )
 
@@ -62,37 +62,22 @@ func getFirstPhyDevice() (int, error) {
 //
 //Test is expected to pass
 func TestCnciVnic_Basic(t *testing.T) {
-
-	cnciVnic, _ := newCnciVnic("testcnciVnic")
+	assert := assert.New(t)
 
 	pIndex, err := getFirstPhyDevice()
+	assert.Nil(err)
 
-	if err != nil {
-		t.Errorf("CnciVnic creation failed: %v", err)
-	}
-
+	cnciVnic, _ := newCnciVnic("testcnciVnic")
 	cnciVnic.Link.ParentIndex = pIndex
 	cnciVnic.Link.HardwareAddr, _ = net.ParseMAC("DE:AD:BE:EF:01:02")
 
-	if err := cnciVnic.create(); err != nil {
-		t.Errorf("CnciVnic creation failed: %v", err)
-	}
+	assert.Nil(cnciVnic.create())
 
-	if err := cnciVnic.enable(); err != nil {
-		t.Errorf("CnciVnic enable failed: %v", err)
-	}
+	assert.Nil(cnciVnic.enable())
+	assert.Nil(cnciVnic.disable())
+	assert.Nil(cnciVnic.destroy())
 
-	if err := cnciVnic.disable(); err != nil {
-		t.Errorf("CnciVnic enable failed: %v", err)
-	}
-
-	if err := cnciVnic.destroy(); err != nil {
-		t.Errorf("CnciVnic deletion failed: %v", err)
-	}
-	if err := cnciVnic.destroy(); err == nil {
-		t.Errorf("CnciVnic deletion should have failed")
-	}
-
+	assert.NotNil(cnciVnic.destroy())
 }
 
 //Test duplicate creation
@@ -102,30 +87,23 @@ func TestCnciVnic_Basic(t *testing.T) {
 //
 //Test is expected to pass
 func TestCnciVnic_Dup(t *testing.T) {
-	cnciVnic, _ := newCnciVnic("testcnciVnic")
+	assert := assert.New(t)
 
 	pIndex, err := getFirstPhyDevice()
-	if err != nil {
-		t.Errorf("CnciVnic creation failed: %v", err)
-	}
+	assert.Nil(err)
+
+	cnciVnic, _ := newCnciVnic("testcnciVnic")
 	cnciVnic.Link.ParentIndex = pIndex
 
-	if err := cnciVnic.create(); err != nil {
-		t.Errorf("CnciVnic creation failed: %v", err)
-	}
-	if err := cnciVnic.create(); err == nil {
-		t.Errorf("CnciVnic creation should have failed")
-	}
-
+	assert.Nil(cnciVnic.create())
+	assert.NotNil(cnciVnic.create())
 	defer func() { _ = cnciVnic.destroy() }()
 
 	cnciVnic1, _ := newCnciVnic("testcnciVnic")
 	cnciVnic1.Link.ParentIndex = pIndex
 
-	if err := cnciVnic1.create(); err == nil {
-		t.Errorf("Duplicate CnciVnic creation: %v", err)
-	}
-
+	//Duplicate
+	assert.NotNil(cnciVnic1.create())
 }
 
 //Negative test cases
@@ -135,35 +113,14 @@ func TestCnciVnic_Dup(t *testing.T) {
 //
 //Test is expected to pass
 func TestCnciVnic_Invalid(t *testing.T) {
+	assert := assert.New(t)
 	cnciVnic, err := newCnciVnic("testcnciVnic")
 
-	if err = cnciVnic.getDevice(); err == nil {
-		t.Errorf("Non existent device: %v", cnciVnic)
-	}
-	if !strings.HasPrefix(err.Error(), "cncivnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = cnciVnic.enable(); err == nil {
-		t.Errorf("Non existent device: %v", cnciVnic)
-	}
-	if !strings.HasPrefix(err.Error(), "cncivnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = cnciVnic.disable(); err == nil {
-		t.Errorf("Non existent device: %v", cnciVnic)
-	}
-	if !strings.HasPrefix(err.Error(), "cncivnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = cnciVnic.destroy(); err == nil {
-		t.Errorf("Non existent device: %v", cnciVnic)
-	}
-	if !strings.HasPrefix(err.Error(), "cncivnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
+	assert.Nil(err)
+	assert.NotNil(cnciVnic.getDevice())
+	assert.NotNil(cnciVnic.enable())
+	assert.NotNil(cnciVnic.disable())
+	assert.NotNil(cnciVnic.destroy())
 
 }
 
@@ -174,33 +131,20 @@ func TestCnciVnic_Invalid(t *testing.T) {
 //
 //Test is expected to pass
 func TestCnciVnic_GetDevice(t *testing.T) {
+	assert := assert.New(t)
 	cnciVnic1, _ := newCnciVnic("testcnciVnic")
 
 	pIndex, err := getFirstPhyDevice()
-	if err != nil {
-		t.Errorf("CnciVnic creation failed: %v", err)
-	}
+	assert.Nil(err)
 	cnciVnic1.Link.ParentIndex = pIndex
 
-	if err := cnciVnic1.create(); err != nil {
-		t.Errorf("CnciVnic creation failed: %v", err)
-	}
+	assert.Nil(cnciVnic1.create())
 
 	cnciVnic, _ := newCnciVnic("testcnciVnic")
 
-	if err := cnciVnic.getDevice(); err != nil {
-		t.Errorf("CnciVnic Get Device failed: %v", err)
-	}
+	assert.Nil(cnciVnic.getDevice())
 
-	if err := cnciVnic.enable(); err != nil {
-		t.Errorf("CnciVnic enable failed: %v", err)
-	}
-
-	if err := cnciVnic.disable(); err != nil {
-		t.Errorf("CnciVnic enable failed: %v", err)
-	}
-
-	if err := cnciVnic.destroy(); err != nil {
-		t.Errorf("CnciVnic deletion failed: %v", err)
-	}
+	assert.Nil(cnciVnic.enable())
+	assert.Nil(cnciVnic.disable())
+	assert.Nil(cnciVnic.destroy())
 }

@@ -17,9 +17,20 @@
 package libsnnet
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func performVnicOps(shouldPass bool, assert *assert.Assertions, vnic *Vnic) {
+	a := assert.Nil
+	if !shouldPass {
+		a = assert.NotNil
+	}
+	a(vnic.enable())
+	a(vnic.disable())
+	a(vnic.destroy())
+}
 
 //Tests all the basic VNIC primitives
 //
@@ -29,45 +40,20 @@ import (
 //
 //Test is expected to pass
 func TestVnic_Basic(t *testing.T) {
+	assert := assert.New(t)
 
-	vnic, _ := newVnic("testvnic")
+	vnic, err := newVnic("testvnic")
+	assert.Nil(err)
+	assert.Nil(vnic.create())
 
-	if err := vnic.create(); err != nil {
-		t.Errorf("Vnic creation failed: %v", err)
-	}
+	vnic1, err := newVnic("testvnic")
+	assert.Nil(err)
 
-	vnic1, _ := newVnic("testvnic")
+	assert.Nil(vnic1.getDevice())
+	assert.NotEqual(vnic.interfaceName(), "")
+	assert.Equal(vnic.peerName(), vnic.interfaceName())
 
-	if err := vnic1.getDevice(); err != nil {
-		t.Errorf("Vnic Get Device failed: %v", err)
-	}
-
-	if vnic.interfaceName() == "" {
-		t.Errorf("Vnic Unable to retrieve interface name")
-	}
-
-	if vnic.peerName() != vnic.interfaceName() {
-		t.Errorf("Vnic invalid peer or interface name [%v] [%v]",
-			vnic.peerName(),
-			vnic.interfaceName())
-	}
-
-	if err := vnic.enable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := vnic.disable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := vnic.destroy(); err != nil {
-		t.Errorf("Vnic deletion failed: %v", err)
-	}
-
-	if err := vnic.destroy(); err == nil {
-		t.Errorf("Vnic deletion should have failed")
-	}
-
+	performVnicOps(true, assert, vnic)
 }
 
 //Tests all the basic Container VNIC primitives
@@ -78,31 +64,15 @@ func TestVnic_Basic(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnicContainer_Basic(t *testing.T) {
+	assert := assert.New(t)
 
 	vnic, _ := newContainerVnic("testvnic")
-
-	if err := vnic.create(); err != nil {
-		t.Errorf("Vnic creation failed: %v", err)
-	}
+	assert.Nil(vnic.create())
 
 	vnic1, _ := newContainerVnic("testvnic")
+	assert.Nil(vnic1.getDevice())
 
-	if err := vnic1.getDevice(); err != nil {
-		t.Errorf("Vnic Get Device failed: %v", err)
-	}
-
-	if err := vnic.enable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := vnic.disable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := vnic.destroy(); err != nil {
-		t.Errorf("Vnic deletion failed: %v", err)
-	}
-
+	performVnicOps(true, assert, vnic)
 }
 
 //Duplicate VNIC creation detection
@@ -112,20 +82,13 @@ func TestVnicContainer_Basic(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnic_Dup(t *testing.T) {
+	assert := assert.New(t)
 	vnic, _ := newVnic("testvnic")
-
-	if err := vnic.create(); err != nil {
-		t.Errorf("Vnic creation failed: %v", err)
-	}
-
-	defer func() { _ = vnic.destroy() }()
-
 	vnic1, _ := newVnic("testvnic")
 
-	if err := vnic1.create(); err == nil {
-		t.Errorf("Duplicate Vnic creation: %v", err)
-	}
-
+	assert.Nil(vnic.create())
+	defer func() { _ = vnic.destroy() }()
+	assert.NotNil(vnic1.create())
 }
 
 //Duplicate Container VNIC creation detection
@@ -135,20 +98,13 @@ func TestVnic_Dup(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnicContainer_Dup(t *testing.T) {
+	assert := assert.New(t)
 	vnic, _ := newContainerVnic("testconvnic")
-
-	if err := vnic.create(); err != nil {
-		t.Errorf("Vnic creation failed: %v", err)
-	}
-
-	defer func() { _ = vnic.destroy() }()
-
 	vnic1, _ := newContainerVnic("testconvnic")
 
-	if err := vnic1.create(); err == nil {
-		t.Errorf("Duplicate Vnic creation: %v", err)
-	}
-
+	assert.Nil(vnic.create())
+	defer func() { _ = vnic.destroy() }()
+	assert.NotNil(vnic1.create())
 }
 
 //Negative test case for VNIC primitives
@@ -158,36 +114,13 @@ func TestVnicContainer_Dup(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnic_Invalid(t *testing.T) {
+	assert := assert.New(t)
 	vnic, err := newVnic("testvnic")
+	assert.Nil(err)
 
-	if err = vnic.getDevice(); err == nil {
-		t.Errorf("Non existent device: %v", vnic)
-	}
-	if !strings.HasPrefix(err.Error(), "vnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
+	assert.NotNil(vnic.getDevice())
 
-	if err = vnic.enable(); err == nil {
-		t.Errorf("Non existent device: %v", vnic)
-	}
-	if !strings.HasPrefix(err.Error(), "vnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = vnic.disable(); err == nil {
-		t.Errorf("Non existent device: %v", vnic)
-	}
-	if !strings.HasPrefix(err.Error(), "vnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = vnic.destroy(); err == nil {
-		t.Errorf("Non existent device: %v", vnic)
-	}
-	if !strings.HasPrefix(err.Error(), "vnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
+	performVnicOps(false, assert, vnic)
 }
 
 //Negative test case for Container VNIC primitives
@@ -197,36 +130,14 @@ func TestVnic_Invalid(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnicContainer_Invalid(t *testing.T) {
+	assert := assert.New(t)
+
 	vnic, err := newContainerVnic("testcvnic")
+	assert.Nil(err)
 
-	if err = vnic.getDevice(); err == nil {
-		t.Errorf("Non existent device: %v", vnic)
-	}
-	if !strings.HasPrefix(err.Error(), "vnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
+	assert.NotNil(vnic.getDevice())
 
-	if err = vnic.enable(); err == nil {
-		t.Errorf("Non existent device: %v", vnic)
-	}
-	if !strings.HasPrefix(err.Error(), "vnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = vnic.disable(); err == nil {
-		t.Errorf("Non existent device: %v", vnic)
-	}
-	if !strings.HasPrefix(err.Error(), "vnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = vnic.destroy(); err == nil {
-		t.Errorf("Non existent device: %v", vnic)
-	}
-	if !strings.HasPrefix(err.Error(), "vnic error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
+	performVnicOps(false, assert, vnic)
 }
 
 //Test ability to attach to an existing VNIC
@@ -236,45 +147,19 @@ func TestVnicContainer_Invalid(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnic_GetDevice(t *testing.T) {
+	assert := assert.New(t)
 	vnic1, _ := newVnic("testvnic")
 
-	if err := vnic1.create(); err != nil {
-		t.Errorf("Vnic creation failed: %v", err)
-	}
-
+	assert.Nil(vnic1.create())
 	vnic, _ := newVnic("testvnic")
 
-	if err := vnic.getDevice(); err != nil {
-		t.Errorf("Vnic Get Device failed: %v", err)
-	}
+	assert.Nil(vnic.getDevice())
+	assert.NotEqual(vnic.interfaceName(), "")
+	assert.Equal(vnic.interfaceName(), vnic1.interfaceName())
+	assert.NotEqual(vnic1.peerName(), "")
+	assert.Equal(vnic1.peerName(), vnic.peerName())
 
-	if vnic.interfaceName() == "" {
-		t.Errorf("Vnic interafaceName failed")
-	}
-
-	if vnic.interfaceName() != vnic1.interfaceName() {
-		t.Errorf("Vnic interafaceName mismatch")
-	}
-
-	if vnic1.peerName() == "" {
-		t.Errorf("Vnic peerName failed")
-	}
-
-	if vnic1.peerName() != vnic.peerName() {
-		t.Errorf("Vnic peerName mismatch")
-	}
-
-	if err := vnic.enable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := vnic.disable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := vnic.destroy(); err != nil {
-		t.Errorf("Vnic deletion failed: %v", err)
-	}
+	performVnicOps(true, assert, vnic)
 }
 
 //Test ability to attach to an existing Container VNIC
@@ -284,29 +169,19 @@ func TestVnic_GetDevice(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnicContainer_GetDevice(t *testing.T) {
-	vnic1, _ := newContainerVnic("testvnic")
+	assert := assert.New(t)
 
-	if err := vnic1.create(); err != nil {
-		t.Errorf("Vnic creation failed: %v", err)
-	}
+	vnic1, err := newContainerVnic("testvnic")
+	assert.Nil(err)
 
-	vnic, _ := newContainerVnic("testvnic")
+	err = vnic1.create()
+	assert.Nil(err)
 
-	if err := vnic.getDevice(); err != nil {
-		t.Errorf("Vnic Get Device failed: %v", err)
-	}
+	vnic, err := newContainerVnic("testvnic")
+	assert.Nil(err)
 
-	if err := vnic.enable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := vnic.disable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := vnic.destroy(); err != nil {
-		t.Errorf("Vnic deletion failed: %v", err)
-	}
+	assert.Nil(vnic.getDevice())
+	performVnicOps(true, assert, vnic)
 }
 
 //Tests VNIC attach to a bridge
@@ -315,35 +190,20 @@ func TestVnicContainer_GetDevice(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnic_Bridge(t *testing.T) {
+	assert := assert.New(t)
 	vnic, _ := newVnic("testvnic")
 	bridge, _ := newBridge("testbridge")
 
-	if err := vnic.create(); err != nil {
-		t.Errorf("Vnic Create failed: %v", err)
-	}
-
+	assert.Nil(vnic.create())
 	defer func() { _ = vnic.destroy() }()
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Vnic Create failed: %v", err)
-	}
+	assert.Nil(bridge.create())
 	defer func() { _ = bridge.destroy() }()
 
-	if err := vnic.attach(bridge); err != nil {
-		t.Errorf("Vnic attach failed: %v", err)
-	}
-
-	if err := vnic.enable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := bridge.enable(); err != nil {
-		t.Errorf("Vnic deletion failed: %v", err)
-	}
-
-	if err := vnic.detach(bridge); err != nil {
-		t.Errorf("Vnic detach failed: %v", err)
-	}
+	assert.Nil(vnic.attach(bridge))
+	assert.Nil(vnic.enable())
+	assert.Nil(bridge.enable())
+	assert.Nil(vnic.detach(bridge))
 
 }
 
@@ -353,33 +213,19 @@ func TestVnic_Bridge(t *testing.T) {
 //
 //Test is expected to pass
 func TestVnicContainer_Bridge(t *testing.T) {
+	assert := assert.New(t)
 	vnic, _ := newContainerVnic("testvnic")
 	bridge, _ := newBridge("testbridge")
 
-	if err := vnic.create(); err != nil {
-		t.Errorf("Vnic Create failed: %v", err)
-	}
+	assert.Nil(vnic.create())
 
 	defer func() { _ = vnic.destroy() }()
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Vnic Create failed: %v", err)
-	}
+	assert.Nil(bridge.create())
 	defer func() { _ = bridge.destroy() }()
 
-	if err := vnic.attach(bridge); err != nil {
-		t.Errorf("Vnic attach failed: %v", err)
-	}
-
-	if err := vnic.enable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := bridge.enable(); err != nil {
-		t.Errorf("Vnic deletion failed: %v", err)
-	}
-
-	if err := vnic.detach(bridge); err != nil {
-		t.Errorf("Vnic detach failed: %v", err)
-	}
+	assert.Nil(vnic.attach(bridge))
+	assert.Nil(vnic.enable())
+	assert.Nil(bridge.enable())
+	assert.Nil(vnic.detach(bridge))
 }

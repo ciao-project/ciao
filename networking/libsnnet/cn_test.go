@@ -22,6 +22,9 @@ import (
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var snTestNet string
@@ -74,13 +77,17 @@ func cnTestInit() (*ComputeNode, error) {
 		NetworkConfig: netConfig,
 	}
 
-	if err := cn.Init(); err != nil {
+	err = cn.Init()
+	if err != nil {
 		return nil, err
 	}
-	if err := cn.ResetNetwork(); err != nil {
+	err = cn.ResetNetwork()
+	if err != nil {
 		return nil, err
 	}
-	if err := cn.DbRebuild(nil); err != nil {
+
+	err = cn.DbRebuild(nil)
+	if err != nil {
 		return nil, err
 	}
 
@@ -96,10 +103,9 @@ func cnTestInit() (*ComputeNode, error) {
 //Test should pass OK
 func TestCN_Scaling(t *testing.T) {
 
+	assert := assert.New(t)
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
 
 	//From YAML on instance init
 	tenantID := "tenantuuid"
@@ -139,9 +145,8 @@ func TestCN_Scaling(t *testing.T) {
 				ConcID:     "cnciuuid",
 			}
 
-			if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-				t.Error("ERROR: cn.CreateVnic  failed", err, vnic, ssntpEvent)
-			}
+			_, _, _, err := cn.CreateVnic(vnicCfg)
+			assert.Nil(err)
 		}
 	}
 
@@ -170,9 +175,8 @@ func TestCN_Scaling(t *testing.T) {
 				ConcID:     "cnciuuid",
 			}
 
-			if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-				t.Error("ERROR: cn.DestroyVnic failed event", vnicCfg, ssntpEvent, err)
-			}
+			_, _, err := cn.DestroyVnic(vnicCfg)
+			assert.Nil(err)
 		}
 	}
 }
@@ -189,10 +193,9 @@ func TestCN_Scaling(t *testing.T) {
 //Test should pass OK
 func TestCN_ResetNetwork(t *testing.T) {
 
+	assert := assert.New(t)
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
 
 	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
@@ -211,58 +214,39 @@ func TestCN_ResetNetwork(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic  failed", err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic)
-		}
+	_, ssntpEvent, _, err := cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 	}
 
 	vnicCfg.TenantID = "tuuid2"
 	vnicCfg.ConcIP = net.IPv4(192, 168, 1, 2)
 
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic  failed", err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic)
-		}
+	_, ssntpEvent, _, err = cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 	}
 
-	if err := cn.ResetNetwork(); err != nil {
-		t.Error("ERROR: cn.ResetNetwork failed", err)
-	}
-	if err := cn.DbRebuild(nil); err != nil {
-		t.Fatal("ERROR: cn.dbRebuild failed")
-	}
+	assert.Nil(cn.ResetNetwork())
+	assert.Nil(cn.DbRebuild(nil))
 
 	vnicCfg.TenantID = "tuuid"
 	vnicCfg.ConcIP = net.IPv4(192, 168, 1, 1)
 
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic  failed", err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic)
-		}
+	_, ssntpEvent, _, err = cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 	}
 
 	vnicCfg.TenantID = "tuuid2"
 	vnicCfg.ConcIP = net.IPv4(192, 168, 1, 2)
 
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic  failed", err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic)
-		}
+	_, ssntpEvent, _, err = cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 	}
 
-	if err := cn.ResetNetwork(); err != nil {
-		t.Error("ERROR: cn.ResetNetwork failed", err)
-	}
-
+	assert.Nil(cn.ResetNetwork())
 }
 
 //Tests multiple VNIC's creation
@@ -277,9 +261,9 @@ func TestCN_ResetNetwork(t *testing.T) {
 func TestCN_MultiTenant(t *testing.T) {
 
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	assert := assert.New(t)
+	require.Nil(t, err)
+
 	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
@@ -297,42 +281,30 @@ func TestCN_MultiTenant(t *testing.T) {
 		ConcID:     "cnciuuid",
 	}
 
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic  failed", err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic)
-		}
+	_, ssntpEvent, _, err := cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 	}
 
 	vnicCfg.TenantID = "tuuid2"
 	vnicCfg.ConcIP = net.IPv4(192, 168, 1, 2)
 
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic  failed", err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic)
-		}
+	_, ssntpEvent, _, err = cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 	}
 
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyVnic failed event", vnicCfg, err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.DestroyVnic expected event", vnicCfg, err)
-		}
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 	}
 
 	vnicCfg.TenantID = "tuuid"
 	vnicCfg.ConcIP = net.IPv4(192, 168, 1, 1)
 
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyVnic failed event", vnicCfg, err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.DestroyVnic expected event", vnicCfg, err)
-		}
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 	}
 }
 
@@ -343,10 +315,10 @@ func TestCN_MultiTenant(t *testing.T) {
 //
 //Test is expected to pass
 func TestCN_Negative(t *testing.T) {
+	assert := assert.New(t)
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
+
 	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
@@ -364,46 +336,32 @@ func TestCN_Negative(t *testing.T) {
 		ConcID:   "cnciuuid",
 	}
 
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		debugPrint(t, "cn.CreateVnic failed as expected: ", err)
-	} else {
-		//Launcher will attach to this name and send out the event
-		t.Error("Failure expected VNIC created =", vnic.LinkName, ssntpEvent)
-	}
+	_, _, _, err = cn.CreateVnic(vnicCfg)
+	assert.NotNil(err)
 
 	//Fix the errors
 	vnicCfg.TenantID = "tuuid"
 
 	// Try and create it again.
 	var vnicName string
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic  failed", err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic)
-		}
+	vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
 		vnicName = vnic.LinkName
 	}
 
 	//Try and create a duplicate. Should work
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic  failed", err)
-	} else {
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.CreateVnic unexpected event", vnic, vnicCfg, ssntpEvent)
-		}
-		if vnicName != vnic.LinkName {
-			t.Error("ERROR: VNIC names do not match", vnicName, vnic.LinkName)
-		}
+	vnic, ssntpEvent, _, err = cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.Nil(ssntpEvent)
+		assert.Equal(vnicName, vnic.LinkName)
 	}
 
 	// Try and destroy
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyVnic failed event", vnicCfg, err)
-	} else {
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.DestroyVnic expected event", vnicCfg, err)
-		}
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.NotNil(ssntpEvent)
+
 	}
 }
 
@@ -418,10 +376,10 @@ func TestCN_Negative(t *testing.T) {
 //
 //Test should pass OK
 func TestCN_AndNN(t *testing.T) {
+	assert := assert.New(t)
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
+
 	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
@@ -436,24 +394,20 @@ func TestCN_AndNN(t *testing.T) {
 
 	// Create a VNIC
 	var cnciVnic1Name string
-	if cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateCnciVnic failed", err)
-	} else {
+	cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg)
+	if assert.Nil(err) {
 		//Launcher will attach to this name and send out the event
 		cnciVnic1Name = cnciVnic.LinkName
 	}
 
 	var cnciVnic1DupName string
 	// Try and create it again. Should return cached value
-	if cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic duplicate failed", err)
-	} else {
+	cnciVnic, err = cn.CreateCnciVnic(cnciVnicCfg)
+	if assert.Nil(err) {
 		cnciVnic1DupName = cnciVnic.LinkName
 	}
 
-	if cnciVnic1Name != cnciVnic1DupName {
-		t.Error("ERROR: cn.CreateCnciVnic VNIC1 and VNIC1 Dup interface names do not match", cnciVnic1Name, cnciVnic1DupName)
-	}
+	assert.Equal(cnciVnic1Name, cnciVnic1DupName)
 
 	//From YAML on instance init
 	mac, _ := net.ParseMAC("CA:FE:00:01:02:03")
@@ -472,32 +426,24 @@ func TestCN_AndNN(t *testing.T) {
 
 	// Create a VNIC: Should create bridge and tunnels
 	var vnic1Name, vnic1DupName string
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic failed", err)
-	} else {
+	vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
 		//We expect a bridge creation event
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic, ssntpEvent)
-		}
+		assert.NotNil(ssntpEvent)
 		//Launcher will attach to this name and send out the event
 		vnic1Name = vnic.LinkName
 	}
 
 	// Try and create it again. Should return cached value
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic duplicate failed", err, ssntpEvent)
-	} else {
+	vnic, ssntpEvent, _, err = cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
 		//We do not expect a bridge creation event
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.CreateVnic duplicate unexpected event", vnic, ssntpEvent)
-		}
+		assert.Nil(ssntpEvent)
 		//Launcher will attach to this name and send out the event
 		vnic1DupName = vnic.LinkName
 	}
 
-	if vnic1Name != vnic1DupName {
-		t.Error("ERROR: cn.CreateVnic VNIC1 and VNIC2 interface names do not match", vnic1Name, vnic1DupName)
-	}
+	assert.Equal(vnic1Name, vnic1DupName)
 
 	mac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
 	vnicCfg2 := &VnicConfig{
@@ -514,21 +460,15 @@ func TestCN_AndNN(t *testing.T) {
 	}
 
 	// Create a second VNIC on the same tenant subnet
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg2); err != nil {
-		t.Error("ERROR: cn.CreateVnic VNIC2 failed", err, ssntpEvent)
-	} else {
+	vnic, ssntpEvent, _, err = cn.CreateVnic(vnicCfg2)
+	if assert.Nil(err) {
 		//We do not expect a bridge creation event
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.CreateVnic VNIC2 unexpected event", vnic, ssntpEvent)
-		}
-		//Launcher will attach to this name and send out the event
+		assert.Nil(ssntpEvent)
 	}
 
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.DestroyVnic VNIC2 unexpected event", err, ssntpEvent)
-		}
-		t.Error("ERROR: cn.DestroyVnic VNIC2 destroy attempt failed", err)
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg2)
+	if assert.Nil(err) {
+		assert.Nil(ssntpEvent)
 	}
 
 	cnciMac2, _ := net.ParseMAC("CA:FE:CC:01:02:22")
@@ -541,41 +481,27 @@ func TestCN_AndNN(t *testing.T) {
 	}
 
 	// Create and destroy a second VNIC
-	if _, err := cn.CreateCnciVnic(cnciVnicCfg2); err != nil {
-		t.Error("ERROR: cn.CreateVnic VNIC2 failed", err)
-	}
-
-	if err := cn.DestroyCnciVnic(cnciVnicCfg2); err != nil {
-		t.Error("ERROR: cn.DestroyCnciVnic VNIC2 destroy attempt failed", err)
-	}
+	_, err = cn.CreateCnciVnic(cnciVnicCfg2)
+	assert.Nil(err)
+	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg2))
 
 	// Destroy the first VNIC
-	if err := cn.DestroyCnciVnic(cnciVnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyCnciVnic VNIC1 failed", err)
-	}
+	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg))
 
 	// Try and destroy it again - should work
-	if err := cn.DestroyCnciVnic(cnciVnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyCnciVnic VNIC1 duplicate destroy attempt failed", err)
-	}
+	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg))
 
 	// Destroy the first VNIC - Deletes the bridge and tunnel
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyVnic VNIC1 failed", err)
-	} else {
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg)
+	if assert.Nil(err) {
 		//We expect a bridge deletion event
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.DestroyVnic VNIC1 expected event")
-		}
-		//Launcher will send this event out
+		assert.NotNil(ssntpEvent)
 	}
 
 	// Try and destroy it again - should work
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.DestroyVnic VNIC1 duplicate unexpected event", err, ssntpEvent)
-		}
-		t.Error("ERROR: cn.DestroyVnic VNIC1 duplicate destroy attempt failed", err)
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.Nil(ssntpEvent)
 	}
 }
 
@@ -588,10 +514,9 @@ func TestCN_AndNN(t *testing.T) {
 //
 //Test is expected to pass
 func TestNN_Base(t *testing.T) {
+	assert := assert.New(t)
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
 
 	//From YAML on instance init
 	cnciMac, _ := net.ParseMAC("CA:FE:00:01:02:03")
@@ -605,24 +530,19 @@ func TestNN_Base(t *testing.T) {
 
 	// Create a VNIC
 	var cnciVnic1Name string
-	if cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateCnciVnic failed", err)
-	} else {
-		//Launcher will attach to this name and send out the event
+	cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg)
+	if assert.Nil(err) {
 		cnciVnic1Name = cnciVnic.LinkName
 	}
 
 	var cnciVnic1DupName string
 	// Try and create it again. Should return cached value
-	if cnciVnic, err := cn.CreateCnciVnic(cnciVnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic duplicate failed", err)
-	} else {
+	cnciVnic, err = cn.CreateCnciVnic(cnciVnicCfg)
+	if assert.Nil(err) {
 		cnciVnic1DupName = cnciVnic.LinkName
 	}
 
-	if cnciVnic1Name != cnciVnic1DupName {
-		t.Error("ERROR: cn.CreateCnciVnic VNIC1 and VNIC1 Dup interface names do not match", cnciVnic1Name, cnciVnic1DupName)
-	}
+	assert.Equal(cnciVnic1Name, cnciVnic1DupName)
 
 	cnciMac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
 	cnciVnicCfg2 := &VnicConfig{
@@ -634,22 +554,13 @@ func TestNN_Base(t *testing.T) {
 	}
 
 	// Create and destroy a second VNIC
-	if _, err := cn.CreateCnciVnic(cnciVnicCfg2); err != nil {
-		t.Error("ERROR: cn.CreateVnic VNIC2 failed", err)
-	}
-	if err := cn.DestroyCnciVnic(cnciVnicCfg2); err != nil {
-		t.Error("ERROR: cn.DestroyCnciVnic VNIC2 destroy attempt failed", err)
-	}
+	_, err = cn.CreateCnciVnic(cnciVnicCfg2)
+	assert.Nil(err)
+	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg2))
+	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg))
 
-	// Destroy the first VNIC
-	if err := cn.DestroyCnciVnic(cnciVnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyCnciVnic VNIC1 failed", err)
-	}
-
-	// Try and destroy it again - should work
-	if err := cn.DestroyCnciVnic(cnciVnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyCnciVnic VNIC1 duplicate destroy attempt failed", err)
-	}
+	//Destory again, it should work
+	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg))
 }
 
 func validSsntpEvent(ssntpEvent *SsntpEventInfo, cfg *VnicConfig) error {
@@ -662,29 +573,15 @@ func validSsntpEvent(ssntpEvent *SsntpEventInfo, cfg *VnicConfig) error {
 	//parameters setup properly.
 	switch {
 	case ssntpEvent.ConcID != cfg.ConcID:
-	case ssntpEvent.ConcID == "":
-
 	case ssntpEvent.CnciIP != cfg.ConcIP.String():
-	case ssntpEvent.CnciIP == "":
-
 	//case ssntpEvent.CnIP != has to be set by the caller
-
 	case ssntpEvent.Subnet != cfg.Subnet.String():
-	case ssntpEvent.Subnet == "":
-
 	case ssntpEvent.SubnetKey != cfg.SubnetKey:
-	case ssntpEvent.SubnetKey == 0:
-	case ssntpEvent.SubnetKey == -1:
-
 	case ssntpEvent.SubnetID != cfg.SubnetID:
-	case ssntpEvent.SubnetID == "":
-
 	case ssntpEvent.TenantID != cfg.TenantID:
-	case ssntpEvent.TenantID == "":
 	default:
 		return nil
 	}
-
 	return fmt.Errorf("SsntpEvent: fields do not match %v != %v", ssntpEvent, cfg)
 }
 
@@ -697,10 +594,10 @@ func validSsntpEvent(ssntpEvent *SsntpEventInfo, cfg *VnicConfig) error {
 //
 //Test is expected to pass
 func TestCN_Base(t *testing.T) {
+	assert := assert.New(t)
 	cn, err := cnTestInit()
-	if err != nil {
-		t.Fatal("ERROR: Init failed", err)
-	}
+	require.Nil(t, err)
+
 	_, tenantNet, _ := net.ParseCIDR("192.168.1.0/24")
 
 	//From YAML on instance init
@@ -720,39 +617,26 @@ func TestCN_Base(t *testing.T) {
 
 	// Create a VNIC: Should create bridge and tunnels
 	var vnic1Name, vnic1DupName string
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic failed", err)
-	} else {
+	vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
 		//We expect a bridge creation event
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.CreateVnic expected event", vnic, ssntpEvent)
-		}
-		if ssntpEvent != nil {
+		if assert.NotNil(ssntpEvent) {
 			//Check the fields of the ssntpEvent
-			if err := validSsntpEvent(ssntpEvent, vnicCfg); err != nil {
-				t.Errorf("ERROR: cn.CreateVnic event population errror %v ", err)
-			}
-			if ssntpEvent.Event != SsntpTunAdd {
-				t.Error("ERROR: cn.CreateVnic event population errror", vnic, ssntpEvent)
-			}
+			err := validSsntpEvent(ssntpEvent, vnicCfg)
+			assert.Nil(err)
+			assert.Equal(ssntpEvent.Event, SsntpTunAdd)
 		}
 		vnic1Name = vnic.LinkName
 	}
 
 	// Try and create it again. Should return cached value
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.CreateVnic duplicate failed", err, ssntpEvent)
-	} else {
-		//We do not expect a bridge creation event
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.CreateVnic duplicate unexpected event", vnic, ssntpEvent)
-		}
+	vnic, ssntpEvent, _, err = cn.CreateVnic(vnicCfg)
+	if assert.Nil(err) {
+		assert.Nil(ssntpEvent)
 		vnic1DupName = vnic.LinkName
 	}
 
-	if vnic1Name != vnic1DupName {
-		t.Error("ERROR: cn.CreateVnic VNIC1 and VNIC2 interface names do not match", vnic1Name, vnic1DupName)
-	}
+	assert.Equal(vnic1Name, vnic1DupName)
 
 	mac2, _ := net.ParseMAC("CA:FE:00:01:02:22")
 	vnicCfg2 := &VnicConfig{
@@ -769,47 +653,35 @@ func TestCN_Base(t *testing.T) {
 	}
 
 	// Create a second VNIC on the same tenant subnet
-	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg2); err != nil {
-		t.Error("ERROR: cn.CreateVnic VNIC2 failed", err, ssntpEvent)
-	} else {
-		//We do not expect a bridge creation event
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.CreateVnic VNIC2 unexpected event", vnic, ssntpEvent)
-		}
+	vnic, ssntpEvent, _, err = cn.CreateVnic(vnicCfg2)
+	if assert.Nil(err) {
+		//No bridge creation event expected
+		assert.Nil(ssntpEvent)
 	}
 
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg2); err != nil {
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.DestroyVnic VNIC2 unexpected event", err, ssntpEvent)
-		}
-		t.Error("ERROR: cn.DestroyVnic VNIC2 destroy attempt failed", err)
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg2)
+	if assert.Nil(err) {
+		//No bridge creation event expected
+		assert.Nil(ssntpEvent)
 	}
 
 	// Destroy the first VNIC - Deletes the bridge and tunnel
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		t.Error("ERROR: cn.DestroyVnic VNIC1 failed", err)
-	} else {
-		//We expect a bridge deletion event
-		if ssntpEvent == nil {
-			t.Error("ERROR: cn.DestroyVnic VNIC1 expected event")
-		}
-		if ssntpEvent != nil {
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg)
+	if assert.Nil(err) {
+		//No bridge creation event expected
+		if assert.NotNil(ssntpEvent) {
 			//Check the fields of the ssntpEvent
-			if err := validSsntpEvent(ssntpEvent, vnicCfg); err != nil {
-				t.Errorf("ERROR: cn.DestroyVnic event population errror %v", err)
-			}
-			if ssntpEvent.Event != SsntpTunDel {
-				t.Error("ERROR: cn.DestroyVnic event population errror", vnicCfg, ssntpEvent)
-			}
+			err := validSsntpEvent(ssntpEvent, vnicCfg)
+			assert.Nil(err)
+			assert.Equal(ssntpEvent.Event, SsntpTunDel)
 		}
 	}
 
 	// Try and destroy it again - should work
-	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-		if ssntpEvent != nil {
-			t.Error("ERROR: cn.DestroyVnic VNIC1 duplicate unexpected event", err, ssntpEvent)
-		}
-		t.Error("ERROR: cn.DestroyVnic VNIC1 duplicate destroy attempt failed", err)
+	ssntpEvent, _, err = cn.DestroyVnic(vnicCfg)
+	if assert.Nil(err) {
+		//No bridge deletion event expected
+		assert.Nil(ssntpEvent)
 	}
 }
 
@@ -823,6 +695,7 @@ func TestCN_Base(t *testing.T) {
 //
 //Test is expected to pass
 func TestCN_Whitebox(t *testing.T) {
+	assert := assert.New(t)
 	var instanceMAC net.HardwareAddr
 	var err error
 
@@ -836,19 +709,16 @@ func TestCN_Whitebox(t *testing.T) {
 	concIP := net.IPv4(192, 168, 1, 1)
 	//The IP corresponding to the VNIC that carries tenant traffic
 	cnIP := net.IPv4(127, 0, 0, 1)
-	if instanceMAC, err = net.ParseMAC("CA:FE:00:01:02:03"); err != nil {
-		t.Errorf("Invalid MAC address")
-	}
+	instanceMAC, err = net.ParseMAC("CA:FE:00:01:02:03")
+	assert.Nil(err)
 
 	// Create the CN tenant bridge only if it does not exist
 	bridgeAlias := fmt.Sprintf("br_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
 	bridge, _ := newBridge(bridgeAlias)
 
-	if err := bridge.getDevice(); err != nil {
+	if assert.NotNil(bridge.getDevice()) {
 		// First instance to land, create the bridge and tunnel
-		if err := bridge.create(); err != nil {
-			t.Errorf("Bridge creation failed: %v", err)
-		}
+		assert.Nil(bridge.create())
 		defer func() { _ = bridge.destroy() }()
 
 		// Create the tunnel to connect to the CNCI
@@ -858,23 +728,12 @@ func TestCN_Whitebox(t *testing.T) {
 		greAlias := fmt.Sprintf("gre_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
 		gre, _ := newGreTunEP(greAlias, local, remote, subnetKey)
 
-		if err := gre.create(); err != nil {
-			t.Errorf("GRE Tunnel Creation failed: %v", err)
-		}
+		assert.Nil(gre.create())
 		defer func() { _ = gre.destroy() }()
 
-		if err := gre.attach(bridge); err != nil {
-			t.Errorf("GRE Tunnel attach failed: %v", err)
-		}
-
-		if err := gre.enable(); err != nil {
-			t.Errorf("GRE Tunnel enable failed: %v", err)
-		}
-
-		if err := bridge.enable(); err != nil {
-			t.Errorf("Bridge enable failed: %v", err)
-		}
-
+		assert.Nil(gre.attach(bridge))
+		assert.Nil(gre.enable())
+		assert.Nil(bridge.enable())
 	}
 
 	// Create the VNIC for the instance
@@ -882,20 +741,10 @@ func TestCN_Whitebox(t *testing.T) {
 	vnic, _ := newVnic(vnicAlias)
 	vnic.MACAddr = &instanceMAC
 
-	if err := vnic.create(); err != nil {
-		t.Errorf("Vnic Create failed: %v", err)
-	}
+	assert.Nil(vnic.create())
 	defer func() { _ = vnic.destroy() }()
 
-	if err := vnic.attach(bridge); err != nil {
-		t.Errorf("Vnic attach failed: %v", err)
-	}
-
-	if err := vnic.enable(); err != nil {
-		t.Errorf("Vnic enable failed: %v", err)
-	}
-
-	if err := bridge.enable(); err != nil {
-		t.Errorf("Bridge enable: %v", err)
-	}
+	assert.Nil(vnic.attach(bridge))
+	assert.Nil(vnic.enable())
+	assert.Nil(bridge.enable())
 }

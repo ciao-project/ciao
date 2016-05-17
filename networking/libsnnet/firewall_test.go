@@ -21,6 +21,9 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var fwIf, fwIfInt string
@@ -49,15 +52,9 @@ func fwinit() {
 func TestFw_Init(t *testing.T) {
 	fwinit()
 	fw, err := InitFirewall(fwIf)
+	require.Nil(t, err)
 
-	if err != nil {
-		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
-	}
-
-	err = fw.ShutdownFirewall()
-	if err != nil {
-		t.Errorf("Error: Unable to shutdown firewall %v", err)
-	}
+	assert.Nil(t, fw.ShutdownFirewall())
 }
 
 //Tests SSH port forwarding primitives
@@ -66,30 +63,21 @@ func TestFw_Init(t *testing.T) {
 //
 //Test should pass
 func TestFw_Ssh(t *testing.T) {
+	assert := assert.New(t)
 	fwinit()
 	fw, err := InitFirewall(fwIf)
-	if err != nil {
-		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
-	}
+	require.Nil(t, err)
 
 	err = fw.ExtPortAccess(FwEnable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
-
-	if err != nil {
-		t.Errorf("Error: ssh fwd failed %v", err)
-	}
+	assert.Nil(err)
 
 	err = fw.ExtPortAccess(FwDisable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
-
-	if err != nil {
-		t.Errorf("Error: ssh fwd disable failed %v", err)
-	}
+	assert.Nil(err)
 
 	err = fw.ShutdownFirewall()
-	if err != nil {
-		t.Errorf("Error: Unable to shutdown firewall %v", err)
-	}
+	assert.Nil(err)
 }
 
 //Tests setting up NAT
@@ -100,26 +88,20 @@ func TestFw_Ssh(t *testing.T) {
 //
 //Test is expected to pass
 func TestFw_Nat(t *testing.T) {
+	assert := assert.New(t)
+
 	fwinit()
 	fw, err := InitFirewall(fwIf)
-	if err != nil {
-		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
-	}
+	require.Nil(t, err)
 
 	err = fw.ExtFwding(FwEnable, fwIf, fwIfInt)
-	if err != nil {
-		t.Errorf("Error: NAT failed %v", err)
-	}
+	assert.Nil(err)
 
 	err = fw.ExtFwding(FwDisable, fwIf, fwIfInt)
-	if err != nil {
-		t.Errorf("Error: NAT disable failed %v", err)
-	}
+	assert.Nil(err)
 
 	err = fw.ShutdownFirewall()
-	if err != nil {
-		t.Errorf("Error: Unable to shutdown firewall %v", err)
-	}
+	assert.Nil(err)
 }
 
 /*
@@ -162,30 +144,23 @@ func TestFw_PublicIP(t *testing.T) {
 //
 //Test is expected to pass
 func TestFw_All(t *testing.T) {
+	assert := assert.New(t)
+
 	fwinit()
 	fw, err := InitFirewall(fwIf)
-	if err != nil {
-		t.Fatalf("Error: InitFirewall %v %v %v", fwIf, err, fw)
-	}
+	err = fw.ExtFwding(FwEnable, fwIf, fwIfInt)
+	require.Nil(t, err)
 
 	err = fw.ExtFwding(FwEnable, fwIf, fwIfInt)
-	if err != nil {
-		t.Errorf("Error: NAT failed %v", err)
-	}
+	assert.Nil(err)
 
 	err = fw.ExtPortAccess(FwEnable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
-
-	if err != nil {
-		t.Errorf("Error: ssh fwd failed %v", err)
-	}
+	assert.Nil(err)
 
 	procIPFwd := "/proc/sys/net/ipv4/ip_forward"
 	out, err := exec.Command("cat", procIPFwd).CombinedOutput()
-
-	if err != nil {
-		t.Errorf("unable to dump ip_forward %v, %v", err, out)
-	}
+	assert.Nil(err)
 
 	if string(out) != "1\n" {
 		t.Errorf("unable to set ip_forward [%v]", string(out))
@@ -193,28 +168,17 @@ func TestFw_All(t *testing.T) {
 
 	err = fw.ExtPortAccess(FwDisable, "tcp", fwIf, 12345,
 		net.ParseIP("192.168.0.101"), 22)
-
-	if err != nil {
-		t.Errorf("Error: ssh fwd disable failed %v", err)
-	}
+	assert.Nil(err)
 
 	_, err = DebugSSHPortForIP(net.ParseIP("192.168.1.101"))
-	if err != nil {
-		t.Errorf("Error: debug ssh port failed %v", err)
-	}
+	assert.Nil(err)
 
 	table := DumpIPTables()
-	if table == "" {
-		t.Errorf("Error: IP Table dump failed")
-	}
+	assert.NotEqual(table, "")
 
 	err = fw.ExtFwding(FwDisable, fwIf, fwIfInt)
-	if err != nil {
-		t.Errorf("Error: NAT disable failed %v", err)
-	}
+	assert.Nil(err)
 
 	err = fw.ShutdownFirewall()
-	if err != nil {
-		t.Errorf("Error: Unable to shutdown firewall %v", err)
-	}
+	assert.Nil(err)
 }
