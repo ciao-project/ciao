@@ -61,14 +61,9 @@ func validSnPrefix(s string) bool {
 	return true
 }
 
-// GenIface generates locally unique interface names based on the
-// type of device passed in. It will additionally check if the
-// interface name exists on the localhost based on unique
-// When uniqueness is specified error will be returned
-// if it is not possible to generate a locally unique name within
-// a finite number of retries
-func genIface(device interface{}, unique bool) (string, error) {
-	var prefix string
+func getPrefix(device interface{}) (string, error) {
+
+	prefix := ""
 
 	switch d := device.(type) {
 	case *Bridge:
@@ -84,8 +79,27 @@ func genIface(device interface{}, unique bool) (string, error) {
 		prefix = prefixGretap
 	case *CnciVnic:
 		prefix = prefixCnciVnic
-	default:
-		return "", fmt.Errorf("invalid device type %T %v", device, device)
+	}
+
+	if prefix == "" {
+		return prefix, fmt.Errorf("invalid device type %T %v", device, device)
+	}
+
+	return prefix, nil
+
+}
+
+// GenIface generates locally unique interface names based on the
+// type of device passed in. It will additionally check if the
+// interface name exists on the localhost based on unique
+// When uniqueness is specified error will be returned
+// if it is not possible to generate a locally unique name within
+// a finite number of retries
+func genIface(device interface{}, unique bool) (string, error) {
+
+	prefix, err := getPrefix(device)
+	if err != nil {
+		return "", err
 	}
 
 	if !unique {

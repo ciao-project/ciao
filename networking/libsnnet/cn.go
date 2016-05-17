@@ -622,6 +622,18 @@ func (cn *ComputeNode) DestroyCnciVnic(cfg *VnicConfig) error {
 //
 // Note: The caller of this function is responsible to send the message to the scheduler
 func (cn *ComputeNode) CreateVnic(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
+	if cn.cnTopology == nil || cfg == nil {
+		return nil, nil, nil, NewAPIError("invalid vnic or configuration")
+	}
+
+	if err := checkCnVnicCfg(cfg); err != nil {
+		return nil, nil, nil, NewAPIError("invalid vnic or configuration")
+	}
+
+	if err := checkCnVnicCfg(cfg); err != nil {
+		return nil, nil, nil, NewAPIError(err.Error())
+	}
+
 	/* TODO: Need to figure out a better way to set MTU for containers */
 	if cfg.VnicRole == TenantContainer {
 		if cfg.MTU == 0 {
@@ -641,21 +653,54 @@ func (cn *ComputeNode) CreateVnic(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *Con
 	return cn.createVnicInternal(cfg)
 }
 
+func newCNVnic(cfg *VnicConfig, id string) (*Vnic, error) {
+
+	var vnic *Vnic
+	var err error
+
+	switch cfg.VnicRole {
+	case TenantVM:
+		vnic, err = newVnic(id)
+	case TenantContainer:
+		vnic, err = newContainerVnic(id)
+	}
+	if err != nil {
+		return nil, NewAPIError(err.Error())
+	}
+	vnic.MACAddr = &cfg.VnicMAC
+	vnic.MTU = cfg.MTU
+
+	return vnic, nil
+}
+
+func (cn *ComputeNode) waitForExistingVnic(vnic *Vnic, bridge *Bridge, vLink *linkInfo, bLink *linkInfo, cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
+	var err error
+
+	vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink, cn.APITimeout)
+	if err != nil {
+		return nil, nil, nil, NewFatalError(vnic.GlobalID + err.Error())
+	}
+	if cfg.VnicRole == TenantVM {
+		return vnic, nil, nil, nil
+	}
+
+	//Retrieve the bridge for the VNIC, which should already exist
+	//This is not strictly needed, but helps the caller identify the container
+	//network ID without resorting to any sort of caching
+	bridge.LinkName, bridge.Link.Attrs().Index, err = waitForDeviceReady(bLink, cn.APITimeout)
+	if err != nil {
+		return nil, nil, nil, NewFatalError(vnic.GlobalID + err.Error())
+	}
+
+	cInfo := getContainerInfo(cfg, vnic, bridge)
+	return vnic, nil, cInfo, nil
+
+}
+
 func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
 	var gLink *linkInfo
 	var cInfo *ContainerInfo
 
-	if cn.cnTopology == nil || cfg == nil {
-		return nil, nil, nil, NewAPIError("invalid vnic or configuration")
-	}
-
-	if err := checkCnVnicCfg(cfg); err != nil {
-		return nil, nil, nil, NewAPIError("invalid vnic or configuration")
-	}
-
-	if err := checkCnVnicCfg(cfg); err != nil {
-		return nil, nil, nil, NewAPIError(err.Error())
-	}
 	alias := genCnVnicAliases(cfg)
 
 	bridge, err := newBridge(alias.bridge)
@@ -663,18 +708,10 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 		return nil, nil, nil, NewAPIError(err.Error())
 	}
 
-	var vnic *Vnic
-	switch cfg.VnicRole {
-	case TenantVM:
-		vnic, err = newVnic(alias.vnic)
-	case TenantContainer:
-		vnic, err = newContainerVnic(alias.vnic)
-	}
+	vnic, err := newCNVnic(cfg, alias.vnic)
 	if err != nil {
 		return nil, nil, nil, NewAPIError(err.Error())
 	}
-	vnic.MACAddr = &cfg.VnicMAC
-	vnic.MTU = cfg.MTU
 
 	local := cn.ComputeAddr[0].IPNet.IP
 	gre, err := newGreTunEP(alias.gre, local, cfg.ConcIP, uint32(cfg.SubnetKey))
@@ -690,27 +727,10 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 		bLink, present := cn.linkMap[bridge.GlobalID]
 		cn.cnTopology.Unlock()
 
-		vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink, cn.APITimeout)
-		if err != nil {
-			return nil, nil, nil, NewFatalError(vnic.GlobalID + err.Error())
-		}
-		if cfg.VnicRole == TenantVM {
-			return vnic, nil, nil, nil
-		}
-
-		//Retrieve the bridge for the VNIC, which should already exist
-		//This is not strictly needed, but helps the caller identify the container
-		//network ID without resorting to any sort of caching
 		if !present {
 			return nil, nil, nil, NewFatalError(vnic.GlobalID + " Bridge not present")
 		}
-		bridge.LinkName, bridge.Link.Attrs().Index, err = waitForDeviceReady(bLink, cn.APITimeout)
-		if err != nil {
-			return nil, nil, nil, NewFatalError(vnic.GlobalID + err.Error())
-		}
-
-		cInfo := getContainerInfo(cfg, vnic, bridge)
-		return vnic, nil, cInfo, nil
+		return cn.waitForExistingVnic(vnic, bridge, vLink, bLink, cfg)
 	}
 
 	if err := cn.logicallyCreateVnic(vnic); err != nil {
