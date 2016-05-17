@@ -536,7 +536,7 @@ func (sched *ssntpSchedulerServer) decrementResourceUsage(node *nodeStat, worklo
 }
 
 // Find suitable compute node, returning referenced to a locked nodeStat if found
-func (sched *ssntpSchedulerServer) pickComputeNode(controllerUUID string, workload *workResources) (node *nodeStat) {
+func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workload *workResources) (node *nodeStat) {
 	sched.cnMutex.RLock()
 	defer sched.cnMutex.RUnlock()
 
@@ -638,7 +638,7 @@ func (sched *ssntpSchedulerServer) startWorkload(controllerUUID string, payload 
 	var targetNode *nodeStat
 
 	if workload.networkNode == 0 {
-		targetNode = sched.pickComputeNode(controllerUUID, &workload)
+		targetNode = pickComputeNode(sched, controllerUUID, &workload)
 	} else { //workload.network_node == 1
 		targetNode = sched.pickNetworkNode(controllerUUID, &workload)
 	}

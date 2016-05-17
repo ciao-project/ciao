@@ -16,7 +16,7 @@
 
 /*
 
-ciao-scheduler is the SSNTP server that runs in the control plane to
+Ciao scheduler is the SSNTP server that runs in the control plane to
 broker a ciao based cloud.
 
 In addressing the broader problem of dispatching a workload for a
