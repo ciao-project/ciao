@@ -43,8 +43,8 @@ func (server *ssntpDumpServer) ConnectNotify(uuid string, role uint32) {
 	fmt.Printf("%s: %s connected (role 0x%x)\n", server.name, uuid, role)
 }
 
-func (server *ssntpDumpServer) DisconnectNotify(uuid string) {
-	fmt.Printf("%s: %s disconnected\n", server.name, uuid)
+func (server *ssntpDumpServer) DisconnectNotify(uuid string, role uint32) {
+	fmt.Printf("%s: %s disconnected (role 0x%x)\n", server.name, uuid, role)
 }
 
 func (server *ssntpDumpServer) StatusNotify(uuid string, status Status, frame *Frame) {

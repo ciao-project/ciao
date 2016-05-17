@@ -34,7 +34,7 @@ type ServerNotifier interface {
 
 	// DisconnectNotify notifies of a SSNTP client having
 	// disconnected from us.
-	DisconnectNotify(uuid string)
+	DisconnectNotify(uuid string, role uint32)
 
 	// StatusNotify notifies of a pending status frame.
 	// The frame comes from a SSNTP client identified by uuid.
@@ -171,7 +171,7 @@ func handleSSNTPClient(server *Server, conn net.Conn) {
 		err := session.Read(&frame)
 		if err != nil {
 			server.log.Infof("Client disconnection: %s %d\n", err)
-			server.ntf.DisconnectNotify(uuidString)
+			server.ntf.DisconnectNotify(uuidString, session.destRole)
 			server.forwardRules.deleteForwardDestination(session)
 			server.removeSession(uuidString)
 			break

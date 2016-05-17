@@ -198,7 +198,7 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
-func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string) {
+func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
 	if sched.controllerMap[uuid] != nil {

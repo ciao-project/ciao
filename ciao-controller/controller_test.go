@@ -71,7 +71,7 @@ func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
 
 }
 
-func (server *ssntpTestServer) DisconnectNotify(uuid string) {
+func (server *ssntpTestServer) DisconnectNotify(uuid string, role uint32) {
 	for index := range server.clients {
 		if server.clients[index] == uuid {
 			server.clients = append(server.clients[:index], server.clients[index+1:]...)

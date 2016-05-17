@@ -160,7 +160,7 @@ func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
 
 }
 
-func (server *ssntpTestServer) DisconnectNotify(uuid string) {
+func (server *ssntpTestServer) DisconnectNotify(uuid string, role uint32) {
 	server.nConnections--
 	fmt.Printf("%s: %s disconnected (current connections %d)\n", server.name, uuid, server.nConnections)
 }

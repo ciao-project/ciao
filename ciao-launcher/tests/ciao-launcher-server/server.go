@@ -78,7 +78,7 @@ func (ts *testServer) ConnectNotify(uuid string, role uint32) {
 	server.clients[uuid] = new(client)
 }
 
-func (ts *testServer) DisconnectNotify(uuid string) {
+func (ts *testServer) DisconnectNotify(uuid string, role uint32) {
 	server.Lock()
 	defer server.Unlock()
 
