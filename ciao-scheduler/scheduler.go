@@ -209,87 +209,87 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
-func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
+func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
 	sched.controllerMutex.Lock()
-	//BUG(121): defer sched.controllerMutex.Unlock()
-	if sched.controllerMap[uuid] != nil {
-		controller := sched.controllerMap[uuid]
-		if controller.status == controllerMaster {
-			// promote a new master
-			for _, c := range sched.controllerMap {
-				c.mutex.Lock()
-				if c.status == controllerBackup {
-					c.status = controllerMaster
-					//TODO: inform the Controller it is master
-					c.mutex.Unlock()
-					break
-				}
-				c.mutex.Unlock()
-			}
-		}
-		delete(sched.controllerMap, uuid)
+	defer sched.controllerMutex.Unlock()
 
-		glog.V(2).Infof("Disconnect controller (uuid=%s)\n", uuid)
-		//BUG(121): use defer
-		sched.controllerMutex.Unlock()
+	controller := sched.controllerMap[uuid]
+	if controller == nil {
+		glog.Warningf("Unexpected disconnect from controller %s\n", uuid)
 		return
 	}
-	//BUG(121): use defer
-	sched.controllerMutex.Unlock()
+	delete(sched.controllerMap, uuid)
 
+	if controller.status == controllerBackup {
+		return
+	} // else promote a new master
+	for _, c := range sched.controllerMap {
+		c.mutex.Lock()
+		if c.status == controllerBackup {
+			c.status = controllerMaster
+			//TODO: inform the Controller it is master
+			c.mutex.Unlock()
+			break
+		}
+		c.mutex.Unlock()
+	}
+}
+
+func (sched *ssntpSchedulerServer) disconnectComputeNode(uuid string) {
 	sched.cnMutex.Lock()
-	//BUG(121): defer sched.cnMutex.Unlock()
-	if sched.cnMap[uuid] != nil {
-		//TODO: consider moving to cnInactiveMap?
-		node := sched.cnMap[uuid]
+	defer sched.cnMutex.Unlock()
 
-		if node != nil {
-			for i, n := range sched.cnList {
-				if n != node {
-					continue
-				}
-
-				sched.cnList = append(sched.cnList[:i], sched.cnList[i+1:]...)
-			}
-		}
-
-		if node == sched.cnMRU {
-			sched.cnMRU = nil
-			sched.cnMRUIndex = -1
-		}
-
-		/* We need a go routine as the controller lock is taken */
-		go sched.sendNodeDisconnectedEvents(uuid, payloads.ComputeNode)
-
-		delete(sched.cnMap, uuid)
-
-		glog.V(2).Infof("Disconnect cn (uuid=%s)\n", uuid)
-		//BUG(121): use defer
-		sched.cnMutex.Unlock()
+	node := sched.cnMap[uuid]
+	if node == nil {
+		glog.Warningf("Unexpected disconnect from compute node %s\n", uuid)
 		return
 	}
-	//BUG(121): use defer
-	sched.cnMutex.Unlock()
 
+	//TODO: consider moving to cnInactiveMap?
+	delete(sched.cnMap, uuid)
+
+	for i, n := range sched.cnList {
+		if n != node {
+			continue
+		}
+
+		sched.cnList = append(sched.cnList[:i], sched.cnList[i+1:]...)
+	}
+
+	if node == sched.cnMRU {
+		sched.cnMRU = nil
+		sched.cnMRUIndex = -1
+	}
+
+	sched.sendNodeDisconnectedEvents(uuid, payloads.ComputeNode)
+}
+
+func (sched *ssntpSchedulerServer) disconnectNetworkNode(uuid string) {
 	sched.nnMutex.Lock()
-	//BUG(121): defer sched.nnMutex.Unlock()
-	if sched.nnMap[uuid] != nil {
-		/* We need a go routine as the controller lock is taken */
-		go sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
+	defer sched.nnMutex.Unlock()
 
-		//TODO: consider moving to nnInactiveMap?
-		delete(sched.nnMap, uuid)
-
-		glog.V(2).Infof("Disconnect nn (uuid=%s)\n", uuid)
-		//BUG(121): use defer
-		sched.nnMutex.Unlock()
+	if sched.nnMap[uuid] == nil {
+		glog.Warningf("Unexpected disconnect from network compute node %s\n", uuid)
 		return
 	}
-	//BUG(121): use defer
-	sched.nnMutex.Unlock()
 
-	glog.Warningf("Disconnect error: no ssntp client with uuid=%s\n", uuid)
-	return
+	//TODO: consider moving to nnInactiveMap?
+	delete(sched.nnMap, uuid)
+
+	sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
+}
+
+func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
+	switch role {
+	case ssntp.Controller:
+		sched.disconnectController(uuid)
+	case ssntp.AGENT:
+		sched.disconnectComputeNode(uuid)
+	case ssntp.NETAGENT:
+		sched.disconnectNetworkNode(uuid)
+	}
+
+	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
 func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
