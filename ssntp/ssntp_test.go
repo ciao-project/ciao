@@ -33,18 +33,23 @@ type ssntpEchoServer struct {
 	ssntp Server
 	t     *testing.T
 
-	roleChannel  chan string
-	majorChannel chan struct{}
+	roleConnectChannel    chan string
+	roleDisconnectChannel chan string
+	majorChannel          chan struct{}
 }
 
 func (server *ssntpEchoServer) ConnectNotify(uuid string, role uint32) {
-	if server.roleChannel != nil {
+	if server.roleConnectChannel != nil {
 		sRole := (Role)(role)
-		server.roleChannel <- sRole.String()
+		server.roleConnectChannel <- sRole.String()
 	}
 }
 
 func (server *ssntpEchoServer) DisconnectNotify(uuid string, role uint32) {
+	if server.roleDisconnectChannel != nil {
+		sRole := (Role)(role)
+		server.roleDisconnectChannel <- sRole.String()
+	}
 }
 
 func (server *ssntpEchoServer) StatusNotify(uuid string, status Status, frame *Frame) {
@@ -390,7 +395,7 @@ func testConnectRole(t *testing.T, role Role) {
 	var client ssntpClient
 
 	server.t = t
-	server.roleChannel = make(chan string)
+	server.roleConnectChannel = make(chan string)
 	client.t = t
 	serverConfig.Transport = *transport
 	clientConfig.Transport = *transport
@@ -403,19 +408,57 @@ func testConnectRole(t *testing.T, role Role) {
 		t.Fatalf("Failed to connect")
 	}
 
-	clientRole := <-server.roleChannel
-	if clientRole != role.String() {
-		t.Fatalf("Wrong role")
+	select {
+	case clientRole := <-server.roleConnectChannel:
+		if clientRole != role.String() {
+			t.Fatalf("Wrong role")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Did not receive the connection notification")
 	}
 
 	client.ssntp.Close()
 	server.ssntp.Stop()
 }
 
+func testDisconnectRole(t *testing.T, role Role) {
+	var serverConfig Config
+	var clientConfig Config
+	var server ssntpEchoServer
+	var client ssntpClient
+
+	server.t = t
+	server.roleDisconnectChannel = make(chan string)
+	client.t = t
+	serverConfig.Transport = *transport
+	clientConfig.Transport = *transport
+	clientConfig.Role = (uint32)(role)
+
+	go server.ssntp.Serve(&serverConfig, &server)
+	time.Sleep(500 * time.Millisecond)
+	err := client.ssntp.Dial(&clientConfig, &client)
+	if err != nil {
+		t.Fatalf("Failed to connect")
+	}
+
+	client.ssntp.Close()
+
+	select {
+	case clientRole := <-server.roleDisconnectChannel:
+		if clientRole != role.String() {
+			t.Fatalf("Wrong role")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Did not receive the disconnection notification")
+	}
+
+	server.ssntp.Stop()
+}
+
 // Test the SSNTP client role from the server connection.
 //
-// Test that an SSNTP client acting as a SERVER can
-// connect to an SSNTP server, and that the server sees
+// Test that a SSNTP client acting as a SERVER can
+// connect to a SSNTP server, and that the server sees
 // the right role.
 //
 // Test is expected to pass.
@@ -425,8 +468,8 @@ func TestConnectRoleServer(t *testing.T) {
 
 // Test the SSNTP client role from the server connection.
 //
-// Test that an SSNTP client acting as a Controller can
-// connect to an SSNTP server, and that the server sees
+// Test that a SSNTP client acting as a Controller can
+// connect to a SSNTP server, and that the server sees
 // the right role.
 //
 // Test is expected to pass.
@@ -436,8 +479,8 @@ func TestConnectRoleController(t *testing.T) {
 
 // Test the SSNTP client role from the server connection.
 //
-// Test that an SSNTP client acting as an AGENT can
-// connect to an SSNTP server, and that the server sees
+// Test that a SSNTP client acting as an AGENT can
+// connect to a SSNTP server, and that the server sees
 // the right role.
 //
 // Test is expected to pass.
@@ -447,8 +490,8 @@ func TestConnectRoleAgent(t *testing.T) {
 
 // Test the SSNTP client role from the server connection.
 //
-// Test that an SSNTP client acting as a SCHEDULER can
-// connect to an SSNTP server, and that the server sees
+// Test that a SSNTP client acting as a SCHEDULER can
+// connect to a SSNTP server, and that the server sees
 // the right role.
 //
 // Test is expected to pass.
@@ -458,8 +501,8 @@ func TestConnectRoleScheduler(t *testing.T) {
 
 // Test the SSNTP client role from the server connection.
 //
-// Test that an SSNTP client acting as a NETAGENT can
-// connect to an SSNTP server, and that the server sees
+// Test that a SSNTP client acting as a NETAGENT can
+// connect to a SSNTP server, and that the server sees
 // the right role.
 //
 // Test is expected to pass.
@@ -469,13 +512,79 @@ func TestConnectRoleNetAgent(t *testing.T) {
 
 // Test the SSNTP client role from the server connection.
 //
-// Test that an SSNTP client acting as a CNCIAGENT can
-// connect to an SSNTP server, and that the server sees
+// Test that a SSNTP client acting as a CNCIAGENT can
+// connect to a SSNTP server, and that the server sees
 // the right role.
 //
 // Test is expected to pass.
 func TestConnectRoleCNCIAgent(t *testing.T) {
 	testConnectRole(t, CNCIAGENT)
+}
+
+// Test the SSNTP client role from the server disconnection.
+//
+// Test that a SSNTP client acting as a SERVER can
+// disconnect from a SSNTP server, and that the server sees
+// the right role.
+//
+// Test is expected to pass.
+func TestDisconnectRoleServer(t *testing.T) {
+	testDisconnectRole(t, SERVER)
+}
+
+// Test the SSNTP client role from the server disconnection.
+//
+// Test that a SSNTP client acting as a Controller can
+// disconnect from a SSNTP server, and that the server sees
+// the right role.
+//
+// Test is expected to pass.
+func TestDisconnectRoleController(t *testing.T) {
+	testDisconnectRole(t, Controller)
+}
+
+// Test the SSNTP client role from the server disconnection.
+//
+// Test that a SSNTP client acting as an AGENT can
+// disconnect from a SSNTP server, and that the server sees
+// the right role.
+//
+// Test is expected to pass.
+func TestDisconnectRoleAgent(t *testing.T) {
+	testDisconnectRole(t, AGENT)
+}
+
+// Test the SSNTP client role from the server disconnection.
+//
+// Test that a SSNTP client acting as a SCHEDULER can
+// disconnect from a SSNTP server, and that the server sees
+// the right role.
+//
+// Test is expected to pass.
+func TestDisconnectRoleScheduler(t *testing.T) {
+	testDisconnectRole(t, SCHEDULER)
+}
+
+// Test the SSNTP client role from the server disconnection.
+//
+// Test that a SSNTP client acting as a NETAGENT can
+// disconnect from a SSNTP server, and that the server sees
+// the right role.
+//
+// Test is expected to pass.
+func TestDisconnectRoleNetAgent(t *testing.T) {
+	testDisconnectRole(t, NETAGENT)
+}
+
+// Test the SSNTP client role from the server disconnection.
+//
+// Test that a SSNTP client acting as a CNCIAGENT can
+// disconnect from a SSNTP server, and that the server sees
+// the right role.
+//
+// Test is expected to pass.
+func TestDisconnectRoleCNCIAgent(t *testing.T) {
+	testDisconnectRole(t, CNCIAGENT)
 }
 
 func TestMajor(t *testing.T) {
