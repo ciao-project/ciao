@@ -68,3 +68,22 @@ the problem and work toward resolution.
 
 For feature requests we're also using github issues, with the label
 "enhancement".
+
+## Closing issues
+
+You can either close issues manually by adding the fixing commit SHA1 to the issue
+comments or by adding the `Fixes` keyword to your commit message:
+
+```
+ssntp: test: Add Disconnection role checking tests
+
+We check that we get the right role from the disconnection
+notifier.
+
+Fixes #121
+
+Signed-off-by: Samuel Ortiz <sameo@linux.intel.com>
+```
+
+Github will then automatically close that issue when parsing the
+[commit message](https://help.github.com/articles/closing-issues-via-commit-messages/).
