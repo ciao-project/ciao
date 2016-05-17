@@ -4,7 +4,11 @@ Ciao is an open source project licensed under the [Apache v2 License] (https://o
 
 ## Coding Style
 
-Ciao uses the golang coding style, go fmt is your friend.
+Ciao follows the standard formatting recommendations and language idioms set out
+in the [Effective Go](https://golang.org/doc/effective_go.html) guide. It's
+definitely worth reading - but the relevant sections are
+[formatting](https://golang.org/doc/effective_go.html#formatting)
+and [names](https://golang.org/doc/effective_go.html#names).
 
 ## Certificate of Origin
 
