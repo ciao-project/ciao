@@ -146,69 +146,37 @@ func (sched *ssntpSchedulerServer) sendNodeDisconnectedEvents(nodeUUID string, n
 	}
 }
 
-func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
-	switch role {
-	case ssntp.Controller:
-		sched.controllerMutex.Lock()
-		defer sched.controllerMutex.Unlock()
+// Add state for newly connected Controller
+// This function is symmetric with disconnectController().
+func (sched *ssntpSchedulerServer) connectController(uuid string) {
+	sched.controllerMutex.Lock()
+	defer sched.controllerMutex.Unlock()
 
-		if sched.controllerMap[uuid] != nil {
-			glog.Warningf("Unexpected reconnect from controller %s\n", uuid)
-			return
-		}
-
-		var controller controllerStat
-
-		// TODO: smarter clustering than "assume master, unless another is master"
-		controller.status = controllerMaster
-		for _, c := range sched.controllerMap {
-			c.mutex.Lock()
-			if c.status == controllerMaster {
-				controller.status = controllerBackup
-				c.mutex.Unlock()
-				break
-			}
-			c.mutex.Unlock()
-		}
-
-		controller.uuid = uuid
-		sched.controllerMap[uuid] = &controller
-	case ssntp.AGENT:
-		sched.cnMutex.Lock()
-		defer sched.cnMutex.Unlock()
-
-		if sched.cnMap[uuid] != nil {
-			glog.Warningf("Unexpected reconnect from compute node %s\n", uuid)
-			return
-		}
-
-		var node nodeStat
-		node.status = ssntp.CONNECTED
-		node.uuid = uuid
-		sched.cnList = append(sched.cnList, &node)
-		sched.cnMap[uuid] = &node
-
-		sched.sendNodeConnectedEvents(uuid, payloads.ComputeNode)
-	case ssntp.NETAGENT:
-		sched.nnMutex.Lock()
-		defer sched.nnMutex.Unlock()
-
-		if sched.nnMap[uuid] != nil {
-			glog.Warningf("Unexpected reconnect from network compute node %s\n", uuid)
-			return
-		}
-
-		var node nodeStat
-		node.status = ssntp.CONNECTED
-		node.uuid = uuid
-		sched.nnMap[uuid] = &node
-
-		sched.sendNodeConnectedEvents(uuid, payloads.NetworkNode)
+	if sched.controllerMap[uuid] != nil {
+		glog.Warningf("Unexpected reconnect from controller %s\n", uuid)
+		return
 	}
 
-	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
+	var controller controllerStat
+
+	// TODO: smarter clustering than "assume master, unless another is master"
+	controller.status = controllerMaster
+	for _, c := range sched.controllerMap {
+		c.mutex.Lock()
+		if c.status == controllerMaster {
+			controller.status = controllerBackup
+			c.mutex.Unlock()
+			break
+		}
+		c.mutex.Unlock()
+	}
+
+	controller.uuid = uuid
+	sched.controllerMap[uuid] = &controller
 }
 
+// Undo previous state additions for departed Controller
+// This function is symmetric with connectController().
 func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
@@ -235,6 +203,28 @@ func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
 	}
 }
 
+// Add state for newly connected Compute Node
+// This function is symmetric with disconnectComputeNode().
+func (sched *ssntpSchedulerServer) connectComputeNode(uuid string) {
+	sched.cnMutex.Lock()
+	defer sched.cnMutex.Unlock()
+
+	if sched.cnMap[uuid] != nil {
+		glog.Warningf("Unexpected reconnect from compute node %s\n", uuid)
+		return
+	}
+
+	var node nodeStat
+	node.status = ssntp.CONNECTED
+	node.uuid = uuid
+	sched.cnList = append(sched.cnList, &node)
+	sched.cnMap[uuid] = &node
+
+	sched.sendNodeConnectedEvents(uuid, payloads.ComputeNode)
+}
+
+// Undo previous state additions for departed Compute Node
+// This function is symmetric with connectComputeNode().
 func (sched *ssntpSchedulerServer) disconnectComputeNode(uuid string) {
 	sched.cnMutex.Lock()
 	defer sched.cnMutex.Unlock()
@@ -264,6 +254,27 @@ func (sched *ssntpSchedulerServer) disconnectComputeNode(uuid string) {
 	sched.sendNodeDisconnectedEvents(uuid, payloads.ComputeNode)
 }
 
+// Add state for newly connected Network Node
+// This function is symmetric with disconnectNetworkNode().
+func (sched *ssntpSchedulerServer) connectNetworkNode(uuid string) {
+	sched.nnMutex.Lock()
+	defer sched.nnMutex.Unlock()
+
+	if sched.nnMap[uuid] != nil {
+		glog.Warningf("Unexpected reconnect from network compute node %s\n", uuid)
+		return
+	}
+
+	var node nodeStat
+	node.status = ssntp.CONNECTED
+	node.uuid = uuid
+	sched.nnMap[uuid] = &node
+
+	sched.sendNodeConnectedEvents(uuid, payloads.NetworkNode)
+}
+
+// Undo previous state additions for departed Network Node
+// This function is symmetric with connectNetworkNode().
 func (sched *ssntpSchedulerServer) disconnectNetworkNode(uuid string) {
 	sched.nnMutex.Lock()
 	defer sched.nnMutex.Unlock()
@@ -277,6 +288,18 @@ func (sched *ssntpSchedulerServer) disconnectNetworkNode(uuid string) {
 	delete(sched.nnMap, uuid)
 
 	sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
+}
+func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
+	switch role {
+	case ssntp.Controller:
+		sched.connectController(uuid)
+	case ssntp.AGENT:
+		sched.connectComputeNode(uuid)
+	case ssntp.NETAGENT:
+		sched.connectNetworkNode(uuid)
+	}
+
+	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
 func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
