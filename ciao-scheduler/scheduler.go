@@ -436,7 +436,7 @@ func (sched *ssntpSchedulerServer) sendStartFailureError(clientUUID string, inst
 		return
 	}
 
-	glog.Errorf("Unable to dispatch: %v\n", reason)
+	glog.Warningf("Unable to dispatch: %v\n", reason)
 	sched.ssntp.SendError(clientUUID, ssntp.StartFailure, payload)
 }
 func (sched *ssntpSchedulerServer) getConcentratorUUID(event ssntp.Event, payload []byte) (string, error) {
