@@ -17,9 +17,20 @@
 package libsnnet
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func performBridgeOps(shouldPass bool, assert *assert.Assertions, bridge *Bridge) {
+	a := assert.Nil
+	if !shouldPass {
+		a = assert.NotNil
+	}
+	a(bridge.enable())
+	a(bridge.disable())
+	a(bridge.destroy())
+}
 
 //Test all Bridge primitives
 //
@@ -29,34 +40,20 @@ import (
 //
 //Test is expected to pass
 func TestBridge_Basic(t *testing.T) {
+	assert := assert.New(t)
 
-	bridge, _ := newBridge("go_testbr")
+	bridge, err := newBridge("go_testbr")
+	assert.Nil(err)
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Bridge creation failed: %v", err)
-	}
+	assert.Nil(bridge.create())
 
-	bridge1, _ := newBridge("go_testbr")
+	bridge1, err := newBridge("go_testbr")
+	assert.Nil(err)
 
-	if err := bridge1.getDevice(); err != nil {
-		t.Errorf("Bridge Get Device failed: %v", err)
-	}
+	assert.Nil(bridge1.getDevice())
+	performBridgeOps(true, assert, bridge)
 
-	if err := bridge.enable(); err != nil {
-		t.Errorf("Bridge enable failed: %v", err)
-	}
-
-	if err := bridge.disable(); err != nil {
-		t.Errorf("Bridge enable failed: %v", err)
-	}
-
-	if err := bridge.destroy(); err != nil {
-		t.Errorf("Bridge deletion failed: %v", err)
-	}
-
-	if err := bridge.destroy(); err == nil {
-		t.Errorf("Bridge deletion should have failed")
-	}
+	assert.NotNil(bridge.destroy())
 
 }
 
@@ -67,19 +64,16 @@ func TestBridge_Basic(t *testing.T) {
 //
 //Test is expected to pass
 func TestBridge_Dup(t *testing.T) {
-	bridge, _ := newBridge("go_testbr")
+	assert := assert.New(t)
+	bridge, err := newBridge("go_testbr")
+	assert.Nil(err)
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Bridge creation failed: %v", err)
-	}
-
+	assert.Nil(bridge.create())
 	defer func() { _ = bridge.destroy() }()
 
-	bridge1, _ := newBridge("go_testbr")
-	if err := bridge1.create(); err == nil {
-		t.Errorf("Duplicate Bridge creation: %v", err)
-	}
-
+	bridge1, err := newBridge("go_testbr")
+	assert.Nil(err)
+	assert.NotNil(bridge1.create())
 }
 
 //Negative test cases for bridge primitives
@@ -89,39 +83,14 @@ func TestBridge_Dup(t *testing.T) {
 //
 //Test is expected to pass
 func TestBridge_Invalid(t *testing.T) {
+	assert := assert.New(t)
+
 	bridge, err := newBridge("go_testbr")
+	assert.Nil(err)
 
-	if err = bridge.getDevice(); err == nil {
-		t.Errorf("Non existing bridge: %v", bridge)
-	}
+	assert.NotNil(bridge.getDevice())
 
-	if !strings.HasPrefix(err.Error(), "bridge error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = bridge.destroy(); err == nil {
-		t.Errorf("Uninitialized call: %v", err)
-	}
-
-	if !strings.HasPrefix(err.Error(), "bridge error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = bridge.enable(); err == nil {
-		t.Errorf("Uninitialized call: %v", err)
-	}
-
-	if !strings.HasPrefix(err.Error(), "bridge error") {
-		t.Errorf("Invalid error format %v", err)
-	}
-
-	if err = bridge.disable(); err == nil {
-		t.Errorf("Uninitialized call: %v", err)
-	}
-
-	if !strings.HasPrefix(err.Error(), "bridge error") {
-		t.Errorf("Invalid error format %v", err)
-	}
+	performBridgeOps(false, assert, bridge)
 }
 
 //Tests attaching to an existing bridge
@@ -131,27 +100,15 @@ func TestBridge_Invalid(t *testing.T) {
 //
 //Test is expected to pass
 func TestBridge_GetDevice(t *testing.T) {
-	bridge, _ := newBridge("go_testbr")
+	assert := assert.New(t)
+	bridge, err := newBridge("go_testbr")
+	assert.Nil(err)
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Bridge creation failed: %v", err)
-	}
+	assert.Nil(bridge.create())
 
-	bridge1, _ := newBridge("go_testbr")
+	bridge1, err := newBridge("go_testbr")
+	assert.Nil(err)
 
-	if err := bridge1.getDevice(); err != nil {
-		t.Errorf("Bridge Get Device failed: %v", err)
-	}
-
-	if err := bridge1.enable(); err != nil {
-		t.Errorf("Uninitialized call: %v", err)
-	}
-
-	if err := bridge1.disable(); err != nil {
-		t.Errorf("Uninitialized call: %v", err)
-	}
-
-	if err := bridge1.destroy(); err != nil {
-		t.Errorf("Bridge destroy failed: %v", err)
-	}
+	assert.Nil(bridge1.getDevice())
+	performBridgeOps(true, assert, bridge1)
 }

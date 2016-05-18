@@ -19,7 +19,19 @@ package libsnnet
 import (
 	"net"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func performGreOps(shouldPass bool, assert *assert.Assertions, gre *GreTunEP) {
+	a := assert.Nil
+	if !shouldPass {
+		a = assert.NotNil
+	}
+	a(gre.enable())
+	a(gre.disable())
+	a(gre.destroy())
+}
 
 //Test all GRE tunnel primitives
 //
@@ -31,36 +43,19 @@ import (
 //
 //Test is expected to pass
 func TestGre_Basic(t *testing.T) {
+	assert := assert.New(t)
 	id := "testgretap"
 	local := net.ParseIP("127.0.0.1")
 	remote := local
 	key := uint32(0xF)
 
-	gre, _ := newGreTunEP(id, local, remote, key)
+	gre, err := newGreTunEP(id, local, remote, key)
+	assert.Nil(err)
 
-	if err := gre.create(); err != nil {
-		t.Errorf("GreTunnel creation failed: %v", err)
-	}
-
-	if err := gre.enable(); err != nil {
-		t.Errorf("GreTunnel enable failed: %v", err)
-	}
-
-	if err := gre.getDevice(); err != nil {
-		t.Errorf("GreTunnel enable failed: %v", err)
-	}
-
-	if err := gre.disable(); err != nil {
-		t.Errorf("GreTunnel disable failed: %v", err)
-	}
-
-	if err := gre.destroy(); err != nil {
-		t.Errorf("GreTunnel deletion failed: %v", err)
-	}
-
-	if err := gre.destroy(); err == nil {
-		t.Errorf("GreTunnel deletion should have failed")
-	}
+	assert.Nil(gre.create())
+	assert.Nil(gre.getDevice())
+	performGreOps(true, assert, gre)
+	assert.NotNil(gre.destroy())
 }
 
 //Test GRE tunnel bridge interactions
@@ -70,49 +65,31 @@ func TestGre_Basic(t *testing.T) {
 //
 //Test is expected to pass
 func TestGre_Bridge(t *testing.T) {
+	assert := assert.New(t)
 	id := "testgretap"
 	local := net.ParseIP("127.0.0.1")
 	remote := local
 	key := uint32(0xF)
 
-	gre, _ := newGreTunEP(id, local, remote, key)
-	bridge, _ := newBridge("testbridge")
+	gre, err := newGreTunEP(id, local, remote, key)
+	assert.Nil(err)
+	bridge, err := newBridge("testbridge")
+	assert.Nil(err)
 
-	if err := gre.create(); err != nil {
-		t.Errorf("Vnic Create failed: %v", err)
-	}
+	assert.Nil(gre.create())
 	defer func() { _ = gre.destroy() }()
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Bridge Create failed: %v", err)
-	}
+	assert.Nil(bridge.create())
 	defer func() { _ = bridge.destroy() }()
 
-	if err := gre.attach(bridge); err != nil {
-		t.Errorf("GRE attach failed: %v", err)
-	}
+	assert.Nil(gre.attach(bridge))
 	//Duplicate
-	if err := gre.attach(bridge); err != nil {
-		t.Errorf("GRE attach failed: %v", err)
-	}
-
-	if err := gre.enable(); err != nil {
-		t.Errorf("GRE enable failed: %v", err)
-	}
-
-	if err := bridge.enable(); err != nil {
-		t.Errorf("Bridge enable failed: %v", err)
-	}
-
-	if err := gre.detach(bridge); err != nil {
-		t.Errorf("GRE detach failed: %v", err)
-	}
-
+	assert.Nil(gre.attach(bridge))
+	assert.Nil(gre.enable())
+	assert.Nil(bridge.enable())
+	assert.Nil(gre.detach(bridge))
 	//Duplicate
-	if err := gre.detach(bridge); err != nil {
-		t.Errorf("GRE detach failed: %v", err)
-	}
-
+	assert.Nil(gre.detach(bridge))
 }
 
 //Tests failure paths in the GRE tunnel
@@ -121,40 +98,20 @@ func TestGre_Bridge(t *testing.T) {
 //
 //Test is expected to pass
 func TestGre_Negative(t *testing.T) {
+	assert := assert.New(t)
 	id := "testgretap"
 	local := net.ParseIP("127.0.0.1")
 	remote := local
 	key := uint32(0xF)
 
-	gre, _ := newGreTunEP(id, local, remote, key)
-	greDupl, _ := newGreTunEP(id, local, remote, key)
+	gre, err := newGreTunEP(id, local, remote, key)
+	assert.Nil(err)
+	greDupl, err := newGreTunEP(id, local, remote, key)
+	assert.Nil(err)
 
-	if err := gre.create(); err != nil {
-		t.Errorf("GreTunnel creation failed: %v", err)
-	}
+	assert.Nil(gre.create())
+	assert.NotNil(greDupl.create())
 
-	if err := greDupl.create(); err == nil {
-		t.Errorf("GreTunnel creation should have failed")
-	}
-	if err := greDupl.enable(); err == nil {
-		t.Errorf("GreTunnel creation should have failed")
-	}
-	if err := greDupl.disable(); err == nil {
-		t.Errorf("GreTunnel creation should have failed")
-	}
-	if err := greDupl.destroy(); err == nil {
-		t.Errorf("GreTunnel creation should have failed")
-	}
-
-	if err := gre.enable(); err != nil {
-		t.Errorf("GreTunnel enable failed: %v", err)
-	}
-
-	if err := gre.disable(); err != nil {
-		t.Errorf("GreTunnel disable failed: %v", err)
-	}
-
-	if err := gre.destroy(); err != nil {
-		t.Errorf("GreTunnel deletion failed: %v", err)
-	}
+	performGreOps(false, assert, greDupl)
+	performGreOps(true, assert, gre)
 }

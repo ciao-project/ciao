@@ -214,6 +214,8 @@ func stopDockerPlugin(dockerPlugin *DockerPlugin) error {
 //
 //Test is expected to pass
 func TestCNContainer_Base(t *testing.T) {
+	assert := assert.New(t)
+
 	cn, err := cnTestInit()
 	require.Nil(t, err)
 
@@ -264,45 +266,45 @@ func TestCNContainer_Base(t *testing.T) {
 		t.Error(err)
 	} else {
 		// expected SSNTP Event
-		if assert.NotNil(t, ssntpEvent) {
-			assert.Equal(t, ssntpEvent.Event, SsntpTunAdd)
+		if assert.NotNil(ssntpEvent) {
+			assert.Equal(ssntpEvent.Event, SsntpTunAdd)
 		}
 		// expected Container Event
-		if assert.NotNil(t, cInfo) {
-			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkAdd)
-			assert.NotEqual(t, cInfo.SubnetID, "")
-			assert.NotEqual(t, cInfo.Subnet.String(), "")
-			assert.NotEqual(t, cInfo.Gateway.String(), "")
-			assert.NotEqual(t, cInfo.Bridge, "")
+		if assert.NotNil(cInfo) {
+			assert.Equal(cInfo.CNContainerEvent, ContainerNetworkAdd)
+			assert.NotEqual(cInfo.SubnetID, "")
+			assert.NotEqual(cInfo.Subnet.String(), "")
+			assert.NotEqual(cInfo.Gateway.String(), "")
+			assert.NotEqual(cInfo.Bridge, "")
 		}
-		assert.Nil(t, validSsntpEvent(ssntpEvent, vnicCfg))
+		assert.Nil(validSsntpEvent(ssntpEvent, vnicCfg))
 
 		//Cache the first subnet ID we see. All subsequent should have the same
 		subnetID = cInfo.SubnetID
 		iface = vnic.interfaceName()
-		assert.NotEqual(t, iface, "")
+		assert.NotEqual(iface, "")
 
 		//Launcher will attach to this name and send out the event
 		//Launcher will also create the logical docker network
 		debugPrint(t, "VNIC created =", vnic.LinkName, ssntpEvent, cInfo)
-		assert.Nil(t, linkDump(t))
+		assert.Nil(linkDump(t))
 
 		//Now kick off the docker commands
-		assert.Nil(t, dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
-		assert.Nil(t, dockerNetInfo(cInfo.SubnetID))
-		assert.Nil(t, dockerRunVerify(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID))
-		assert.Nil(t, dockerContainerDelete(vnicCfg.VnicIP.String()))
+		assert.Nil(dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
+		assert.Nil(dockerNetInfo(cInfo.SubnetID))
+		assert.Nil(dockerRunVerify(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID))
+		assert.Nil(dockerContainerDelete(vnicCfg.VnicIP.String()))
 	}
 
 	//Duplicate VNIC creation
 	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
-		assert.Nil(t, ssntpEvent, "ERROR: DUP unexpected event")
-		if assert.NotNil(t, cInfo) {
-			assert.Equal(t, cInfo.SubnetID, subnetID)
-			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkInfo)
-			assert.Equal(t, iface, vnic.interfaceName())
+		assert.Nil(ssntpEvent, "ERROR: DUP unexpected event")
+		if assert.NotNil(cInfo) {
+			assert.Equal(cInfo.SubnetID, subnetID)
+			assert.Equal(cInfo.CNContainerEvent, ContainerNetworkInfo)
+			assert.Equal(iface, vnic.interfaceName())
 		}
 	}
 
@@ -310,27 +312,27 @@ func TestCNContainer_Base(t *testing.T) {
 	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
-		assert.Nil(t, ssntpEvent)
-		if assert.NotNil(t, cInfo) {
-			assert.Equal(t, cInfo.SubnetID, subnetID)
-			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkInfo)
+		assert.Nil(ssntpEvent)
+		if assert.NotNil(cInfo) {
+			assert.Equal(cInfo.SubnetID, subnetID)
+			assert.Equal(cInfo.CNContainerEvent, ContainerNetworkInfo)
 		}
 		iface = vnic.interfaceName()
-		assert.NotEqual(t, iface, "")
-		assert.Nil(t, dockerRunVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
+		assert.NotEqual(iface, "")
+		assert.Nil(dockerRunVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
 			vnicCfg2.VnicMAC, cInfo.SubnetID))
-		assert.Nil(t, dockerContainerDelete(vnicCfg2.VnicIP.String()))
+		assert.Nil(dockerContainerDelete(vnicCfg2.VnicIP.String()))
 	}
 
 	//Duplicate VNIC creation
 	if vnic, ssntpEvent, cInfo, err := cn.CreateVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
-		assert.Nil(t, ssntpEvent)
-		if assert.NotNil(t, cInfo) {
-			assert.Equal(t, cInfo.SubnetID, subnetID)
-			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkInfo)
-			assert.Equal(t, iface, vnic.interfaceName())
+		assert.Nil(ssntpEvent)
+		if assert.NotNil(cInfo) {
+			assert.Equal(cInfo.SubnetID, subnetID)
+			assert.Equal(cInfo.CNContainerEvent, ContainerNetworkInfo)
+			assert.Equal(iface, vnic.interfaceName())
 		}
 	}
 
@@ -338,42 +340,42 @@ func TestCNContainer_Base(t *testing.T) {
 	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
-		assert.Nil(t, ssntpEvent)
-		assert.Nil(t, cInfo)
+		assert.Nil(ssntpEvent)
+		assert.Nil(cInfo)
 	}
 
 	//Destroy it again
 	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg); err != nil {
 		t.Error(err)
 	} else {
-		assert.Nil(t, ssntpEvent)
-		assert.Nil(t, cInfo)
+		assert.Nil(ssntpEvent)
+		assert.Nil(cInfo)
 	}
 
 	// Try and destroy - should work - cInfo should be reported
 	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
-		assert.NotNil(t, ssntpEvent)
-		if assert.NotNil(t, cInfo) {
-			assert.Equal(t, cInfo.SubnetID, subnetID)
-			assert.Equal(t, cInfo.CNContainerEvent, ContainerNetworkDel)
+		assert.NotNil(ssntpEvent)
+		if assert.NotNil(cInfo) {
+			assert.Equal(cInfo.SubnetID, subnetID)
+			assert.Equal(cInfo.CNContainerEvent, ContainerNetworkDel)
 		}
 	}
 
 	//Has to be called after the VNIC has been deleted
-	assert.Nil(t, dockerNetDelete(subnetID))
-	assert.Nil(t, dockerNetList())
+	assert.Nil(dockerNetDelete(subnetID))
+	assert.Nil(dockerNetList())
 
 	//Destroy it again
 	if ssntpEvent, cInfo, err := cn.DestroyVnic(vnicCfg2); err != nil {
 		t.Error(err)
 	} else {
-		assert.Nil(t, ssntpEvent)
-		assert.Nil(t, cInfo)
+		assert.Nil(ssntpEvent)
+		assert.Nil(cInfo)
 	}
 
-	assert.Nil(t, stopDockerPlugin(dockerPlugin))
+	assert.Nil(stopDockerPlugin(dockerPlugin))
 }
 
 //Tests connectivity between two node local Containers
@@ -384,6 +386,7 @@ func TestCNContainer_Base(t *testing.T) {
 //
 //Test is expected to pass
 func TestCNContainer_Connectivity(t *testing.T) {
+	assert := assert.New(t)
 	cn, err := cnTestInit()
 	require.Nil(t, err)
 
@@ -428,32 +431,32 @@ func TestCNContainer_Connectivity(t *testing.T) {
 	}
 
 	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Nil(t, dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
+	assert.Nil(dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
 
 	//Kick off a long running container
 	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Nil(t, dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
+	assert.Nil(dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
 		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()))
 
 	//Destroy the containers
-	assert.Nil(t, dockerContainerDelete(vnicCfg.VnicIP.String()))
-	assert.Nil(t, dockerContainerDelete(vnicCfg2.VnicIP.String()))
+	assert.Nil(dockerContainerDelete(vnicCfg.VnicIP.String()))
+	assert.Nil(dockerContainerDelete(vnicCfg2.VnicIP.String()))
 
 	//Destroy the VNICs
 	_, _, err = cn.DestroyVnic(vnicCfg)
-	assert.Nil(t, err)
+	assert.Nil(err)
 	_, _, err = cn.DestroyVnic(vnicCfg2)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	//Destroy the network, has to be called after the VNIC has been deleted
-	assert.Nil(t, dockerNetDelete(cInfo.SubnetID))
-	assert.Nil(t, stopDockerPlugin(dockerPlugin))
+	assert.Nil(dockerNetDelete(cInfo.SubnetID))
+	assert.Nil(stopDockerPlugin(dockerPlugin))
 }
 
 //Tests VM and Container VNIC Interop
@@ -464,6 +467,8 @@ func TestCNContainer_Connectivity(t *testing.T) {
 //
 //Test is expected to pass
 func TestCNContainer_Interop1(t *testing.T) {
+	assert := assert.New(t)
+
 	cn, err := cnTestInit()
 	require.Nil(t, err)
 
@@ -540,46 +545,46 @@ func TestCNContainer_Interop1(t *testing.T) {
 	}
 
 	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	err = dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	_, _, _, err = cn.CreateVnic(vnicCfg3)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	//Kick off a long running container
 	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	_, _, _, err = cn.CreateVnic(vnicCfg4)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Nil(t, dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
+	assert.Nil(dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
 		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()))
 
 	//Destroy the containers
-	assert.Nil(t, dockerContainerDelete(vnicCfg.VnicIP.String()))
-	assert.Nil(t, dockerContainerDelete(vnicCfg2.VnicIP.String()))
+	assert.Nil(dockerContainerDelete(vnicCfg.VnicIP.String()))
+	assert.Nil(dockerContainerDelete(vnicCfg2.VnicIP.String()))
 
 	_, _, err = cn.DestroyVnic(vnicCfg)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	_, _, err = cn.DestroyVnic(vnicCfg2)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	_, _, err = cn.DestroyVnic(vnicCfg3)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	err = dockerNetDelete(cInfo.SubnetID)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	_, _, err = cn.DestroyVnic(vnicCfg4)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Nil(t, stopDockerPlugin(dockerPlugin))
+	assert.Nil(stopDockerPlugin(dockerPlugin))
 }
 
 //Tests VM and Container VNIC Interop
@@ -590,6 +595,8 @@ func TestCNContainer_Interop1(t *testing.T) {
 //
 //Test is expected to pass
 func TestCNContainer_Interop2(t *testing.T) {
+	assert := assert.New(t)
+
 	cn, err := cnTestInit()
 	require.Nil(t, err)
 
@@ -666,44 +673,44 @@ func TestCNContainer_Interop2(t *testing.T) {
 	}
 
 	_, _, _, err = cn.CreateVnic(vnicCfg3)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	_, _, cInfo, err := cn.CreateVnic(vnicCfg)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Nil(t, dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
+	assert.Nil(dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
 
 	//Kick off a long running container
 	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Nil(t, dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
+	assert.Nil(dockerRunPingVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
 		vnicCfg2.VnicMAC, cInfo2.SubnetID, vnicCfg.VnicIP.String()))
 
 	//Destroy the containers
-	assert.Nil(t, dockerContainerDelete(vnicCfg.VnicIP.String()))
-	assert.Nil(t, dockerContainerDelete(vnicCfg2.VnicIP.String()))
+	assert.Nil(dockerContainerDelete(vnicCfg.VnicIP.String()))
+	assert.Nil(dockerContainerDelete(vnicCfg2.VnicIP.String()))
 
 	_, _, _, err = cn.CreateVnic(vnicCfg4)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	//Destroy the VNICs
 	_, _, err = cn.DestroyVnic(vnicCfg)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	_, _, err = cn.DestroyVnic(vnicCfg2)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	//Destroy the network, has to be called after the VNIC has been deleted
-	assert.Nil(t, dockerNetDelete(cInfo.SubnetID))
+	assert.Nil(dockerNetDelete(cInfo.SubnetID))
 
 	_, _, err = cn.DestroyVnic(vnicCfg4)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	_, _, err = cn.DestroyVnic(vnicCfg3)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Nil(t, stopDockerPlugin(dockerPlugin))
+	assert.Nil(stopDockerPlugin(dockerPlugin))
 }

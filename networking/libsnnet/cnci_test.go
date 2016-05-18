@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"net"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func cnciTestInit() (*Cnci, error) {
@@ -61,68 +64,47 @@ func cnciTestInit() (*Cnci, error) {
 //
 //Test should pass ok
 func TestCNCI_Init(t *testing.T) {
-
+	assert := assert.New(t)
 	cnci, err := cnciTestInit()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	_, tnet, _ := net.ParseCIDR("192.168.0.0/24")
 
-	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
-		t.Error(err)
-	}
+	_, err = cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102"))
+	assert.Nil(err)
+
 	//Duplicate
-	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
-		t.Error(err)
-	}
+	_, err = cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102"))
+	assert.Nil(err)
 
-	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.103")); err != nil {
-		t.Error(err)
-	}
+	_, err = cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.103"))
+	assert.Nil(err)
 
-	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.104")); err != nil {
-		t.Error(err)
-	}
+	_, err = cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.104"))
+	assert.Nil(err)
 
-	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")))
 
-	if err := cnci.RebuildTopology(); err != nil {
-		t.Fatal(err)
-	}
+	err = cnci.RebuildTopology()
+	require.Nil(t, err)
+
 	//Duplicate
-	if err := cnci.RebuildTopology(); err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(cnci.RebuildTopology())
 
-	if _, err := cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")); err != nil {
-		t.Error(err)
-	}
+	_, err = cnci.AddRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105"))
+	assert.Nil(err)
 
-	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.103")); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.103")))
 
-	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")))
+
 	//Duplicate
-	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")); err != nil {
-		t.Error(err)
-	}
+	assert.Nil(cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.105")))
 
-	if err := cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")); err != nil {
-		t.Error(err)
-	}
-	if err := cnci.Shutdown(); err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(cnci.DelRemoteSubnet(*tnet, 1234, net.ParseIP("192.168.0.102")))
+	assert.Nil(cnci.Shutdown())
 	//Duplicate
-	if err := cnci.Shutdown(); err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(cnci.Shutdown())
 }
 
 //Whitebox test case of CNCI API primitives
@@ -138,6 +120,7 @@ func TestCNCI_Init(t *testing.T) {
 //
 //Test is expected to pass
 func TestCNCI_Internal(t *testing.T) {
+	assert := assert.New(t)
 
 	// Typical inputs in YAML
 	tenantUUID := "tenantUuid"
@@ -158,25 +141,16 @@ func TestCNCI_Internal(t *testing.T) {
 	bridgeAlias := fmt.Sprintf("br_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
 	bridge, _ := newBridge(bridgeAlias)
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Bridge creation failed: %v", err)
-	}
+	assert.Nil(bridge.create())
 	defer func() { _ = bridge.destroy() }()
 
-	if err := bridge.enable(); err != nil {
-		t.Errorf("Bridge enable failed: %v", err)
-	}
+	assert.Nil(bridge.enable())
 
 	// Attach the DNS masq against the CNCI bridge. This gives it an IP address
 	d, err := newDnsmasq(bridgeAlias, tenantUUID, subnet, reserved, bridge)
+	assert.Nil(err)
 
-	if err != nil {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
-
-	if err := d.start(); err != nil {
-		t.Errorf("DNS Masq Start: %v", err)
-	}
+	assert.Nil(d.start())
 	defer func() { _ = d.stop() }()
 
 	// At this time the bridge is ready waiting for tunnels to be created
@@ -195,16 +169,9 @@ func TestCNCI_Internal(t *testing.T) {
 
 	gre, _ := newGreTunEP(greAlias, local, remote, key)
 
-	if err := gre.create(); err != nil {
-		t.Errorf("GRE Tunnel Creation failed: %v", err)
-	}
+	assert.Nil(gre.create())
 	defer func() { _ = gre.destroy() }()
 
-	if err := gre.attach(bridge); err != nil {
-		t.Errorf("GRE Tunnel attach failed: %v", err)
-	}
-
-	if err := gre.enable(); err != nil {
-		t.Errorf("GRE Tunnel enable failed: %v", err)
-	}
+	assert.Nil(gre.attach(bridge))
+	assert.Nil(gre.enable())
 }

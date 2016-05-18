@@ -21,6 +21,8 @@ import (
 	"net"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 //Test normal operation DCHP/DNS server setup for a CNCI
@@ -32,6 +34,7 @@ import (
 //
 //Test is expected to pass
 func TestDnsmasq_Basic(t *testing.T) {
+	assert := assert.New(t)
 
 	id := "concuuid"
 	tenant := "tenantuuid"
@@ -43,47 +46,38 @@ func TestDnsmasq_Basic(t *testing.T) {
 
 	bridge, _ := newBridge("dns_testbr")
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Bridge creation failed: %v", err)
-	}
+	err := bridge.create()
+	assert.Nil(err)
+
 	defer func() { _ = bridge.destroy() }()
 
 	d, err := newDnsmasq(id, tenant, subnet, reserved, bridge)
-	if err != nil {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
+	assert.Nil(err)
 
 	if len(d.IPMap) != (256 - reserved - 3) {
 		t.Errorf("Incorrect subnet calculation")
 	}
 
-	if err := d.start(); err != nil {
-		t.Errorf("DNS Masq Start: %v", err)
-	}
+	err = d.start()
+	assert.Nil(err)
 
-	if err := d.reload(); err != nil {
-		t.Errorf("DNS Masq Reload: %v", err)
-	}
+	err = d.reload()
+	assert.Nil(err)
 
-	if err := d.restart(); err != nil {
-		t.Errorf("DNS Masq Restart: %v", err)
-	}
+	err = d.restart()
+	assert.Nil(err)
 
-	if err := d.stop(); err != nil {
-		t.Errorf("DNS Masq Stop: %v", err)
-	}
+	err = d.stop()
+	assert.Nil(err)
 
-	if err := d.restart(); err != nil {
-		t.Errorf("DNS Masq Restart: %v", err)
-	}
+	err = d.restart()
+	assert.Nil(err)
 
-	if err := d.reload(); err != nil {
-		t.Errorf("DNS Masq Reload: %v", err)
-	}
+	err = d.reload()
+	assert.Nil(err)
 
-	if err := d.stop(); err != nil {
-		t.Errorf("DNS Masq Stop: %v", err)
-	}
+	err = d.stop()
+	assert.Nil(err)
 
 }
 
@@ -95,6 +89,7 @@ func TestDnsmasq_Basic(t *testing.T) {
 //
 //Test is expected to pass
 func TestDnsmasq_Negative(t *testing.T) {
+	assert := assert.New(t)
 
 	id := "concuuid"
 	tenant := "tenantuuid"
@@ -106,120 +101,52 @@ func TestDnsmasq_Negative(t *testing.T) {
 
 	bridge, _ := newBridge("dns_testbr")
 
-	if err := bridge.create(); err != nil {
-		t.Errorf("Bridge creation failed: %v", err)
-	}
+	err := bridge.create()
+	assert.Nil(err)
 	defer func() { _ = bridge.destroy() }()
 
 	// Note: Re instantiate d each time as that
 	// is how it will be used
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.start(); err != nil {
-			t.Errorf("DNS Masq Start: %v", err)
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
+	d, err := newDnsmasq(id, tenant, subnet, reserved, bridge)
+	if assert.Nil(err) {
+		assert.Nil(d.start())
 
+	}
 	//Attach should work
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if pid, err := d.attach(); err != nil {
-			t.Errorf("DNS Masq attach should not have failed %v", err)
-		} else {
+	d, err = newDnsmasq(id, tenant, subnet, reserved, bridge)
+	if assert.Nil(err) {
+		pid, err := d.attach()
+		if assert.Nil(err) {
 			pidStr := strconv.Itoa(pid)
 			fileName := "/proc/" + pidStr + "/cmdline"
-			contents, err := ioutil.ReadFile(fileName)
-			if err != nil {
-				t.Error("Unable do read dns masq config file ", contents, err)
-			}
+			_, err := ioutil.ReadFile(fileName)
+			assert.Nil(err)
 		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
 	}
 
-	//Restart should work
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.restart(); err != nil {
-			t.Errorf("DNS Masq Restart failed: %v", err)
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
+	d, err = newDnsmasq(id, tenant, subnet, reserved, bridge)
+	if assert.Nil(err) {
+		//Restart should work
+		assert.Nil(d.restart())
+		//Reload should work
+		assert.Nil(d.reload())
 	}
 
-	//Reload should work
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.reload(); err != nil {
-			t.Errorf("DNS Masq Reload failed: %v", err)
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
-
-	// Duplicate creation
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.start(); err == nil {
-			t.Errorf("DNS Masq Started twice")
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
-
-	// Stop it
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.stop(); err != nil {
-			t.Errorf("DNS Masq Stop: %v", err)
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
-
-	//Attach should fail
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if pid, err := d.attach(); err == nil {
-			t.Errorf("DNS Masq attach should have failed %v", pid)
-			pidStr := strconv.Itoa(pid)
-			fileName := "/proc/" + pidStr + "/cmdline"
-			contents, err := ioutil.ReadFile(fileName)
-			t.Errorf("File [%v] has %v %v", fileName, string(contents), err)
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
-
-	//Stop should fail
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.stop(); err == nil {
-			t.Errorf("DNS Masq Stop should fail")
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
-
-	//Reload should fail
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.reload(); err == nil {
-			t.Errorf("DNS Masq Reload should have failed")
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
+	// Duplicate creation - should fail
+	d, err = newDnsmasq(id, tenant, subnet, reserved, bridge)
+	if assert.Nil(err) {
+		assert.NotNil(d.start())
+		assert.Nil(d.stop())
+		_, err = d.attach()
+		assert.NotNil(err)
+		assert.NotNil(d.stop())
+		assert.NotNil(d.reload())
 	}
 
 	//Restart should not fail
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.restart(); err != nil {
-			t.Errorf("DNS Masq Restart should have failed %v", err)
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
+	d, err = newDnsmasq(id, tenant, subnet, reserved, bridge)
+	if assert.Nil(err) {
+		assert.Nil(d.restart())
+		assert.Nil(d.stop())
 	}
-
-	// Stop it
-	if d, err := newDnsmasq(id, tenant, subnet, reserved, bridge); err == nil {
-		if err := d.stop(); err != nil {
-			t.Errorf("DNS Masq Stop failed: %v", err)
-		}
-	} else {
-		t.Errorf("DNS Masq New failed: %v", err)
-	}
-
 }
