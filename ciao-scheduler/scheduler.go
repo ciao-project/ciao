@@ -31,28 +31,44 @@ import (
 	"time"
 )
 
+var cert = flag.String("cert", "/etc/pki/ciao/cert-Scheduler-localhost.pem", "Server certificate")
+var cacert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
+var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
+var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
+var logDir = "/var/lib/ciao/logs/scheduler"
+
 type ssntpSchedulerServer struct {
-	ssntp ssntp.Server
-	name  string
+	// user config overrides ------------------------------------------
+	heartbeat  bool
+	cpuprofile string
+
+	// ssntp ----------------------------------------------------------
+	config *ssntp.Config
+	ssntp  ssntp.Server
+
+	// scheduler internal state ---------------------------------------
+
 	// Command & Status Reporting node(s)
 	controllerMap   map[string]*controllerStat
-	controllerMutex sync.RWMutex // Rlock traversal of map, Lock modification of map
+	controllerList  []*controllerStat // 1 controllerMaster at front of list
+	controllerMutex sync.RWMutex      // Rlock traversing map, Lock modifying map
+
 	// Compute Nodes
 	cnMap      map[string]*nodeStat
 	cnList     []*nodeStat
-	cnMutex    sync.RWMutex // Rlock traversal of map, Lock modification of map
+	cnMutex    sync.RWMutex // Rlock traversing map, Lock modifying map
 	cnMRU      *nodeStat
 	cnMRUIndex int
 	//cnInactiveMap      map[string]nodeStat
+
 	// Network Nodes
 	nnMap   map[string]*nodeStat
-	nnMutex sync.RWMutex // Rlock traversal of map, Lock modification of map
+	nnMutex sync.RWMutex // Rlock traversing map, Lock modifying map
 	nnMRU   string
 }
 
 func newSsntpSchedulerServer() *ssntpSchedulerServer {
 	return &ssntpSchedulerServer{
-		name:          "Ciao Scheduler Server",
 		controllerMap: make(map[string]*controllerStat),
 		cnMap:         make(map[string]*nodeStat),
 		cnMRUIndex:    -1,
@@ -148,7 +164,7 @@ func (sched *ssntpSchedulerServer) sendNodeDisconnectedEvents(nodeUUID string, n
 
 // Add state for newly connected Controller
 // This function is symmetric with disconnectController().
-func (sched *ssntpSchedulerServer) connectController(uuid string) {
+func connectController(sched *ssntpSchedulerServer, uuid string) {
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
 
@@ -158,26 +174,25 @@ func (sched *ssntpSchedulerServer) connectController(uuid string) {
 	}
 
 	var controller controllerStat
+	controller.uuid = uuid
 
 	// TODO: smarter clustering than "assume master, unless another is master"
-	controller.status = controllerMaster
-	for _, c := range sched.controllerMap {
-		c.mutex.Lock()
-		if c.status == controllerMaster {
-			controller.status = controllerBackup
-			c.mutex.Unlock()
-			break
-		}
-		c.mutex.Unlock()
+	if len(sched.controllerList) == 0 || sched.controllerList[0].status == controllerBackup {
+		// master at front of the list
+		controller.status = controllerMaster
+		sched.controllerList = append([]*controllerStat{&controller}, sched.controllerList...)
+	} else { // already have a master
+		// backup controllers at the end of the list
+		controller.status = controllerBackup
+		sched.controllerList = append(sched.controllerList, &controller)
 	}
 
-	controller.uuid = uuid
-	sched.controllerMap[uuid] = &controller
+	sched.controllerMap[controller.uuid] = &controller
 }
 
 // Undo previous state additions for departed Controller
 // This function is symmetric with connectController().
-func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
+func disconnectController(sched *ssntpSchedulerServer, uuid string) {
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
 
@@ -186,17 +201,33 @@ func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
 		glog.Warningf("Unexpected disconnect from controller %s\n", uuid)
 		return
 	}
+
+	// delete from map, remove from list
 	delete(sched.controllerMap, uuid)
+	for i, c := range sched.controllerList {
+		if c != controller {
+			continue
+		}
+
+		sched.controllerList = append(sched.controllerList[:i], sched.controllerList[i+1:]...)
+	}
 
 	if controller.status == controllerBackup {
 		return
 	} // else promote a new master
-	for _, c := range sched.controllerMap {
+
+	for i, c := range sched.controllerList {
 		c.mutex.Lock()
 		if c.status == controllerBackup {
 			c.status = controllerMaster
 			//TODO: inform the Controller it is master
 			c.mutex.Unlock()
+
+			// move to front of list
+			front := sched.controllerList[:i]
+			back := sched.controllerList[i+1:]
+			sched.controllerList = append([]*controllerStat{c}, front...)
+			sched.controllerList = append(sched.controllerList, back...)
 			break
 		}
 		c.mutex.Unlock()
@@ -205,7 +236,7 @@ func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
 
 // Add state for newly connected Compute Node
 // This function is symmetric with disconnectComputeNode().
-func (sched *ssntpSchedulerServer) connectComputeNode(uuid string) {
+func connectComputeNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.cnMutex.Lock()
 	defer sched.cnMutex.Unlock()
 
@@ -225,7 +256,7 @@ func (sched *ssntpSchedulerServer) connectComputeNode(uuid string) {
 
 // Undo previous state additions for departed Compute Node
 // This function is symmetric with connectComputeNode().
-func (sched *ssntpSchedulerServer) disconnectComputeNode(uuid string) {
+func disconnectComputeNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.cnMutex.Lock()
 	defer sched.cnMutex.Unlock()
 
@@ -256,7 +287,7 @@ func (sched *ssntpSchedulerServer) disconnectComputeNode(uuid string) {
 
 // Add state for newly connected Network Node
 // This function is symmetric with disconnectNetworkNode().
-func (sched *ssntpSchedulerServer) connectNetworkNode(uuid string) {
+func connectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.nnMutex.Lock()
 	defer sched.nnMutex.Unlock()
 
@@ -275,7 +306,7 @@ func (sched *ssntpSchedulerServer) connectNetworkNode(uuid string) {
 
 // Undo previous state additions for departed Network Node
 // This function is symmetric with connectNetworkNode().
-func (sched *ssntpSchedulerServer) disconnectNetworkNode(uuid string) {
+func disconnectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.nnMutex.Lock()
 	defer sched.nnMutex.Unlock()
 
@@ -292,11 +323,11 @@ func (sched *ssntpSchedulerServer) disconnectNetworkNode(uuid string) {
 func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 	switch role {
 	case ssntp.Controller:
-		sched.connectController(uuid)
+		connectController(sched, uuid)
 	case ssntp.AGENT:
-		sched.connectComputeNode(uuid)
+		connectComputeNode(sched, uuid)
 	case ssntp.NETAGENT:
-		sched.connectNetworkNode(uuid)
+		connectNetworkNode(sched, uuid)
 	}
 
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
@@ -305,11 +336,11 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
 	switch role {
 	case ssntp.Controller:
-		sched.disconnectController(uuid)
+		disconnectController(sched, uuid)
 	case ssntp.AGENT:
-		sched.disconnectComputeNode(uuid)
+		disconnectComputeNode(sched, uuid)
 	case ssntp.NETAGENT:
-		sched.disconnectNetworkNode(uuid)
+		disconnectNetworkNode(sched, uuid)
 	}
 
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
@@ -421,7 +452,7 @@ func (sched *ssntpSchedulerServer) sendStartFailureError(clientUUID string, inst
 		return
 	}
 
-	glog.Errorf("Unable to dispatch: %v\n", reason)
+	glog.Warningf("Unable to dispatch: %v\n", reason)
 	sched.ssntp.SendError(clientUUID, ssntp.StartFailure, payload)
 }
 func (sched *ssntpSchedulerServer) getConcentratorUUID(event ssntp.Event, payload []byte) (string, error) {
@@ -505,7 +536,7 @@ func (sched *ssntpSchedulerServer) decrementResourceUsage(node *nodeStat, worklo
 }
 
 // Find suitable compute node, returning referenced to a locked nodeStat if found
-func (sched *ssntpSchedulerServer) pickComputeNode(controllerUUID string, workload *workResources) (node *nodeStat) {
+func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workload *workResources) (node *nodeStat) {
 	sched.cnMutex.RLock()
 	defer sched.cnMutex.RUnlock()
 
@@ -607,7 +638,7 @@ func (sched *ssntpSchedulerServer) startWorkload(controllerUUID string, payload 
 	var targetNode *nodeStat
 
 	if workload.networkNode == 0 {
-		targetNode = sched.pickComputeNode(controllerUUID, &workload)
+		targetNode = pickComputeNode(sched, controllerUUID, &workload)
 	} else { //workload.network_node == 1
 		targetNode = sched.pickNetworkNode(controllerUUID, &workload)
 	}
@@ -742,27 +773,55 @@ func heartBeatControllers(sched *ssntpSchedulerServer) (s string) {
 	i := 0
 
 	sched.controllerMutex.RLock()
-	for _, controller := range sched.controllerMap {
-		controller.mutex.Lock()
+	defer sched.controllerMutex.RUnlock()
+
+	if len(sched.controllerList) == 0 {
+		return " -no Controller- \t\t\t\t\t"
+	}
+
+	// first show any master, which is at front of list
+	controller := sched.controllerList[0]
+	controller.mutex.Lock()
+	if controller.status == controllerMaster {
 		s += fmt.Sprintf("controller-%s:", controller.uuid[:8])
 		s += controller.status.String()
 		controller.mutex.Unlock()
 
 		i++
-		if i == controllerMax {
-			break
-		}
-		if i <= controllerMax && len(sched.controllerMap) > i {
+		if i <= controllerMax && len(sched.controllerList) > i {
 			s += ", "
 		} else {
 			s += "\t"
 		}
 	}
-	sched.controllerMutex.RUnlock()
 
-	if i == 0 {
-		s += " -no Controller- \t\t\t\t\t"
-	} else if i < controllerMax {
+	// second show any backup(s)
+	for _, controller := range sched.controllerList[i:] {
+		if i == controllerMax {
+			break
+		}
+
+		controller.mutex.Lock()
+		if controller.status == controllerMaster {
+			controller.mutex.Unlock()
+			glog.Errorf("multiple controller masters")
+			return "ERROR multiple controller masters"
+		}
+
+		s += fmt.Sprintf("controller-%s:", controller.uuid[:8])
+		s += controller.status.String()
+		controller.mutex.Unlock()
+
+		i++
+		if i < controllerMax && len(sched.controllerList) > i {
+			s += ", "
+		} else {
+			s += "\t"
+		}
+	}
+
+	// finish with some whitespace ahead of compute nodes
+	if i < controllerMax {
 		s += "\t\t\t"
 	} else {
 		s += "\t"
@@ -777,7 +836,9 @@ func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
 	i := 0
 
 	sched.cnMutex.RLock()
-	for _, node := range sched.cnMap {
+	defer sched.cnMutex.RUnlock()
+
+	for _, node := range sched.cnList {
 
 		node.mutex.Lock()
 		s += fmt.Sprintf("node-%s:", node.uuid[:8])
@@ -795,11 +856,10 @@ func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
 		if i == cnMax {
 			break
 		}
-		if i <= cnMax && len(sched.cnMap) > i {
+		if i <= cnMax && len(sched.cnList) > i {
 			s += ", "
 		}
 	}
-	sched.cnMutex.RUnlock()
 
 	if i == 0 {
 		s += " -no Compute Nodes-"
@@ -808,80 +868,64 @@ func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
 	return s
 }
 
-func heartBeat(sched *ssntpSchedulerServer) {
-	iter := 0
-	for {
-		var beatTxt string
+const heartBeatHeaderFreq = 22
 
-		time.Sleep(time.Duration(1) * time.Second)
+func heartBeat(sched *ssntpSchedulerServer, iter int) string {
+	var beatTxt string
 
-		sched.controllerMutex.RLock()
-		sched.cnMutex.RLock()
-		if len(sched.controllerMap) == 0 && len(sched.cnMap) == 0 {
-			beatTxt = "** idle / disconnected **"
-		}
+	time.Sleep(time.Duration(1) * time.Second)
+
+	sched.controllerMutex.RLock()
+	sched.cnMutex.RLock()
+	if len(sched.controllerList) == 0 && len(sched.cnList) == 0 {
 		sched.controllerMutex.RUnlock()
 		sched.cnMutex.RUnlock()
+		return "** idle / disconnected **\n"
+	}
+	sched.controllerMutex.RUnlock()
+	sched.cnMutex.RUnlock()
 
-		iter++
-		if iter%22 == 0 {
-			//output a column indication occasionally
-			log.Printf("Controllers\t\t\t\t\tCompute Nodes\n")
-		}
+	iter++
+	if iter%heartBeatHeaderFreq == 0 {
+		//output a column indication occasionally
+		beatTxt = "Controllers\t\t\t\t\tCompute Nodes\n"
+	}
 
-		beatTxt = heartBeatControllers(sched)
-		beatTxt += heartBeatComputeNodes(sched)
+	beatTxt += heartBeatControllers(sched) + heartBeatComputeNodes(sched)
 
-		log.Printf("%s\n", beatTxt)
+	return beatTxt
+}
+
+func heartBeatLoop(sched *ssntpSchedulerServer) {
+	iter := 0
+	for {
+		log.Printf("%s\n", heartBeat(sched, iter))
 	}
 }
 
-func main() {
-	var cert = flag.String("cert", "/etc/pki/ciao/cert-server-localhost.pem", "Server certificate")
-	var CAcert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
-	var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
-	var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
-	var logDir = "/var/lib/ciao/logs/scheduler"
-
-	flag.Parse()
-
-	logDirFlag := flag.Lookup("log_dir")
-	if logDirFlag == nil {
-		glog.Errorf("log_dir does not exist")
-		return
-	}
-	if logDirFlag.Value.String() == "" {
-		logDirFlag.Value.Set(logDir)
-	}
-	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
-		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
-		return
-	}
-
-	setLimits()
-
-	sched := newSsntpSchedulerServer()
-
-	if len(*cpuprofile) != 0 {
-		f, err := os.Create(*cpuprofile)
+func toggleDebug(sched *ssntpSchedulerServer) {
+	if len(sched.cpuprofile) != 0 {
+		f, err := os.Create(sched.cpuprofile)
 		if err != nil {
-			log.Print(err)
+			glog.Warningf("unable to initialize cpuprofile (%s)", err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
 
-	//config.Trace = os.Stdout
-	//config.Error = os.Stdout
-	//config.DebugInterface = false
+	/* glog's --logtostderr and -v=2 are probably really what you want..
+	sched.config.Trace = os.Stdout
+	sched.config.Error = os.Stdout
+	sched.config.DebugInterface = false
+	*/
 
-	config := &ssntp.Config{
-		CAcert: *CAcert,
-		Cert:   *cert,
-		Role:   ssntp.SCHEDULER,
+	if sched.heartbeat {
+		go heartBeatLoop(sched)
 	}
+}
 
-	config.ForwardRules = []ssntp.FrameForwardRule{
+func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
+	sched.config.ForwardRules = []ssntp.FrameForwardRule{
 		{ // all STATS commands go to all Controllers
 			Operand: ssntp.STATS,
 			Dest:    ssntp.Controller,
@@ -943,10 +987,47 @@ func main() {
 			EventForward: sched,
 		},
 	}
+}
 
-	if *heartbeat {
-		go heartBeat(sched)
+func configSchedulerServer() (sched *ssntpSchedulerServer) {
+	logDirFlag := flag.Lookup("log_dir")
+	if logDirFlag == nil {
+		glog.Errorf("log_dir does not exist")
+	}
+	if logDirFlag.Value.String() == "" {
+		logDirFlag.Value.Set(logDir)
+	}
+	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
+		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
 	}
 
-	sched.ssntp.Serve(config, sched)
+	setLimits()
+
+	sched = newSsntpSchedulerServer()
+	sched.cpuprofile = *cpuprofile
+	sched.heartbeat = *heartbeat
+
+	toggleDebug(sched)
+
+	sched.config = &ssntp.Config{
+		CAcert: *cacert,
+		Cert:   *cert,
+		Role:   ssntp.SCHEDULER,
+	}
+
+	setSSNTPForwardRules(sched)
+
+	return sched
+}
+
+func main() {
+	flag.Parse()
+
+	sched := configSchedulerServer()
+	if sched == nil {
+		glog.Errorf("unable to configure scheduler")
+		return
+	}
+
+	sched.ssntp.Serve(sched.config, sched)
 }
