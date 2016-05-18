@@ -331,7 +331,6 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 		}
 	}
 
-	client.role = config.Role
 	client.roleVerify = config.RoleVerification
 
 	if len(config.CAcert) == 0 {
@@ -358,7 +357,7 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 	}
 
 	/* Then we parse the CA certificate to find FQDNs and/or IPs to connect to */
-	ips, fqdns, err := parseCertificate(config)
+	ips, fqdns, err := parseCertificateAuthority(config)
 	if err != nil {
 		client.log.Warningf("%s", err)
 	} else {
@@ -374,6 +373,20 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 
 	/* Last resort: localhost */
 	client.uris = append(client.uris, fmt.Sprintf("%s:%d", defaultURL, client.port))
+
+	role, err := parseCertificate(config)
+	if err != nil {
+		client.log.Errorf("%s", err)
+		return err
+	}
+
+	if config.Role != (uint32)(UNKNOWN) && config.Role != role {
+		// Force Dial failure to not make this mismatch unnoticed.
+		// Eventually config.Role will be removed.
+		return fmt.Errorf("Requested role %d does not match certificate role %d", config.Role, role)
+	}
+
+	client.role = role
 
 	err = client.attemptDial()
 	if err != nil {
