@@ -613,53 +613,55 @@ func (error Error) String() string {
 }
 
 func (role *Role) String() string {
-	switch *role {
-	case UNKNOWN:
-		return "Unknown"
-	case SERVER:
-		return "Server"
-	case Controller:
-		return "Controller"
-	case AGENT:
-		return "CNAgent"
-	case SCHEDULER:
-		return "Scheduler"
-	case NETAGENT:
-		return "NetworkingAgent"
-	case CNCIAGENT:
-		return "CNCIAgent"
+	roleString := ""
+
+	if *role&SERVER == SERVER {
+		roleString += "Server-"
 	}
 
-	return ""
+	if *role&Controller == Controller {
+		roleString += "Controller-"
+	}
+
+	if *role&AGENT == AGENT {
+		roleString += "CNAgent-"
+	}
+
+	if *role&SCHEDULER == SCHEDULER {
+		roleString += "Scheduler-"
+	}
+
+	if *role&NETAGENT == NETAGENT {
+		roleString += "NetworkingAgent-"
+	}
+
+	if *role&CNCIAGENT == CNCIAGENT {
+		roleString += "CNCIAgent-"
+	}
+
+	return roleString
 }
 
 // Set sets an SSNTP role based on the input string.
 func (role *Role) Set(value string) error {
 	for _, r := range strings.Split(value, ",") {
 		if r == "unknown" {
-			*role = UNKNOWN
-			return nil
+			*role |= UNKNOWN
 		} else if r == "server" {
-			*role = SERVER
-			return nil
+			*role |= SERVER
 		} else if r == "controller" {
-			*role = Controller
-			return nil
+			*role |= Controller
 		} else if r == "agent" {
-			*role = AGENT
-			return nil
+			*role |= AGENT
 		} else if r == "netagent" {
-			*role = NETAGENT
-			return nil
+			*role |= NETAGENT
 		} else if r == "scheduler" {
-			*role = SCHEDULER
-			return nil
+			*role |= SCHEDULER
 		} else if r == "cnciagent" {
-			*role = CNCIAGENT
-			return nil
+			*role |= CNCIAGENT
+		} else {
+			return errors.New("Unknown role")
 		}
-
-		return errors.New("Unknown role")
 	}
 
 	return nil
