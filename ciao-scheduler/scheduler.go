@@ -941,14 +941,12 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 	logDirFlag := flag.Lookup("log_dir")
 	if logDirFlag == nil {
 		glog.Errorf("log_dir does not exist")
-		return nil
 	}
 	if logDirFlag.Value.String() == "" {
 		logDirFlag.Value.Set(logDir)
 	}
 	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
 		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
-		return nil
 	}
 
 	setLimits()
