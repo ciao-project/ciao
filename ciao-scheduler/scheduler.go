@@ -36,17 +36,17 @@ type ssntpSchedulerServer struct {
 	name  string
 	// Command & Status Reporting node(s)
 	controllerMap   map[string]*controllerStat
-	controllerMutex sync.RWMutex
+	controllerMutex sync.RWMutex // Rlock traversal of map, Lock modification of map
 	// Compute Nodes
 	cnMap      map[string]*nodeStat
 	cnList     []*nodeStat
-	cnMutex    sync.RWMutex
+	cnMutex    sync.RWMutex // Rlock traversal of map, Lock modification of map
 	cnMRU      *nodeStat
 	cnMRUIndex int
 	//cnInactiveMap      map[string]nodeStat
 	// Network Nodes
 	nnMap   map[string]*nodeStat
-	nnMutex sync.RWMutex
+	nnMutex sync.RWMutex // Rlock traversal of map, Lock modification of map
 	nnMRU   string
 }
 
@@ -71,6 +71,17 @@ type nodeStat struct {
 }
 
 type controllerStatus uint8
+
+func (s controllerStatus) String() string {
+	switch s {
+	case controllerMaster:
+		return "MASTER"
+	case controllerBackup:
+		return "BACKUP"
+	}
+
+	return ""
+}
 
 const (
 	controllerMaster controllerStatus = iota
@@ -118,8 +129,8 @@ func (sched *ssntpSchedulerServer) sendNodeConnectionEvent(nodeUUID, controllerU
 }
 
 func (sched *ssntpSchedulerServer) sendNodeConnectedEvents(nodeUUID string, nodeType payloads.Resource) {
-	sched.controllerMutex.Lock()
-	defer sched.controllerMutex.Unlock()
+	sched.controllerMutex.RLock()
+	defer sched.controllerMutex.RUnlock()
 
 	for _, c := range sched.controllerMap {
 		sched.sendNodeConnectionEvent(nodeUUID, c.uuid, nodeType, true)
@@ -127,146 +138,181 @@ func (sched *ssntpSchedulerServer) sendNodeConnectedEvents(nodeUUID string, node
 }
 
 func (sched *ssntpSchedulerServer) sendNodeDisconnectedEvents(nodeUUID string, nodeType payloads.Resource) {
-	sched.controllerMutex.Lock()
-	defer sched.controllerMutex.Unlock()
+	sched.controllerMutex.RLock()
+	defer sched.controllerMutex.RUnlock()
 
 	for _, c := range sched.controllerMap {
 		sched.sendNodeConnectionEvent(nodeUUID, c.uuid, nodeType, false)
 	}
 }
 
+// Add state for newly connected Controller
+// This function is symmetric with disconnectController().
+func (sched *ssntpSchedulerServer) connectController(uuid string) {
+	sched.controllerMutex.Lock()
+	defer sched.controllerMutex.Unlock()
+
+	if sched.controllerMap[uuid] != nil {
+		glog.Warningf("Unexpected reconnect from controller %s\n", uuid)
+		return
+	}
+
+	var controller controllerStat
+
+	// TODO: smarter clustering than "assume master, unless another is master"
+	controller.status = controllerMaster
+	for _, c := range sched.controllerMap {
+		c.mutex.Lock()
+		if c.status == controllerMaster {
+			controller.status = controllerBackup
+			c.mutex.Unlock()
+			break
+		}
+		c.mutex.Unlock()
+	}
+
+	controller.uuid = uuid
+	sched.controllerMap[uuid] = &controller
+}
+
+// Undo previous state additions for departed Controller
+// This function is symmetric with connectController().
+func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
+	sched.controllerMutex.Lock()
+	defer sched.controllerMutex.Unlock()
+
+	controller := sched.controllerMap[uuid]
+	if controller == nil {
+		glog.Warningf("Unexpected disconnect from controller %s\n", uuid)
+		return
+	}
+	delete(sched.controllerMap, uuid)
+
+	if controller.status == controllerBackup {
+		return
+	} // else promote a new master
+	for _, c := range sched.controllerMap {
+		c.mutex.Lock()
+		if c.status == controllerBackup {
+			c.status = controllerMaster
+			//TODO: inform the Controller it is master
+			c.mutex.Unlock()
+			break
+		}
+		c.mutex.Unlock()
+	}
+}
+
+// Add state for newly connected Compute Node
+// This function is symmetric with disconnectComputeNode().
+func (sched *ssntpSchedulerServer) connectComputeNode(uuid string) {
+	sched.cnMutex.Lock()
+	defer sched.cnMutex.Unlock()
+
+	if sched.cnMap[uuid] != nil {
+		glog.Warningf("Unexpected reconnect from compute node %s\n", uuid)
+		return
+	}
+
+	var node nodeStat
+	node.status = ssntp.CONNECTED
+	node.uuid = uuid
+	sched.cnList = append(sched.cnList, &node)
+	sched.cnMap[uuid] = &node
+
+	sched.sendNodeConnectedEvents(uuid, payloads.ComputeNode)
+}
+
+// Undo previous state additions for departed Compute Node
+// This function is symmetric with connectComputeNode().
+func (sched *ssntpSchedulerServer) disconnectComputeNode(uuid string) {
+	sched.cnMutex.Lock()
+	defer sched.cnMutex.Unlock()
+
+	node := sched.cnMap[uuid]
+	if node == nil {
+		glog.Warningf("Unexpected disconnect from compute node %s\n", uuid)
+		return
+	}
+
+	//TODO: consider moving to cnInactiveMap?
+	delete(sched.cnMap, uuid)
+
+	for i, n := range sched.cnList {
+		if n != node {
+			continue
+		}
+
+		sched.cnList = append(sched.cnList[:i], sched.cnList[i+1:]...)
+	}
+
+	if node == sched.cnMRU {
+		sched.cnMRU = nil
+		sched.cnMRUIndex = -1
+	}
+
+	sched.sendNodeDisconnectedEvents(uuid, payloads.ComputeNode)
+}
+
+// Add state for newly connected Network Node
+// This function is symmetric with disconnectNetworkNode().
+func (sched *ssntpSchedulerServer) connectNetworkNode(uuid string) {
+	sched.nnMutex.Lock()
+	defer sched.nnMutex.Unlock()
+
+	if sched.nnMap[uuid] != nil {
+		glog.Warningf("Unexpected reconnect from network compute node %s\n", uuid)
+		return
+	}
+
+	var node nodeStat
+	node.status = ssntp.CONNECTED
+	node.uuid = uuid
+	sched.nnMap[uuid] = &node
+
+	sched.sendNodeConnectedEvents(uuid, payloads.NetworkNode)
+}
+
+// Undo previous state additions for departed Network Node
+// This function is symmetric with connectNetworkNode().
+func (sched *ssntpSchedulerServer) disconnectNetworkNode(uuid string) {
+	sched.nnMutex.Lock()
+	defer sched.nnMutex.Unlock()
+
+	if sched.nnMap[uuid] == nil {
+		glog.Warningf("Unexpected disconnect from network compute node %s\n", uuid)
+		return
+	}
+
+	//TODO: consider moving to nnInactiveMap?
+	delete(sched.nnMap, uuid)
+
+	sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
+}
 func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 	switch role {
 	case ssntp.Controller:
-		sched.controllerMutex.Lock()
-		defer sched.controllerMutex.Unlock()
-
-		if sched.controllerMap[uuid] != nil {
-			glog.Warningf("Unexpected reconnect from controller %s\n", uuid)
-			return
-		}
-
-		var controller controllerStat
-
-		// TODO: smarter clustering than "assume master, unless another is master"
-		controller.status = controllerMaster
-		for _, c := range sched.controllerMap {
-			c.mutex.Lock()
-			if c.status == controllerMaster {
-				controller.status = controllerBackup
-				c.mutex.Unlock()
-				break
-			}
-			c.mutex.Unlock()
-		}
-
-		controller.uuid = uuid
-		sched.controllerMap[uuid] = &controller
+		sched.connectController(uuid)
 	case ssntp.AGENT:
-		sched.cnMutex.Lock()
-		defer sched.cnMutex.Unlock()
-
-		if sched.cnMap[uuid] != nil {
-			glog.Warningf("Unexpected reconnect from compute node %s\n", uuid)
-			return
-		}
-
-		var node nodeStat
-		node.status = ssntp.CONNECTED
-		node.uuid = uuid
-		sched.cnList = append(sched.cnList, &node)
-		sched.cnMap[uuid] = &node
-
-		sched.sendNodeConnectedEvents(uuid, payloads.ComputeNode)
+		sched.connectComputeNode(uuid)
 	case ssntp.NETAGENT:
-		sched.nnMutex.Lock()
-		defer sched.nnMutex.Unlock()
-
-		if sched.nnMap[uuid] != nil {
-			glog.Warningf("Unexpected reconnect from network compute node %s\n", uuid)
-			return
-		}
-
-		var node nodeStat
-		node.status = ssntp.CONNECTED
-		node.uuid = uuid
-		sched.nnMap[uuid] = &node
-
-		sched.sendNodeConnectedEvents(uuid, payloads.NetworkNode)
+		sched.connectNetworkNode(uuid)
 	}
 
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
 func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
-	sched.controllerMutex.Lock()
-	defer sched.controllerMutex.Unlock()
-	if sched.controllerMap[uuid] != nil {
-		controller := sched.controllerMap[uuid]
-		if controller.status == controllerMaster {
-			// promote a new master
-			for _, c := range sched.controllerMap {
-				c.mutex.Lock()
-				if c.status == controllerBackup {
-					c.status = controllerMaster
-					//TODO: inform the Controller it is master
-					c.mutex.Unlock()
-					break
-				}
-				c.mutex.Unlock()
-			}
-		}
-		delete(sched.controllerMap, uuid)
-
-		glog.V(2).Infof("Disconnect controller (uuid=%s)\n", uuid)
-		return
+	switch role {
+	case ssntp.Controller:
+		sched.disconnectController(uuid)
+	case ssntp.AGENT:
+		sched.disconnectComputeNode(uuid)
+	case ssntp.NETAGENT:
+		sched.disconnectNetworkNode(uuid)
 	}
 
-	sched.cnMutex.Lock()
-	defer sched.cnMutex.Unlock()
-	if sched.cnMap[uuid] != nil {
-		//TODO: consider moving to cnInactiveMap?
-		node := sched.cnMap[uuid]
-
-		if node != nil {
-			for i, n := range sched.cnList {
-				if n != node {
-					continue
-				}
-
-				sched.cnList = append(sched.cnList[:i], sched.cnList[i+1:]...)
-			}
-		}
-
-		if node == sched.cnMRU {
-			sched.cnMRU = nil
-			sched.cnMRUIndex = -1
-		}
-
-		/* We need a go routine as the controller lock is taken */
-		go sched.sendNodeDisconnectedEvents(uuid, payloads.ComputeNode)
-
-		delete(sched.cnMap, uuid)
-
-		glog.V(2).Infof("Disconnect cn (uuid=%s)\n", uuid)
-		return
-	}
-
-	sched.nnMutex.Lock()
-	defer sched.nnMutex.Unlock()
-	if sched.nnMap[uuid] != nil {
-		/* We need a go routine as the controller lock is taken */
-		go sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
-
-		//TODO: consider moving to nnInactiveMap?
-		delete(sched.nnMap, uuid)
-
-		glog.V(2).Infof("Disconnect nn (uuid=%s)\n", uuid)
-		return
-	}
-
-	glog.Warningf("Disconnect error: no ssntp client with uuid=%s\n", uuid)
-	return
+	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
 func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
@@ -353,10 +399,8 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 	return workload, nil
 }
 
+// Check resource demands are satisfiable by the referenced, locked nodeStat object
 func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workResources) bool {
-	node.mutex.Lock()
-	defer node.mutex.Unlock()
-
 	// simple scheduling policy == first memory fit
 	if node.memAvailMB >= workload.memReqMB &&
 		node.status == ssntp.READY {
@@ -455,71 +499,85 @@ func (sched *ssntpSchedulerServer) fwdCmdToComputeNode(command ssntp.Command, pa
 	return
 }
 
+// Decrement resource claims for the referenced locked nodeStat object
 func (sched *ssntpSchedulerServer) decrementResourceUsage(node *nodeStat, workload *workResources) {
-	node.mutex.Lock()
-	defer node.mutex.Unlock()
-
 	node.memAvailMB -= workload.memReqMB
 }
 
+// Find suitable compute node, returning referenced to a locked nodeStat if found
 func (sched *ssntpSchedulerServer) pickComputeNode(controllerUUID string, workload *workResources) (node *nodeStat) {
-	sched.cnMutex.Lock()
-	defer sched.cnMutex.Unlock()
+	sched.cnMutex.RLock()
+	defer sched.cnMutex.RUnlock()
 
 	if len(sched.cnList) == 0 {
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoComputeNodes)
-		return
+		return nil
 	}
 
 	/* Shortcut for 1 nodes cluster */
 	if len(sched.cnList) == 1 {
+		node := sched.cnList[0]
+		node.mutex.Lock()
 		if sched.workloadFits(sched.cnList[0], workload) == true {
-			return sched.cnList[0]
+			node.mutex.Unlock()
+			return node
 		}
+		node.mutex.Unlock()
+		return nil
 	}
 
 	/* First try nodes after the MRU */
 	if sched.cnMRUIndex != -1 && sched.cnMRUIndex < len(sched.cnList)-1 {
-		for i, n := range sched.cnList[sched.cnMRUIndex+1:] {
-			if n == sched.cnMRU {
+		for i, node := range sched.cnList[sched.cnMRUIndex+1:] {
+			node.mutex.Lock()
+			if node == sched.cnMRU {
+				node.mutex.Unlock()
 				continue
 			}
 
-			if sched.workloadFits(n, workload) == true {
+			if sched.workloadFits(node, workload) == true {
 				sched.cnMRUIndex = sched.cnMRUIndex + 1 + i
-				sched.cnMRU = n
-				return n
+				sched.cnMRU = node
+				node.mutex.Unlock()
+				return node
 			}
+			node.mutex.Unlock()
 		}
 	}
 
 	/* Then try the whole list, including the MRU */
-	for i, n := range sched.cnList {
-		if sched.workloadFits(n, workload) == true {
+	for i, node := range sched.cnList {
+		node.mutex.Lock()
+		if sched.workloadFits(node, workload) == true {
 			sched.cnMRUIndex = i
-			sched.cnMRU = n
-			return n
+			sched.cnMRU = node
+			node.mutex.Unlock()
+			return node
 		}
+		node.mutex.Unlock()
 	}
 
 	sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.FullCloud)
 	return nil
 }
 
+// Find suitable net node, returning referenced to a locked nodeStat if found
 func (sched *ssntpSchedulerServer) pickNetworkNode(controllerUUID string, workload *workResources) (node *nodeStat) {
 	sched.nnMutex.RLock()
 	defer sched.nnMutex.RUnlock()
 
 	if len(sched.nnMap) == 0 {
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoNetworkNodes)
-		return
+		return nil
 	}
 
 	// with more than one node MRU gives simplistic spread
-	for _, node = range sched.nnMap {
+	for _, node := range sched.nnMap {
+		node.mutex.Lock()
 		if (len(sched.nnMap) <= 1 || ((len(sched.nnMap) > 1) && (node.uuid != sched.nnMRU))) &&
 			sched.workloadFits(node, workload) {
 			sched.nnMRU = node.uuid
+			node.mutex.Unlock()
 			return node
 		}
 	}
@@ -563,6 +621,7 @@ func (sched *ssntpSchedulerServer) startWorkload(controllerUUID string, payload 
 		sched.decrementResourceUsage(targetNode, &workload)
 
 		dest.AddRecipient(targetNode.uuid)
+		targetNode.mutex.Unlock()
 	} else {
 		// TODO Queue the frame ?
 		dest.SetDecision(ssntp.Discard)
@@ -677,6 +736,78 @@ func setLimits() {
 	glog.Infof("Updated nofile limits: cur %d max %d", rlim.Cur, rlim.Max)
 }
 
+func heartBeatControllers(sched *ssntpSchedulerServer) (s string) {
+	// show the first two controller's
+	controllerMax := 2
+	i := 0
+
+	sched.controllerMutex.RLock()
+	for _, controller := range sched.controllerMap {
+		controller.mutex.Lock()
+		s += fmt.Sprintf("controller-%s:", controller.uuid[:8])
+		s += controller.status.String()
+		controller.mutex.Unlock()
+
+		i++
+		if i == controllerMax {
+			break
+		}
+		if i <= controllerMax && len(sched.controllerMap) > i {
+			s += ", "
+		} else {
+			s += "\t"
+		}
+	}
+	sched.controllerMutex.RUnlock()
+
+	if i == 0 {
+		s += " -no Controller- \t\t\t\t\t"
+	} else if i < controllerMax {
+		s += "\t\t\t"
+	} else {
+		s += "\t"
+	}
+
+	return s
+}
+
+func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
+	// show the first four compute nodes
+	cnMax := 4
+	i := 0
+
+	sched.cnMutex.RLock()
+	for _, node := range sched.cnMap {
+
+		node.mutex.Lock()
+		s += fmt.Sprintf("node-%s:", node.uuid[:8])
+		s += node.status.String()
+		if node == sched.cnMRU {
+			s += "*"
+		}
+		s += ":" + fmt.Sprintf("%d/%d,%d",
+			node.memAvailMB,
+			node.memTotalMB,
+			node.load)
+		node.mutex.Unlock()
+
+		i++
+		if i == cnMax {
+			break
+		}
+		if i <= cnMax && len(sched.cnMap) > i {
+			s += ", "
+		}
+	}
+	sched.cnMutex.RUnlock()
+
+	if i == 0 {
+		s += " -no Compute Nodes-"
+	}
+
+	return s
+}
+
 func heartBeat(sched *ssntpSchedulerServer) {
 	iter := 0
 	for {
@@ -686,79 +817,21 @@ func heartBeat(sched *ssntpSchedulerServer) {
 
 		sched.controllerMutex.RLock()
 		sched.cnMutex.RLock()
-
 		if len(sched.controllerMap) == 0 && len(sched.cnMap) == 0 {
-			beatTxt += "** idle / disconnected **"
-		} else {
-			//output a column indication occasionally
-			iter++
-			if iter%22 == 0 {
-				log.Printf("Controllers\t\t\t\t\tCompute Nodes\n")
-			}
-
-			i := 0
-			// show the first two controller's
-			controllerMax := 2
-			for _, controller := range sched.controllerMap {
-				controller.mutex.Lock()
-				beatTxt += fmt.Sprintf("controller-%s:", controller.uuid[:8])
-				if controller.status == controllerMaster {
-					beatTxt += "master"
-				} else {
-					beatTxt += "backup"
-				}
-				controller.mutex.Unlock()
-				i++
-				if i == controllerMax {
-					break
-				}
-				if i <= controllerMax && len(sched.controllerMap) > i {
-					beatTxt += ", "
-				} else {
-					beatTxt += "\t"
-				}
-			}
-			if i == 0 {
-				beatTxt += " -no Controller- \t\t\t\t\t"
-			} else if i < controllerMax {
-				beatTxt += "\t\t\t"
-			} else {
-				beatTxt += "\t"
-			}
-			i = 0
-			// show the first four compute nodes
-			cnMax := 4
-			for _, node := range sched.cnMap {
-				node.mutex.Lock()
-				if node.uuid == "" {
-					beatTxt += fmt.Sprintf("node-UNKNOWN:")
-				} else {
-					beatTxt += fmt.Sprintf("node-%s:", node.uuid[:8])
-				}
-				beatTxt += node.status.String()
-				if node == sched.cnMRU {
-					beatTxt += "*"
-				}
-				beatTxt += ":" +
-					fmt.Sprintf("%d/%d,%d",
-						node.memAvailMB,
-						node.memTotalMB,
-						node.load)
-				i++
-				node.mutex.Unlock()
-				if i == cnMax {
-					break
-				}
-				if i <= cnMax && len(sched.cnMap) > i {
-					beatTxt += ", "
-				}
-			}
-			if i == 0 {
-				beatTxt += " -no Compute Nodes-"
-			}
+			beatTxt = "** idle / disconnected **"
 		}
 		sched.controllerMutex.RUnlock()
 		sched.cnMutex.RUnlock()
+
+		iter++
+		if iter%22 == 0 {
+			//output a column indication occasionally
+			log.Printf("Controllers\t\t\t\t\tCompute Nodes\n")
+		}
+
+		beatTxt = heartBeatControllers(sched)
+		beatTxt += heartBeatComputeNodes(sched)
+
 		log.Printf("%s\n", beatTxt)
 	}
 }
