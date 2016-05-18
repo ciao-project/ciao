@@ -57,7 +57,7 @@ be successfully launched within this VM
 ```
  sudo ./run_cnci_vm.sh
 ```
-2. Log into the VM using the cloud-init provisioned user/password (default ciao/ciao)
+2. Log into the VM using the cloud-init provisioned user/password (default demouser/ciao)
 3. Verify the successful launch of the CNCI using
    systemctl status cnci-agent
 
@@ -65,7 +65,7 @@ An output of the form shown below indicates a successful provisioning of
 the agent.
 
 ```
-ciao@cncihostname ~ $ systemctl status cnci-agent -l
+demouser@cncihostname ~ $ systemctl status cnci-agent -l
 ● cnci-agent.service - Ciao CNCI Agent
    Loaded: loaded (/usr/lib/systemd/system/cnci-agent.service; enabled; vendor preset: disabled)
    Active: active (running) since Thu 2016-04-07 20:34:40 UTC; 27s ago
