@@ -50,7 +50,8 @@ type ssntpSchedulerServer struct {
 
 	// Command & Status Reporting node(s)
 	controllerMap   map[string]*controllerStat
-	controllerMutex sync.RWMutex // Rlock traversing map, Lock modifying map
+	controllerList  []*controllerStat // 1 controllerMaster at front of list
+	controllerMutex sync.RWMutex      // Rlock traversing map, Lock modifying map
 
 	// Compute Nodes
 	cnMap      map[string]*nodeStat
@@ -173,21 +174,20 @@ func (sched *ssntpSchedulerServer) connectController(uuid string) {
 	}
 
 	var controller controllerStat
+	controller.uuid = uuid
 
 	// TODO: smarter clustering than "assume master, unless another is master"
-	controller.status = controllerMaster
-	for _, c := range sched.controllerMap {
-		c.mutex.Lock()
-		if c.status == controllerMaster {
-			controller.status = controllerBackup
-			c.mutex.Unlock()
-			break
-		}
-		c.mutex.Unlock()
+	if len(sched.controllerList) == 0 || sched.controllerList[0].status == controllerBackup {
+		// master at front of the list
+		controller.status = controllerMaster
+		sched.controllerList = append([]*controllerStat{&controller}, sched.controllerList...)
+	} else { // already have a master
+		// backup controllers at the end of the list
+		controller.status = controllerBackup
+		sched.controllerList = append(sched.controllerList, &controller)
 	}
 
-	controller.uuid = uuid
-	sched.controllerMap[uuid] = &controller
+	sched.controllerMap[controller.uuid] = &controller
 }
 
 // Undo previous state additions for departed Controller
@@ -201,17 +201,33 @@ func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
 		glog.Warningf("Unexpected disconnect from controller %s\n", uuid)
 		return
 	}
+
+	// delete from map, remove from list
 	delete(sched.controllerMap, uuid)
+	for i, c := range sched.controllerList {
+		if c != controller {
+			continue
+		}
+
+		sched.controllerList = append(sched.controllerList[:i], sched.controllerList[i+1:]...)
+	}
 
 	if controller.status == controllerBackup {
 		return
 	} // else promote a new master
-	for _, c := range sched.controllerMap {
+
+	for i, c := range sched.controllerList {
 		c.mutex.Lock()
 		if c.status == controllerBackup {
 			c.status = controllerMaster
 			//TODO: inform the Controller it is master
 			c.mutex.Unlock()
+
+			// move to front of list
+			front := sched.controllerList[:i]
+			back := sched.controllerList[i+1:]
+			sched.controllerList = append([]*controllerStat{c}, front...)
+			sched.controllerList = append(sched.controllerList, back...)
 			break
 		}
 		c.mutex.Unlock()
@@ -757,27 +773,55 @@ func heartBeatControllers(sched *ssntpSchedulerServer) (s string) {
 	i := 0
 
 	sched.controllerMutex.RLock()
-	for _, controller := range sched.controllerMap {
-		controller.mutex.Lock()
+	defer sched.controllerMutex.RUnlock()
+
+	if len(sched.controllerList) == 0 {
+		return " -no Controller- \t\t\t\t\t"
+	}
+
+	// first show any master, which is at front of list
+	controller := sched.controllerList[0]
+	controller.mutex.Lock()
+	if controller.status == controllerMaster {
 		s += fmt.Sprintf("controller-%s:", controller.uuid[:8])
 		s += controller.status.String()
 		controller.mutex.Unlock()
 
 		i++
-		if i == controllerMax {
-			break
-		}
-		if i <= controllerMax && len(sched.controllerMap) > i {
+		if i <= controllerMax && len(sched.controllerList) > i {
 			s += ", "
 		} else {
 			s += "\t"
 		}
 	}
-	sched.controllerMutex.RUnlock()
 
-	if i == 0 {
-		s += " -no Controller- \t\t\t\t\t"
-	} else if i < controllerMax {
+	// second show any backup(s)
+	for _, controller := range sched.controllerList[i:] {
+		if i == controllerMax {
+			break
+		}
+
+		controller.mutex.Lock()
+		if controller.status == controllerMaster {
+			controller.mutex.Unlock()
+			glog.Errorf("multiple controller masters")
+			return "ERROR multiple controller masters"
+		}
+
+		s += fmt.Sprintf("controller-%s:", controller.uuid[:8])
+		s += controller.status.String()
+		controller.mutex.Unlock()
+
+		i++
+		if i < controllerMax && len(sched.controllerList) > i {
+			s += ", "
+		} else {
+			s += "\t"
+		}
+	}
+
+	// finish with some whitespace ahead of compute nodes
+	if i < controllerMax {
 		s += "\t\t\t"
 	} else {
 		s += "\t"
@@ -792,6 +836,8 @@ func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
 	i := 0
 
 	sched.cnMutex.RLock()
+	defer sched.cnMutex.RUnlock()
+
 	for _, node := range sched.cnList {
 
 		node.mutex.Lock()
@@ -814,7 +860,6 @@ func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
 			s += ", "
 		}
 	}
-	sched.cnMutex.RUnlock()
 
 	if i == 0 {
 		s += " -no Compute Nodes-"
@@ -823,31 +868,38 @@ func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
 	return s
 }
 
-func heartBeat(sched *ssntpSchedulerServer) {
-	iter := 0
-	for {
-		var beatTxt string
+const heartBeatHeaderFreq = 22
 
-		time.Sleep(time.Duration(1) * time.Second)
+func heartBeat(sched *ssntpSchedulerServer, iter int) string {
+	var beatTxt string
 
-		sched.controllerMutex.RLock()
-		sched.cnMutex.RLock()
-		if len(sched.controllerMap) == 0 && len(sched.cnList) == 0 {
-			beatTxt = "** idle / disconnected **"
-		}
+	time.Sleep(time.Duration(1) * time.Second)
+
+	sched.controllerMutex.RLock()
+	sched.cnMutex.RLock()
+	if len(sched.controllerList) == 0 && len(sched.cnList) == 0 {
 		sched.controllerMutex.RUnlock()
 		sched.cnMutex.RUnlock()
+		return "** idle / disconnected **\n"
+	}
+	sched.controllerMutex.RUnlock()
+	sched.cnMutex.RUnlock()
 
-		iter++
-		if iter%22 == 0 {
-			//output a column indication occasionally
-			log.Printf("Controllers\t\t\t\t\tCompute Nodes\n")
-		}
+	iter++
+	if iter%heartBeatHeaderFreq == 0 {
+		//output a column indication occasionally
+		beatTxt = "Controllers\t\t\t\t\tCompute Nodes\n"
+	}
 
-		beatTxt = heartBeatControllers(sched)
-		beatTxt += heartBeatComputeNodes(sched)
+	beatTxt += heartBeatControllers(sched) + heartBeatComputeNodes(sched)
 
-		log.Printf("%s\n", beatTxt)
+	return beatTxt
+}
+
+func heartBeatLoop(sched *ssntpSchedulerServer) {
+	iter := 0
+	for {
+		log.Printf("%s\n", heartBeat(sched, iter))
 	}
 }
 
@@ -868,7 +920,7 @@ func toggleDebug(sched *ssntpSchedulerServer) {
 	*/
 
 	if sched.heartbeat {
-		go heartBeat(sched)
+		go heartBeatLoop(sched)
 	}
 }
 
