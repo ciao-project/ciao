@@ -182,6 +182,41 @@ type ComputeNode struct {
 	apiThrottleSem chan int
 }
 
+//Adds a physical link to the management or compute network
+//if the link has an IP address the falls within one of the configured subnets
+//However if the subnets are not specified just add the links
+//It is the callers responsibility to pick the correct links
+//TODO: Add interfaces here so CN and CNCI can share most of the init code
+func (cn *ComputeNode) addPhyLinkToConfig(link netlink.Link, ipv4Addrs []netlink.Addr) {
+
+	for _, addr := range ipv4Addrs {
+
+		if cn.ManagementNet == nil {
+			cn.MgtAddr = append(cn.MgtAddr, addr)
+			cn.MgtLink = append(cn.MgtLink, link)
+		} else {
+			for _, mgt := range cn.ManagementNet {
+				if mgt.Contains(addr.IPNet.IP) {
+					cn.MgtAddr = append(cn.MgtAddr, addr)
+					cn.MgtLink = append(cn.MgtLink, link)
+				}
+			}
+		}
+
+		if cn.ComputeNet == nil {
+			cn.ComputeAddr = append(cn.ComputeAddr, addr)
+			cn.ComputeLink = append(cn.ComputeLink, link)
+		} else {
+			for _, comp := range cn.ComputeNet {
+				if comp.Contains(addr.IPNet.IP) {
+					cn.ComputeAddr = append(cn.ComputeAddr, addr)
+					cn.ComputeLink = append(cn.ComputeLink, link)
+				}
+			}
+		}
+	}
+}
+
 //This will return error if it cannot find valid physical
 //interfaces with IP addresses assigned
 //This may be just a delay in acquiring IP addresses
@@ -214,33 +249,8 @@ func (cn *ComputeNode) findPhyNwInterface() error {
 		}
 
 		phyInterfaces++
+		cn.addPhyLinkToConfig(link, addrs)
 
-		for _, addr := range addrs {
-
-			if cn.ManagementNet == nil {
-				cn.MgtAddr = append(cn.MgtAddr, addr)
-				cn.MgtLink = append(cn.MgtLink, link)
-			} else {
-				for _, mgt := range cn.ManagementNet {
-					if mgt.Contains(addr.IPNet.IP) {
-						cn.MgtAddr = append(cn.MgtAddr, addr)
-						cn.MgtLink = append(cn.MgtLink, link)
-					}
-				}
-			}
-
-			if cn.ComputeNet == nil {
-				cn.ComputeAddr = append(cn.ComputeAddr, addr)
-				cn.ComputeLink = append(cn.ComputeLink, link)
-			} else {
-				for _, comp := range cn.ComputeNet {
-					if comp.Contains(addr.IPNet.IP) {
-						cn.ComputeAddr = append(cn.ComputeAddr, addr)
-						cn.ComputeLink = append(cn.ComputeLink, link)
-					}
-				}
-			}
-		}
 	}
 
 	if len(cn.MgtAddr) < 1 {
@@ -250,6 +260,8 @@ func (cn *ComputeNode) findPhyNwInterface() error {
 		return NewAPIError(fmt.Sprintf("unable to associate with compute network %v", cn.ComputeNet))
 	}
 
+	//Allow auto configuration only in the case where there is a single physical
+	//interface with an IP address
 	if (cn.ManagementNet == nil || cn.ComputeNet == nil) && phyInterfaces > 1 {
 		return fmt.Errorf("unable to autoconfigure network")
 	}

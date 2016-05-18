@@ -89,6 +89,40 @@ func enableForwarding() error {
 	return nil
 }
 
+//Adds a physical link to the management or compute network
+//if the link has an IP address the falls within one of the configured subnets
+//However if the subnets are not specified just add the links
+//It is the callers responsibility to pick the correct link
+func (cnci *Cnci) addPhyLinkToConfig(link netlink.Link, ipv4Addrs []netlink.Addr) {
+
+	for _, addr := range ipv4Addrs {
+
+		if cnci.ManagementNet == nil {
+			cnci.MgtAddr = append(cnci.MgtAddr, addr)
+			cnci.MgtLink = append(cnci.MgtLink, link)
+		} else {
+			for _, mgt := range cnci.ManagementNet {
+				if mgt.Contains(addr.IPNet.IP) {
+					cnci.MgtAddr = append(cnci.MgtAddr, addr)
+					cnci.MgtLink = append(cnci.MgtLink, link)
+				}
+			}
+		}
+
+		if cnci.ComputeNet == nil {
+			cnci.ComputeAddr = append(cnci.ComputeAddr, addr)
+			cnci.ComputeLink = append(cnci.ComputeLink, link)
+		} else {
+			for _, comp := range cnci.ComputeNet {
+				if comp.Contains(addr.IPNet.IP) {
+					cnci.ComputeAddr = append(cnci.ComputeAddr, addr)
+					cnci.ComputeLink = append(cnci.ComputeLink, link)
+				}
+			}
+		}
+	}
+}
+
 //This will return error if it cannot find valid physical
 //interfaces with IP addresses assigned
 //This may be just a delay in acquiring IP addresses
@@ -114,37 +148,12 @@ func (cnci *Cnci) findPhyNwInterface() error {
 
 		addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
 		if err != nil || len(addrs) == 0 {
-			continue //Should be safe to ignore this
+			continue //Ignore links with no IP addresses
 		}
 
 		phyInterfaces++
+		cnci.addPhyLinkToConfig(link, addrs)
 
-		for _, addr := range addrs {
-
-			if cnci.ManagementNet == nil {
-				cnci.MgtAddr = append(cnci.MgtAddr, addr)
-				cnci.MgtLink = append(cnci.MgtLink, link)
-			} else {
-				for _, mgt := range cnci.ManagementNet {
-					if mgt.Contains(addr.IPNet.IP) {
-						cnci.MgtAddr = append(cnci.MgtAddr, addr)
-						cnci.MgtLink = append(cnci.MgtLink, link)
-					}
-				}
-			}
-
-			if cnci.ComputeNet == nil {
-				cnci.ComputeAddr = append(cnci.ComputeAddr, addr)
-				cnci.ComputeLink = append(cnci.ComputeLink, link)
-			} else {
-				for _, comp := range cnci.ComputeNet {
-					if comp.Contains(addr.IPNet.IP) {
-						cnci.ComputeAddr = append(cnci.ComputeAddr, addr)
-						cnci.ComputeLink = append(cnci.ComputeLink, link)
-					}
-				}
-			}
-		}
 	}
 
 	if len(cnci.MgtAddr) == 0 {
@@ -154,7 +163,8 @@ func (cnci *Cnci) findPhyNwInterface() error {
 		return fmt.Errorf("unable to associate with compute network %v", cnci.ComputeNet)
 	}
 
-	//Give a different error here so we do not retry
+	//Allow auto configuration only in the case where there is a single physical
+	//interface with an IP address
 	if (cnci.ManagementNet == nil || cnci.ComputeNet == nil) && phyInterfaces > 1 {
 		return fmt.Errorf("unable to autoconfigure network")
 	}
