@@ -10,6 +10,8 @@ go:
 
 env:
     - COVERALLS_TOKEN=mwTn1pOFqEOUT13vylZNHq53NanoMznO7
+    - SNNET_ENV=198.51.100.0/24
+    - GOROOT=`go env GOROOT`
 
 go_import_path: github.com/01org/ciao
 
