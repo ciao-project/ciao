@@ -23,6 +23,7 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 	"github.com/docker/distribution/uuid"
 	"gopkg.in/yaml.v2"
 	"math/rand"
@@ -1450,7 +1451,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	id := startIdentityTestServer()
+	testIdentityConfig := testutil.TestIdentityConfig{
+		ComputeURL: computeURL,
+		ProjectID:  computeTestUser,
+	}
+
+	id := testutil.StartIdentityTestServer(testIdentityConfig)
 	defer id.Close()
 
 	idConfig := identityConfig{
