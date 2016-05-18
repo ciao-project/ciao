@@ -22,6 +22,7 @@ import (
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"os"
+	"sync"
 	"testing"
 )
 
@@ -337,4 +338,156 @@ func TestHeartBeat(t *testing.T) {
 	if beatTxt != expectedWithHeader {
 		t.Errorf("expected:\n\"%s\"\ngot:\n\"%s\"", expectedWithHeader, beatTxt)
 	}
+}
+
+func controllerMods() {
+	// controller in and out
+	ConnectController(sched, "1")
+	DisconnectController(sched, "1")
+
+	// controller master and two backups
+	ConnectController(sched, "1")
+	ConnectController(sched, "2")
+	ConnectController(sched, "3")
+
+	// remove a backup
+	DisconnectController(sched, "3")
+
+	// remove master
+	DisconnectController(sched, "1")
+
+	// remove last
+	DisconnectController(sched, "2")
+}
+func computeNodeMods() {
+	// compute node in and out
+	ConnectComputeNode(sched, "1")
+	DisconnectComputeNode(sched, "1")
+
+	// multiple compute nodes in various orders
+	ConnectComputeNode(sched, "1")
+	ConnectComputeNode(sched, "2")
+	ConnectComputeNode(sched, "3")
+	ConnectComputeNode(sched, "4")
+	DisconnectComputeNode(sched, "1")
+	DisconnectComputeNode(sched, "2")
+	DisconnectComputeNode(sched, "3")
+	DisconnectComputeNode(sched, "4")
+	ConnectComputeNode(sched, "1")
+	ConnectComputeNode(sched, "2")
+	ConnectComputeNode(sched, "3")
+	ConnectComputeNode(sched, "4")
+	DisconnectComputeNode(sched, "4")
+	DisconnectComputeNode(sched, "3")
+	DisconnectComputeNode(sched, "2")
+	DisconnectComputeNode(sched, "1")
+	ConnectComputeNode(sched, "1")
+	ConnectComputeNode(sched, "2")
+	ConnectComputeNode(sched, "3")
+	ConnectComputeNode(sched, "4")
+	DisconnectComputeNode(sched, "3")
+	DisconnectComputeNode(sched, "1")
+	DisconnectComputeNode(sched, "4")
+	DisconnectComputeNode(sched, "2")
+}
+func networkNodeMods() {
+	// network node in and out
+	ConnectNetworkNode(sched, "1")
+	DisconnectNetworkNode(sched, "1")
+
+	// multiple network nodes in various orders
+	ConnectNetworkNode(sched, "1")
+	ConnectNetworkNode(sched, "2")
+	ConnectNetworkNode(sched, "3")
+	ConnectNetworkNode(sched, "4")
+	DisconnectNetworkNode(sched, "1")
+	DisconnectNetworkNode(sched, "2")
+	DisconnectNetworkNode(sched, "3")
+	DisconnectNetworkNode(sched, "4")
+	ConnectNetworkNode(sched, "1")
+	ConnectNetworkNode(sched, "2")
+	ConnectNetworkNode(sched, "3")
+	ConnectNetworkNode(sched, "4")
+	DisconnectNetworkNode(sched, "4")
+	DisconnectNetworkNode(sched, "3")
+	DisconnectNetworkNode(sched, "2")
+	DisconnectNetworkNode(sched, "1")
+	ConnectNetworkNode(sched, "1")
+	ConnectNetworkNode(sched, "2")
+	ConnectNetworkNode(sched, "3")
+	ConnectNetworkNode(sched, "4")
+	DisconnectNetworkNode(sched, "3")
+	DisconnectNetworkNode(sched, "1")
+	DisconnectNetworkNode(sched, "4")
+	DisconnectNetworkNode(sched, "2")
+}
+
+func clientMiscMods() {
+	/* various interleaved ******************************/
+	ConnectNetworkNode(sched, "a")
+	ConnectComputeNode(sched, "1")
+	ConnectController(sched, "1")
+	DisconnectController(sched, "1")
+	DisconnectComputeNode(sched, "1")
+	DisconnectNetworkNode(sched, "a")
+	ConnectNetworkNode(sched, "a")
+	ConnectComputeNode(sched, "1")
+	ConnectNetworkNode(sched, "b")
+	ConnectController(sched, "c1")
+	DisconnectController(sched, "c1")
+	ConnectComputeNode(sched, "2")
+	DisconnectComputeNode(sched, "1")
+	DisconnectNetworkNode(sched, "a")
+	ConnectController(sched, "c1")
+	ConnectController(sched, "c2")
+	ConnectComputeNode(sched, "3")
+	ConnectComputeNode(sched, "4")
+	ConnectComputeNode(sched, "5")
+	DisconnectComputeNode(sched, "2")
+	DisconnectNetworkNode(sched, "b")
+	DisconnectController(sched, "c2")
+	DisconnectController(sched, "c1")
+	DisconnectComputeNode(sched, "3")
+	DisconnectComputeNode(sched, "4")
+	DisconnectComputeNode(sched, "5")
+}
+
+// TestClientMgmtLocking should run to completion without deadlocking or
+// panic'ing.  If it does not, "go test -race" should highlight the
+// problem.
+func TestClientMgmtLocking(t *testing.T) {
+	var wg sync.WaitGroup
+
+	sched = configSchedulerServer()
+	if sched == nil {
+		t.Fatal("unable to configure test scheduler")
+	}
+
+	// simple first serial sanity check
+	controllerMods()
+	computeNodeMods()
+	networkNodeMods()
+	clientMiscMods()
+
+	// now in parallel
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100000; i++ {
+			controllerMods()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100000; i++ {
+			computeNodeMods()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100000; i++ {
+			networkNodeMods()
+		}
+	}()
+	wg.Wait()
 }

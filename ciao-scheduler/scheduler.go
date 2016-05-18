@@ -164,7 +164,7 @@ func (sched *ssntpSchedulerServer) sendNodeDisconnectedEvents(nodeUUID string, n
 
 // Add state for newly connected Controller
 // This function is symmetric with disconnectController().
-func (sched *ssntpSchedulerServer) connectController(uuid string) {
+func connectController(sched *ssntpSchedulerServer, uuid string) {
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
 
@@ -192,7 +192,7 @@ func (sched *ssntpSchedulerServer) connectController(uuid string) {
 
 // Undo previous state additions for departed Controller
 // This function is symmetric with connectController().
-func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
+func disconnectController(sched *ssntpSchedulerServer, uuid string) {
 	sched.controllerMutex.Lock()
 	defer sched.controllerMutex.Unlock()
 
@@ -236,7 +236,7 @@ func (sched *ssntpSchedulerServer) disconnectController(uuid string) {
 
 // Add state for newly connected Compute Node
 // This function is symmetric with disconnectComputeNode().
-func (sched *ssntpSchedulerServer) connectComputeNode(uuid string) {
+func connectComputeNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.cnMutex.Lock()
 	defer sched.cnMutex.Unlock()
 
@@ -256,7 +256,7 @@ func (sched *ssntpSchedulerServer) connectComputeNode(uuid string) {
 
 // Undo previous state additions for departed Compute Node
 // This function is symmetric with connectComputeNode().
-func (sched *ssntpSchedulerServer) disconnectComputeNode(uuid string) {
+func disconnectComputeNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.cnMutex.Lock()
 	defer sched.cnMutex.Unlock()
 
@@ -287,7 +287,7 @@ func (sched *ssntpSchedulerServer) disconnectComputeNode(uuid string) {
 
 // Add state for newly connected Network Node
 // This function is symmetric with disconnectNetworkNode().
-func (sched *ssntpSchedulerServer) connectNetworkNode(uuid string) {
+func connectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.nnMutex.Lock()
 	defer sched.nnMutex.Unlock()
 
@@ -306,7 +306,7 @@ func (sched *ssntpSchedulerServer) connectNetworkNode(uuid string) {
 
 // Undo previous state additions for departed Network Node
 // This function is symmetric with connectNetworkNode().
-func (sched *ssntpSchedulerServer) disconnectNetworkNode(uuid string) {
+func disconnectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.nnMutex.Lock()
 	defer sched.nnMutex.Unlock()
 
@@ -323,11 +323,11 @@ func (sched *ssntpSchedulerServer) disconnectNetworkNode(uuid string) {
 func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 	switch role {
 	case ssntp.Controller:
-		sched.connectController(uuid)
+		connectController(sched, uuid)
 	case ssntp.AGENT:
-		sched.connectComputeNode(uuid)
+		connectComputeNode(sched, uuid)
 	case ssntp.NETAGENT:
-		sched.connectNetworkNode(uuid)
+		connectNetworkNode(sched, uuid)
 	}
 
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
@@ -336,11 +336,11 @@ func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
 func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
 	switch role {
 	case ssntp.Controller:
-		sched.disconnectController(uuid)
+		disconnectController(sched, uuid)
 	case ssntp.AGENT:
-		sched.disconnectComputeNode(uuid)
+		disconnectComputeNode(sched, uuid)
 	case ssntp.NETAGENT:
-		sched.disconnectNetworkNode(uuid)
+		disconnectNetworkNode(sched, uuid)
 	}
 
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)

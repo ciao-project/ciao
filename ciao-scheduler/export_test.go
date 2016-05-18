@@ -21,3 +21,10 @@ type NodeStat nodeStat
 type WorkResources workResources
 
 var PickComputeNode = pickComputeNode
+
+var ConnectController = connectController
+var DisconnectController = disconnectController
+var ConnectComputeNode = connectComputeNode
+var DisconnectComputeNode = disconnectComputeNode
+var ConnectNetworkNode = connectNetworkNode
+var DisconnectNetworkNode = disconnectNetworkNode
