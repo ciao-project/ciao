@@ -842,24 +842,54 @@ func prepareTLS(caPEM, certPEM []byte, server bool) *tls.Config {
 	}
 }
 
-func getRoleOID(role uint32) (*asn1.ObjectIdentifier, error) {
-	switch role {
-	case AGENT:
-		return &RoleAgentOID, nil
-	case SCHEDULER:
-		return &RoleSchedulerOID, nil
-	case Controller:
-		return &RoleControllerOID, nil
-	case NETAGENT:
-		return &RoleNetAgentOID, nil
-	case SERVER:
-		return &RoleServerOID, nil
-	case CNCIAGENT:
-		return &RoleCNCIAgentOID, nil
-	default:
-		return nil, fmt.Errorf("Unknown role 0x%x", role)
+var roleOID = []struct {
+	role uint32
+	oid  asn1.ObjectIdentifier
+}{
+	{
+		role: AGENT,
+		oid:  RoleAgentOID,
+	},
+	{
+		role: SCHEDULER,
+		oid:  RoleSchedulerOID,
+	},
+	{
+		role: Controller,
+		oid:  RoleControllerOID,
+	},
+	{
+		role: NETAGENT,
+		oid:  RoleNetAgentOID,
+	},
+	{
+		role: SERVER,
+		oid:  RoleServerOID,
+	},
+	{
+		role: CNCIAGENT,
+		oid:  RoleCNCIAgentOID,
+	},
+}
+
+func getRoleFromOID(oid asn1.ObjectIdentifier) (uint32, error) {
+	for _, r := range roleOID {
+		if r.oid.Equal(oid) {
+			return r.role, nil
+		}
 	}
 
+	return (uint32)(UNKNOWN), nil
+}
+
+func getOIDFromRole(role uint32) (asn1.ObjectIdentifier, error) {
+	for _, r := range roleOID {
+		if role == r.role {
+			return r.oid, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Unknown role 0x%x", role)
 }
 
 func verifyRole(conn interface{}, role uint32) (bool, error) {
@@ -867,14 +897,14 @@ func verifyRole(conn interface{}, role uint32) (bool, error) {
 	switch tlsConn := conn.(type) {
 	case *tls.Conn:
 		state := tlsConn.ConnectionState()
-		roleOID, err := getRoleOID(role)
+		roleOID, err := getOIDFromRole(role)
 		if err != nil {
 			return false, oidError
 		}
 
 		var oidFound = false
 		for _, oid := range state.PeerCertificates[0].UnknownExtKeyUsage {
-			if oid.Equal(*roleOID) {
+			if oid.Equal(roleOID) {
 				oidFound = true
 				break
 			}

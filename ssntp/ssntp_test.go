@@ -307,57 +307,155 @@ func TestUUID(t *testing.T) {
 	server.ssntp.Stop()
 }
 
-// Test SSNTP OID matches
+func testGetOIDFromRole(t *testing.T, role uint32, expected asn1.ObjectIdentifier) {
+	oid, err := getOIDFromRole(role)
+	if err != nil {
+		t.Fatalf("%s\n", err)
+	}
+
+	if !oid.Equal(expected) {
+		t.Fatalf("OID mismatch for %d: %v vs %v\n", role, oid, expected)
+	}
+}
+
+func testGetRoleFromOID(t *testing.T, oid asn1.ObjectIdentifier, expected uint32) {
+	role, err := getRoleFromOID(oid)
+	if err != nil {
+		t.Fatalf("%s\n", err)
+	}
+
+	if role != expected {
+		t.Fatalf("Role mismatch for %v: %d vs %d\n", oid, role, expected)
+	}
+}
+
+// Test SSNTP Agent OID match
 //
-// Test that each SSNTP defined role matches the righ OID.
+// Test that we get the right OID for the AGENT role.
 //
 // Test is expected to pass.
-func TestGetRoleOID(t *testing.T) {
-	roleOID := []struct {
-		role uint32
-		oid  asn1.ObjectIdentifier
-	}{
-		{
-			role: AGENT,
-			oid:  RoleAgentOID,
-		},
-		{
-			role: SCHEDULER,
-			oid:  RoleSchedulerOID,
-		},
-		{
-			role: Controller,
-			oid:  RoleControllerOID,
-		},
-		{
-			role: NETAGENT,
-			oid:  RoleNetAgentOID,
-		},
-		{
-			role: SERVER,
-			oid:  RoleServerOID,
-		},
-		{
-			role: CNCIAGENT,
-			oid:  RoleCNCIAgentOID,
-		},
-	}
+func TestGetOIDFromAgent(t *testing.T) {
+	testGetOIDFromRole(t, AGENT, RoleAgentOID)
+}
 
-	for _, r := range roleOID {
-		oid, err := getRoleOID(r.role)
-		if err != nil {
-			t.Fatalf("Error getting OID for %d\n", r.role)
-		}
+// Test SSNTP Scheduler OID match
+//
+// Test that we get the right OID for the SCHEDULER role.
+//
+// Test is expected to pass.
+func TestGetOIDFromSchedulerRole(t *testing.T) {
+	testGetOIDFromRole(t, SCHEDULER, RoleSchedulerOID)
+}
 
-		if !r.oid.Equal(*oid) {
-			t.Fatalf("OID mismatch %v vs %v\n", r.role, *oid)
-		}
-	}
+// Test SSNTP Controller OID match
+//
+// Test that we get the right OID for the Controller role.
+//
+// Test is expected to pass.
+func TestGetOIDFromControllerRole(t *testing.T) {
+	testGetOIDFromRole(t, Controller, RoleControllerOID)
+}
 
-	_, err := getRoleOID(0xffff)
+// Test SSNTP NetAgent OID match
+//
+// Test that we get the right OID for the NETAGENT role.
+//
+// Test is expected to pass.
+func TestGetOIDFromNetAgentRole(t *testing.T) {
+	testGetOIDFromRole(t, NETAGENT, RoleNetAgentOID)
+}
+
+// Test SSNTP Server OID match
+//
+// Test that we get the right OID for the SERVER role.
+//
+// Test is expected to pass.
+func TestGetOIDFromServerRole(t *testing.T) {
+	testGetOIDFromRole(t, SERVER, RoleServerOID)
+}
+
+// Test SSNTP CNCI Agent OID match
+//
+// Test that we get the right OID for the CNCIAGENT role.
+//
+// Test is expected to pass.
+func TestGetOIDFromCNCIAgentRole(t *testing.T) {
+	testGetOIDFromRole(t, CNCIAGENT, RoleCNCIAgentOID)
+}
+
+// Test SSNTP OID match for an invalid role
+//
+// Test that we do not get a valid OID for an invalid role.
+//
+// Test is expected to pass.
+func TestGetOIDFromInvalidRole(t *testing.T) {
+	_, err := getOIDFromRole(0xffff)
 	if err == nil {
 		t.Fatalf("Got OID for an invalid role\n")
 	}
+}
+
+// Test SSNTP CNCI Agent role match
+//
+// Test that we get the right role for the Agent OID.
+//
+// Test is expected to pass.
+func TestGetRoleFromAgentOID(t *testing.T) {
+	testGetRoleFromOID(t, RoleAgentOID, AGENT)
+}
+
+// Test SSNTP CNCI Scheduler role match
+//
+// Test that we get the right role for the Scheduler OID.
+//
+// Test is expected to pass.
+func TestGetRoleFromSchedulerOID(t *testing.T) {
+	testGetRoleFromOID(t, RoleSchedulerOID, SCHEDULER)
+}
+
+// Test SSNTP CNCI Controller role match
+//
+// Test that we get the right role for the Controller OID.
+//
+// Test is expected to pass.
+func TestGetRoleFromControllerOID(t *testing.T) {
+	testGetRoleFromOID(t, RoleControllerOID, Controller)
+}
+
+// Test SSNTP CNCI Server role match
+//
+// Test that we get the right role for the Server OID.
+//
+// Test is expected to pass.
+func TestGetRoleFromServerOID(t *testing.T) {
+	testGetRoleFromOID(t, RoleServerOID, SERVER)
+}
+
+// Test SSNTP CNCI Net Agent role match
+//
+// Test that we get the right role for the Net Agent OID.
+//
+// Test is expected to pass.
+func TestGetRoleFromNetAgentOID(t *testing.T) {
+	testGetRoleFromOID(t, RoleNetAgentOID, NETAGENT)
+}
+
+// Test SSNTP CNCI Agent role match
+//
+// Test that we get the right role for the CNCI Agent OID.
+//
+// Test is expected to pass.
+func TestGetRoleFromCNCIAgentOID(t *testing.T) {
+	testGetRoleFromOID(t, RoleCNCIAgentOID, CNCIAGENT)
+}
+
+// Test SSNTP CNCI Agent role match for an invalid OID
+//
+// Test that we get the UNKNOWN role for an invalid OID.
+//
+// Test is expected to pass.
+func TestGetRoleFromInvalidOID(t *testing.T) {
+	testGetRoleFromOID(t, asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 0, 0, 0}, (uint32)(UNKNOWN))
 }
 
 // Test SSNTP client connection
