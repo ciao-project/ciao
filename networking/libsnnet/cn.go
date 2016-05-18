@@ -182,10 +182,10 @@ type ComputeNode struct {
 	apiThrottleSem chan int
 }
 
-// Init sets the CN node configuration
-// Discovers the physical interfaces and classifies them as management or compute
-// Performs any node specific networking setup.
-func (cn *ComputeNode) Init() error {
+//This will return error if it cannot find valid physical
+//interfaces with IP addresses assigned
+//This may be just a delay in acquiring IP addresses
+func (cn *ComputeNode) findPhyNwInterface() error {
 
 	links, err := netlink.LinkList()
 
@@ -198,23 +198,14 @@ func (cn *ComputeNode) Init() error {
 	cn.MgtLink = nil
 	cn.ComputeAddr = nil
 	cn.ComputeLink = nil
-	cn.APITimeout = time.Second * CnAPITimeout
-	cn.apiThrottleSem = make(chan int, CnMaxAPIConcurrency)
 
 	for _, link := range links {
 
-		if !(link.Type() == "device" ||
-			link.Type() == "bond" ||
-			link.Type() == "vlan") {
-
+		if !validPhysicalLink(link) {
 			//Allow all types of links under travisCI
 			if !travisCI {
 				continue
 			}
-		}
-
-		if link.Attrs().Name == "lo" {
-			continue
 		}
 
 		addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
@@ -249,7 +240,6 @@ func (cn *ComputeNode) Init() error {
 					}
 				}
 			}
-
 		}
 	}
 
@@ -262,6 +252,26 @@ func (cn *ComputeNode) Init() error {
 
 	if (cn.ManagementNet == nil || cn.ComputeNet == nil) && phyInterfaces > 1 {
 		return fmt.Errorf("unable to autoconfigure network")
+	}
+
+	return nil
+
+}
+
+// Init sets the CN node configuration
+// Discovers the physical interfaces and classifies them as management or compute
+// Performs any node specific networking setup.
+func (cn *ComputeNode) Init() error {
+
+	cn.APITimeout = time.Second * CnAPITimeout
+	cn.apiThrottleSem = make(chan int, CnMaxAPIConcurrency)
+
+	if cn.NetworkConfig == nil {
+		return fmt.Errorf("CN uninitalized")
+	}
+
+	if err := cn.findPhyNwInterface(); err != nil {
+		return err
 	}
 
 	//TODO: Support all modes
@@ -1143,6 +1153,7 @@ func (cn *ComputeNode) ResetNetwork() error {
 
 	//Check if we see any remnants
 	//Attempt one last time to delete them
+	//Here we delete links without aliases but may have been created by us
 	links, err = netlink.LinkList()
 	var badLinks []string
 	for _, link := range links {
@@ -1154,10 +1165,7 @@ func (cn *ComputeNode) ResetNetwork() error {
 		}
 
 		// Be paranoid
-		switch link.Type() {
-		case "device":
-			continue
-		case "bond":
+		if validPhysicalLink(link) {
 			continue
 		}
 

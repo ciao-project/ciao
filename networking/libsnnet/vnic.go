@@ -127,13 +127,6 @@ func (v *Vnic) create() error {
 		return netError(v, "create cannot create an unnamed vnic")
 	}
 
-	switch v.Role {
-	case TenantVM:
-	case TenantContainer:
-	default:
-		return netError(v, "invalid vnic role specified")
-	}
-
 	if v.LinkName == "" {
 		if v.LinkName, err = genIface(v, true); err != nil {
 			return netError(v, "create geniface %v %v", v.GlobalID, err)
@@ -190,6 +183,8 @@ func (v *Vnic) create() error {
 		}
 
 		v.Link = vl
+	default:
+		return netError(v, "invalid vnic role specified")
 	}
 
 	if err := v.setAlias(v.GlobalID); err != nil {

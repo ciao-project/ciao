@@ -106,15 +106,10 @@ func (cnci *Cnci) findPhyNwInterface() error {
 	cnci.ComputeLink = nil
 
 	for _, link := range links {
-
-		if link.Type() != "device" {
+		if !validPhysicalLink(link) {
 			if !travisCI {
 				continue
 			}
-		}
-
-		if link.Attrs().Name == "lo" {
-			continue
 		}
 
 		addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)

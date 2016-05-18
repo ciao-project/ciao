@@ -117,3 +117,20 @@ func genIface(device interface{}, unique bool) (string, error) {
 	// The chances of the failure are remote
 	return "", fmt.Errorf("unable to create unique interface name")
 }
+
+func validPhysicalLink(link netlink.Link) bool {
+	switch link.Type() {
+	case "device":
+		return true
+	case "bond":
+		return true
+	case "vlan":
+		return true
+	}
+
+	if link.Attrs().Name == "lo" {
+		return false
+	}
+
+	return false
+}
