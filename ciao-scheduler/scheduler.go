@@ -792,7 +792,7 @@ func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
 	i := 0
 
 	sched.cnMutex.RLock()
-	for _, node := range sched.cnMap {
+	for _, node := range sched.cnList {
 
 		node.mutex.Lock()
 		s += fmt.Sprintf("node-%s:", node.uuid[:8])
@@ -810,7 +810,7 @@ func heartBeatComputeNodes(sched *ssntpSchedulerServer) (s string) {
 		if i == cnMax {
 			break
 		}
-		if i <= cnMax && len(sched.cnMap) > i {
+		if i <= cnMax && len(sched.cnList) > i {
 			s += ", "
 		}
 	}
@@ -832,7 +832,7 @@ func heartBeat(sched *ssntpSchedulerServer) {
 
 		sched.controllerMutex.RLock()
 		sched.cnMutex.RLock()
-		if len(sched.controllerMap) == 0 && len(sched.cnMap) == 0 {
+		if len(sched.controllerMap) == 0 && len(sched.cnList) == 0 {
 			beatTxt = "** idle / disconnected **"
 		}
 		sched.controllerMutex.RUnlock()
