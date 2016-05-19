@@ -117,7 +117,7 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 	}
 }
 
-func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) ([]asn1.ObjectIdentifier) {
+func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) []asn1.ObjectIdentifier {
 	if role&ssntp.AGENT == ssntp.AGENT {
 		oids = append(oids, ssntp.RoleAgentOID)
 	}
