@@ -874,24 +874,33 @@ var roleOID = []struct {
 	},
 }
 
-func getRoleFromOID(oid asn1.ObjectIdentifier) (uint32, error) {
-	for _, r := range roleOID {
-		if r.oid.Equal(oid) {
-			return r.role, nil
+func getRoleFromOIDs(oids []asn1.ObjectIdentifier) uint32 {
+	role := (uint32)(UNKNOWN)
+
+	for _, oid := range oids {
+		for _, r := range roleOID {
+			if r.oid.Equal(oid) {
+				role |= r.role
+			}
 		}
 	}
 
-	return (uint32)(UNKNOWN), nil
+	return role
 }
 
-func getOIDFromRole(role uint32) (asn1.ObjectIdentifier, error) {
+func getOIDsFromRole(role uint32) ([]asn1.ObjectIdentifier, error) {
+	var oids []asn1.ObjectIdentifier
 	for _, r := range roleOID {
-		if role == r.role {
-			return r.oid, nil
+		if role&r.role == r.role {
+			oids = append(oids, r.oid)
 		}
 	}
 
-	return nil, fmt.Errorf("Unknown role 0x%x", role)
+	if len(oids) == 0 {
+		return nil, fmt.Errorf("Unknown role 0x%x", role)
+	}
+
+	return oids, nil
 }
 
 func verifyRole(conn interface{}, role uint32) (bool, error) {
@@ -899,20 +908,8 @@ func verifyRole(conn interface{}, role uint32) (bool, error) {
 	switch tlsConn := conn.(type) {
 	case *tls.Conn:
 		state := tlsConn.ConnectionState()
-		roleOID, err := getOIDFromRole(role)
-		if err != nil {
-			return false, oidError
-		}
-
-		var oidFound = false
-		for _, oid := range state.PeerCertificates[0].UnknownExtKeyUsage {
-			if oid.Equal(roleOID) {
-				oidFound = true
-				break
-			}
-		}
-
-		if oidFound == false {
+		certRole := getRoleFromOIDs(state.PeerCertificates[0].UnknownExtKeyUsage)
+		if certRole&role != role {
 			return false, oidError
 		}
 
