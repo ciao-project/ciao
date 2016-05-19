@@ -385,28 +385,7 @@ const (
 	dbDelBr
 )
 
-//DbRebuild the CN network database using the information contained
-//in the aliases. It can be called if the agent using the library
-//crashes and loses network topology information.
-//It can also be called, to rebuild the network topology on demand.
-func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
-
-	if cn.NetworkConfig == nil || cn.cnTopology == nil {
-		return NewAPIError(fmt.Sprintf("CN has not been initialized %v", cn))
-	}
-
-	links, err := netlink.LinkList()
-	if err != nil {
-		return NewFatalError("Cannot retrieve links" + err.Error())
-	}
-
-	cn.cnTopology.Lock()
-	defer cn.cnTopology.Unlock()
-
-	initCnTopology(cn.cnTopology)
-
-	//Add the bridges first, vnics added later as we
-	//do not control the order of link discovery
+func (cn *ComputeNode) rebuildBridgeMap(links []netlink.Link) error {
 	for _, link := range links {
 		alias := link.Attrs().Alias
 		name := link.Attrs().Name
@@ -429,9 +408,10 @@ func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
 			}
 		}
 	}
+	return nil
+}
 
-	//Now build the vnic maps, inefficient but simple
-	//This allows us to check if the bridges and tunnels are all present
+func (cn *ComputeNode) rebuildVnicMap(links []netlink.Link) error {
 	for _, link := range links {
 		if alias := link.Attrs().Alias; alias != "" {
 			if strings.HasPrefix(alias, vnicPrefix) {
@@ -451,6 +431,42 @@ func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
 				}
 			}
 		}
+	}
+	return nil
+}
+
+//DbRebuild the CN network database using the information contained
+//in the aliases. It can be called if the agent using the library
+//crashes and loses network topology information.
+//It can also be called, to rebuild the network topology on demand.
+func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
+
+	if cn.NetworkConfig == nil || cn.cnTopology == nil {
+		return NewAPIError(fmt.Sprintf("CN has not been initialized %v", cn))
+	}
+
+	links, err := netlink.LinkList()
+	if err != nil {
+		return NewFatalError("Cannot retrieve links" + err.Error())
+	}
+
+	cn.cnTopology.Lock()
+	defer cn.cnTopology.Unlock()
+
+	initCnTopology(cn.cnTopology)
+
+	//Add the bridges first, vnics added later as we
+	//do not control the order of link discovery
+	err = cn.rebuildBridgeMap(links)
+	if err != nil {
+		return err
+	}
+
+	//Now build the vnic maps, inefficient but simple
+	//This allows us to check if the bridges and tunnels are all present
+	err = cn.rebuildVnicMap(links)
+	if err != nil {
+		return err
 	}
 
 	return nil

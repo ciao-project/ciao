@@ -199,30 +199,10 @@ func (cnci *Cnci) Init() error {
 	return nil
 }
 
-//RebuildTopology CNCI network database using the information contained
-//in the aliases. It can be called if the agent using the library
-//crashes and loses network topology information.
-//It can also be called, to rebuild the network topology on demand.
-//TODO: Restarting the DNS Masq here - Define a re-attach method
-//TODO: Log failures when making best effort progress
-func (cnci *Cnci) RebuildTopology() error {
+func (cnci *Cnci) rebuildLinkAndNameMap(links []netlink.Link) {
 
-	if cnci.NetworkConfig == nil || cnci.topology == nil {
-		return fmt.Errorf("cnci not initialized")
-	}
-
-	links, err := netlink.LinkList()
-	if err != nil {
-		return err
-	}
-
-	cnci.topology.Lock()
-	defer cnci.topology.Unlock()
-	reinitTopology(cnci.topology)
-
-	//Update the link and name map
-	//Do this to ensure the link map is updated even on failure
 	for _, link := range links {
+
 		alias := link.Attrs().Alias
 		name := link.Attrs().Name
 
@@ -238,8 +218,9 @@ func (cnci *Cnci) RebuildTopology() error {
 		}
 		close(cnci.topology.linkMap[alias].ready)
 	}
+}
 
-	//Create the bridge map
+func (cnci *Cnci) rebuildBridgeMap(links []netlink.Link) error {
 	for _, link := range links {
 		if link.Type() != "bridge" {
 			continue
@@ -274,8 +255,10 @@ func (cnci *Cnci) RebuildTopology() error {
 			Dnsmasq: dns,
 		}
 	}
+	return nil
+}
 
-	//Ensure that all tunnels have the associated bridges
+func (cnci *Cnci) verifyTopology(links []netlink.Link) error {
 	for _, link := range links {
 		if link.Type() != "gretap" {
 			continue
@@ -298,6 +281,45 @@ func (cnci *Cnci) RebuildTopology() error {
 			return fmt.Errorf("missing bridge map for gre tunnel %s", gre)
 		}
 		brInfo.tunnels++
+	}
+	return nil
+}
+
+//RebuildTopology CNCI network database using the information contained
+//in the aliases. It can be called if the agent using the library
+//crashes and loses network topology information.
+//It can also be called, to rebuild the network topology on demand.
+//TODO: Restarting the DNS Masq here - Define a re-attach method
+//TODO: Log failures when making best effort progress
+func (cnci *Cnci) RebuildTopology() error {
+
+	if cnci.NetworkConfig == nil || cnci.topology == nil {
+		return fmt.Errorf("cnci not initialized")
+	}
+
+	links, err := netlink.LinkList()
+	if err != nil {
+		return err
+	}
+
+	cnci.topology.Lock()
+	defer cnci.topology.Unlock()
+	reinitTopology(cnci.topology)
+
+	//Update the link and name map
+	//Do this to ensure the link map is updated even on failure
+	cnci.rebuildLinkAndNameMap(links)
+
+	//Create the bridge map
+	err = cnci.rebuildBridgeMap(links)
+	if err != nil {
+		return err
+	}
+
+	//Ensure that all tunnels have the associated bridges
+	err = cnci.verifyTopology(links)
+	if err != nil {
+		return err
 	}
 
 	return nil
