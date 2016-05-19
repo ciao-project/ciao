@@ -998,6 +998,14 @@ func apiCancelled(cancel chan interface{}) bool {
 func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, *ContainerInfo, error) {
 	var cInfo *ContainerInfo
 
+	if cfg == nil || cn.cnTopology == nil {
+		return nil, nil, NewAPIError("invalid vnic or configuration")
+	}
+
+	if err := checkCnVnicCfg(cfg); err != nil {
+		return nil, nil, NewAPIError(err.Error())
+	}
+
 	cn.apiThrottleSem <- 1
 	defer func() {
 		<-cn.apiThrottleSem
@@ -1018,6 +1026,58 @@ func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, *Container
 	return s, cInfo, err
 }
 
+//Note: Can only be called when holding the topology lock cn.cnTopology.Lock()
+func (cn *ComputeNode) deleteVnicInternal(vnic *Vnic, vLink *linkInfo) (err error) {
+	vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink, cn.APITimeout)
+	if err != nil {
+		return NewFatalError(vnic.GlobalID + err.Error())
+	}
+	err = vnic.destroy()
+	if err != nil {
+		return NewFatalError(err.Error())
+	}
+	delete(cn.linkMap, vnic.GlobalID)
+	delete(cn.nameMap, vnic.LinkName)
+	return nil
+}
+
+//Note: Can only be called when holding the topology lock cn.cnTopology.Lock()
+func (cn *ComputeNode) deleteGreInternal(gre *GreTunEP, gLink *linkInfo) (err error) {
+	gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink, cn.APITimeout)
+	if err != nil {
+		return NewFatalError(gre.GlobalID + err.Error())
+	}
+
+	err = gre.destroy()
+	if err != nil {
+		return NewFatalError("gre destroy " + gre.GlobalID + err.Error())
+	}
+	delete(cn.nameMap, gre.LinkName)
+	delete(cn.linkMap, gre.GlobalID)
+	return nil
+}
+
+//Note: Can only be called when holding the topology lock cn.cnTopology.Lock()
+func (cn *ComputeNode) deleteBridgeInternal(bridge *Bridge, bLink *linkInfo, brDeleteMsg *SsntpEventInfo) (err error) {
+	bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
+	if err != nil {
+		return NewFatalError(bridge.GlobalID + err.Error())
+	}
+
+	if err := bridge.destroy(); err != nil {
+		return NewFatalError("bridge destroy failed " + err.Error())
+	}
+	// We delete the container network when the bridge is deleted
+	if cn.containerMap[bridge.GlobalID] {
+		brDeleteMsg.containerSubnetID = bridge.LinkName
+		cn.containerMap[bridge.GlobalID] = false
+	}
+	delete(cn.nameMap, bridge.LinkName)
+	delete(cn.linkMap, bridge.GlobalID)
+
+	return nil
+}
+
 // DestroyVnic destroys a tenant VNIC. If this happens to be the last vnic for
 // this tenant subnet on this CN, the bridge and gre tunnel will also be
 // destroyed and SSNTP message generated.
@@ -1029,14 +1089,6 @@ func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, *Container
 // scheduler or CNCI
 func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, error) {
 	var brDeleteMsg *SsntpEventInfo
-
-	if cfg == nil || cn.cnTopology == nil {
-		return nil, NewAPIError("invalid vnic or configuration")
-	}
-
-	if err := checkCnVnicCfg(cfg); err != nil {
-		return nil, NewAPIError(err.Error())
-	}
 
 	alias := genCnVnicAliases(cfg)
 	vnic, err := newVnic(alias.vnic)
@@ -1055,16 +1107,10 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 		return nil, nil
 	}
 
-	vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink, cn.APITimeout)
+	err = cn.deleteVnicInternal(vnic, vLink)
 	if err != nil {
-		return nil, NewFatalError(vnic.GlobalID + err.Error())
+		return nil, err
 	}
-	err = vnic.destroy()
-	if err != nil {
-		return nil, NewFatalError(err.Error())
-	}
-	delete(cn.linkMap, vnic.GlobalID)
-	delete(cn.nameMap, vnic.LinkName)
 
 	vnicCount, err := cn.dbUpdate(alias.bridge, alias.vnic, dbDelVnic)
 	if err != nil {
@@ -1100,18 +1146,10 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 	//TODO: Try and make forward progress even on error
 	gLink, present := cn.linkMap[alias.gre]
 	if present {
-		gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink, cn.APITimeout)
+		err := cn.deleteGreInternal(gre, gLink)
 		if err != nil {
-			return nil, NewFatalError(gre.GlobalID + err.Error())
+			return nil, err
 		}
-
-		err := gre.destroy()
-		if err != nil {
-			return nil, NewFatalError("gre destroy " + gre.GlobalID + err.Error())
-		}
-		delete(cn.nameMap, gre.LinkName)
-		delete(cn.linkMap, gre.GlobalID)
-
 	} else {
 		//TODO: Consider logging this and continue to delete bridge
 		return nil, NewFatalError(fmt.Sprintf("gre tunnel not present %s", gre.GlobalID))
@@ -1119,26 +1157,14 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 
 	bLink, present := cn.linkMap[alias.bridge]
 	if present {
-		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
+		err := cn.deleteBridgeInternal(bridge, bLink, brDeleteMsg)
 		if err != nil {
-			return nil, NewFatalError(bridge.GlobalID + err.Error())
+			return nil, err
 		}
-
-		if err := bridge.destroy(); err != nil {
-			return nil, NewFatalError("bridge destroy failed " + err.Error())
-		}
-		// We delete the container network when the bridge is deleted
-		if cn.containerMap[alias.bridge] {
-			brDeleteMsg.containerSubnetID = bridge.LinkName
-			cn.containerMap[alias.bridge] = false
-		}
-		delete(cn.nameMap, bridge.LinkName)
-		delete(cn.linkMap, bridge.GlobalID)
 
 		if _, err := cn.dbUpdate(alias.bridge, "", dbDelBr); err != nil {
 			return nil, NewFatalError("db del br " + err.Error())
 		}
-
 	} else {
 		return nil, NewFatalError(fmt.Sprintf("bridge not present %s", bridge.GlobalID))
 	}
