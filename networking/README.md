@@ -62,12 +62,12 @@ user or tenant visible)
 - libsnnet: which provides networking APIs to the ciao-launcher to create
   tenant specific network interfaces on CNs and CNCI specific network
 interfaces on a NN
-- cnci-agent: a [SSNTP](https://github.com/01org/ciao/tree/master/ssntp) client
+- ciao-cnci-agent: a [SSNTP](https://github.com/01org/ciao/tree/master/ssntp) client
   which connects to the
 [ciao-scheduler](https://github.com/01org/ciao/tree/master/ciao-scheduler) and
 runs within a CNCI VM and configures tenant network connectivity by interacting
 with the ciao-controller and ciao-launchers using the ciao-scheduler.
-	- The cnci-agent can also be run on physical nodes if desired
+	- The ciao-cnci-agent can also be run on physical nodes if desired
 - docker-plugin: built into the libsnnet which is used by ciao-launcher to
   provide unified networking between VM and Docker workloads
 

@@ -4,7 +4,7 @@
 #Use the cncli command to create the VNIC
 #Note: This cannot be used for CNCI VNICs
 #For CNCI VNICs, create the CNCI VNIC using the cncli and
-#then use the script cnci_agent/scripts/run_cn_vm.sh to launch the CNCI VM
+#then use the script ciao-cnci-agent/scripts/run_cn_vm.sh to launch the CNCI VM
 
 if [ -z "$1" ]; then
         IMAGE=clear.img
@@ -43,4 +43,3 @@ qemu-system-x86_64 \
         -drive file="$IMAGE",if=virtio,aio=threads,format=qcow2 \
         -net nic,model=virtio,macaddr="$MAC" -net tap,ifname="$VNIC",script=no,downscript=no \
         -debugcon file:debug.log -global isa-debugcon.iobase=0x402
-

@@ -15,19 +15,19 @@ else
 fi
 
 if [ -z "$2" ]; then
-	CERTS_DIR=$GOPATH/src/github.com/01org/ciao/networking/cnci_agent/scripts/certs
+	CERTS_DIR=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/certs
 else
 	CERTS_DIR=$2
 fi
 
 if [ -z "$3" ]; then
-	CNCI_AGENT=$GOPATH/bin/cnci_agent
+	CNCI_AGENT=$GOPATH/bin/ciao-cnci-agent
 else
 	CNCI_AGENT=$3
 fi
 
 if [ -z "$4" ]; then
-	CNCI_SYSD=$GOPATH/src/github.com/01org/ciao/networking/cnci_agent/scripts/cnci-agent.service
+	CNCI_SYSD=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service
 else
 	CNCI_SYSD=$4
 fi
@@ -40,7 +40,7 @@ fi
 
 
 
-echo "mounting image" 
+echo "mounting image"
 echo $IMAGE
 sudo mkdir -p /mnt/tmp
 sudo modprobe nbd max_part=63
@@ -53,28 +53,28 @@ sudo rm -rf /mnt/tmp/var/lib/ciao
 #echo "Checking cleanup"
 #sudo ls -alp /mnt/tmp/var/lib/ciao
 
-#Copy the cnci_agent image
+#Copy the ciao-cnci-agent binary
 echo "copying agent image"
 sudo cp $CNCI_AGENT /mnt/tmp/usr/sbin/
 
-sudo ls -alp /mnt/tmp/usr/sbin/cnci_agent
+sudo ls -alp /mnt/tmp/usr/sbin/ciao-cnci-agent
 sudo ls -alp $CNCI_AGENT
-sudo diff $CNCI_AGENT /mnt/tmp/usr/sbin/cnci_agent
+sudo diff $CNCI_AGENT /mnt/tmp/usr/sbin/ciao-cnci-agent
 
-#Copy the cnci_agent systemd service script
+#Copy the ciao-cnci-agent systemd service script
 echo "copying agent systemd service script"
 sudo cp $CNCI_SYSD /mnt/tmp/usr/lib/systemd/system/
 
-sudo ls -alp /mnt/tmp/usr/lib/systemd/system/cnci-agent.service
+sudo ls -alp /mnt/tmp/usr/lib/systemd/system/ciao-cnci-agent.service
 sudo ls -alp $CNCI_SYSD
-sudo diff $CNCI_SYSD /mnt/tmp/usr/lib/systemd/system/cnci-agent.service
+sudo diff $CNCI_SYSD /mnt/tmp/usr/lib/systemd/system/ciao-cnci-agent.service
 
 #Install the systemd service
 #Hacking it. Ideally do it with chroot
 echo "installing the service"
 sudo mkdir -p /mnt/tmp/etc/systemd/system/default.target.wants
-sudo rm /mnt/tmp/etc/systemd/system/default.target.wants/cnci-agent.service
-sudo chroot /mnt/tmp /bin/bash -c "sudo ln -s /usr/lib/systemd/system/cnci-agent.service /etc/systemd/system/default.target.wants/"
+sudo rm /mnt/tmp/etc/systemd/system/default.target.wants/ciao-cnci-agent.service
+sudo chroot /mnt/tmp /bin/bash -c "sudo ln -s /usr/lib/systemd/system/ciao-cnci-agent.service /etc/systemd/system/default.target.wants/"
 sudo ls -alp /mnt/tmp/etc/systemd/system/default.target.wants
 
 #Copy the certs
