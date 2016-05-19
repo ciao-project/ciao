@@ -28,9 +28,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/golang/glog"
-
 	"gopkg.in/yaml.v2"
+
+	"github.com/golang/glog"
 
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
@@ -489,114 +489,146 @@ func (ovs *overseer) sendInstanceDeletedEvent(instance string) {
 	}
 }
 
+func (ovs *overseer) processGetCommand(cmd *ovsGetCmd) {
+	glog.Infof("Overseer: looking for instance %s", cmd.instance)
+	var insState ovsGetResult
+	target := ovs.instances[cmd.instance]
+	if target != nil {
+		insState.cmdCh = target.cmdCh
+		insState.running = target.running
+	}
+	cmd.targetCh <- insState
+}
+
+func (ovs *overseer) processAddCommand(cmd *ovsAddCmd) {
+	glog.Infof("Overseer: adding %s", cmd.instance)
+	var targetCh chan<- interface{}
+	target := ovs.instances[cmd.instance]
+	canAdd := true
+	cfg := cmd.cfg
+	if target != nil {
+		targetCh = target.cmdCh
+	} else if ovs.roomAvailable(cfg) {
+		ovs.vcpusAllocated += cfg.Cpus
+		ovs.diskSpaceAllocated += cfg.Disk
+		ovs.memoryAllocated += cfg.Mem
+		targetCh = startInstance(cmd.instance, cfg, ovs.childWg, ovs.childDoneCh,
+			ovs.ac, ovs.ovsCh)
+		ovs.instances[cmd.instance] = &ovsInstanceState{
+			cmdCh:          targetCh,
+			running:        ovsPending,
+			diskUsageMB:    -1,
+			CPUUsage:       -1,
+			memoryUsageMB:  -1,
+			maxDiskUsageMB: cfg.Disk,
+			maxVCPUs:       cfg.Cpus,
+			maxMemoryMB:    cfg.Mem,
+			sshIP:          cfg.ConcIP,
+			sshPort:        cfg.SSHPort,
+		}
+	} else {
+		canAdd = false
+	}
+	cmd.targetCh <- ovsAddResult{targetCh, canAdd}
+}
+
+func (ovs *overseer) processRemoveCommand(cmd *ovsRemoveCmd) {
+	glog.Infof("Overseer: removing %s", cmd.instance)
+	target := ovs.instances[cmd.instance]
+	if target == nil {
+		cmd.errCh <- fmt.Errorf("Instance does not exist")
+		return
+	}
+
+	ovs.diskSpaceAllocated -= target.maxDiskUsageMB
+	if ovs.diskSpaceAllocated < 0 {
+		ovs.diskSpaceAllocated = 0
+	}
+
+	ovs.vcpusAllocated -= target.maxVCPUs
+	if ovs.vcpusAllocated < 0 {
+		ovs.vcpusAllocated = 0
+	}
+
+	ovs.memoryAllocated -= target.maxMemoryMB
+	if ovs.memoryAllocated < 0 {
+		ovs.memoryAllocated = 0
+	}
+
+	delete(ovs.instances, cmd.instance)
+	if !cmd.suicide {
+		ovs.sendInstanceDeletedEvent(cmd.instance)
+	}
+	cmd.errCh <- nil
+}
+
+func (ovs *overseer) processStatusCommand(cmd *ovsStatusCmd) {
+	glog.Info("Overseer: Recieved Status Command")
+	if !ovs.ac.ssntpConn.isConnected() {
+		return
+	}
+	cns := getStats()
+	ovs.updateAvailableResources(cns)
+	ovs.sendStatusCommand(cns, ovs.computeStatus())
+}
+
+func (ovs *overseer) processStatsStatusCommand(cmd *ovsStatsStatusCmd) {
+	glog.Info("Overseer: Recieved StatsStatus Command")
+	if !ovs.ac.ssntpConn.isConnected() {
+		return
+	}
+	cns := getStats()
+	ovs.updateAvailableResources(cns)
+	status := ovs.computeStatus()
+	ovs.sendStatusCommand(cns, status)
+	ovs.sendStats(cns, status)
+}
+
+func (ovs *overseer) processStateChangeCommand(cmd *ovsStateChange) {
+	glog.Infof("Overseer: Recieved State Change %v", *cmd)
+	target := ovs.instances[cmd.instance]
+	if target != nil {
+		target.running = cmd.state
+	}
+}
+
+func (ovs *overseer) processStatusUpdateCommand(cmd *ovsStatsUpdateCmd) {
+	if glog.V(1) {
+		glog.Infof("STATS Update for %s: Mem %d Disk %d Cpu %d",
+			cmd.instance, cmd.memoryUsageMB,
+			cmd.diskUsageMB, cmd.CPUUsage)
+	}
+	target := ovs.instances[cmd.instance]
+	if target != nil {
+		target.memoryUsageMB = cmd.memoryUsageMB
+		target.diskUsageMB = cmd.diskUsageMB
+		target.CPUUsage = cmd.CPUUsage
+	}
+}
+
+func (ovs *overseer) processTraceFrameCommand(cmd *ovsTraceFrame) {
+	cmd.frame.SetEndStamp()
+	ovs.traceFrames.PushBack(cmd.frame)
+}
+
 func (ovs *overseer) processCommand(cmd interface{}) {
 	switch cmd := cmd.(type) {
 	case *ovsGetCmd:
-		glog.Infof("Overseer: looking for instance %s", cmd.instance)
-		var insState ovsGetResult
-		target := ovs.instances[cmd.instance]
-		if target != nil {
-			insState.cmdCh = target.cmdCh
-			insState.running = target.running
-		}
-		cmd.targetCh <- insState
+		ovs.processGetCommand(cmd)
 	case *ovsAddCmd:
-		glog.Infof("Overseer: adding %s", cmd.instance)
-		var targetCh chan<- interface{}
-		target := ovs.instances[cmd.instance]
-		canAdd := true
-		cfg := cmd.cfg
-		if target != nil {
-			targetCh = target.cmdCh
-		} else if ovs.roomAvailable(cfg) {
-			ovs.vcpusAllocated += cfg.Cpus
-			ovs.diskSpaceAllocated += cfg.Disk
-			ovs.memoryAllocated += cfg.Mem
-			targetCh = startInstance(cmd.instance, cfg, ovs.childWg, ovs.childDoneCh,
-				ovs.ac, ovs.ovsCh)
-			ovs.instances[cmd.instance] = &ovsInstanceState{
-				cmdCh:          targetCh,
-				running:        ovsPending,
-				diskUsageMB:    -1,
-				CPUUsage:       -1,
-				memoryUsageMB:  -1,
-				maxDiskUsageMB: cfg.Disk,
-				maxVCPUs:       cfg.Cpus,
-				maxMemoryMB:    cfg.Mem,
-				sshIP:          cfg.ConcIP,
-				sshPort:        cfg.SSHPort,
-			}
-		} else {
-			canAdd = false
-		}
-		cmd.targetCh <- ovsAddResult{targetCh, canAdd}
+		ovs.processAddCommand(cmd)
 	case *ovsRemoveCmd:
-		glog.Infof("Overseer: removing %s", cmd.instance)
-		target := ovs.instances[cmd.instance]
-		if target == nil {
-			cmd.errCh <- fmt.Errorf("Instance does not exist")
-			break
-		}
-
-		ovs.diskSpaceAllocated -= target.maxDiskUsageMB
-		if ovs.diskSpaceAllocated < 0 {
-			ovs.diskSpaceAllocated = 0
-		}
-
-		ovs.vcpusAllocated -= target.maxVCPUs
-		if ovs.vcpusAllocated < 0 {
-			ovs.vcpusAllocated = 0
-		}
-
-		ovs.memoryAllocated -= target.maxMemoryMB
-		if ovs.memoryAllocated < 0 {
-			ovs.memoryAllocated = 0
-		}
-
-		delete(ovs.instances, cmd.instance)
-		if !cmd.suicide {
-			ovs.sendInstanceDeletedEvent(cmd.instance)
-		}
-		cmd.errCh <- nil
+		ovs.processRemoveCommand(cmd)
 	case *ovsStatusCmd:
-		glog.Info("Overseer: Recieved Status Command")
-		if !ovs.ac.ssntpConn.isConnected() {
-			break
-		}
-		cns := getStats()
-		ovs.updateAvailableResources(cns)
-		ovs.sendStatusCommand(cns, ovs.computeStatus())
+		ovs.processStatusCommand(cmd)
 	case *ovsStatsStatusCmd:
-		glog.Info("Overseer: Recieved StatsStatus Command")
-		if !ovs.ac.ssntpConn.isConnected() {
-			break
-		}
-		cns := getStats()
-		ovs.updateAvailableResources(cns)
-		status := ovs.computeStatus()
-		ovs.sendStatusCommand(cns, status)
-		ovs.sendStats(cns, status)
+		ovs.processStatsStatusCommand(cmd)
 	case *ovsStateChange:
-		glog.Infof("Overseer: Recieved State Change %v", *cmd)
-		target := ovs.instances[cmd.instance]
-		if target != nil {
-			target.running = cmd.state
-		}
+		ovs.processStateChangeCommand(cmd)
 	case *ovsStatsUpdateCmd:
-		if glog.V(1) {
-			glog.Infof("STATS Update for %s: Mem %d Disk %d Cpu %d",
-				cmd.instance, cmd.memoryUsageMB,
-				cmd.diskUsageMB, cmd.CPUUsage)
-		}
-		target := ovs.instances[cmd.instance]
-		if target != nil {
-			target.memoryUsageMB = cmd.memoryUsageMB
-			target.diskUsageMB = cmd.diskUsageMB
-			target.CPUUsage = cmd.CPUUsage
-		}
+		ovs.processStatusUpdateCommand(cmd)
 	case *ovsTraceFrame:
-		cmd.frame.SetEndStamp()
-		ovs.traceFrames.PushBack(cmd.frame)
+		ovs.processTraceFrameCommand(cmd)
 	default:
 		panic("Unknown Overseer Command")
 	}
