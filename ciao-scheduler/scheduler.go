@@ -550,8 +550,7 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 		node := sched.cnList[0]
 		node.mutex.Lock()
 		if sched.workloadFits(sched.cnList[0], workload) == true {
-			node.mutex.Unlock()
-			return node
+			return node // locked nodeStat
 		}
 		node.mutex.Unlock()
 		return nil
@@ -569,8 +568,7 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 			if sched.workloadFits(node, workload) == true {
 				sched.cnMRUIndex = sched.cnMRUIndex + 1 + i
 				sched.cnMRU = node
-				node.mutex.Unlock()
-				return node
+				return node // locked nodeStat
 			}
 			node.mutex.Unlock()
 		}
@@ -582,8 +580,7 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 		if sched.workloadFits(node, workload) == true {
 			sched.cnMRUIndex = i
 			sched.cnMRU = node
-			node.mutex.Unlock()
-			return node
+			return node // locked nodeStat
 		}
 		node.mutex.Unlock()
 	}
@@ -608,8 +605,7 @@ func (sched *ssntpSchedulerServer) pickNetworkNode(controllerUUID string, worklo
 		if (len(sched.nnMap) <= 1 || ((len(sched.nnMap) > 1) && (node.uuid != sched.nnMRU))) &&
 			sched.workloadFits(node, workload) {
 			sched.nnMRU = node.uuid
-			node.mutex.Unlock()
-			return node
+			return node // locked nodeStat
 		}
 	}
 
