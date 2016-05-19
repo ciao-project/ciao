@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/01org/ciao/configuration"
 	"github.com/docker/distribution/uuid"
 )
 
@@ -248,6 +249,14 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 	serverPort = config.port()
 	transport := config.transport()
 	uri = config.URI
+
+	payload, err := configuration.ExtractBlob(config.ConfigURI)
+
+	if err != nil {
+		server.log.Errorf("Error loading configuration data from %s: %s - You may have not installed your configuration file yet", config.ConfigURI, err)
+	} else {
+		server.configuration.setConfiguration(payload)
+	}
 
 	server.ntf = ntf
 	server.sessions = make(map[string]*session)
