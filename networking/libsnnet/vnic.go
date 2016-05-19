@@ -119,6 +119,55 @@ func (v *Vnic) getDevice() error {
 	return nil
 }
 
+func createVMVnic(v *Vnic) (link netlink.Link, err error) {
+
+	tap := &netlink.Tuntap{
+		LinkAttrs: netlink.LinkAttrs{Name: v.LinkName},
+		Mode:      netlink.TUNTAP_MODE_TAP,
+	}
+
+	if err := netlink.LinkAdd(tap); err != nil {
+		return nil, netError(v, "create link add %v %v", v.GlobalID, err)
+	}
+
+	link, err = netlink.LinkByName(v.LinkName)
+	if err != nil {
+		return nil, netError(v, "create link by name %v %v", v.GlobalID, err)
+	}
+
+	vl, ok := link.(*netlink.GenericLink)
+	if !ok {
+		return nil, netError(v, "create incorrect interface type %v %v", v.GlobalID, link.Type())
+	}
+
+	return vl, nil
+}
+
+func createContainerVnic(v *Vnic) (link netlink.Link, err error) {
+	//We create only the host side veth, the container side is setup by the kernel
+	veth := &netlink.Veth{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: v.LinkName,
+		},
+		PeerName: v.peerName(),
+	}
+
+	if err := netlink.LinkAdd(veth); err != nil {
+		return nil, netError(v, "create link add %v %v", v.GlobalID, err)
+	}
+
+	link, err = netlink.LinkByName(v.LinkName)
+	if err != nil {
+		return nil, netError(v, "create link by name %v %v", v.GlobalID, err)
+	}
+	vl, ok := link.(*netlink.Veth)
+	if !ok {
+		return nil, netError(v, "create incorrect interface type %v %v", v.GlobalID, link.Type())
+	}
+
+	return vl, nil
+}
+
 // Create instantiates new VNIC
 func (v *Vnic) create() error {
 	var err error
@@ -139,50 +188,20 @@ func (v *Vnic) create() error {
 
 	switch v.Role {
 	case TenantVM:
-
-		tap := &netlink.Tuntap{
-			LinkAttrs: netlink.LinkAttrs{Name: v.LinkName},
-			Mode:      netlink.TUNTAP_MODE_TAP,
-		}
-
-		if err := netlink.LinkAdd(tap); err != nil {
-			return netError(v, "create link add %v %v", v.GlobalID, err)
-		}
-
-		link, err := netlink.LinkByName(v.LinkName)
+		link, err := createVMVnic(v)
 		if err != nil {
-			return netError(v, "create link by name %v %v", v.GlobalID, err)
+			return netError(v, "createVMVnic %v", err)
 		}
 
-		vl, ok := link.(*netlink.GenericLink)
-		if !ok {
-			return netError(v, "create incorrect interface type %v %v", v.GlobalID, link.Type())
-		}
-
-		v.Link = vl
+		v.Link = link
 	case TenantContainer:
 		//We create only the host side veth, the container side is setup by the kernel
-		veth := &netlink.Veth{
-			LinkAttrs: netlink.LinkAttrs{
-				Name: v.LinkName,
-			},
-			PeerName: v.peerName(),
-		}
-
-		if err := netlink.LinkAdd(veth); err != nil {
-			return netError(v, "create link add %v %v", v.GlobalID, err)
-		}
-
-		link, err := netlink.LinkByName(v.LinkName)
+		link, err := createContainerVnic(v)
 		if err != nil {
-			return netError(v, "create link by name %v %v", v.GlobalID, err)
-		}
-		vl, ok := link.(*netlink.Veth)
-		if !ok {
-			return netError(v, "create incorrect interface type %v %v", v.GlobalID, link.Type())
+			return err
 		}
 
-		v.Link = vl
+		v.Link = link
 	default:
 		return netError(v, "invalid vnic role specified")
 	}
