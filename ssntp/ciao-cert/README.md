@@ -86,3 +86,13 @@ That will generate `cert-CNCIAgent-localhost.pem`.
 
 That will generate `cert-Controller-localhost.pem`.
 
+## Multi roles support
+
+In some cases SSNTP clients or servers want to support
+several roles at the same time and SSNTP supports that feature.
+
+But certificates need to be generated accordingly, by passing a
+comma separated list of roles to ciao-cert.
+For example launcher may want to expose both the CN and NN agent roles:
+
+```$GOBIN/ciao-cert -role agent,netagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify```
