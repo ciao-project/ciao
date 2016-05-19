@@ -72,9 +72,8 @@ func logTime(t *testing.T, start time.Time, fn string) {
 func pickRandomRole(input int) libsnnet.VnicRole {
 	if input%2 == 1 {
 		return libsnnet.TenantContainer
-	} else {
-		return libsnnet.TenantVM
 	}
+	return libsnnet.TenantVM
 }
 
 func CNAPIParallel(t *testing.T, role libsnnet.VnicRole, modelCancel bool) {
