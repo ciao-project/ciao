@@ -127,10 +127,5 @@ func validPhysicalLink(link netlink.Link) bool {
 	case "vlan":
 		return true
 	}
-
-	if link.Attrs().Name == "lo" {
-		return false
-	}
-
 	return false
 }

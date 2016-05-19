@@ -465,11 +465,7 @@ func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
 	//Now build the vnic maps, inefficient but simple
 	//This allows us to check if the bridges and tunnels are all present
 	err = cn.rebuildVnicMap(links)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (cn *ComputeNode) dbUpdate(bridge string, vnic string, op dbOp) (int, error) {

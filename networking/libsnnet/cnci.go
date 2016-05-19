@@ -318,11 +318,7 @@ func (cnci *Cnci) RebuildTopology() error {
 
 	//Ensure that all tunnels have the associated bridges
 	err = cnci.verifyTopology(links)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func subnetToString(subnet net.IPNet) string {
