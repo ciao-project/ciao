@@ -307,25 +307,32 @@ func TestUUID(t *testing.T) {
 	server.ssntp.Stop()
 }
 
-func testGetOIDFromRole(t *testing.T, role uint32, expected asn1.ObjectIdentifier) {
-	oid, err := getOIDFromRole(role)
+func testGetOIDsFromRole(t *testing.T, role uint32, expectedOIDs []asn1.ObjectIdentifier) {
+	oids, err := getOIDsFromRole(role)
 	if err != nil {
 		t.Fatalf("%s\n", err)
 	}
 
-	if !oid.Equal(expected) {
-		t.Fatalf("OID mismatch for %d: %v vs %v\n", role, oid, expected)
+	for _, expectedOID := range expectedOIDs {
+		found := false
+		for _, oid := range oids {
+			if oid.Equal(expectedOID) {
+				found = true
+				break
+			}
+		}
+
+		if found == false {
+			t.Fatalf("OID mismatch for 0x%x: Could not find OID %v\n", role, expectedOID)
+		}
 	}
 }
 
-func testGetRoleFromOID(t *testing.T, oid asn1.ObjectIdentifier, expected uint32) {
-	role, err := getRoleFromOID(oid)
-	if err != nil {
-		t.Fatalf("%s\n", err)
-	}
+func testGetRoleFromOIDs(t *testing.T, oids []asn1.ObjectIdentifier, expected uint32) {
+	role := getRoleFromOIDs(oids)
 
-	if role != expected {
-		t.Fatalf("Role mismatch for %v: %d vs %d\n", oid, role, expected)
+	if role|expected != expected {
+		t.Fatalf("Role mismatch: 0x%x vs 0x%x\n", role, expected)
 	}
 }
 
@@ -335,7 +342,7 @@ func testGetRoleFromOID(t *testing.T, oid asn1.ObjectIdentifier, expected uint32
 //
 // Test is expected to pass.
 func TestGetOIDFromAgent(t *testing.T) {
-	testGetOIDFromRole(t, AGENT, RoleAgentOID)
+	testGetOIDsFromRole(t, AGENT, []asn1.ObjectIdentifier{RoleAgentOID})
 }
 
 // Test SSNTP Scheduler OID match
@@ -344,7 +351,7 @@ func TestGetOIDFromAgent(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetOIDFromSchedulerRole(t *testing.T) {
-	testGetOIDFromRole(t, SCHEDULER, RoleSchedulerOID)
+	testGetOIDsFromRole(t, SCHEDULER, []asn1.ObjectIdentifier{RoleSchedulerOID})
 }
 
 // Test SSNTP Controller OID match
@@ -353,7 +360,7 @@ func TestGetOIDFromSchedulerRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetOIDFromControllerRole(t *testing.T) {
-	testGetOIDFromRole(t, Controller, RoleControllerOID)
+	testGetOIDsFromRole(t, Controller, []asn1.ObjectIdentifier{RoleControllerOID})
 }
 
 // Test SSNTP NetAgent OID match
@@ -362,7 +369,7 @@ func TestGetOIDFromControllerRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetOIDFromNetAgentRole(t *testing.T) {
-	testGetOIDFromRole(t, NETAGENT, RoleNetAgentOID)
+	testGetOIDsFromRole(t, NETAGENT, []asn1.ObjectIdentifier{RoleNetAgentOID})
 }
 
 // Test SSNTP Server OID match
@@ -371,7 +378,7 @@ func TestGetOIDFromNetAgentRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetOIDFromServerRole(t *testing.T) {
-	testGetOIDFromRole(t, SERVER, RoleServerOID)
+	testGetOIDsFromRole(t, SERVER, []asn1.ObjectIdentifier{RoleServerOID})
 }
 
 // Test SSNTP CNCI Agent OID match
@@ -380,7 +387,16 @@ func TestGetOIDFromServerRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetOIDFromCNCIAgentRole(t *testing.T) {
-	testGetOIDFromRole(t, CNCIAGENT, RoleCNCIAgentOID)
+	testGetOIDsFromRole(t, CNCIAGENT, []asn1.ObjectIdentifier{RoleCNCIAgentOID})
+}
+
+// Test SSNTP NetAgent-CNAgent OID match
+//
+// Test that we get the right OID for the NETAGENT|AGENT role.
+//
+// Test is expected to pass.
+func TestGetOIDFromNetAgentCnAgentRole(t *testing.T) {
+	testGetOIDsFromRole(t, AGENT|NETAGENT, []asn1.ObjectIdentifier{RoleNetAgentOID, RoleAgentOID})
 }
 
 // Test SSNTP OID match for an invalid role
@@ -389,55 +405,55 @@ func TestGetOIDFromCNCIAgentRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetOIDFromInvalidRole(t *testing.T) {
-	_, err := getOIDFromRole(0xffff)
+	_, err := getOIDsFromRole((uint32)(UNKNOWN))
 	if err == nil {
 		t.Fatalf("Got OID for an invalid role\n")
 	}
 }
 
-// Test SSNTP CNCI Agent role match
+// Test SSNTP Agent role match
 //
 // Test that we get the right role for the Agent OID.
 //
 // Test is expected to pass.
 func TestGetRoleFromAgentOID(t *testing.T) {
-	testGetRoleFromOID(t, RoleAgentOID, AGENT)
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{RoleAgentOID}, AGENT)
 }
 
-// Test SSNTP CNCI Scheduler role match
+// Test SSNTP Scheduler role match
 //
 // Test that we get the right role for the Scheduler OID.
 //
 // Test is expected to pass.
 func TestGetRoleFromSchedulerOID(t *testing.T) {
-	testGetRoleFromOID(t, RoleSchedulerOID, SCHEDULER)
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{RoleSchedulerOID}, SCHEDULER)
 }
 
-// Test SSNTP CNCI Controller role match
+// Test SSNTP Controller role match
 //
 // Test that we get the right role for the Controller OID.
 //
 // Test is expected to pass.
 func TestGetRoleFromControllerOID(t *testing.T) {
-	testGetRoleFromOID(t, RoleControllerOID, Controller)
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{RoleControllerOID}, Controller)
 }
 
-// Test SSNTP CNCI Server role match
+// Test SSNTP Server role match
 //
 // Test that we get the right role for the Server OID.
 //
 // Test is expected to pass.
 func TestGetRoleFromServerOID(t *testing.T) {
-	testGetRoleFromOID(t, RoleServerOID, SERVER)
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{RoleServerOID}, SERVER)
 }
 
-// Test SSNTP CNCI Net Agent role match
+// Test SSNTP Net Agent role match
 //
 // Test that we get the right role for the Net Agent OID.
 //
 // Test is expected to pass.
 func TestGetRoleFromNetAgentOID(t *testing.T) {
-	testGetRoleFromOID(t, RoleNetAgentOID, NETAGENT)
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{RoleNetAgentOID}, NETAGENT)
 }
 
 // Test SSNTP CNCI Agent role match
@@ -446,16 +462,25 @@ func TestGetRoleFromNetAgentOID(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetRoleFromCNCIAgentOID(t *testing.T) {
-	testGetRoleFromOID(t, RoleCNCIAgentOID, CNCIAGENT)
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{RoleCNCIAgentOID}, CNCIAGENT)
 }
 
-// Test SSNTP CNCI Agent role match for an invalid OID
+// Test SSNTP Agent-NetAgent role match
+//
+// Test that we get the right role for the Agent-NetAgent OIDs.
+//
+// Test is expected to pass.
+func TestGetRoleFromAgenNetAgentOID(t *testing.T) {
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{RoleNetAgentOID, RoleAgentOID}, AGENT|NETAGENT)
+}
+
+// Test SSNTP role match for an invalid OID
 //
 // Test that we get the UNKNOWN role for an invalid OID.
 //
 // Test is expected to pass.
 func TestGetRoleFromInvalidOID(t *testing.T) {
-	testGetRoleFromOID(t, asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 0, 0, 0}, (uint32)(UNKNOWN))
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{{1, 3, 6, 1, 4, 1, 0, 0, 0}}, (uint32)(UNKNOWN))
 }
 
 // Test SSNTP client connection
@@ -588,6 +613,17 @@ func TestConnectRoleAgent(t *testing.T) {
 
 // Test the SSNTP client role from the server connection.
 //
+// Test that a SSNTP client acting as an AGENT|NETAGENT can
+// connect to a SSNTP server, and that the server sees
+// the right role.
+//
+// Test is expected to pass.
+func TestConnectRoleAgentNetAgent(t *testing.T) {
+	testConnectRole(t, AGENT|NETAGENT)
+}
+
+// Test the SSNTP client role from the server connection.
+//
 // Test that a SSNTP client acting as a SCHEDULER can
 // connect to a SSNTP server, and that the server sees
 // the right role.
@@ -650,6 +686,17 @@ func TestDisconnectRoleController(t *testing.T) {
 // Test is expected to pass.
 func TestDisconnectRoleAgent(t *testing.T) {
 	testDisconnectRole(t, AGENT)
+}
+
+// Test the SSNTP client role from the server disconnection.
+//
+// Test that a SSNTP client acting as an AGENT|NETAGENT can
+// disconnect from a SSNTP server, and that the server sees
+// the right role.
+//
+// Test is expected to pass.
+func TestDisconnectRoleAgentNetAgent(t *testing.T) {
+	testDisconnectRole(t, AGENT|NETAGENT)
 }
 
 // Test the SSNTP client role from the server disconnection.
@@ -737,15 +784,19 @@ func getCertPaths(tmpDir, caCert, serverCert, clientCert string) (string, string
 	return caPath, serverPath, clientPath
 }
 
-func validRoles(serverRole, clientRole Role) bool {
+func validRoles(serverRole, clientRole uint32) bool {
 	if serverRole == SCHEDULER && clientRole == AGENT {
+		return true
+	}
+
+	if serverRole == SCHEDULER && clientRole == AGENT|NETAGENT {
 		return true
 	}
 
 	return false
 }
 
-func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole Role) {
+func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32, clientCert string) {
 	var serverConfig Config
 	var clientConfig Config
 	var server ssntpEchoServer
@@ -760,7 +811,7 @@ func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole Role) {
 		_ = os.RemoveAll(tmpDir)
 	}()
 
-	CACert, serverCert, clientCert := getCertPaths(tmpDir, testCACertScheduler, testCertScheduler, testCertAgent)
+	CACert, serverCert, clientCert := getCertPaths(tmpDir, testCACert, testCertScheduler, clientCert)
 
 	server.t = t
 	serverConfig.Transport = *transport
@@ -799,7 +850,17 @@ func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole Role) {
 //
 // Test is expected to pass.
 func TestConnectVerifyCertificatePositive(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, AGENT)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT, testCertAgent)
+}
+
+// Test that an SSNTP verified link can be established for a multi role client.
+//
+// Test that an SSNTP client can connect to an SSNTP server
+// when both are using SSNTP specific certificates.
+//
+// Test is expected to pass.
+func TestConnectVerifyCertificatePositiveMultiRole(t *testing.T) {
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT, testCertAgentNetAgent)
 }
 
 // Test that an SSNTP verified link with the wrong client
@@ -811,7 +872,19 @@ func TestConnectVerifyCertificatePositive(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyClientCertificateNegative(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, Controller)
+	testConnectVerifyCertificate(t, SCHEDULER, Controller, testCertAgent)
+}
+
+// Test that an SSNTP verified link with the wrong multi role client
+// certificate should not be established.
+//
+// Test that an SSNTP client can not connect to an SSNTP server
+// when both are using SSNTP specific certificates and the client
+// has not defined the right role.
+//
+// Test is expected to pass.
+func TestConnectVerifyClientCertificateNegativeMultiRole(t *testing.T) {
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT|CNCIAGENT, testCertAgentNetAgent)
 }
 
 // Test that an SSNTP verified link with the wrong server
@@ -823,7 +896,7 @@ func TestConnectVerifyClientCertificateNegative(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyServerCertificateNegative(t *testing.T) {
-	testConnectVerifyCertificate(t, SERVER, AGENT)
+	testConnectVerifyCertificate(t, SERVER, AGENT, testCertAgent)
 }
 
 // Test SSNTP client connection to an alternative port

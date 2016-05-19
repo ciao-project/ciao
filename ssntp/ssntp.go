@@ -613,53 +613,55 @@ func (error Error) String() string {
 }
 
 func (role *Role) String() string {
-	switch *role {
-	case UNKNOWN:
-		return "Unknown"
-	case SERVER:
-		return "Server"
-	case Controller:
-		return "Controller"
-	case AGENT:
-		return "CNAgent"
-	case SCHEDULER:
-		return "Scheduler"
-	case NETAGENT:
-		return "NetworkingAgent"
-	case CNCIAGENT:
-		return "CNCIAgent"
+	roleString := ""
+
+	if *role&SERVER == SERVER {
+		roleString += "Server-"
 	}
 
-	return ""
+	if *role&Controller == Controller {
+		roleString += "Controller-"
+	}
+
+	if *role&AGENT == AGENT {
+		roleString += "CNAgent-"
+	}
+
+	if *role&SCHEDULER == SCHEDULER {
+		roleString += "Scheduler-"
+	}
+
+	if *role&NETAGENT == NETAGENT {
+		roleString += "NetworkingAgent-"
+	}
+
+	if *role&CNCIAGENT == CNCIAGENT {
+		roleString += "CNCIAgent-"
+	}
+
+	return roleString
 }
 
 // Set sets an SSNTP role based on the input string.
 func (role *Role) Set(value string) error {
 	for _, r := range strings.Split(value, ",") {
 		if r == "unknown" {
-			*role = UNKNOWN
-			return nil
+			*role |= UNKNOWN
 		} else if r == "server" {
-			*role = SERVER
-			return nil
+			*role |= SERVER
 		} else if r == "controller" {
-			*role = Controller
-			return nil
+			*role |= Controller
 		} else if r == "agent" {
-			*role = AGENT
-			return nil
+			*role |= AGENT
 		} else if r == "netagent" {
-			*role = NETAGENT
-			return nil
+			*role |= NETAGENT
 		} else if r == "scheduler" {
-			*role = SCHEDULER
-			return nil
+			*role |= SCHEDULER
 		} else if r == "cnciagent" {
-			*role = CNCIAGENT
-			return nil
+			*role |= CNCIAGENT
+		} else {
+			return errors.New("Unknown role")
 		}
-
-		return errors.New("Unknown role")
 	}
 
 	return nil
@@ -872,24 +874,33 @@ var roleOID = []struct {
 	},
 }
 
-func getRoleFromOID(oid asn1.ObjectIdentifier) (uint32, error) {
-	for _, r := range roleOID {
-		if r.oid.Equal(oid) {
-			return r.role, nil
+func getRoleFromOIDs(oids []asn1.ObjectIdentifier) uint32 {
+	role := (uint32)(UNKNOWN)
+
+	for _, oid := range oids {
+		for _, r := range roleOID {
+			if r.oid.Equal(oid) {
+				role |= r.role
+			}
 		}
 	}
 
-	return (uint32)(UNKNOWN), nil
+	return role
 }
 
-func getOIDFromRole(role uint32) (asn1.ObjectIdentifier, error) {
+func getOIDsFromRole(role uint32) ([]asn1.ObjectIdentifier, error) {
+	var oids []asn1.ObjectIdentifier
 	for _, r := range roleOID {
-		if role == r.role {
-			return r.oid, nil
+		if role&r.role == r.role {
+			oids = append(oids, r.oid)
 		}
 	}
 
-	return nil, fmt.Errorf("Unknown role 0x%x", role)
+	if len(oids) == 0 {
+		return nil, fmt.Errorf("Unknown role 0x%x", role)
+	}
+
+	return oids, nil
 }
 
 func verifyRole(conn interface{}, role uint32) (bool, error) {
@@ -897,20 +908,8 @@ func verifyRole(conn interface{}, role uint32) (bool, error) {
 	switch tlsConn := conn.(type) {
 	case *tls.Conn:
 		state := tlsConn.ConnectionState()
-		roleOID, err := getOIDFromRole(role)
-		if err != nil {
-			return false, oidError
-		}
-
-		var oidFound = false
-		for _, oid := range state.PeerCertificates[0].UnknownExtKeyUsage {
-			if oid.Equal(roleOID) {
-				oidFound = true
-				break
-			}
-		}
-
-		if oidFound == false {
+		certRole := getRoleFromOIDs(state.PeerCertificates[0].UnknownExtKeyUsage)
+		if certRole&role != role {
 			return false, oidError
 		}
 
