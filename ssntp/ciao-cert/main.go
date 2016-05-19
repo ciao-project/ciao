@@ -32,6 +32,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -116,6 +117,34 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 	}
 }
 
+func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) ([]asn1.ObjectIdentifier) {
+	if role&ssntp.AGENT == ssntp.AGENT {
+		oids = append(oids, ssntp.RoleAgentOID)
+	}
+
+	if role&ssntp.SCHEDULER == ssntp.SCHEDULER {
+		oids = append(oids, ssntp.RoleSchedulerOID)
+	}
+
+	if role&ssntp.Controller == ssntp.Controller {
+		oids = append(oids, ssntp.RoleControllerOID)
+	}
+
+	if role&ssntp.NETAGENT == ssntp.NETAGENT {
+		oids = append(oids, ssntp.RoleNetAgentOID)
+	}
+
+	if role&ssntp.SERVER == ssntp.SERVER {
+		oids = append(oids, ssntp.RoleServerOID)
+	}
+
+	if role&ssntp.CNCIAGENT == ssntp.CNCIAGENT {
+		oids = append(oids, ssntp.RoleCNCIAgentOID)
+	}
+
+	return oids
+}
+
 func instructionDisplay(server bool, CAcert string, Cert string) {
 	if server {
 		fmt.Printf("--------------------------------------------------------\n")
@@ -143,7 +172,7 @@ func main() {
 	var parentCert x509.Certificate
 	var role ssntp.Role
 
-	flag.Var(&role, "role", "SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
+	flag.Var(&role, "role", "Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
 	flag.Parse()
 
 	flag.Parse()
@@ -205,31 +234,16 @@ func main() {
 		}
 	}
 
-	switch role {
-	case ssntp.AGENT:
-		template.UnknownExtKeyUsage = append(template.UnknownExtKeyUsage, ssntp.RoleAgentOID)
-	case ssntp.SCHEDULER:
-		template.UnknownExtKeyUsage = append(template.UnknownExtKeyUsage, ssntp.RoleSchedulerOID)
-	case ssntp.Controller:
-		template.UnknownExtKeyUsage = append(template.UnknownExtKeyUsage, ssntp.RoleControllerOID)
-	case ssntp.NETAGENT:
-		template.UnknownExtKeyUsage = append(template.UnknownExtKeyUsage, ssntp.RoleNetAgentOID)
-	case ssntp.SERVER:
-		template.UnknownExtKeyUsage = append(template.UnknownExtKeyUsage, ssntp.RoleServerOID)
-	case ssntp.CNCIAGENT:
-		template.UnknownExtKeyUsage = append(template.UnknownExtKeyUsage, ssntp.RoleCNCIAgentOID)
-	default:
-		break
-	}
+	template.UnknownExtKeyUsage = addOIDs(role, template.UnknownExtKeyUsage)
 
 	CAcertName = fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
 	if *isServer == true {
 		template.IsCA = true
-		certName = fmt.Sprintf("%s/cert-%s-%s.pem", *installDir, role.String(), firstHost)
+		certName = fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
 		parentCert = template
 		serverPrivKey = priv
 	} else {
-		certName = fmt.Sprintf("%s/cert-%s-%s.pem", *installDir, role.String(), firstHost)
+		certName = fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
 		// Need to fetch the public and private key from the signer
 		bytesCert, err := ioutil.ReadFile(*serverCert)
 		if err != nil {
