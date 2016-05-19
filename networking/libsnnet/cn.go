@@ -731,9 +731,7 @@ func (cn *ComputeNode) waitForExistingVnic(vnic *Vnic, bridge *Bridge, vLink *li
 
 }
 
-func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
-	var gLink *linkInfo
-	var cInfo *ContainerInfo
+func (cn *ComputeNode) createDevicesFromCfg(cfg *VnicConfig) (*Vnic, *Bridge, *GreTunEP, error) {
 
 	alias := genCnVnicAliases(cfg)
 
@@ -753,15 +751,61 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 		return nil, nil, nil, NewAPIError(err.Error())
 	}
 
+	return vnic, bridge, gre, nil
+
+}
+
+//Note: The topology lock has to be held before calling this cn.cnTopology.Lock()
+func (cn *ComputeNode) addVnicToBridge(cfg *VnicConfig, vnic *Vnic, bridge *Bridge, vLink *linkInfo, bLink *linkInfo) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
+	_, err := cn.dbUpdate(bridge.GlobalID, vnic.GlobalID, dbInsVnic)
+	if err != nil {
+		cn.cnTopology.Unlock()
+		return nil, nil, nil, NewFatalError(err.Error())
+	}
+
+	var needsContainerNetwork bool
+	if vnic.Role == TenantContainer && !cn.containerMap[bridge.GlobalID] {
+		cn.containerMap[bridge.GlobalID] = true
+		needsContainerNetwork = true
+	}
+
+	cn.cnTopology.Unlock()
+
+	bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
+	if err != nil {
+		return nil, nil, nil, NewFatalError(bridge.GlobalID + err.Error())
+	}
+
+	if err := createAndEnableVnic(vnic, bridge); err != nil {
+		return nil, nil, nil, NewFatalError(err.Error())
+	}
+	vLink.index = vnic.Link.Attrs().Index
+
+	cInfo := getContainerInfo(cfg, vnic, bridge)
+	if needsContainerNetwork {
+		cInfo.CNContainerEvent = ContainerNetworkAdd
+	}
+	return vnic, nil, cInfo, nil
+}
+
+func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
+	var gLink *linkInfo
+
+	vnic, bridge, gre, err := cn.createDevicesFromCfg(cfg)
+
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	// CS Start
 	cn.cnTopology.Lock()
 
-	vLink, present := cn.linkMap[vnic.GlobalID]
-	if present {
-		bLink, present := cn.linkMap[bridge.GlobalID]
+	vLink, vnicPresent := cn.linkMap[vnic.GlobalID]
+	if vnicPresent {
+		bLink, bridgePresent := cn.linkMap[bridge.GlobalID]
 		cn.cnTopology.Unlock()
 
-		if !present {
+		if !bridgePresent {
 			return nil, nil, nil, NewFatalError(vnic.GlobalID + " Bridge not present")
 		}
 		return cn.waitForExistingVnic(vnic, bridge, vLink, bLink, cfg)
@@ -774,36 +818,9 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 	vLink = cn.linkMap[vnic.GlobalID]
 	defer close(vLink.ready)
 
-	bLink, present := cn.linkMap[bridge.GlobalID]
-	if present {
-		if _, err := cn.dbUpdate(bridge.GlobalID, vnic.GlobalID, dbInsVnic); err != nil {
-			cn.cnTopology.Unlock()
-			return nil, nil, nil, NewFatalError(err.Error())
-		}
-
-		var needsContainerNetwork bool
-		if vnic.Role == TenantContainer && !cn.containerMap[bridge.GlobalID] {
-			cn.containerMap[bridge.GlobalID] = true
-			needsContainerNetwork = true
-		}
-
-		cn.cnTopology.Unlock()
-
-		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
-		if err != nil {
-			return nil, nil, nil, NewFatalError(bridge.GlobalID + err.Error())
-		}
-
-		if err := createAndEnableVnic(vnic, bridge); err != nil {
-			return nil, nil, nil, NewFatalError(err.Error())
-		}
-		vLink.index = vnic.Link.Attrs().Index
-
-		cInfo = getContainerInfo(cfg, vnic, bridge)
-		if needsContainerNetwork {
-			cInfo.CNContainerEvent = ContainerNetworkAdd
-		}
-		return vnic, nil, cInfo, nil
+	bLink, bridgePresent := cn.linkMap[bridge.GlobalID]
+	if bridgePresent {
+		return cn.addVnicToBridge(cfg, vnic, bridge, vLink, bLink)
 	}
 
 	if err := cn.logicallyCreateBridge(bridge, gre, vnic); err != nil {
@@ -836,22 +853,22 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 		SubnetID:  cfg.SubnetID,
 		SubnetKey: cfg.SubnetKey,
 		Subnet:    cfg.Subnet.String(),
-		CnIP:      local.String(),
+		CnIP:      gre.LocalIP.String(),
 		CnID:      cn.ID,
 	}
 
 	if err := createAndEnableBridge(bridge, gre); err != nil {
-		return nil, brCreateMsg, cInfo, NewFatalError(err.Error())
+		return nil, brCreateMsg, nil, NewFatalError(err.Error())
 	}
 	bLink.index = bridge.Link.Index
 	gLink.index = gre.Link.Index
 
 	if err := createAndEnableVnic(vnic, bridge); err != nil {
-		return nil, brCreateMsg, cInfo, NewFatalError(err.Error())
+		return nil, brCreateMsg, nil, NewFatalError(err.Error())
 	}
 	vLink.index = vnic.Link.Attrs().Index
 
-	cInfo = getContainerInfo(cfg, vnic, bridge)
+	cInfo := getContainerInfo(cfg, vnic, bridge)
 	cInfo.CNContainerEvent = ContainerNetworkAdd
 
 	// Now the network is ready and you can create a VM and launch it with this vnic
