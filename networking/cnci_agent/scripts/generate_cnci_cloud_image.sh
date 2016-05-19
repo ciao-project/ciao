@@ -6,12 +6,11 @@ certs_dir=$GOPATH/src/github.com/01org/ciao/networking/cnci_agent/scripts/certs
 cnci_agent=$GOPATH/bin/cnci_agent
 cnci_sysd=$GOPATH/src/github.com/01org/ciao/networking/cnci_agent/scripts/cnci-agent.service
 partition="2"
+download=0
 
-#The images can be downloaded from 
-#curl -O https://download.clearlinux.org/demos/ciao/"$image".xz
-#unxz "$image".xz
 
 usage="$(basename "$0") [--image clear_cnci_image_name] [-certs certificate_directory] [-agent cnci_agent_binary] [-script cnci_systemd_script] \n\n A simple script to create a CNCI Image from a clear cloud image. \n Defaults for any unspecified option are as follows \n\n --agent $cnci_agent \n --certs $certs_dir \n --image $image \n --script $cnci_sysd\n\n"
+
 
 while :
 do
@@ -23,6 +22,10 @@ do
       -c | --certs)
 	  certs_dir="$2" 
 	  shift 2
+	  ;;
+      -d | --download)
+	  download=1
+	  shift 1
 	  ;;
       -h | --help)
 	  echo -e "$usage" >&2
@@ -42,6 +45,14 @@ do
     esac
 done
 
+
+if [ $download -eq 1 ]
+then
+	rm "$image"
+	curl -O https://download.clearlinux.org/demos/ciao/"$image".xz
+	unxz "$image".xz
+fi
+
 echo -e "\nMounting image: $image"
 sudo mkdir -p /mnt/tmp
 sudo modprobe nbd max_part=63
@@ -59,7 +70,7 @@ sudo cp "$cnci_sysd" /mnt/tmp/usr/lib/systemd/system/
 
 echo -e "Installing the service"
 sudo mkdir -p /mnt/tmp/etc/systemd/system/default.target.wants
-sudo rm /mnt/tmp/etc/systemd/system/default.target.wants/cnci-agent.service
+sudo rm -f /mnt/tmp/etc/systemd/system/default.target.wants/cnci-agent.service
 sudo chroot /mnt/tmp /bin/bash -c "sudo ln -s /usr/lib/systemd/system/cnci-agent.service /etc/systemd/system/default.target.wants/"
 
 echo -e "Copying CA certificates"
