@@ -65,7 +65,7 @@ An output of the form shown below indicates a successful provisioning of
 the agent.
 
 ```
-demouser@cncihostname ~ $ systemctl status cnci-agent -l
+demouser@cncihostname ~ $ systemctl status ciao-cnci-agent -l
 ● ciao-cnci-agent.service - Ciao CNCI Agent
    Loaded: loaded (/usr/lib/systemd/system/ciao-cnci-agent.service; enabled; vendor preset: disabled)
    Active: active (running) since Thu 2016-04-07 20:34:40 UTC; 27s ago
