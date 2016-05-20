@@ -89,6 +89,40 @@ func enableForwarding() error {
 	return nil
 }
 
+//Adds a physical link to the management or compute network
+//if the link has an IP address the falls within one of the configured subnets
+//However if the subnets are not specified just add the links
+//It is the callers responsibility to pick the correct link
+func (cnci *Cnci) addPhyLinkToConfig(link netlink.Link, ipv4Addrs []netlink.Addr) {
+
+	for _, addr := range ipv4Addrs {
+
+		if cnci.ManagementNet == nil {
+			cnci.MgtAddr = append(cnci.MgtAddr, addr)
+			cnci.MgtLink = append(cnci.MgtLink, link)
+		} else {
+			for _, mgt := range cnci.ManagementNet {
+				if mgt.Contains(addr.IPNet.IP) {
+					cnci.MgtAddr = append(cnci.MgtAddr, addr)
+					cnci.MgtLink = append(cnci.MgtLink, link)
+				}
+			}
+		}
+
+		if cnci.ComputeNet == nil {
+			cnci.ComputeAddr = append(cnci.ComputeAddr, addr)
+			cnci.ComputeLink = append(cnci.ComputeLink, link)
+		} else {
+			for _, comp := range cnci.ComputeNet {
+				if comp.Contains(addr.IPNet.IP) {
+					cnci.ComputeAddr = append(cnci.ComputeAddr, addr)
+					cnci.ComputeLink = append(cnci.ComputeLink, link)
+				}
+			}
+		}
+	}
+}
+
 //This will return error if it cannot find valid physical
 //interfaces with IP addresses assigned
 //This may be just a delay in acquiring IP addresses
@@ -106,50 +140,18 @@ func (cnci *Cnci) findPhyNwInterface() error {
 	cnci.ComputeLink = nil
 
 	for _, link := range links {
-
-		if link.Type() != "device" {
-			if !travisCI {
-				continue
-			}
-		}
-
-		if link.Attrs().Name == "lo" {
+		if !validPhysicalLink(link) {
 			continue
 		}
 
 		addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
 		if err != nil || len(addrs) == 0 {
-			continue //Should be safe to ignore this
+			continue //Ignore links with no IP addresses
 		}
 
 		phyInterfaces++
+		cnci.addPhyLinkToConfig(link, addrs)
 
-		for _, addr := range addrs {
-
-			if cnci.ManagementNet == nil {
-				cnci.MgtAddr = append(cnci.MgtAddr, addr)
-				cnci.MgtLink = append(cnci.MgtLink, link)
-			} else {
-				for _, mgt := range cnci.ManagementNet {
-					if mgt.Contains(addr.IPNet.IP) {
-						cnci.MgtAddr = append(cnci.MgtAddr, addr)
-						cnci.MgtLink = append(cnci.MgtLink, link)
-					}
-				}
-			}
-
-			if cnci.ComputeNet == nil {
-				cnci.ComputeAddr = append(cnci.ComputeAddr, addr)
-				cnci.ComputeLink = append(cnci.ComputeLink, link)
-			} else {
-				for _, comp := range cnci.ComputeNet {
-					if comp.Contains(addr.IPNet.IP) {
-						cnci.ComputeAddr = append(cnci.ComputeAddr, addr)
-						cnci.ComputeLink = append(cnci.ComputeLink, link)
-					}
-				}
-			}
-		}
 	}
 
 	if len(cnci.MgtAddr) == 0 {
@@ -159,7 +161,8 @@ func (cnci *Cnci) findPhyNwInterface() error {
 		return fmt.Errorf("unable to associate with compute network %v", cnci.ComputeNet)
 	}
 
-	//Give a different error here so we do not retry
+	//Allow auto configuration only in the case where there is a single physical
+	//interface with an IP address
 	if (cnci.ManagementNet == nil || cnci.ComputeNet == nil) && phyInterfaces > 1 {
 		return fmt.Errorf("unable to autoconfigure network")
 	}
@@ -194,30 +197,10 @@ func (cnci *Cnci) Init() error {
 	return nil
 }
 
-//RebuildTopology CNCI network database using the information contained
-//in the aliases. It can be called if the agent using the library
-//crashes and loses network topology information.
-//It can also be called, to rebuild the network topology on demand.
-//TODO: Restarting the DNS Masq here - Define a re-attach method
-//TODO: Log failures when making best effort progress
-func (cnci *Cnci) RebuildTopology() error {
+func (cnci *Cnci) rebuildLinkAndNameMap(links []netlink.Link) {
 
-	if cnci.NetworkConfig == nil || cnci.topology == nil {
-		return fmt.Errorf("cnci not initialized")
-	}
-
-	links, err := netlink.LinkList()
-	if err != nil {
-		return err
-	}
-
-	cnci.topology.Lock()
-	defer cnci.topology.Unlock()
-	reinitTopology(cnci.topology)
-
-	//Update the link and name map
-	//Do this to ensure the link map is updated even on failure
 	for _, link := range links {
+
 		alias := link.Attrs().Alias
 		name := link.Attrs().Name
 
@@ -233,8 +216,9 @@ func (cnci *Cnci) RebuildTopology() error {
 		}
 		close(cnci.topology.linkMap[alias].ready)
 	}
+}
 
-	//Create the bridge map
+func (cnci *Cnci) rebuildBridgeMap(links []netlink.Link) error {
 	for _, link := range links {
 		if link.Type() != "bridge" {
 			continue
@@ -269,8 +253,10 @@ func (cnci *Cnci) RebuildTopology() error {
 			Dnsmasq: dns,
 		}
 	}
+	return nil
+}
 
-	//Ensure that all tunnels have the associated bridges
+func (cnci *Cnci) verifyTopology(links []netlink.Link) error {
 	for _, link := range links {
 		if link.Type() != "gretap" {
 			continue
@@ -294,8 +280,43 @@ func (cnci *Cnci) RebuildTopology() error {
 		}
 		brInfo.tunnels++
 	}
-
 	return nil
+}
+
+//RebuildTopology CNCI network database using the information contained
+//in the aliases. It can be called if the agent using the library
+//crashes and loses network topology information.
+//It can also be called, to rebuild the network topology on demand.
+//TODO: Restarting the DNS Masq here - Define a re-attach method
+//TODO: Log failures when making best effort progress
+func (cnci *Cnci) RebuildTopology() error {
+
+	if cnci.NetworkConfig == nil || cnci.topology == nil {
+		return fmt.Errorf("cnci not initialized")
+	}
+
+	links, err := netlink.LinkList()
+	if err != nil {
+		return err
+	}
+
+	cnci.topology.Lock()
+	defer cnci.topology.Unlock()
+	reinitTopology(cnci.topology)
+
+	//Update the link and name map
+	//Do this to ensure the link map is updated even on failure
+	cnci.rebuildLinkAndNameMap(links)
+
+	//Create the bridge map
+	err = cnci.rebuildBridgeMap(links)
+	if err != nil {
+		return err
+	}
+
+	//Ensure that all tunnels have the associated bridges
+	err = cnci.verifyTopology(links)
+	return err
 }
 
 func subnetToString(subnet net.IPNet) string {
@@ -343,6 +364,9 @@ func startDnsmasq(bridge *Bridge, tenant string, subnet net.IPNet) (*Dnsmasq, er
 }
 
 func createCnciBridge(bridge *Bridge, brInfo *bridgeInfo, tenant string, subnet net.IPNet) (err error) {
+	if bridge == nil || brInfo == nil {
+		return fmt.Errorf("nil pointer encountered bridge[%v] brInfo[%v]", bridge, brInfo)
+	}
 	if err = bridge.create(); err != nil {
 		return err
 	}
@@ -377,6 +401,67 @@ func checkInputParams(subnet net.IPNet, subnetKey int, cnIP net.IP) error {
 	return nil
 }
 
+//This function inserts the remote subnet in the topology
+//If the function returns error the bridgeName can be ignored
+//If the function does not return error and has a valid bridge name
+//then the subnet has been found and no further processing is needed
+func (cnci *Cnci) addSubnetToTopology(bridge *Bridge, gre *GreTunEP, brInfo **bridgeInfo) (brExists bool,
+	greExists bool, bLink *linkInfo, gLink *linkInfo, err error) {
+	err = nil
+
+	// CS Start
+	cnci.topology.Lock()
+	bLink, brExists = cnci.topology.linkMap[bridge.GlobalID]
+	gLink, greExists = cnci.topology.linkMap[gre.GlobalID]
+
+	if brExists && greExists {
+		cnci.topology.Unlock()
+		return
+	}
+
+	if !brExists {
+		bridge.LinkName, err = genLinkName(bridge, cnci.topology.nameMap)
+		if err != nil {
+			cnci.topology.Unlock()
+			return
+		}
+
+		bLink = &linkInfo{
+			name:  bridge.LinkName,
+			ready: make(chan struct{}),
+		}
+		cnci.topology.linkMap[bridge.GlobalID] = bLink
+		*brInfo = &bridgeInfo{}
+		cnci.topology.bridgeMap[bridge.GlobalID] = *brInfo
+	} else {
+		var present bool
+		*brInfo, present = cnci.topology.bridgeMap[bridge.GlobalID]
+		if !present {
+			cnci.topology.Unlock()
+			err = fmt.Errorf("Internal error. Missing bridge info")
+			return
+		}
+	}
+
+	if !greExists {
+		gre.LinkName, err = genLinkName(gre, cnci.topology.nameMap)
+		if err != nil {
+			cnci.topology.Unlock()
+			return
+		}
+
+		gLink = &linkInfo{
+			name:  gre.LinkName,
+			ready: make(chan struct{}),
+		}
+		cnci.topology.linkMap[gre.GlobalID] = gLink
+		(*brInfo).tunnels++
+	}
+	cnci.topology.Unlock()
+	//End CS
+	return
+}
+
 //AddRemoteSubnet attaches a remote subnet to a local bridge on the CNCI
 //If the bridge and DHCP server does not exist it will be created.
 //If the tunnel exists and the bridge does not exist the bridge is created
@@ -397,86 +482,45 @@ func (cnci *Cnci) AddRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 		return "", err
 	}
 
-	// CS Start
-	cnci.topology.Lock()
-	bLink, brExists := cnci.topology.linkMap[bridge.GlobalID]
-	gLink, greExists := cnci.topology.linkMap[gre.GlobalID]
-
-	if brExists && greExists {
-		cnci.topology.Unlock()
-		return bLink.name, err
-	}
-
+	//Logically add the bridge and gre tunnel to the topology
 	var brInfo *bridgeInfo
-	if !brExists {
-		if bridge.LinkName, err = genLinkName(bridge, cnci.topology.nameMap); err != nil {
-			cnci.topology.Unlock()
-			return "", err
-		}
-
-		bLink = &linkInfo{
-			name:  bridge.LinkName,
-			ready: make(chan struct{}),
-		}
-		cnci.topology.linkMap[bridge.GlobalID] = bLink
-		brInfo = &bridgeInfo{}
-		cnci.topology.bridgeMap[bridge.GlobalID] = brInfo
-	} else {
-		var present bool
-		brInfo, present = cnci.topology.bridgeMap[bridge.GlobalID]
-		if !present {
-			cnci.topology.Unlock()
-			return "", fmt.Errorf("Internal error. Missing bridge info")
-		}
+	brExists, greExists, bLink, gLink, err := cnci.addSubnetToTopology(bridge, gre, &brInfo)
+	if err != nil {
+		return "", err
+	}
+	if brExists && greExists {
+		//The subnet already exists and is fully setup
+		return bLink.name, nil
 	}
 
-	if !greExists {
-		if gre.LinkName, err = genLinkName(gre, cnci.topology.nameMap); err != nil {
-			cnci.topology.Unlock()
-			return "", err
-		}
-
-		gLink = &linkInfo{
-			name:  gre.LinkName,
-			ready: make(chan struct{}),
-		}
-		cnci.topology.linkMap[gre.GlobalID] = gLink
-		brInfo.tunnels++
-	}
-	cnci.topology.Unlock()
-	//End CS
-
-	var berr, gerr error
+	//Now create them. This is time consuming
 	if !brExists {
-		berr = createCnciBridge(bridge, brInfo, cnci.Tenant, subnet)
+		err = createCnciBridge(bridge, brInfo, cnci.Tenant, subnet)
 		bLink.index = bridge.Link.Index
 		close(bLink.ready)
+		if err != nil {
+			//Do not leave the GRE hanging
+			close(gLink.ready)
+			return "", err
+		}
 	}
 
 	if !greExists {
-		gerr = createCnciTunnel(gre)
+		err = createCnciTunnel(gre)
 		gLink.index = gre.Link.Index
 		close(gLink.ready)
-	}
-
-	if berr != nil {
-		return "", berr
-	}
-	if gerr != nil {
-		return "", gerr
-	}
-
-	if brExists {
-		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cnci.APITimeout)
 		if err != nil {
-			return "", fmt.Errorf("AddRemoteSubnet %s %v", bridge.GlobalID, err)
+			return "", err
 		}
 	}
-	if greExists {
-		gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink, cnci.APITimeout)
-		if err != nil {
-			return "", fmt.Errorf("AddRemoteSubnet %s %v", gre.GlobalID, err)
-		}
+
+	bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cnci.APITimeout)
+	if err != nil {
+		return "", err
+	}
+	gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink, cnci.APITimeout)
+	if err != nil {
+		return "", err
 	}
 
 	err = gre.attach(bridge)

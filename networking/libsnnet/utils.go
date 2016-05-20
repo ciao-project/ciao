@@ -19,6 +19,7 @@ package libsnnet
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"strings"
 	"time"
 
@@ -116,4 +117,25 @@ func genIface(device interface{}, unique bool) (string, error) {
 
 	// The chances of the failure are remote
 	return "", fmt.Errorf("unable to create unique interface name")
+}
+
+func validPhysicalLink(link netlink.Link) bool {
+	phyDevice := true
+
+	switch link.Type() {
+	case "device":
+	case "bond":
+	case "vlan":
+	default:
+		phyDevice = false
+	}
+
+	if (link.Attrs().Flags & net.FlagLoopback) != 0 {
+		return false
+	}
+
+	if travisCI {
+		return true
+	}
+	return phyDevice
 }

@@ -182,10 +182,45 @@ type ComputeNode struct {
 	apiThrottleSem chan int
 }
 
-// Init sets the CN node configuration
-// Discovers the physical interfaces and classifies them as management or compute
-// Performs any node specific networking setup.
-func (cn *ComputeNode) Init() error {
+//Adds a physical link to the management or compute network
+//if the link has an IP address the falls within one of the configured subnets
+//However if the subnets are not specified just add the links
+//It is the callers responsibility to pick the correct links
+//TODO: Add interfaces here so CN and CNCI can share most of the init code
+func (cn *ComputeNode) addPhyLinkToConfig(link netlink.Link, ipv4Addrs []netlink.Addr) {
+
+	for _, addr := range ipv4Addrs {
+
+		if cn.ManagementNet == nil {
+			cn.MgtAddr = append(cn.MgtAddr, addr)
+			cn.MgtLink = append(cn.MgtLink, link)
+		} else {
+			for _, mgt := range cn.ManagementNet {
+				if mgt.Contains(addr.IPNet.IP) {
+					cn.MgtAddr = append(cn.MgtAddr, addr)
+					cn.MgtLink = append(cn.MgtLink, link)
+				}
+			}
+		}
+
+		if cn.ComputeNet == nil {
+			cn.ComputeAddr = append(cn.ComputeAddr, addr)
+			cn.ComputeLink = append(cn.ComputeLink, link)
+		} else {
+			for _, comp := range cn.ComputeNet {
+				if comp.Contains(addr.IPNet.IP) {
+					cn.ComputeAddr = append(cn.ComputeAddr, addr)
+					cn.ComputeLink = append(cn.ComputeLink, link)
+				}
+			}
+		}
+	}
+}
+
+//This will return error if it cannot find valid physical
+//interfaces with IP addresses assigned
+//This may be just a delay in acquiring IP addresses
+func (cn *ComputeNode) findPhyNwInterface() error {
 
 	links, err := netlink.LinkList()
 
@@ -198,22 +233,10 @@ func (cn *ComputeNode) Init() error {
 	cn.MgtLink = nil
 	cn.ComputeAddr = nil
 	cn.ComputeLink = nil
-	cn.APITimeout = time.Second * CnAPITimeout
-	cn.apiThrottleSem = make(chan int, CnMaxAPIConcurrency)
 
 	for _, link := range links {
 
-		if !(link.Type() == "device" ||
-			link.Type() == "bond" ||
-			link.Type() == "vlan") {
-
-			//Allow all types of links under travisCI
-			if !travisCI {
-				continue
-			}
-		}
-
-		if link.Attrs().Name == "lo" {
+		if !validPhysicalLink(link) {
 			continue
 		}
 
@@ -223,34 +246,8 @@ func (cn *ComputeNode) Init() error {
 		}
 
 		phyInterfaces++
+		cn.addPhyLinkToConfig(link, addrs)
 
-		for _, addr := range addrs {
-
-			if cn.ManagementNet == nil {
-				cn.MgtAddr = append(cn.MgtAddr, addr)
-				cn.MgtLink = append(cn.MgtLink, link)
-			} else {
-				for _, mgt := range cn.ManagementNet {
-					if mgt.Contains(addr.IPNet.IP) {
-						cn.MgtAddr = append(cn.MgtAddr, addr)
-						cn.MgtLink = append(cn.MgtLink, link)
-					}
-				}
-			}
-
-			if cn.ComputeNet == nil {
-				cn.ComputeAddr = append(cn.ComputeAddr, addr)
-				cn.ComputeLink = append(cn.ComputeLink, link)
-			} else {
-				for _, comp := range cn.ComputeNet {
-					if comp.Contains(addr.IPNet.IP) {
-						cn.ComputeAddr = append(cn.ComputeAddr, addr)
-						cn.ComputeLink = append(cn.ComputeLink, link)
-					}
-				}
-			}
-
-		}
 	}
 
 	if len(cn.MgtAddr) < 1 {
@@ -260,8 +257,30 @@ func (cn *ComputeNode) Init() error {
 		return NewAPIError(fmt.Sprintf("unable to associate with compute network %v", cn.ComputeNet))
 	}
 
+	//Allow auto configuration only in the case where there is a single physical
+	//interface with an IP address
 	if (cn.ManagementNet == nil || cn.ComputeNet == nil) && phyInterfaces > 1 {
 		return fmt.Errorf("unable to autoconfigure network")
+	}
+
+	return nil
+
+}
+
+// Init sets the CN node configuration
+// Discovers the physical interfaces and classifies them as management or compute
+// Performs any node specific networking setup.
+func (cn *ComputeNode) Init() error {
+
+	cn.APITimeout = time.Second * CnAPITimeout
+	cn.apiThrottleSem = make(chan int, CnMaxAPIConcurrency)
+
+	if cn.NetworkConfig == nil {
+		return fmt.Errorf("CN uninitalized")
+	}
+
+	if err := cn.findPhyNwInterface(); err != nil {
+		return err
 	}
 
 	//TODO: Support all modes
@@ -363,28 +382,7 @@ const (
 	dbDelBr
 )
 
-//DbRebuild the CN network database using the information contained
-//in the aliases. It can be called if the agent using the library
-//crashes and loses network topology information.
-//It can also be called, to rebuild the network topology on demand.
-func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
-
-	if cn.NetworkConfig == nil || cn.cnTopology == nil {
-		return NewAPIError(fmt.Sprintf("CN has not been initialized %v", cn))
-	}
-
-	links, err := netlink.LinkList()
-	if err != nil {
-		return NewFatalError("Cannot retrieve links" + err.Error())
-	}
-
-	cn.cnTopology.Lock()
-	defer cn.cnTopology.Unlock()
-
-	initCnTopology(cn.cnTopology)
-
-	//Add the bridges first, vnics added later as we
-	//do not control the order of link discovery
+func (cn *ComputeNode) rebuildBridgeMap(links []netlink.Link) error {
 	for _, link := range links {
 		alias := link.Attrs().Alias
 		name := link.Attrs().Name
@@ -407,9 +405,10 @@ func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
 			}
 		}
 	}
+	return nil
+}
 
-	//Now build the vnic maps, inefficient but simple
-	//This allows us to check if the bridges and tunnels are all present
+func (cn *ComputeNode) rebuildVnicMap(links []netlink.Link) error {
 	for _, link := range links {
 		if alias := link.Attrs().Alias; alias != "" {
 			if strings.HasPrefix(alias, vnicPrefix) {
@@ -430,8 +429,40 @@ func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
 			}
 		}
 	}
-
 	return nil
+}
+
+//DbRebuild the CN network database using the information contained
+//in the aliases. It can be called if the agent using the library
+//crashes and loses network topology information.
+//It can also be called, to rebuild the network topology on demand.
+func (cn *ComputeNode) DbRebuild(links []netlink.Link) error {
+
+	if cn.NetworkConfig == nil || cn.cnTopology == nil {
+		return NewAPIError(fmt.Sprintf("CN has not been initialized %v", cn))
+	}
+
+	links, err := netlink.LinkList()
+	if err != nil {
+		return NewFatalError("Cannot retrieve links" + err.Error())
+	}
+
+	cn.cnTopology.Lock()
+	defer cn.cnTopology.Unlock()
+
+	initCnTopology(cn.cnTopology)
+
+	//Add the bridges first, vnics added later as we
+	//do not control the order of link discovery
+	err = cn.rebuildBridgeMap(links)
+	if err != nil {
+		return err
+	}
+
+	//Now build the vnic maps, inefficient but simple
+	//This allows us to check if the bridges and tunnels are all present
+	err = cn.rebuildVnicMap(links)
+	return err
 }
 
 func (cn *ComputeNode) dbUpdate(bridge string, vnic string, op dbOp) (int, error) {
@@ -697,9 +728,7 @@ func (cn *ComputeNode) waitForExistingVnic(vnic *Vnic, bridge *Bridge, vLink *li
 
 }
 
-func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
-	var gLink *linkInfo
-	var cInfo *ContainerInfo
+func (cn *ComputeNode) createDevicesFromCfg(cfg *VnicConfig) (*Vnic, *Bridge, *GreTunEP, error) {
 
 	alias := genCnVnicAliases(cfg)
 
@@ -719,15 +748,61 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 		return nil, nil, nil, NewAPIError(err.Error())
 	}
 
+	return vnic, bridge, gre, nil
+
+}
+
+//Note: The topology lock has to be held before calling this cn.cnTopology.Lock()
+func (cn *ComputeNode) addVnicToBridge(cfg *VnicConfig, vnic *Vnic, bridge *Bridge, vLink *linkInfo, bLink *linkInfo) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
+	_, err := cn.dbUpdate(bridge.GlobalID, vnic.GlobalID, dbInsVnic)
+	if err != nil {
+		cn.cnTopology.Unlock()
+		return nil, nil, nil, NewFatalError(err.Error())
+	}
+
+	var needsContainerNetwork bool
+	if vnic.Role == TenantContainer && !cn.containerMap[bridge.GlobalID] {
+		cn.containerMap[bridge.GlobalID] = true
+		needsContainerNetwork = true
+	}
+
+	cn.cnTopology.Unlock()
+
+	bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
+	if err != nil {
+		return nil, nil, nil, NewFatalError(bridge.GlobalID + err.Error())
+	}
+
+	if err := createAndEnableVnic(vnic, bridge); err != nil {
+		return nil, nil, nil, NewFatalError(err.Error())
+	}
+	vLink.index = vnic.Link.Attrs().Index
+
+	cInfo := getContainerInfo(cfg, vnic, bridge)
+	if needsContainerNetwork {
+		cInfo.CNContainerEvent = ContainerNetworkAdd
+	}
+	return vnic, nil, cInfo, nil
+}
+
+func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
+	var gLink *linkInfo
+
+	vnic, bridge, gre, err := cn.createDevicesFromCfg(cfg)
+
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	// CS Start
 	cn.cnTopology.Lock()
 
-	vLink, present := cn.linkMap[vnic.GlobalID]
-	if present {
-		bLink, present := cn.linkMap[bridge.GlobalID]
+	vLink, vnicPresent := cn.linkMap[vnic.GlobalID]
+	if vnicPresent {
+		bLink, bridgePresent := cn.linkMap[bridge.GlobalID]
 		cn.cnTopology.Unlock()
 
-		if !present {
+		if !bridgePresent {
 			return nil, nil, nil, NewFatalError(vnic.GlobalID + " Bridge not present")
 		}
 		return cn.waitForExistingVnic(vnic, bridge, vLink, bLink, cfg)
@@ -740,36 +815,9 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 	vLink = cn.linkMap[vnic.GlobalID]
 	defer close(vLink.ready)
 
-	bLink, present := cn.linkMap[bridge.GlobalID]
-	if present {
-		if _, err := cn.dbUpdate(bridge.GlobalID, vnic.GlobalID, dbInsVnic); err != nil {
-			cn.cnTopology.Unlock()
-			return nil, nil, nil, NewFatalError(err.Error())
-		}
-
-		var needsContainerNetwork bool
-		if vnic.Role == TenantContainer && !cn.containerMap[bridge.GlobalID] {
-			cn.containerMap[bridge.GlobalID] = true
-			needsContainerNetwork = true
-		}
-
-		cn.cnTopology.Unlock()
-
-		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
-		if err != nil {
-			return nil, nil, nil, NewFatalError(bridge.GlobalID + err.Error())
-		}
-
-		if err := createAndEnableVnic(vnic, bridge); err != nil {
-			return nil, nil, nil, NewFatalError(err.Error())
-		}
-		vLink.index = vnic.Link.Attrs().Index
-
-		cInfo = getContainerInfo(cfg, vnic, bridge)
-		if needsContainerNetwork {
-			cInfo.CNContainerEvent = ContainerNetworkAdd
-		}
-		return vnic, nil, cInfo, nil
+	bLink, bridgePresent := cn.linkMap[bridge.GlobalID]
+	if bridgePresent {
+		return cn.addVnicToBridge(cfg, vnic, bridge, vLink, bLink)
 	}
 
 	if err := cn.logicallyCreateBridge(bridge, gre, vnic); err != nil {
@@ -802,22 +850,22 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 		SubnetID:  cfg.SubnetID,
 		SubnetKey: cfg.SubnetKey,
 		Subnet:    cfg.Subnet.String(),
-		CnIP:      local.String(),
+		CnIP:      gre.LocalIP.String(),
 		CnID:      cn.ID,
 	}
 
 	if err := createAndEnableBridge(bridge, gre); err != nil {
-		return nil, brCreateMsg, cInfo, NewFatalError(err.Error())
+		return nil, brCreateMsg, nil, NewFatalError(err.Error())
 	}
 	bLink.index = bridge.Link.Index
 	gLink.index = gre.Link.Index
 
 	if err := createAndEnableVnic(vnic, bridge); err != nil {
-		return nil, brCreateMsg, cInfo, NewFatalError(err.Error())
+		return nil, brCreateMsg, nil, NewFatalError(err.Error())
 	}
 	vLink.index = vnic.Link.Attrs().Index
 
-	cInfo = getContainerInfo(cfg, vnic, bridge)
+	cInfo := getContainerInfo(cfg, vnic, bridge)
 	cInfo.CNContainerEvent = ContainerNetworkAdd
 
 	// Now the network is ready and you can create a VM and launch it with this vnic
@@ -964,6 +1012,14 @@ func apiCancelled(cancel chan interface{}) bool {
 func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, *ContainerInfo, error) {
 	var cInfo *ContainerInfo
 
+	if cfg == nil || cn.cnTopology == nil {
+		return nil, nil, NewAPIError("invalid vnic or configuration")
+	}
+
+	if err := checkCnVnicCfg(cfg); err != nil {
+		return nil, nil, NewAPIError(err.Error())
+	}
+
 	cn.apiThrottleSem <- 1
 	defer func() {
 		<-cn.apiThrottleSem
@@ -984,6 +1040,58 @@ func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, *Container
 	return s, cInfo, err
 }
 
+//Note: Can only be called when holding the topology lock cn.cnTopology.Lock()
+func (cn *ComputeNode) deleteVnicInternal(vnic *Vnic, vLink *linkInfo) (err error) {
+	vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink, cn.APITimeout)
+	if err != nil {
+		return NewFatalError(vnic.GlobalID + err.Error())
+	}
+	err = vnic.destroy()
+	if err != nil {
+		return NewFatalError(err.Error())
+	}
+	delete(cn.linkMap, vnic.GlobalID)
+	delete(cn.nameMap, vnic.LinkName)
+	return nil
+}
+
+//Note: Can only be called when holding the topology lock cn.cnTopology.Lock()
+func (cn *ComputeNode) deleteGreInternal(gre *GreTunEP, gLink *linkInfo) (err error) {
+	gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink, cn.APITimeout)
+	if err != nil {
+		return NewFatalError(gre.GlobalID + err.Error())
+	}
+
+	err = gre.destroy()
+	if err != nil {
+		return NewFatalError("gre destroy " + gre.GlobalID + err.Error())
+	}
+	delete(cn.nameMap, gre.LinkName)
+	delete(cn.linkMap, gre.GlobalID)
+	return nil
+}
+
+//Note: Can only be called when holding the topology lock cn.cnTopology.Lock()
+func (cn *ComputeNode) deleteBridgeInternal(bridge *Bridge, bLink *linkInfo, brDeleteMsg *SsntpEventInfo) (err error) {
+	bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
+	if err != nil {
+		return NewFatalError(bridge.GlobalID + err.Error())
+	}
+
+	if err := bridge.destroy(); err != nil {
+		return NewFatalError("bridge destroy failed " + err.Error())
+	}
+	// We delete the container network when the bridge is deleted
+	if cn.containerMap[bridge.GlobalID] {
+		brDeleteMsg.containerSubnetID = bridge.LinkName
+		cn.containerMap[bridge.GlobalID] = false
+	}
+	delete(cn.nameMap, bridge.LinkName)
+	delete(cn.linkMap, bridge.GlobalID)
+
+	return nil
+}
+
 // DestroyVnic destroys a tenant VNIC. If this happens to be the last vnic for
 // this tenant subnet on this CN, the bridge and gre tunnel will also be
 // destroyed and SSNTP message generated.
@@ -995,14 +1103,6 @@ func (cn *ComputeNode) DestroyVnic(cfg *VnicConfig) (*SsntpEventInfo, *Container
 // scheduler or CNCI
 func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, error) {
 	var brDeleteMsg *SsntpEventInfo
-
-	if cfg == nil || cn.cnTopology == nil {
-		return nil, NewAPIError("invalid vnic or configuration")
-	}
-
-	if err := checkCnVnicCfg(cfg); err != nil {
-		return nil, NewAPIError(err.Error())
-	}
 
 	alias := genCnVnicAliases(cfg)
 	vnic, err := newVnic(alias.vnic)
@@ -1021,16 +1121,10 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 		return nil, nil
 	}
 
-	vnic.LinkName, vnic.Link.Attrs().Index, err = waitForDeviceReady(vLink, cn.APITimeout)
+	err = cn.deleteVnicInternal(vnic, vLink)
 	if err != nil {
-		return nil, NewFatalError(vnic.GlobalID + err.Error())
+		return nil, err
 	}
-	err = vnic.destroy()
-	if err != nil {
-		return nil, NewFatalError(err.Error())
-	}
-	delete(cn.linkMap, vnic.GlobalID)
-	delete(cn.nameMap, vnic.LinkName)
 
 	vnicCount, err := cn.dbUpdate(alias.bridge, alias.vnic, dbDelVnic)
 	if err != nil {
@@ -1066,18 +1160,10 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 	//TODO: Try and make forward progress even on error
 	gLink, present := cn.linkMap[alias.gre]
 	if present {
-		gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink, cn.APITimeout)
+		err := cn.deleteGreInternal(gre, gLink)
 		if err != nil {
-			return nil, NewFatalError(gre.GlobalID + err.Error())
+			return nil, err
 		}
-
-		err := gre.destroy()
-		if err != nil {
-			return nil, NewFatalError("gre destroy " + gre.GlobalID + err.Error())
-		}
-		delete(cn.nameMap, gre.LinkName)
-		delete(cn.linkMap, gre.GlobalID)
-
 	} else {
 		//TODO: Consider logging this and continue to delete bridge
 		return nil, NewFatalError(fmt.Sprintf("gre tunnel not present %s", gre.GlobalID))
@@ -1085,26 +1171,14 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 
 	bLink, present := cn.linkMap[alias.bridge]
 	if present {
-		bridge.LinkName, bridge.Link.Index, err = waitForDeviceReady(bLink, cn.APITimeout)
+		err := cn.deleteBridgeInternal(bridge, bLink, brDeleteMsg)
 		if err != nil {
-			return nil, NewFatalError(bridge.GlobalID + err.Error())
+			return nil, err
 		}
-
-		if err := bridge.destroy(); err != nil {
-			return nil, NewFatalError("bridge destroy failed " + err.Error())
-		}
-		// We delete the container network when the bridge is deleted
-		if cn.containerMap[alias.bridge] {
-			brDeleteMsg.containerSubnetID = bridge.LinkName
-			cn.containerMap[alias.bridge] = false
-		}
-		delete(cn.nameMap, bridge.LinkName)
-		delete(cn.linkMap, bridge.GlobalID)
 
 		if _, err := cn.dbUpdate(alias.bridge, "", dbDelBr); err != nil {
 			return nil, NewFatalError("db del br " + err.Error())
 		}
-
 	} else {
 		return nil, NewFatalError(fmt.Sprintf("bridge not present %s", bridge.GlobalID))
 	}
@@ -1143,6 +1217,7 @@ func (cn *ComputeNode) ResetNetwork() error {
 
 	//Check if we see any remnants
 	//Attempt one last time to delete them
+	//Here we delete links without aliases but may have been created by us
 	links, err = netlink.LinkList()
 	var badLinks []string
 	for _, link := range links {
@@ -1154,10 +1229,7 @@ func (cn *ComputeNode) ResetNetwork() error {
 		}
 
 		// Be paranoid
-		switch link.Type() {
-		case "device":
-			continue
-		case "bond":
+		if validPhysicalLink(link) {
 			continue
 		}
 

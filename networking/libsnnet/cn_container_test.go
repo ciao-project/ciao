@@ -43,9 +43,7 @@ func dockerRestart() error {
 	_, err := exec.Command("service", "docker", "restart").CombinedOutput()
 	if err != nil {
 		_, err = exec.Command("systemctl", "restart", "docker").CombinedOutput()
-		if err != nil {
-			return err
-		}
+		return err
 	}
 	return err
 }
@@ -86,9 +84,6 @@ func dockerContainerDelete(name string) error {
 	}
 
 	_, err = exec.Command("docker", "rm", name).CombinedOutput()
-	if err != nil {
-		return err
-	}
 	return err
 }
 
@@ -99,10 +94,7 @@ func dockerContainerInfo(name string) error {
 	}
 
 	_, err = exec.Command("docker", "inspect", name).CombinedOutput()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 //Will be replaced by Docker API's in launcher
@@ -117,10 +109,6 @@ func dockerNetCreate(subnet net.IPNet, gw net.IP, bridge string, subnetID string
 		"--opt", "bridge="+bridge, subnetID)
 
 	_, err := cmd.CombinedOutput()
-
-	if err != nil {
-		return err
-	}
 	return err
 }
 
@@ -128,24 +116,15 @@ func dockerNetCreate(subnet net.IPNet, gw net.IP, bridge string, subnetID string
 // docker network rm ContainerInfo.SubnetID
 func dockerNetDelete(subnetID string) error {
 	_, err := exec.Command("docker", "network", "rm", subnetID).CombinedOutput()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 func dockerNetList() error {
 	_, err := exec.Command("docker", "network", "ls").CombinedOutput()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func dockerNetInfo(subnetID string) error {
 	_, err := exec.Command("docker", "network", "inspect", subnetID).CombinedOutput()
-	if err != nil {
-		return err
-	}
 	return err
 }
 
