@@ -237,10 +237,7 @@ func (cn *ComputeNode) findPhyNwInterface() error {
 	for _, link := range links {
 
 		if !validPhysicalLink(link) {
-			//Allow all types of links under travisCI
-			if !travisCI {
-				continue
-			}
+			continue
 		}
 
 		addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)

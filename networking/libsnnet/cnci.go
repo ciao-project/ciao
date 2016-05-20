@@ -141,9 +141,7 @@ func (cnci *Cnci) findPhyNwInterface() error {
 
 	for _, link := range links {
 		if !validPhysicalLink(link) {
-			if !travisCI {
-				continue
-			}
+			continue
 		}
 
 		addrs, err := netlink.AddrList(link, netlink.FAMILY_V4)
