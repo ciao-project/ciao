@@ -60,7 +60,7 @@ func init() {
 
 const (
 	lockDir       = "/tmp/lock/ciao"
-	logDir        = "/var/lib/ciao/logs/cnci_agent"
+	logDir        = "/var/lib/ciao/logs/cnci-agent"
 	lockFile      = "cnci-agent.lock"
 	interfacesDir = "/var/lib/ciao/network/interfaces"
 )

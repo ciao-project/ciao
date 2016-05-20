@@ -29,7 +29,7 @@ the overall cloud infrastructure and issue commands to manage it.
 
 When a first workload is launched for a tenant,
 ciao-controller automatically prepares a [CNCI
-appliance](https://github.com/01org/ciao/tree/master/networking/cnci_agent)
+appliance](https://github.com/01org/ciao/tree/master/networking/ciao-cnci-agent)
 for the tenant.  This provides a virtual network which spans the tenant's
 workloads.  Tenant workloads have access only to their tenant private
 network and not any other tenant networks.  New workload instances within
