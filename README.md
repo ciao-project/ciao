@@ -16,8 +16,9 @@ which communicate over the "Simple and Secure Node Transfer Protocol
 is responsible for policy choices around tenant workloads.
 
 [Scheduler](https://github.com/01org/ciao/blob/master/ciao-scheduler)
-implements a push scheduling, finding a first fit on cluster compute
-nodes for a controller approved workload instance.
+implements a "push/pull" scheduling algorithm.  In response to a
+controller approved workload instance arriving at the scheduler, it
+finds a first fit among cluster compute nodes currently requesting work.
 
 [Launcher](https://github.com/01org/ciao/blob/master/ciao-launcher)
 abstracts the specific launching details for the different workload
