@@ -55,3 +55,24 @@ func TestDeleteFailureMarshal(t *testing.T) {
 	}
 	fmt.Println(string(y))
 }
+
+func TestDeleteFailureString(t *testing.T) {
+	var stringTests = []struct {
+		r        DeleteFailureReason
+		expected string
+	}{
+		{DeleteNoInstance, "Instance does not exist"},
+		{DeleteInvalidPayload, "YAML payload is corrupt"},
+		{DeleteInvalidData, "Command section of YAML payload is corrupt or missing required information"},
+	}
+	error := ErrorDeleteFailure{
+		InstanceUUID: uuid.Generate().String(),
+	}
+	for _, test := range stringTests {
+		error.Reason = test.r
+		s := error.Reason.String()
+		if s != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, s)
+		}
+	}
+}

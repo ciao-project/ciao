@@ -122,3 +122,37 @@ func TestConfigureMarshal(t *testing.T) {
 		t.Errorf("CONFIGURE marshalling failed\n[%s]\n vs\n[%s]", string(y), configureYaml)
 	}
 }
+
+func TestConfigureStorageTypeString(t *testing.T) {
+	var stringTests = []struct {
+		s        StorageType
+		expected string
+	}{
+		{Filesystem, "file"},
+		{Etcd, "etcd"},
+	}
+	for _, test := range stringTests {
+		obj := test.s
+		out := obj.String()
+		if out != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, out)
+		}
+	}
+}
+
+func TestConfigureServiceTypeString(t *testing.T) {
+	var stringTests = []struct {
+		s        ServiceType
+		expected string
+	}{
+		{Glance, "glance"},
+		{Keystone, "keystone"},
+	}
+	for _, test := range stringTests {
+		obj := test.s
+		out := obj.String()
+		if out != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, out)
+		}
+	}
+}

@@ -55,3 +55,28 @@ func TestRestartFailureMarshal(t *testing.T) {
 	}
 	fmt.Println(string(y))
 }
+
+func TestRestartFailureString(t *testing.T) {
+	var stringTests = []struct {
+		r        RestartFailureReason
+		expected string
+	}{
+		{RestartNoInstance, "Instance does not exist"},
+		{RestartInvalidPayload, "YAML payload is corrupt"},
+		{RestartInvalidData, "Command section of YAML payload is corrupt or missing required information"},
+		{RestartAlreadyRunning, "Instance is already running"},
+		{RestartInstanceCorrupt, "Instance is corrupt"},
+		{RestartLaunchFailure, "Failed to launch instance"},
+		{RestartNetworkFailure, "Failed to locate VNIC for instance"},
+	}
+	error := ErrorRestartFailure{
+		InstanceUUID: uuid.Generate().String(),
+	}
+	for _, test := range stringTests {
+		error.Reason = test.r
+		s := error.Reason.String()
+		if s != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, s)
+		}
+	}
+}
