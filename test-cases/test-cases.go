@@ -138,12 +138,16 @@ var textOutput bool
 var short bool
 var tags string
 var colour bool
+var coverProfile string
+var appendProfile bool
 
 func init() {
 	flag.StringVar(&cssPath, "css", "", "Full path to CSS file")
 	flag.BoolVar(&textOutput, "text", false, "Output text instead of HTML")
 	flag.BoolVar(&short, "short", false, "If true -short is passed to go test")
 	flag.StringVar(&tags, "tags", "", "Build tags to pass to go test")
+	flag.StringVar(&coverProfile, "coverprofile", "", "Path of coverage profile to be generated")
+	flag.BoolVar(&appendProfile, "append-profile", false, "Append generated coverage profiles an existing file")
 	flag.BoolVar(&colour, "colour", true, "If true failed tests are coloured red in text mode")
 	resultRegexp = regexp.MustCompile(`--- (FAIL|PASS): ([^\s]+) \(([^\)]+)\)`)
 	coverageRegexp = regexp.MustCompile(`^coverage: ([^\s]+)`)
@@ -265,7 +269,7 @@ func findTestFiles(packs []string) ([]PackageInfo, error) {
 	return testPackages, nil
 }
 
-func runPackageTests(p *PackageTests) int {
+func runPackageTests(p *PackageTests, coverFile string) (int, error) {
 	var output bytes.Buffer
 	var coverage string
 
@@ -278,10 +282,12 @@ func runPackageTests(p *PackageTests) int {
 	if tags != "" {
 		args = append(args, "-tags", tags)
 	}
-
+	if coverFile != "" {
+		args = append(args, "-coverprofile", coverFile)
+	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = &output
-	_ = cmd.Run()
+	err := cmd.Run()
 
 	scanner := bufio.NewScanner(&output)
 	for scanner.Scan() {
@@ -323,7 +329,7 @@ func runPackageTests(p *PackageTests) int {
 		p.Coverage = "Unknown"
 	}
 
-	return exitCode
+	return exitCode, err
 }
 
 func identifyPackages(packs []string) []string {
@@ -455,6 +461,88 @@ func generateTextReport(tests []*PackageTests) {
 	fmt.Println()
 }
 
+func createCoverFile() (*os.File, error) {
+	var f *os.File
+	var err error
+	if appendProfile {
+		f, err = os.OpenFile(coverProfile, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to open %s for appending: %v",
+				coverProfile, err)
+		}
+	} else {
+		f, err = os.OpenFile(coverProfile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to create coverage file %s: %v",
+				coverProfile, err)
+		}
+		_, err = f.WriteString("mode: set\n")
+		if err != nil {
+			_ = f.Close()
+			return nil, fmt.Errorf("Unable to write mode string to coverage file %s: %v",
+				coverProfile, err)
+		}
+	}
+
+	return f, nil
+}
+
+func appendCoverageData(f *os.File, coverFile string) error {
+	cover, err := ioutil.ReadFile(coverFile)
+	if err != nil {
+		return fmt.Errorf("Unable to read coverage file %s: %v", coverFile, err)
+	}
+
+	index := bytes.Index(cover, []byte{'\n'})
+	if index != -1 {
+		cover = cover[index+1:]
+	}
+
+	_, err = f.Write(cover)
+	if err != nil {
+		return fmt.Errorf("Unable to append coverage data to %s: %v", coverFile, err)
+	}
+
+	return nil
+}
+
+func runTests(tests []*PackageTests) (int, error) {
+	exitCode := 0
+	if coverProfile != "" {
+		coverDir, err := ioutil.TempDir("", "cover-profiles")
+		if err != nil {
+			return 1, fmt.Errorf("Unable to create temporary directory for coverage profiles: %v", err)
+		}
+		defer func() { _ = os.RemoveAll(coverDir) }()
+
+		f, err := createCoverFile()
+		if err != nil {
+			return 1, err
+		}
+		defer func() { _ = f.Close() }()
+
+		for i, p := range tests {
+			coverFile := path.Join(coverDir, fmt.Sprintf("%d", i))
+			ec, err := runPackageTests(p, coverFile)
+			exitCode |= ec
+			if err != nil {
+				continue
+			}
+			err = appendCoverageData(f, coverFile)
+			if err != nil {
+				return 1, err
+			}
+		}
+	} else {
+		for _, p := range tests {
+			ec, _ := runPackageTests(p, "")
+			exitCode |= ec
+		}
+	}
+
+	return exitCode, nil
+}
+
 func main() {
 
 	flag.Parse()
@@ -467,9 +555,9 @@ func main() {
 	}
 
 	tests := extractTests(packages)
-	exitCode := 0
-	for _, p := range tests {
-		exitCode = exitCode | runPackageTests(p)
+	exitCode, err := runTests(tests)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if textOutput {
