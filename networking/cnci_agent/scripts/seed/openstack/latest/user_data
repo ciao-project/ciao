@@ -2,10 +2,10 @@
 runcmd:
   - [ touch, "/etc/bootdone" ]
 users:
-  - name: ciao
-    gecos: ciaogecos
+  - name: demouser
+    gecos: CIAO Demo User
     lock-passwd: false
     #Temporary password for debugging the image, set to ciao
     passwd: "$6$rounds=4096$5UnuSTz7u$3uzCRd62GSgVnmYkGPTpX9BWKLU3rf4jYdpOf22J/OWJqbdsVgudq.l7zRmcq9XAfKJr3pyzpb41lH/y6SrEo1"
-    sudo: ciao ALL=(ALL) NOPASSWD:ALL
+    sudo: demouser ALL=(ALL) NOPASSWD:ALL
     #- ssh-rsa PLAC_YOURKEY_HERE

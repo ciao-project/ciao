@@ -34,8 +34,8 @@ start:
 runcmd:
   - [ touch, "/etc/bootdone" ]
 users:
-  - name: ciao
-    gecos: CIAO Rules
+  - name: demouser
+    gecos: CIAO Demo User
     lock-passwd: false
     passwd: \\$1\\$vzmNmLLD\\$04bivxcjdXRzZLUd.enRl1
     sudo: ALL=(ALL) NOPASSWD:ALL
