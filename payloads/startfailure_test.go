@@ -54,3 +54,32 @@ func TestStartFailureMarshal(t *testing.T) {
 	}
 	fmt.Println(string(y))
 }
+
+func TestStartFailureString(t *testing.T) {
+	var stringTests = []struct {
+		r        StartFailureReason
+		expected string
+	}{
+		{FullCloud, "Cloud is full"},
+		{FullComputeNode, "Compute node is full"},
+		{NoComputeNodes, "No compute node available"},
+		{NoNetworkNodes, "No network node available"},
+		{InvalidPayload, "YAML payload is corrupt"},
+		{InvalidData, "Command section of YAML payload is corrupt or missing required information"},
+		{AlreadyRunning, "Instance is already running"},
+		{InstanceExists, "Instance already exists"},
+		{ImageFailure, "Failed to create instance image"},
+		{LaunchFailure, "Failed to launch instance"},
+		{NetworkFailure, "Failed to create VNIC for instance"},
+	}
+	error := ErrorStartFailure{
+		InstanceUUID: uuid.Generate().String(),
+	}
+	for _, test := range stringTests {
+		error.Reason = test.r
+		s := error.Reason.String()
+		if s != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, s)
+		}
+	}
+}

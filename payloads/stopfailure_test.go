@@ -55,3 +55,25 @@ func TestStopFailureMarshal(t *testing.T) {
 	}
 	fmt.Println(string(y))
 }
+
+func TestStopFailureString(t *testing.T) {
+	var stringTests = []struct {
+		r        StopFailureReason
+		expected string
+	}{
+		{StopNoInstance, "Instance does not exist"},
+		{StopInvalidPayload, "YAML payload is corrupt"},
+		{StopInvalidData, "Command section of YAML payload is corrupt or missing required information"},
+		{StopAlreadyStopped, "Instance has already shut down"},
+	}
+	error := ErrorStopFailure{
+		InstanceUUID: uuid.Generate().String(),
+	}
+	for _, test := range stringTests {
+		error.Reason = test.r
+		s := error.Reason.String()
+		if s != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, s)
+		}
+	}
+}

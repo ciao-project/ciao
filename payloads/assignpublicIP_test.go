@@ -19,6 +19,7 @@ package payloads
 import (
 	"testing"
 
+	"github.com/docker/distribution/uuid"
 	"gopkg.in/yaml.v2"
 )
 
@@ -147,5 +148,33 @@ func TestReleasePublicIPMarshal(t *testing.T) {
 
 	if string(y) != releaseIPYaml {
 		t.Errorf("ReleasePublicIP marshalling failed\n[%s]\n vs\n[%s]", string(y), releaseIPYaml)
+	}
+}
+
+func TestPublicIPFailureString(t *testing.T) {
+	var stringTests = []struct {
+		r        PublicIPFailureReason
+		expected string
+	}{
+		{PublicIPNoInstance, "Instance does not exist"},
+		{PublicIPInvalidPayload, "YAML payload is corrupt"},
+		{PublicIPInvalidData, "Command section of YAML payload is corrupt or missing required information"},
+		{PublicIPAssignFailure, "Public IP assignment operation_failed"},
+		{PublicIPReleaseFailure, "Public IP release operation_failed"},
+	}
+	error := ErrorPublicIPFailure{
+		ConcentratorUUID: uuid.Generate().String(),
+		TenantUUID:       uuid.Generate().String(),
+		InstanceUUID:     uuid.Generate().String(),
+		PublicIP:         "10.1.2.3",
+		PrivateIP:        "192.168.1.2",
+		VnicMAC:          "aa:bb:cc:01:02:03",
+	}
+	for _, test := range stringTests {
+		error.Reason = test.r
+		s := error.Reason.String()
+		if s != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, s)
+		}
 	}
 }
