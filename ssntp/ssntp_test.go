@@ -29,6 +29,8 @@ import (
 	"time"
 )
 
+const tempCertPath = "/tmp/ssntp-test-certs"
+
 type ssntpEchoServer struct {
 	ssntp Server
 	t     *testing.T
@@ -765,15 +767,36 @@ func TestMajor(t *testing.T) {
 	server.ssntp.Stop()
 }
 
+func roleToCert(role uint32) string {
+	switch role {
+	case SCHEDULER:
+		return testCertScheduler
+	case SERVER:
+		return testCertServer
+	case AGENT:
+		return testCertAgent
+	case Controller:
+		return testCertController
+	case CNCIAGENT:
+		return testCertCNCIAgent
+	case NETAGENT:
+		return testCertNetAgent
+	case AGENT | NETAGENT:
+		return testCertAgentNetAgent
+	}
+
+	return testCertUnknown
+}
+
 /* Mark D. Ryan FTW ! */
-func getCertPaths(tmpDir, caCert, serverCert, clientCert string) (string, string, string) {
-	var caPath, serverPath, clientPath string
+func getCert(role uint32) (string, string, error) {
+	var newRole = (Role)(role)
+	certString := roleToCert(role)
 
-	caPath = path.Join(tmpDir, "CACert")
-	serverPath = path.Join(tmpDir, "ServerCert")
-	clientPath = path.Join(tmpDir, "ClientCert")
+	caPath := path.Join(tempCertPath, "CACert")
+	certPath := path.Join(tempCertPath, newRole.String())
 
-	for _, s := range []struct{ path, data string }{{caPath, caCert}, {serverPath, serverCert}, {clientPath, clientCert}} {
+	for _, s := range []struct{ path, data string }{{caPath, testCACert}, {certPath, certString}} {
 		err := ioutil.WriteFile(s.path, []byte(s.data), 0755)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to create certfile %s %v\n", s.path, err)
@@ -781,7 +804,7 @@ func getCertPaths(tmpDir, caCert, serverCert, clientCert string) (string, string
 		}
 	}
 
-	return caPath, serverPath, clientPath
+	return caPath, certPath, nil
 }
 
 func validRoles(serverRole, clientRole uint32) bool {
@@ -796,22 +819,21 @@ func validRoles(serverRole, clientRole uint32) bool {
 	return false
 }
 
-func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32, clientCert string) {
+func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32) {
 	var serverConfig Config
 	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
-	tmpDir, err := ioutil.TempDir("", "ssntp-test-certs")
+	CACert, serverCert, err := getCert(serverRole)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to create temporary Dir %v\n", err)
-		os.Exit(1)
+		t.Fatalf("Failed to fetch certificate %s", err)
 	}
-	defer func() {
-		_ = os.RemoveAll(tmpDir)
-	}()
 
-	CACert, serverCert, clientCert := getCertPaths(tmpDir, testCACert, testCertScheduler, clientCert)
+	_, clientCert, err := getCert(clientRole)
+	if err != nil {
+		t.Fatalf("Failed to fetch certificate %s", err)
+	}
 
 	server.t = t
 	serverConfig.Transport = *transport
@@ -850,7 +872,7 @@ func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32, c
 //
 // Test is expected to pass.
 func TestConnectVerifyCertificatePositive(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, AGENT, testCertAgent)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT)
 }
 
 // Test that an SSNTP verified link can be established for a multi role client.
@@ -860,7 +882,7 @@ func TestConnectVerifyCertificatePositive(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyCertificatePositiveMultiRole(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT, testCertAgentNetAgent)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT)
 }
 
 // Test that an SSNTP verified link with the wrong client
@@ -872,7 +894,7 @@ func TestConnectVerifyCertificatePositiveMultiRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyClientCertificateNegative(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, Controller, testCertAgent)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT|CNCIAGENT)
 }
 
 // Test that an SSNTP verified link with the wrong multi role client
@@ -884,7 +906,7 @@ func TestConnectVerifyClientCertificateNegative(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyClientCertificateNegativeMultiRole(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT|CNCIAGENT, testCertAgentNetAgent)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT|CNCIAGENT)
 }
 
 // Test that an SSNTP verified link with the wrong server
@@ -896,7 +918,7 @@ func TestConnectVerifyClientCertificateNegativeMultiRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyServerCertificateNegative(t *testing.T) {
-	testConnectVerifyCertificate(t, SERVER, AGENT, testCertAgent)
+	testConnectVerifyCertificate(t, SERVER, AGENT|NETAGENT|CNCIAGENT)
 }
 
 // Test SSNTP client connection to an alternative port
@@ -2100,6 +2122,15 @@ func TestMain(m *testing.M) {
 	if *transport != "tcp" && *transport != "unix" {
 		*transport = "tcp"
 	}
+
+	/* Create temp certs directory if necessary */
+	err := os.MkdirAll(tempCertPath, 0755)
+	if err != nil {
+		fmt.Printf("Unable to create %s %v\n", uuidPrefix, err)
+		os.Exit(1)
+	}
+
+	defer os.RemoveAll(tempCertPath)
 
 	os.Exit(m.Run())
 }
