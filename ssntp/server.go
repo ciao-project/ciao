@@ -291,10 +291,23 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 	server.forwardRules.init(config.ForwardRules)
 	server.tls = prepareTLSConfig(config, true)
 	server.forwardRules.forwardRules = config.ForwardRules
-	server.role = config.Role
 	server.roleVerify = config.RoleVerification
 	server.trace = config.Trace
 	server.stoppedChan = make(chan struct{})
+
+	role, err := parseCertificate(config)
+	if err != nil {
+		server.log.Errorf("%s", err)
+		return err
+	}
+
+	if config.Role != (uint32)(UNKNOWN) && config.Role != role {
+		// Force Dial failure to not make this mismatch unnoticed.
+		// Eventually config.Role will be removed.
+		return fmt.Errorf("Requested role %d does not match certificate role %d", config.Role, role)
+	}
+
+	server.role = role
 
 	service := fmt.Sprintf("%s:%d", uri, serverPort)
 	listener, err := tls.Listen(transport, service, server.tls)
