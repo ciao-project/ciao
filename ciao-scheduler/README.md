@@ -65,5 +65,5 @@ More Information
 ----------------
 
 See
-(ciao-scheduler godoc)[https://github.com/01org/ciao/blob/master/ciao-scheduler/scheduler.go]
+[ciao-scheduler godoc](https://godoc.org/github.com/01org/ciao/ciao-scheduler)
 for more information on the design thinking behind the implementation.
