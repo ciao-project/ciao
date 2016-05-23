@@ -50,6 +50,16 @@ type ForwardDestination struct {
 	recipientUUIDs []string
 }
 
+// Decision is a simple accessor for the ForwardDecision.decision field
+func (d *ForwardDestination) Decision() ForwardDecision {
+	return d.decision
+}
+
+// Recipients is a simple accessor for the ForwardDecision.recipientUUIDs field
+func (d *ForwardDestination) Recipients() []string {
+	return d.recipientUUIDs
+}
+
 // AddRecipient adds a recipient to a ForwardDestination structure.
 // AddRecipient implicitly sets the forwarding decision to Forward
 // since adding a recipient means the frame must be forwarded.
