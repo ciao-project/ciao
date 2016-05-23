@@ -311,18 +311,8 @@ DONE:
 	id.wg.Done()
 }
 
-func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
-	ac *agentClient, ovsCh chan<- interface{}) chan<- interface{} {
-
-	var vm virtualizer
-	if simulate == true {
-		vm = &simulation{}
-	} else if cfg.Container {
-		vm = &docker{}
-	} else {
-		vm = &qemu{}
-	}
-
+func startInstanceWithVM(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
+	ac *agentClient, ovsCh chan<- interface{}, vm virtualizer) chan<- interface{} {
 	id := &instanceData{
 		cmdCh:       make(chan interface{}),
 		instance:    instance,
@@ -338,4 +328,18 @@ func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh ch
 	wg.Add(1)
 	go id.instanceLoop()
 	return id.cmdCh
+}
+
+func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
+	ac *agentClient, ovsCh chan<- interface{}) chan<- interface{} {
+
+	var vm virtualizer
+	if simulate == true {
+		vm = &simulation{}
+	} else if cfg.Container {
+		vm = &docker{}
+	} else {
+		vm = &qemu{}
+	}
+	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm)
 }
