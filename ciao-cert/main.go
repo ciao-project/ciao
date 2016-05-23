@@ -59,6 +59,10 @@ var (
 )
 
 func verifyCert(CACert string, certName string) {
+	if *isServer == true || *verify == false {
+		return
+	}
+
 	bytesServerCert, err := ioutil.ReadFile(CACert)
 	if err != nil {
 		log.Printf("Could not load [%s] %s", CACert, err)
@@ -165,8 +169,64 @@ func instructionDisplay(server bool, CAcert string, Cert string) {
 	}
 }
 
+func getFirstHost() string {
+	hosts := strings.Split(*host, ",")
+	return hosts[0]
+}
+
+func generatePrivateKey(ell bool) interface{} {
+	var priv interface{}
+	var err error
+
+	if ell == false {
+		priv, err = rsa.GenerateKey(rand.Reader, 2048)
+	} else {
+		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	}
+
+	if err != nil {
+		log.Fatalf("failed to generate private key: %s", err)
+	}
+
+	return priv
+}
+
+func checkCompulsoryOptions() {
+	if *host == "" {
+		log.Fatalf("Missing required --host parameter")
+	}
+
+	if *isServer == false && *serverCert == "" {
+		log.Fatalf("Missing required --server-cert parameter")
+	}
+}
+
+func addMgmtIPs(ips []net.IP) []net.IP {
+	mgmtIPs := strings.Split(*mgmtIP, ",")
+	for _, i := range mgmtIPs {
+		if ip := net.ParseIP(i); ip != nil {
+			ips = append(ips, ip)
+		}
+	}
+
+	return ips
+}
+
+func addDNSNames(names []string) []string {
+	hosts := strings.Split(*host, ",")
+	for _, h := range hosts {
+		if ip := net.ParseIP(h); ip != nil {
+			continue
+		} else {
+			names = append(names, h)
+		}
+	}
+
+	return names
+}
+
 func main() {
-	var priv, serverPrivKey interface{}
+	var serverPrivKey interface{}
 	var err error
 	var CAcertName, certName string
 	var parentCert x509.Certificate
@@ -175,24 +235,9 @@ func main() {
 	flag.Var(&role, "role", "Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
 	flag.Parse()
 
-	flag.Parse()
+	checkCompulsoryOptions()
 
-	if len(*host) == 0 {
-		log.Fatalf("Missing required --host parameter")
-	}
-
-	if *isServer == false && len(*serverCert) == 0 {
-		log.Fatalf("Missing required --server-cert parameter")
-	}
-
-	if *isElliptic == false {
-		priv, err = rsa.GenerateKey(rand.Reader, 2048)
-	} else {
-		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
-	}
-	if err != nil {
-		log.Fatalf("failed to generate private key: %s", err)
-	}
+	priv := generatePrivateKey(*isElliptic)
 
 	notBefore := time.Now()
 	notAfter := notBefore.Add(365 * 24 * time.Hour)
@@ -217,23 +262,9 @@ func main() {
 		BasicConstraintsValid: true,
 	}
 
-	hosts := strings.Split(*host, ",")
-	firstHost := hosts[0]
-	for _, h := range hosts {
-		if ip := net.ParseIP(h); ip != nil {
-			continue
-		} else {
-			template.DNSNames = append(template.DNSNames, h)
-		}
-	}
-
-	mgmtIPs := strings.Split(*mgmtIP, ",")
-	for _, i := range mgmtIPs {
-		if ip := net.ParseIP(i); ip != nil {
-			template.IPAddresses = append(template.IPAddresses, ip)
-		}
-	}
-
+	firstHost := getFirstHost()
+	template.DNSNames = addDNSNames(template.DNSNames)
+	template.IPAddresses = addMgmtIPs(template.IPAddresses)
 	template.UnknownExtKeyUsage = addOIDs(role, template.UnknownExtKeyUsage)
 
 	CAcertName = fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
@@ -302,9 +333,6 @@ func main() {
 	pem.Encode(certOut, pemBlockForKey(priv))
 	certOut.Close()
 
-	if *isServer == false && *verify == true {
-		verifyCert(*serverCert, certName)
-	}
-
+	verifyCert(*serverCert, certName)
 	instructionDisplay(*isServer, CAcertName, certName)
 }
