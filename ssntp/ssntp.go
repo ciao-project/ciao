@@ -684,10 +684,6 @@ type Config struct {
 	// and IPs on the running host.
 	URI string
 
-	// Role is a bitmask of SSNTP roles the client or server intends
-	// to run.
-	Role uint32
-
 	// CACert is the Certification Authority certificate path
 	// to use when verifiying the peer identity.
 	// If set to "", /etc/pki/ciao/ciao_ca_cert.crt will be used.
@@ -919,7 +915,7 @@ func verifyRole(conn interface{}, role uint32) (bool, error) {
 	return false, oidError
 }
 
-func parseCertificate(config *Config) ([]string, []string, error) {
+func parseCertificateAuthority(config *Config) ([]string, []string, error) {
 	var fqdns []string
 	var ips []string
 	caPEM, err := ioutil.ReadFile(config.CAcert)
@@ -947,6 +943,32 @@ func parseCertificate(config *Config) ([]string, []string, error) {
 	}
 
 	return ips, fqdns, nil
+}
+
+func parseCertificate(config *Config) (uint32, error) {
+	certPEM, err := ioutil.ReadFile(config.Cert)
+	if err != nil {
+		log.Fatalf("SSNTP: Load certificate [%s]: %s", config.Cert, err)
+	}
+
+	certBlock, _ := pem.Decode(certPEM)
+	if certBlock == nil {
+		fmt.Printf("Could not decode PEM for %s\n", config.CAcert)
+	}
+
+	cert, err := x509.ParseCertificates(certBlock.Bytes)
+	if err != nil {
+		fmt.Printf("Could not parse certificate %s\n", err)
+		return 0, err
+	}
+
+	role := getRoleFromOIDs(cert[0].UnknownExtKeyUsage)
+	/* We could not find a valid OID in the certificate */
+	if role == (uint32)(UNKNOWN) {
+		return role, errors.New("Could not find a SSNTP role")
+	}
+
+	return role, nil
 }
 
 const nullUUID = "00000000-0000-0000-0000-000000000000"

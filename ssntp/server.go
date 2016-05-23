@@ -234,9 +234,30 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 		return fmt.Errorf("SSNTP config missing")
 	}
 
+	if config.Log == nil {
+		server.log = errLog
+	} else {
+		server.log = config.Log
+	}
+
+	if len(config.CAcert) == 0 {
+		config.CAcert = defaultCA
+	}
+
+	if len(config.Cert) == 0 {
+		config.Cert = defaultServerCert
+	}
+
+	role, err := parseCertificate(config)
+	if err != nil {
+		server.log.Errorf("%s", err)
+		return err
+	}
+	server.role = role
+
 	if len(config.UUID) == 0 {
 		var err error
-		server.lUUID, err = newUUID("server", config.Role)
+		server.lUUID, err = newUUID("server", server.role)
 		if err != nil {
 			fmt.Printf("SSNTP ERROR: Server: Could not fetch a UUID, generating a random one (%s)\n", err)
 			server.uuid = uuid.Generate()
@@ -246,14 +267,6 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 	} else {
 		uuid, _ := uuid.Parse(config.UUID)
 		server.uuid = uuid
-	}
-
-	if len(config.CAcert) == 0 {
-		config.CAcert = defaultCA
-	}
-
-	if len(config.Cert) == 0 {
-		config.Cert = defaultServerCert
 	}
 
 	if config.Port != 0 {
@@ -280,18 +293,11 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 		}
 	}
 
-	if config.Log == nil {
-		server.log = errLog
-	} else {
-		server.log = config.Log
-	}
-
 	server.ntf = ntf
 	server.sessions = make(map[string]*session)
 	server.forwardRules.init(config.ForwardRules)
 	server.tls = prepareTLSConfig(config, true)
 	server.forwardRules.forwardRules = config.ForwardRules
-	server.role = config.Role
 	server.roleVerify = config.RoleVerification
 	server.trace = config.Trace
 	server.stoppedChan = make(chan struct{})

@@ -380,6 +380,23 @@ func (client *ssntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 func (client *ssntpTestClient) ErrorNotify(error ssntp.Error, frame *ssntp.Frame) {
 }
 
+func roleToCert(role ssntp.Role) string {
+	switch role {
+	case ssntp.Controller:
+		return defaultControllerCert
+	case ssntp.AGENT:
+		return defaultAgentCert
+	case ssntp.CNCIAGENT:
+		return defaultCNCIAgentCert
+	case ssntp.NETAGENT:
+		return defaultNetAgentCert
+	case ssntp.SERVER:
+		return defaultServerCert
+	}
+
+	return defaultControllerCert
+}
+
 func newTestClient(num int, role ssntp.Role) *ssntpTestClient {
 	client := &ssntpTestClient{
 		name: "Test " + role.String() + strconv.Itoa(num),
@@ -391,9 +408,8 @@ func newTestClient(num int, role ssntp.Role) *ssntpTestClient {
 	client.cmdChansLock = &sync.Mutex{}
 
 	config := &ssntp.Config{
-		Role:   uint32(role),
 		CAcert: *caCert,
-		Cert:   *cert,
+		Cert:   roleToCert(role),
 		Log:    ssntp.Log,
 		UUID:   client.uuid,
 	}
@@ -558,9 +574,8 @@ func startTestServer(server *ssntpTestServer) {
 	server.netClientsLock = &sync.RWMutex{}
 
 	serverConfig := ssntp.Config{
-		Role:   ssntp.SERVER,
 		CAcert: *caCert,
-		Cert:   *cert,
+		Cert:   roleToCert(ssntp.SERVER),
 		Log:    ssntp.Log,
 		ForwardRules: []ssntp.FrameForwardRule{
 			{
@@ -1428,7 +1443,6 @@ func TestMain(m *testing.M) {
 		URI:    "localhost",
 		CAcert: *caCert,
 		Cert:   *cert,
-		Role:   ssntp.Controller,
 	}
 
 	context.client, err = newSSNTPClient(context, config)

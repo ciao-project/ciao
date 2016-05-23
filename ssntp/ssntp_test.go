@@ -29,6 +29,8 @@ import (
 	"time"
 )
 
+const tempCertPath = "/tmp/ssntp-test-certs"
+
 type ssntpEchoServer struct {
 	ssntp Server
 	t     *testing.T
@@ -266,6 +268,21 @@ func (client *ssntpClient) ErrorNotify(error Error, frame *Frame) {
 	}
 }
 
+func buildTestConfig(role uint32) (*Config, error) {
+	CACert, cert, err := getCert(role)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &Config{
+		Transport: *transport,
+		CAcert:    CACert,
+		Cert:      cert,
+	}
+
+	return c, nil
+}
+
 // Test client UUID generation code
 //
 // Test that two consecutive SSNTP clients get the same UUID.
@@ -274,26 +291,30 @@ func (client *ssntpClient) ErrorNotify(error Error, frame *Frame) {
 //
 // Test is expected to pass.
 func TestUUID(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client1, client2 ssntpClient
 
 	server.t = t
 	client1.t = t
 	client2.t = t
-	serverConfig.Transport = *transport
-	serverConfig.Role = SERVER
-	clientConfig.Transport = *transport
-	clientConfig.Role = AGENT
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 
 	time.Sleep(500 * time.Millisecond)
-	client1.ssntp.Dial(&clientConfig, &client1)
+	client1.ssntp.Dial(clientConfig, &client1)
 	client1.ssntp.Close()
 
-	err := client2.ssntp.Dial(&clientConfig, &client2)
+	err = client2.ssntp.Dial(clientConfig, &client2)
 	if err != nil {
 		t.Fatalf("Failed to connect %s", err)
 	}
@@ -489,19 +510,24 @@ func TestGetRoleFromInvalidOID(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnect(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
 	server.t = t
-	client.t = t
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	client.t = t
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 
 	client.ssntp.Close()
 	server.ssntp.Stop()
@@ -512,21 +538,25 @@ func TestConnect(t *testing.T) {
 }
 
 func testConnectRole(t *testing.T, role Role) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
 	server.t = t
 	server.roleConnectChannel = make(chan string)
-	client.t = t
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
-	clientConfig.Role = (uint32)(role)
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	client.t = t
+	clientConfig, err := buildTestConfig((uint32)(role))
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -534,7 +564,7 @@ func testConnectRole(t *testing.T, role Role) {
 	select {
 	case clientRole := <-server.roleConnectChannel:
 		if clientRole != role.String() {
-			t.Fatalf("Wrong role")
+			t.Fatalf("Wrong role %s vs %s", clientRole, role.String())
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Did not receive the connection notification")
@@ -545,21 +575,25 @@ func testConnectRole(t *testing.T, role Role) {
 }
 
 func testDisconnectRole(t *testing.T, role Role) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
 	server.t = t
 	server.roleDisconnectChannel = make(chan string)
-	client.t = t
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
-	clientConfig.Role = (uint32)(role)
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	client.t = t
+	clientConfig, err := buildTestConfig((uint32)(role))
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -733,20 +767,25 @@ func TestDisconnectRoleCNCIAgent(t *testing.T) {
 }
 
 func TestMajor(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
 	server.t = t
 	server.majorChannel = make(chan struct{})
-	client.t = t
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	client.t = t
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -765,15 +804,36 @@ func TestMajor(t *testing.T) {
 	server.ssntp.Stop()
 }
 
+func roleToCert(role uint32) string {
+	switch role {
+	case SCHEDULER:
+		return testCertScheduler
+	case SERVER:
+		return testCertServer
+	case AGENT:
+		return testCertAgent
+	case Controller:
+		return testCertController
+	case CNCIAGENT:
+		return testCertCNCIAgent
+	case NETAGENT:
+		return testCertNetAgent
+	case AGENT | NETAGENT:
+		return testCertAgentNetAgent
+	}
+
+	return testCertUnknown
+}
+
 /* Mark D. Ryan FTW ! */
-func getCertPaths(tmpDir, caCert, serverCert, clientCert string) (string, string, string) {
-	var caPath, serverPath, clientPath string
+func getCert(role uint32) (string, string, error) {
+	var newRole = (Role)(role)
+	certString := roleToCert(role)
 
-	caPath = path.Join(tmpDir, "CACert")
-	serverPath = path.Join(tmpDir, "ServerCert")
-	clientPath = path.Join(tmpDir, "ClientCert")
+	caPath := path.Join(tempCertPath, "CACert")
+	certPath := path.Join(tempCertPath, newRole.String())
 
-	for _, s := range []struct{ path, data string }{{caPath, caCert}, {serverPath, serverCert}, {clientPath, clientCert}} {
+	for _, s := range []struct{ path, data string }{{caPath, testCACert}, {certPath, certString}} {
 		err := ioutil.WriteFile(s.path, []byte(s.data), 0755)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to create certfile %s %v\n", s.path, err)
@@ -781,7 +841,7 @@ func getCertPaths(tmpDir, caCert, serverCert, clientCert string) (string, string
 		}
 	}
 
-	return caPath, serverPath, clientPath
+	return caPath, certPath, nil
 }
 
 func validRoles(serverRole, clientRole uint32) bool {
@@ -796,40 +856,30 @@ func validRoles(serverRole, clientRole uint32) bool {
 	return false
 }
 
-func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32, clientCert string) {
-	var serverConfig Config
-	var clientConfig Config
+func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32) {
 	var server ssntpEchoServer
 	var client ssntpClient
 
-	tmpDir, err := ioutil.TempDir("", "ssntp-test-certs")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to create temporary Dir %v\n", err)
-		os.Exit(1)
-	}
-	defer func() {
-		_ = os.RemoveAll(tmpDir)
-	}()
-
-	CACert, serverCert, clientCert := getCertPaths(tmpDir, testCACert, testCertScheduler, clientCert)
-
 	server.t = t
+	serverConfig, err := buildTestConfig(serverRole)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.Transport = *transport
-	serverConfig.RoleVerification = true
-	serverConfig.CAcert = CACert
-	serverConfig.Cert = serverCert
-	serverConfig.Role = (uint32)(serverRole)
 
 	client.t = t
-	clientConfig.Transport = *transport
+	clientConfig, err := buildTestConfig(clientRole)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	clientConfig.RoleVerification = true
-	clientConfig.CAcert = CACert
-	clientConfig.Cert = clientCert
-	clientConfig.Role = (uint32)(clientRole)
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err = client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
+	if err != nil {
+		//		t.Fatalf("Could not dial %s\n", err)
+	}
 
 	client.ssntp.Close()
 	server.ssntp.Stop()
@@ -850,7 +900,7 @@ func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32, c
 //
 // Test is expected to pass.
 func TestConnectVerifyCertificatePositive(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, AGENT, testCertAgent)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT)
 }
 
 // Test that an SSNTP verified link can be established for a multi role client.
@@ -860,7 +910,7 @@ func TestConnectVerifyCertificatePositive(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyCertificatePositiveMultiRole(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT, testCertAgentNetAgent)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT)
 }
 
 // Test that an SSNTP verified link with the wrong client
@@ -872,7 +922,7 @@ func TestConnectVerifyCertificatePositiveMultiRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyClientCertificateNegative(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, Controller, testCertAgent)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT|CNCIAGENT)
 }
 
 // Test that an SSNTP verified link with the wrong multi role client
@@ -884,7 +934,7 @@ func TestConnectVerifyClientCertificateNegative(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyClientCertificateNegativeMultiRole(t *testing.T) {
-	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT|CNCIAGENT, testCertAgentNetAgent)
+	testConnectVerifyCertificate(t, SCHEDULER, AGENT|NETAGENT|CNCIAGENT)
 }
 
 // Test that an SSNTP verified link with the wrong server
@@ -896,7 +946,7 @@ func TestConnectVerifyClientCertificateNegativeMultiRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectVerifyServerCertificateNegative(t *testing.T) {
-	testConnectVerifyCertificate(t, SERVER, AGENT, testCertAgent)
+	testConnectVerifyCertificate(t, SERVER, AGENT|NETAGENT|CNCIAGENT)
 }
 
 // Test SSNTP client connection to an alternative port
@@ -907,21 +957,26 @@ func TestConnectVerifyServerCertificateNegative(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConnectPort(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
 	server.t = t
-	client.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.Port = 9999
-	clientConfig.Transport = *transport
+
+	client.t = t
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	clientConfig.Port = 9999
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -976,20 +1031,25 @@ func TestClientCloseAfterDial(t *testing.T) {
 //
 // Test is expected to pass.
 func TestClientReconnect(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
 	server.t = t
-	client.t = t
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	client.t = t
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
 	client.connected = make(chan struct{})
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1013,7 +1073,7 @@ func TestClientReconnect(t *testing.T) {
 	}
 
 	client.connected = make(chan struct{})
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 
 	select {
 	case <-client.connected:
@@ -1033,20 +1093,25 @@ func TestClientReconnect(t *testing.T) {
 //
 // Test is expected to pass.
 func TestServerStop(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
 	server.t = t
-	client.t = t
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	client.t = t
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
 	client.connected = make(chan struct{})
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1080,8 +1145,6 @@ func TestServerStop(t *testing.T) {
 //
 // Test is expected to pass.
 func TestCommand(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
@@ -1089,12 +1152,20 @@ func TestCommand(t *testing.T) {
 	client.t = t
 	client.cmdChannel = make(chan string)
 	client.typeChannel = make(chan string)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1134,16 +1205,21 @@ func TestCommand(t *testing.T) {
 //
 // Test is expected to pass.
 func TestTracedLabelCommand(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoFwderServer
 	var client ssntpClient
 
 	server.t = t
 	client.t = t
 	client.cmdTracedChannel = make(chan string)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
@@ -1152,9 +1228,9 @@ func TestTracedLabelCommand(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1186,16 +1262,21 @@ func TestTracedLabelCommand(t *testing.T) {
 //
 // Test is expected to pass.
 func TestTracedPathCommand(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoFwderServer
 	var client ssntpClient
 
 	server.t = t
 	client.t = t
 	client.cmdTracedChannel = make(chan string)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
@@ -1209,9 +1290,9 @@ func TestTracedPathCommand(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1241,16 +1322,21 @@ func TestTracedPathCommand(t *testing.T) {
 //
 // Test is expected to pass.
 func TestDumpTracedCommand(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoFwderServer
 	var client ssntpClient
 
 	server.t = t
 	client.t = t
 	client.cmdDumpChannel = make(chan struct{})
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
@@ -1264,9 +1350,9 @@ func TestDumpTracedCommand(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1299,8 +1385,6 @@ func TestDumpTracedCommand(t *testing.T) {
 //
 // Test is expected to pass.
 func TestCommandDuration(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoFwderServer
 	var client ssntpClient
 
@@ -1308,8 +1392,15 @@ func TestCommandDuration(t *testing.T) {
 	client.t = t
 	client.cmdTracedChannel = make(chan string)
 	client.cmdDurationChannel = make(chan time.Duration)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
@@ -1323,9 +1414,9 @@ func TestCommandDuration(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1361,8 +1452,6 @@ func TestCommandDuration(t *testing.T) {
 //
 // Test is expected to pass.
 func TestCommandNoDuration(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
@@ -1370,12 +1459,19 @@ func TestCommandNoDuration(t *testing.T) {
 	client.t = t
 	client.cmdChannel = make(chan string)
 	client.cmdDurationChannel = make(chan time.Duration)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1414,8 +1510,6 @@ func TestCommandNoDuration(t *testing.T) {
 //
 // Test is expected to pass.
 func TestConsecutiveFrames(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoFwderServer
 	var client ssntpClient
 
@@ -1423,8 +1517,15 @@ func TestConsecutiveFrames(t *testing.T) {
 	client.t = t
 	client.cmdChannel = make(chan string)
 	client.staChannel = make(chan string)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
@@ -1437,9 +1538,9 @@ func TestConsecutiveFrames(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1467,8 +1568,6 @@ func TestConsecutiveFrames(t *testing.T) {
 //
 // Test is expected to pass.
 func TestStatus(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
@@ -1476,12 +1575,19 @@ func TestStatus(t *testing.T) {
 	client.t = t
 	client.typeChannel = make(chan string)
 	client.staChannel = make(chan string)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1511,8 +1617,6 @@ func TestStatus(t *testing.T) {
 //
 // Test is expected to pass.
 func TestEvent(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
@@ -1520,12 +1624,19 @@ func TestEvent(t *testing.T) {
 	client.t = t
 	client.typeChannel = make(chan string)
 	client.evtChannel = make(chan string)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1555,8 +1666,6 @@ func TestEvent(t *testing.T) {
 //
 // Test is expected to pass.
 func TestError(t *testing.T) {
-	var serverConfig Config
-	var clientConfig Config
 	var server ssntpEchoServer
 	var client ssntpClient
 
@@ -1564,12 +1673,19 @@ func TestError(t *testing.T) {
 	client.t = t
 	client.typeChannel = make(chan string)
 	client.errChannel = make(chan string)
-	serverConfig.Transport = *transport
-	clientConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SERVER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	clientConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := client.ssntp.Dial(&clientConfig, &client)
+	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
 	}
@@ -1601,14 +1717,16 @@ func TestError(t *testing.T) {
 //
 // Test is expected to pass.
 func TestCmdFwd(t *testing.T) {
-	var serverConfig Config
-	var controllerConfig, agentConfig Config
 	var server ssntpServer
 	var controller, agent ssntpClient
 	command := STOP
 
 	server.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
 			Operand: command,
@@ -1618,21 +1736,25 @@ func TestCmdFwd(t *testing.T) {
 
 	controller.t = t
 	controller.cmdChannel = make(chan string)
-	controllerConfig.Transport = *transport
-	controllerConfig.Role = Controller
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	agent.t = t
-	agentConfig.Transport = *transport
-	agentConfig.Role = AGENT
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := controller.ssntp.Dial(&controllerConfig, &controller)
+	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
 	}
 
-	err = agent.ssntp.Dial(&agentConfig, &agent)
+	err = agent.ssntp.Dial(agentConfig, &agent)
 	if err != nil {
 		t.Fatalf("Agent failed to connect")
 	}
@@ -1664,14 +1786,15 @@ const controllerUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
 //
 // Test is expected to pass.
 func TestCmdFwder(t *testing.T) {
-	var serverConfig Config
-	var controllerConfig, agentConfig Config
 	var server ssntpServer
 	var controller, agent ssntpClient
 	command := EVACUATE
 
 	server.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
 			Operand:        command,
@@ -1681,22 +1804,26 @@ func TestCmdFwder(t *testing.T) {
 
 	controller.t = t
 	controller.cmdChannel = make(chan string)
-	controllerConfig.Transport = *transport
-	controllerConfig.Role = Controller
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	controllerConfig.UUID = controllerUUID
 
 	agent.t = t
-	agentConfig.Transport = *transport
-	agentConfig.Role = AGENT
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := controller.ssntp.Dial(&controllerConfig, &controller)
+	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
 	}
 
-	err = agent.ssntp.Dial(&agentConfig, &agent)
+	err = agent.ssntp.Dial(agentConfig, &agent)
 	if err != nil {
 		t.Fatalf("Agent failed to connect")
 	}
@@ -1726,14 +1853,15 @@ func TestCmdFwder(t *testing.T) {
 //
 // Test is expected to pass.
 func TestEventFwd(t *testing.T) {
-	var serverConfig Config
-	var controllerConfig, agentConfig Config
 	var server ssntpServer
 	var controller, agent ssntpClient
 	event := TenantAdded
 
 	server.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
 			Operand: event,
@@ -1743,21 +1871,25 @@ func TestEventFwd(t *testing.T) {
 
 	controller.t = t
 	controller.evtChannel = make(chan string)
-	controllerConfig.Transport = *transport
-	controllerConfig.Role = Controller
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	agent.t = t
-	agentConfig.Transport = *transport
-	agentConfig.Role = AGENT
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := controller.ssntp.Dial(&controllerConfig, &controller)
+	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
 	}
 
-	err = agent.ssntp.Dial(&agentConfig, &agent)
+	err = agent.ssntp.Dial(agentConfig, &agent)
 	if err != nil {
 		t.Fatalf("Agent failed to connect")
 	}
@@ -1787,14 +1919,15 @@ func TestEventFwd(t *testing.T) {
 //
 // Test is expected to pass.
 func TestEventFwder(t *testing.T) {
-	var serverConfig Config
-	var controllerConfig, agentConfig Config
 	var server ssntpServer
 	var controller, agent ssntpClient
 	event := TenantRemoved
 
 	server.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
 			Operand:      event,
@@ -1804,22 +1937,26 @@ func TestEventFwder(t *testing.T) {
 
 	controller.t = t
 	controller.evtChannel = make(chan string)
-	controllerConfig.Transport = *transport
-	controllerConfig.Role = Controller
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	controllerConfig.UUID = controllerUUID
 
 	agent.t = t
-	agentConfig.Transport = *transport
-	agentConfig.Role = AGENT
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := controller.ssntp.Dial(&controllerConfig, &controller)
+	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
 	}
 
-	err = agent.ssntp.Dial(&agentConfig, &agent)
+	err = agent.ssntp.Dial(agentConfig, &agent)
 	if err != nil {
 		t.Fatalf("Agent failed to connect")
 	}
@@ -1849,14 +1986,15 @@ func TestEventFwder(t *testing.T) {
 //
 // Test is expected to pass.
 func TestErrorFwd(t *testing.T) {
-	var serverConfig Config
-	var controllerConfig, agentConfig Config
 	var server ssntpServer
 	var controller, agent ssntpClient
 	error := StartFailure
 
 	server.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
 			Operand: error,
@@ -1866,21 +2004,25 @@ func TestErrorFwd(t *testing.T) {
 
 	controller.t = t
 	controller.errChannel = make(chan string)
-	controllerConfig.Transport = *transport
-	controllerConfig.Role = Controller
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	agent.t = t
-	agentConfig.Transport = *transport
-	agentConfig.Role = AGENT
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := controller.ssntp.Dial(&controllerConfig, &controller)
+	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
 	}
 
-	err = agent.ssntp.Dial(&agentConfig, &agent)
+	err = agent.ssntp.Dial(agentConfig, &agent)
 	if err != nil {
 		t.Fatalf("Agent failed to connect")
 	}
@@ -1910,14 +2052,15 @@ func TestErrorFwd(t *testing.T) {
 //
 // Test is expected to pass.
 func TestErrorFwder(t *testing.T) {
-	var serverConfig Config
-	var controllerConfig, agentConfig Config
 	var server ssntpServer
 	var controller, agent ssntpClient
 	error := StopFailure
 
 	server.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
 			Operand:      error,
@@ -1927,22 +2070,26 @@ func TestErrorFwder(t *testing.T) {
 
 	controller.t = t
 	controller.errChannel = make(chan string)
-	controllerConfig.Transport = *transport
-	controllerConfig.Role = Controller
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	controllerConfig.UUID = controllerUUID
 
 	agent.t = t
-	agentConfig.Transport = *transport
-	agentConfig.Role = AGENT
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := controller.ssntp.Dial(&controllerConfig, &controller)
+	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
 	}
 
-	err = agent.ssntp.Dial(&agentConfig, &agent)
+	err = agent.ssntp.Dial(agentConfig, &agent)
 	if err != nil {
 		t.Fatalf("Agent failed to connect")
 	}
@@ -1972,14 +2119,15 @@ func TestErrorFwder(t *testing.T) {
 //
 // Test is expected to pass.
 func TestStatusFwd(t *testing.T) {
-	var serverConfig Config
-	var controllerConfig, agentConfig Config
 	var server ssntpServer
 	var controller, agent ssntpClient
 	status := FULL
 
 	server.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
 			Operand: status,
@@ -1989,21 +2137,25 @@ func TestStatusFwd(t *testing.T) {
 
 	controller.t = t
 	controller.staChannel = make(chan string)
-	controllerConfig.Transport = *transport
-	controllerConfig.Role = Controller
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
 	agent.t = t
-	agentConfig.Transport = *transport
-	agentConfig.Role = AGENT
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := controller.ssntp.Dial(&controllerConfig, &controller)
+	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
 	}
 
-	err = agent.ssntp.Dial(&agentConfig, &agent)
+	err = agent.ssntp.Dial(agentConfig, &agent)
 	if err != nil {
 		t.Fatalf("Agent failed to connect")
 	}
@@ -2033,14 +2185,15 @@ func TestStatusFwd(t *testing.T) {
 //
 // Test is expected to pass.
 func TestStatusFwder(t *testing.T) {
-	var serverConfig Config
-	var controllerConfig, agentConfig Config
 	var server ssntpServer
 	var controller, agent ssntpClient
 	status := OFFLINE
 
 	server.t = t
-	serverConfig.Transport = *transport
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	serverConfig.ForwardRules = []FrameForwardRule{
 		{
 			Operand:       status,
@@ -2050,22 +2203,26 @@ func TestStatusFwder(t *testing.T) {
 
 	controller.t = t
 	controller.staChannel = make(chan string)
-	controllerConfig.Transport = *transport
-	controllerConfig.Role = Controller
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 	controllerConfig.UUID = controllerUUID
 
 	agent.t = t
-	agentConfig.Transport = *transport
-	agentConfig.Role = AGENT
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
 
-	go server.ssntp.Serve(&serverConfig, &server)
+	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
-	err := controller.ssntp.Dial(&controllerConfig, &controller)
+	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
 	}
 
-	err = agent.ssntp.Dial(&agentConfig, &agent)
+	err = agent.ssntp.Dial(agentConfig, &agent)
 	if err != nil {
 		t.Fatalf("Agent failed to connect")
 	}
@@ -2100,6 +2257,15 @@ func TestMain(m *testing.M) {
 	if *transport != "tcp" && *transport != "unix" {
 		*transport = "tcp"
 	}
+
+	/* Create temp certs directory if necessary */
+	err := os.MkdirAll(tempCertPath, 0755)
+	if err != nil {
+		fmt.Printf("Unable to create %s %v\n", uuidPrefix, err)
+		os.Exit(1)
+	}
+
+	defer os.RemoveAll(tempCertPath)
 
 	os.Exit(m.Run())
 }

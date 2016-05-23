@@ -312,7 +312,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 	}()
 
 	cfg := &ssntp.Config{UUID: agentUUID, URI: serverURL, CAcert: serverCertPath, Cert: clientCertPath,
-		Role: uint32(ssntp.CNCIAGENT), Log: ssntp.Log}
+		Log: ssntp.Log}
 	client := &agentClient{cmdCh: make(chan *cmdWrapper)}
 
 	dialCh := make(chan error)

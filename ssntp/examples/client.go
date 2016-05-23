@@ -124,17 +124,14 @@ func main() {
 	var threads = flag.Int("threads", 1, "Number of client threads")
 	var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
 	var payloadLen = flag.Int("payload-len", 0, "Frame payload length")
-	var role ssntp.Role = ssntp.AGENT
 	var config ssntp.Config
 	var wg sync.WaitGroup
 
-	flag.Var(&role, "role", "Client role")
 	flag.Parse()
 
 	config.URI = *serverURL
 	config.CAcert = *CAcert
 	config.Cert = *cert
-	config.Role = uint32(role)
 	config.Log = logger{}
 
 	if len(*cpuprofile) != 0 {
