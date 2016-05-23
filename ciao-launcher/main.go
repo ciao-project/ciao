@@ -312,15 +312,8 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 
 	var wg sync.WaitGroup
 
-	var role uint32
-	if networking.NetworkNode() {
-		role = uint32(ssntp.NETAGENT)
-	} else {
-		role = uint32(ssntp.AGENT)
-	}
-
 	cfg := &ssntp.Config{URI: serverURL, CAcert: serverCertPath, Cert: clientCertPath,
-		Role: uint32(role), Log: ssntp.Log}
+		Log: ssntp.Log}
 	client := &agentClient{
 		cmdCh: make(chan *cmdWrapper),
 	}

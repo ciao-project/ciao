@@ -301,9 +301,30 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 
 	client.status.Unlock()
 
+	if config.Log == nil {
+		client.log = errLog
+	} else {
+		client.log = config.Log
+	}
+
+	if len(config.CAcert) == 0 {
+		config.CAcert = defaultCA
+	}
+
+	if len(config.Cert) == 0 {
+		config.Cert = defaultClientCert
+	}
+
+	role, err := parseCertificate(config)
+	if err != nil {
+		client.log.Errorf("%s", err)
+		return err
+	}
+	client.role = role
+
 	if len(config.UUID) == 0 {
 		var err error
-		client.lUUID, err = newUUID("client", config.Role)
+		client.lUUID, err = newUUID("client", client.role)
 		if err != nil {
 			fmt.Printf("SSNTP ERROR: Client: Could not fetch a UUID, generating a random one (%s)\n", err)
 			client.uuid = uuid.Generate()
@@ -333,20 +354,6 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 
 	client.roleVerify = config.RoleVerification
 
-	if len(config.CAcert) == 0 {
-		config.CAcert = defaultCA
-	}
-
-	if len(config.Cert) == 0 {
-		config.Cert = defaultClientCert
-	}
-
-	if config.Log == nil {
-		client.log = errLog
-	} else {
-		client.log = config.Log
-	}
-
 	client.trace = config.Trace
 	client.ntf = ntf
 	client.tls = prepareTLSConfig(config, false)
@@ -373,20 +380,6 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 
 	/* Last resort: localhost */
 	client.uris = append(client.uris, fmt.Sprintf("%s:%d", defaultURL, client.port))
-
-	role, err := parseCertificate(config)
-	if err != nil {
-		client.log.Errorf("%s", err)
-		return err
-	}
-
-	if config.Role != (uint32)(UNKNOWN) && config.Role != role {
-		// Force Dial failure to not make this mismatch unnoticed.
-		// Eventually config.Role will be removed.
-		return fmt.Errorf("Requested role %d does not match certificate role %d", config.Role, role)
-	}
-
-	client.role = role
 
 	err = client.attemptDial()
 	if err != nil {

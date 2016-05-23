@@ -276,7 +276,6 @@ func buildTestConfig(role uint32) (*Config, error) {
 
 	c := &Config{
 		Transport: *transport,
-		Role:      role,
 		CAcert:    CACert,
 		Cert:      cert,
 	}
@@ -878,6 +877,9 @@ func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32) {
 	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)
 	err = client.ssntp.Dial(clientConfig, &client)
+	if err != nil {
+		//		t.Fatalf("Could not dial %s\n", err)
+	}
 
 	client.ssntp.Close()
 	server.ssntp.Stop()

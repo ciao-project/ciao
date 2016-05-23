@@ -96,7 +96,6 @@ func main() {
 		URI:    *serverURL,
 		CAcert: *caCert,
 		Cert:   *cert,
-		Role:   ssntp.Controller,
 		Log:    ssntp.Log,
 	}
 

@@ -408,7 +408,6 @@ func newTestClient(num int, role ssntp.Role) *ssntpTestClient {
 	client.cmdChansLock = &sync.Mutex{}
 
 	config := &ssntp.Config{
-		Role:   uint32(role),
 		CAcert: *caCert,
 		Cert:   roleToCert(role),
 		Log:    ssntp.Log,
@@ -575,7 +574,6 @@ func startTestServer(server *ssntpTestServer) {
 	server.netClientsLock = &sync.RWMutex{}
 
 	serverConfig := ssntp.Config{
-		Role:   ssntp.SERVER,
 		CAcert: *caCert,
 		Cert:   roleToCert(ssntp.SERVER),
 		Log:    ssntp.Log,
@@ -1445,7 +1443,6 @@ func TestMain(m *testing.M) {
 		URI:    "localhost",
 		CAcert: *caCert,
 		Cert:   *cert,
-		Role:   ssntp.Controller,
 	}
 
 	context.client, err = newSSNTPClient(context, config)

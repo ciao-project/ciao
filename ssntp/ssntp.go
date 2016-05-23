@@ -684,10 +684,6 @@ type Config struct {
 	// and IPs on the running host.
 	URI string
 
-	// Role is a bitmask of SSNTP roles the client or server intends
-	// to run.
-	Role uint32
-
 	// CACert is the Certification Authority certificate path
 	// to use when verifiying the peer identity.
 	// If set to "", /etc/pki/ciao/ciao_ca_cert.crt will be used.
@@ -952,7 +948,7 @@ func parseCertificateAuthority(config *Config) ([]string, []string, error) {
 func parseCertificate(config *Config) (uint32, error) {
 	certPEM, err := ioutil.ReadFile(config.Cert)
 	if err != nil {
-		log.Fatalf("SSNTP: Load certificate: %s", err)
+		log.Fatalf("SSNTP: Load certificate [%s]: %s", config.Cert, err)
 	}
 
 	certBlock, _ := pem.Decode(certPEM)
@@ -969,7 +965,7 @@ func parseCertificate(config *Config) (uint32, error) {
 	role := getRoleFromOIDs(cert[0].UnknownExtKeyUsage)
 	/* We could not find a valid OID in the certificate */
 	if role == (uint32)(UNKNOWN) {
-		return role, fmt.Errorf("Could not find a SSNTP role")
+		return role, errors.New("Could not find a SSNTP role")
 	}
 
 	return role, nil

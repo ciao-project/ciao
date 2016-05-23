@@ -75,7 +75,6 @@ func ExampleClient_Dial() {
 	config.URI = "myCIAOserver.local"
 	config.CAcert = "CIAOCA.crt"
 	config.Cert = "agent.pem"
-	config.Role = uint32(AGENT)
 
 	if client.ssntp.Dial(&config, client) != nil {
 		fmt.Printf("Could not connect to an SSNTP server\n")

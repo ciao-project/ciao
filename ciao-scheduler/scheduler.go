@@ -1008,7 +1008,6 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 	sched.config = &ssntp.Config{
 		CAcert: *cacert,
 		Cert:   *cert,
-		Role:   ssntp.SCHEDULER,
 	}
 
 	setSSNTPForwardRules(sched)
