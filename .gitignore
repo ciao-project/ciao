@@ -13,3 +13,4 @@ networking/libsnnet/tests/cncli/cncli
 networking/libsnnet/tests/snnetcli/snnetcli
 ssntp/ciao-cert/ciao-cert
 test-cases/test-cases
+cscope*
