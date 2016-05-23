@@ -58,7 +58,7 @@ func (server *ssntpTestServer) addCmdChan(cmd ssntp.Command, c chan cmdResult) {
 	server.cmdChansLock.Unlock()
 }
 
-func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
+func (server *ssntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 	switch role {
 	case ssntp.AGENT:
 		server.clients = append(server.clients, uuid)
@@ -71,7 +71,7 @@ func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
 
 }
 
-func (server *ssntpTestServer) DisconnectNotify(uuid string, role uint32) {
+func (server *ssntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	for index := range server.clients {
 		if server.clients[index] == uuid {
 			server.clients = append(server.clients[:index], server.clients[index+1:]...)
@@ -84,7 +84,7 @@ func (server *ssntpTestServer) DisconnectNotify(uuid string, role uint32) {
 	server.netClientsLock.Unlock()
 }
 
-func (server *ssntpTestServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
+func (server *ssntpTestServer) StatusNotify(uuid string, role ssntp.Role, status ssntp.Status, frame *ssntp.Frame) {
 }
 
 func (server *ssntpTestServer) CommandNotify(uuid string, command ssntp.Command, frame *ssntp.Frame) {

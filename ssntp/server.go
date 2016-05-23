@@ -30,11 +30,11 @@ import (
 // Any SSNTP server must implement this interface.
 type ServerNotifier interface {
 	// ConnectNotify notifies of a new SSNTP client connection.
-	ConnectNotify(uuid string, role uint32)
+	ConnectNotify(uuid string, role Role)
 
 	// DisconnectNotify notifies of a SSNTP client having
 	// disconnected from us.
-	DisconnectNotify(uuid string, role uint32)
+	DisconnectNotify(uuid string, role Role)
 
 	// StatusNotify notifies of a pending status frame.
 	// The frame comes from a SSNTP client identified by uuid.
@@ -68,7 +68,7 @@ type Server struct {
 	listener     net.Listener
 	stopped      boolFlag
 	stoppedChan  chan struct{}
-	role         uint32
+	role         Role
 	roleVerify   bool
 	clientWg     sync.WaitGroup
 
@@ -177,7 +177,7 @@ func handleSSNTPClient(server *Server, conn net.Conn) {
 
 		switch frame.Type {
 		case COMMAND:
-			if (Command)(frame.Operand) == CONFIGURE && session.destRole == Controller {
+			if (Command)(frame.Operand) == CONFIGURE && session.destRole.IsController() {
 				/* TODO Send the CONFIGURE payload to the config package */
 				server.configuration.setConfiguration(frame.Payload)
 			}

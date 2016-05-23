@@ -64,7 +64,7 @@ type Client struct {
 	uuid      uuid.UUID
 	lUUID     lockedUUID
 	uris      []string
-	role      uint32
+	role      Role
 	tls       *tls.Config
 	ntf       ClientNotifier
 	transport string
