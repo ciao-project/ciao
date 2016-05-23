@@ -232,64 +232,19 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 		return fmt.Errorf("SSNTP config missing")
 	}
 
-	if config.Log == nil {
-		server.log = errLog
-	} else {
-		server.log = config.Log
-	}
-
-	if len(config.CAcert) == 0 {
-		config.CAcert = defaultCA
-	}
-
-	if len(config.Cert) == 0 {
-		config.Cert = defaultServerCert
-	}
-
-	role, err := parseCertificate(config)
+	server.log = config.log()
+	config.setCerts()
+	role, err := config.role()
 	if err != nil {
 		server.log.Errorf("%s", err)
 		return err
 	}
 	server.role = role
 
-	if len(config.UUID) == 0 {
-		var err error
-		server.lUUID, err = newUUID("server", server.role)
-		if err != nil {
-			fmt.Printf("SSNTP ERROR: Server: Could not fetch a UUID, generating a random one (%s)\n", err)
-			server.uuid = uuid.Generate()
-		} else {
-			server.uuid = server.lUUID.uuid
-		}
-	} else {
-		uuid, _ := uuid.Parse(config.UUID)
-		server.uuid = uuid
-	}
-
-	if config.Port != 0 {
-		serverPort = config.Port
-	} else {
-		serverPort = port
-	}
-
-	if len(config.URI) == 0 {
-		uri = ""
-	} else {
-		uri = config.URI
-	}
-
-	var transport string
-
-	if len(config.Transport) == 0 {
-		transport = "tcp"
-	} else {
-		if config.Transport != "tcp" && config.Transport != "unix" {
-			transport = "tcp"
-		} else {
-			transport = config.Transport
-		}
-	}
+	server.lUUID, server.uuid = config.configUUID(server.role)
+	serverPort = config.port()
+	transport := config.transport()
+	uri = config.URI
 
 	server.ntf = ntf
 	server.sessions = make(map[string]*session)

@@ -298,83 +298,22 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 
 	client.status.Unlock()
 
-	if config.Log == nil {
-		client.log = errLog
-	} else {
-		client.log = config.Log
-	}
-
-	if len(config.CAcert) == 0 {
-		config.CAcert = defaultCA
-	}
-
-	if len(config.Cert) == 0 {
-		config.Cert = defaultClientCert
-	}
-
-	role, err := parseCertificate(config)
+	client.log = config.log()
+	config.setCerts()
+	role, err := config.role()
 	if err != nil {
 		client.log.Errorf("%s", err)
 		return err
 	}
 	client.role = role
-
-	if len(config.UUID) == 0 {
-		var err error
-		client.lUUID, err = newUUID("client", client.role)
-		if err != nil {
-			fmt.Printf("SSNTP ERROR: Client: Could not fetch a UUID, generating a random one (%s)\n", err)
-			client.uuid = uuid.Generate()
-		} else {
-			client.uuid = client.lUUID.uuid
-		}
-	} else {
-		uuid, _ := uuid.Parse(config.UUID)
-		client.uuid = uuid
-	}
-
-	if config.Port != 0 {
-		client.port = config.Port
-	} else {
-		client.port = port
-	}
-
-	if len(config.Transport) == 0 {
-		client.transport = "tcp"
-	} else {
-		if config.Transport != "tcp" && config.Transport != "unix" {
-			client.transport = "tcp"
-		} else {
-			client.transport = config.Transport
-		}
-	}
+	client.lUUID, client.uuid = config.configUUID(client.role)
+	client.port = config.port()
+	client.transport = config.transport()
+	client.uris = config.configURIs(client.uris, client.port)
 
 	client.trace = config.Trace
 	client.ntf = ntf
 	client.tls = prepareTLSConfig(config, false)
-
-	/* First we add the configured server URI */
-	if len(config.URI) != 0 {
-		client.uris = append(client.uris, fmt.Sprintf("%s:%d", config.URI, client.port))
-	}
-
-	/* Then we parse the CA certificate to find FQDNs and/or IPs to connect to */
-	ips, fqdns, err := parseCertificateAuthority(config)
-	if err != nil {
-		client.log.Warningf("%s", err)
-	} else {
-		/* We prefer IPs over FQDNs */
-		for _, ip := range ips {
-			client.uris = append(client.uris, fmt.Sprintf("%s:%d", ip, client.port))
-		}
-
-		for _, fqdn := range fqdns {
-			client.uris = append(client.uris, fmt.Sprintf("%s:%d", fqdn, client.port))
-		}
-	}
-
-	/* Last resort: localhost */
-	client.uris = append(client.uris, fmt.Sprintf("%s:%d", defaultURL, client.port))
 
 	err = client.attemptDial()
 	if err != nil {
