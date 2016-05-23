@@ -872,7 +872,6 @@ func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32) {
 	if err != nil {
 		t.Fatalf("Could not build a test config")
 	}
-	clientConfig.RoleVerification = true
 
 	go server.ssntp.Serve(serverConfig, &server)
 	time.Sleep(500 * time.Millisecond)

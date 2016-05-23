@@ -117,14 +117,12 @@ func handleClientConnect(server *Server, conn net.Conn) *session {
 
 	server.log.Infof("Received CONNECT frame:\n%s\n", connect)
 
-	if server.roleVerify == true {
-		tlscon, ok := conn.(*tls.Conn)
-		if ok {
-			oidFound, err := verifyRole(tlscon, connect.Role)
-			if oidFound == false {
-				server.log.Errorf("%s\n", err)
-				return sendConnectionAborted(conn)
-			}
+	tlscon, ok := conn.(*tls.Conn)
+	if ok {
+		oidFound, err := verifyRole(tlscon, connect.Role)
+		if oidFound == false {
+			server.log.Errorf("%s\n", err)
+			return sendConnectionAborted(conn)
 		}
 	}
 
@@ -298,7 +296,6 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 	server.forwardRules.init(config.ForwardRules)
 	server.tls = prepareTLSConfig(config, true)
 	server.forwardRules.forwardRules = config.ForwardRules
-	server.roleVerify = config.RoleVerification
 	server.trace = config.Trace
 	server.stoppedChan = make(chan struct{})
 

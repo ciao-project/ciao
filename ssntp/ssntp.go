@@ -706,11 +706,6 @@ type Config struct {
 	// The SSNTP Log implementation provides a default logger.
 	Log Logger
 
-	// When RoleVerification is true the peer declared role will be
-	// verified by checking that the received certificate extended
-	// key usage attributes contains the right OID.
-	RoleVerification bool
-
 	// TCP port to connect (Client) or to listen to (Server).
 	// This is optional, the default SSNTP port is 8888.
 	Port uint32

@@ -61,18 +61,17 @@ type ClientNotifier interface {
 // It is an entirely opaque structure, only accessible through
 // its public methods.
 type Client struct {
-	uuid       uuid.UUID
-	lUUID      lockedUUID
-	uris       []string
-	role       uint32
-	roleVerify bool
-	tls        *tls.Config
-	ntf        ClientNotifier
-	transport  string
-	port       uint32
-	session    *session
-	status     connectionStatus
-	closed     chan struct{}
+	uuid      uuid.UUID
+	lUUID     lockedUUID
+	uris      []string
+	role      uint32
+	tls       *tls.Config
+	ntf       ClientNotifier
+	transport string
+	port      uint32
+	session   *session
+	status    connectionStatus
+	closed    chan struct{}
 
 	frameWg              sync.WaitGroup
 	frameRoutinesChannel chan struct{}
@@ -175,13 +174,11 @@ func (client *Client) sendConnect() (bool, error) {
 	}
 
 	client.session.setDest(connected.Source[:16])
-	if client.roleVerify == true {
-		oidFound, err := verifyRole(client.session.conn, connected.Role)
-		if oidFound == false {
-			fmt.Printf("%s\n", err)
-			client.SendError(ConnectionFailure, nil)
-			return false, fmt.Errorf("SSNTP Client: Connection failure")
-		}
+
+	oidFound, err := verifyRole(client.session.conn, connected.Role)
+	if oidFound == false {
+		client.SendError(ConnectionFailure, nil)
+		return false, fmt.Errorf("SSNTP Client: Connection failure")
 	}
 
 	client.status.Lock()
@@ -351,8 +348,6 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 			client.transport = config.Transport
 		}
 	}
-
-	client.roleVerify = config.RoleVerification
 
 	client.trace = config.Trace
 	client.ntf = ntf
