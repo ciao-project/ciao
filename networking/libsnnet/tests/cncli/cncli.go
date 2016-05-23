@@ -26,6 +26,82 @@ import (
 	"github.com/01org/ciao/networking/libsnnet"
 )
 
+func initCn(computeNet string, computeNodeID string) (*libsnnet.ComputeNode, error) {
+	cn := &libsnnet.ComputeNode{
+		NetworkConfig: &libsnnet.NetworkConfig{
+			Mode: libsnnet.GreTunnel,
+		},
+	}
+
+	if computeNet != "" {
+		_, snet, err := net.ParseCIDR(computeNet)
+		if err != nil {
+			return nil, err
+		}
+		cn.ManagementNet = []net.IPNet{*snet}
+		cn.ComputeNet = []net.IPNet{*snet}
+	}
+	cn.ID = computeNodeID
+
+	if err := cn.Init(); err != nil {
+		return nil, err
+	}
+
+	if err := cn.DbRebuild(nil); err != nil {
+		return nil, err
+	}
+
+	return cn, nil
+}
+
+func createCnciVnic(cn *libsnnet.ComputeNode, vnicCfg *libsnnet.VnicConfig) {
+	cvnic, err := cn.CreateCnciVnic(vnicCfg)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	fmt.Println("CNCI VNIC :=", cvnic)
+	fmt.Println("macvtap interface :=", cvnic.LinkName)
+	os.Exit(0)
+}
+
+func deleteCnciVnic(cn *libsnnet.ComputeNode, vnicCfg *libsnnet.VnicConfig) {
+	if err := cn.DestroyCnciVnic(vnicCfg); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	os.Exit(0)
+}
+
+func createCnVnic(cn *libsnnet.ComputeNode, vnicCfg *libsnnet.VnicConfig) {
+	fmt.Println("Creating VNIC for Workload")
+	if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	} else {
+		if ssntpEvent != nil {
+			fmt.Println("SSNTP Event :=", ssntpEvent)
+			fmt.Println("tap interface :=", vnic.LinkName)
+		} else {
+			fmt.Println("tap interface :=", vnic.LinkName)
+		}
+	}
+	os.Exit(0)
+}
+
+func deleteCnVnic(cn *libsnnet.ComputeNode, vnicCfg *libsnnet.VnicConfig) {
+	fmt.Println("Deleting VNIC for Workload")
+	if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	} else {
+		if ssntpEvent != nil {
+			fmt.Println("SSNTP Event:=", ssntpEvent)
+		}
+	}
+	os.Exit(0)
+}
+
 func main() {
 	operationIn := flag.String("operation", "create", "operation <create|delete>")
 	nwNodeIn := flag.Bool("nwNode", false, "true if Network Node")
@@ -45,39 +121,18 @@ func main() {
 
 	flag.Parse()
 
+	cn, err := initCn(*nwIn, *cnIDIn)
+	if err != nil {
+		fmt.Println("cnInit failed ", err)
+		os.Exit(-1)
+	}
+
 	_, vnet, err := net.ParseCIDR(*vnicNwIn)
 	if err != nil {
 		fmt.Println("Invalid vnic subnet ", err)
 		os.Exit(-1)
 	}
 	subnetKey := binary.LittleEndian.Uint32(vnet.IP)
-
-	cn := &libsnnet.ComputeNode{
-		NetworkConfig: &libsnnet.NetworkConfig{
-			Mode: libsnnet.GreTunnel,
-		},
-	}
-
-	if *nwIn != "" {
-		_, snet, err := net.ParseCIDR(*nwIn)
-		if err != nil {
-			fmt.Println("Invalid subnet ", err)
-			os.Exit(-1)
-		}
-		cn.ManagementNet = []net.IPNet{*snet}
-		cn.ComputeNet = []net.IPNet{*snet}
-	}
-	cn.ID = *cnIDIn
-
-	if err := cn.Init(); err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
-	}
-
-	if err := cn.DbRebuild(nil); err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
-	}
 
 	vnicIP := net.ParseIP(*vnicIPIn)
 	if vnicIP == nil {
@@ -112,30 +167,10 @@ func main() {
 
 		switch *operationIn {
 		case "create":
-			fmt.Println("Creating VNIC for Workload")
-			if vnic, ssntpEvent, _, err := cn.CreateVnic(vnicCfg); err != nil {
-				fmt.Println(err)
-				os.Exit(-1)
-			} else {
-				if ssntpEvent != nil {
-					fmt.Println("SSNTP Event :=", ssntpEvent)
-					fmt.Println("tap interface :=", vnic.LinkName)
-				} else {
-					fmt.Println("tap interface :=", vnic.LinkName)
-				}
-			}
+			createCnVnic(cn, vnicCfg)
 		case "delete":
-			fmt.Println("Deleting VNIC for Workload")
-			if ssntpEvent, _, err := cn.DestroyVnic(vnicCfg); err != nil {
-				fmt.Println(err)
-				os.Exit(-1)
-			} else {
-				if ssntpEvent != nil {
-					fmt.Println("SSNTP Event:=", ssntpEvent)
-				}
-			}
+			deleteCnVnic(cn, vnicCfg)
 		}
-		os.Exit(0)
 	}
 
 	//Network Node
@@ -151,19 +186,10 @@ func main() {
 
 		switch *operationIn {
 		case "create":
-			if cvnic, err := cn.CreateCnciVnic(vnicCfg); err != nil {
-				fmt.Println(err)
-				os.Exit(-1)
-			} else {
-				fmt.Println("CNCI VNIC :=", cvnic)
-				fmt.Println("macvtap interface :=", cvnic.LinkName)
-			}
+			createCnciVnic(cn, vnicCfg)
 		case "delete":
-			if err := cn.DestroyCnciVnic(vnicCfg); err != nil {
-				fmt.Println(err)
-				os.Exit(-1)
-			}
+			deleteCnciVnic(cn, vnicCfg)
 		}
-
 	}
+	os.Exit(0)
 }
