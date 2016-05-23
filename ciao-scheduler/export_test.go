@@ -28,3 +28,5 @@ var ConnectComputeNode = connectComputeNode
 var DisconnectComputeNode = disconnectComputeNode
 var ConnectNetworkNode = connectNetworkNode
 var DisconnectNetworkNode = disconnectNetworkNode
+
+var StartWorkload = startWorkload
