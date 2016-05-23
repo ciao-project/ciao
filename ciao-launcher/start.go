@@ -43,7 +43,7 @@ type startTimes struct {
 	runStamp          time.Time
 }
 
-func (se *startError) send(client *ssntpConn, instance string) {
+func (se *startError) send(client serverConn, instance string) {
 	if !client.isConnected() {
 		return
 	}
@@ -127,7 +127,7 @@ func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig, bridge st
 	return
 }
 
-func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, client *ssntpConn) (*startTimes, *startError) {
+func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, client serverConn) (*startTimes, *startError) {
 	var err error
 	var vnicName string
 	var bridge string

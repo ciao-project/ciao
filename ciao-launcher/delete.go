@@ -29,7 +29,7 @@ type deleteError struct {
 	code payloads.DeleteFailureReason
 }
 
-func (de *deleteError) send(client *ssntpConn, instance string) {
+func (de *deleteError) send(client serverConn, instance string) {
 	if !client.isConnected() {
 		return
 	}
@@ -46,7 +46,7 @@ func (de *deleteError) send(client *ssntpConn, instance string) {
 	}
 }
 
-func deleteVnic(instanceDir string, client *ssntpConn) {
+func deleteVnic(instanceDir string, client serverConn) {
 	cfg, err := loadVMConfig(instanceDir)
 	if err != nil {
 		glog.Warningf("Unable to load instance state %s: %s", instanceDir, err)
@@ -65,7 +65,7 @@ func deleteVnic(instanceDir string, client *ssntpConn) {
 	}
 }
 
-func processDelete(vm virtualizer, instanceDir string, client *ssntpConn, running ovsRunningState) error {
+func processDelete(vm virtualizer, instanceDir string, client serverConn, running ovsRunningState) error {
 
 	// We have to ignore these errors for the time being.  There's no way to distinguish
 	// between the various sort of errors that docker can return.  We could be getting

@@ -29,7 +29,7 @@ type restartError struct {
 	code payloads.RestartFailureReason
 }
 
-func (re *restartError) send(client *ssntpConn, instance string) {
+func (re *restartError) send(client serverConn, instance string) {
 	if !client.isConnected() {
 		return
 	}
@@ -46,7 +46,7 @@ func (re *restartError) send(client *ssntpConn, instance string) {
 	}
 }
 
-func processRestart(instanceDir string, vm virtualizer, client *ssntpConn, cfg *vmConfig) *restartError {
+func processRestart(instanceDir string, vm virtualizer, client serverConn, cfg *vmConfig) *restartError {
 	var vnicName string
 	var vnicCfg *libsnnet.VnicConfig
 	var err error

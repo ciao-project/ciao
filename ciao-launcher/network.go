@@ -234,7 +234,7 @@ func createVnicCfg(cfg *vmConfig) (*libsnnet.VnicConfig, error) {
 	return createCNVnicCfg(cfg)
 }
 
-func sendNetworkEvent(client *ssntpConn, eventType ssntp.Event,
+func sendNetworkEvent(client serverConn, eventType ssntp.Event,
 	event *libsnnet.SsntpEventInfo) {
 
 	if event == nil || !client.isConnected() {
@@ -253,7 +253,7 @@ func sendNetworkEvent(client *ssntpConn, eventType ssntp.Event,
 	}
 }
 
-func createVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) (string, string, error) {
+func createVnic(client serverConn, vnicCfg *libsnnet.VnicConfig) (string, string, error) {
 	var name string
 	var bridge string
 
@@ -294,7 +294,7 @@ func createVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) (string, string
 	return name, bridge, nil
 }
 
-func destroyVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) error {
+func destroyVnic(client serverConn, vnicCfg *libsnnet.VnicConfig) error {
 	if vnicCfg.VnicRole != libsnnet.DataCenter {
 		var event *libsnnet.SsntpEventInfo
 		var err error

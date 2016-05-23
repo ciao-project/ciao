@@ -27,7 +27,7 @@ type stopError struct {
 	code payloads.StopFailureReason
 }
 
-func (se *stopError) send(client *ssntpConn, instance string) {
+func (se *stopError) send(client serverConn, instance string) {
 	if !client.isConnected() {
 		return
 	}

@@ -360,7 +360,7 @@ func (ovs *overseer) sendStatusCommand(cns *cnStats, status ssntp.Status) {
 
 	s.Init()
 
-	s.NodeUUID = ovs.ac.ssntpConn.UUID()
+	s.NodeUUID = ovs.ac.conn.UUID()
 	s.MemTotalMB, s.MemAvailableMB = cns.totalMemMB, cns.availableMemMB
 	s.Load = cns.load
 	s.CpusOnline = cns.cpusOnline
@@ -372,7 +372,7 @@ func (ovs *overseer) sendStatusCommand(cns *cnStats, status ssntp.Status) {
 		return
 	}
 
-	_, err = ovs.ac.ssntpConn.SendStatus(status, payload)
+	_, err = ovs.ac.conn.SendStatus(status, payload)
 	if err != nil {
 		glog.Errorf("Failed to send status command %v", err)
 		return
@@ -384,7 +384,7 @@ func (ovs *overseer) sendStats(cns *cnStats, status ssntp.Status) {
 
 	s.Init()
 
-	s.NodeUUID = ovs.ac.ssntpConn.UUID()
+	s.NodeUUID = ovs.ac.conn.UUID()
 	s.Status = status.String()
 	s.MemTotalMB, s.MemAvailableMB = cns.totalMemMB, cns.availableMemMB
 	s.Load = cns.load
@@ -420,7 +420,7 @@ func (ovs *overseer) sendStats(cns *cnStats, status ssntp.Status) {
 		return
 	}
 
-	_, err = ovs.ac.ssntpConn.SendCommand(ssntp.STATS, payload)
+	_, err = ovs.ac.conn.SendCommand(ssntp.STATS, payload)
 	if err != nil {
 		glog.Errorf("Failed to send stats command %v", err)
 		return
@@ -453,7 +453,7 @@ func (ovs *overseer) sendTraceReport() {
 		return
 	}
 
-	_, err = ovs.ac.ssntpConn.SendEvent(ssntp.TraceReport, payload)
+	_, err = ovs.ac.conn.SendEvent(ssntp.TraceReport, payload)
 	if err != nil {
 		glog.Errorf("Failed to send TraceReport event %v", err)
 		return
@@ -482,7 +482,7 @@ func (ovs *overseer) sendInstanceDeletedEvent(instance string) {
 		return
 	}
 
-	_, err = ovs.ac.ssntpConn.SendEvent(ssntp.InstanceDeleted, payload)
+	_, err = ovs.ac.conn.SendEvent(ssntp.InstanceDeleted, payload)
 	if err != nil {
 		glog.Errorf("Failed to send event command %v", err)
 		return
@@ -564,7 +564,7 @@ func (ovs *overseer) processRemoveCommand(cmd *ovsRemoveCmd) {
 
 func (ovs *overseer) processStatusCommand(cmd *ovsStatusCmd) {
 	glog.Info("Overseer: Recieved Status Command")
-	if !ovs.ac.ssntpConn.isConnected() {
+	if !ovs.ac.conn.isConnected() {
 		return
 	}
 	cns := getStats()
@@ -574,7 +574,7 @@ func (ovs *overseer) processStatusCommand(cmd *ovsStatusCmd) {
 
 func (ovs *overseer) processStatsStatusCommand(cmd *ovsStatsStatusCmd) {
 	glog.Info("Overseer: Recieved StatsStatus Command")
-	if !ovs.ac.ssntpConn.isConnected() {
+	if !ovs.ac.conn.isConnected() {
 		return
 	}
 	cns := getStats()
@@ -646,7 +646,7 @@ DONE:
 			}
 			ovs.processCommand(cmd)
 		case <-statsTimer:
-			if !ovs.ac.ssntpConn.isConnected() {
+			if !ovs.ac.conn.isConnected() {
 				statsTimer = time.After(time.Second * statsPeriod)
 				continue
 			}
