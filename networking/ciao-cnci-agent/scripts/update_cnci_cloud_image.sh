@@ -11,7 +11,7 @@
 echo "WARNING: This script is deprecated. Please use generate_cnci_cloud_image.sh"
 
 if [ -z "$1" ]; then
-        IMAGE="clear-7520-ciao-networking.img"
+        IMAGE="clear-8260-ciao-networking.img"
 else
         IMAGE="$1"
 fi

@@ -6,7 +6,7 @@ xorriso -as mkisofs -R -V config-2 -o seed.iso seed/
 xorriso -as mkisofs -R -V config-2 -o ciao.iso ciao/
 
 if [ -z "$1" ]; then
-	IMAGE="clear-7360-ciao-networking.img"
+	IMAGE="clear-8260-ciao-networking.img"
 else
 	IMAGE="$1"
 fi

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Defaults
-image="clear-7520-ciao-networking.img"
+image="clear-8260-ciao-networking.img"
 certs_dir=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/certs
 cnci_agent=$GOPATH/bin/ciao-cnci-agent
 cnci_sysd=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service
