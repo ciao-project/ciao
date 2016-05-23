@@ -26,6 +26,38 @@ import (
 	"github.com/01org/ciao/networking/libsnnet"
 )
 
+func cnciInit(cnci *libsnnet.Cnci) error {
+	if err := cnci.Init(); err != nil {
+		return err
+	}
+	if err := cnci.RebuildTopology(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func reset(cnci *libsnnet.Cnci) {
+	if err := cnci.Shutdown(); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	os.Exit(0)
+}
+
+func create(cnci *libsnnet.Cnci, tenantSubnet *net.IPNet, subnetKey uint32, cnIP net.IP) {
+	if _, err := cnci.AddRemoteSubnet(*tenantSubnet, int(subnetKey), cnIP); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+}
+
+func delete(cnci *libsnnet.Cnci, tenantSubnet *net.IPNet, subnetKey uint32, cnIP net.IP) {
+	if err := cnci.DelRemoteSubnet(*tenantSubnet, int(subnetKey), cnIP); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+}
+
 func main() {
 
 	operationIn := flag.String("operation", "create", "operation <create|delete|reset> reset clears all CNCI setup")
@@ -55,20 +87,14 @@ func main() {
 		cnci.ComputeNet = []net.IPNet{*cnciPhyNet}
 	}
 
+	err := cnciInit(cnci)
+	if err != nil {
+		fmt.Printf("Init failed [%v]\n", err)
+		os.Exit(-1)
+	}
+
 	if *operationIn == "reset" {
-		if err := cnci.Init(); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		if err := cnci.RebuildTopology(); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		if err := cnci.Shutdown(); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		os.Exit(0)
+		reset(cnci)
 	}
 
 	_, tenantSubnet, err := net.ParseCIDR(*tenantSubnetIn)
@@ -80,37 +106,15 @@ func main() {
 
 	cnIP := net.ParseIP(*cnIPIn)
 	if cnIP == nil {
-		fmt.Println("Error invalid CN IP", *cnIPIn)
+		fmt.Println("Error invalid CN IP ", *cnIPIn)
 		os.Exit(-1)
 	}
 
 	switch *operationIn {
 	case "create":
-		if err := cnci.Init(); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		if err := cnci.RebuildTopology(); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		if _, err := cnci.AddRemoteSubnet(*tenantSubnet, int(subnetKey), cnIP); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
+		create(cnci, tenantSubnet, subnetKey, cnIP)
 	case "delete":
-		if err := cnci.Init(); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		if err := cnci.RebuildTopology(); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		if err := cnci.DelRemoteSubnet(*tenantSubnet, int(subnetKey), cnIP); err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
+		delete(cnci, tenantSubnet, subnetKey, cnIP)
 	default:
 		fmt.Println("Invalid operation ", *operationIn)
 	}
