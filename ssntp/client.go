@@ -177,6 +177,7 @@ func (client *Client) sendConnect() (bool, error) {
 
 	oidFound, err := verifyRole(client.session.conn, connected.Role)
 	if oidFound == false {
+		client.log.Errorf("%s\n", err)
 		client.SendError(ConnectionFailure, nil)
 		return false, fmt.Errorf("SSNTP Client: Connection failure")
 	}
