@@ -246,7 +246,7 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 		config.Cert = defaultServerCert
 	}
 
-	role, err := parseCertificate(config)
+	role, err := config.parseCertificate()
 	if err != nil {
 		server.log.Errorf("%s", err)
 		return err

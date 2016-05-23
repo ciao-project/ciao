@@ -910,7 +910,7 @@ func verifyRole(conn interface{}, role uint32) (bool, error) {
 	return false, oidError
 }
 
-func parseCertificateAuthority(config *Config) ([]string, []string, error) {
+func (config *Config) parseCertificateAuthority() ([]string, []string, error) {
 	var fqdns []string
 	var ips []string
 	caPEM, err := ioutil.ReadFile(config.CAcert)
@@ -940,7 +940,7 @@ func parseCertificateAuthority(config *Config) ([]string, []string, error) {
 	return ips, fqdns, nil
 }
 
-func parseCertificate(config *Config) (uint32, error) {
+func (config *Config) parseCertificate() (uint32, error) {
 	certPEM, err := ioutil.ReadFile(config.Cert)
 	if err != nil {
 		log.Fatalf("SSNTP: Load certificate [%s]: %s", config.Cert, err)
@@ -964,6 +964,94 @@ func parseCertificate(config *Config) (uint32, error) {
 	}
 
 	return role, nil
+}
+
+func (config *Config) configUUID(role uint32) (lockedUUID, uuid.UUID) {
+	if config.UUID == "" {
+		var err error
+		lUUID, err := newUUID("client", role)
+		if err != nil {
+			fmt.Printf("SSNTP ERROR: Client: Could not fetch a UUID, generating a random one (%s)\n", err)
+			return lUUID, uuid.Generate()
+		}
+
+		return lUUID, lUUID.uuid
+	}
+
+	uuid, _ := uuid.Parse(config.UUID)
+	return lockedUUID{}, uuid
+}
+
+func (config *Config) transport() string {
+	if config.Transport == "" {
+		return "tcp"
+	}
+
+	if config.Transport != "tcp" && config.Transport != "unix" {
+		return "tcp"
+	}
+
+	return config.Transport
+}
+
+func (config *Config) configURIs(uris []string, port uint32) []string {
+	/* First we add the configured server URI */
+	if config.URI != "" {
+		uris = append(uris, fmt.Sprintf("%s:%d", config.URI, port))
+	}
+
+	/* Then we parse the CA certificate to find FQDNs and/or IPs to connect to */
+	ips, fqdns, err := config.parseCertificateAuthority()
+	if err == nil {
+		/* We prefer IPs over FQDNs */
+		for _, ip := range ips {
+			uris = append(uris, fmt.Sprintf("%s:%d", ip, port))
+		}
+
+		for _, fqdn := range fqdns {
+			uris = append(uris, fmt.Sprintf("%s:%d", fqdn, port))
+		}
+	}
+
+	/* Last resort: localhost */
+	uris = append(uris, fmt.Sprintf("%s:%d", defaultURL, port))
+
+	return uris
+}
+
+func (config *Config) role() (uint32, error) {
+	role, err := config.parseCertificate()
+	if err != nil {
+		return 0, err
+	}
+
+	return role, nil
+}
+
+func (config *Config) port() uint32 {
+	if config.Port != 0 {
+		return config.Port
+	}
+
+	return port
+}
+
+func (config *Config) setCerts() {
+	if config.CAcert == "" {
+		config.CAcert = defaultCA
+	}
+
+	if config.Cert == "" {
+		config.Cert = defaultClientCert
+	}
+}
+
+func (config *Config) log() Logger {
+	if config.Log == nil {
+		return errLog
+	}
+
+	return config.Log
 }
 
 const nullUUID = "00000000-0000-0000-0000-000000000000"
