@@ -397,6 +397,30 @@ func findDocs(dir, prefix string) ([]string, error) {
 	return docs, nil
 }
 
+func computeSubPackages(deps piList) map[string][]*subPackage {
+	subPackages := make(map[string][]*subPackage)
+	for _, d := range deps {
+		for k := range repos {
+			if !strings.HasPrefix(d.name, k) {
+				continue
+			}
+			packages := subPackages[k]
+
+			pkg := d.name[len(k):]
+			if pkg == "" {
+				packages = append([]*subPackage{{name: k, wildcard: "*", cgo: d.CGO}}, packages...)
+			} else if pkg[0] == '/' {
+				packages = append(packages, &subPackage{name: d.name, wildcard: pkg[1:] + "/*", cgo: d.CGO})
+			} else {
+				fmt.Printf("Warning: unvendored package: %s\n", d.name)
+			}
+			subPackages[k] = packages
+			break
+		}
+	}
+	return subPackages
+}
+
 // This might look a little convoluted but we can't just go get
 // on all the repos in repos, using a wildcard.  This would build
 // loads of stuff we're not interested in at best and at worst,
@@ -449,26 +473,7 @@ func vendor(cwd, projectRoot, sourceRoot string) error {
 		}
 	}
 
-	subPackages := make(map[string][]*subPackage)
-	for _, d := range deps {
-		for k := range repos {
-			if !strings.HasPrefix(d.name, k) {
-				continue
-			}
-			packages := subPackages[k]
-
-			pkg := d.name[len(k):]
-			if pkg == "" {
-				packages = append([]*subPackage{{name: k, wildcard: "*", cgo: d.CGO}}, packages...)
-			} else if pkg[0] == '/' {
-				packages = append(packages, &subPackage{name: d.name, wildcard: pkg[1:] + "/*", cgo: d.CGO})
-			} else {
-				fmt.Printf("Warning: unvendored package: %s\n", d.name)
-			}
-			subPackages[k] = packages
-			break
-		}
-	}
+	subPackages := computeSubPackages(deps)
 
 	for k := range subPackages {
 		packages := subPackages[k]
