@@ -38,7 +38,7 @@ type ServerNotifier interface {
 
 	// StatusNotify notifies of a pending status frame.
 	// The frame comes from a SSNTP client identified by uuid.
-	StatusNotify(uuid string, status Status, frame *Frame)
+	StatusNotify(uuid string, role Role, status Status, frame *Frame)
 
 	// CommandNotify notifies of a pending command frame.
 	// The frame comes from a SSNTP client identified by uuid.
@@ -185,7 +185,7 @@ func handleSSNTPClient(server *Server, conn net.Conn) {
 			server.ntf.CommandNotify(uuidString, (Command)(frame.Operand), &frame)
 		case STATUS:
 			server.forwardRules.forwardFrame(server, session, (Status)(frame.Operand), &frame)
-			server.ntf.StatusNotify(uuidString, (Status)(frame.Operand), &frame)
+			server.ntf.StatusNotify(uuidString, server.role, (Status)(frame.Operand), &frame)
 		case EVENT:
 			server.forwardRules.forwardFrame(server, session, (Event)(frame.Operand), &frame)
 			server.ntf.EventNotify(uuidString, (Event)(frame.Operand), &frame)

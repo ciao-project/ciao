@@ -54,7 +54,7 @@ func (server *ssntpEchoServer) DisconnectNotify(uuid string, role uint32) {
 	}
 }
 
-func (server *ssntpEchoServer) StatusNotify(uuid string, status Status, frame *Frame) {
+func (server *ssntpEchoServer) StatusNotify(uuid string, role Role, status Status, frame *Frame) {
 	server.ssntp.SendStatus(uuid, status, frame.Payload)
 }
 
@@ -87,7 +87,7 @@ func (server *ssntpEchoFwderServer) ConnectNotify(uuid string, role uint32) {
 func (server *ssntpEchoFwderServer) DisconnectNotify(uuid string, role uint32) {
 }
 
-func (server *ssntpEchoFwderServer) StatusNotify(uuid string, status Status, frame *Frame) {
+func (server *ssntpEchoFwderServer) StatusNotify(uuid string, role Role, status Status, frame *Frame) {
 }
 
 func (server *ssntpEchoFwderServer) CommandNotify(uuid string, command Command, frame *Frame) {
@@ -134,7 +134,7 @@ func (server *ssntpServer) ConnectNotify(uuid string, role uint32) {
 func (server *ssntpServer) DisconnectNotify(uuid string, role uint32) {
 }
 
-func (server *ssntpServer) StatusNotify(uuid string, status Status, frame *Frame) {
+func (server *ssntpServer) StatusNotify(uuid string, role Role, status Status, frame *Frame) {
 }
 
 func (server *ssntpServer) CommandNotify(uuid string, command Command, frame *Frame) {
@@ -2283,7 +2283,7 @@ func (server *ssntpNullServer) ConnectNotify(uuid string, role uint32) {
 func (server *ssntpNullServer) DisconnectNotify(uuid string, role uint32) {
 }
 
-func (server *ssntpNullServer) StatusNotify(uuid string, status Status, frame *Frame) {
+func (server *ssntpNullServer) StatusNotify(uuid string, role Role, status Status, frame *Frame) {
 	server.wg.Done()
 }
 
