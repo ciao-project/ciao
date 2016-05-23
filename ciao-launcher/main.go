@@ -248,7 +248,7 @@ func insState(instance string, ovsCh chan<- interface{}) ovsGetResult {
 	return <-targetCh
 }
 
-func processCommand(client serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) {
+func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) {
 	var target chan<- interface{}
 	var delCmd *insDeleteCmd
 
@@ -264,7 +264,7 @@ func processCommand(client serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}
 			glog.Errorf("Instance will make node full: Disk %d Mem %d CPUs %d",
 				insCmd.cfg.Disk, insCmd.cfg.Mem, insCmd.cfg.Cpus)
 			se := startError{nil, payloads.FullComputeNode}
-			se.send(client, cmd.instance)
+			se.send(conn, cmd.instance)
 			return
 		}
 		target = addResult.cmdCh
@@ -274,7 +274,7 @@ func processCommand(client serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}
 		if target == nil {
 			glog.Errorf("Instance %s does not exist", cmd.instance)
 			de := deleteError{nil, payloads.DeleteNoInstance}
-			de.send(client, cmd.instance)
+			de.send(conn, cmd.instance)
 			return
 		}
 		delCmd = insCmd
@@ -284,7 +284,7 @@ func processCommand(client serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}
 		if target == nil {
 			glog.Errorf("Instance %s does not exist", cmd.instance)
 			se := stopError{nil, payloads.StopNoInstance}
-			se.send(client, cmd.instance)
+			se.send(conn, cmd.instance)
 			return
 		}
 	case *insRestartCmd:
@@ -292,7 +292,7 @@ func processCommand(client serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}
 		if target == nil {
 			glog.Errorf("Instance %s does not exist", cmd.instance)
 			re := restartError{nil, payloads.RestartNoInstance}
-			re.send(client, cmd.instance)
+			re.send(conn, cmd.instance)
 			return
 		}
 	default:
