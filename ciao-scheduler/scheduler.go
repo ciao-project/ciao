@@ -348,8 +348,35 @@ func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role ssntp.Role
 	glog.V(2).Infof("Disconnect (role=%s, uuid=%s)\n", role.String(), uuid)
 }
 
-func (sched *ssntpSchedulerServer) updateNodeStat(node *nodeStat, status ssntp.Status, frame *ssntp.Frame) {
+func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
 	payload := frame.Payload
+
+	// for now only pay attention to READY status
+
+	glog.V(2).Infof("STATUS %v from %s\n", status, uuid)
+
+	sched.controllerMutex.RLock()
+	defer sched.controllerMutex.RUnlock()
+	if sched.controllerMap[uuid] != nil {
+		glog.Warningf("Ignoring STATUS change from Controller uuid=%s\n", uuid)
+		return
+	}
+
+	sched.cnMutex.RLock()
+	defer sched.cnMutex.RUnlock()
+
+	sched.nnMutex.RLock()
+	defer sched.nnMutex.RUnlock()
+
+	var node *nodeStat
+	if sched.cnMap[uuid] != nil {
+		node = sched.cnMap[uuid]
+	} else if sched.nnMap[uuid] != nil {
+		node = sched.nnMap[uuid]
+	} else {
+		glog.Warningf("STATUS error: no connected ssntp client with uuid=%s\n", uuid)
+		return
+	}
 
 	node.mutex.Lock()
 	defer node.mutex.Unlock()
@@ -361,7 +388,7 @@ func (sched *ssntpSchedulerServer) updateNodeStat(node *nodeStat, status ssntp.S
 		var stats payloads.Ready
 		err := yaml.Unmarshal(payload, &stats)
 		if err != nil {
-			glog.Errorf("Bad READY yaml for node %s\n", node.uuid)
+			glog.Errorf("Bad READY yaml for node %s\n", uuid)
 			return
 		}
 		node.memTotalMB = stats.MemTotalMB
@@ -369,32 +396,6 @@ func (sched *ssntpSchedulerServer) updateNodeStat(node *nodeStat, status ssntp.S
 		node.load = stats.Load
 		node.cpus = stats.CpusOnline
 		//TODO pull in other types of payloads.Ready struct data
-	}
-}
-
-func (sched *ssntpSchedulerServer) StatusNotify(uuid string, role ssntp.Role, status ssntp.Status, frame *ssntp.Frame) {
-	// for now only pay attention to READY status
-
-	glog.V(2).Infof("STATUS %v from %s (%s)\n", status, uuid, role.String())
-
-	if role.IsAgent() {
-		var cn *nodeStat
-		sched.cnMutex.RLock()
-		defer sched.cnMutex.RUnlock()
-		if sched.cnMap[uuid] != nil {
-			cn = sched.cnMap[uuid]
-			sched.updateNodeStat(cn, status, frame)
-		}
-	}
-
-	if role.IsNetAgent() {
-		var nn *nodeStat
-		sched.nnMutex.RLock()
-		defer sched.nnMutex.RUnlock()
-		if sched.nnMap[uuid] != nil {
-			nn = sched.nnMap[uuid]
-			sched.updateNodeStat(nn, status, frame)
-		}
 	}
 }
 
