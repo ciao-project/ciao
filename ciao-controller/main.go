@@ -35,7 +35,7 @@ const defaultControllerCert = "/etc/pki/ciao/cert-Controller-localhost.pem"
 const defaultAgentCert = "/etc/pki/ciao/cert-CNAgent-localhost.pem"
 const defaultCNCIAgentCert = "/etc/pki/ciao/cert-CNCIAgent-localhost.pem"
 const defaultNetAgentCert = "/etc/pki/ciao/cert-NetworkingAgent-localhost.pem"
-const defaultServerCert = "/etc/pki/ciao/cert-Scheduler-localhost.pem"
+const defaultServerCert = "/etc/pki/ciao/cert-Server-localhost.pem"
 
 var cert = flag.String("cert", defaultControllerCert, "Client certificate")
 var caCert = flag.String("cacert", "/etc/pki/ciao/CAcert-localhost.pem", "CA certificate")
