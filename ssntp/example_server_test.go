@@ -47,8 +47,8 @@ func (server *ssntpDumpServer) DisconnectNotify(uuid string, role Role) {
 	fmt.Printf("%s: %s disconnected (role 0x%x)\n", server.name, uuid, role)
 }
 
-func (server *ssntpDumpServer) StatusNotify(uuid string, role Role, status Status, frame *Frame) {
-	fmt.Printf("%s: STATUS %s from %s (%s)\n", server.name, status, uuid, role.String())
+func (server *ssntpDumpServer) StatusNotify(uuid string, status Status, frame *Frame) {
+	fmt.Printf("%s: STATUS %s from %s\n", server.name, status, uuid)
 }
 
 func (server *ssntpDumpServer) CommandNotify(uuid string, command Command, frame *Frame) {

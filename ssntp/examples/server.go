@@ -58,9 +58,9 @@ func (server *ssntpEchoServer) DisconnectNotify(uuid string, role Role) {
 	fmt.Printf("%s: %s disconnected (role 0x%x, current connections %d)\n", server.name, uuid, role, server.nConnections)
 }
 
-func (server *ssntpEchoServer) StatusNotify(uuid string, role Role, status ssntp.Status, frame *ssntp.Frame) {
+func (server *ssntpEchoServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
 	server.nStatuses++
-	fmt.Printf("%s: STATUS (#%d) from %s (%s)\n", server.name, server.nStatuses, uuid, role.String())
+	fmt.Printf("%s: STATUS (#%d) from %s\n", server.name, server.nStatuses, uuid)
 
 	server.ssntp.SendStatus(uuid, status, frame.Payload)
 }
