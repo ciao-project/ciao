@@ -130,13 +130,13 @@ func (l logger) Warningf(format string, args ...interface{}) {
 	fmt.Printf("WARNING: Test Server: "+format, args...)
 }
 
-func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
+func (server *ssntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 	server.nConnections++
-	fmt.Printf("%s: %s connected (role 0x%x, current connections %d)\n", server.name, uuid, role, server.nConnections)
+	fmt.Printf("%s: %s connected (role %s, current connections %d)\n", server.name, uuid, role.String(), server.nConnections)
 
 	//Send out the command and events right here
 	//Also create a table to drive this with type, type, payload
-	if role == ssntp.CNCIAGENT {
+	if role.IsCNCIAgent() {
 		payload, _ := tenantAddedMarshal()
 		_, _ = server.ssntp.SendEvent(uuid, ssntp.TenantAdded, payload)
 		time.Sleep(time.Second)
@@ -160,7 +160,7 @@ func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
 
 }
 
-func (server *ssntpTestServer) DisconnectNotify(uuid string, role uint32) {
+func (server *ssntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	server.nConnections--
 	fmt.Printf("%s: %s disconnected (current connections %d)\n", server.name, uuid, server.nConnections)
 }
