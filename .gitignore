@@ -11,6 +11,6 @@ networking/docker/plugin/plugin
 networking/libsnnet/tests/cncicli/cncicli
 networking/libsnnet/tests/cncli/cncli
 networking/libsnnet/tests/snnetcli/snnetcli
-ssntp/ciao-cert/ciao-cert
+ciao-cert/ciao-cert
 test-cases/test-cases
 cscope*
