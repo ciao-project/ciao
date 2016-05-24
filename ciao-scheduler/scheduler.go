@@ -548,17 +548,6 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 		return nil
 	}
 
-	/* Shortcut for 1 nodes cluster */
-	if len(sched.cnList) == 1 {
-		node := sched.cnList[0]
-		node.mutex.Lock()
-		if sched.workloadFits(sched.cnList[0], workload) == true {
-			return node // locked nodeStat
-		}
-		node.mutex.Unlock()
-		return nil
-	}
-
 	/* First try nodes after the MRU */
 	if sched.cnMRUIndex != -1 && sched.cnMRUIndex < len(sched.cnList)-1 {
 		for i, node := range sched.cnList[sched.cnMRUIndex+1:] {
