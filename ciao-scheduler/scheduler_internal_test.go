@@ -563,7 +563,7 @@ func TestStartWorkload(t *testing.T) {
 	spinUpNetworkNode(sched, 1004, 42)
 	spinUpNetworkNode(sched, 1005, 44032)
 
-	//_, _ = startWorkload(sched, controllerUUID, []byte(testutil.CNCIStartYaml))
+	var dest string
 
 	// controller starts with starting a CNCI if none are present for a tenant
 	fwd, uuid := startWorkload(sched, controllerUUID, []byte(testutil.CNCIStartYaml))
@@ -573,13 +573,13 @@ func TestStartWorkload(t *testing.T) {
 		uuid != "fb3e089c-62bd-476c-b22a-9d6d09599306" {
 		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
 	}
-	for _, dest := range recipients[:] {
+	for _, dest = range recipients[:] {
 		if sched.nnMap[dest] == nil {
 			t.Errorf("CNCI sent to non-network-node %s", dest)
 		}
 	}
 
-	// then controller stats the tenant workload
+	// then controller starts the tenant workload
 	fwd, uuid = startWorkload(sched, controllerUUID, []byte(testutil.StartYaml))
 	decision = fwd.Decision()
 	recipients = fwd.Recipients()
@@ -587,7 +587,24 @@ func TestStartWorkload(t *testing.T) {
 		uuid != "3390740c-dce9-48d6-b83a-a717417072ce" {
 		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
 	}
-	for _, dest := range recipients[:] {
+	for _, dest = range recipients[:] {
+		if sched.cnMap[dest] == nil {
+			t.Errorf("tenant workload sent to non-compute-node %s", dest)
+		}
+	}
+
+	// remove MRU compute compute node
+	DisconnectComputeNode(sched, dest)
+
+	// later starts another tenant workload
+	fwd, uuid = startWorkload(sched, controllerUUID, []byte(testutil.StartYaml))
+	decision = fwd.Decision()
+	recipients = fwd.Recipients()
+	if decision != ssntp.Forward ||
+		uuid != "3390740c-dce9-48d6-b83a-a717417072ce" {
+		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
+	}
+	for _, dest = range recipients[:] {
 		if sched.cnMap[dest] == nil {
 			t.Errorf("tenant workload sent to non-compute-node %s", dest)
 		}
