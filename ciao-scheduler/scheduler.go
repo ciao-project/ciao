@@ -427,6 +427,9 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 		return workload, fmt.Errorf("invalid start payload resource demand: network_node (%d) is not 0 or 1", workload.networkNode)
 	}
 
+	// note the uuid
+	workload.instanceUUID = work.Start.InstanceUUID
+
 	return workload, nil
 }
 
@@ -613,7 +616,7 @@ func (sched *ssntpSchedulerServer) pickNetworkNode(controllerUUID string, worklo
 	return nil
 }
 
-func (sched *ssntpSchedulerServer) startWorkload(controllerUUID string, payload []byte) (dest ssntp.ForwardDestination, instanceUUID string) {
+func startWorkload(sched *ssntpSchedulerServer, controllerUUID string, payload []byte) (dest ssntp.ForwardDestination, instanceUUID string) {
 	var work payloads.Start
 	err := yaml.Unmarshal(payload, &work)
 	if err != nil {
@@ -685,7 +688,7 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 	switch command {
 	// the main command with scheduler processing
 	case ssntp.START:
-		dest, instanceUUID = sched.startWorkload(controllerUUID, payload)
+		dest, instanceUUID = startWorkload(sched, controllerUUID, payload)
 	case ssntp.RESTART:
 		fallthrough
 	case ssntp.STOP:

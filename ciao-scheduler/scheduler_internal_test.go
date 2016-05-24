@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 	"os"
 	"sync"
 	"testing"
@@ -64,6 +65,11 @@ func spinUpComputeNode(sched *ssntpSchedulerServer, ident int, RAM int) {
 	sched.cnMutex.Lock()
 	defer sched.cnMutex.Unlock()
 
+	if sched.cnMap[node.uuid] != nil {
+		fmt.Println("poorly written test: ignoring creation of duplicate compute node")
+		return
+	}
+
 	sched.cnList = append(sched.cnList, &node)
 	sched.cnMap[node.uuid] = &node
 }
@@ -76,6 +82,36 @@ func spinUpComputeNodeSmall(sched *ssntpSchedulerServer, ident int) {
 }
 func spinUpComputeNodeVerySmall(sched *ssntpSchedulerServer, ident int) {
 	spinUpComputeNode(sched, ident, 200)
+}
+
+func spinUpNetworkNode(sched *ssntpSchedulerServer, ident int, RAM int) {
+	var node nodeStat
+	node.status = ssntp.READY
+	node.uuid = fmt.Sprintf("%08d", ident)
+	node.memTotalMB = RAM
+	node.memAvailMB = RAM
+	node.load = 0
+	node.cpus = 4
+
+	sched.nnMutex.Lock()
+	defer sched.nnMutex.Unlock()
+
+	if sched.nnMap[node.uuid] != nil {
+		fmt.Println("poorly written test: ignoring creation of duplicate network node")
+		return
+	}
+
+	sched.nnMap[node.uuid] = &node
+}
+
+func spinUpNetworkNodeLarge(sched *ssntpSchedulerServer, ident int) {
+	spinUpNetworkNode(sched, ident, 141312)
+}
+func spinUpNetworkNodeSmall(sched *ssntpSchedulerServer, ident int) {
+	spinUpNetworkNode(sched, ident, 16384)
+}
+func spinUpNetworkNodeVerySmall(sched *ssntpSchedulerServer, ident int) {
+	spinUpNetworkNode(sched, ident, 200)
 }
 
 /****************************************************************************/
@@ -133,8 +169,10 @@ func TestPickComputeNode(t *testing.T) {
 
 	var work = createStartWorkload(2, 256, 10000)
 	resources, err := sched.getWorkloadResources(work)
-	if err != nil {
-		t.Fatal("bad workload resources")
+	if err != nil ||
+		resources.instanceUUID != "c73322e8-d5fe-4d57-874c-dcee4fd368cd" ||
+		resources.memReqMB != 256 {
+		t.Fatalf("bad workload resources %s, %d", resources.instanceUUID, resources.memReqMB)
 	}
 
 	// no compute nodes
@@ -327,6 +365,11 @@ func TestHeartBeat(t *testing.T) {
 	spinUpComputeNode(sched, 3, 10000)
 	spinUpComputeNode(sched, 4, 42)
 	spinUpComputeNode(sched, 5, 44032)
+	spinUpNetworkNode(sched, 1001, 16138)
+	spinUpNetworkNode(sched, 1002, 256)
+	spinUpNetworkNode(sched, 1003, 10000)
+	spinUpNetworkNode(sched, 1004, 42)
+	spinUpNetworkNode(sched, 1005, 44032)
 	beatTxt = heartBeat(sched, 1)
 	expected = "controller-00000001:MASTER, controller-00000002:BACKUP\t\tnode-00000001:READY:16138/16138,0, node-00000002:READY:256/256,0, node-00000003:READY:10000/10000,0, node-00000004:READY:42/42,0"
 	if beatTxt != expected {
@@ -470,24 +513,83 @@ func TestClientMgmtLocking(t *testing.T) {
 	clientMiscMods()
 
 	// now in parallel
+	var iters int
+	if testing.Short() {
+		iters = 10000 // ~4sec
+	} else {
+		iters = 100000 // ~40sec
+	}
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100000; i++ {
+		for i := 0; i < iters; i++ {
 			controllerMods()
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100000; i++ {
+		for i := 0; i < iters; i++ {
 			computeNodeMods()
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100000; i++ {
+		for i := 0; i < iters; i++ {
 			networkNodeMods()
 		}
 	}()
 	wg.Wait()
+}
+
+func TestStartWorkload(t *testing.T) {
+	sched = configSchedulerServer()
+	if sched == nil {
+		t.Fatal("unable to configure test scheduler")
+	}
+	spinUpController(sched, 1, controllerMaster)
+	var controllerUUID = fmt.Sprintf("%08d", 1)
+	spinUpController(sched, 2, controllerBackup)
+	spinUpController(sched, 3, controllerBackup)
+
+	spinUpComputeNode(sched, 1, 16138)
+	spinUpComputeNode(sched, 2, 256)
+	spinUpComputeNode(sched, 3, 10000)
+	spinUpComputeNode(sched, 4, 42)
+	spinUpComputeNode(sched, 5, 44032)
+
+	spinUpNetworkNode(sched, 1001, 16138)
+	spinUpNetworkNode(sched, 1002, 256)
+	spinUpNetworkNode(sched, 1003, 10000)
+	spinUpNetworkNode(sched, 1004, 42)
+	spinUpNetworkNode(sched, 1005, 44032)
+
+	//_, _ = startWorkload(sched, controllerUUID, []byte(testutil.CNCIStartYaml))
+
+	// controller starts with starting a CNCI if none are present for a tenant
+	fwd, uuid := startWorkload(sched, controllerUUID, []byte(testutil.CNCIStartYaml))
+	decision := fwd.Decision()
+	recipients := fwd.Recipients()
+	if decision != ssntp.Forward ||
+		uuid != "fb3e089c-62bd-476c-b22a-9d6d09599306" {
+		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
+	}
+	for _, dest := range recipients[:] {
+		if sched.nnMap[dest] == nil {
+			t.Errorf("CNCI sent to non-network-node %s", dest)
+		}
+	}
+
+	// then controller stats the tenant workload
+	fwd, uuid = startWorkload(sched, controllerUUID, []byte(testutil.StartYaml))
+	decision = fwd.Decision()
+	recipients = fwd.Recipients()
+	if decision != ssntp.Forward ||
+		uuid != "3390740c-dce9-48d6-b83a-a717417072ce" {
+		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
+	}
+	for _, dest := range recipients[:] {
+		if sched.cnMap[dest] == nil {
+			t.Errorf("tenant workload sent to non-compute-node %s", dest)
+		}
+	}
 }
