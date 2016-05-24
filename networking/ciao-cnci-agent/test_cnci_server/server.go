@@ -130,13 +130,13 @@ func (l logger) Warningf(format string, args ...interface{}) {
 	fmt.Printf("WARNING: Test Server: "+format, args...)
 }
 
-func (server *ssntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
+func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
 	server.nConnections++
-	fmt.Printf("%s: %s connected (role %s, current connections %d)\n", server.name, uuid, role.String(), server.nConnections)
+	fmt.Printf("%s: %s connected (role 0x%x, current connections %d)\n", server.name, uuid, role, server.nConnections)
 
 	//Send out the command and events right here
 	//Also create a table to drive this with type, type, payload
-	if role.IsCNCIAgent() {
+	if role == ssntp.CNCIAGENT {
 		payload, _ := tenantAddedMarshal()
 		_, _ = server.ssntp.SendEvent(uuid, ssntp.TenantAdded, payload)
 		time.Sleep(time.Second)
@@ -160,12 +160,12 @@ func (server *ssntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 
 }
 
-func (server *ssntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
+func (server *ssntpTestServer) DisconnectNotify(uuid string, role uint32) {
 	server.nConnections--
 	fmt.Printf("%s: %s disconnected (current connections %d)\n", server.name, uuid, server.nConnections)
 }
 
-func (server *ssntpTestServer) StatusNotify(uuid string, role ssntp.Role, status ssntp.Status, frame *ssntp.Frame) {
+func (server *ssntpTestServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
 	server.nStatuses++
 	fmt.Printf("%s: STATUS (#%d) from %s\n", server.name, server.nStatuses, uuid)
 	//server.ssntp.SendStatus(uuid, status, payload)

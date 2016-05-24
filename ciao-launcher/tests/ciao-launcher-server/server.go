@@ -63,11 +63,11 @@ var server = struct {
 
 type testServer struct{}
 
-func (ts *testServer) ConnectNotify(uuid string, role ssntp.Role) {
+func (ts *testServer) ConnectNotify(uuid string, role uint32) {
 	server.Lock()
 	defer server.Unlock()
 
-	if !(role.IsAgent() || role.IsNetAgent()) {
+	if !(role == ssntp.AGENT || role == ssntp.NETAGENT) {
 		return
 	}
 
@@ -78,7 +78,7 @@ func (ts *testServer) ConnectNotify(uuid string, role ssntp.Role) {
 	server.clients[uuid] = new(client)
 }
 
-func (ts *testServer) DisconnectNotify(uuid string, role ssntp.Role) {
+func (ts *testServer) DisconnectNotify(uuid string, role uint32) {
 	server.Lock()
 	defer server.Unlock()
 
@@ -87,7 +87,7 @@ func (ts *testServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	}
 }
 
-func (ts *testServer) StatusNotify(uuid string, role ssntp.Role, status ssntp.Status, frame *ssntp.Frame) {
+func (ts *testServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
 	var ready payloads.Ready
 	err := yaml.Unmarshal(frame.Payload, &ready)
 	if err == nil {

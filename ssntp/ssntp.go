@@ -612,86 +612,30 @@ func (error Error) String() string {
 	return ""
 }
 
-// HasRole checks if a role instance has the specified role
-func (role *Role) HasRole(cmp Role) bool {
-	if *role&cmp == cmp {
-		return true
-	}
-	return false
-}
-
-// IsServer checks if a role instance has the ssntp.SERVER role
-func (role *Role) IsServer() bool {
-	if role.HasRole(SERVER) {
-		return true
-	}
-	return false
-}
-
-// IsController checks if a role instance has the ssntp.Controller role
-func (role *Role) IsController() bool {
-	if role.HasRole(Controller) {
-		return true
-	}
-	return false
-}
-
-// IsAgent checks if a role instance has the ssntp.AGENT role
-func (role *Role) IsAgent() bool {
-	if role.HasRole(AGENT) {
-		return true
-	}
-	return false
-}
-
-// IsScheduler checks if a role instance has the ssntp.SCHEDULER role
-func (role *Role) IsScheduler() bool {
-	if role.HasRole(SCHEDULER) {
-		return true
-	}
-	return false
-}
-
-// IsNetAgent checks if a role instance has the ssntp.NETAGENT role
-func (role *Role) IsNetAgent() bool {
-	if role.HasRole(NETAGENT) {
-		return true
-	}
-	return false
-}
-
-// IsCNCIAgent checks if a role instance has the ssntp.CNCIAGENT role
-func (role *Role) IsCNCIAgent() bool {
-	if role.HasRole(CNCIAGENT) {
-		return true
-	}
-	return false
-}
-
 func (role *Role) String() string {
 	roleString := ""
 
-	if role.IsServer() {
+	if *role&SERVER == SERVER {
 		roleString += "Server-"
 	}
 
-	if role.IsController() {
+	if *role&Controller == Controller {
 		roleString += "Controller-"
 	}
 
-	if role.IsAgent() {
+	if *role&AGENT == AGENT {
 		roleString += "CNAgent-"
 	}
 
-	if role.IsScheduler() {
+	if *role&SCHEDULER == SCHEDULER {
 		roleString += "Scheduler-"
 	}
 
-	if role.IsNetAgent() {
+	if *role&NETAGENT == NETAGENT {
 		roleString += "NetworkingAgent-"
 	}
 
-	if role.IsCNCIAgent() {
+	if *role&CNCIAGENT == CNCIAGENT {
 		roleString += "CNCIAgent-"
 	}
 
@@ -892,7 +836,7 @@ func prepareTLS(caPEM, certPEM []byte, server bool) *tls.Config {
 }
 
 var roleOID = []struct {
-	role Role
+	role uint32
 	oid  asn1.ObjectIdentifier
 }{
 	{
@@ -921,8 +865,8 @@ var roleOID = []struct {
 	},
 }
 
-func getRoleFromOIDs(oids []asn1.ObjectIdentifier) Role {
-	role := UNKNOWN
+func getRoleFromOIDs(oids []asn1.ObjectIdentifier) uint32 {
+	role := (uint32)(UNKNOWN)
 
 	for _, oid := range oids {
 		for _, r := range roleOID {
@@ -935,10 +879,10 @@ func getRoleFromOIDs(oids []asn1.ObjectIdentifier) Role {
 	return role
 }
 
-func getOIDsFromRole(role Role) ([]asn1.ObjectIdentifier, error) {
+func getOIDsFromRole(role uint32) ([]asn1.ObjectIdentifier, error) {
 	var oids []asn1.ObjectIdentifier
 	for _, r := range roleOID {
-		if role.HasRole(r.role) {
+		if role&r.role == r.role {
 			oids = append(oids, r.oid)
 		}
 	}
@@ -950,7 +894,7 @@ func getOIDsFromRole(role Role) ([]asn1.ObjectIdentifier, error) {
 	return oids, nil
 }
 
-func verifyRole(conn interface{}, role Role) (bool, error) {
+func verifyRole(conn interface{}, role uint32) (bool, error) {
 	var oidError = fmt.Errorf("**** TEMPORARY WARNING ****\n*** Wrong certificate or missing/mismatched role OID ***\nIn order to fix this, use the -role option when generating your certificates with the ciao-cert tool.\n")
 	switch tlsConn := conn.(type) {
 	case *tls.Conn:
@@ -996,7 +940,7 @@ func (config *Config) parseCertificateAuthority() ([]string, []string, error) {
 	return ips, fqdns, nil
 }
 
-func (config *Config) parseCertificate() (Role, error) {
+func (config *Config) parseCertificate() (uint32, error) {
 	certPEM, err := ioutil.ReadFile(config.Cert)
 	if err != nil {
 		log.Fatalf("SSNTP: Load certificate [%s]: %s", config.Cert, err)
@@ -1015,14 +959,14 @@ func (config *Config) parseCertificate() (Role, error) {
 
 	role := getRoleFromOIDs(cert[0].UnknownExtKeyUsage)
 	/* We could not find a valid OID in the certificate */
-	if role == UNKNOWN {
+	if role == (uint32)(UNKNOWN) {
 		return role, errors.New("Could not find a SSNTP role")
 	}
 
 	return role, nil
 }
 
-func (config *Config) configUUID(role Role) (lockedUUID, uuid.UUID) {
+func (config *Config) configUUID(role uint32) (lockedUUID, uuid.UUID) {
 	if config.UUID == "" {
 		var err error
 		lUUID, err := newUUID("client", role)
@@ -1075,7 +1019,7 @@ func (config *Config) configURIs(uris []string, port uint32) []string {
 	return uris
 }
 
-func (config *Config) role() (Role, error) {
+func (config *Config) role() (uint32, error) {
 	role, err := config.parseCertificate()
 	if err != nil {
 		return 0, err
@@ -1117,9 +1061,9 @@ type lockedUUID struct {
 	uuid   uuid.UUID
 }
 
-func newUUID(prefix string, role Role) (lockedUUID, error) {
-	uuidFile := fmt.Sprintf("%s/%s/0x%x", uuidPrefix, prefix, (uint32)(role))
-	uuidLockFile := fmt.Sprintf("%s/%s-role-0x%x", uuidLockPrefix, prefix, (uint32)(role))
+func newUUID(prefix string, role uint32) (lockedUUID, error) {
+	uuidFile := fmt.Sprintf("%s/%s/0x%x", uuidPrefix, prefix, role)
+	uuidLockFile := fmt.Sprintf("%s/%s-role-0x%x", uuidLockPrefix, prefix, role)
 	_nUUID, _ := uuid.Parse(nullUUID)
 	nUUID := lockedUUID{
 		uuid:   _nUUID,

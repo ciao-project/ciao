@@ -320,32 +320,30 @@ func disconnectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 
 	sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
 }
-func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role ssntp.Role) {
-	if role.IsController() {
+func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
+	switch role {
+	case ssntp.Controller:
 		connectController(sched, uuid)
-	}
-	if role.IsAgent() {
+	case ssntp.AGENT:
 		connectComputeNode(sched, uuid)
-	}
-	if role.IsNetAgent() {
+	case ssntp.NETAGENT:
 		connectNetworkNode(sched, uuid)
 	}
 
-	glog.V(2).Infof("Connect (role=%s, uuid=%s)\n", role.String(), uuid)
+	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
-func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role ssntp.Role) {
-	if role.IsController() {
+func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
+	switch role {
+	case ssntp.Controller:
 		disconnectController(sched, uuid)
-	}
-	if role.IsAgent() {
+	case ssntp.AGENT:
 		disconnectComputeNode(sched, uuid)
-	}
-	if role.IsNetAgent() {
+	case ssntp.NETAGENT:
 		disconnectNetworkNode(sched, uuid)
 	}
 
-	glog.V(2).Infof("Disconnect (role=%s, uuid=%s)\n", role.String(), uuid)
+	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
 func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {

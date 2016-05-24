@@ -39,11 +39,11 @@ type ssntpDumpServer struct {
 	name  string
 }
 
-func (server *ssntpDumpServer) ConnectNotify(uuid string, role Role) {
+func (server *ssntpDumpServer) ConnectNotify(uuid string, role uint32) {
 	fmt.Printf("%s: %s connected (role 0x%x)\n", server.name, uuid, role)
 }
 
-func (server *ssntpDumpServer) DisconnectNotify(uuid string, role Role) {
+func (server *ssntpDumpServer) DisconnectNotify(uuid string, role uint32) {
 	fmt.Printf("%s: %s disconnected (role 0x%x)\n", server.name, uuid, role)
 }
 
