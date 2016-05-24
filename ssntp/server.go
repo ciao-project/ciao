@@ -413,3 +413,14 @@ func (server *Server) SendTracedError(uuid string, error Error, payload []byte, 
 func (server *Server) UUID() string {
 	return server.uuid.String()
 }
+
+// ClientRole returns the role of the ssntp session peer with the specified uuid.
+func (server *Server) ClientRole(uuid string) (uint32, error) {
+	server.sessionMutex.RLock()
+	session := server.sessions[uuid]
+	defer server.sessionMutex.RUnlock()
+	if session == nil {
+		return (uint32)(UNKNOWN), fmt.Errorf("SSNTP session missing for uuid %s", uuid)
+	}
+	return session.destRole, nil
+}
