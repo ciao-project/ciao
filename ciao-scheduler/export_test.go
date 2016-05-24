@@ -30,3 +30,4 @@ var ConnectNetworkNode = connectNetworkNode
 var DisconnectNetworkNode = disconnectNetworkNode
 
 var StartWorkload = startWorkload
+var GetWorkloadAgentUUID = getWorkloadAgentUUID

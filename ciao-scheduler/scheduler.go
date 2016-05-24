@@ -494,7 +494,7 @@ func (sched *ssntpSchedulerServer) fwdEventToCNCI(event ssntp.Event, payload []b
 	return dest
 }
 
-func (sched *ssntpSchedulerServer) getWorkloadAgentUUID(command ssntp.Command, payload []byte) (string, string, error) {
+func getWorkloadAgentUUID(sched *ssntpSchedulerServer, command ssntp.Command, payload []byte) (string, string, error) {
 	switch command {
 	default:
 		return "", "", fmt.Errorf("unsupported ssntp.Command type \"%s\"", command)
@@ -520,7 +520,7 @@ func (sched *ssntpSchedulerServer) getWorkloadAgentUUID(command ssntp.Command, p
 func (sched *ssntpSchedulerServer) fwdCmdToComputeNode(command ssntp.Command, payload []byte) (dest ssntp.ForwardDestination, instanceUUID string) {
 	// some commands require no scheduling choice, rather the specified
 	// agent/launcher needs the command instead of the scheduler
-	instanceUUID, cnDestUUID, err := sched.getWorkloadAgentUUID(command, payload)
+	instanceUUID, cnDestUUID, err := getWorkloadAgentUUID(sched, command, payload)
 	if err != nil || cnDestUUID == "" {
 		glog.Errorf("Bad %s command yaml from Controller, WorkloadAgentUUID == %s\n", command.String(), cnDestUUID)
 		dest.SetDecision(ssntp.Discard)
