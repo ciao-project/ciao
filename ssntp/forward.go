@@ -186,19 +186,19 @@ func (f *frameForward) addForwardDestination(session *session) {
 
 		switch op := r.Operand.(type) {
 		case Command:
-			if session.destRole&(uint32)(r.Dest) == (uint32)(r.Dest) {
+			if session.destRole.HasRole(r.Dest) {
 				f.forwardCommandDest[op] = append(f.forwardCommandDest[op], session)
 			}
 		case Status:
-			if session.destRole&(uint32)(r.Dest) == (uint32)(r.Dest) {
+			if session.destRole.HasRole(r.Dest) {
 				f.forwardStatusDest[op] = append(f.forwardStatusDest[op], session)
 			}
 		case Error:
-			if session.destRole&(uint32)(r.Dest) == (uint32)(r.Dest) {
+			if session.destRole.HasRole(r.Dest) {
 				f.forwardErrorDest[op] = append(f.forwardErrorDest[op], session)
 			}
 		case Event:
-			if session.destRole&(uint32)(r.Dest) == (uint32)(r.Dest) {
+			if session.destRole.HasRole(r.Dest) {
 				f.forwardEventDest[op] = append(f.forwardEventDest[op], session)
 			}
 		}

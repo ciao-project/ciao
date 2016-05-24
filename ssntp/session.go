@@ -42,8 +42,8 @@ func clearWriteTimeout(conn net.Conn) {
 type session struct {
 	src      uuid.UUID
 	dest     uuid.UUID
-	srcRole  uint32
-	destRole uint32
+	srcRole  Role
+	destRole Role
 	conn     net.Conn
 
 	encoder *gob.Encoder
@@ -53,7 +53,7 @@ type session struct {
 /*
  * session methods
  */
-func newSession(src *uuid.UUID, srcRole uint32, destRole uint32, netConn net.Conn) *session {
+func newSession(src *uuid.UUID, srcRole Role, destRole Role, netConn net.Conn) *session {
 	var session session
 
 	if src != nil {
@@ -74,7 +74,7 @@ func (session *session) setDest(uuid []byte) {
 	copy(session.dest[:], uuid[:16])
 }
 
-func (session *session) connectedFrame(serverRole uint32, payload []byte) (f *ConnectedFrame) {
+func (session *session) connectedFrame(serverRole Role, payload []byte) (f *ConnectedFrame) {
 	f = &ConnectedFrame{
 		Major:         major,
 		Minor:         minor,

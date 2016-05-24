@@ -23,6 +23,7 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 	"github.com/docker/distribution/uuid"
 	"gopkg.in/yaml.v2"
 	"math/rand"
@@ -58,7 +59,7 @@ func (server *ssntpTestServer) addCmdChan(cmd ssntp.Command, c chan cmdResult) {
 	server.cmdChansLock.Unlock()
 }
 
-func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
+func (server *ssntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 	switch role {
 	case ssntp.AGENT:
 		server.clients = append(server.clients, uuid)
@@ -71,7 +72,7 @@ func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
 
 }
 
-func (server *ssntpTestServer) DisconnectNotify(uuid string, role uint32) {
+func (server *ssntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	for index := range server.clients {
 		if server.clients[index] == uuid {
 			server.clients = append(server.clients[:index], server.clients[index+1:]...)
@@ -1450,7 +1451,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	id := startIdentityTestServer()
+	testIdentityConfig := testutil.TestIdentityConfig{
+		ComputeURL: computeURL,
+		ProjectID:  computeTestUser,
+	}
+
+	id := testutil.StartIdentityTestServer(testIdentityConfig)
 	defer id.Close()
 
 	idConfig := identityConfig{

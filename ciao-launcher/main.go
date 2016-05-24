@@ -46,8 +46,8 @@ func (f *networkFlag) String() string {
 }
 
 func (f *networkFlag) Set(val string) error {
-	if val != "none" && val != "cn" && val != "nn" {
-		return fmt.Errorf("none, cn or nn expected")
+	if val != "none" && val != "cn" && val != "nn" && val != "dual" {
+		return fmt.Errorf("none, cn, nn or dual expected")
 	}
 	*f = networkFlag(val)
 
@@ -60,6 +60,10 @@ func (f *networkFlag) Enabled() bool {
 
 func (f *networkFlag) NetworkNode() bool {
 	return string(*f) == "nn"
+}
+
+func (f *networkFlag) DualMode() bool {
+	return string(*f) == "dual"
 }
 
 type uiFlag string
@@ -311,6 +315,17 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 	}()
 
 	var wg sync.WaitGroup
+
+	var role ssntp.Role
+	if networking.NetworkNode() {
+		role = ssntp.NETAGENT
+	} else if networking.DualMode() {
+		role = ssntp.AGENT | ssntp.NETAGENT
+	} else {
+		role = ssntp.AGENT
+	}
+
+	glog.Infof("Agent Role: %s", role.String())
 
 	cfg := &ssntp.Config{URI: serverURL, CAcert: serverCertPath, Cert: clientCertPath,
 		Log: ssntp.Log}
