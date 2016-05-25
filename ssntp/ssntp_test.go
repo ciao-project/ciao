@@ -1019,11 +1019,24 @@ func testMultiURIs(t *testing.T, CACert string, expectedURIs []string, configURI
 	}
 }
 
+// Test the CA parsing routine for an emtpy URI configuration
+//
+// Test that when not passing a server URI through the SSNTP
+// configuration the CA parsing routine gets the expected URIs list.
+//
+// Test is expected to pass
 func TestURIMultiHomed(t *testing.T) {
 	testMultiURIs(t, testCACertSchedulerMultiHomed,
 		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "", 8888)
 }
 
+// Test the CA parsing routine for a single URI configuration
+//
+// Test that when passing a server URI through the SSNTP
+// configuration the CA parsing routine gets the expected URIs list
+// with the configure URI on top of it.
+//
+// Test is expected to pass
 func TestURIMultiHomedConfigured(t *testing.T) {
 	testMultiURIs(t, testCACertSchedulerMultiHomed,
 		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "github.com", 8888)
