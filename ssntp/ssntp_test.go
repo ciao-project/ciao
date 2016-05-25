@@ -1042,6 +1042,15 @@ func TestURIMultiHomedConfigured(t *testing.T) {
 		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "github.com", 8888)
 }
 
+// Test the CA parsing routine for a single URI configuration and an empty CA
+//
+// Test that we only get the localhost from the default CA.
+//
+// Test is expected to pass
+func TestURILocalhost(t *testing.T) {
+	testMultiURIs(t, testCACert, []string{"localhost"}, "", 8888)
+}
+
 // Test SSNTP client connection closure before Dial.
 //
 // Test that an SSNTP client can close itself before Dialing
