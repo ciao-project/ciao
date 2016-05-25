@@ -986,6 +986,44 @@ func TestConnectPort(t *testing.T) {
 	server.ssntp.Stop()
 }
 
+func testMultiURIs(t *testing.T, CACert string, expectedURIs []string, configURI string, configPort uint32) {
+	role := AGENT
+
+	clientConfig, err := buildTestConfig((uint32)(role))
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	CAcert, _, err := _getCert("CACertMultiURI", "CertAgentMultiURI", CACert, roleToCert((uint32)(role)))
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	clientConfig.URI = configURI
+	clientConfig.CAcert = CAcert
+
+	if configURI != "" {
+		expectedURIs = append([]string{configURI}, expectedURIs...)
+	}
+
+	parsedURIs := clientConfig.configURIs(nil, configPort)
+
+	if len(parsedURIs) != len(expectedURIs)+1 {
+		t.Fatalf("Wrong parsed URI slice length %d", len(parsedURIs))
+	}
+
+	for i, uri := range expectedURIs {
+		if fmt.Sprintf("%s:%d", uri, configPort) != parsedURIs[i] {
+			t.Fatalf("Index %d: Mismatch URI %s vs %s", i, uri, parsedURIs[i])
+		}
+	}
+}
+
+func TestURIMultiHomed(t *testing.T) {
+	testMultiURIs(t, testCACertSchedulerMultiHomed,
+		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "", 8888)
+}
+
 // Test SSNTP client connection closure before Dial.
 //
 // Test that an SSNTP client can close itself before Dialing
