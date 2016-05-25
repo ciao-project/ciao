@@ -826,14 +826,11 @@ func roleToCert(role uint32) string {
 }
 
 /* Mark D. Ryan FTW ! */
-func getCert(role uint32) (string, string, error) {
-	var newRole = (Role)(role)
-	certString := roleToCert(role)
+func _getCert(CACertFileName, certFileName string, CACert, certString string) (string, string, error) {
+	caPath := path.Join(tempCertPath, CACertFileName)
+	certPath := path.Join(tempCertPath, certFileName)
 
-	caPath := path.Join(tempCertPath, "CACert")
-	certPath := path.Join(tempCertPath, newRole.String())
-
-	for _, s := range []struct{ path, data string }{{caPath, testCACert}, {certPath, certString}} {
+	for _, s := range []struct{ path, data string }{{caPath, CACert}, {certPath, certString}} {
 		err := ioutil.WriteFile(s.path, []byte(s.data), 0755)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to create certfile %s %v\n", s.path, err)
@@ -842,6 +839,12 @@ func getCert(role uint32) (string, string, error) {
 	}
 
 	return caPath, certPath, nil
+}
+
+func getCert(role uint32) (string, string, error) {
+	var newRole = (Role)(role)
+
+	return _getCert("CACert", newRole.String(), testCACert, roleToCert(role))
 }
 
 func validRoles(serverRole, clientRole uint32) bool {
