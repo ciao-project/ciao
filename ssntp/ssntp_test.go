@@ -1024,6 +1024,11 @@ func TestURIMultiHomed(t *testing.T) {
 		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "", 8888)
 }
 
+func TestURIMultiHomedConfigured(t *testing.T) {
+	testMultiURIs(t, testCACertSchedulerMultiHomed,
+		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "github.com", 8888)
+}
+
 // Test SSNTP client connection closure before Dial.
 //
 // Test that an SSNTP client can close itself before Dialing
