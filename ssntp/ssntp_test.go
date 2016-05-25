@@ -826,14 +826,11 @@ func roleToCert(role uint32) string {
 }
 
 /* Mark D. Ryan FTW ! */
-func getCert(role uint32) (string, string, error) {
-	var newRole = (Role)(role)
-	certString := roleToCert(role)
+func _getCert(CACertFileName, certFileName string, CACert, certString string) (string, string, error) {
+	caPath := path.Join(tempCertPath, CACertFileName)
+	certPath := path.Join(tempCertPath, certFileName)
 
-	caPath := path.Join(tempCertPath, "CACert")
-	certPath := path.Join(tempCertPath, newRole.String())
-
-	for _, s := range []struct{ path, data string }{{caPath, testCACert}, {certPath, certString}} {
+	for _, s := range []struct{ path, data string }{{caPath, CACert}, {certPath, certString}} {
 		err := ioutil.WriteFile(s.path, []byte(s.data), 0755)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to create certfile %s %v\n", s.path, err)
@@ -842,6 +839,12 @@ func getCert(role uint32) (string, string, error) {
 	}
 
 	return caPath, certPath, nil
+}
+
+func getCert(role uint32) (string, string, error) {
+	var newRole = (Role)(role)
+
+	return _getCert("CACert", newRole.String(), testCACert, roleToCert(role))
 }
 
 func validRoles(serverRole, clientRole uint32) bool {
@@ -981,6 +984,71 @@ func TestConnectPort(t *testing.T) {
 	}
 	client.ssntp.Close()
 	server.ssntp.Stop()
+}
+
+func testMultiURIs(t *testing.T, CACert string, expectedURIs []string, configURI string, configPort uint32) {
+	role := AGENT
+
+	clientConfig, err := buildTestConfig((uint32)(role))
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	CAcert, _, err := _getCert("CACertMultiURI", "CertAgentMultiURI", CACert, roleToCert((uint32)(role)))
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	clientConfig.URI = configURI
+	clientConfig.CAcert = CAcert
+
+	if configURI != "" {
+		expectedURIs = append([]string{configURI}, expectedURIs...)
+	}
+
+	parsedURIs := clientConfig.configURIs(nil, configPort)
+
+	if len(parsedURIs) != len(expectedURIs)+1 {
+		t.Fatalf("Wrong parsed URI slice length %d", len(parsedURIs))
+	}
+
+	for i, uri := range expectedURIs {
+		if fmt.Sprintf("%s:%d", uri, configPort) != parsedURIs[i] {
+			t.Fatalf("Index %d: Mismatch URI %s vs %s", i, uri, parsedURIs[i])
+		}
+	}
+}
+
+// Test the CA parsing routine for an emtpy URI configuration
+//
+// Test that when not passing a server URI through the SSNTP
+// configuration the CA parsing routine gets the expected URIs list.
+//
+// Test is expected to pass
+func TestURIMultiHomed(t *testing.T) {
+	testMultiURIs(t, testCACertSchedulerMultiHomed,
+		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "", 8888)
+}
+
+// Test the CA parsing routine for a single URI configuration
+//
+// Test that when passing a server URI through the SSNTP
+// configuration the CA parsing routine gets the expected URIs list
+// with the configure URI on top of it.
+//
+// Test is expected to pass
+func TestURIMultiHomedConfigured(t *testing.T) {
+	testMultiURIs(t, testCACertSchedulerMultiHomed,
+		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "github.com", 8888)
+}
+
+// Test the CA parsing routine for a single URI configuration and an empty CA
+//
+// Test that we only get the localhost from the default CA.
+//
+// Test is expected to pass
+func TestURILocalhost(t *testing.T) {
+	testMultiURIs(t, testCACert, []string{"localhost"}, "", 8888)
 }
 
 // Test SSNTP client connection closure before Dial.
