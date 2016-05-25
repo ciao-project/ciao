@@ -20,6 +20,7 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -216,7 +217,7 @@ func TestDeleteServer(t *testing.T) {
 
 	// instances have to be assigned to a node to be deleted
 	client := newTestClient(0, ssntp.AGENT)
-	defer client.ssntp.Close()
+	defer client.Ssntp.Close()
 
 	tURL := computeURL + "/v2.1/" + tenant.ID + "/servers/"
 
@@ -227,7 +228,7 @@ func TestDeleteServer(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.sendStats()
+	client.SendStats()
 
 	time.Sleep(2 * time.Second)
 
@@ -257,7 +258,7 @@ func TestServersActionStart(t *testing.T) {
 	url := computeURL + "/v2.1/" + tenant.ID + "/servers/action"
 
 	client := newTestClient(0, ssntp.AGENT)
-	defer client.ssntp.Close()
+	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -266,7 +267,7 @@ func TestServersActionStart(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.sendStats()
+	client.SendStats()
 
 	time.Sleep(1 * time.Second)
 
@@ -276,7 +277,7 @@ func TestServersActionStart(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second)
-	client.sendStats()
+	client.SendStats()
 
 	var ids []string
 	ids = append(ids, servers.Servers[0].ID)
@@ -303,7 +304,7 @@ func TestServersActionStop(t *testing.T) {
 	url := computeURL + "/v2.1/" + tenant.ID + "/servers/action"
 
 	client := newTestClient(0, ssntp.AGENT)
-	defer client.ssntp.Close()
+	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -312,7 +313,7 @@ func TestServersActionStop(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.sendStats()
+	client.SendStats()
 
 	time.Sleep(1 * time.Second)
 
@@ -341,7 +342,7 @@ func TestServerActionStop(t *testing.T) {
 	}
 
 	client := newTestClient(0, ssntp.AGENT)
-	defer client.ssntp.Close()
+	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -350,7 +351,7 @@ func TestServerActionStop(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.sendStats()
+	client.SendStats()
 
 	time.Sleep(1 * time.Second)
 
@@ -367,7 +368,7 @@ func TestServerActionStart(t *testing.T) {
 	}
 
 	client := newTestClient(0, ssntp.AGENT)
-	defer client.ssntp.Close()
+	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -376,12 +377,12 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.sendStats()
+	client.SendStats()
 
 	time.Sleep(1 * time.Second)
 
-	c := make(chan cmdResult)
-	server.addCmdChan(ssntp.STOP, c)
+	c := make(chan testutil.CmdResult)
+	server.AddCmdChan(ssntp.STOP, c)
 
 	err = context.stopInstance(servers.Servers[0].ID)
 	if err != nil {
@@ -390,7 +391,7 @@ func TestServerActionStart(t *testing.T) {
 
 	select {
 	case result := <-c:
-		if result.err != nil {
+		if result.Err != nil {
 			t.Fatal("Error parsing command yaml")
 		}
 
@@ -400,7 +401,7 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.sendStats()
+	client.SendStats()
 
 	time.Sleep(1 * time.Second)
 
@@ -873,9 +874,9 @@ func TestListTraces(t *testing.T) {
 	var expected payloads.CiaoTracesSummary
 
 	client := testStartTracedWorkload(t)
-	defer client.ssntp.Close()
+	defer client.Ssntp.Close()
 
-	client.sendTrace()
+	client.SendTrace()
 
 	time.Sleep(2 * time.Second)
 
@@ -959,9 +960,9 @@ func TestClearEvents(t *testing.T) {
 
 func TestTraceData(t *testing.T) {
 	client := testStartTracedWorkload(t)
-	defer client.ssntp.Close()
+	defer client.Ssntp.Close()
 
-	client.sendTrace()
+	client.SendTrace()
 
 	time.Sleep(2 * time.Second)
 

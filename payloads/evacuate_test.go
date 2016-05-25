@@ -14,12 +14,14 @@
 // limitations under the License.
 */
 
-package payloads
+package payloads_test
 
 import (
+	"testing"
+
+	. "github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
-	"testing"
 )
 
 const evacAgentUUID = "64803ffa-fb47-49fa-8191-15d2c34e4dd3"

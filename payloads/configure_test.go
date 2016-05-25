@@ -14,12 +14,13 @@
 // limitations under the License.
 */
 
-package payloads
+package payloads_test
 
 import (
-	"fmt"
 	"testing"
 
+	"fmt"
+	. "github.com/01org/ciao/payloads"
 	"gopkg.in/yaml.v2"
 )
 

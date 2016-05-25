@@ -14,12 +14,14 @@
 // limitations under the License.
 */
 
-package payloads
+package payloads_test
 
 import (
+	"testing"
+
+	. "github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
-	"testing"
 )
 
 const instanceUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
