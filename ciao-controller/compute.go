@@ -703,6 +703,31 @@ func listTenantResources(w http.ResponseWriter, r *http.Request, context *contro
 	w.Write(b)
 }
 
+func buildFlavorDetails(workload *types.Workload) (payloads.FlavorDetails, error) {
+	var details payloads.FlavorDetails
+
+	defaults := workload.Defaults
+	if len(defaults) == 0 {
+		return details, fmt.Errorf("Workload resources not set")
+	}
+
+	details.OsFlavorAccessIsPublic = true
+	details.ID = workload.ID
+	details.Disk = workload.ImageID
+	details.Name = workload.Description
+
+	for r := range defaults {
+		switch defaults[r].Type {
+		case payloads.VCPUs:
+			details.Vcpus = defaults[r].Value
+		case payloads.MemMB:
+			details.RAM = defaults[r].Value
+		}
+	}
+
+	return details, nil
+}
+
 func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	workloadID := vars["flavor"]
@@ -721,26 +746,10 @@ func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controll
 		return
 	}
 
-	defaults := workload.Defaults
-	if len(defaults) == 0 {
-		http.Error(w, "Workload resources not set", http.StatusInternalServerError)
+	details, err := buildFlavorDetails(workload)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	var details payloads.FlavorDetails
-
-	details.OsFlavorAccessIsPublic = true
-	details.ID = workloadID
-	details.Disk = workload.ImageID
-	details.Name = workload.Description
-
-	for r := range defaults {
-		switch defaults[r].Type {
-		case payloads.VCPUs:
-			details.Vcpus = defaults[r].Value
-		case payloads.MemMB:
-			details.RAM = defaults[r].Value
-		}
 	}
 
 	flavor.Flavor = details
