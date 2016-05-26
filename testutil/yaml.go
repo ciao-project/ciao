@@ -74,3 +74,58 @@ var PartialStartYaml = `start:
       value: 2
       mandatory: true
 `
+
+// RestartYaml is a sample workload Restart command payload for test cases
+var RestartYaml = `restart:
+  instance_uuid: 0e8516d7-af2f-454a-87ed-072aeb9faf53
+  image_uuid: 5beea770-1ef5-4c26-8a6c-2026fbc98e37
+  workload_agent_uuid: d37e8dd5-3625-42bb-97b5-05291013abad
+  fw_type: efi
+  persistence: host
+  requested_resources:
+    - type: vcpus
+      value: 2
+      mandatory: true
+    - type: mem_mb
+      value: 1014
+      mandatory: true
+    - type: disk_mb
+      value: 10000
+      mandatory: true
+  estimated_resources:
+    - type: vcpus
+      value: 1
+    - type: mem_mb
+      value: 128
+    - type: disk_mb
+      value: 4096
+`
+
+// PartialRestartYaml is a sample minimal workload Restart command payload for test cases
+var PartialRestartYaml = `restart:
+  instance_uuid: a2675987-fa30-45ce-84a2-93ce67106f47
+  workload_agent_uuid: 1ab3a664-d344-4a41-acf9-c94d8606e069
+  fw_type: efi
+  persistence: host
+  requested_resources:
+    - type: vcpus
+      value: 2
+      mandatory: true
+`
+
+// StopYaml is a sample workload Stop command payload for test cases
+var StopYaml = `stop:
+  instance_uuid: 3390740c-dce9-48d6-b83a-a717417072ce
+  workload_agent_uuid: 59460b8a-5f53-4e3e-b5ce-b71fed8c7e64
+`
+
+// DeleteYaml is a sample workload Delete command payload for test cases
+var DeleteYaml = `delete:
+  instance_uuid: 3390740c-dce9-48d6-b83a-a717417072ce
+  workload_agent_uuid: 59460b8a-5f53-4e3e-b5ce-b71fed8c7e64
+`
+
+// EvacuateYaml is a sample node Evacuate command payload for test cases
+var EvacuateYaml = `evacuate:
+  workload_agent_uuid: 64803ffa-fb47-49fa-8191-15d2c34e4dd3
+`

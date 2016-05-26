@@ -1,4 +1,3 @@
-//
 // Copyright (c) 2016 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,22 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-package main
+package testutil
 
-type SsntpSchedulerServer ssntpSchedulerServer
-type NodeStat nodeStat
-type WorkResources workResources
+import (
+	"testing"
+)
 
-var PickComputeNode = pickComputeNode
+func TestStartIdentityServer(t *testing.T) {
+	config := TestIdentityConfig{
+		ComputeURL: "https://localhost:8888",
+		ProjectID:  "30dedd5c-48d9-45d3-8b44-f973e4f35e48",
+	}
 
-var ConnectController = connectController
-var DisconnectController = disconnectController
-var ConnectComputeNode = connectComputeNode
-var DisconnectComputeNode = disconnectComputeNode
-var ConnectNetworkNode = connectNetworkNode
-var DisconnectNetworkNode = disconnectNetworkNode
-
-var StartWorkload = startWorkload
-var GetWorkloadAgentUUID = getWorkloadAgentUUID
+	id := StartIdentityTestServer(config)
+	defer id.Close()
+}

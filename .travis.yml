@@ -23,6 +23,7 @@ before_script:
    - sudo mkdir -p /etc/pki/ciao/
    - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server -role scheduler
    - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent,netagent
    - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role controller
    - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role cnciagent
    - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role netagent

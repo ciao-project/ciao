@@ -494,7 +494,7 @@ func (sched *ssntpSchedulerServer) fwdEventToCNCI(event ssntp.Event, payload []b
 	return dest
 }
 
-func (sched *ssntpSchedulerServer) getWorkloadAgentUUID(command ssntp.Command, payload []byte) (string, string, error) {
+func getWorkloadAgentUUID(sched *ssntpSchedulerServer, command ssntp.Command, payload []byte) (string, string, error) {
 	switch command {
 	default:
 		return "", "", fmt.Errorf("unsupported ssntp.Command type \"%s\"", command)
@@ -520,7 +520,7 @@ func (sched *ssntpSchedulerServer) getWorkloadAgentUUID(command ssntp.Command, p
 func (sched *ssntpSchedulerServer) fwdCmdToComputeNode(command ssntp.Command, payload []byte) (dest ssntp.ForwardDestination, instanceUUID string) {
 	// some commands require no scheduling choice, rather the specified
 	// agent/launcher needs the command instead of the scheduler
-	instanceUUID, cnDestUUID, err := sched.getWorkloadAgentUUID(command, payload)
+	instanceUUID, cnDestUUID, err := getWorkloadAgentUUID(sched, command, payload)
 	if err != nil || cnDestUUID == "" {
 		glog.Errorf("Bad %s command yaml from Controller, WorkloadAgentUUID == %s\n", command.String(), cnDestUUID)
 		dest.SetDecision(ssntp.Discard)
@@ -545,17 +545,6 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 
 	if len(sched.cnList) == 0 {
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoComputeNodes)
-		return nil
-	}
-
-	/* Shortcut for 1 nodes cluster */
-	if len(sched.cnList) == 1 {
-		node := sched.cnList[0]
-		node.mutex.Lock()
-		if sched.workloadFits(sched.cnList[0], workload) == true {
-			return node // locked nodeStat
-		}
-		node.mutex.Unlock()
 		return nil
 	}
 

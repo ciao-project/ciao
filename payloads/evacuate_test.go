@@ -14,17 +14,17 @@
 // limitations under the License.
 */
 
-package payloads
+package payloads_test
 
 import (
-	"gopkg.in/yaml.v2"
 	"testing"
+
+	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
+	"gopkg.in/yaml.v2"
 )
 
 const evacAgentUUID = "64803ffa-fb47-49fa-8191-15d2c34e4dd3"
-const evacYaml = "" +
-	"evacuate:\n" +
-	"  workload_agent_uuid: " + evacAgentUUID + "\n"
 
 func TestEvacMarshal(t *testing.T) {
 	var cmd Evacuate
@@ -35,14 +35,14 @@ func TestEvacMarshal(t *testing.T) {
 		t.Error(err)
 	}
 
-	if string(y) != evacYaml {
-		t.Errorf("EVACUATE marshalling failed\n[%s]\n vs\n[%s]", string(y), evacYaml)
+	if string(y) != testutil.EvacuateYaml {
+		t.Errorf("EVACUATE marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.EvacuateYaml)
 	}
 }
 
 func TestEvacUnmarshal(t *testing.T) {
 	var cmd Evacuate
-	err := yaml.Unmarshal([]byte(evacYaml), &cmd)
+	err := yaml.Unmarshal([]byte(testutil.EvacuateYaml), &cmd)
 	if err != nil {
 		t.Error(err)
 	}

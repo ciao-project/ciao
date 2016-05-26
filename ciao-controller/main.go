@@ -20,8 +20,10 @@ import (
 	"flag"
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 	"github.com/golang/glog"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -37,6 +39,7 @@ const defaultCNCIAgentCert = "/etc/pki/ciao/cert-CNCIAgent-localhost.pem"
 const defaultNetAgentCert = "/etc/pki/ciao/cert-NetworkingAgent-localhost.pem"
 const defaultServerCert = "/etc/pki/ciao/cert-Server-localhost.pem"
 
+var singleMachine = flag.Bool("single", false, "Enable single machine test")
 var cert = flag.String("cert", defaultControllerCert, "Client certificate")
 var caCert = flag.String("cacert", "/etc/pki/ciao/CAcert-localhost.pem", "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
@@ -104,6 +107,18 @@ func main() {
 		// spawn some retry routine?
 		glog.Fatalf("unable to connect to SSNTP server")
 		return
+	}
+
+	if *singleMachine {
+		computeURL := "https://localhost:" + strconv.Itoa(*computeAPIPort)
+		testIdentityConfig := testutil.TestIdentityConfig{
+			ComputeURL: computeURL,
+			ProjectID:  "f452bbc7-5076-44d5-922c-3b9d2ce1503f",
+		}
+
+		id := testutil.StartIdentityTestServer(testIdentityConfig)
+		defer id.Close()
+		*identityURL = id.URL
 	}
 
 	idConfig := identityConfig{
