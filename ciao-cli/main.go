@@ -27,10 +27,12 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/glog"
+	"github.com/rackspace/gophercloud/openstack/imageservice/v2/images"
 
 	"github.com/01org/ciao/payloads"
 )
@@ -106,6 +108,10 @@ var (
 	createImage      = flag.Bool("create-image", false, "Create a new image")
 	uploadImage      = flag.Bool("upload-image", false, "Upload an image")
 	downloadImage    = flag.Bool("download-image", false, "Download an image")
+	minDiskGigabytes = flag.Int("min-disk-size", 0, "Minimum amount of RAM in GB")
+	minRAMMegabytes  = flag.Int("min-ram-size", 0, "Minimum disk size in MB")
+	protected        = flag.Bool("protected", false, "Prevent image from being deleted")
+	imageTags        = flag.String("image-tags", "", "Image tags separated by comma")
 	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	computeNode      = flag.String("cn", "", "Compute node UUID")
@@ -117,6 +123,9 @@ var (
 	identityPassword = flag.String("password", "", "Openstack Service Username")
 	dumpLabel        = flag.String("dump-label", "", "Dump all trace data for a given label")
 )
+var visibility imageVisibility = "public"
+var diskFormat imageDiskFormat = "qcow2"
+var containerFormat imageContainerFormat = "bare"
 
 const (
 	ciaoIdentityEnv    = "CIAO_IDENTITY"
@@ -815,6 +824,12 @@ func checkCompulsoryOptions() {
 	}
 }
 
+func init() {
+	flag.Var(&visibility, "image-visibility", "Image visibility. Value can be public or private")
+	flag.Var(&diskFormat, "disk-format", "Image disk format")
+	flag.Var(&containerFormat, "container-format", "Image container format")
+}
+
 func main() {
 	flag.Parse()
 
@@ -1031,7 +1046,18 @@ func main() {
 		if *imageName == "" {
 			fatalf("Missing required -image-name parameter")
 		}
-		createTenantImage(*identityUser, *identityPassword, id, *imageName)
+		v := images.ImageVisibility(visibility)
+		createTenantImage(*identityUser, *identityPassword, id, *imagePath,
+			&images.CreateOpts{
+				Name:             *imageName,
+				ContainerFormat:  containerFormat.String(),
+				DiskFormat:       diskFormat.String(),
+				MinDiskGigabytes: *minDiskGigabytes,
+				MinRAMMegabytes:  *minRAMMegabytes,
+				Visibility:       &v,
+				Protected:        *protected,
+				Tags:             strings.Split(*imageTags, ","),
+			})
 	}
 
 	if *uploadImage == true {
