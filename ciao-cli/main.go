@@ -351,36 +351,17 @@ func listTenantResources(tenant string) {
 	}
 }
 
-func workloadDetail(tenant string, workload string) string {
-	var flavor payloads.ComputeFlavorDetails
-
-	url := buildComputeURL("%s/flavors/%s", tenant, workload)
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &flavor)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	return fmt.Sprintf("\tName: %s\n\tUUID:%s\n\tImage UUID: %s\n\tCPUs: %d\n\tMemory: %d MB\n",
-		flavor.Flavor.Name, flavor.Flavor.ID, flavor.Flavor.Disk, flavor.Flavor.Vcpus, flavor.Flavor.RAM)
-}
-
 func listTenantWorkloads(tenant string) {
 	if tenant == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var flavors payloads.ComputeFlavors
+	var flavors payloads.ComputeFlavorsDetails
 	if tenant == "" {
 		tenant = "faketenant"
 	}
 
-	url := buildComputeURL("%s/flavors", tenant)
+	url := buildComputeURL("%s/flavors/detail", tenant)
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
@@ -394,7 +375,8 @@ func listTenantWorkloads(tenant string) {
 
 	for i, flavor := range flavors.Flavors {
 		fmt.Printf("Workload %d\n", i+1)
-		fmt.Printf(workloadDetail(tenant, flavor.ID))
+		fmt.Printf("\tName: %s\n\tUUID:%s\n\tImage UUID: %s\n\tCPUs: %d\n\tMemory: %d MB\n",
+			flavor.Name, flavor.ID, flavor.Disk, flavor.Vcpus, flavor.RAM)
 	}
 }
 
