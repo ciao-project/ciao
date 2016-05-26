@@ -12,6 +12,58 @@ import (
 	"github.com/rackspace/gophercloud/pagination"
 )
 
+type imageVisibility string
+
+var visibility imageVisibility = "public"
+var diskFormat imageDiskFormat = "qcow2"
+var containerFormat imageContainerFormat = "bare"
+
+func (v *imageVisibility) Set(value string) error {
+	*v = imageVisibility(value)
+	if value == "public" || value == "private" {
+		return nil
+	}
+	return fmt.Errorf("visibility should be either private or public")
+}
+
+func (v *imageVisibility) String() string {
+	return fmt.Sprint(*v)
+}
+
+type imageDiskFormat string
+
+func (f *imageDiskFormat) Set(value string) error {
+	*f = imageDiskFormat(value)
+	supportedFormats := []string{"ami", "ari", "aki", "vhd", "vmdk", "raw", "qcow2", "vdi", "iso"}
+	for _, format := range supportedFormats {
+		if format == value {
+			return nil
+		}
+	}
+	return fmt.Errorf("Supported image disk formats are: %s", supportedFormats)
+}
+
+func (f *imageDiskFormat) String() string {
+	return fmt.Sprint(*f)
+}
+
+type imageContainerFormat string
+
+func (f *imageContainerFormat) Set(value string) error {
+	*f = imageContainerFormat(value)
+	supportedFormats := []string{"ami", "ari", "aki", "bare", "ovf", "ova", "docker"}
+	for _, format := range supportedFormats {
+		if format == value {
+			return nil
+		}
+	}
+	return fmt.Errorf("Supported image container formats are: %s", supportedFormats)
+}
+
+func (f *imageContainerFormat) String() string {
+	return fmt.Sprint(*f)
+}
+
 func dumpImage(i *images.Image) {
 	fmt.Printf("\tName             [%s]\n", i.Name)
 	fmt.Printf("\tSize             [%d bytes]\n", i.SizeBytes)
@@ -68,23 +120,20 @@ func listTenantImages(username, password, tenant string) {
 	})
 }
 
-func createTenantImage(username, password, tenant, name string) {
+func createTenantImage(username, password, tenant, filePath string, opts *images.CreateOpts) {
 	client, err := imageServiceClient(username, password, tenant)
 	if err != nil {
 		fatalf("Could not get Image service client [%s]\n", err)
 	}
 
-	opts := images.CreateOpts{
-		Name:             name,
-		ContainerFormat:  "bare",
-		DiskFormat:       "qcow2",
-		MinDiskGigabytes: 8,
-		MinRAMMegabytes:  512,
-	}
-
 	image, err := images.Create(client, opts).Extract()
 	if err != nil {
 		fatalf("Could not create image [%s]\n", err)
+	}
+
+	if filePath != "" {
+		uploadTenantImage(username, password, tenant, image.ID, filePath)
+		image, _ = images.Get(client, image.ID).Extract()
 	}
 
 	fmt.Printf("Created image:\n")
