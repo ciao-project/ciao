@@ -23,6 +23,10 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/01org/ciao/payloads"
+
+	"gopkg.in/yaml.v2"
 )
 
 // ClientNotifier is the SSNTP client notification interface.
@@ -470,16 +474,25 @@ func (client *Client) UUID() string {
 }
 
 // ClusterConfiguration returns the latest cluster configuration
-// payload a client received. Client should use that payload to
+// payload a client received. Clients should use that payload to
 // configure themselves based on the information provided to them
 // by the Scheduler or the Controller.
 // Cluster configuration payloads can come from either a CONNECTED
 // status frame or a CONFIGURE command one.
-func (client *Client) ClusterConfiguration() (payload []byte) {
+func (client *Client) ClusterConfiguration() (payloads.Configure, error) {
+	var conf payloads.Configure
+
 	client.configuration.RLock()
 	defer client.configuration.RUnlock()
 
-	payload = client.configuration.configuration
+	if client.configuration.configuration == nil {
+		return conf, fmt.Errorf("No client configuration available")
+	}
 
-	return
+	err := yaml.Unmarshal(client.configuration.configuration, &conf)
+	if err != nil {
+		return conf, err
+	}
+
+	return conf, nil
 }
