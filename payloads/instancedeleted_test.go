@@ -14,11 +14,13 @@
 // limitations under the License.
 */
 
-package payloads
+package payloads_test
 
 import (
-	"gopkg.in/yaml.v2"
 	"testing"
+
+	. "github.com/01org/ciao/payloads"
+	"gopkg.in/yaml.v2"
 )
 
 const insDelUUID = "3390740c-dce9-48d6-b83a-a717417072ce"

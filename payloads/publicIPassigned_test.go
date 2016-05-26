@@ -14,11 +14,13 @@
 // limitations under the License.
 */
 
-package payloads
+package payloads_test
 
 import (
-	"gopkg.in/yaml.v2"
 	"testing"
+
+	. "github.com/01org/ciao/payloads"
+	"gopkg.in/yaml.v2"
 )
 
 const assignedIPYaml = "" +

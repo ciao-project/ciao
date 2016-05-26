@@ -16,11 +16,12 @@ package testutil
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/rackspace/gophercloud"
 	"net/http"
 	"net/http/httptest"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/rackspace/gophercloud"
 )
 
 // TestIdentityConfig contains the URL of the ciao compute service, and the TenantID of
@@ -218,11 +219,40 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(t)
 }
 
+func projectsHandler(w http.ResponseWriter, r *http.Request) {
+	response := `
+	{
+		"projects": [
+			{
+				"description": "fake project1",
+				"domain_id": "default",
+				"enabled": true,
+				"id": "456788",
+				"parent_id": "212223",
+				"links": {
+					"self": "%s/v3/projects/456788"
+				},
+				"name": "ilovepuppies"
+			}
+		],
+		"links": {
+			"self": "%s/v3/users/10a2e6e717a245d9acad3e5f97aeca3d/projects",
+			"previous": null,
+			"next": null
+		}
+	}`
+
+	p := []byte(fmt.Sprintf(response, testIdentityURL, testIdentityURL))
+	w.WriteHeader(http.StatusOK)
+	w.Write(p)
+}
+
 func identityHandlers() *mux.Router {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/v3/auth/tokens", authHandler).Methods("POST")
 	r.HandleFunc("/v3/auth/tokens", validateHandler).Methods("GET")
+	r.HandleFunc("/v3/users/10a2e6e717a245d9acad3e5f97aeca3d/projects", projectsHandler).Methods("GET")
 
 	return r
 }

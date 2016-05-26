@@ -14,41 +14,20 @@
 // limitations under the License.
 */
 
-package payloads
+package payloads_test
 
 import (
-	"fmt"
-	"gopkg.in/yaml.v2"
 	"testing"
+
+	"fmt"
+	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
+	"gopkg.in/yaml.v2"
 )
 
 func TestRestartUnmarshal(t *testing.T) {
-	restartYaml := `restart:
-  instance_uuid: 0e8516d7-af2f-454a-87ed-072aeb9faf53
-  image_uuid: 5beea770-1ef5-4c26-8a6c-2026fbc98e37
-  workload_agent_uuid: d37e8dd5-3625-42bb-97b5-05291013abad
-  fw_type: efi
-  persistence: host
-  requested_resources:
-    - type: vcpus
-      value: 2
-      mandatory: true
-    - type: mem_mb
-      value: 1014
-      mandatory: true
-    - type: disk_mb
-      value: 10000
-      mandatory: true
-  estimated_resources:
-    - type: vcpus
-      value: 1
-    - type: mem_mb
-      value: 128
-    - type: disk_mb
-      value: 4096
-`
 	var cmd Restart
-	err := yaml.Unmarshal([]byte(restartYaml), &cmd)
+	err := yaml.Unmarshal([]byte(testutil.RestartYaml), &cmd)
 	if err != nil {
 		t.Error(err)
 	}
@@ -105,18 +84,8 @@ func TestRestartMarshal(t *testing.T) {
 // make sure the yaml can be unmarshaled into the Restart struct with
 // optional data not present
 func TestRestartUnmarshalPartial(t *testing.T) {
-	restartYaml := `restart:
-  instance_uuid: a2675987-fa30-45ce-84a2-93ce67106f47
-  workload_agent_uuid: 1ab3a664-d344-4a41-acf9-c94d8606e069
-  fw_type: efi
-  persistence: host
-  requested_resources:
-    - type: vcpus
-      value: 2
-      mandatory: true
-`
 	var cmd Restart
-	err := yaml.Unmarshal([]byte(restartYaml), &cmd)
+	err := yaml.Unmarshal([]byte(testutil.PartialRestartYaml), &cmd)
 	if err != nil {
 		t.Error(err)
 	}

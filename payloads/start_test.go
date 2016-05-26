@@ -14,13 +14,15 @@
 // limitations under the License.
 */
 
-package payloads
+package payloads_test
 
 import (
+	"testing"
+
 	"fmt"
+	. "github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
-	"testing"
 )
 
 func TestStartUnmarshal(t *testing.T) {
