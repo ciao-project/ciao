@@ -525,6 +525,31 @@ func deleteServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
+func buildFlavorDetails(workload *types.Workload) (payloads.FlavorDetails, error) {
+	var details payloads.FlavorDetails
+
+	defaults := workload.Defaults
+	if len(defaults) == 0 {
+		return details, fmt.Errorf("Workload resources not set")
+	}
+
+	details.OsFlavorAccessIsPublic = true
+	details.ID = workload.ID
+	details.Disk = workload.ImageID
+	details.Name = workload.Description
+
+	for r := range defaults {
+		switch defaults[r].Type {
+		case payloads.VCPUs:
+			details.Vcpus = defaults[r].Value
+		case payloads.MemMB:
+			details.RAM = defaults[r].Value
+		}
+	}
+
+	return details, nil
+}
+
 func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 	var flavors payloads.ComputeFlavors
 
@@ -555,6 +580,78 @@ func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 
 	b, err := json.Marshal(flavors)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func listFlavorsDetails(w http.ResponseWriter, r *http.Request, context *controller) {
+	var details payloads.FlavorDetails
+	var flavors payloads.ComputeFlavorsDetails
+
+	dumpRequest(r)
+
+	if validateToken(context, r) == false {
+		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		return
+	}
+
+	workloads, err := context.ds.GetWorkloads()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for _, workload := range workloads {
+		details, err = buildFlavorDetails(workload)
+		if err != nil {
+			continue
+		}
+
+		flavors.Flavors = append(flavors.Flavors, details)
+	}
+
+	b, err := json.Marshal(flavors)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controller) {
+	vars := mux.Vars(r)
+	workloadID := vars["flavor"]
+	var flavor payloads.ComputeFlavorDetails
+
+	dumpRequest(r)
+
+	if validateToken(context, r) == false {
+		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		return
+	}
+
+	workload, err := context.ds.GetWorkload(workloadID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	details, err := buildFlavorDetails(workload)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	flavor.Flavor = details
+
+	b, err := json.Marshal(flavor)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -694,67 +791,6 @@ func listTenantResources(w http.ResponseWriter, r *http.Request, context *contro
 	}
 
 	b, err := json.Marshal(usage)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
-}
-
-func buildFlavorDetails(workload *types.Workload) (payloads.FlavorDetails, error) {
-	var details payloads.FlavorDetails
-
-	defaults := workload.Defaults
-	if len(defaults) == 0 {
-		return details, fmt.Errorf("Workload resources not set")
-	}
-
-	details.OsFlavorAccessIsPublic = true
-	details.ID = workload.ID
-	details.Disk = workload.ImageID
-	details.Name = workload.Description
-
-	for r := range defaults {
-		switch defaults[r].Type {
-		case payloads.VCPUs:
-			details.Vcpus = defaults[r].Value
-		case payloads.MemMB:
-			details.RAM = defaults[r].Value
-		}
-	}
-
-	return details, nil
-}
-
-func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controller) {
-	vars := mux.Vars(r)
-	workloadID := vars["flavor"]
-	var flavor payloads.ComputeFlavorDetails
-
-	dumpRequest(r)
-
-	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
-		return
-	}
-
-	workload, err := context.ds.GetWorkload(workloadID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	details, err := buildFlavorDetails(workload)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	flavor.Flavor = details
-
-	b, err := json.Marshal(flavor)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -1433,6 +1469,10 @@ func createComputeAPI(context *controller) {
 
 	r.HandleFunc("/v2.1/{tenant}/flavors", func(w http.ResponseWriter, r *http.Request) {
 		listFlavors(w, r, context)
+	}).Methods("GET")
+
+	r.HandleFunc("/v2.1/{tenant}/flavors/detail", func(w http.ResponseWriter, r *http.Request) {
+		listFlavorsDetails(w, r, context)
 	}).Methods("GET")
 
 	r.HandleFunc("/v2.1/{tenant}/flavors/{flavor}", func(w http.ResponseWriter, r *http.Request) {

@@ -154,6 +154,13 @@ type ComputeFlavorDetails struct {
 	Flavor FlavorDetails `json:"flavor"`
 }
 
+// ComputeFlavorsDetails represents the unmarshalled version of the contents of a
+// /v2.1/{tenant}/flavors/detail response. It contains detailled information about
+// all flavour for a given tenant.
+type ComputeFlavorsDetails struct {
+	Flavors []FlavorDetails `json:"flavors"`
+}
+
 // ComputeCreateServer represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/servers request.  It contains the information needed to start
 // one or more instances.
