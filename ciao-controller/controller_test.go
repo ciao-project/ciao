@@ -34,22 +34,6 @@ import (
 	"github.com/docker/distribution/uuid"
 )
 
-func roleToCert(role ssntp.Role) string {
-	switch role {
-	case ssntp.Controller:
-		return defaultControllerCert
-	case ssntp.AGENT:
-		return defaultAgentCert
-	case ssntp.CNCIAGENT:
-		return defaultCNCIAgentCert
-	case ssntp.NETAGENT:
-		return defaultNetAgentCert
-	case ssntp.SERVER:
-		return defaultServerCert
-	}
-
-	return defaultControllerCert
-}
 
 func newTestClient(num int, role ssntp.Role) *testutil.SsntpTestClient {
 	client := &testutil.SsntpTestClient{
@@ -62,8 +46,8 @@ func newTestClient(num int, role ssntp.Role) *testutil.SsntpTestClient {
 	client.CmdChansLock = &sync.Mutex{}
 
 	config := &ssntp.Config{
-		CAcert: *caCert,
-		Cert:   roleToCert(role),
+		CAcert: ssntp.DefaultCACert,
+		Cert:   ssntp.RoleToDefaultCertName(role),
 		Log:    ssntp.Log,
 		UUID:   client.UUID,
 	}
@@ -83,8 +67,8 @@ func startTestServer(server *testutil.SsntpTestServer) {
 	server.NetClientsLock = &sync.RWMutex{}
 
 	serverConfig := ssntp.Config{
-		CAcert: *caCert,
-		Cert:   roleToCert(ssntp.SERVER),
+		CAcert: ssntp.DefaultCACert,
+		Cert:   ssntp.RoleToDefaultCertName(ssntp.SERVER),
 		Log:    ssntp.Log,
 		ForwardRules: []ssntp.FrameForwardRule{
 			{

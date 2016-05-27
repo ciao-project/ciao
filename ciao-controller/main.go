@@ -34,15 +34,9 @@ type controller struct {
 	id     *identity
 }
 
-const defaultControllerCert = "/etc/pki/ciao/cert-Controller-localhost.pem"
-const defaultAgentCert = "/etc/pki/ciao/cert-CNAgent-localhost.pem"
-const defaultCNCIAgentCert = "/etc/pki/ciao/cert-CNCIAgent-localhost.pem"
-const defaultNetAgentCert = "/etc/pki/ciao/cert-NetworkingAgent-localhost.pem"
-const defaultServerCert = "/etc/pki/ciao/cert-Server-localhost.pem"
-
 var singleMachine = flag.Bool("single", false, "Enable single machine test")
-var cert = flag.String("cert", defaultControllerCert, "Client certificate")
-var caCert = flag.String("cacert", "/etc/pki/ciao/CAcert-localhost.pem", "CA certificate")
+var cert = flag.String("cert", ssntp.RoleToDefaultCertName(ssntp.Controller), "Client certificate")
+var caCert = flag.String("cacert", ssntp.DefaultCACert, "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
 var identityURL = "identity:35357"
 var serviceUser = "csr"

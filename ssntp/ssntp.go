@@ -502,10 +502,6 @@ const port = 8888
 const readTimeout = 30
 const writeTimeout = 30
 
-const defaultCA = "/etc/pki/ciao/ca_cert.crt"
-const defaultServerCert = "/etc/pki/ciao/server.pem"
-const defaultClientCert = "/etc/pki/ciao/client.pem"
-
 // UUIDPrefix is the default storage path for persistent UUIDs
 const UUIDPrefix = "/var/lib/ciao/local/uuid-storage/role"
 const uuidLockPrefix = "/tmp/lock/ciao"
@@ -699,6 +695,41 @@ func (role *Role) String() string {
 	}
 
 	return roleString
+}
+
+// DefaultCACert is the default name for the SSNTP CA certificate
+const DefaultCACert = "/etc/pki/ciao/CAcert-localhost.pem"
+
+// default SSNTP role certificate names
+const defaultControllerCert = "/etc/pki/ciao/cert-Controller-localhost.pem"
+const defaultAgentCert = "/etc/pki/ciao/cert-CNAgent-localhost.pem"
+const defaultCNCIAgentCert = "/etc/pki/ciao/cert-CNCIAgent-localhost.pem"
+const defaultAgentOrNetAgentCert = "/etc/pki/ciao/cert-CNAgent-NetworkingAgent-localhost.pem"
+const defaultNetAgentCert = "/etc/pki/ciao/cert-NetworkingAgent-localhost.pem"
+const defaultServerCert = "/etc/pki/ciao/cert-Server-localhost.pem"
+const defaultClientCert = "/etc/pki/ciao/client.pem"
+const defaultSchedulerCert = "/etc/pki/ciao/cert-Scheduler-localhost.pem"
+
+// RoleToDefaultCertName returns default certificate names for each SSNTP role
+func RoleToDefaultCertName(role Role) string {
+	switch role {
+	case Controller:
+		return defaultControllerCert
+	case AGENT:
+		return defaultAgentCert
+	case CNCIAGENT:
+		return defaultCNCIAgentCert
+	case NETAGENT:
+		return defaultNetAgentCert
+	case AGENT | NETAGENT:
+		return defaultAgentOrNetAgentCert
+	case SERVER:
+		return defaultServerCert
+	case SCHEDULER:
+		return defaultSchedulerCert
+	default:
+		return ""
+	}
 }
 
 // Set sets an SSNTP role based on the input string.
@@ -1122,7 +1153,7 @@ func (config *Config) port() uint32 {
 
 func (config *Config) setCerts() {
 	if config.CAcert == "" {
-		config.CAcert = defaultCA
+		config.CAcert = DefaultCACert
 	}
 
 	if config.Cert == "" {
