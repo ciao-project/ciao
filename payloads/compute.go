@@ -155,7 +155,7 @@ type ComputeFlavorDetails struct {
 }
 
 // ComputeFlavorsDetails represents the unmarshalled version of the contents of a
-// /v2.1/{tenant}/flavors/detail response. It contains detailled information about
+// /v2.1/{tenant}/flavors/detail response. It contains detailed information about
 // all flavour for a given tenant.
 type ComputeFlavorsDetails struct {
 	Flavors []FlavorDetails `json:"flavors"`
