@@ -321,6 +321,7 @@ func TestStartTracedWorkload(t *testing.T) {
 
 func TestStartWorkloadLaunchCNCI(t *testing.T) {
 	netClient, instances := testStartWorkloadLaunchCNCI(t, 1)
+	defer netClient.Ssntp.Close()
 
 	id := instances[0].TenantID
 
@@ -333,7 +334,6 @@ func TestStartWorkloadLaunchCNCI(t *testing.T) {
 		t.Fatal("CNCI Info not updated")
 	}
 
-	netClient.Ssntp.Close()
 }
 
 // TBD: for the launch CNCI tests, I really need to create a fake
@@ -372,14 +372,13 @@ func TestDeleteInstance(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timeout waiting for DELETE command")
 	}
-
-	client.Ssntp.Close()
 }
 
 func TestStopInstance(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.Ssntp.Close()
 
 	time.Sleep(1 * time.Second)
 
@@ -408,8 +407,6 @@ func TestStopInstance(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timeout waiting for STOP command")
 	}
-
-	client.Ssntp.Close()
 }
 
 func TestRestartInstance(t *testing.T) {
@@ -473,12 +470,11 @@ func TestRestartInstance(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timeout waiting for RESTART command")
 	}
-
-	client.Ssntp.Close()
 }
 
 func TestEvacuateNode(t *testing.T) {
 	client := newTestClient(0, ssntp.AGENT)
+	defer client.Ssntp.Close()
 
 	c := make(chan testutil.CmdResult)
 	server.AddCmdChan(ssntp.EVACUATE, c)
@@ -503,8 +499,6 @@ func TestEvacuateNode(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timeout waiting for EVACUATE command")
 	}
-
-	client.Ssntp.Close()
 }
 
 func TestInstanceDeletedEvent(t *testing.T) {
@@ -535,12 +529,11 @@ func TestInstanceDeletedEvent(t *testing.T) {
 	if err == nil {
 		t.Error("Instance not deleted")
 	}
-
-	client.Ssntp.Close()
 }
 
 func TestLaunchCNCI(t *testing.T) {
 	netClient := newTestClient(0, ssntp.NETAGENT)
+	defer netClient.Ssntp.Close()
 
 	c := make(chan testutil.CmdResult)
 	server.AddCmdChan(ssntp.START, c)
@@ -578,8 +571,6 @@ func TestLaunchCNCI(t *testing.T) {
 	if tenant.CNCIIP == "" {
 		t.Fatal("CNCI Info not updated")
 	}
-
-	netClient.Ssntp.Close()
 }
 
 func TestStartFailure(t *testing.T) {
@@ -634,8 +625,6 @@ func TestStopFailure(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second)
-
-	client.Ssntp.Close()
 
 	// the response to a stop failure is to log the failure
 	entries, err := context.ds.GetEventLog()
@@ -720,8 +709,6 @@ func TestRestartFailure(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second)
-
-	client.Ssntp.Close()
 
 	// the response to a restart failure is to log the failure
 	entries, err := context.ds.GetEventLog()
