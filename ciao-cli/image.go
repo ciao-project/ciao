@@ -140,6 +140,18 @@ func createTenantImage(username, password, tenant, filePath string, opts *images
 	dumpImage(image)
 }
 
+func deleteTenantImage(username, password, tenant, imageID string) {
+	client, err := imageServiceClient(username, password, tenant)
+	if err != nil {
+		fatalf("Could not get Image service client [%s]\n", err)
+	}
+
+	res := images.Delete(client, imageID)
+	if res.Err != nil {
+		fatalf("Could not delete Image [%s]\n", res.Err)
+	}
+}
+
 func uploadTenantImage(username, password, tenant, imageID, filePath string) {
 	client, err := imageServiceClient(username, password, tenant)
 	if err != nil {
@@ -189,5 +201,4 @@ func downloadTenantImage(username, password, tenant, imageID, filePath string) {
 			fatalf("Could not write image to file [%s]\n", err)
 		}
 	}
-
 }
