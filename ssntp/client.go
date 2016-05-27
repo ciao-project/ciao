@@ -318,7 +318,7 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 	client.lUUID, client.uuid = config.configUUID(client.role)
 	client.port = config.port()
 	client.transport = config.transport()
-	client.uris = config.configURIs(client.uris, client.port)
+	client.uris = config.ConfigURIs(client.uris, client.port)
 
 	client.trace = config.Trace
 	client.ntf = ntf

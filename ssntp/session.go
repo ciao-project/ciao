@@ -77,7 +77,7 @@ func (session *session) setDest(uuid []byte) {
 
 func (session *session) connectedFrame(serverRole Role, payload []byte) (f *ConnectedFrame) {
 	f = &ConnectedFrame{
-		Major:         major,
+		Major:         Major,
 		Minor:         minor,
 		Type:          STATUS,
 		Operand:       byte(CONNECTED),
@@ -93,7 +93,7 @@ func (session *session) connectedFrame(serverRole Role, payload []byte) (f *Conn
 
 func (session *session) connectFrame() (f *ConnectFrame) {
 	f = &ConnectFrame{
-		Major:       major,
+		Major:       Major,
 		Minor:       minor,
 		Type:        COMMAND,
 		Operand:     byte(CONNECT),
@@ -107,7 +107,7 @@ func (session *session) connectFrame() (f *ConnectFrame) {
 
 func (session *session) commandFrame(cmd Command, payload []byte, trace *TraceConfig) (f *Frame) {
 	f = &Frame{
-		Major:         major,
+		Major:         Major,
 		Minor:         minor,
 		Type:          COMMAND,
 		Operand:       byte(cmd),
@@ -124,7 +124,7 @@ func (session *session) commandFrame(cmd Command, payload []byte, trace *TraceCo
 
 func (session *session) statusFrame(status Status, payload []byte, trace *TraceConfig) (f *Frame) {
 	f = &Frame{
-		Major:         major,
+		Major:         Major,
 		Minor:         minor,
 		Type:          STATUS,
 		Operand:       byte(status),
@@ -141,7 +141,7 @@ func (session *session) statusFrame(status Status, payload []byte, trace *TraceC
 
 func (session *session) eventFrame(event Event, payload []byte, trace *TraceConfig) (f *Frame) {
 	f = &Frame{
-		Major:         major,
+		Major:         Major,
 		Minor:         minor,
 		Type:          EVENT,
 		Operand:       byte(event),
@@ -158,7 +158,7 @@ func (session *session) eventFrame(event Event, payload []byte, trace *TraceConf
 
 func (session *session) errorFrame(error Error, payload []byte, trace *TraceConfig) (f *Frame) {
 	f = &Frame{
-		Major:         major,
+		Major:         Major,
 		Minor:         minor,
 		Type:          ERROR,
 		Operand:       byte(error),

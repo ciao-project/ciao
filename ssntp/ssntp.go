@@ -494,7 +494,8 @@ const (
 	InvalidConfiguration
 )
 
-const major = 0
+// Major is the SSNTP protocol major version
+const Major = 0
 const minor = 1
 const defaultURL = "localhost"
 const port = 8888
@@ -504,7 +505,9 @@ const writeTimeout = 30
 const defaultCA = "/etc/pki/ciao/ca_cert.crt"
 const defaultServerCert = "/etc/pki/ciao/server.pem"
 const defaultClientCert = "/etc/pki/ciao/client.pem"
-const uuidPrefix = "/var/lib/ciao/local/uuid-storage/role"
+
+// UUIDPrefix is the default storage path for persistent UUIDs
+const UUIDPrefix = "/var/lib/ciao/local/uuid-storage/role"
 const uuidLockPrefix = "/tmp/lock/ciao"
 
 func (t Type) String() string {
@@ -937,7 +940,8 @@ var roleOID = []struct {
 	},
 }
 
-func getRoleFromOIDs(oids []asn1.ObjectIdentifier) Role {
+// GetRoleFromOIDs returns the Role which matchs the ObjectIdentifier list
+func GetRoleFromOIDs(oids []asn1.ObjectIdentifier) Role {
 	role := UNKNOWN
 
 	for _, oid := range oids {
@@ -951,7 +955,8 @@ func getRoleFromOIDs(oids []asn1.ObjectIdentifier) Role {
 	return role
 }
 
-func getOIDsFromRole(role Role) ([]asn1.ObjectIdentifier, error) {
+// GetOIDsFromRole returns a Role based on the ObjectIdentifier list
+func GetOIDsFromRole(role Role) ([]asn1.ObjectIdentifier, error) {
 	var oids []asn1.ObjectIdentifier
 	for _, r := range roleOID {
 		if role.HasRole(r.role) {
@@ -971,7 +976,7 @@ func verifyRole(conn interface{}, role Role) (bool, error) {
 	switch tlsConn := conn.(type) {
 	case *tls.Conn:
 		state := tlsConn.ConnectionState()
-		certRole := getRoleFromOIDs(state.PeerCertificates[0].UnknownExtKeyUsage)
+		certRole := GetRoleFromOIDs(state.PeerCertificates[0].UnknownExtKeyUsage)
 		if certRole&role != role {
 			return false, oidError
 		}
@@ -1035,7 +1040,7 @@ func (config *Config) parseCertificate() (Role, error) {
 		return 0, err
 	}
 
-	role := getRoleFromOIDs(cert[0].UnknownExtKeyUsage)
+	role := GetRoleFromOIDs(cert[0].UnknownExtKeyUsage)
 	/* We could not find a valid OID in the certificate */
 	if role == UNKNOWN {
 		return role, errors.New("Could not find a SSNTP role")
@@ -1072,7 +1077,8 @@ func (config *Config) transport() string {
 	return config.Transport
 }
 
-func (config *Config) configURIs(uris []string, port uint32) []string {
+// ConfigURIs creates a URI list based on default and certificate-sourced URIs
+func (config *Config) ConfigURIs(uris []string, port uint32) []string {
 	/* First we add the configured server URI */
 	if config.URI != "" {
 		uris = append(uris, fmt.Sprintf("%s:%d", config.URI, port))
@@ -1140,7 +1146,7 @@ type lockedUUID struct {
 }
 
 func newUUID(prefix string, role Role) (lockedUUID, error) {
-	uuidFile := fmt.Sprintf("%s/%s/0x%x", uuidPrefix, prefix, (uint32)(role))
+	uuidFile := fmt.Sprintf("%s/%s/0x%x", UUIDPrefix, prefix, (uint32)(role))
 	uuidLockFile := fmt.Sprintf("%s/%s-role-0x%x", uuidLockPrefix, prefix, (uint32)(role))
 	_nUUID, _ := uuid.Parse(nullUUID)
 	nUUID := lockedUUID{
@@ -1154,9 +1160,9 @@ func newUUID(prefix string, role Role) (lockedUUID, error) {
 	}
 
 	/* Create UUID directory if necessary */
-	err := os.MkdirAll(uuidPrefix+"/"+prefix, 0755)
+	err := os.MkdirAll(UUIDPrefix+"/"+prefix, 0755)
 	if err != nil {
-		fmt.Printf("Unable to create %s %v\n", uuidPrefix, err)
+		fmt.Printf("Unable to create %s %v\n", UUIDPrefix, err)
 	}
 
 	/* Create CIAO lock directory if necessary */
