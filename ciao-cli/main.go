@@ -108,6 +108,7 @@ var (
 	createImage      = flag.Bool("create-image", false, "Create a new image")
 	uploadImage      = flag.Bool("upload-image", false, "Upload an image")
 	downloadImage    = flag.Bool("download-image", false, "Download an image")
+	deleteImage      = flag.Bool("delete-image", false, "Delete an image")
 	minDiskGigabytes = flag.Int("min-disk-size", 0, "Minimum amount of RAM in GB")
 	minRAMMegabytes  = flag.Int("min-ram-size", 0, "Minimum disk size in MB")
 	protected        = flag.Bool("protected", false, "Prevent image from being deleted")
@@ -1058,6 +1059,13 @@ func main() {
 				Protected:        *protected,
 				Tags:             strings.Split(*imageTags, ","),
 			})
+	}
+
+	if *deleteImage == true {
+		if *imageID == "" {
+			fatalf("Missing required -image-id parameter")
+		}
+		deleteTenantImage(*identityUser, *identityPassword, id, *imageID)
 	}
 
 	if *uploadImage == true {
