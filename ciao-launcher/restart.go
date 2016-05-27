@@ -29,8 +29,8 @@ type restartError struct {
 	code payloads.RestartFailureReason
 }
 
-func (re *restartError) send(client *ssntpConn, instance string) {
-	if !client.isConnected() {
+func (re *restartError) send(conn serverConn, instance string) {
+	if !conn.isConnected() {
 		return
 	}
 
@@ -40,13 +40,13 @@ func (re *restartError) send(client *ssntpConn, instance string) {
 		return
 	}
 
-	_, err = client.SendError(ssntp.RestartFailure, payload)
+	_, err = conn.SendError(ssntp.RestartFailure, payload)
 	if err != nil {
 		glog.Errorf("Unable to send restart_failure: %v", err)
 	}
 }
 
-func processRestart(instanceDir string, vm virtualizer, client *ssntpConn, cfg *vmConfig) *restartError {
+func processRestart(instanceDir string, vm virtualizer, conn serverConn, cfg *vmConfig) *restartError {
 	var vnicName string
 	var vnicCfg *libsnnet.VnicConfig
 	var err error
@@ -57,7 +57,7 @@ func processRestart(instanceDir string, vm virtualizer, client *ssntpConn, cfg *
 			glog.Errorf("Could not create VnicCFG: %s", err)
 			return &restartError{err, payloads.RestartInstanceCorrupt}
 		}
-		vnicName, _, err = createVnic(client, vnicCfg)
+		vnicName, _, err = createVnic(conn, vnicCfg)
 		if err != nil {
 			return &restartError{err, payloads.RestartNetworkFailure}
 		}

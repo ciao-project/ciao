@@ -29,8 +29,8 @@ type deleteError struct {
 	code payloads.DeleteFailureReason
 }
 
-func (de *deleteError) send(client *ssntpConn, instance string) {
-	if !client.isConnected() {
+func (de *deleteError) send(conn serverConn, instance string) {
+	if !conn.isConnected() {
 		return
 	}
 
@@ -40,13 +40,13 @@ func (de *deleteError) send(client *ssntpConn, instance string) {
 		return
 	}
 
-	_, err = client.SendError(ssntp.DeleteFailure, payload)
+	_, err = conn.SendError(ssntp.DeleteFailure, payload)
 	if err != nil {
 		glog.Errorf("Unable to send delete_failure: %v", err)
 	}
 }
 
-func deleteVnic(instanceDir string, client *ssntpConn) {
+func deleteVnic(instanceDir string, conn serverConn) {
 	cfg, err := loadVMConfig(instanceDir)
 	if err != nil {
 		glog.Warningf("Unable to load instance state %s: %s", instanceDir, err)
@@ -59,13 +59,13 @@ func deleteVnic(instanceDir string, client *ssntpConn) {
 		return
 	}
 
-	err = destroyVnic(client, vnicCfg)
+	err = destroyVnic(conn, vnicCfg)
 	if err != nil {
 		glog.Warningf("Unable to destroy vnic: %s", err)
 	}
 }
 
-func processDelete(vm virtualizer, instanceDir string, client *ssntpConn, running ovsRunningState) error {
+func processDelete(vm virtualizer, instanceDir string, conn serverConn, running ovsRunningState) error {
 
 	// We have to ignore these errors for the time being.  There's no way to distinguish
 	// between the various sort of errors that docker can return.  We could be getting
@@ -76,7 +76,7 @@ func processDelete(vm virtualizer, instanceDir string, client *ssntpConn, runnin
 
 	if networking.Enabled() && running != ovsPending {
 		glog.Info("Deleting Vnic")
-		deleteVnic(instanceDir, client)
+		deleteVnic(instanceDir, conn)
 	}
 
 	err := os.RemoveAll(instanceDir)

@@ -43,8 +43,8 @@ type startTimes struct {
 	runStamp          time.Time
 }
 
-func (se *startError) send(client *ssntpConn, instance string) {
-	if !client.isConnected() {
+func (se *startError) send(conn serverConn, instance string) {
+	if !conn.isConnected() {
 		return
 	}
 
@@ -54,7 +54,7 @@ func (se *startError) send(client *ssntpConn, instance string) {
 		return
 	}
 
-	_, err = client.SendError(ssntp.StartFailure, payload)
+	_, err = conn.SendError(ssntp.StartFailure, payload)
 	if err != nil {
 		glog.Errorf("Unable to send start_failure: %v", err)
 	}
@@ -127,7 +127,7 @@ func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig, bridge st
 	return
 }
 
-func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, client *ssntpConn) (*startTimes, *startError) {
+func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn serverConn) (*startTimes, *startError) {
 	var err error
 	var vnicName string
 	var bridge string
@@ -171,7 +171,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, client *
 	st.backingImageCheck = time.Now()
 
 	if vnicCfg != nil {
-		vnicName, bridge, err = createVnic(client, vnicCfg)
+		vnicName, bridge, err = createVnic(conn, vnicCfg)
 		if err != nil {
 			return nil, &startError{err, payloads.NetworkFailure}
 		}

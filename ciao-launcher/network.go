@@ -234,26 +234,26 @@ func createVnicCfg(cfg *vmConfig) (*libsnnet.VnicConfig, error) {
 	return createCNVnicCfg(cfg)
 }
 
-func sendNetworkEvent(client *ssntpConn, eventType ssntp.Event,
+func sendNetworkEvent(conn serverConn, eventType ssntp.Event,
 	event *libsnnet.SsntpEventInfo) {
 
-	if event == nil || !client.isConnected() {
+	if event == nil || !conn.isConnected() {
 		return
 	}
 
-	payload, err := generateNetEventPayload(event, client.UUID())
+	payload, err := generateNetEventPayload(event, conn.UUID())
 	if err != nil {
 		glog.Warningf("Unable parse ssntpEvent %s", err)
 		return
 	}
 
-	_, err = client.SendEvent(eventType, payload)
+	_, err = conn.SendEvent(eventType, payload)
 	if err != nil {
 		glog.Warningf("Unable to send %s", event)
 	}
 }
 
-func createVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) (string, string, error) {
+func createVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) (string, string, error) {
 	var name string
 	var bridge string
 
@@ -278,7 +278,7 @@ func createVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) (string, string
 				return "", "", err
 			}
 		}
-		sendNetworkEvent(client, ssntp.TenantAdded, event)
+		sendNetworkEvent(conn, ssntp.TenantAdded, event)
 		name = vnic.LinkName
 		glog.Infoln("CN VNIC created =", name, info, event)
 	} else {
@@ -294,7 +294,7 @@ func createVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) (string, string
 	return name, bridge, nil
 }
 
-func destroyVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) error {
+func destroyVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) error {
 	if vnicCfg.VnicRole != libsnnet.DataCenter {
 		var event *libsnnet.SsntpEventInfo
 		var err error
@@ -309,7 +309,7 @@ func destroyVnic(client *ssntpConn, vnicCfg *libsnnet.VnicConfig) error {
 			return err
 		}
 
-		sendNetworkEvent(client, ssntp.TenantRemoved, event)
+		sendNetworkEvent(conn, ssntp.TenantRemoved, event)
 
 		glog.Infoln("CN VNIC Destroyed =", vnicCfg.VnicIP, event)
 	} else {

@@ -101,13 +101,13 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 	if id.monitorCh != nil {
 		startErr := &startError{nil, payloads.AlreadyRunning}
 		glog.Errorf("Unable to start instance[%s]", string(startErr.code))
-		startErr.send(&id.ac.ssntpConn, id.instance)
+		startErr.send(id.ac.conn, id.instance)
 		return
 	}
-	st, startErr := processStart(cmd, id.instanceDir, id.vm, &id.ac.ssntpConn)
+	st, startErr := processStart(cmd, id.instanceDir, id.vm, id.ac.conn)
 	if startErr != nil {
 		glog.Errorf("Unable to start instance[%s]: %v", string(startErr.code), startErr.err)
-		startErr.send(&id.ac.ssntpConn, id.instance)
+		startErr.send(id.ac.conn, id.instance)
 
 		if startErr.code == payloads.LaunchFailure {
 			id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
@@ -135,23 +135,23 @@ func (id *instanceData) restartCommand(cmd *insRestartCmd) {
 	if id.shuttingDown {
 		restartErr := &restartError{nil, payloads.RestartNoInstance}
 		glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
-		restartErr.send(&id.ac.ssntpConn, id.instance)
+		restartErr.send(id.ac.conn, id.instance)
 		return
 	}
 
 	if id.monitorCh != nil {
 		restartErr := &restartError{nil, payloads.RestartAlreadyRunning}
 		glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
-		restartErr.send(&id.ac.ssntpConn, id.instance)
+		restartErr.send(id.ac.conn, id.instance)
 		return
 	}
 
-	restartErr := processRestart(id.instanceDir, id.vm, &id.ac.ssntpConn, id.cfg)
+	restartErr := processRestart(id.instanceDir, id.vm, id.ac.conn, id.cfg)
 
 	if restartErr != nil {
 		glog.Errorf("Unable to restart instance[%s]: %v", string(restartErr.code),
 			restartErr.err)
-		restartErr.send(&id.ac.ssntpConn, id.instance)
+		restartErr.send(id.ac.conn, id.instance)
 		return
 	}
 
@@ -170,14 +170,14 @@ func (id *instanceData) stopCommand(cmd *insStopCmd) {
 	if id.shuttingDown {
 		stopErr := &stopError{nil, payloads.StopNoInstance}
 		glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
-		stopErr.send(&id.ac.ssntpConn, id.instance)
+		stopErr.send(id.ac.conn, id.instance)
 		return
 	}
 
 	if id.monitorCh == nil {
 		stopErr := &stopError{nil, payloads.StopAlreadyStopped}
 		glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
-		stopErr.send(&id.ac.ssntpConn, id.instance)
+		stopErr.send(id.ac.conn, id.instance)
 		return
 	}
 	glog.Infof("Powerdown %s", id.instance)
@@ -188,7 +188,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	if id.shuttingDown && !cmd.suicide {
 		deleteErr := &deleteError{nil, payloads.DeleteNoInstance}
 		glog.Errorf("Unable to delete instance[%s]", string(deleteErr.code))
-		deleteErr.send(&id.ac.ssntpConn, id.instance)
+		deleteErr.send(id.ac.conn, id.instance)
 		return false
 	}
 
@@ -198,7 +198,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 		id.vm.lostVM()
 	}
 
-	_ = processDelete(id.vm, id.instanceDir, &id.ac.ssntpConn, cmd.running)
+	_ = processDelete(id.vm, id.instanceDir, id.ac.conn, cmd.running)
 
 	if !cmd.suicide {
 		id.ovsCh <- &ovsStatusCmd{}
@@ -311,18 +311,8 @@ DONE:
 	id.wg.Done()
 }
 
-func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
-	ac *agentClient, ovsCh chan<- interface{}) chan<- interface{} {
-
-	var vm virtualizer
-	if simulate == true {
-		vm = &simulation{}
-	} else if cfg.Container {
-		vm = &docker{}
-	} else {
-		vm = &qemu{}
-	}
-
+func startInstanceWithVM(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
+	ac *agentClient, ovsCh chan<- interface{}, vm virtualizer) chan<- interface{} {
 	id := &instanceData{
 		cmdCh:       make(chan interface{}),
 		instance:    instance,
@@ -338,4 +328,18 @@ func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh ch
 	wg.Add(1)
 	go id.instanceLoop()
 	return id.cmdCh
+}
+
+func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
+	ac *agentClient, ovsCh chan<- interface{}) chan<- interface{} {
+
+	var vm virtualizer
+	if simulate == true {
+		vm = &simulation{}
+	} else if cfg.Container {
+		vm = &docker{}
+	} else {
+		vm = &qemu{}
+	}
+	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm)
 }

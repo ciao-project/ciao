@@ -27,8 +27,8 @@ type stopError struct {
 	code payloads.StopFailureReason
 }
 
-func (se *stopError) send(client *ssntpConn, instance string) {
-	if !client.isConnected() {
+func (se *stopError) send(conn serverConn, instance string) {
+	if !conn.isConnected() {
 		return
 	}
 
@@ -38,7 +38,7 @@ func (se *stopError) send(client *ssntpConn, instance string) {
 		return
 	}
 
-	_, err = client.SendError(ssntp.StopFailure, payload)
+	_, err = conn.SendError(ssntp.StopFailure, payload)
 	if err != nil {
 		glog.Errorf("Unable to send stop_failure: %v", err)
 	}

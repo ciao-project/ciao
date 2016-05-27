@@ -121,6 +121,18 @@ type cmdWrapper struct {
 }
 type statusCmd struct{}
 
+type serverConn interface {
+	SendError(error ssntp.Error, payload []byte) (int, error)
+	SendEvent(event ssntp.Event, payload []byte) (int, error)
+	Dial(config *ssntp.Config, ntf ssntp.ClientNotifier) error
+	SendStatus(status ssntp.Status, payload []byte) (int, error)
+	SendCommand(cmd ssntp.Command, payload []byte) (int, error)
+	UUID() string
+	Close()
+	isConnected() bool
+	setStatus(status bool)
+}
+
 type ssntpConn struct {
 	sync.RWMutex
 	ssntp.Client
@@ -140,17 +152,17 @@ func (s *ssntpConn) setStatus(status bool) {
 }
 
 type agentClient struct {
-	ssntpConn
+	conn  serverConn
 	cmdCh chan *cmdWrapper
 }
 
 func (client *agentClient) DisconnectNotify() {
-	client.setStatus(false)
+	client.conn.setStatus(false)
 	glog.Warning("disconnected")
 }
 
 func (client *agentClient) ConnectNotify() {
-	client.setStatus(true)
+	client.conn.setStatus(true)
 	client.cmdCh <- &cmdWrapper{"", &statusCmd{}}
 	glog.Info("connected")
 }
@@ -171,7 +183,7 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 				payloadErr.err,
 				payloads.StartFailureReason(payloadErr.code),
 			}
-			startError.send(&client.ssntpConn, "")
+			startError.send(client.conn, "")
 			glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
 			return
 		}
@@ -183,7 +195,7 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 				payloadErr.err,
 				payloads.RestartFailureReason(payloadErr.code),
 			}
-			restartError.send(&client.ssntpConn, "")
+			restartError.send(client.conn, "")
 			glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
 			return
 		}
@@ -195,7 +207,7 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 				payloadErr.err,
 				payloads.StopFailureReason(payloadErr.code),
 			}
-			stopError.send(&client.ssntpConn, "")
+			stopError.send(client.conn, "")
 			glog.Errorf("Unable to parse YAML: %s", payloadErr)
 			return
 		}
@@ -207,7 +219,7 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 				payloadErr.err,
 				payloads.DeleteFailureReason(payloadErr.code),
 			}
-			deleteError.send(&client.ssntpConn, "")
+			deleteError.send(client.conn, "")
 			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
 			return
 		}
@@ -236,7 +248,7 @@ func insState(instance string, ovsCh chan<- interface{}) ovsGetResult {
 	return <-targetCh
 }
 
-func processCommand(client *ssntpConn, cmd *cmdWrapper, ovsCh chan<- interface{}) {
+func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) {
 	var target chan<- interface{}
 	var delCmd *insDeleteCmd
 
@@ -252,7 +264,7 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper, ovsCh chan<- interface{}
 			glog.Errorf("Instance will make node full: Disk %d Mem %d CPUs %d",
 				insCmd.cfg.Disk, insCmd.cfg.Mem, insCmd.cfg.Cpus)
 			se := startError{nil, payloads.FullComputeNode}
-			se.send(client, cmd.instance)
+			se.send(conn, cmd.instance)
 			return
 		}
 		target = addResult.cmdCh
@@ -262,7 +274,7 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper, ovsCh chan<- interface{}
 		if target == nil {
 			glog.Errorf("Instance %s does not exist", cmd.instance)
 			de := deleteError{nil, payloads.DeleteNoInstance}
-			de.send(client, cmd.instance)
+			de.send(conn, cmd.instance)
 			return
 		}
 		delCmd = insCmd
@@ -272,7 +284,7 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper, ovsCh chan<- interface{}
 		if target == nil {
 			glog.Errorf("Instance %s does not exist", cmd.instance)
 			se := stopError{nil, payloads.StopNoInstance}
-			se.send(client, cmd.instance)
+			se.send(conn, cmd.instance)
 			return
 		}
 	case *insRestartCmd:
@@ -280,7 +292,7 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper, ovsCh chan<- interface{}
 		if target == nil {
 			glog.Errorf("Instance %s does not exist", cmd.instance)
 			re := restartError{nil, payloads.RestartNoInstance}
-			re.send(client, cmd.instance)
+			re.send(conn, cmd.instance)
 			return
 		}
 	default:
@@ -315,6 +327,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 	cfg := &ssntp.Config{URI: serverURL, CAcert: serverCertPath, Cert: clientCertPath,
 		Log: ssntp.Log}
 	client := &agentClient{
+		conn:  &ssntpConn{},
 		cmdCh: make(chan *cmdWrapper),
 	}
 
@@ -323,7 +336,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 	dialCh := make(chan error)
 
 	go func() {
-		err := client.Dial(cfg, client)
+		err := client.conn.Dial(cfg, client)
 		if err != nil {
 			glog.Errorf("Unable to connect to server %v", err)
 			dialCh <- err
@@ -344,7 +357,7 @@ DONE:
 				break DONE
 			}
 		case <-doneCh:
-			client.Close()
+			client.conn.Close()
 			if !dialing {
 				break DONE
 			}
@@ -356,12 +369,12 @@ DONE:
 			*/
 			select {
 			case <-doneCh:
-				client.Close()
+				client.conn.Close()
 				break DONE
 			default:
 			}
 
-			processCommand(&client.ssntpConn, cmd, ovsCh)
+			processCommand(client.conn, cmd, ovsCh)
 		}
 	}
 
