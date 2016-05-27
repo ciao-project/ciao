@@ -44,7 +44,7 @@ func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command, c chan CmdResult) {
 }
 
 // ConnectNotify implements an SSNTP ConnectNotify callback for SsntpTestServer
-func (server *SsntpTestServer) ConnectNotify(uuid string, role uint32) {
+func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 	switch role {
 	case ssntp.AGENT:
 		server.clients = append(server.clients, uuid)
@@ -58,7 +58,7 @@ func (server *SsntpTestServer) ConnectNotify(uuid string, role uint32) {
 }
 
 // DisconnectNotify implements an SSNTP DisconnectNotify callback for SsntpTestServer
-func (server *SsntpTestServer) DisconnectNotify(uuid string, role uint32) {
+func (server *SsntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	for index := range server.clients {
 		if server.clients[index] == uuid {
 			server.clients = append(server.clients[:index], server.clients[index+1:]...)

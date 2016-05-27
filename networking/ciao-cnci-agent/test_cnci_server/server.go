@@ -130,7 +130,7 @@ func (l logger) Warningf(format string, args ...interface{}) {
 	fmt.Printf("WARNING: Test Server: "+format, args...)
 }
 
-func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
+func (server *ssntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 	server.nConnections++
 	fmt.Printf("%s: %s connected (role 0x%x, current connections %d)\n", server.name, uuid, role, server.nConnections)
 
@@ -160,7 +160,7 @@ func (server *ssntpTestServer) ConnectNotify(uuid string, role uint32) {
 
 }
 
-func (server *ssntpTestServer) DisconnectNotify(uuid string, role uint32) {
+func (server *ssntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	server.nConnections--
 	fmt.Printf("%s: %s disconnected (current connections %d)\n", server.name, uuid, server.nConnections)
 }

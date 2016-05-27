@@ -321,26 +321,28 @@ func disconnectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 
 	sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
 }
-func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role uint32) {
-	switch role {
-	case ssntp.Controller:
+func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role ssntp.Role) {
+	if role.IsController() {
 		connectController(sched, uuid)
-	case ssntp.AGENT:
+	}
+	if role.IsAgent() {
 		connectComputeNode(sched, uuid)
-	case ssntp.NETAGENT:
+	}
+	if role.IsNetAgent() {
 		connectNetworkNode(sched, uuid)
 	}
 
 	glog.V(2).Infof("Connect (role 0x%x, uuid=%s)\n", role, uuid)
 }
 
-func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role uint32) {
-	switch role {
-	case ssntp.Controller:
+func (sched *ssntpSchedulerServer) DisconnectNotify(uuid string, role ssntp.Role) {
+	if role.IsController() {
 		disconnectController(sched, uuid)
-	case ssntp.AGENT:
+	}
+	if role.IsAgent() {
 		disconnectComputeNode(sched, uuid)
-	case ssntp.NETAGENT:
+	}
+	if role.IsNetAgent() {
 		disconnectNetworkNode(sched, uuid)
 	}
 

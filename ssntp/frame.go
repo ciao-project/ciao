@@ -44,7 +44,7 @@ type TraceConfig struct {
 // Node represent an SSNTP networking node.
 type Node struct {
 	UUID        []byte
-	Role        uint32
+	Role        Role
 	TxTimestamp time.Time
 	RxTimestamp time.Time
 }
@@ -77,7 +77,7 @@ type ConnectFrame struct {
 	Minor       uint8
 	Type        Type
 	Operand     uint8
-	Role        uint32
+	Role        Role
 	Source      []byte
 	Destination []byte
 }
@@ -88,7 +88,7 @@ type ConnectedFrame struct {
 	Minor         uint8
 	Type          Type
 	Operand       uint8
-	Role          uint32
+	Role          Role
 	Source        []byte
 	Destination   []byte
 	PayloadLength uint32
@@ -184,7 +184,7 @@ func (f ConnectFrame) String() string {
 	copy(dest[:], f.Destination[:16])
 
 	return fmt.Sprintf("\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tRole %s\n\tSource %s\n\tDestination %s\n",
-		f.Major, f.Minor, (Type)(f.Type), op, (*Role)(&f.Role), src, dest)
+		f.Major, f.Minor, (Type)(f.Type), op, &f.Role, src, dest)
 }
 
 func (f ConnectedFrame) String() string {
@@ -205,7 +205,7 @@ func (f ConnectedFrame) String() string {
 	copy(dest[:], f.Destination[:16])
 
 	return fmt.Sprintf("\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tRole %s\n\tSource %s\n\tDestination %s\n",
-		f.Major, f.Minor, (Type)(f.Type), op, (*Role)(&f.Role), src, dest)
+		f.Major, f.Minor, (Type)(f.Type), op, &f.Role, src, dest)
 }
 
 func (f *Frame) addPathNode(session *session) {
@@ -275,7 +275,7 @@ func (f Frame) DumpTrace() (*payloads.FrameTrace, error) {
 		copy(node[:], n.UUID[:16])
 		sNode := payloads.SSNTPNode{
 			SSNTPUUID: node.String(),
-			SSNTPRole: (*Role)(&n.Role).String(),
+			SSNTPRole: n.Role.String(),
 		}
 
 		if n.TxTimestamp.IsZero() == false {
