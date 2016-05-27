@@ -143,3 +143,15 @@ Usage of ciao-controller/ciao-controller:
 ```shell
 sudo ./ciao-controller --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Controller-localhost.pem --identity=https://your.keystone.server.com:35357 --username=csr --password=hello --url ciao.ctl.intel.com -computeport 443 --httpskey=/etc/pki/ciao/csr_key.pem --httpscert=/etc/pki/ciao/csr_cert.pem
 ```
+
+# OpenStack Compatibility
+
+In order to gain compatibility with common projects/tools as OpenStack Client, Rally Benchmarking and others you need to create the compute service and its corresponding endpoint for keystone. Run the following commands according to your environment as follows:
+
+```
+$ source <your-openrc>
+$ openstack service create --name ciao --description "CIAO compute" compute
+$ openstack endpoint create  compute --region RegionOne public https://<controller>:8774/v2.1/%\(tenant_id\)s
+$ openstack endpoint create  compute --region RegionOne admin https://<controller>:8774/v2.1/%\(tenant_id\)s
+$ openstack endpoint create  compute --region RegionOne internal https://<controller>:8774/v2.1/%\(tenant_id\)s
+```
