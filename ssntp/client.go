@@ -374,7 +374,7 @@ func (client *Client) sendCommand(cmd Command, payload []byte, trace *TraceConfi
 	client.status.Lock()
 	if client.status.status == ssntpClosed {
 		client.status.Unlock()
-		return -1, fmt.Errorf("Client not connected")
+		return -1, fmt.Errorf("sendCommand: Client not connected")
 	}
 	client.status.Unlock()
 
@@ -388,7 +388,7 @@ func (client *Client) sendStatus(status Status, payload []byte, trace *TraceConf
 	client.status.Lock()
 	if client.status.status == ssntpClosed {
 		client.status.Unlock()
-		return -1, fmt.Errorf("Client not connected")
+		return -1, fmt.Errorf("sendStatus: Client not connected")
 	}
 	client.status.Unlock()
 
@@ -402,7 +402,7 @@ func (client *Client) sendEvent(event Event, payload []byte, trace *TraceConfig)
 	client.status.Lock()
 	if client.status.status == ssntpClosed {
 		client.status.Unlock()
-		return -1, fmt.Errorf("Client not connected")
+		return -1, fmt.Errorf("sendEvent: Client not connected")
 	}
 	client.status.Unlock()
 
@@ -416,7 +416,7 @@ func (client *Client) sendError(error Error, payload []byte, trace *TraceConfig)
 	client.status.Lock()
 	if client.status.status == ssntpClosed {
 		client.status.Unlock()
-		return -1, fmt.Errorf("Client not connected")
+		return -1, fmt.Errorf("sendError: Client not connected")
 	}
 	client.status.Unlock()
 
