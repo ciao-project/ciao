@@ -1074,6 +1074,6 @@ func main() {
 		if *imageID == "" {
 			fatalf("Missing required -image-id parameter")
 		}
-		downloadTenantImage(*identityUser, *identityPassword, id, *imageID)
+		downloadTenantImage(*identityUser, *identityPassword, id, *imageID, *imagePath)
 	}
 }

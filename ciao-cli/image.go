@@ -161,7 +161,7 @@ func uploadTenantImage(username, password, tenant, imageID, filePath string) {
 	}
 }
 
-func downloadTenantImage(username, password, tenant, imageID string) {
+func downloadTenantImage(username, password, tenant, imageID, filePath string) {
 	client, err := imageServiceClient(username, password, tenant)
 	if err != nil {
 		fatalf("Could not get Image service client [%s]\n", err)
@@ -177,5 +177,13 @@ func downloadTenantImage(username, password, tenant, imageID string) {
 		fatalf("Could not read [%s]\n", err)
 	}
 
-	fmt.Printf("%s\n", b)
+	if filePath == "" {
+		fmt.Printf("%s\n", b)
+	} else {
+		err := ioutil.WriteFile(filePath, b, 0644)
+		if err != nil {
+			fatalf("Could not write image to file [%s]\n", err)
+		}
+	}
+
 }
