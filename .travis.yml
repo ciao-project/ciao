@@ -51,6 +51,8 @@ script:
    - go list ./... | grep -v vendor | xargs -t go vet
 #  - go list ./... | grep -v vendor | xargs -tL 1 golint -set_exit_status
    - if [[ "$TRAVIS_GO_VERSION" != "tip" ]] ; then go list ./... | grep -v vendor | xargs -tL 1 golint -set_exit_status ; fi
+   - sudo mkdir -p /var/lib/ciao/instances
+   - sudo chmod 0777 /var/lib/ciao/instances
    - test-cases -text -coverprofile /tmp/cover.out -short github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/ciao-controller/... github.com/01org/ciao/payloads
    - export GOROOT=`go env GOROOT` && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -text -coverprofile /tmp/cover.out -append-profile github.com/01org/ciao/ssntp
    - export GOROOT=`go env GOROOT` && export SNNET_ENV=198.51.100.0/24 && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -text -short -tags travis -coverprofile /tmp/cover.out -append-profile github.com/01org/ciao/networking/libsnnet
