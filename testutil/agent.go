@@ -199,7 +199,7 @@ func (client *SsntpTestClient) ErrorNotify(error ssntp.Error, frame *ssntp.Frame
 }
 
 // SendStats allows an SsntpTestClient to push an ssntp.STATS command frame
-func (client *SsntpTestClient) SendStats() {
+func (client *SsntpTestClient) SendStats() error {
 	stat := payloads.Stat{
 		NodeUUID:        client.UUID,
 		MemTotalMB:      256,
@@ -214,13 +214,11 @@ func (client *SsntpTestClient) SendStats() {
 
 	y, err := yaml.Marshal(stat)
 	if err != nil {
-		return
+		return err
 	}
 
 	_, err = client.Ssntp.SendCommand(ssntp.STATS, y)
-	if err != nil {
-		fmt.Println(err)
-	}
+	return err
 }
 
 // SendTrace allows an SsntpTestClient to push an ssntp.TraceReport event frame

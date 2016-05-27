@@ -230,7 +230,10 @@ func TestDeleteServer(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.SendStats()
+	err = client.SendStats()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(2 * time.Second)
 
@@ -269,7 +272,10 @@ func TestServersActionStart(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.SendStats()
+	err = client.SendStats()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -279,7 +285,10 @@ func TestServersActionStart(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second)
-	client.SendStats()
+	err = client.SendStats()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var ids []string
 	ids = append(ids, servers.Servers[0].ID)
@@ -315,7 +324,10 @@ func TestServersActionStop(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.SendStats()
+	err = client.SendStats()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -353,7 +365,10 @@ func TestServerActionStop(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.SendStats()
+	err = client.SendStats()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -379,7 +394,10 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	err = client.SendStats()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -403,7 +421,10 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	err = client.SendStats()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
