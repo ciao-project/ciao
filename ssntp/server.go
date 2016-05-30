@@ -59,18 +59,19 @@ type ServerNotifier interface {
 // It is an entirely opaque structure, only accessible through
 // its public methods.
 type Server struct {
-	uuid         uuid.UUID
-	lUUID        lockedUUID
-	tls          *tls.Config
-	ntf          ServerNotifier
-	sessionMutex sync.RWMutex
-	sessions     map[string]*session
-	listener     net.Listener
-	stopped      boolFlag
-	stoppedChan  chan struct{}
-	role         uint32
-	roleVerify   bool
-	clientWg     sync.WaitGroup
+	uuid          uuid.UUID
+	lUUID         lockedUUID
+	tls           *tls.Config
+	ntf           ServerNotifier
+	sessionMutex  sync.RWMutex
+	sessions      map[string]*session
+	listenerMutex sync.Mutex
+	listener      net.Listener
+	stopped       boolFlag
+	stoppedChan   chan struct{}
+	role          uint32
+	roleVerify    bool
+	clientWg      sync.WaitGroup
 
 	forwardRules frameForward
 
@@ -264,7 +265,9 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 	}
 	server.log.Infof("Listening on %s\n", service)
 
+	server.listenerMutex.Lock()
 	server.listener = listener
+	server.listenerMutex.Unlock()
 	defer listener.Close()
 
 	config.pushToSyncChannel(nil)
@@ -318,9 +321,12 @@ func (server *Server) Stop() {
 	server.stopped.Lock()
 	server.stopped.flag = true
 	server.stopped.Unlock()
+
+	server.listenerMutex.Lock()
 	if server.listener != nil {
 		server.listener.Close()
 	}
+	server.listenerMutex.Unlock()
 
 	server.sessionMutex.RLock()
 	for uuid, session := range server.sessions {
