@@ -712,6 +712,16 @@ type Config struct {
 
 	// Trace configures the desired level of SSNTP frame tracing.
 	Trace *TraceConfig
+
+	// SyncChannel is an optional channel provided by SSNTP servers
+	// and clients to get respectively notified about their Serve()
+	// and Dial() calls.
+	// If Serve() or Dial() fails, an error will be pushed to SyncChannel.
+	// If Serve() is ready to accept client connections, nil will be
+	// pushed to SyncChannel.
+	// If Dial() succeeded and is connected to a server, nil will be
+	// pushed to SyncChannel
+	SyncChannel chan error
 }
 
 // Logger is an interface for SSNTP users to define their own
@@ -908,6 +918,12 @@ func verifyRole(conn interface{}, role uint32) (bool, error) {
 	}
 
 	return false, oidError
+}
+
+func (config *Config) pushToSyncChannel(err error) {
+	if config.SyncChannel != nil {
+		config.SyncChannel <- err
+	}
 }
 
 func (config *Config) parseCertificateAuthority() ([]string, []string, error) {
