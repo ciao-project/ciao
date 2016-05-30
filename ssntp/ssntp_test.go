@@ -308,9 +308,11 @@ func TestUUID(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
 
-	time.Sleep(500 * time.Millisecond)
 	client1.ssntp.Dial(clientConfig, &client1)
 	client1.ssntp.Close()
 
@@ -525,9 +527,15 @@ func TestConnect(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
 
 	client.ssntp.Close()
 	server.ssntp.Stop()
@@ -554,8 +562,11 @@ func testConnectRole(t *testing.T, role Role) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -591,8 +602,11 @@ func testDisconnectRole(t *testing.T, role Role) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -783,8 +797,11 @@ func TestMajor(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -876,8 +893,11 @@ func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		//		t.Fatalf("Could not dial %s\n", err)
@@ -976,8 +996,11 @@ func TestConnectPort(t *testing.T) {
 	}
 	clientConfig.Port = 9999
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1113,22 +1136,24 @@ func TestClientReconnect(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	client.connected = make(chan struct{})
+	client.disconnected = make(chan struct{})
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
-		t.Fatalf("Failed to connect")
+		t.Fatalf("%s", err)
 	}
 
 	select {
 	case <-client.connected:
 		break
 	case <-time.After(time.Second):
-		t.Fatalf("Did not receive the connection notification")
+		t.Fatalf("Did not receive the 1st connection notification")
 	}
-
-	client.disconnected = make(chan struct{})
 
 	server.ssntp.Stop()
 
@@ -1140,13 +1165,16 @@ func TestClientReconnect(t *testing.T) {
 	}
 
 	client.connected = make(chan struct{})
-	go server.ssntp.Serve(serverConfig, &server)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
 
 	select {
 	case <-client.connected:
 		break
 	case <-time.After(10 * time.Second):
-		t.Fatalf("Did not receive the disconnection notification")
+		t.Fatalf("Did not receive the 2nd connection notification")
 	}
 
 	client.ssntp.Close()
@@ -1175,12 +1203,15 @@ func TestServerStop(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	client.connected = make(chan struct{})
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
-		t.Fatalf("Failed to connect")
+		t.Fatalf("%s", err)
 	}
 
 	select {
@@ -1230,8 +1261,11 @@ func TestCommand(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1295,8 +1329,11 @@ func TestTracedLabelCommand(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1357,8 +1394,11 @@ func TestTracedPathCommand(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1417,8 +1457,11 @@ func TestDumpTracedCommand(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1481,8 +1524,11 @@ func TestCommandDuration(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1536,8 +1582,11 @@ func TestCommandNoDuration(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1605,8 +1654,11 @@ func TestConsecutiveFrames(t *testing.T) {
 		},
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1652,8 +1704,11 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1701,8 +1756,11 @@ func TestEvent(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1750,8 +1808,11 @@ func TestError(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = client.ssntp.Dial(clientConfig, &client)
 	if err != nil {
 		t.Fatalf("Failed to connect")
@@ -1814,8 +1875,11 @@ func TestCmdFwd(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
@@ -1883,8 +1947,11 @@ func TestCmdFwder(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
@@ -1949,8 +2016,11 @@ func TestEventFwd(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
@@ -2016,8 +2086,11 @@ func TestEventFwder(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
@@ -2082,8 +2155,11 @@ func TestErrorFwd(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
@@ -2149,8 +2225,11 @@ func TestErrorFwder(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
@@ -2215,8 +2294,11 @@ func TestStatusFwd(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
@@ -2282,8 +2364,11 @@ func TestStatusFwder(t *testing.T) {
 		t.Fatalf("Could not build a test config")
 	}
 
-	go server.ssntp.Serve(serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	err = controller.ssntp.Dial(controllerConfig, &controller)
 	if err != nil {
 		t.Fatalf("Controller failed to connect")
@@ -2410,8 +2495,11 @@ func benchmarkSingleClient(b *testing.B, payloadSize int) {
 	clientConfig.Transport = *transport
 
 	time.Sleep(500 * time.Millisecond)
-	go server.ssntp.Serve(&serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+	err := server.ssntp.ServeThreadSync(&serverConfig, &server)
+	if err != nil {
+		b.Fatalf("%s", err)
+	}
+
 	client.ssntp.Dial(&clientConfig, &client)
 
 	b.SetBytes((int64)(payloadSize))
@@ -2442,8 +2530,11 @@ func benchmarkMultiClients(b *testing.B, payloadSize int, nClients int, nFrames 
 	serverConfig.Transport = *transport
 
 	time.Sleep(500 * time.Millisecond)
-	go server.ssntp.Serve(&serverConfig, &server)
-	time.Sleep(500 * time.Millisecond)
+
+	err := server.ssntp.ServeThreadSync(&serverConfig, &server)
+	if err != nil {
+		b.Fatalf("%s", err)
+	}
 
 	totalFrames := nClients * nFrames * b.N
 	frameDelay := time.Duration(delay) * time.Millisecond
