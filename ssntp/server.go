@@ -237,6 +237,7 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 	role, err := config.role()
 	if err != nil {
 		server.log.Errorf("%s", err)
+		config.pushToSyncChannel(err)
 		return err
 	}
 	server.role = role
@@ -258,12 +259,15 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 	listener, err := tls.Listen(transport, service, server.tls)
 	if err != nil {
 		server.log.Errorf("Failed to start listener (err=%s) on %s\n", err, service)
+		config.pushToSyncChannel(err)
 		return err
 	}
 	server.log.Infof("Listening on %s\n", service)
 
 	server.listener = listener
 	defer listener.Close()
+
+	config.pushToSyncChannel(nil)
 
 	for {
 		conn, err := listener.Accept()
@@ -286,6 +290,26 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 	}
 
 	return nil
+}
+
+// ServeThreadSync is a helper that start Serve() in a
+// dedicated go routine and returns synchronously, i.e.
+// when Serve() is ready to accept SSNTP clients or failed.
+func (server *Server) ServeThreadSync(config *Config, ntf ServerNotifier) error {
+	if config.SyncChannel == nil {
+		config.SyncChannel = make(chan error)
+	}
+
+	go func() {
+		server.Serve(config, ntf)
+	}()
+
+	select {
+	case err := <-config.SyncChannel:
+		return err
+	case <-time.After(time.Second):
+		return fmt.Errorf("Timeout receiving server notification")
+	}
 }
 
 // Stop terminates the server listening operation
