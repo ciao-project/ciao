@@ -291,12 +291,16 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 
 	if client.status.status == ssntpConnected || client.status.status == ssntpConnecting {
 		client.status.Unlock()
-		return fmt.Errorf("Client already connected")
+		err := fmt.Errorf("Client already connected")
+		config.pushToSyncChannel(err)
+		return err
 	}
 
 	if client.status.status == ssntpClosed {
 		client.status.Unlock()
-		return fmt.Errorf("Client already closed")
+		err := fmt.Errorf("Client already closed")
+		config.pushToSyncChannel(err)
+		return err
 	}
 
 	client.status.status = ssntpConnecting
@@ -308,6 +312,7 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 	role, err := config.role()
 	if err != nil {
 		client.log.Errorf("%s", err)
+		config.pushToSyncChannel(err)
 		return err
 	}
 	client.role = role
@@ -323,10 +328,12 @@ func (client *Client) Dial(config *Config, ntf ClientNotifier) error {
 	err = client.attemptDial()
 	if err != nil {
 		client.log.Errorf("%s", err)
+		config.pushToSyncChannel(err)
 		return err
 	}
 
 	go client.handleSSNTPServer()
+	config.pushToSyncChannel(nil)
 
 	return nil
 }
