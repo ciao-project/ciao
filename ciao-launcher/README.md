@@ -28,8 +28,11 @@ in your PATH.
 Certificates are assumed to be in /etc/pki/ciao, or can be
 specified on the command line via the "-cert" and "-cacert"
 command line options.  Certificates are created with the
-[ciao-cert](https://github.com/01org/ciao/tree/master/ssntp/ciao-cert)
+[ciao-cert](https://github.com/01org/ciao/tree/master/ciao-cert)
 tool.
+
+ciao-launcher client certificates need to be generated with the agent or
+the netagent roles or a combination of the two.
 
 ## Install Dependencies
 
