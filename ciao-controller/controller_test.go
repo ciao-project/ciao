@@ -34,7 +34,6 @@ import (
 	"github.com/docker/distribution/uuid"
 )
 
-
 func newTestClient(num int, role ssntp.Role) *testutil.SsntpTestClient {
 	client := &testutil.SsntpTestClient{
 		Name: "Test " + role.String() + strconv.Itoa(num),
@@ -746,8 +745,11 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	client := newTestClient(0, ssntp.AGENT)
 
 	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
+	if err != nil {
 		t.Fatal(err)
+	}
+	if len(wls) == 0 {
+		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
 	}
 
 	c := make(chan testutil.CmdResult)
@@ -759,7 +761,7 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	}
 
 	if len(instances) != 1 {
-		t.Fatal(err)
+		t.Fatalf("Wrong number of instances, expected 1, got %d", len(instances))
 	}
 
 	select {
@@ -788,8 +790,11 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	client := newTestClient(0, ssntp.AGENT)
 
 	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
+	if err != nil {
 		t.Fatal(err)
+	}
+	if len(wls) == 0 {
+		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
 	}
 
 	c := make(chan testutil.CmdResult)
@@ -803,7 +808,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	}
 
 	if len(instances) != num {
-		t.Fatal(err)
+		t.Fatalf("Wrong number of instances, expected %d, got %d", len(instances), num)
 	}
 
 	select {
@@ -827,8 +832,11 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	netClient := newTestClient(0, ssntp.NETAGENT)
 
 	wls, err := context.ds.GetWorkloads()
-	if err != nil || len(wls) == 0 {
+	if err != nil {
 		t.Fatal(err)
+	}
+	if len(wls) == 0 {
+		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
 	}
 
 	c := make(chan testutil.CmdResult)
@@ -845,7 +853,7 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 		}
 
 		if len(instances) != 1 {
-			t.Fatal(err)
+			t.Fatalf("Wrong number of instances, expected 1, got %d", len(instances))
 		}
 	}()
 
