@@ -32,8 +32,8 @@ const storageURI = "/etc/ciao/ciao.json"
 const identityUser = "controller"
 const identityPassword = "ciao"
 const computePort = 443
-const computeCert = "/etc/pki/ciao/compute_key.pem"
-const computeCA = "/etc/pki/ciao/compute_ca.pem"
+const httpsKey = "/etc/pki/ciao/compute_key.pem"
+const httpsCACert = "/etc/pki/ciao/compute_ca.pem"
 
 var configureYaml = "" +
 	"configure:\n" +
@@ -42,8 +42,8 @@ var configureYaml = "" +
 	"    storage_uri: " + storageURI + "\n" +
 	"  controller:\n" +
 	"    compute_port: " + fmt.Sprintf("%d", computePort) + "\n" +
-	"    compute_ca: " + computeCA + "\n" +
-	"    compute_cert: " + computeCert + "\n" +
+	"    compute_ca: " + httpsCACert + "\n" +
+	"    compute_cert: " + httpsKey + "\n" +
 	"    identity_user: " + identityUser + "\n" +
 	"    identity_password: " + identityPassword + "\n" +
 	"  launcher:\n" +
@@ -106,8 +106,8 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Launcher.MemoryLimit = false
 
 	cfg.Configure.Controller.ComputePort = computePort
-	cfg.Configure.Controller.ComputeCACert = computeCA
-	cfg.Configure.Controller.ComputeCert = computeCert
+	cfg.Configure.Controller.HTTPSCACert = httpsCACert
+	cfg.Configure.Controller.HTTPSKey = httpsKey
 	cfg.Configure.Controller.IdentityUser = identityUser
 	cfg.Configure.Controller.IdentityPassword = identityPassword
 

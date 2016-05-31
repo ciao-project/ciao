@@ -69,8 +69,8 @@ type ConfigureScheduler struct {
 // ConfigureController is reserved for future use.
 type ConfigureController struct {
 	ComputePort      int    `yaml:"compute_port"`
-	ComputeCACert    string `yaml:"compute_ca"`
-	ComputeCert      string `yaml:"compute_cert"`
+	HTTPSCACert      string `yaml:"compute_ca"`
+	HTTPSKey         string `yaml:"compute_cert"`
 	IdentityUser     string `yaml:"identity_user"`
 	IdentityPassword string `yaml:"identity_password"`
 }
