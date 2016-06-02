@@ -93,7 +93,7 @@ var repos = map[string]repoInfo{
 	"github.com/mattn/go-sqlite3":       {"https://github.com/mattn/go-sqlite3.git", "467f50b", "MIT + Public domain"},
 	"github.com/mitchellh/mapstructure": {"https://github.com/mitchellh/mapstructure.git", "d2dd026", "MIT"},
 	"github.com/opencontainers/runc":    {"https://github.com/opencontainers/runc.git", "v0.1.0", "Apache v2.0"},
-	"github.com/rackspace/gophercloud":  {"https://github.com/rackspace/gophercloud.git", "c54bbac", "Apache v2.0"},
+	"github.com/rackspace/gophercloud":  {"https://github.com/rackspace/gophercloud.git", "67139b9", "Apache v2.0"},
 	"github.com/tylerb/graceful":        {"https://github.com/tylerb/graceful.git", "9a3d423", "MIT"},
 	"github.com/vishvananda/netlink":    {"https://github.com/vishvananda/netlink.git", "a632d6d", "Apache v2.0"},
 	"golang.org/x/net":                  {"https://go.googlesource.com/net", "origin/release-branch.go1.6", "BSD (3 clause)"},
