@@ -119,7 +119,7 @@ func getPackageDetails(name string) *packageInfo {
 	return pi
 }
 
-func calcDeps(projectRoot string, packages []string) (piList, error) {
+func getPackageDependencies(packages []string) (map[string]struct{}, error) {
 	deps := make(map[string]struct{})
 	args := []string{"list", "-f", listTemplate}
 	args = append(args, packages...)
@@ -134,6 +134,14 @@ func calcDeps(projectRoot string, packages []string) (piList, error) {
 	scanner := bufio.NewScanner(&output)
 	for scanner.Scan() {
 		deps[scanner.Text()] = struct{}{}
+	}
+	return deps, nil
+}
+
+func calcDeps(projectRoot string, packages []string) (piList, error) {
+	deps, err := getPackageDependencies(packages)
+	if err != nil {
+		return nil, err
 	}
 
 	ch := make(chan *packageInfo)
@@ -788,10 +796,52 @@ func deps(projectRoot string) error {
 	return nil
 }
 
+func uses(pkg string, projectRoot string) error {
+	deps, err := calcDeps(projectRoot, []string{"./..."})
+	if err != nil {
+		return err
+	}
+
+	var output bytes.Buffer
+	cmd := exec.Command("go", "list", "./...")
+	cmd.Stdout = &output
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("go list failed: %v\n", err)
+	}
+
+	scanner := bufio.NewScanner(&output)
+	vendorPrefix := path.Join(projectRoot, "vendor")
+	for scanner.Scan() {
+		d := scanner.Text()
+		if !strings.HasPrefix(d, vendorPrefix) {
+			deps = append(deps, &packageInfo{name: d})
+		}
+	}
+
+	clients := make([]string, 0, len(deps))
+	for _, d := range deps {
+		pd, err := getPackageDependencies([]string{d.name})
+		if err != nil {
+			return err
+		}
+		if _, ok := pd[pkg]; ok {
+			clients = append(clients, d.name)
+		}
+	}
+
+	sort.Strings(clients)
+	for _, client := range clients {
+		fmt.Println(client)
+	}
+
+	return nil
+}
+
 func main() {
-	if len(os.Args) != 2 ||
-		(os.Args[1] != "vendor" && os.Args[1] != "check" && os.Args[1] != "deps" &&
-			os.Args[1] != "packages") {
+	if !((len(os.Args) == 2 &&
+		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
+			os.Args[1] == "packages")) || (len(os.Args) == 3 && os.Args[1] == "uses")) {
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendor|check|deps|packages")
 		os.Exit(1)
 	}
@@ -818,6 +868,8 @@ func main() {
 		err = deps(projectRoot)
 	case "packages":
 		err = packages(cwd, projectRoot)
+	case "uses":
+		err = uses(os.Args[2], projectRoot)
 	}
 
 	if err != nil {
