@@ -56,6 +56,11 @@ type subPackage struct {
 	cgo      bool
 }
 
+type clientInfo struct {
+	name string
+	err  error
+}
+
 type piList []*packageInfo
 
 func (p piList) Len() int {
@@ -819,14 +824,30 @@ func uses(pkg string, projectRoot string) error {
 		}
 	}
 
-	clients := make([]string, 0, len(deps))
+	clientCh := make(chan clientInfo)
 	for _, d := range deps {
-		pd, err := getPackageDependencies([]string{d.name})
-		if err != nil {
+		go func(name string) {
+			ci := clientInfo{}
+			pd, err := getPackageDependencies([]string{name})
+			if err == nil {
+				if _, ok := pd[pkg]; ok {
+					ci.name = name
+				}
+			} else {
+				ci.err = err
+			}
+			clientCh <- ci
+		}(d.name)
+	}
+
+	clients := make([]string, 0, len(deps))
+	for range deps {
+		clientInfo := <-clientCh
+		if clientInfo.err != nil {
 			return err
 		}
-		if _, ok := pd[pkg]; ok {
-			clients = append(clients, d.name)
+		if clientInfo.name != "" {
+			clients = append(clients, clientInfo.name)
 		}
 	}
 
