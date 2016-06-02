@@ -56,6 +56,11 @@ type subPackage struct {
 	cgo      bool
 }
 
+type clientInfo struct {
+	name string
+	err  error
+}
+
 type piList []*packageInfo
 
 func (p piList) Len() int {
@@ -88,7 +93,7 @@ var repos = map[string]repoInfo{
 	"github.com/mattn/go-sqlite3":       {"https://github.com/mattn/go-sqlite3.git", "467f50b", "MIT + Public domain"},
 	"github.com/mitchellh/mapstructure": {"https://github.com/mitchellh/mapstructure.git", "d2dd026", "MIT"},
 	"github.com/opencontainers/runc":    {"https://github.com/opencontainers/runc.git", "v0.1.0", "Apache v2.0"},
-	"github.com/rackspace/gophercloud":  {"https://github.com/rackspace/gophercloud.git", "c54bbac", "Apache v2.0"},
+	"github.com/rackspace/gophercloud":  {"https://github.com/rackspace/gophercloud.git", "67139b9", "Apache v2.0"},
 	"github.com/tylerb/graceful":        {"https://github.com/tylerb/graceful.git", "9a3d423", "MIT"},
 	"github.com/vishvananda/netlink":    {"https://github.com/vishvananda/netlink.git", "a632d6d", "Apache v2.0"},
 	"golang.org/x/net":                  {"https://go.googlesource.com/net", "origin/release-branch.go1.6", "BSD (3 clause)"},
@@ -119,7 +124,7 @@ func getPackageDetails(name string) *packageInfo {
 	return pi
 }
 
-func calcDeps(projectRoot string, packages []string) (piList, error) {
+func getPackageDependencies(packages []string) (map[string]struct{}, error) {
 	deps := make(map[string]struct{})
 	args := []string{"list", "-f", listTemplate}
 	args = append(args, packages...)
@@ -134,6 +139,14 @@ func calcDeps(projectRoot string, packages []string) (piList, error) {
 	scanner := bufio.NewScanner(&output)
 	for scanner.Scan() {
 		deps[scanner.Text()] = struct{}{}
+	}
+	return deps, nil
+}
+
+func calcDeps(projectRoot string, packages []string) (piList, error) {
+	deps, err := getPackageDependencies(packages)
+	if err != nil {
+		return nil, err
 	}
 
 	ch := make(chan *packageInfo)
@@ -788,10 +801,68 @@ func deps(projectRoot string) error {
 	return nil
 }
 
+func uses(pkg string, projectRoot string) error {
+	deps, err := calcDeps(projectRoot, []string{"./..."})
+	if err != nil {
+		return err
+	}
+
+	var output bytes.Buffer
+	cmd := exec.Command("go", "list", "./...")
+	cmd.Stdout = &output
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("go list failed: %v\n", err)
+	}
+
+	scanner := bufio.NewScanner(&output)
+	vendorPrefix := path.Join(projectRoot, "vendor")
+	for scanner.Scan() {
+		d := scanner.Text()
+		if !strings.HasPrefix(d, vendorPrefix) {
+			deps = append(deps, &packageInfo{name: d})
+		}
+	}
+
+	clientCh := make(chan clientInfo)
+	for _, d := range deps {
+		go func(name string) {
+			ci := clientInfo{}
+			pd, err := getPackageDependencies([]string{name})
+			if err == nil {
+				if _, ok := pd[pkg]; ok {
+					ci.name = name
+				}
+			} else {
+				ci.err = err
+			}
+			clientCh <- ci
+		}(d.name)
+	}
+
+	clients := make([]string, 0, len(deps))
+	for range deps {
+		clientInfo := <-clientCh
+		if clientInfo.err != nil {
+			return err
+		}
+		if clientInfo.name != "" {
+			clients = append(clients, clientInfo.name)
+		}
+	}
+
+	sort.Strings(clients)
+	for _, client := range clients {
+		fmt.Println(client)
+	}
+
+	return nil
+}
+
 func main() {
-	if len(os.Args) != 2 ||
-		(os.Args[1] != "vendor" && os.Args[1] != "check" && os.Args[1] != "deps" &&
-			os.Args[1] != "packages") {
+	if !((len(os.Args) == 2 &&
+		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
+			os.Args[1] == "packages")) || (len(os.Args) == 3 && os.Args[1] == "uses")) {
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendor|check|deps|packages")
 		os.Exit(1)
 	}
@@ -818,6 +889,8 @@ func main() {
 		err = deps(projectRoot)
 	case "packages":
 		err = packages(cwd, projectRoot)
+	case "uses":
+		err = uses(os.Args[2], projectRoot)
 	}
 
 	if err != nil {
