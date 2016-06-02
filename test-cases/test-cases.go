@@ -220,7 +220,8 @@ func parseTestFile(filePath string) ([]*TestInfo, error) {
 func extractTests(packages []PackageInfo) []*PackageTests {
 	pts := make([]*PackageTests, 0, len(packages))
 	for _, p := range packages {
-		if len(p.Files) == 0 || strings.Contains(p.Name, "/vendor/") {
+		if ((len(p.Files) == 0) && (len(p.XFiles) == 0)) ||
+			strings.Contains(p.Name, "/vendor/") {
 			continue
 		}
 		packageTest := &PackageTests{
