@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -106,6 +107,12 @@ var listTemplate = `
 {{end -}}
 `
 
+var directTemplate = `
+{{- range .Imports -}}
+{{.}}
+{{end -}}
+`
+
 func getPackageDetails(name string) *packageInfo {
 	packageTemplate := `{
   "standard" : {{.Standard}},
@@ -124,9 +131,9 @@ func getPackageDetails(name string) *packageInfo {
 	return pi
 }
 
-func getPackageDependencies(packages []string) (map[string]struct{}, error) {
+func getPackageDependencies(packages []string, template string) (map[string]struct{}, error) {
 	deps := make(map[string]struct{})
-	args := []string{"list", "-f", listTemplate}
+	args := []string{"list", "-f", template}
 	args = append(args, packages...)
 	var output bytes.Buffer
 	cmd := exec.Command("go", args...)
@@ -144,7 +151,7 @@ func getPackageDependencies(packages []string) (map[string]struct{}, error) {
 }
 
 func calcDeps(projectRoot string, packages []string) (piList, error) {
-	deps, err := getPackageDependencies(packages)
+	deps, err := getPackageDependencies(packages, listTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -801,7 +808,7 @@ func deps(projectRoot string) error {
 	return nil
 }
 
-func uses(pkg string, projectRoot string) error {
+func uses(pkg string, projectRoot string, direct bool) error {
 	deps, err := calcDeps(projectRoot, []string{"./..."})
 	if err != nil {
 		return err
@@ -824,11 +831,18 @@ func uses(pkg string, projectRoot string) error {
 		}
 	}
 
+	var template string
+	if direct {
+		template = directTemplate
+	} else {
+		template = listTemplate
+	}
+
 	clientCh := make(chan clientInfo)
 	for _, d := range deps {
 		go func(name string) {
 			ci := clientInfo{}
-			pd, err := getPackageDependencies([]string{name})
+			pd, err := getPackageDependencies([]string{name}, template)
 			if err == nil {
 				if _, ok := pd[pkg]; ok {
 					ci.name = name
@@ -873,7 +887,15 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 	case "packages":
 		err = packages(cwd, projectRoot)
 	case "uses":
-		err = uses(args[2], projectRoot)
+		fs := flag.NewFlagSet("uses", flag.ExitOnError)
+		direct := false
+		fs.BoolVar(&direct, "d", false, "output direct dependencies only")
+
+		if err := fs.Parse(args[2:]); err != nil {
+			return err
+		}
+
+		err = uses(fs.Args()[0], projectRoot, direct)
 	}
 
 	return err
@@ -882,7 +904,7 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 func main() {
 	if !((len(os.Args) == 2 &&
 		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
-			os.Args[1] == "packages")) || (len(os.Args) == 3 && os.Args[1] == "uses")) {
+			os.Args[1] == "packages")) || (len(os.Args) >= 3 && os.Args[1] == "uses")) {
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendor|check|deps|packages")
 		os.Exit(1)
 	}
