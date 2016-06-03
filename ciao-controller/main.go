@@ -18,13 +18,14 @@ package main
 
 import (
 	"flag"
+	"os"
+	"strconv"
+	"sync"
+
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
 	"github.com/golang/glog"
-	"os"
-	"strconv"
-	"sync"
 )
 
 type controller struct {
@@ -110,7 +111,8 @@ func main() {
 	}
 
 	if *singleMachine {
-		computeURL := "https://localhost:" + strconv.Itoa(*computeAPIPort)
+		hostname, _ := os.Hostname()
+		computeURL := "https://" + hostname + ":" + strconv.Itoa(*computeAPIPort)
 		testIdentityConfig := testutil.TestIdentityConfig{
 			ComputeURL: computeURL,
 			ProjectID:  "f452bbc7-5076-44d5-922c-3b9d2ce1503f",
@@ -119,6 +121,11 @@ func main() {
 		id := testutil.StartIdentityTestServer(testIdentityConfig)
 		defer id.Close()
 		*identityURL = id.URL
+		glog.Errorf("========================")
+		glog.Errorf("Identity URL: %s", id.URL)
+		glog.Errorf("Please")
+		glog.Errorf("export CIAO_IDENTITY=%s", id.URL)
+		glog.Errorf("========================")
 	}
 
 	idConfig := identityConfig{
