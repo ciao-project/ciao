@@ -17,11 +17,12 @@
 package testutil
 
 import (
+	"math/rand"
+	"sync"
+
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"gopkg.in/yaml.v2"
-	"math/rand"
-	"sync"
 )
 
 // SsntpTestServer is global state for the testutil SSNTP server

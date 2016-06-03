@@ -18,9 +18,10 @@ package ssntp
 
 import (
 	"encoding/gob"
-	"github.com/docker/distribution/uuid"
 	"net"
 	"time"
+
+	"github.com/docker/distribution/uuid"
 )
 
 func setReadTimeout(conn net.Conn) {

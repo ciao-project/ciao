@@ -20,12 +20,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/01org/ciao/ssntp"
 	"math/rand"
 	"os"
 	"runtime/pprof"
 	"sync"
 	"time"
+
+	"github.com/01org/ciao/ssntp"
 )
 
 type logger struct{}

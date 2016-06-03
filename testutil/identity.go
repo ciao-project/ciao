@@ -16,11 +16,12 @@ package testutil
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/rackspace/gophercloud"
 	"net/http"
 	"net/http/httptest"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/rackspace/gophercloud"
 )
 
 // TestIdentityConfig contains the URL of the ciao compute service, and the TenantID of

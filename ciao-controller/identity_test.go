@@ -16,11 +16,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/rackspace/gophercloud"
 	"net/http"
 	"net/http/httptest"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/rackspace/gophercloud"
 )
 
 func authHandler(w http.ResponseWriter, r *http.Request) {

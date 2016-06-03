@@ -27,11 +27,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/glog"
-
 	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
-
+	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 )
 

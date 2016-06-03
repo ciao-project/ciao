@@ -19,16 +19,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
-	"github.com/golang/glog"
-	"gopkg.in/yaml.v2"
 	"log"
 	"os"
 	"runtime/pprof"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp"
+	"github.com/golang/glog"
+	"gopkg.in/yaml.v2"
 )
 
 var cert = flag.String("cert", "/etc/pki/ciao/cert-Scheduler-localhost.pem", "Server certificate")

@@ -27,7 +27,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/01org/ciao/payloads"
-
 	"gopkg.in/yaml.v2"
 )
 

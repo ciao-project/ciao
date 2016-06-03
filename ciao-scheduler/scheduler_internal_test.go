@@ -19,12 +19,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/testutil"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 )
 
 var sched *ssntpSchedulerServer

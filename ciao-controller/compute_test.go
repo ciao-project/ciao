@@ -17,10 +17,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/testutil"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -28,6 +24,11 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 )
 
 func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse int, data []byte) []byte {

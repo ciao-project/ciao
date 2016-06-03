@@ -20,10 +20,11 @@ import (
 	"crypto/tls"
 	"encoding/gob"
 	"fmt"
-	"github.com/docker/distribution/uuid"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/docker/distribution/uuid"
 )
 
 // ServerNotifier is the SSNTP server notification interface.

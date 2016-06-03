@@ -18,10 +18,10 @@ package ssntp
 
 import (
 	"fmt"
-	"github.com/docker/distribution/uuid"
 	"time"
 
 	"github.com/01org/ciao/payloads"
+	"github.com/docker/distribution/uuid"
 )
 
 // TraceConfig is the SSNTP tracing configuration to be used

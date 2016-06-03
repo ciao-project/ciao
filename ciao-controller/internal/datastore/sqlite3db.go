@@ -20,16 +20,17 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
-	"github.com/golang/glog"
-	sqlite3 "github.com/mattn/go-sqlite3"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
+	"github.com/golang/glog"
+	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
 type sqliteDB struct {

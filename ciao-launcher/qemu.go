@@ -32,9 +32,8 @@ import (
 	"time"
 
 	"github.com/01org/ciao/payloads"
-	"gopkg.in/yaml.v2"
-
 	"github.com/golang/glog"
+	"gopkg.in/yaml.v2"
 )
 
 const (

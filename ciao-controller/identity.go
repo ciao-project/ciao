@@ -18,6 +18,7 @@ package main
 
 import (
 	"errors"
+
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rackspace/gophercloud"

@@ -19,13 +19,12 @@ package ssntp
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/docker/distribution/uuid"
 	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/01org/ciao/payloads"
-
+	"github.com/docker/distribution/uuid"
 	"gopkg.in/yaml.v2"
 )
 

@@ -22,13 +22,11 @@ import (
 	"net"
 	"os"
 
-	"golang.org/x/net/context"
-
-	"github.com/golang/glog"
-
 	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/golang/glog"
+	"golang.org/x/net/context"
 )
 
 var cnNet *libsnnet.ComputeNode

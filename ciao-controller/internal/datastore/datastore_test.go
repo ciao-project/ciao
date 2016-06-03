@@ -22,13 +22,14 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
-	"github.com/docker/distribution/uuid"
 	"net"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
+	"github.com/docker/distribution/uuid"
 )
 
 func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
