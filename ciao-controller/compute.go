@@ -107,7 +107,7 @@ func pagerQueryParse(r *http.Request) (int, int, string) {
 }
 
 func (pager *serverPager) getInstances(filterType pagerFilterType, filter string, instances []*types.Instance, limit int, offset int) ([]byte, error) {
-	var servers payloads.ComputeServers
+	servers := payloads.NewComputeServers()
 
 	servers.TotalServers = len(instances)
 	pageLength := 0
@@ -192,7 +192,7 @@ type nodePager struct {
 }
 
 func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, nodes []payloads.CiaoComputeNode, limit int, offset int) ([]byte, error) {
-	var computeNodes payloads.CiaoComputeNodes
+	computeNodes := payloads.NewCiaoComputeNodes()
 
 	pageLength := 0
 
@@ -261,7 +261,7 @@ type nodeServerPager struct {
 
 func (pager *nodeServerPager) getNodeServers(filterType pagerFilterType, filter string, instances []payloads.CiaoServerStats,
 	limit int, offset int) ([]byte, error) {
-	var servers payloads.CiaoServersStats
+	servers := payloads.NewCiaoServersStats()
 
 	servers.TotalServers = len(instances)
 	pageLength := 0
@@ -551,7 +551,7 @@ func buildFlavorDetails(workload *types.Workload) (payloads.FlavorDetails, error
 }
 
 func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
-	var flavors payloads.ComputeFlavors
+	flavors := payloads.NewComputeFlavors()
 
 	dumpRequest(r)
 
@@ -591,7 +591,7 @@ func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 
 func listFlavorsDetails(w http.ResponseWriter, r *http.Request, context *controller) {
 	var details payloads.FlavorDetails
-	var flavors payloads.ComputeFlavorsDetails
+	flavors := payloads.NewComputeFlavorsDetails()
 
 	dumpRequest(r)
 
@@ -1350,7 +1350,7 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
 
-	var events payloads.CiaoEvents
+	events := payloads.NewCiaoEvents()
 
 	if validateToken(context, r) == false {
 		http.Error(w, "Invalid token", http.StatusInternalServerError)
