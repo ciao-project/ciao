@@ -859,6 +859,26 @@ func uses(pkg string, projectRoot string) error {
 	return nil
 }
 
+func runCommand(cwd, sourceRoot string, args []string) error {
+	var err error
+
+	projectRoot := cwd[len(sourceRoot)+1:]
+	switch args[1] {
+	case "check":
+		err = check(cwd, projectRoot)
+	case "vendor":
+		err = vendor(cwd, projectRoot, sourceRoot)
+	case "deps":
+		err = deps(projectRoot)
+	case "packages":
+		err = packages(cwd, projectRoot)
+	case "uses":
+		err = uses(args[2], projectRoot)
+	}
+
+	return err
+}
+
 func main() {
 	if !((len(os.Args) == 2 &&
 		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
@@ -878,20 +898,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Could not determine project root")
 		os.Exit(1)
 	}
-	projectRoot := cwd[len(sourceRoot)+1:]
-
-	switch os.Args[1] {
-	case "check":
-		err = check(cwd, projectRoot)
-	case "vendor":
-		err = vendor(cwd, projectRoot, sourceRoot)
-	case "deps":
-		err = deps(projectRoot)
-	case "packages":
-		err = packages(cwd, projectRoot)
-	case "uses":
-		err = uses(os.Args[2], projectRoot)
-	}
+	err = runCommand(cwd, sourceRoot, os.Args)
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
