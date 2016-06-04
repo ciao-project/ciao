@@ -24,13 +24,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
-	"github.com/golang/glog"
 	"net"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
+	"github.com/golang/glog"
 )
 
 // Config contains configuration information for the datastore.

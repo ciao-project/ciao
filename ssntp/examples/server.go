@@ -20,9 +20,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/01org/ciao/ssntp"
 	"os"
 	"runtime/pprof"
+
+	"github.com/01org/ciao/ssntp"
 )
 
 type ssntpEchoServer struct {

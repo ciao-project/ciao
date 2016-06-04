@@ -18,11 +18,12 @@ package testutil
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"gopkg.in/yaml.v2"
-	"sync"
-	"time"
 )
 
 // SsntpTestClient is global state for the testutil SSNTP client worker

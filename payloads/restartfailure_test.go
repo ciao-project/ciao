@@ -17,9 +17,9 @@
 package payloads_test
 
 import (
+	"fmt"
 	"testing"
 
-	"fmt"
 	. "github.com/01org/ciao/payloads"
 	"github.com/docker/distribution/uuid"
 	"gopkg.in/yaml.v2"

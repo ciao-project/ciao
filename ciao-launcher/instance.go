@@ -23,7 +23,6 @@ import (
 
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
-
 	"github.com/golang/glog"
 )
 

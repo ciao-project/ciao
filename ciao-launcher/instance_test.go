@@ -24,10 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"gopkg.in/yaml.v2"
 )
 
 var standardCfg = vmConfig{

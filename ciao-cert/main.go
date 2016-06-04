@@ -36,7 +36,6 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/01org/ciao/ssntp"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -44,6 +43,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/01org/ciao/ssntp"
 )
 
 var (

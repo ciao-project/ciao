@@ -17,8 +17,9 @@
 package types
 
 import (
-	"github.com/01org/ciao/payloads"
 	"time"
+
+	"github.com/01org/ciao/payloads"
 )
 
 // Workload contains resource and configuration information for a user

@@ -19,9 +19,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/golang/glog"
-	"time"
 )
 
 func (c *controller) evacuateNode(nodeID string) error {

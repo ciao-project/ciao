@@ -17,11 +17,12 @@
 package main
 
 import (
+	"time"
+
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
-	"time"
 )
 
 type ssntpClient struct {

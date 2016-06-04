@@ -24,8 +24,6 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
@@ -34,6 +32,7 @@ import (
 	"github.com/docker/engine-api/types/network"
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
+	"gopkg.in/yaml.v2"
 )
 
 var dockerClient struct {

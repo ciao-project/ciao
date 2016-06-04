@@ -19,13 +19,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
 	"github.com/docker/distribution/uuid"
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
-	"net"
-	"time"
 )
 
 type config struct {

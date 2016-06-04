@@ -19,18 +19,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/testutil"
-	"github.com/docker/distribution/uuid"
 	"net"
 	"os"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
+	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
+	"github.com/docker/distribution/uuid"
 )
 
 func roleToCert(role ssntp.Role) string {
