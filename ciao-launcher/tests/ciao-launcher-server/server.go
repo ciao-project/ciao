@@ -63,12 +63,11 @@ var server = struct {
 
 type testServer struct{}
 
-func (ts *testServer) ConnectNotify(uuid string, role uint32) {
+func (ts *testServer) ConnectNotify(uuid string, role ssntp.Role) {
 	server.Lock()
 	defer server.Unlock()
 
-	if !(role == ssntp.AGENT || role == ssntp.NETAGENT ||
-		role == ssntp.NETAGENT|ssntp.AGENT) {
+	if !(role.IsAgent() || role.IsNetAgent()) {
 		return
 	}
 
@@ -79,7 +78,7 @@ func (ts *testServer) ConnectNotify(uuid string, role uint32) {
 	server.clients[uuid] = new(client)
 }
 
-func (ts *testServer) DisconnectNotify(uuid string, role uint32) {
+func (ts *testServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	server.Lock()
 	defer server.Unlock()
 

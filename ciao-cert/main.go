@@ -123,27 +123,27 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 }
 
 func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) []asn1.ObjectIdentifier {
-	if role&ssntp.AGENT == ssntp.AGENT {
+	if role.IsAgent() {
 		oids = append(oids, ssntp.RoleAgentOID)
 	}
 
-	if role&ssntp.SCHEDULER == ssntp.SCHEDULER {
+	if role.IsScheduler() {
 		oids = append(oids, ssntp.RoleSchedulerOID)
 	}
 
-	if role&ssntp.Controller == ssntp.Controller {
+	if role.IsController() {
 		oids = append(oids, ssntp.RoleControllerOID)
 	}
 
-	if role&ssntp.NETAGENT == ssntp.NETAGENT {
+	if role.IsNetAgent() {
 		oids = append(oids, ssntp.RoleNetAgentOID)
 	}
 
-	if role&ssntp.SERVER == ssntp.SERVER {
+	if role.IsServer() {
 		oids = append(oids, ssntp.RoleServerOID)
 	}
 
-	if role&ssntp.CNCIAGENT == ssntp.CNCIAGENT {
+	if role.IsCNCIAgent() {
 		oids = append(oids, ssntp.RoleCNCIAgentOID)
 	}
 

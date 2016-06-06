@@ -40,16 +40,16 @@ type ssntpEchoServer struct {
 	majorChannel          chan struct{}
 }
 
-func (server *ssntpEchoServer) ConnectNotify(uuid string, role uint32) {
+func (server *ssntpEchoServer) ConnectNotify(uuid string, role Role) {
 	if server.roleConnectChannel != nil {
-		sRole := (Role)(role)
+		sRole := role
 		server.roleConnectChannel <- sRole.String()
 	}
 }
 
-func (server *ssntpEchoServer) DisconnectNotify(uuid string, role uint32) {
+func (server *ssntpEchoServer) DisconnectNotify(uuid string, role Role) {
 	if server.roleDisconnectChannel != nil {
-		sRole := (Role)(role)
+		sRole := role
 		server.roleDisconnectChannel <- sRole.String()
 	}
 }
@@ -81,10 +81,10 @@ type ssntpEchoFwderServer struct {
 	t     *testing.T
 }
 
-func (server *ssntpEchoFwderServer) ConnectNotify(uuid string, role uint32) {
+func (server *ssntpEchoFwderServer) ConnectNotify(uuid string, role Role) {
 }
 
-func (server *ssntpEchoFwderServer) DisconnectNotify(uuid string, role uint32) {
+func (server *ssntpEchoFwderServer) DisconnectNotify(uuid string, role Role) {
 }
 
 func (server *ssntpEchoFwderServer) StatusNotify(uuid string, status Status, frame *Frame) {
@@ -128,10 +128,10 @@ type ssntpServer struct {
 	t     *testing.T
 }
 
-func (server *ssntpServer) ConnectNotify(uuid string, role uint32) {
+func (server *ssntpServer) ConnectNotify(uuid string, role Role) {
 }
 
-func (server *ssntpServer) DisconnectNotify(uuid string, role uint32) {
+func (server *ssntpServer) DisconnectNotify(uuid string, role Role) {
 }
 
 func (server *ssntpServer) StatusNotify(uuid string, status Status, frame *Frame) {
@@ -268,7 +268,7 @@ func (client *ssntpClient) ErrorNotify(error Error, frame *Frame) {
 	}
 }
 
-func buildTestConfig(role uint32) (*Config, error) {
+func buildTestConfig(role Role) (*Config, error) {
 	CACert, cert, err := getCert(role)
 	if err != nil {
 		return nil, err
@@ -330,7 +330,7 @@ func TestUUID(t *testing.T) {
 	server.ssntp.Stop()
 }
 
-func testGetOIDsFromRole(t *testing.T, role uint32, expectedOIDs []asn1.ObjectIdentifier) {
+func testGetOIDsFromRole(t *testing.T, role Role, expectedOIDs []asn1.ObjectIdentifier) {
 	oids, err := getOIDsFromRole(role)
 	if err != nil {
 		t.Fatalf("%s\n", err)
@@ -351,7 +351,7 @@ func testGetOIDsFromRole(t *testing.T, role uint32, expectedOIDs []asn1.ObjectId
 	}
 }
 
-func testGetRoleFromOIDs(t *testing.T, oids []asn1.ObjectIdentifier, expected uint32) {
+func testGetRoleFromOIDs(t *testing.T, oids []asn1.ObjectIdentifier, expected Role) {
 	role := getRoleFromOIDs(oids)
 
 	if role|expected != expected {
@@ -428,7 +428,7 @@ func TestGetOIDFromNetAgentCnAgentRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetOIDFromInvalidRole(t *testing.T) {
-	_, err := getOIDsFromRole((uint32)(UNKNOWN))
+	_, err := getOIDsFromRole(UNKNOWN)
 	if err == nil {
 		t.Fatalf("Got OID for an invalid role\n")
 	}
@@ -503,7 +503,7 @@ func TestGetRoleFromAgenNetAgentOID(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetRoleFromInvalidOID(t *testing.T) {
-	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{{1, 3, 6, 1, 4, 1, 0, 0, 0}}, (uint32)(UNKNOWN))
+	testGetRoleFromOIDs(t, []asn1.ObjectIdentifier{{1, 3, 6, 1, 4, 1, 0, 0, 0}}, UNKNOWN)
 }
 
 // Test SSNTP client connection
@@ -557,7 +557,7 @@ func testConnectRole(t *testing.T, role Role) {
 	}
 
 	client.t = t
-	clientConfig, err := buildTestConfig((uint32)(role))
+	clientConfig, err := buildTestConfig(role)
 	if err != nil {
 		t.Fatalf("Could not build a test config")
 	}
@@ -597,7 +597,7 @@ func testDisconnectRole(t *testing.T, role Role) {
 	}
 
 	client.t = t
-	clientConfig, err := buildTestConfig((uint32)(role))
+	clientConfig, err := buildTestConfig(role)
 	if err != nil {
 		t.Fatalf("Could not build a test config")
 	}
@@ -821,7 +821,7 @@ func TestMajor(t *testing.T) {
 	server.ssntp.Stop()
 }
 
-func roleToCert(role uint32) string {
+func roleToCert(role Role) string {
 	switch role {
 	case SCHEDULER:
 		return testCertScheduler
@@ -858,13 +858,13 @@ func _getCert(CACertFileName, certFileName string, CACert, certString string) (s
 	return caPath, certPath, nil
 }
 
-func getCert(role uint32) (string, string, error) {
-	var newRole = (Role)(role)
+func getCert(role Role) (string, string, error) {
+	var newRole = role
 
 	return _getCert("CACert", newRole.String(), testCACert, roleToCert(role))
 }
 
-func validRoles(serverRole, clientRole uint32) bool {
+func validRoles(serverRole, clientRole Role) bool {
 	if serverRole == SCHEDULER && clientRole == AGENT {
 		return true
 	}
@@ -876,7 +876,7 @@ func validRoles(serverRole, clientRole uint32) bool {
 	return false
 }
 
-func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole uint32) {
+func testConnectVerifyCertificate(t *testing.T, serverRole, clientRole Role) {
 	var server ssntpEchoServer
 	var client ssntpClient
 
@@ -1010,14 +1010,14 @@ func TestConnectPort(t *testing.T) {
 }
 
 func testMultiURIs(t *testing.T, CACert string, expectedURIs []string, configURI string, configPort uint32) {
-	role := AGENT
+	var role Role = AGENT
 
-	clientConfig, err := buildTestConfig((uint32)(role))
+	clientConfig, err := buildTestConfig(role)
 	if err != nil {
 		t.Fatalf("Could not build a test config")
 	}
 
-	CAcert, _, err := _getCert("CACertMultiURI", "CertAgentMultiURI", CACert, roleToCert((uint32)(role)))
+	CAcert, _, err := _getCert("CACertMultiURI", "CertAgentMultiURI", CACert, roleToCert(role))
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -2430,10 +2430,10 @@ type ssntpNullServer struct {
 	done  chan struct{}
 }
 
-func (server *ssntpNullServer) ConnectNotify(uuid string, role uint32) {
+func (server *ssntpNullServer) ConnectNotify(uuid string, role Role) {
 }
 
-func (server *ssntpNullServer) DisconnectNotify(uuid string, role uint32) {
+func (server *ssntpNullServer) DisconnectNotify(uuid string, role Role) {
 }
 
 func (server *ssntpNullServer) StatusNotify(uuid string, status Status, frame *Frame) {
