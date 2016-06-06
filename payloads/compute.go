@@ -115,6 +115,15 @@ type ComputeServers struct {
 	Servers      []Server `json:"servers"`
 }
 
+// NewComputeServers allocates a ComputeServers structure.
+// It allocates the Servers slice as well so that the marshalled
+// JSON is an empty array and not a nil pointer for, as
+// specified by the OpenStack APIs.
+func NewComputeServers() (servers ComputeServers) {
+	servers.Servers = []Server{}
+	return
+}
+
 // ComputeServer represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/servers/{server} response.  It contains information about a
 // specific instance within a ciao cluster.
@@ -131,6 +140,19 @@ type ComputeFlavors struct {
 		Links []Link `json:"links"`
 		Name  string `json:"name"`
 	} `json:"flavors"`
+}
+
+// NewComputeFlavors allocates a ComputeFlavors structure.
+// It allocates the Flavors slice as well so that the marshalled
+// JSON is an empty array and not a nil pointer, as specified
+// by the OpenStack APIs.
+func NewComputeFlavors() (flavors ComputeFlavors) {
+	flavors.Flavors = []struct {
+		ID    string `json:"id"`
+		Links []Link `json:"links"`
+		Name  string `json:"name"`
+	}{}
+	return
 }
 
 // FlavorDetails contains information about a specific flavor.
@@ -161,6 +183,15 @@ type ComputeFlavorsDetails struct {
 	Flavors []FlavorDetails `json:"flavors"`
 }
 
+// NewComputeFlavorsDetails allocates a ComputeFlavorsDetails structure.
+// It allocates the Flavors slice as well so that the marshalled
+// JSON is an empty array and not a nil pointer, as specified by the
+// OpenStack APIs.
+func NewComputeFlavorsDetails() (flavors ComputeFlavorsDetails) {
+	flavors.Flavors = []FlavorDetails{}
+	return
+}
+
 // ComputeCreateServer represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/servers request.  It contains the information needed to start
 // one or more instances.
@@ -182,6 +213,18 @@ type CiaoComputeTenants struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"tenants"`
+}
+
+// NewCiaoComputeTenants allocates a CiaoComputeTenants structure.
+// It allocates the Tenants slice as well so that the marshalled
+// JSON is an empty array and not a nil pointer, as specified by the
+// OpenStack APIs.
+func NewCiaoComputeTenants() (tenants CiaoComputeTenants) {
+	tenants.Tenants = []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}{}
+	return
 }
 
 // CiaoComputeNode contains status and statistic information for an individual
@@ -207,6 +250,15 @@ type CiaoComputeNode struct {
 // for a set of nodes.
 type CiaoComputeNodes struct {
 	Nodes []CiaoComputeNode `json:"nodes"`
+}
+
+// NewCiaoComputeNodes allocates a CiaoComputeNodes structure.
+// It allocates the Nodes slice as well so that the marshalled
+// JSON is an empty array and not a nil pointer, as specified by the
+// OpenStack APIs.
+func NewCiaoComputeNodes() (nodes CiaoComputeNodes) {
+	nodes.Nodes = []CiaoComputeNode{}
+	return
 }
 
 // CiaoTenantResources represents the unmarshalled version of the contents of a
@@ -267,6 +319,15 @@ type CiaoCNCIs struct {
 	CNCIs []CiaoCNCI `json:"cncis"`
 }
 
+// NewCiaoCNCIs allocates a CiaoCNCIs structure.
+// It allocates the CNCIs slice as well so that the marshalled
+// JSON is an empty array and not a nil pointer, as specified by the
+// OpenStack APIs.
+func NewCiaoCNCIs() (cncis CiaoCNCIs) {
+	cncis.CNCIs = []CiaoCNCI{}
+	return
+}
+
 // CiaoServerStats contains status information about a CN or a NN.
 type CiaoServerStats struct {
 	ID        string    `json:"id"`
@@ -286,6 +347,15 @@ type CiaoServerStats struct {
 type CiaoServersStats struct {
 	TotalServers int               `json:"total_servers"`
 	Servers      []CiaoServerStats `json:"servers"`
+}
+
+// NewCiaoServersStats allocates a CiaoServersStats structure.
+// It allocates the Servers slice as well so that the marshalled
+// JSON is an empty array and not a nil pointer, as specified by the
+// OpenStack APIs.
+func NewCiaoServersStats() (servers CiaoServersStats) {
+	servers.Servers = []CiaoServerStats{}
+	return
 }
 
 // CiaoClusterStatus represents the unmarshalled version of the contents of a
@@ -370,4 +440,13 @@ type CiaoEvent struct {
 // v2.1/{tenant}/event or v2.1/event request.
 type CiaoEvents struct {
 	Events []CiaoEvent `json:"events"`
+}
+
+// NewCiaoEvents allocates a CiaoEvents structure.
+// It allocates the Events slice as well so that the marshalled
+// JSON is an empty array and not a nil pointer, as specified by the
+// OpenStack APIs.
+func NewCiaoEvents() (events CiaoEvents) {
+	events.Events = []CiaoEvent{}
+	return
 }
