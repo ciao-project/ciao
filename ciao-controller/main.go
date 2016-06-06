@@ -126,6 +126,7 @@ func main() {
 		glog.Errorf("Please")
 		glog.Errorf("export CIAO_IDENTITY=%s", id.URL)
 		glog.Errorf("========================")
+		glog.Flush()
 	}
 
 	idConfig := identityConfig{
