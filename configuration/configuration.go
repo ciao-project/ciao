@@ -47,15 +47,6 @@ func validMinConf(conf *payloads.Configure) bool {
 		conf.Configure.IdentityService.URL != "")
 }
 
-func fillDefaults(conf *payloads.Configure) {
-	conf.Configure.Scheduler.ConfigStorageType = payloads.Filesystem
-	conf.Configure.Controller.ComputePort = 8774
-	conf.Configure.ImageService.Type = payloads.Glance
-	conf.Configure.IdentityService.Type = payloads.Keystone
-	conf.Configure.Launcher.DiskLimit = true
-	conf.Configure.Launcher.MemoryLimit = true
-}
-
 // TODO: add etcd support related scheme(s)
 func discoverDriver(uriStr string) (storageType payloads.StorageType, err error) {
 	uri, err := url.Parse(uriStr)
@@ -77,7 +68,7 @@ func Payload(blob []byte) (conf payloads.Configure, err error) {
 	if blob == nil {
 		return conf, fmt.Errorf("Unable to retrieve configuration from empty definition")
 	}
-	fillDefaults(&conf)
+	conf.InitDefaults()
 	err = yaml.Unmarshal(blob, &conf)
 
 	return conf, err

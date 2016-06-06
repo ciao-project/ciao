@@ -149,7 +149,7 @@ func emptyPayload(p payloads.Configure) bool {
 }
 
 func fillPayload(conf *payloads.Configure) {
-	fillDefaults(conf)
+	conf.InitDefaults()
 	conf.Configure.Scheduler.ConfigStorageURI = storageURI
 	conf.Configure.Controller.HTTPSCACert = httpsCACert
 	conf.Configure.Controller.HTTPSKey = httpsKey
@@ -208,9 +208,9 @@ func saneDefaults(conf *payloads.Configure) bool {
 		conf.Configure.Launcher.MemoryLimit == true)
 }
 
-func TestFillDefaults(t *testing.T) {
+func TestInitDefaults(t *testing.T) {
 	var conf payloads.Configure
-	fillDefaults(&conf)
+	conf.InitDefaults()
 	res := saneDefaults(&conf)
 	if res != true {
 		t.Fatalf("Expected true, got %v", res)
