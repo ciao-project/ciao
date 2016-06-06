@@ -936,7 +936,7 @@ func (config *Config) parseCertificateAuthority() ([]string, []string, error) {
 
 	certBlock, _ := pem.Decode(caPEM)
 	if certBlock == nil {
-		fmt.Printf("Could not decode PEM for %s\n", config.CAcert)
+		return nil, nil, fmt.Errorf("Could not decode PEM for %s", config.CAcert)
 	}
 
 	cert, err := x509.ParseCertificates(certBlock.Bytes)
@@ -964,7 +964,7 @@ func (config *Config) parseCertificate() (uint32, error) {
 
 	certBlock, _ := pem.Decode(certPEM)
 	if certBlock == nil {
-		fmt.Printf("Could not decode PEM for %s\n", config.CAcert)
+		return 0, fmt.Errorf("Could not decode PEM for %s", config.CAcert)
 	}
 
 	cert, err := x509.ParseCertificates(certBlock.Bytes)
