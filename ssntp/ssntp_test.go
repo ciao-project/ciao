@@ -181,6 +181,7 @@ type ssntpClient struct {
 	staChannel   chan string
 	evtChannel   chan string
 	errChannel   chan string
+	uuidChannel  chan string
 
 	cmdTracedChannel   chan string
 	cmdDurationChannel chan time.Duration
@@ -219,6 +220,11 @@ func (client *ssntpClient) CommandNotify(command Command, frame *Frame) {
 
 	if client.cmdChannel != nil && bytes.Equal(frame.Payload, client.payload) == true {
 		client.cmdChannel <- command.String()
+	}
+
+	if client.uuidChannel != nil {
+		uuid := frame.Origin
+		client.uuidChannel <- uuid.String()
 	}
 
 	if client.cmdDumpChannel != nil {
@@ -1907,6 +1913,81 @@ func TestCmdFwd(t *testing.T) {
 }
 
 const controllerUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
+const agentUUID = "4481631c-dce9-48d6-b83a-a717417072ce"
+
+// Test SSNTP Origin UUID
+//
+// Start an SSNTP server with a set of forwarding rules, an SSNTP
+// agent and an SSNTP Controller.
+// Then verify that the Controller receives a frame which Origin
+// field is the agent UUID.
+//
+// Test is expected to pass.
+func TestOriginUUID(t *testing.T) {
+	var server ssntpServer
+	var controller, agent ssntpClient
+	command := CONFIGURE
+
+	server.t = t
+	serverConfig, err := buildTestConfig(SCHEDULER)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	serverConfig.ForwardRules = []FrameForwardRule{
+		{
+			Operand: command,
+			Dest:    Controller,
+		},
+	}
+
+	controller.t = t
+	controller.uuidChannel = make(chan string)
+	controllerConfig, err := buildTestConfig(Controller)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+
+	agent.t = t
+	agentConfig, err := buildTestConfig(AGENT)
+	if err != nil {
+		t.Fatalf("Could not build a test config")
+	}
+	agentConfig.UUID = agentUUID
+
+	err = server.ssntp.ServeThreadSync(serverConfig, &server)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	err = controller.ssntp.Dial(controllerConfig, &controller)
+	if err != nil {
+		t.Fatalf("Controller failed to connect")
+	}
+
+	err = agent.ssntp.Dial(agentConfig, &agent)
+	if err != nil {
+		t.Fatalf("Agent failed to connect")
+	}
+
+	payload := []byte{'C', 'O', 'N', 'F', 'I', 'G'}
+	controller.payload = payload
+	agent.payload = payload
+	agent.ssntp.SendCommand(command, agent.payload)
+
+	select {
+	case uuid := <-controller.uuidChannel:
+		if uuid != agentUUID {
+			t.Fatalf("Did not receive the right origin UUID %s vs %s", uuid, agentUUID)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Did not receive the uuid notification")
+	}
+
+	agent.ssntp.Close()
+	controller.ssntp.Close()
+	server.ssntp.Stop()
+}
 
 // Test SSNTP Command forwarder implementation
 //

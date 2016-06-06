@@ -63,8 +63,6 @@ func (server *ssntpDumpServer) ErrorNotify(uuid string, error Error, frame *Fram
 	fmt.Printf("%s: ERROR (%s) from %s\n", server.name, error, uuid)
 }
 
-const agentUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
-
 func (server *ssntpDumpServer) CommandForward(uuid string, command Command, frame *Frame) (dest ForwardDestination) {
 	dest.AddRecipient(agentUUID)
 
