@@ -111,6 +111,7 @@ func (session *session) commandFrame(cmd Command, payload []byte, trace *TraceCo
 		Minor:         minor,
 		Type:          COMMAND,
 		Operand:       byte(cmd),
+		Origin:        session.src,
 		PayloadLength: (uint32)(len(payload)),
 		Payload:       payload,
 	}
@@ -127,6 +128,7 @@ func (session *session) statusFrame(status Status, payload []byte, trace *TraceC
 		Minor:         minor,
 		Type:          STATUS,
 		Operand:       byte(status),
+		Origin:        session.src,
 		PayloadLength: (uint32)(len(payload)),
 		Payload:       payload,
 	}
@@ -143,6 +145,7 @@ func (session *session) eventFrame(event Event, payload []byte, trace *TraceConf
 		Minor:         minor,
 		Type:          EVENT,
 		Operand:       byte(event),
+		Origin:        session.src,
 		PayloadLength: (uint32)(len(payload)),
 		Payload:       payload,
 	}
@@ -159,6 +162,7 @@ func (session *session) errorFrame(error Error, payload []byte, trace *TraceConf
 		Minor:         minor,
 		Type:          ERROR,
 		Operand:       byte(error),
+		Origin:        session.src,
 		PayloadLength: (uint32)(len(payload)),
 		Payload:       payload,
 	}
