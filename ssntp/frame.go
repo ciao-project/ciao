@@ -62,10 +62,17 @@ type FrameTrace struct {
 
 // Frame represents an SSNTP frame structure.
 type Frame struct {
-	Major         uint8
-	Minor         uint8
-	Type          Type
-	Operand       uint8
+	Major   uint8
+	Minor   uint8
+	Type    Type
+	Operand uint8
+
+	// Origin is the frame first sender and creator UUID.
+	// When a SSNTP frame is forwarded by a server, the client
+	// then only sees a new frame coming but it can not tell
+	// who the frame creator and first sender is. This method
+	// allows to fetch such information from a frame.
+	Origin        uuid.UUID
 	PayloadLength uint32
 	Trace         *FrameTrace
 	Payload       []byte
@@ -158,12 +165,12 @@ func (f Frame) String() string {
 			path = path + fmt.Sprintf("\n\t\tNode #%d\n\t\tUUID %s\n", i, node) + ts
 		}
 
-		return fmt.Sprintf("\n\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tPayload len %d\n\tPath %s\n",
-			f.major(), f.Minor, t, op, f.PayloadLength, path)
+		return fmt.Sprintf("\n\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tOrigin %s\n\tPayload len %d\n\tPath %s\n",
+			f.major(), f.Minor, t, op, f.Origin, f.PayloadLength, path)
 	}
 
-	return fmt.Sprintf("\n\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tPayload len %d\n",
-		f.major(), f.Minor, t, op, f.PayloadLength)
+	return fmt.Sprintf("\n\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tOrigin %s\n\tPayload len %d\n",
+		f.major(), f.Minor, t, op, f.Origin, f.PayloadLength)
 }
 
 func (f ConnectFrame) String() string {
