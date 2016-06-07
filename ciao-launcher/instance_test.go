@@ -249,6 +249,10 @@ func (v *instanceTestState) deleteInstance(t *testing.T, ovsCh chan interface{},
 	}
 }
 
+func (v *instanceTestState) ClusterConfiguration() (payloads.Configure, error) {
+	return payloads.Configure{}, nil
+}
+
 func cleanupShutdownFail(t *testing.T, instance string, doneCh chan struct{}, ovsCh chan interface{}) {
 	_ = os.RemoveAll(path.Join(instancesDir, instance))
 	shutdownInstanceLoop(doneCh, ovsCh)

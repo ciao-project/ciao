@@ -91,12 +91,8 @@ Usage of ./launcher:
     	Client certificate (default "/etc/pki/ciao/CAcert-server-localhost.pem")
   -cert string
     	CA certificate (default "/etc/pki/ciao/cert-client-localhost.pem")
-  -compute-net string
-    	Compute Subnet
   -cpuprofile string
     	write profile information to file
-  -disk-limit
-    	Use disk usage limits (default true)
   -hard-reset
     	Kill and delete all instances, reset networking and exit
   -log_backtrace_at value
@@ -105,10 +101,6 @@ Usage of ./launcher:
     	If non-empty, write log files in this directory
   -logtostderr
     	log to standard error instead of files
-  -mem-limit
-    	Use memory usage limits (default true)
-  -mgmt-net string
-    	Management Subnet
   -network value
     	Can be none, cn (compute node) or nn (network node) (default none)
   -server string
