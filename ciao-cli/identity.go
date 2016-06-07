@@ -161,10 +161,6 @@ func getScopedToken(username string, password string, projectScope string) (stri
 		return "", "", "", nil
 	}
 
-	if *dumpToken == true {
-		dumpJSON(result.Body)
-	}
-
 	infof("Got token %s for tenant %s, user %s (%s, %s, %s)\n", token.ID, tenantID, userID, username, password, projectScope)
 
 	return token.ID, tenantID, userID, nil

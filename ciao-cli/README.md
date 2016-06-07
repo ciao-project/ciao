@@ -9,99 +9,54 @@ compute API [endpoints](https://github.com/01org/ciao/blob/master/ciao-controlle
 ## Usage
 
 ```shell
-Usage of ciao-cli:
-  -all-instances
-    	Select all instances
+ciao-cli: Command-line interface for the Cloud Integrated Advanced Orchestrator (CIAO)                                    [8/381]
+
+Usage:
+
+        ciao-cli [options] command sub-command [flags]
+
+The options are:
+
   -alsologtostderr
-    	log to standard error as well as files
-  -cluster-status
-    	List all compute nodes
-  -cn string
-    	Compute node UUID
-  -cnci string
-    	CNCI UUID
+        log to standard error as well as files
   -computeport int
-    	Openstack Compute API port (default 8774)
+        Openstack Compute API port (default 8774)
   -controller string
-    	Controller URL
-  -delete-events
-    	Delete all stored Ciao events
-  -delete-instance
-    	Delete a Ciao instance
-  -dump-cnci
-    	Dump a CNCI details
-  -dump-label string
-    	Dump all trace data for a given label
-  -dump-tenant-id
-    	Dump tenant UUID
-  -dump-token
-    	Dump keystone tokens
+        Controller URL
   -identity string
-    	Keystone URL
-  -instance string
-    	Instance UUID
-  -instance-label string
-    	Set a frame label. This will trigger frame tracing
-  -instance-marker string
-    	Show instance list starting from the next instance after instance-marker
-  -instance-offset int
-    	Show instance list starting from instance #instance-offset
-  -instances int
-    	Number of instances to create (default 1)
-  -launch-instances
-    	Launch Ciao instances
-  -list-all-events
-    	List all cluster events
-  -list-cn-instances
-    	List all instances for a compute node
-  -list-cncis
-    	List all CNCIs
-  -list-cns
-    	List all compute nodes
-  -list-events
-    	List all events for a tenant
-  -list-instances
-    	List all instances for a tenant
-  -list-labels
-    	List all trace labels
-  -list-length int
-	Maximum number of items in the response
-  -list-quotas
-    	List quotas status for a tenant
-  -list-resources
-    	List consumed resources for a tenant for the past 15mn
-  -list-tenants
-    	List all tenants
-  -list-wl-instances
-    	List all instances for a workload
-  -list-workloads
-    	List all workloads
+        Keystone URL
   -log_backtrace_at value
-    	when logging hits line file:N, emit a stack trace (default :0)
+        when logging hits line file:N, emit a stack trace (default :0)
   -log_dir string
-    	If non-empty, write log files in this directory
+        If non-empty, write log files in this directory
   -logtostderr
-    	log to standard error instead of files
+        log to standard error instead of files
   -password string
-    	Openstack Service Username
-  -restart-instance
-    	Restart a Ciao instance
+        Openstack Service Password
   -stderrthreshold value
-    	logs at or above this threshold go to stderr
-  -stop-instance
-    	Stop a Ciao instance
+        logs at or above this threshold go to stderr
   -tenant-id string
-    	Tenant UUID
+        Tenant UUID
   -tenant-name string
-    	Tenant name
+        Tenant name
   -username string
-    	Openstack Service Username
+        Openstack Service Username
   -v value
-    	log level for V logs
+        log level for V logs
   -vmodule value
-    	comma-separated list of pattern=N settings for file-filtered logging
-  -workload string
-    	Workload UUID
+        comma-separated list of pattern=N settings for file-filtered logging
+
+
+The commands are:
+
+        event
+        instance
+        node
+        tenant
+        trace
+        workload
+
+Use "ciao-cli command -help" for more information about that command.
 ```
 
 ## Ciao environment variables
@@ -115,7 +70,7 @@ credentials and networking information:
 * `CIAO_USERNAME` exports the Ciao username
 * `CIAO_PASSWORD` export the Ciao password for `CIAO_USERNAME`
 
-All those environmant variables can be set through an rc file.
+All those environment variables can be set through an rc file.
 For example:
 
 ```shell
@@ -158,10 +113,10 @@ ciao-cli commands.
 Some ciao-cli commands are privileged and can only be run by administrators.
 
 Non privileged commands can be run by all users. Administrators will have to specify
-a tenant/project UUID through the -tenant-id option in order to specify against which
+a tenant/project UUID through the -tenant option in order to specify against which
 CIAO tenant/project they're running the command:
 ```shell
-$GOBIN/ciao-cli -password ciao -username admin -list-instances -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+$GOBIN/ciao-cli -password ciao -username admin instance list -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
 ```
 
 Non privileged users belonging to several tenants/projects will also have to specify
@@ -169,14 +124,14 @@ a tenant/project UUID or name through either the -tenant-id or -tenant-name opti
 in order to specify against which CIAO tenant/project they're running the command:
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -list-instances -tenant-name project1
+$GOBIN/ciao-cli -username user -password ciaouser -tenant-name project1 instance list
 ```
 
 Non privileged users belonging to only one single tenant/project do not need to
 pass the tenant/project UUID or name when running non privileged commands:
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -list-instances
+$GOBIN/ciao-cli -username user -password ciaouser instance list
 ```
 
 
@@ -206,125 +161,125 @@ export CIAO_PASSWORD=ciaouser
 ### Cluster status (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -cluster-status
+$GOBIN/ciao-cli -username admin -password ciao node status
 ```
 
 ### List all compute nodes (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -list-cns
+$GOBIN/ciao-cli -username admin -password ciao node list -compute
 ```
 
 ### List all CNCIs (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -list-cncis
+$GOBIN/ciao-cli -username admin -password ciao node list -cnci
 ```
 
 ### List all tenants/projects (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -list-tenants
+$GOBIN/ciao-cli -username admin -password ciao tenant list -all
 ```
 
 ### List quotas
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -list-quotas
+$GOBIN/ciao-cli -username user -password ciaouser tenant list -quotas
 ```
 
 ### List consumed resources
 
 ```shell
-$GOBIN/ciao-cli -list-resources
+$GOBIN/ciao-cli tenant list -resources
 ```
 
 ### List all instances
 
 ```shell
-$GOBIN/ciao-cli -list-instances
+$GOBIN/ciao-cli instance list
 ```
 
 ### List at most the first 10 instances
 
 ```shell
-$GOBIN/ciao-cli -list-instances -list-length 10
+$GOBIN/ciao-cli instance list -limit 10
 ```
 
 ### List at most the 20 instances starting from instance number 10
 
 ```shell
-$GOBIN/ciao-cli -list-instances -list-length 20 -instance-offset 10
+$GOBIN/ciao-cli instance list -limit 20 -offset 10
 ```
 
 ### List all workloads
 
 ```shell
-$GOBIN/ciao-cli -list-workloads
+$GOBIN/ciao-cli workload list
 ```
 
 ### Launch a new instance
 
 ```shell
-$GOBIN/ciao-cli -launch-instances -workload 69e84267-ed01-4738-b15f-b47de06b62e7
+$GOBIN/ciao-cli instance add -workload 69e84267-ed01-4738-b15f-b47de06b62e7
 ```
 
 ### Launch 1000 new instances
 
 ```shell
-$GOBIN/ciao-cli -launch-instances -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instances 1000
+$GOBIN/ciao-cli instance add -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instances 1000
 ```
 
 ### Launch 1000 instances and trace them
 
 ```shell
-$GOBIN/ciao-cli -launch-instances -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -instance-label start_trace_20160415
+$GOBIN/ciao-cli instance add -workload 69e84267-ed01-4738-b15f-b47de06b62e7 -label start_trace_20160415 -instances 1000
 ```
 
 ### Stop a running instance
 
 ```shell
-$GOBIN/ciao-cli -stop-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
+$GOBIN/ciao-cli instance stop -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
 ```
 
 ### Restart a stopped instance
 
 ```shell
-$GOBIN/ciao-cli -restart-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
+$GOBIN/ciao-cli instance restart -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
 ```
 
 ### Delete an instance
 
 ```shell
-$GOBIN/ciao-cli -delete-instance -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
+$GOBIN/ciao-cli instance delete -instance 4c46ace5-cf92-4ce5-a0ac-68f6d524f8aa
 ```
 
 ### Delete all instances for a given tenant
 
 ```shell
-$GOBIN/ciao-cli -delete-instance -all-instances
+$GOBIN/ciao-cli instance delete -all
 ```
 
 ### List all available trace labels (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -list-labels
+$GOBIN/ciao-cli -username admin -password ciao trace list
 ```
 
 ### Dump and display trace data from a given trace label (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -dump-label -instance-label start_trace_20160415
+$GOBIN/ciao-cli -username admin -password ciao trace show -label start_trace_20160415
 ```
 
 ### List all cluster events (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao -list-all-events
+$GOBIN/ciao-cli -username admin -password ciao event list -all
 ``
 
 ### List all cluster events for a given tenant
 
 ```shell
-$GOBIN/ciao-cli -list-events
+$GOBIN/ciao-cli event list
 ```
