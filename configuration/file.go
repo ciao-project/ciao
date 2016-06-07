@@ -52,8 +52,8 @@ func (f *file) fetchConfiguration(uriStr string) (conf payloads.Configure, err e
 	if err != nil {
 		return conf, err
 	}
-	fillDefaults(&conf)
-	err = Payload(yamlConf, &conf)
+
+	conf, err = Payload(yamlConf)
 	if err != nil {
 		return conf, err
 	}

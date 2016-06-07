@@ -162,8 +162,7 @@ func fillPayload(conf *payloads.Configure) {
 }
 
 func testPayload(t *testing.T, blob []byte, expectedConf payloads.Configure, positive bool) {
-	var conf payloads.Configure
-	err := Payload(blob, &conf)
+	conf, err := Payload(blob)
 
 	// expected FAIL
 	if positive == false && err == nil {

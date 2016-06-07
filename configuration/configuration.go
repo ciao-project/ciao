@@ -73,15 +73,14 @@ func discoverDriver(uriStr string) (storageType payloads.StorageType, err error)
 
 // Payload fills the payloads.Configure struct passed in 'conf'
 // with the values from the bytes given
-func Payload(yamlConf []byte, conf *payloads.Configure) (err error) {
-	if yamlConf == nil {
-		return fmt.Errorf("Unable to retrieve configuration from empty definition")
+func Payload(blob []byte) (conf payloads.Configure, err error) {
+	if blob == nil {
+		return conf, fmt.Errorf("Unable to retrieve configuration from empty definition")
 	}
-	err = yaml.Unmarshal(yamlConf, &conf)
-	if err != nil {
-		return err
-	}
-	return nil
+	fillDefaults(&conf)
+	err = yaml.Unmarshal(blob, &conf)
+
+	return conf, err
 }
 
 // Blob returns an array of bytes containing
@@ -100,7 +99,7 @@ func Blob(conf *payloads.Configure) (blob []byte, err error) {
 
 // ExtractBlob returns a configuration payload.
 // It could be used by the SSNTP server or some other entity.
-func ExtractBlob(uri string) (payload []byte, err error) {
+func ExtractBlob(uri string) (blob []byte, err error) {
 	var d driver
 	driverType, err := discoverDriver(uri)
 	if err != nil {
@@ -116,9 +115,9 @@ func ExtractBlob(uri string) (payload []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	payload, err = Blob(&conf)
+	blob, err = Blob(&conf)
 	if err != nil {
 		return nil, err
 	}
-	return payload, nil
+	return blob, nil
 }
