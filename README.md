@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/01org/ciao.png?label=ready&title=Ready)](https://waffle.io/01org/ciao)
 #Ciao Project
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/01org/ciao)](https://goreportcard.com/report/github.com/01org/ciao)
