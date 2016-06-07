@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
@@ -162,10 +161,8 @@ func getScopedToken(username string, password string, projectScope string) (stri
 		return "", "", "", nil
 	}
 
-	debugf("Token: %s\n", spew.Sdump(result.Body))
-
 	if *dumpToken == true {
-		spew.Dump(result.Body)
+		dumpJSON(result.Body)
 	}
 
 	infof("Got token %s for tenant %s, user %s (%s, %s, %s)\n", token.ID, tenantID, userID, username, password, projectScope)
