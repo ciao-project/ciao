@@ -102,3 +102,13 @@ type ConfigurePayload struct {
 type Configure struct {
 	Configure ConfigurePayload `yaml:"configure"`
 }
+
+// InitDefaults initializes default vaulues for Configure structure.
+func (conf *Configure) InitDefaults() {
+	conf.Configure.Scheduler.ConfigStorageType = Filesystem
+	conf.Configure.Controller.ComputePort = 8774
+	conf.Configure.ImageService.Type = Glance
+	conf.Configure.IdentityService.Type = Keystone
+	conf.Configure.Launcher.DiskLimit = true
+	conf.Configure.Launcher.MemoryLimit = true
+}

@@ -123,7 +123,7 @@ func TestFileStoreConfiguration(t *testing.T) {
 	var d driver
 	var conf payloads.Configure
 
-	fillDefaults(&conf)
+	conf.InitDefaults()
 	d = &file{}
 
 	err := d.storeConfiguration(conf)
