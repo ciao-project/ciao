@@ -927,7 +927,7 @@ const computeTestUser = "f452bbc7-5076-44d5-922c-3b9d2ce1503f"
 func TestMain(m *testing.M) {
 	flag.Parse()
 
-	computeURL = "https://localhost:" + strconv.Itoa(*computeAPIPort)
+	computeURL = "https://localhost:" + strconv.Itoa(computeAPIPort)
 
 	// create fake ssntp server
 	startTestServer(&server)

@@ -44,12 +44,12 @@ var singleMachine = flag.Bool("single", false, "Enable single machine test")
 var cert = flag.String("cert", defaultControllerCert, "Client certificate")
 var caCert = flag.String("cacert", "/etc/pki/ciao/CAcert-localhost.pem", "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
-var identityURL = flag.String("identity", "identity:35357", "Keystone URL")
-var serviceUser = flag.String("username", "csr", "Openstack Service Username")
-var servicePassword = flag.String("password", "", "Openstack Service Username")
-var computeAPIPort = flag.Int("computeport", openstackComputeAPIPort, "Openstack Compute API port")
-var httpsCAcert = flag.String("httpscert", "/etc/pki/ciao/ciao-controller-cacert.pem", "HTTPS CA certificate")
-var httpsKey = flag.String("httpskey", "/etc/pki/ciao/ciao-controller-key.pem", "HTTPS cert key")
+var identityURL = "identity:35357"
+var serviceUser = "csr"
+var servicePassword = ""
+var computeAPIPort = 8774
+var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
+var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
 var tablesInitPath = flag.String("tables_init_path", "./tables", "path to csv files")
 var workloadsPath = flag.String("workloads_path", "./workloads", "path to yaml files")
 var noNetwork = flag.Bool("nonetwork", false, "Debug with no networking")
@@ -110,9 +110,22 @@ func main() {
 		return
 	}
 
+	clusterConfig, err := context.client.ssntp.ClusterConfiguration()
+	if err != nil {
+		glog.Fatalf("Unable to retrieve Cluster Configuration: %v", err)
+		return
+	}
+
+	computeAPIPort = clusterConfig.Configure.Controller.ComputePort
+	httpsCAcert = clusterConfig.Configure.Controller.HTTPSCACert
+	httpsKey = clusterConfig.Configure.Controller.HTTPSKey
+	identityURL = clusterConfig.Configure.IdentityService.URL
+	serviceUser = clusterConfig.Configure.Controller.IdentityUser
+	servicePassword = clusterConfig.Configure.Controller.IdentityPassword
+
 	if *singleMachine {
 		hostname, _ := os.Hostname()
-		computeURL := "https://" + hostname + ":" + strconv.Itoa(*computeAPIPort)
+		computeURL := "https://" + hostname + ":" + strconv.Itoa(computeAPIPort)
 		testIdentityConfig := testutil.TestIdentityConfig{
 			ComputeURL: computeURL,
 			ProjectID:  "f452bbc7-5076-44d5-922c-3b9d2ce1503f",
@@ -120,7 +133,7 @@ func main() {
 
 		id := testutil.StartIdentityTestServer(testIdentityConfig)
 		defer id.Close()
-		*identityURL = id.URL
+		identityURL = id.URL
 		glog.Errorf("========================")
 		glog.Errorf("Identity URL: %s", id.URL)
 		glog.Errorf("Please")
@@ -130,9 +143,9 @@ func main() {
 	}
 
 	idConfig := identityConfig{
-		endpoint:        *identityURL,
-		serviceUserName: *serviceUser,
-		servicePassword: *servicePassword,
+		endpoint:        identityURL,
+		serviceUserName: serviceUser,
+		servicePassword: servicePassword,
 	}
 
 	context.id, err = newIdentityClient(idConfig)
