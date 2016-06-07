@@ -778,6 +778,12 @@ type Config struct {
 	// If Dial() succeeded and is connected to a server, nil will be
 	// pushed to SyncChannel
 	SyncChannel chan error
+
+	// ConfigURI contains the location of the configuration that the
+	// SSNTP server will fetch to setup the cluster.
+	// Configuration driver (e.g: 'file' or 'etcd') will be determinated
+	// from the URI scheme.
+	ConfigURI string
 }
 
 // Logger is an interface for SSNTP users to define their own

@@ -37,6 +37,8 @@ var cacert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", 
 var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
 var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
 var logDir = "/var/lib/ciao/logs/scheduler"
+var configURI = flag.String("configuration-uri", "file:///etc/ciao/configuration.yaml",
+	"Cluster configuration URI")
 
 type ssntpSchedulerServer struct {
 	// user config overrides ------------------------------------------
@@ -1006,8 +1008,9 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 	toggleDebug(sched)
 
 	sched.config = &ssntp.Config{
-		CAcert: *cacert,
-		Cert:   *cert,
+		CAcert:    *cacert,
+		Cert:      *cert,
+		ConfigURI: *configURI,
 	}
 
 	setSSNTPForwardRules(sched)
