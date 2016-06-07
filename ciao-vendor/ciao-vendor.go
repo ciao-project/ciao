@@ -82,7 +82,6 @@ var repos = map[string]repoInfo{
 	"github.com/Sirupsen/logrus":        {"https://github.com/Sirupsen/logrus.git", "v0.9.0", "MIT"},
 	"github.com/boltdb/bolt":            {"https://github.com/boltdb/bolt.git", "144418e", "MIT"},
 	"github.com/coreos/go-iptables":     {"https://github.com/coreos/go-iptables.git", "fbb7337", "Apache v2.0"},
-	"github.com/davecgh/go-spew":        {"https://github.com/davecgh/go-spew.git", "5215b55", "MIT"},
 	"github.com/docker/docker":          {"https://github.com/docker/docker.git", "v1.10.3", "Apache v2.0"},
 	"github.com/docker/engine-api":      {"https://github.com/docker/engine-api.git", "v0.3.3", "Apache v2.0"},
 	"github.com/docker/go-connections":  {"https://github.com/docker/go-connections.git", "5b7154b", "Apache v2.0"},
