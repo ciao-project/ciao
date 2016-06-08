@@ -274,6 +274,33 @@ func (client *SsntpTestClient) handleRestart(payload []byte) CmdResult {
 	return result
 }
 
+func (client *SsntpTestClient) handleDelete(payload []byte) CmdResult {
+	var result CmdResult
+	var deleteCmd payloads.Delete
+
+	err := yaml.Unmarshal(payload, &deleteCmd)
+	if err != nil {
+		result.Err = err
+		return result
+	}
+
+	if !client.DeleteFail {
+		client.instancesLock.Lock()
+		defer client.instancesLock.Unlock()
+		for i := range client.instances {
+			istat := client.instances[i]
+			if istat.InstanceUUID == deleteCmd.Delete.InstanceUUID {
+				client.instances = append(client.instances[:i], client.instances[i+1:]...)
+				break
+			}
+		}
+	} else {
+		client.sendDeleteFailure(deleteCmd.Delete.InstanceUUID, client.DeleteFailReason)
+	}
+
+	return result
+}
+
 // CommandNotify implements the SSNTP client CommandNotify callback for SsntpTestClient
 func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp.Frame) {
 	payload := frame.Payload
@@ -296,6 +323,12 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 	case ssntp.RESTART:
 		result = client.handleRestart(payload)
+
+	case ssntp.DELETE:
+		result = client.handleDelete(payload)
+
+	default:
+		fmt.Printf("client unhandled command %s\n", command.String())
 	}
 
 	client.SendResultAndDelCmdChan(command, result)
@@ -366,6 +399,8 @@ func (client *SsntpTestClient) SendTrace() {
 
 // SendDeleteEvent allows an SsntpTestClient to push an ssntp.InstanceDeleted event frame
 func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
+	var result CmdResult
+
 	evt := payloads.InstanceDeletedEvent{
 		InstanceUUID: uuid,
 	}
@@ -376,14 +411,16 @@ func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
 
 	y, err := yaml.Marshal(event)
 	if err != nil {
-		return
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendEvent(ssntp.InstanceDeleted, y)
+		if err != nil {
+			result.Err = err
+			fmt.Println(err)
+		}
 	}
 
-	_, err = client.Ssntp.SendEvent(ssntp.InstanceDeleted, y)
-	if err != nil {
-		fmt.Println(err)
-	}
-
+	client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
 }
 
 func (client *SsntpTestClient) sendConcentratorAddedEvent(instanceUUID string, tenantUUID string, vnicMAC string) {
@@ -455,6 +492,23 @@ func (client *SsntpTestClient) sendRestartFailure(instanceUUID string, reason pa
 	}
 
 	_, err = client.Ssntp.SendError(ssntp.RestartFailure, y)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (client *SsntpTestClient) sendDeleteFailure(instanceUUID string, reason payloads.DeleteFailureReason) {
+	e := payloads.ErrorDeleteFailure{
+		InstanceUUID: instanceUUID,
+		Reason:       reason,
+	}
+
+	y, err := yaml.Marshal(e)
+	if err != nil {
+		return
+	}
+
+	_, err = client.Ssntp.SendError(ssntp.DeleteFailure, y)
 	if err != nil {
 		fmt.Println(err)
 	}

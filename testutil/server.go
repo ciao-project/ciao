@@ -200,6 +200,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 		result.Err = err
 		if err == nil {
 			result.InstanceUUID = delCmd.Delete.InstanceUUID
+			server.Ssntp.SendCommand(delCmd.Delete.WorkloadAgentUUID, command, frame.Payload)
 		}
 
 	case ssntp.STOP:
