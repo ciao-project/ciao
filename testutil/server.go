@@ -247,6 +247,99 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 
 // EventNotify implements an SSNTP EventNotify callback for SsntpTestServer
 func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame *ssntp.Frame) {
+	var result CmdResult
+
+	payload := frame.Payload
+
+	switch event {
+	case ssntp.NodeConnected:
+		var connectEvent payloads.NodeConnected
+
+		result.Err = yaml.Unmarshal(payload, &connectEvent)
+	case ssntp.NodeDisconnected:
+		var disconnectEvent payloads.NodeDisconnected
+
+		result.Err = yaml.Unmarshal(payload, &disconnectEvent)
+	case ssntp.TraceReport:
+		var traceEvent payloads.Trace
+
+		result.Err = yaml.Unmarshal(payload, &traceEvent)
+	case ssntp.InstanceDeleted:
+		var deleteEvent payloads.EventInstanceDeleted
+
+		result.Err = yaml.Unmarshal(payload, &deleteEvent)
+	case ssntp.ConcentratorInstanceAdded:
+		// forward rule auto-sends to controllers
+	case ssntp.TenantAdded:
+		// forwards to CNCI via server.EventForward()
+	case ssntp.TenantRemoved:
+		// forwards to CNCI via server.EventForward()
+	case ssntp.PublicIPAssigned:
+		// forwards to CNCI via server.EventForward()
+	default:
+		fmt.Printf("server unhandled event %s\n", event.String())
+	}
+
+	server.EventChansLock.Lock()
+	defer server.EventChansLock.Unlock()
+	c, ok := server.EventChans[event]
+	if ok {
+		delete(server.EventChans, event)
+		c <- result
+		close(c)
+	}
+}
+
+func getConcentratorUUID(event ssntp.Event, payload []byte) (string, error) {
+	switch event {
+	default:
+		return "", fmt.Errorf("unsupported ssntp.Event type \"%s\"", event)
+	case ssntp.TenantAdded:
+		var ev payloads.EventTenantAdded
+		err := yaml.Unmarshal(payload, &ev)
+		return ev.TenantAdded.ConcentratorUUID, err
+	case ssntp.TenantRemoved:
+		var ev payloads.EventTenantRemoved
+		err := yaml.Unmarshal(payload, &ev)
+		return ev.TenantRemoved.ConcentratorUUID, err
+	case ssntp.PublicIPAssigned:
+		var ev payloads.EventPublicIPAssigned
+		err := yaml.Unmarshal(payload, &ev)
+		return ev.AssignedIP.ConcentratorUUID, err
+	}
+}
+
+func fwdEventToCNCI(event ssntp.Event, payload []byte) (ssntp.ForwardDestination, error) {
+	var dest ssntp.ForwardDestination
+
+	concentratorUUID, err := getConcentratorUUID(event, payload)
+	if err != nil || concentratorUUID == "" {
+		dest.SetDecision(ssntp.Discard)
+	}
+
+	dest.AddRecipient(concentratorUUID)
+	return dest, err
+}
+
+// EventForward implements and SSNTP EventForward callback for SsntpTestServer
+func (server *SsntpTestServer) EventForward(uuid string, event ssntp.Event, frame *ssntp.Frame) ssntp.ForwardDestination {
+	var err error
+	var dest ssntp.ForwardDestination
+
+	switch event {
+	case ssntp.TenantAdded:
+		fallthrough
+	case ssntp.TenantRemoved:
+		fallthrough
+	case ssntp.PublicIPAssigned:
+		dest, err = fwdEventToCNCI(event, frame.Payload)
+	}
+
+	if err != nil {
+		fmt.Println("server error parsing event yaml for forwarding")
+	}
+
+	return dest
 }
 
 // ErrorNotify is an SSNTP callback stub for SsntpTestServer
@@ -356,6 +449,18 @@ func StartTestServer(server *SsntpTestServer) {
 			{ // all EVACUATE command are processed by the Command forwarder
 				Operand:        ssntp.EVACUATE,
 				CommandForward: server,
+			},
+			{ // all TenantAdded events are processed by the Event forwarder
+				Operand:      ssntp.TenantAdded,
+				EventForward: server,
+			},
+			{ // all TenantRemoved events are processed by the Event forwarder
+				Operand:      ssntp.TenantRemoved,
+				EventForward: server,
+			},
+			{ // all PublicIPAssigned events are processed by the Event forwarder
+				Operand:      ssntp.PublicIPAssigned,
+				EventForward: server,
 			},
 		},
 	}
