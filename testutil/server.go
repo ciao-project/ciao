@@ -117,8 +117,12 @@ func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result
 
 // ConnectNotify implements an SSNTP ConnectNotify callback for SsntpTestServer
 func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
+	var result CmdResult
+
 	switch role {
 	case ssntp.AGENT:
+		server.clientsLock.Lock()
+		defer server.clientsLock.Unlock()
 		server.clients = append(server.clients, uuid)
 
 	case ssntp.NETAGENT:
@@ -127,20 +131,29 @@ func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 		server.NetClientsLock.Unlock()
 	}
 
+	server.SendResultAndDelEventChan(ssntp.NodeConnected, result)
 }
 
 // DisconnectNotify implements an SSNTP DisconnectNotify callback for SsntpTestServer
 func (server *SsntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
+	var result CmdResult
+
+	server.clientsLock.Lock()
 	for index := range server.clients {
 		if server.clients[index] == uuid {
 			server.clients = append(server.clients[:index], server.clients[index+1:]...)
-			return
+			break
 		}
 	}
+	server.clientsLock.Unlock()
 
 	server.NetClientsLock.Lock()
-	delete(server.NetClients, uuid)
+	if server.NetClients[uuid] == true {
+		delete(server.NetClients, uuid)
+	}
 	server.NetClientsLock.Unlock()
+
+	server.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
 }
 
 // StatusNotify is an SSNTP callback stub for SsntpTestServer
@@ -153,10 +166,6 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 	var nn bool
 
 	payload := frame.Payload
-
-	server.CmdChansLock.Lock()
-	c, ok := server.CmdChans[command]
-	server.CmdChansLock.Unlock()
 
 	switch command {
 	/*TODO:
@@ -197,9 +206,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 		var stopCmd payloads.Stop
 
 		err := yaml.Unmarshal(payload, &stopCmd)
-
 		result.Err = err
-
 		if err == nil {
 			result.InstanceUUID = stopCmd.Stop.InstanceUUID
 			server.Ssntp.SendCommand(stopCmd.Stop.WorkloadAgentUUID, command, frame.Payload)
@@ -209,9 +216,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 		var restartCmd payloads.Restart
 
 		err := yaml.Unmarshal(payload, &restartCmd)
-
 		result.Err = err
-
 		if err == nil {
 			result.InstanceUUID = restartCmd.Restart.InstanceUUID
 			server.Ssntp.SendCommand(restartCmd.Restart.WorkloadAgentUUID, command, frame.Payload)
@@ -221,23 +226,13 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 		var evacCmd payloads.Evacuate
 
 		err := yaml.Unmarshal(payload, &evacCmd)
-
 		result.Err = err
-
 		if err == nil {
 			result.NodeUUID = evacCmd.Evacuate.WorkloadAgentUUID
 		}
 	}
 
-	if ok {
-		server.CmdChansLock.Lock()
-		delete(server.CmdChans, command)
-		server.CmdChansLock.Unlock()
-
-		c <- result
-
-		close(c)
-	}
+	server.SendResultAndDelCmdChan(command, result)
 }
 
 // EventNotify implements an SSNTP EventNotify callback for SsntpTestServer
