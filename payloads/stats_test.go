@@ -33,7 +33,16 @@ func TestStatsUnmarshal(t *testing.T) {
 }
 
 func TestStatsMarshal(t *testing.T) {
-	p := testutil.StatsPayload()
+	instances := []InstanceStat{
+		testutil.InstanceStat001,
+		testutil.InstanceStat002,
+		testutil.InstanceStat003,
+	}
+	networks := []NetworkStat{
+		testutil.NetworkStat001,
+		testutil.NetworkStat002,
+	}
+	p := testutil.StatsPayload(testutil.AgentUUID, "test", instances, networks)
 
 	y, err := yaml.Marshal(&p)
 	if err != nil {

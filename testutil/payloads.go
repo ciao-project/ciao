@@ -367,12 +367,57 @@ const PartialReadyYaml = `node_uuid: ` + AgentUUID + `
 load: 1
 `
 
+// InstanceStat001 is a sample payloads.InstanceStat
+var InstanceStat001 = payloads.InstanceStat{
+	InstanceUUID:  "fe2970fa-7b36-460b-8b79-9eb4745e62f2",
+	State:         payloads.Running,
+	MemoryUsageMB: 40,
+	DiskUsageMB:   2,
+	CPUUsage:      90,
+	SSHIP:         "",
+	SSHPort:       0,
+}
+
+// InstanceStat002 is a sample payloads.InstanceStat
+var InstanceStat002 = payloads.InstanceStat{
+	InstanceUUID:  "cbda5bd8-33bd-4d39-9f52-ace8c9f0b99c",
+	State:         payloads.Running,
+	MemoryUsageMB: 50,
+	DiskUsageMB:   10,
+	CPUUsage:      0,
+	SSHIP:         "172.168.2.2",
+	SSHPort:       8768,
+}
+
+// InstanceStat003 is a sample payloads.InstanceStat
+var InstanceStat003 = payloads.InstanceStat{
+	InstanceUUID:  "1f5b2fe6-4493-4561-904a-8f4e956218d9",
+	State:         payloads.Exited,
+	MemoryUsageMB: -1,
+	DiskUsageMB:   2,
+	CPUUsage:      -1,
+}
+
+// NetworkStat001 is a sample payloads.NetworkStat
+var NetworkStat001 = payloads.NetworkStat{
+	NodeIP:  "192.168.1.1",
+	NodeMAC: "02:00:15:03:6f:49",
+}
+
+// NetworkStat002 is a sample payloads.NetworkStat
+var NetworkStat002 = payloads.NetworkStat{
+	NodeIP:  "10.168.1.1",
+	NodeMAC: "02:00:8c:ba:f9:45",
+}
+
 // StatsPayload is a factory function for a node STATS ssntp.Command payload for test cases
-// The StatsPayload() factory function returns a payloads.Stat object
-// matching the StatsYaml string.
-func StatsPayload() payloads.Stat {
+// The StatsPayload() factory function returns a payloads.Stat object.
+// If passed uuid==AgentUUID, instances==[InstanceStat001,InstanceStat002,InstanceStat003]
+// and networks==[NetworkStat001,NetworkStat002], then StatsPayload() will
+// return a payloads.Stat matching the StatsYaml string.
+func StatsPayload(uuid string, name string, instances []payloads.InstanceStat, networks []payloads.NetworkStat) payloads.Stat {
 	p := payloads.Stat{
-		NodeUUID:        AgentUUID,
+		NodeUUID:        uuid,
 		Status:          "READY",
 		MemTotalMB:      3896,
 		MemAvailableMB:  3896,
@@ -380,48 +425,10 @@ func StatsPayload() payloads.Stat {
 		DiskAvailableMB: 256000,
 		Load:            0,
 		CpusOnline:      4,
-		NodeHostName:    "test",
+		NodeHostName:    name,
+		Instances:       instances,
+		Networks:        networks,
 	}
-
-	nstats := payloads.NetworkStat{
-		NodeIP:  "192.168.1.1",
-		NodeMAC: "02:00:15:03:6f:49",
-	}
-	p.Networks = append(p.Networks, nstats)
-	nstats = payloads.NetworkStat{
-		NodeIP:  "10.168.1.1",
-		NodeMAC: "02:00:8c:ba:f9:45",
-	}
-	p.Networks = append(p.Networks, nstats)
-
-	istats := payloads.InstanceStat{
-		InstanceUUID:  "fe2970fa-7b36-460b-8b79-9eb4745e62f2",
-		State:         payloads.Running,
-		MemoryUsageMB: 40,
-		DiskUsageMB:   2,
-		CPUUsage:      90,
-		SSHIP:         "",
-		SSHPort:       0,
-	}
-	p.Instances = append(p.Instances, istats)
-	istats = payloads.InstanceStat{
-		InstanceUUID:  "cbda5bd8-33bd-4d39-9f52-ace8c9f0b99c",
-		State:         payloads.Running,
-		MemoryUsageMB: 50,
-		DiskUsageMB:   10,
-		CPUUsage:      0,
-		SSHIP:         "172.168.2.2",
-		SSHPort:       8768,
-	}
-	p.Instances = append(p.Instances, istats)
-	istats = payloads.InstanceStat{
-		InstanceUUID:  "1f5b2fe6-4493-4561-904a-8f4e956218d9",
-		State:         payloads.Exited,
-		MemoryUsageMB: -1,
-		DiskUsageMB:   2,
-		CPUUsage:      -1,
-	}
-	p.Instances = append(p.Instances, istats)
 
 	return p
 }

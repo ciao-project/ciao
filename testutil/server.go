@@ -231,6 +231,15 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 		if err == nil {
 			result.NodeUUID = evacCmd.Evacuate.WorkloadAgentUUID
 		}
+
+	case ssntp.STATS:
+		var statsCmd payloads.Stat
+
+		err := yaml.Unmarshal(payload, &statsCmd)
+		result.Err = err
+
+	default:
+		fmt.Printf("server unhandled command %s\n", command.String())
 	}
 
 	server.SendResultAndDelCmdChan(command, result)

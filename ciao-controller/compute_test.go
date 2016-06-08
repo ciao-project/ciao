@@ -233,7 +233,9 @@ func TestDeleteServer(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	err = client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +280,9 @@ func TestServersActionStart(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	err = client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,10 +295,15 @@ func TestServersActionStart(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second)
-	err = client.SendStats()
+
+	c = client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	time.Sleep(1 * time.Second)
 
 	var ids []string
 	ids = append(ids, servers.Servers[0].ID)
@@ -333,7 +342,9 @@ func TestServersActionStop(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	err = client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +388,9 @@ func TestServerActionStop(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	err = client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,14 +422,16 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	time.Sleep(1 * time.Second)
 
-	c := server.AddCmdChan(ssntp.STOP)
+	c = server.AddCmdChan(ssntp.STOP)
 
 	err = context.stopInstance(servers.Servers[0].ID)
 	if err != nil {
@@ -430,7 +445,9 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = client.SendStats()
+	c = client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,7 +455,6 @@ func TestServerActionStart(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	url := computeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
-
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
 }
 

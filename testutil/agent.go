@@ -342,27 +342,30 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 func (client *SsntpTestClient) ErrorNotify(error ssntp.Error, frame *ssntp.Frame) {
 }
 
-// SendStats allows an SsntpTestClient to push an ssntp.STATS command frame
-func (client *SsntpTestClient) SendStats() error {
-	stat := payloads.Stat{
-		NodeUUID:        client.UUID,
-		MemTotalMB:      256,
-		MemAvailableMB:  256,
-		DiskTotalMB:     1024,
-		DiskAvailableMB: 1024,
-		Load:            20,
-		CpusOnline:      4,
-		NodeHostName:    client.Name,
-		Instances:       client.instances,
-	}
+// SendStats pushes an ssntp.STATS command frame from the SsntpTestClient
+func (client *SsntpTestClient) SendStats() {
+	var result CmdResult
 
-	y, err := yaml.Marshal(stat)
+	payload := StatsPayload(client.UUID, client.Name, client.instances, nil)
+
+	y, err := yaml.Marshal(payload)
 	if err != nil {
-		return err
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendCommand(ssntp.STATS, y)
+		if err != nil {
+			result.Err = err
+		}
 	}
 
-	_, err = client.Ssntp.SendCommand(ssntp.STATS, y)
-	return err
+	client.CmdChansLock.Lock()
+	defer client.CmdChansLock.Unlock()
+	c, ok := client.CmdChans[ssntp.STATS]
+	if ok {
+		delete(client.CmdChans, ssntp.STATS)
+		c <- result
+		close(c)
+	}
 }
 
 // SendTrace allows an SsntpTestClient to push an ssntp.TraceReport event frame
