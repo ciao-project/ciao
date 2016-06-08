@@ -16,6 +16,8 @@
 
 package testutil
 
+import "github.com/01org/ciao/ssntp"
+
 // TestCACert is a snake oil Certificate Authority for test automation.
 const TestCACert = `
 -----BEGIN CERTIFICATE-----
@@ -461,3 +463,26 @@ mzZXQFY+Z3Y/v3Hn9EBr08yjSps8hH2ZmEy7zOHEQT7aswKHe3WUt98MAHpx9IVS
 6XdH1TF5KWFm2tBozhuK04EbwZyrF1Oa6oZqKw3YAURpy7+NF7gYXJ0xaGIU6kWV
 AuA=
 -----END CERTIFICATE-----`
+
+// RoleToTestCert returns a string containing the testutil certificate
+// matching the specified ssntp.Role
+func RoleToTestCert(role ssntp.Role) string {
+	switch role {
+	case ssntp.SCHEDULER:
+		return TestCertScheduler
+	case ssntp.SERVER:
+		return TestCertServer
+	case ssntp.AGENT:
+		return TestCertAgent
+	case ssntp.Controller:
+		return TestCertController
+	case ssntp.CNCIAGENT:
+		return TestCertCNCIAgent
+	case ssntp.NETAGENT:
+		return TestCertNetAgent
+	case ssntp.AGENT | ssntp.NETAGENT:
+		return TestCertAgentNetAgent
+	}
+
+	return TestCertUnknown
+}
