@@ -416,22 +416,16 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	c := make(chan testutil.CmdResult)
-	server.AddCmdChan(ssntp.STOP, c)
+	c := server.AddCmdChan(ssntp.STOP)
 
 	err = context.stopInstance(servers.Servers[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	select {
-	case result := <-c:
-		if result.Err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for STOP command")
+	_, err = server.GetCmdChanResult(c, ssntp.STOP)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	time.Sleep(1 * time.Second)

@@ -17,8 +17,10 @@
 package testutil
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
@@ -27,20 +29,90 @@ import (
 
 // SsntpTestServer is global state for the testutil SSNTP server
 type SsntpTestServer struct {
-	Ssntp        ssntp.Server
-	clients      []string
-	CmdChans     map[ssntp.Command]chan CmdResult
-	CmdChansLock *sync.Mutex
+	Ssntp          ssntp.Server
+	clients        []string
+	clientsLock    *sync.Mutex
+	CmdChans       map[ssntp.Command]chan CmdResult
+	CmdChansLock   *sync.Mutex
+	EventChans     map[ssntp.Event]chan CmdResult
+	EventChansLock *sync.Mutex
 
 	NetClients     map[string]bool
 	NetClientsLock *sync.RWMutex
 }
 
-// AddCmdChan opens and command channel to the SsntpTestServer
-func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command, c chan CmdResult) {
+// AddCmdChan adds a command to the SsntpTestServer command channel
+func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan CmdResult {
+	c := make(chan CmdResult)
+
 	server.CmdChansLock.Lock()
 	server.CmdChans[cmd] = c
 	server.CmdChansLock.Unlock()
+
+	return &c
+}
+
+// GetCmdChanResult gets a CmdResult from the SsntpTestServer command channel
+func (server *SsntpTestServer) GetCmdChanResult(c *chan CmdResult, cmd ssntp.Command) (result CmdResult, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Server error on %s command: %s\n", cmd, result.Err)
+		}
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("Timeout waiting for server %s command result\n", cmd)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelCmdChan deletes a command from the SsntpTestServer command channel
+func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result CmdResult) {
+	server.CmdChansLock.Lock()
+	defer server.CmdChansLock.Unlock()
+	c, ok := server.CmdChans[cmd]
+	if ok {
+		delete(server.CmdChans, cmd)
+		c <- result
+		close(c)
+	}
+}
+
+// AddEventChan adds a command to the SsntpTestServer event channel
+func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan CmdResult {
+	c := make(chan CmdResult)
+
+	server.EventChansLock.Lock()
+	server.EventChans[evt] = c
+	server.EventChansLock.Unlock()
+
+	return &c
+}
+
+// GetEventChanResult gets a CmdResult from the SsntpTestServer event channel
+func (server *SsntpTestServer) GetEventChanResult(c *chan CmdResult, evt ssntp.Event) (result CmdResult, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Server error handling %s event: %s\n", evt, result.Err)
+		}
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("Timeout waiting for server %s event result\n", evt)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelEventChan deletes an event from the SsntpTestServer event channel
+func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result CmdResult) {
+	server.EventChansLock.Lock()
+	defer server.EventChansLock.Unlock()
+	c, ok := server.EventChans[evt]
+	if ok {
+		delete(server.EventChans, evt)
+		c <- result
+		close(c)
+	}
 }
 
 // ConnectNotify implements an SSNTP ConnectNotify callback for SsntpTestServer
@@ -87,11 +159,17 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 	server.CmdChansLock.Unlock()
 
 	switch command {
+	/*TODO:
+	case CONNECT:
+	case AssignPublicIP:
+	case ReleasePublicIP:
+	case CONFIGURE:
+	*/
 	case ssntp.START:
 		var startCmd payloads.Start
 
 		err := yaml.Unmarshal(payload, &startCmd)
-
+		result.Err = err
 		if err == nil {
 			resources := startCmd.Start.RequestedResources
 
@@ -105,7 +183,6 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 			result.TenantUUID = startCmd.Start.TenantUUID
 			result.CNCI = nn
 		}
-		result.Err = err
 
 	case ssntp.DELETE:
 		var delCmd payloads.Delete
@@ -163,7 +240,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 	}
 }
 
-// EventNotify is an SSNTP callback stub for SsntpTestServer
+// EventNotify implements an SSNTP EventNotify callback for SsntpTestServer
 func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame *ssntp.Frame) {
 }
 
@@ -205,5 +282,79 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 		dest.AddRecipient(server.clients[index])
 	}
 
+	return dest
+}
+
+// StartTestServer starts a go routine for based on a
+// testutil.SsntpTestServer configuration with standard ssntp.FrameRorwardRules
+func StartTestServer(server *SsntpTestServer) {
+	server.clientsLock = &sync.Mutex{}
+
+	server.CmdChans = make(map[ssntp.Command]chan CmdResult)
+	server.CmdChansLock = &sync.Mutex{}
+
+	server.EventChans = make(map[ssntp.Event]chan CmdResult)
+	server.EventChansLock = &sync.Mutex{}
+
+	server.NetClients = make(map[string]bool)
+	server.NetClientsLock = &sync.RWMutex{}
+
+	serverConfig := ssntp.Config{
+		CAcert: ssntp.DefaultCACert,
+		Cert:   ssntp.RoleToDefaultCertName(ssntp.SERVER),
+		Log:    ssntp.Log,
+		ForwardRules: []ssntp.FrameForwardRule{
+			{ // all STATS commands go to all Controllers
+				Operand: ssntp.STATS,
+				Dest:    ssntp.Controller,
+			},
+			{ // all TraceReport events go to all Controllers
+				Operand: ssntp.TraceReport,
+				Dest:    ssntp.Controller,
+			},
+			{ // all InstanceDeleted events go to all Controllers
+				Operand: ssntp.InstanceDeleted,
+				Dest:    ssntp.Controller,
+			},
+			{ // all ConcentratorInstanceAdded events go to all Controllers
+				Operand: ssntp.ConcentratorInstanceAdded,
+				Dest:    ssntp.Controller,
+			},
+			{ // all StartFailure events go to all Controllers
+				Operand: ssntp.StartFailure,
+				Dest:    ssntp.Controller,
+			},
+			{ // all StopFailure events go to all Controllers
+				Operand: ssntp.StopFailure,
+				Dest:    ssntp.Controller,
+			},
+			{ // all RestartFailure events go to all Controllers
+				Operand: ssntp.RestartFailure,
+				Dest:    ssntp.Controller,
+			},
+			{ // all START command are processed by the Command forwarder
+				Operand:        ssntp.START,
+				CommandForward: server,
+			},
+			{ // all RESTART command are processed by the Command forwarder
+				Operand:        ssntp.RESTART,
+				CommandForward: server,
+			},
+			{ // all STOP command are processed by the Command forwarder
+				Operand:        ssntp.STOP,
+				CommandForward: server,
+			},
+			{ // all DELETE command are processed by the Command forwarder
+				Operand:        ssntp.DELETE,
+				CommandForward: server,
+			},
+			{ // all EVACUATE command are processed by the Command forwarder
+				Operand:        ssntp.EVACUATE,
+				CommandForward: server,
+			},
+		},
+	}
+
+	go server.Ssntp.Serve(&serverConfig, server)
 	return
 }
