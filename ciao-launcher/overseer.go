@@ -113,6 +113,7 @@ type overseer struct {
 	instancesDir       string
 	instances          map[string]*ovsInstanceState
 	ovsCh              chan interface{}
+	ovsInstanceCh      chan interface{}
 	childDoneCh        chan struct{}
 	parentWg           *sync.WaitGroup
 	childWg            *sync.WaitGroup
@@ -517,7 +518,7 @@ func (ovs *overseer) processAddCommand(cmd *ovsAddCmd) {
 		ovs.diskSpaceAllocated += cfg.Disk
 		ovs.memoryAllocated += cfg.Mem
 		targetCh = startInstance(cmd.instance, cfg, ovs.childWg, ovs.childDoneCh,
-			ovs.ac, ovs.ovsCh)
+			ovs.ac, ovs.ovsInstanceCh)
 		ovs.instances[cmd.instance] = &ovsInstanceState{
 			cmdCh:          targetCh,
 			running:        ovsPending,
@@ -649,6 +650,8 @@ DONE:
 				break DONE
 			}
 			ovs.processCommand(cmd)
+		case cmd := <-ovs.ovsInstanceCh:
+			ovs.processCommand(cmd)
 		case <-statsTimer:
 			if !ovs.ac.conn.isConnected() {
 				statsTimer = time.After(ovs.statsInterval)
@@ -670,7 +673,31 @@ DONE:
 	}
 
 	close(ovs.childDoneCh)
-	ovs.childWg.Wait()
+
+DRAIN:
+
+	// Here we have the problem that we have multiple go routines writing to the
+	// same channel.   We cannot therefore use the closure of this channel as
+	// a signal that all writes are done.  Instead we need to use waitgroups.
+	// But here's the catch.  We need to keep reading on the ovsInstanceCh channel
+	// until the childWg indicates that all instances have exitted, otherwise some
+	// of them might block trying to write to ovsInstanceCh.
+
+	for {
+		select {
+		case <-ovs.ovsInstanceCh:
+		case <-func() chan struct{} {
+			ch := make(chan struct{})
+			go func() {
+				ovs.childWg.Wait()
+				close(ch)
+			}()
+			return ch
+		}():
+			break DRAIN
+		}
+	}
+
 	glog.Info("All instance go routines have exitted")
 	ovs.parentWg.Done()
 
@@ -682,6 +709,7 @@ func startOverseerFull(instancesDir string, wg *sync.WaitGroup, ac *agentClient,
 
 	instances := make(map[string]*ovsInstanceState)
 	ovsCh := make(chan interface{})
+	ovsInstanceCh := make(chan interface{})
 	toMonitor := make([]chan<- interface{}, 0, 1024)
 	childDoneCh := make(chan struct{})
 	childWg := new(sync.WaitGroup)
@@ -714,7 +742,7 @@ func startOverseerFull(instancesDir string, wg *sync.WaitGroup, ac *agentClient,
 		diskSpaceAllocated += cfg.Disk
 		memoryAllocated += cfg.Mem
 
-		target := startInstance(instance, cfg, childWg, childDoneCh, ac, ovsCh)
+		target := startInstance(instance, cfg, childWg, childDoneCh, ac, ovsInstanceCh)
 		instances[instance] = &ovsInstanceState{
 			cmdCh:          target,
 			running:        ovsPending,
@@ -736,6 +764,7 @@ func startOverseerFull(instancesDir string, wg *sync.WaitGroup, ac *agentClient,
 		instancesDir:       instancesDir,
 		instances:          instances,
 		ovsCh:              ovsCh,
+		ovsInstanceCh:      ovsInstanceCh,
 		parentWg:           wg,
 		childWg:            childWg,
 		childDoneCh:        childDoneCh,
