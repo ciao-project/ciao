@@ -348,36 +348,55 @@ func (server *SsntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame
 
 // CommandForward implements an SSNTP CommandForward callback for SsntpTestServer
 func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command, frame *ssntp.Frame) (dest ssntp.ForwardDestination) {
-	var startCmd payloads.Start
-	var nn bool
+	switch command {
+	case ssntp.START:
+		//TODO: move to a workload start function
+		var startCmd payloads.Start
+		var nn bool
 
-	payload := frame.Payload
+		payload := frame.Payload
 
-	err := yaml.Unmarshal(payload, &startCmd)
+		err := yaml.Unmarshal(payload, &startCmd)
 
-	if err != nil {
-		return
-	}
-
-	resources := startCmd.Start.RequestedResources
-
-	for i := range resources {
-		if resources[i].Type == payloads.NetworkNode {
-			nn = true
-			break
+		if err != nil {
+			return
 		}
-	}
 
-	if nn {
-		server.NetClientsLock.RLock()
-		for key := range server.NetClients {
-			dest.AddRecipient(key)
-			break
+		resources := startCmd.Start.RequestedResources
+
+		for i := range resources {
+			if resources[i].Type == payloads.NetworkNode {
+				nn = true
+				break
+			}
 		}
-		server.NetClientsLock.RUnlock()
-	} else if len(server.clients) > 0 {
-		index := rand.Intn(len(server.clients))
-		dest.AddRecipient(server.clients[index])
+
+		if nn {
+			server.NetClientsLock.RLock()
+			for key := range server.NetClients {
+				dest.AddRecipient(key)
+				break
+			}
+			server.NetClientsLock.RUnlock()
+			return
+		}
+
+		server.clientsLock.Lock()
+		defer server.clientsLock.Unlock()
+		if len(server.clients) > 0 {
+			index := rand.Intn(len(server.clients))
+			dest.AddRecipient(server.clients[index])
+		}
+	case ssntp.EVACUATE:
+		fallthrough
+	case ssntp.STOP:
+		fallthrough
+	case ssntp.DELETE:
+		fallthrough
+	case ssntp.RESTART:
+		//TODO: dest, instanceUUID = sched.fwdCmdToComputeNode(command, payload)
+	default:
+		dest.SetDecision(ssntp.Discard)
 	}
 
 	return dest
