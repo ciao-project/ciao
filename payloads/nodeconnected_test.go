@@ -20,23 +20,19 @@ import (
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
-
-const nodeConnectedYaml = "" +
-	"node_connected:\n" +
-	"  node_uuid: " + agentUUID + "\n" +
-	"  node_type: " + NetworkNode + "\n"
 
 func TestNodeConnectedUnmarshal(t *testing.T) {
 	var nodeConnected NodeConnected
 
-	err := yaml.Unmarshal([]byte(nodeConnectedYaml), &nodeConnected)
+	err := yaml.Unmarshal([]byte(testutil.NodeConnectedYaml), &nodeConnected)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if nodeConnected.Connected.NodeUUID != agentUUID {
+	if nodeConnected.Connected.NodeUUID != testutil.AgentUUID {
 		t.Errorf("Wrong node UUID field [%s]", nodeConnected.Connected.NodeUUID)
 	}
 
@@ -48,7 +44,7 @@ func TestNodeConnectedUnmarshal(t *testing.T) {
 func TestNodeConnectedMarshal(t *testing.T) {
 	var nodeConnected NodeConnected
 
-	nodeConnected.Connected.NodeUUID = agentUUID
+	nodeConnected.Connected.NodeUUID = testutil.AgentUUID
 	nodeConnected.Connected.NodeType = NetworkNode
 
 	y, err := yaml.Marshal(&nodeConnected)
@@ -56,7 +52,7 @@ func TestNodeConnectedMarshal(t *testing.T) {
 		t.Error(err)
 	}
 
-	if string(y) != nodeConnectedYaml {
-		t.Errorf("NodeConnected marshalling failed\n[%s]\n vs\n[%s]", string(y), nodeConnectedYaml)
+	if string(y) != testutil.NodeConnectedYaml {
+		t.Errorf("NodeConnected marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.NodeConnectedYaml)
 	}
 }

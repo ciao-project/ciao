@@ -16,36 +16,130 @@
 
 package testutil
 
-// StartYaml is a sample workload Start command payload for test usage
-var StartYaml = `start:
-  instance_uuid: 3390740c-dce9-48d6-b83a-a717417072ce
-  image_uuid: 59460b8a-5f53-4e3e-b5ce-b71fed8c7e64
+import "github.com/01org/ciao/payloads"
+
+// AgentIP is a test agent IP address
+const AgentIP = "10.2.3.4"
+
+//TenantSubnet is a test tenant subnet
+const TenantSubnet = "10.2.0.0/16"
+
+// SubnetKey is a test tenant subnet key
+const SubnetKey = "8"
+
+// InstancePublicIP is a test instance public IP
+const InstancePublicIP = "10.1.2.3"
+
+// InstancePrivateIP is a test instance private IP
+const InstancePrivateIP = "192.168.1.2"
+
+// VNICMAC is a test instance VNIC MAC address
+const VNICMAC = "aa:bb:cc:01:02:03"
+
+// TenantUUID is a test tenant UUID
+const TenantUUID = "2491851d-dce9-48d6-b83a-a717417072ce"
+
+// CNCIUUID is a test CNCI instance UUID
+const CNCIUUID = "7e84c2d6-5a84-4f9b-98e3-38980f722d1b"
+
+// CNCIIP is a test CNCI instance IP address
+const CNCIIP = "10.1.2.3"
+
+// CNCIMAC is a test CNCI instance MAC address
+const CNCIMAC = "CA:FE:C0:00:01:02"
+
+// SchedulerAddr is a test scheduler address
+const SchedulerAddr = "192.168.42.5"
+
+// KeystoneURL is a test Keystone identity server url
+const KeystoneURL = "http://keystone.example.com"
+
+// GlanceURL is a test Glance image server url
+const GlanceURL = "http://glance.example.com"
+
+// ComputeNet is a test compute network
+const ComputeNet = "192.168.1.110"
+
+// MgmtNet is a test management network
+const MgmtNet = "192.168.1.111"
+
+// StorageURI is a test storage URI
+const StorageURI = "/etc/ciao/ciao.json"
+
+// IdentityUser is a test user for the test identity server
+const IdentityUser = "controller"
+
+// IdentityPassword is a test password for the test identity server
+const IdentityPassword = "ciao"
+
+// ComputePort is a test port for the compute service
+const ComputePort = "443"
+
+// HTTPSKey is a path to a key for the compute service
+const HTTPSKey = "/etc/pki/ciao/compute_key.pem"
+
+// HTTPSCACert is a path to the CA cert used to sign the HTTPSKey
+const HTTPSCACert = "/etc/pki/ciao/compute_ca.pem"
+
+// DockerImage is a docker image name for use in start/restart tests
+const DockerImage = "docker/latest"
+
+// ImageUUID is a disk image UUID for use in start/restart tests
+const ImageUUID = "59460b8a-5f53-4e3e-b5ce-b71fed8c7e64"
+
+// InstanceUUID is an instance UUID for use in start/stop/restart/delete tests
+const InstanceUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
+
+// NetAgentUUID is a network node UUID for coordinated tests
+const NetAgentUUID = "6be56328-92e2-4ecd-b426-8fe529c04e0c"
+
+// AgentUUID is a node UUID for coordinated stop/restart/delete tests
+const AgentUUID = "4cb19522-1e18-439a-883a-f9b2a3a95f5e"
+
+//////////////////////////////////////////////////////////////////////////////
+
+// StartYaml is a sample workload START ssntp.Command payload for test usage
+const StartYaml = `start:
+  tenant_uuid: ` + TenantUUID + `
+  instance_uuid: ` + InstanceUUID + `
+  image_uuid: ` + ImageUUID + `
+  docker_image: ` + DockerImage + `
   fw_type: efi
   persistence: host
   vm_type: qemu
   requested_resources:
-    - type: vcpus
-      value: 2
-      mandatory: true
-    - type: mem_mb
-      value: 1014
-      mandatory: true
-    - type: disk_mb
-      value: 10000
-      mandatory: true
+  - type: vcpus
+    value: 2
+    mandatory: true
+  - type: mem_mb
+    value: 4096
+    mandatory: true
+  - type: disk_mb
+    value: 10000
+    mandatory: true
   estimated_resources:
-    - type: vcpus
-      value: 1
-    - type: mem_mb
-      value: 128
-    - type: disk_mb
-      value: 4096
+  - type: vcpus
+    value: 1
+  - type: mem_mb
+    value: 128
+  - type: disk_mb
+    value: 4096
+  networking:
+    vnic_mac: ""
+    vnic_uuid: ""
+    concentrator_uuid: ""
+    concentrator_ip: ""
+    subnet: ""
+    subnet_key: ""
+    subnet_uuid: ""
+    private_ip: ""
+    public_ip: false
 `
 
-// CNCIStartYaml is a sample CNCI workload Start command payload for test cases
-var CNCIStartYaml = `start:
-  instance_uuid: fb3e089c-62bd-476c-b22a-9d6d09599306
-  image_uuid: eba04826-62a5-48bd-876f-9119667b1487,
+// CNCIStartYaml is a sample CNCI workload START ssntp.Command payload for test cases
+const CNCIStartYaml = `start:
+  instance_uuid: ` + CNCIUUID + `
+  image_uuid: ` + ImageUUID + `
   fw_type: efi
   persistence: host
   vm_type: qemu
@@ -61,11 +155,11 @@ var CNCIStartYaml = `start:
       mandatory: true
 `
 
-// PartialStartYaml is a sample minimal workload Start command payload for test cases
-var PartialStartYaml = `start:
-  instance_uuid: 923d1f2b-aabe-4a9b-9982-8664b0e52f93
-  image_uuid: 53cdd9ef-228f-4ce1-911d-706c2b41454a
-  docker_image: ubuntu/latest
+// PartialStartYaml is a sample minimal workload START ssntp.Command payload for test cases
+const PartialStartYaml = `start:
+  instance_uuid: ` + InstanceUUID + `
+  image_uuid: ` + ImageUUID + `
+  docker_image: ` + DockerImage + `
   fw_type: efi
   persistence: host
   vm_type: qemu
@@ -75,36 +169,52 @@ var PartialStartYaml = `start:
       mandatory: true
 `
 
-// RestartYaml is a sample workload Restart command payload for test cases
-var RestartYaml = `restart:
-  instance_uuid: 0e8516d7-af2f-454a-87ed-072aeb9faf53
-  image_uuid: 5beea770-1ef5-4c26-8a6c-2026fbc98e37
-  workload_agent_uuid: d37e8dd5-3625-42bb-97b5-05291013abad
+// StartFailureYaml is a sample workload StartFailure ssntp.Error payload for test cases
+const StartFailureYaml = `instance_uuid: ` + InstanceUUID + `
+reason: full_cloud
+`
+
+// RestartYaml is a sample workload RESTART ssntp.Command payload for test cases
+const RestartYaml = `restart:
+  tenant_uuid: ` + TenantUUID + `
+  instance_uuid: ` + InstanceUUID + `
+  image_uuid: ` + ImageUUID + `
+  workload_agent_uuid: ` + AgentUUID + `
   fw_type: efi
   persistence: host
   requested_resources:
-    - type: vcpus
-      value: 2
-      mandatory: true
-    - type: mem_mb
-      value: 1014
-      mandatory: true
-    - type: disk_mb
-      value: 10000
-      mandatory: true
+  - type: vcpus
+    value: 2
+    mandatory: true
+  - type: mem_mb
+    value: 4096
+    mandatory: true
+  - type: disk_mb
+    value: 10000
+    mandatory: true
   estimated_resources:
-    - type: vcpus
-      value: 1
-    - type: mem_mb
-      value: 128
-    - type: disk_mb
-      value: 4096
+  - type: vcpus
+    value: 1
+  - type: mem_mb
+    value: 128
+  - type: disk_mb
+    value: 4096
+  networking:
+    vnic_mac: ""
+    vnic_uuid: ""
+    concentrator_uuid: ""
+    concentrator_ip: ""
+    subnet: ""
+    subnet_key: ""
+    subnet_uuid: ""
+    private_ip: ""
+    public_ip: false
 `
 
-// PartialRestartYaml is a sample minimal workload Restart command payload for test cases
-var PartialRestartYaml = `restart:
-  instance_uuid: a2675987-fa30-45ce-84a2-93ce67106f47
-  workload_agent_uuid: 1ab3a664-d344-4a41-acf9-c94d8606e069
+// PartialRestartYaml is a sample minimal workload RESTART ssntp.Command payload for test cases
+const PartialRestartYaml = `restart:
+  instance_uuid: ` + InstanceUUID + `
+  workload_agent_uuid: ` + AgentUUID + `
   fw_type: efi
   persistence: host
   requested_resources:
@@ -113,19 +223,265 @@ var PartialRestartYaml = `restart:
       mandatory: true
 `
 
-// StopYaml is a sample workload Stop command payload for test cases
-var StopYaml = `stop:
-  instance_uuid: 3390740c-dce9-48d6-b83a-a717417072ce
-  workload_agent_uuid: 59460b8a-5f53-4e3e-b5ce-b71fed8c7e64
+// RestartFailureYaml is a sample workload RestartFailure ssntp.Error payload for test cases
+const RestartFailureYaml = `instance_uuid: ` + InstanceUUID + `
+reason: already_running
 `
 
-// DeleteYaml is a sample workload Delete command payload for test cases
-var DeleteYaml = `delete:
-  instance_uuid: 3390740c-dce9-48d6-b83a-a717417072ce
-  workload_agent_uuid: 59460b8a-5f53-4e3e-b5ce-b71fed8c7e64
+// StopYaml is a sample workload STOP ssntp.Command payload for test cases
+const StopYaml = `stop:
+  instance_uuid: ` + InstanceUUID + `
+  workload_agent_uuid: ` + AgentUUID + `
 `
 
-// EvacuateYaml is a sample node Evacuate command payload for test cases
-var EvacuateYaml = `evacuate:
-  workload_agent_uuid: 64803ffa-fb47-49fa-8191-15d2c34e4dd3
+// StopFailureYaml is a sample workload StopFailure ssntp.Error payload for test cases
+const StopFailureYaml = `instance_uuid: ` + InstanceUUID + `
+reason: already_stopped
+`
+
+// DeleteYaml is a sample workload DELETE ssntp.Command payload for test cases
+const DeleteYaml = `delete:
+  instance_uuid: ` + InstanceUUID + `
+  workload_agent_uuid: ` + AgentUUID + `
+`
+
+// EvacuateYaml is a sample node EVACUATE ssntp.Command payload for test cases
+const EvacuateYaml = `evacuate:
+  workload_agent_uuid: ` + AgentUUID + `
+`
+
+// CNCIAddedYaml is a sample ConcentratorInstanceAdded ssntp.Event payload for test cases
+const CNCIAddedYaml = `concentrator_instance_added:
+  instance_uuid: ` + CNCIUUID + `
+  tenant_uuid: ` + TenantUUID + `
+  concentrator_ip: ` + CNCIIP + `
+  concentrator_mac: ` + CNCIMAC + `
+`
+
+// AssignIPYaml is a sample AssignPublicIP ssntp.Command payload for test cases
+const AssignIPYaml = `assign_public_ip:
+  concentrator_uuid: ` + CNCIUUID + `
+  tenant_uuid: ` + TenantUUID + `
+  instance_uuid: ` + InstanceUUID + `
+  public_ip: ` + InstancePublicIP + `
+  private_ip: ` + InstancePrivateIP + `
+  vnic_mac: ` + VNICMAC + `
+`
+
+// ReleaseIPYaml is a sample ReleasePublicIP ssntp.Command payload for test cases
+const ReleaseIPYaml = `release_public_ip:
+  concentrator_uuid: ` + CNCIUUID + `
+  tenant_uuid: ` + TenantUUID + `
+  instance_uuid: ` + InstanceUUID + `
+  public_ip: ` + InstancePublicIP + `
+  private_ip: ` + InstancePrivateIP + `
+  vnic_mac: ` + VNICMAC + `
+`
+
+// AssignedIPYaml is a sample PublicIPAssigned ssntp.Event payload for test cases
+const AssignedIPYaml = `public_ip_assigned:
+  concentrator_uuid: ` + CNCIUUID + `
+  instance_uuid: ` + InstanceUUID + `
+  public_ip: ` + InstancePublicIP + `
+  private_ip: ` + InstancePrivateIP + `
+`
+
+// TenantAddedYaml is a sample TenantAdded ssntp.Event payload for test cases
+const TenantAddedYaml = `tenant_added:
+  agent_uuid: ` + AgentUUID + `
+  agent_ip: ` + AgentIP + `
+  tenant_uuid: ` + TenantUUID + `
+  tenant_subnet: ` + TenantSubnet + `
+  concentrator_uuid: ` + CNCIUUID + `
+  concentrator_ip: ` + CNCIIP + `
+  subnet_key: ` + SubnetKey + `
+`
+
+// TenantRemovedYaml is a sample TenantRemove ssntp.Event payload for test cases
+const TenantRemovedYaml = `tenant_removed:
+  agent_uuid: ` + AgentUUID + `
+  agent_ip: ` + AgentIP + `
+  tenant_uuid: ` + TenantUUID + `
+  tenant_subnet: ` + TenantSubnet + `
+  concentrator_uuid: ` + CNCIUUID + `
+  concentrator_ip: ` + CNCIIP + `
+  subnet_key: ` + SubnetKey + `
+`
+
+// CNCIInstanceData is a sample CNCIInstanceConfig payload for test cases
+const CNCIInstanceData = `scheduler_addr: 192.168.42.5
+`
+
+// ConfigureYaml is a sample CONFIGURE ssntp.Command payload for test cases
+const ConfigureYaml = `configure:
+  scheduler:
+    storage_type: file
+    storage_uri: ` + StorageURI + `
+  controller:
+    compute_port: ` + ComputePort + `
+    compute_ca: ` + HTTPSCACert + `
+    compute_cert: ` + HTTPSKey + `
+    identity_user: ` + IdentityUser + `
+    identity_password: ` + IdentityPassword + `
+  launcher:
+    compute_net: ` + ComputeNet + `
+    mgmt_net: ` + MgmtNet + `
+    disk_limit: false
+    mem_limit: false
+  image_service:
+    type: glance
+    url: ` + GlanceURL + `
+  identity_service:
+    type: keystone
+    url: ` + KeystoneURL + `
+`
+
+// DeleteFailureYaml is a sample workload DeleteFailure ssntp.Error payload for test cases
+const DeleteFailureYaml = `instance_uuid: ` + InstanceUUID + `
+reason: no_instance
+`
+
+// InsDelYaml is a sample workload InstanceDeleted ssntp.Event payload for test cases
+const InsDelYaml = `instance_deleted:
+  instance_uuid: ` + InstanceUUID + `
+`
+
+// NodeConnectedYaml is a sample node NodeConnected ssntp.Event payload for test cases
+const NodeConnectedYaml = `node_connected:
+  node_uuid: ` + AgentUUID + `
+  node_type: ` + payloads.NetworkNode + `
+`
+
+// ReadyYaml is a sample node READY ssntp.Status payload for test cases
+const ReadyYaml = `node_uuid: ` + AgentUUID + `
+mem_total_mb: 3896
+mem_available_mb: 3896
+disk_total_mb: 500000
+disk_available_mb: 256000
+load: 0
+cpus_online: 4
+`
+
+// PartialReadyYaml is a sample minimal node READY ssntp.Status payload for test cases
+const PartialReadyYaml = `node_uuid: ` + AgentUUID + `
+load: 1
+`
+
+// StatsPayload is a factory function for a node STATS ssntp.Command payload for test cases
+// The StatsPayload() factory function returns a payloads.Stat object
+// matching the StatsYaml string.
+func StatsPayload() payloads.Stat {
+	p := payloads.Stat{
+		NodeUUID:        AgentUUID,
+		Status:          "READY",
+		MemTotalMB:      3896,
+		MemAvailableMB:  3896,
+		DiskTotalMB:     500000,
+		DiskAvailableMB: 256000,
+		Load:            0,
+		CpusOnline:      4,
+		NodeHostName:    "test",
+	}
+
+	nstats := payloads.NetworkStat{
+		NodeIP:  "192.168.1.1",
+		NodeMAC: "02:00:15:03:6f:49",
+	}
+	p.Networks = append(p.Networks, nstats)
+	nstats = payloads.NetworkStat{
+		NodeIP:  "10.168.1.1",
+		NodeMAC: "02:00:8c:ba:f9:45",
+	}
+	p.Networks = append(p.Networks, nstats)
+
+	istats := payloads.InstanceStat{
+		InstanceUUID:  "fe2970fa-7b36-460b-8b79-9eb4745e62f2",
+		State:         payloads.Running,
+		MemoryUsageMB: 40,
+		DiskUsageMB:   2,
+		CPUUsage:      90,
+		SSHIP:         "",
+		SSHPort:       0,
+	}
+	p.Instances = append(p.Instances, istats)
+	istats = payloads.InstanceStat{
+		InstanceUUID:  "cbda5bd8-33bd-4d39-9f52-ace8c9f0b99c",
+		State:         payloads.Running,
+		MemoryUsageMB: 50,
+		DiskUsageMB:   10,
+		CPUUsage:      0,
+		SSHIP:         "172.168.2.2",
+		SSHPort:       8768,
+	}
+	p.Instances = append(p.Instances, istats)
+	istats = payloads.InstanceStat{
+		InstanceUUID:  "1f5b2fe6-4493-4561-904a-8f4e956218d9",
+		State:         payloads.Exited,
+		MemoryUsageMB: -1,
+		DiskUsageMB:   2,
+		CPUUsage:      -1,
+	}
+	p.Instances = append(p.Instances, istats)
+
+	return p
+}
+
+// StatsYaml is a sample node STATS ssntp.Command payload for test cases
+const StatsYaml = `node_uuid: ` + AgentUUID + `
+status: READY
+mem_total_mb: 3896
+mem_available_mb: 3896
+disk_total_mb: 500000
+disk_available_mb: 256000
+load: 0
+cpus_online: 4
+hostname: test
+networks:
+- ip: 192.168.1.1
+  mac: 02:00:15:03:6f:49
+- ip: 10.168.1.1
+  mac: 02:00:8c:ba:f9:45
+instances:
+- instance_uuid: fe2970fa-7b36-460b-8b79-9eb4745e62f2
+  state: running
+  ssh_ip: ""
+  ssh_port: 0
+  memory_usage_mb: 40
+  disk_usage_mb: 2
+  cpu_usage: 90
+- instance_uuid: cbda5bd8-33bd-4d39-9f52-ace8c9f0b99c
+  state: running
+  ssh_ip: 172.168.2.2
+  ssh_port: 8768
+  memory_usage_mb: 50
+  disk_usage_mb: 10
+  cpu_usage: 0
+- instance_uuid: 1f5b2fe6-4493-4561-904a-8f4e956218d9
+  state: exited
+  ssh_ip: ""
+  ssh_port: 0
+  memory_usage_mb: -1
+  disk_usage_mb: 2
+  cpu_usage: -1
+`
+
+// NodeOnlyStatsYaml is a sample minimal node STATS ssntp.Command payload for test cases
+// with no per-instance statistics
+const NodeOnlyStatsYaml = `node_uuid: ` + AgentUUID + `
+mem_total_mb: 3896
+mem_available_mb: 3896
+disk_total_mb: 500000
+disk_available_mb: 256000
+load: 0
+cpus_online: 4
+hostname: test
+networks:
+- ip: 192.168.1.1
+  mac: 02:00:15:03:6f:49
+`
+
+// PartialStatsYaml is a sample minimal node STATS ssntp.Command payload for test cases
+// with limited node statistics and no per-instance statistics
+const PartialStatsYaml = `node_uuid: ` + AgentUUID + `
+load: 1
 `
