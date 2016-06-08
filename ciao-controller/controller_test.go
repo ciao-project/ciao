@@ -34,30 +34,6 @@ import (
 	"github.com/docker/distribution/uuid"
 )
 
-func newTestClient(num int, role ssntp.Role) *testutil.SsntpTestClient {
-	client := &testutil.SsntpTestClient{
-		Name: "Test " + role.String() + strconv.Itoa(num),
-		UUID: uuid.Generate().String(),
-		Role: role,
-	}
-
-	client.CmdChans = make(map[ssntp.Command]chan testutil.CmdResult)
-	client.CmdChansLock = &sync.Mutex{}
-
-	config := &ssntp.Config{
-		CAcert: ssntp.DefaultCACert,
-		Cert:   ssntp.RoleToDefaultCertName(role),
-		Log:    ssntp.Log,
-		UUID:   client.UUID,
-	}
-
-	if client.Ssntp.Dial(config, client) != nil {
-		return nil
-	}
-
-	return client
-}
-
 func startTestServer(server *testutil.SsntpTestServer) {
 	server.CmdChans = make(map[ssntp.Command]chan testutil.CmdResult)
 	server.CmdChansLock = &sync.Mutex{}
@@ -472,7 +448,10 @@ func TestRestartInstance(t *testing.T) {
 }
 
 func TestEvacuateNode(t *testing.T) {
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("EvacuateNode", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	c := make(chan testutil.CmdResult)
@@ -480,7 +459,7 @@ func TestEvacuateNode(t *testing.T) {
 
 	// ok to not send workload first?
 
-	err := context.evacuateNode(client.UUID)
+	err = context.evacuateNode(client.UUID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -531,7 +510,10 @@ func TestInstanceDeletedEvent(t *testing.T) {
 }
 
 func TestLaunchCNCI(t *testing.T) {
-	netClient := newTestClient(0, ssntp.NETAGENT)
+	netClient, err := testutil.NewSsntpTestClientConnection("LaunchCNCI", ssntp.NETAGENT, testutil.NetAgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer netClient.Ssntp.Close()
 
 	c := make(chan testutil.CmdResult)
@@ -736,13 +718,19 @@ func TestNoNetwork(t *testing.T) {
 	defer client.Ssntp.Close()
 }
 
+// NOTE: the caller is responsible for calling Ssntp.Close() on the *SsntpTestClient
 func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	tenant, err := addTestTenant()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("StartTracedWorkload", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// caller of TestStartTracedWorkload() owns doing the close
+	//defer client.Ssntp.Close()
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {
@@ -752,42 +740,40 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
 	}
 
-	c := make(chan testutil.CmdResult)
-	client.AddCmdChan(ssntp.START, c)
+	c := client.AddCmdChan(ssntp.START)
 
 	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, true, "testtrace1")
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if len(instances) != 1 {
 		t.Fatalf("Wrong number of instances, expected 1, got %d", len(instances))
 	}
 
-	select {
-	case result := <-c:
-		if result.Err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.InstanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
+	result, err := client.GetCmdChanResult(c, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.InstanceUUID != instances[0].ID {
+		t.Fatal("Did not get correct Instance ID")
 	}
 
 	return client
 }
 
+// NOTE: the caller is responsible for calling Ssntp.Close() on the *SsntpTestClient
 func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFailureReason) (*testutil.SsntpTestClient, []*types.Instance) {
 	tenant, err := addTestTenant()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("StartWorkload", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// caller of TestStartWorkload() owns doing the close
+	//defer client.Ssntp.Close()
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {
@@ -797,8 +783,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
 	}
 
-	c := make(chan testutil.CmdResult)
-	client.AddCmdChan(ssntp.START, c)
+	c := client.AddCmdChan(ssntp.START)
 	client.StartFail = fail
 	client.StartFailReason = reason
 
@@ -806,30 +791,30 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if len(instances) != num {
 		t.Fatalf("Wrong number of instances, expected %d, got %d", len(instances), num)
 	}
 
-	select {
-	case result := <-c:
-		if result.Err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-		if result.InstanceUUID != instances[0].ID {
-			t.Fatal("Did not get correct Instance ID")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for START command")
+	result, err := client.GetCmdChanResult(c, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.InstanceUUID != instances[0].ID {
+		t.Fatal("Did not get correct Instance ID")
 	}
 
 	return client, instances
 }
 
+// TestStartWorkloadLaunchCNCI starts a test CNCI
+// NOTE: the caller is responsible for calling Ssntp.Close() on the *SsntpTestClient
 func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClient, []*types.Instance) {
-	netClient := newTestClient(0, ssntp.NETAGENT)
+	netClient, err := testutil.NewSsntpTestClientConnection("StartWorkloadLaunchCNCI", ssntp.NETAGENT, testutil.NetAgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// caller of TestStartWorkloadLaunchCNCI() owns doing the close
+	//defer netClient.Ssntp.Close()
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {

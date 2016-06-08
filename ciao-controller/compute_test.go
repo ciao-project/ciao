@@ -218,7 +218,10 @@ func TestDeleteServer(t *testing.T) {
 	}
 
 	// instances have to be assigned to a node to be deleted
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("DeleteServer", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	tURL := computeURL + "/v2.1/" + tenant.ID + "/servers/"
@@ -262,7 +265,10 @@ func TestServersActionStart(t *testing.T) {
 
 	url := computeURL + "/v2.1/" + tenant.ID + "/servers/action"
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("ServersActionStart", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
@@ -314,7 +320,10 @@ func TestServersActionStop(t *testing.T) {
 
 	url := computeURL + "/v2.1/" + tenant.ID + "/servers/action"
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("ServersActionStop", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
@@ -355,7 +364,10 @@ func TestServerActionStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("ServerActionStop", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
@@ -384,7 +396,10 @@ func TestServerActionStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("ServerActionStart", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
