@@ -144,7 +144,7 @@ func (client *SsntpTestClient) GetEventChanResult(c *chan CmdResult, evt ssntp.E
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s event: %s\n", evt, result.Err)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(20 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s event result\n", evt)
 	}
 

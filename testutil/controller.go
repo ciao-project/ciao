@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
@@ -70,18 +71,78 @@ func NewSsntpTestControllerConnection(name string, uuid string) (*SsntpTestContr
 	return ctl, nil
 }
 
-// AddCmdChan adds a command to the command channel to the SsntpTestServer
-func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command, ch chan CmdResult) {
+// AddCmdChan adds a command to the SsntpTestController command channel
+func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command) *chan CmdResult {
+	c := make(chan CmdResult)
+
 	ctl.CmdChansLock.Lock()
-	ctl.CmdChans[cmd] = ch
+	ctl.CmdChans[cmd] = c
 	ctl.CmdChansLock.Unlock()
+
+	return &c
 }
 
-// AddEventChan adds a command to the command channel to the SsntpTestServer
-func (ctl *SsntpTestController) AddEventChan(cmd ssntp.Event, ch chan CmdResult) {
+// GetCmdChanResult gets a CmdResult from the SsntpTestController command channel
+func (ctl *SsntpTestController) GetCmdChanResult(c *chan CmdResult, cmd ssntp.Command) (result CmdResult, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Controller error sending %s command: %s\n", cmd, result.Err)
+		}
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("Timeout waiting for controller %s command result\n", cmd)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelCmdChan deletes a command from the SsntpTestController command channel
+func (ctl *SsntpTestController) SendResultAndDelCmdChan(cmd ssntp.Command, result CmdResult) {
+	ctl.CmdChansLock.Lock()
+	defer ctl.CmdChansLock.Unlock()
+	c, ok := ctl.CmdChans[cmd]
+	if ok {
+		delete(ctl.CmdChans, cmd)
+		c <- result
+		close(c)
+	}
+}
+
+// AddEventChan adds a command to the SsntpTestController event channel
+func (ctl *SsntpTestController) AddEventChan(evt ssntp.Event) *chan CmdResult {
+	c := make(chan CmdResult)
+
 	ctl.EventChansLock.Lock()
-	ctl.EventChans[cmd] = ch
+	ctl.EventChans[evt] = c
 	ctl.EventChansLock.Unlock()
+
+	return &c
+}
+
+// GetEventChanResult gets a CmdResult from the SsntpTestController event channel
+func (ctl *SsntpTestController) GetEventChanResult(c *chan CmdResult, evt ssntp.Event) (result CmdResult, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Controller error sending %s event: %s\n", evt, result.Err)
+		}
+	case <-time.After(20 * time.Second):
+		err = fmt.Errorf("Timeout waiting for controller %s event result\n", evt)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelEventChan deletes an event from the SsntpTestController event channel
+func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, result CmdResult) {
+	ctl.EventChansLock.Lock()
+	defer ctl.EventChansLock.Unlock()
+	c, ok := ctl.EventChans[evt]
+	if ok {
+		delete(ctl.EventChans, evt)
+		c <- result
+		close(c)
+	}
 }
 
 // ConnectNotify implements the SSNTP client ConnectNotify callback for SsntpTestController
