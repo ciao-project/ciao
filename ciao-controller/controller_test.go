@@ -938,12 +938,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	testIdentityConfig := testutil.TestIdentityConfig{
+	testIdentityConfig := testutil.IdentityConfig{
 		ComputeURL: computeURL,
 		ProjectID:  computeTestUser,
 	}
 
-	id := testutil.StartIdentityTestServer(testIdentityConfig)
+	id := testutil.StartIdentityServer(testIdentityConfig)
 	defer id.Close()
 
 	idConfig := identityConfig{

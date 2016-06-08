@@ -120,12 +120,12 @@ func main() {
 	if *singleMachine {
 		hostname, _ := os.Hostname()
 		computeURL := "https://" + hostname + ":" + strconv.Itoa(computeAPIPort)
-		testIdentityConfig := testutil.TestIdentityConfig{
+		testIdentityConfig := testutil.IdentityConfig{
 			ComputeURL: computeURL,
 			ProjectID:  "f452bbc7-5076-44d5-922c-3b9d2ce1503f",
 		}
 
-		id := testutil.StartIdentityTestServer(testIdentityConfig)
+		id := testutil.StartIdentityServer(testIdentityConfig)
 		defer id.Close()
 		identityURL = id.URL
 		glog.Errorf("========================")

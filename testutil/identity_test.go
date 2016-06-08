@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package testutil
+package testutil_test
 
 import (
 	"testing"
+
+	. "github.com/01org/ciao/testutil"
 )
 
 func TestStartIdentityServer(t *testing.T) {
-	config := TestIdentityConfig{
+	config := IdentityConfig{
 		ComputeURL: "https://localhost:8888",
 		ProjectID:  "30dedd5c-48d9-45d3-8b44-f973e4f35e48",
 	}
 
-	id := StartIdentityTestServer(config)
+	id := StartIdentityServer(config)
+	if id == nil {
+		t.Fatal("Could not start test identity server")
+	}
 	defer id.Close()
 }
