@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 
@@ -55,13 +54,13 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 
 func addComputeTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
-	tenant, err = context.ds.AddTenant(computeTestUser)
+	tenant, err = context.ds.AddTenant(testutil.ComputeUser)
 	if err != nil {
 		return
 	}
 
 	// Add fake CNCI
-	err = context.ds.AddTenantCNCI(computeTestUser, uuid.Generate().String(), tenant.CNCIMAC)
+	err = context.ds.AddTenantCNCI(testutil.ComputeUser, uuid.Generate().String(), tenant.CNCIMAC)
 	if err != nil {
 		return
 	}
@@ -755,15 +754,9 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 var testClients []*testutil.SsntpTestClient
 var context *controller
 var server testutil.SsntpTestServer
-var computeURL string
-var testIdentityURL string
-
-const computeTestUser = "f452bbc7-5076-44d5-922c-3b9d2ce1503f"
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-
-	computeURL = "https://localhost:" + strconv.Itoa(computeAPIPort)
 
 	// create fake ssntp server
 	testutil.StartTestServer(&server)
@@ -796,8 +789,8 @@ func TestMain(m *testing.M) {
 	}
 
 	testIdentityConfig := testutil.IdentityConfig{
-		ComputeURL: computeURL,
-		ProjectID:  computeTestUser,
+		ComputeURL: testutil.ComputeURL,
+		ProjectID:  testutil.ComputeUser,
 	}
 
 	id := testutil.StartIdentityServer(testIdentityConfig)
@@ -808,8 +801,6 @@ func TestMain(m *testing.M) {
 		serviceUserName: "test",
 		servicePassword: "iheartciao",
 	}
-
-	testIdentityURL = id.URL
 
 	context.id, err = newIdentityClient(idConfig)
 	if err != nil {

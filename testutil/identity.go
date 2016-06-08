@@ -25,7 +25,7 @@ import (
 )
 
 // ComputeAPIPort is the compute service port the testutil identity service will use by default
-const ComputeAPIPort = "8888"
+const ComputeAPIPort = "8774"
 
 // ComputeURL is the compute service URL the testutil identity service will use by default
 var ComputeURL = "https://localhost:" + ComputeAPIPort
