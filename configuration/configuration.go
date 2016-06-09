@@ -41,8 +41,6 @@ func validMinConf(conf *payloads.Configure) bool {
 		conf.Configure.Controller.HTTPSKey != "" &&
 		conf.Configure.Controller.IdentityUser != "" &&
 		conf.Configure.Controller.IdentityPassword != "" &&
-		conf.Configure.Launcher.ComputeNetwork != "" &&
-		conf.Configure.Launcher.ManagementNetwork != "" &&
 		conf.Configure.ImageService.URL != "" &&
 		conf.Configure.IdentityService.URL != "")
 }
