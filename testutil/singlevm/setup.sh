@@ -27,6 +27,7 @@ cd "$ciao_bin"
 
 #Cleanup any old artifcats
 rm -f "$ciao_bin"/*.pem
+rm -f /var/lib/ciao/images
 sudo rm -f "$ciao_bin"/ciao-controller.db-shm 
 sudo rm -f "$ciao_bin"/ciao-controller.db-wal 
 sudo rm -f "$ciao_bin"/ciao-controller.db
@@ -38,11 +39,11 @@ rm -rf "$ciao_bin"/workloads
 #Generate Certificates
 $GOPATH/bin/ciao-cert -server -role scheduler -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
 
-$GOPATH/bin/ciao-cert -role cnciagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="ciao_org" -host="$ciao_host" -verify 
+$GOPATH/bin/ciao-cert -role cnciagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
 
 $GOPATH/bin/ciao-cert -role controller -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
 
-$GOPATH/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="ciao_email" -organization="ciao_org" -host="$ciao_host" -verify
+$GOPATH/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=ciao.example.com"
 
@@ -60,14 +61,28 @@ cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
 cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
 cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
 
-
-#Generate the CNCI VM
+#Generate the CNCI VM and seed the image and populate the image cache
 cd "$ciao_bin"
 "$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image" -d
 qemu-img convert -f raw -O qcow2 "$ciao_cnci_image" "$ciao_cnci_image".qcow
 sudo cp "$ciao_cnci_image".qcow /var/lib/ciao/images
 cd /var/lib/ciao/images
 sudo ln -sf "$ciao_cnci_image".qcow 4e16e743-265a-4bf2-9fd1-57ada0b28904
+
+#Pre-polulate the workload caches
+#Fedora
+#cd /var/lib/ciao/images
+#sudo curl -O https://dl.fedoraproject.org/pub/fedora/linux/releases/23/Cloud/x86_64/Images/Fedora-Cloud-Base-23-20151030.x86_64.qcow2
+#sudo ln -sf Fedora-Cloud-Base-23-20151030.x86_64.qcow2 73a86d7e-93c0-480e-9c41-ab42f69b7799
+
+#Clear
+cd "$ciao_bin"
+LATEST=$(curl https://download.clearlinux.org/latest)
+curl -O https://download.clearlinux.org/image/clear-${LATEST}-cloud.img.xz
+xz -T0 --decompress clear-${LATEST}-cloud.img.xz
+sudo cp clear-${LATEST}-cloud.img /var/lib/ciao/images
+cd /var/lib/ciao/images
+sudo ln -sf clear-${LATEST}-cloud.img df3768da-31f5-4ba6-82f0-127a1a705169
 
 #Kick off the agents
 cd "$ciao_bin"
