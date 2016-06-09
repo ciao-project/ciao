@@ -3,7 +3,6 @@
 
 #Create the cloud-init and Ciao specific ISO
 xorriso -as mkisofs -R -V config-2 -o seed.iso seed/
-xorriso -as mkisofs -R -V config-2 -o ciao.iso ciao/
 
 if [ -z "$1" ]; then
 	IMAGE="clear-8260-ciao-networking.img"
@@ -48,5 +47,5 @@ qemu-system-x86_64 \
 	-vga none -nographic \
 	-drive file="$IMAGE",if=virtio,aio=threads \
 	-net nic,model=virtio,macaddr=$(< /sys/class/net/"$MACVTAP"/address) -net tap,fd=3 3<>"$tapdev" \
-	-drive file=seed.iso,if=virtio,media=cdrom -drive file=ciao.iso,if=virtio,media=cdrom \
+	-drive file=seed.iso,if=virtio,media=cdrom \
 	-debugcon file:debug.log -global isa-debugcon.iobase=0x402

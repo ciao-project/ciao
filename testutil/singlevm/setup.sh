@@ -35,6 +35,10 @@ sudo rm -f /tmp/ciao-controller-stats.db
 rm -rf "$ciao_bin"/tables
 rm -rf "$ciao_bin"/workloads
 
+#Build ciao
+cd "$ciao_src"
+go install -v --tags 'debug' ./...
+cd "$ciao_bin"
 
 #Generate Certificates
 $GOPATH/bin/ciao-cert -server -role scheduler -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
@@ -47,12 +51,9 @@ $GOPATH/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ci
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=ciao.example.com"
 
-#Build ciao
-cd "$ciao_src"
-go install -v --tags 'debug' ./...
-cd "$ciao_bin"
 
 #Copy the configuration
+cd "$ciao_bin"
 cp -a "$ciao_src"/ciao-controller/tables "$ciao_bin"
 cp -a "$ciao_src"/ciao-controller/workloads "$ciao_bin"
 
@@ -124,5 +125,6 @@ docker_id=`sudo docker ps -q | head -1`
 sudo docker logs $docker_id
 
 #Check SSH connectivity
+sleep 1
 ssh_ip=`ciao-cli --list-instances |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1`
 head -1 < /dev/tcp/"$ssh_ip"/33002
