@@ -99,12 +99,8 @@ func init() {
 	flag.StringVar(&serverURL, "server", "", "URL of SSNTP server")
 	flag.StringVar(&serverCertPath, "cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "Client certificate")
 	flag.StringVar(&clientCertPath, "cert", "/etc/pki/ciao/cert-client-localhost.pem", "CA certificate")
-	flag.StringVar(&computeNet, "compute-net", "", "Compute Subnet")
-	flag.StringVar(&mgmtNet, "mgmt-net", "", "Management Subnet")
 	flag.Var(&networking, "network", "Can be none, cn (compute node) or nn (network node)")
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
-	flag.BoolVar(&diskLimit, "disk-limit", true, "Use disk usage limits")
-	flag.BoolVar(&memLimit, "mem-limit", true, "Use memory usage limits")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
 }
 
@@ -133,6 +129,7 @@ type serverConn interface {
 	Close()
 	isConnected() bool
 	setStatus(status bool)
+	ClusterConfiguration() (payloads.Configure, error)
 }
 
 type ssntpConn struct {
@@ -318,6 +315,34 @@ func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) 
 	}
 }
 
+func startNetwork(doneCh chan struct{}) error {
+	if networking.Enabled() {
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		ch := initNetworking(ctx)
+		select {
+		case <-doneCh:
+			glog.Info("Received terminating signal.  Quitting")
+			cancelFunc()
+			return fmt.Errorf("Init network cancelled.")
+		case err := <-ch:
+			if err != nil {
+				glog.Errorf("Failed to init network: %v\n", err)
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func printClusterConfig() {
+	glog.Info("Cluster Configuration")
+	glog.Info("-----------------------")
+	glog.Infof("Compute Netowork:     %v", computeNet)
+	glog.Infof("Management Netowork:  %v", mgmtNet)
+	glog.Infof("Disk Limit:           %v", diskLimit)
+	glog.Infof("Memory Limit:         %v", memLimit)
+}
+
 func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 
 	defer func() {
@@ -344,7 +369,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		cmdCh: make(chan *cmdWrapper),
 	}
 
-	ovsCh := startOverseer(&wg, client)
+	var ovsCh chan<- interface{}
 
 	dialCh := make(chan error)
 
@@ -369,6 +394,27 @@ DONE:
 			if err != nil {
 				break DONE
 			}
+			clusterConfig, err := client.conn.ClusterConfiguration()
+			if err != nil {
+				glog.Errorf("Unable to get Cluster Configuration %v", err)
+				client.conn.Close()
+				break DONE
+			}
+			computeNet = clusterConfig.Configure.Launcher.ComputeNetwork
+			mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
+			diskLimit = clusterConfig.Configure.Launcher.DiskLimit
+			memLimit = clusterConfig.Configure.Launcher.MemoryLimit
+			printClusterConfig()
+
+			err = startNetwork(doneCh)
+			if err != nil {
+				glog.Errorf("Failed to start network: %v\n", err)
+				client.conn.Close()
+				break DONE
+			}
+			defer shutdownNetwork()
+
+			ovsCh = startOverseer(&wg, client)
 		case <-doneCh:
 			client.conn.Close()
 			if !dialing {
@@ -391,7 +437,9 @@ DONE:
 		}
 	}
 
-	close(ovsCh)
+	if ovsCh != nil {
+		close(ovsCh)
+	}
 	wg.Wait()
 	glog.Info("Overseer has closed down")
 }
@@ -553,24 +601,6 @@ func startLauncher() int {
 	signalCh := make(chan os.Signal, 1)
 	timeoutCh := make(chan struct{})
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-
-	if networking.Enabled() {
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		ch := initNetworking(ctx)
-		select {
-		case <-signalCh:
-			glog.Info("Received terminating signal.  Quitting")
-			cancelFunc()
-			return 1
-		case err := <-ch:
-			if err != nil {
-				glog.Errorf("Failed to init network: %v\n", err)
-				return 1
-			}
-		}
-
-		defer shutdownNetwork()
-	}
 
 	go connectToServer(doneCh, statusCh)
 
