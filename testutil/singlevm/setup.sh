@@ -56,6 +56,11 @@ cd "$ciao_bin"
 cp -a "$ciao_src"/ciao-controller/tables "$ciao_bin"
 cp -a "$ciao_src"/ciao-controller/workloads "$ciao_bin"
 
+#Over ride the configuration with test specific defaults
+cp -f "$ciao_scripts"/workloads/* "$ciao_bin"/workloads
+cp -f "$ciao_scripts"/tables/* "$ciao_bin"/tables
+
+
 #Copy the launch scripts
 cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
 cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
@@ -63,21 +68,27 @@ cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
 
 #Generate the CNCI VM and seed the image and populate the image cache
 cd "$ciao_bin"
+rm -f "$ciao_cnci_image"
+rm -f "$ciao_cnci_image".qcow
 "$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image" -d
 qemu-img convert -f raw -O qcow2 "$ciao_cnci_image" "$ciao_cnci_image".qcow
-sudo cp "$ciao_cnci_image".qcow /var/lib/ciao/images
+sudo cp -f "$ciao_cnci_image".qcow /var/lib/ciao/images
 cd /var/lib/ciao/images
 sudo ln -sf "$ciao_cnci_image".qcow 4e16e743-265a-4bf2-9fd1-57ada0b28904
 
 #Pre-polulate the workload caches
 #Fedora
+#cd "$ciao_bin"
+#curl -O https://dl.fedoraproject.org/pub/fedora/linux/releases/23/Cloud/x86_64/Images/Fedora-Cloud-Base-23-20151030.x86_64.qcow2
+#sudo cp -f Fedora-Cloud-Base-23-20151030.x86_64.qcow2 /var/lib/ciao/images 
 #cd /var/lib/ciao/images
-#sudo curl -O https://dl.fedoraproject.org/pub/fedora/linux/releases/23/Cloud/x86_64/Images/Fedora-Cloud-Base-23-20151030.x86_64.qcow2
 #sudo ln -sf Fedora-Cloud-Base-23-20151030.x86_64.qcow2 73a86d7e-93c0-480e-9c41-ab42f69b7799
 
 #Clear
 cd "$ciao_bin"
 LATEST=$(curl https://download.clearlinux.org/latest)
+rm -f clear-${LATEST}-cloud.img.xz
+rm -f clear-${LATEST}-cloud.img
 curl -O https://download.clearlinux.org/image/clear-${LATEST}-cloud.img.xz
 xz -T0 --decompress clear-${LATEST}-cloud.img.xz
 sudo cp clear-${LATEST}-cloud.img /var/lib/ciao/images
