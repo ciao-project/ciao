@@ -165,6 +165,10 @@ func (v *overseerTestState) setStatus(status bool) {
 
 }
 
+func (v *overseerTestState) ClusterConfiguration() (payloads.Configure, error) {
+	return payloads.Configure{}, nil
+}
+
 type procPaths struct {
 	procDir string
 	memInfo string
