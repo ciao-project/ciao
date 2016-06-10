@@ -20,23 +20,18 @@ import (
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
 
-const insDelUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
-
-const insDelYaml = "" +
-	"instance_deleted:\n" +
-	"  instance_uuid: " + insDelUUID + "\n"
-
 func TestInstanceDeletedUnmarshal(t *testing.T) {
 	var insDel EventInstanceDeleted
-	err := yaml.Unmarshal([]byte(insDelYaml), &insDel)
+	err := yaml.Unmarshal([]byte(testutil.InsDelYaml), &insDel)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if insDel.InstanceDeleted.InstanceUUID != insDelUUID {
+	if insDel.InstanceDeleted.InstanceUUID != testutil.InstanceUUID {
 		t.Errorf("Wrong instance UUID field [%s]", insDel.InstanceDeleted.InstanceUUID)
 	}
 }
@@ -44,14 +39,14 @@ func TestInstanceDeletedUnmarshal(t *testing.T) {
 func TestInstanceDeletedMarshal(t *testing.T) {
 	var insDel EventInstanceDeleted
 
-	insDel.InstanceDeleted.InstanceUUID = instanceUUID
+	insDel.InstanceDeleted.InstanceUUID = testutil.InstanceUUID
 
 	y, err := yaml.Marshal(&insDel)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if string(y) != insDelYaml {
-		t.Errorf("InstanceDeleted marshalling failed\n[%s]\n vs\n[%s]", string(y), insDelYaml)
+	if string(y) != testutil.InsDelYaml {
+		t.Errorf("InstanceDeleted marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.InsDelYaml)
 	}
 }

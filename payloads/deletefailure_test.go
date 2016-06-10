@@ -17,25 +17,21 @@
 package payloads_test
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
 
 func TestDeleteFailureUnmarshal(t *testing.T) {
-	deleteFailureYaml := `instance_uuid: 2400bce6-ccc8-4a45-b2aa-b5cc3790077b
-reason: no_instance
-`
 	var error ErrorDeleteFailure
-	err := yaml.Unmarshal([]byte(deleteFailureYaml), &error)
+	err := yaml.Unmarshal([]byte(testutil.DeleteFailureYaml), &error)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if error.InstanceUUID != "2400bce6-ccc8-4a45-b2aa-b5cc3790077b" {
+	if error.InstanceUUID != testutil.InstanceUUID {
 		t.Error("Wrong UUID field")
 	}
 
@@ -46,7 +42,7 @@ reason: no_instance
 
 func TestDeleteFailureMarshal(t *testing.T) {
 	error := ErrorDeleteFailure{
-		InstanceUUID: uuid.Generate().String(),
+		InstanceUUID: testutil.InstanceUUID,
 		Reason:       DeleteNoInstance,
 	}
 
@@ -54,7 +50,10 @@ func TestDeleteFailureMarshal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(string(y))
+
+	if string(y) != testutil.DeleteFailureYaml {
+		t.Errorf("DeleteFailure marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.DeleteFailureYaml)
+	}
 }
 
 func TestDeleteFailureString(t *testing.T) {
@@ -67,7 +66,7 @@ func TestDeleteFailureString(t *testing.T) {
 		{DeleteInvalidData, "Command section of YAML payload is corrupt or missing required information"},
 	}
 	error := ErrorDeleteFailure{
-		InstanceUUID: uuid.Generate().String(),
+		InstanceUUID: testutil.InstanceUUID,
 	}
 	for _, test := range stringTests {
 		error.Reason = test.r

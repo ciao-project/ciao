@@ -20,61 +20,40 @@ import (
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
 	"github.com/docker/distribution/uuid"
 	"gopkg.in/yaml.v2"
 )
 
-const instancePublicIP = "10.1.2.3"
-const instancePrivateIP = "192.168.1.2"
-const vnicMAC = "aa:bb:cc:01:02:03"
-
-const assignIPYaml = "" +
-	"assign_public_ip:\n" +
-	"  concentrator_uuid: " + cnciUUID + "\n" +
-	"  tenant_uuid: " + tenantUUID + "\n" +
-	"  instance_uuid: " + instanceUUID + "\n" +
-	"  public_ip: " + instancePublicIP + "\n" +
-	"  private_ip: " + instancePrivateIP + "\n" +
-	"  vnic_mac: " + vnicMAC + "\n"
-
-const releaseIPYaml = "" +
-	"release_public_ip:\n" +
-	"  concentrator_uuid: " + cnciUUID + "\n" +
-	"  tenant_uuid: " + tenantUUID + "\n" +
-	"  instance_uuid: " + instanceUUID + "\n" +
-	"  public_ip: " + instancePublicIP + "\n" +
-	"  private_ip: " + instancePrivateIP + "\n" +
-	"  vnic_mac: " + vnicMAC + "\n"
-
 func TestAssignPublicIPUnmarshal(t *testing.T) {
 	var assignIP CommandAssignPublicIP
 
-	err := yaml.Unmarshal([]byte(assignIPYaml), &assignIP)
+	err := yaml.Unmarshal([]byte(testutil.AssignIPYaml), &assignIP)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if assignIP.AssignIP.ConcentratorUUID != cnciUUID {
+	if assignIP.AssignIP.ConcentratorUUID != testutil.CNCIUUID {
 		t.Errorf("Wrong concentrator UUID field [%s]", assignIP.AssignIP.ConcentratorUUID)
 	}
 
-	if assignIP.AssignIP.TenantUUID != tenantUUID {
+	if assignIP.AssignIP.TenantUUID != testutil.TenantUUID {
 		t.Errorf("Wrong tenant UUID field [%s]", assignIP.AssignIP.TenantUUID)
 	}
 
-	if assignIP.AssignIP.InstanceUUID != instanceUUID {
+	if assignIP.AssignIP.InstanceUUID != testutil.InstanceUUID {
 		t.Errorf("Wrong instance UUID field [%s]", assignIP.AssignIP.InstanceUUID)
 	}
 
-	if assignIP.AssignIP.PublicIP != instancePublicIP {
+	if assignIP.AssignIP.PublicIP != testutil.InstancePublicIP {
 		t.Errorf("Wrong public IP field [%s]", assignIP.AssignIP.PublicIP)
 	}
 
-	if assignIP.AssignIP.PrivateIP != instancePrivateIP {
+	if assignIP.AssignIP.PrivateIP != testutil.InstancePrivateIP {
 		t.Errorf("Wrong private IP field [%s]", assignIP.AssignIP.PrivateIP)
 	}
 
-	if assignIP.AssignIP.VnicMAC != vnicMAC {
+	if assignIP.AssignIP.VnicMAC != testutil.VNICMAC {
 		t.Errorf("Wrong VNIC MAC field [%s]", assignIP.AssignIP.VnicMAC)
 	}
 }
@@ -82,32 +61,32 @@ func TestAssignPublicIPUnmarshal(t *testing.T) {
 func TestReleasePublicIPUnmarshal(t *testing.T) {
 	var releaseIP CommandReleasePublicIP
 
-	err := yaml.Unmarshal([]byte(releaseIPYaml), &releaseIP)
+	err := yaml.Unmarshal([]byte(testutil.ReleaseIPYaml), &releaseIP)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if releaseIP.ReleaseIP.ConcentratorUUID != cnciUUID {
+	if releaseIP.ReleaseIP.ConcentratorUUID != testutil.CNCIUUID {
 		t.Errorf("Wrong concentrator UUID field [%s]", releaseIP.ReleaseIP.ConcentratorUUID)
 	}
 
-	if releaseIP.ReleaseIP.TenantUUID != tenantUUID {
+	if releaseIP.ReleaseIP.TenantUUID != testutil.TenantUUID {
 		t.Errorf("Wrong tenant UUID field [%s]", releaseIP.ReleaseIP.TenantUUID)
 	}
 
-	if releaseIP.ReleaseIP.InstanceUUID != instanceUUID {
+	if releaseIP.ReleaseIP.InstanceUUID != testutil.InstanceUUID {
 		t.Errorf("Wrong instance UUID field [%s]", releaseIP.ReleaseIP.InstanceUUID)
 	}
 
-	if releaseIP.ReleaseIP.PublicIP != instancePublicIP {
+	if releaseIP.ReleaseIP.PublicIP != testutil.InstancePublicIP {
 		t.Errorf("Wrong public IP field [%s]", releaseIP.ReleaseIP.PublicIP)
 	}
 
-	if releaseIP.ReleaseIP.PrivateIP != instancePrivateIP {
+	if releaseIP.ReleaseIP.PrivateIP != testutil.InstancePrivateIP {
 		t.Errorf("Wrong private IP field [%s]", releaseIP.ReleaseIP.PrivateIP)
 	}
 
-	if releaseIP.ReleaseIP.VnicMAC != vnicMAC {
+	if releaseIP.ReleaseIP.VnicMAC != testutil.VNICMAC {
 		t.Errorf("Wrong VNIC MAC field [%s]", releaseIP.ReleaseIP.VnicMAC)
 	}
 }
@@ -115,40 +94,40 @@ func TestReleasePublicIPUnmarshal(t *testing.T) {
 func TestAssignPublicIPMarshal(t *testing.T) {
 	var assignIP CommandAssignPublicIP
 
-	assignIP.AssignIP.ConcentratorUUID = cnciUUID
-	assignIP.AssignIP.TenantUUID = tenantUUID
-	assignIP.AssignIP.InstanceUUID = instanceUUID
-	assignIP.AssignIP.PublicIP = instancePublicIP
-	assignIP.AssignIP.PrivateIP = instancePrivateIP
-	assignIP.AssignIP.VnicMAC = vnicMAC
+	assignIP.AssignIP.ConcentratorUUID = testutil.CNCIUUID
+	assignIP.AssignIP.TenantUUID = testutil.TenantUUID
+	assignIP.AssignIP.InstanceUUID = testutil.InstanceUUID
+	assignIP.AssignIP.PublicIP = testutil.InstancePublicIP
+	assignIP.AssignIP.PrivateIP = testutil.InstancePrivateIP
+	assignIP.AssignIP.VnicMAC = testutil.VNICMAC
 
 	y, err := yaml.Marshal(&assignIP)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if string(y) != assignIPYaml {
-		t.Errorf("AssignPublicIP marshalling failed\n[%s]\n vs\n[%s]", string(y), assignIPYaml)
+	if string(y) != testutil.AssignIPYaml {
+		t.Errorf("AssignPublicIP marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.AssignIPYaml)
 	}
 }
 
 func TestReleasePublicIPMarshal(t *testing.T) {
 	var releaseIP CommandReleasePublicIP
 
-	releaseIP.ReleaseIP.ConcentratorUUID = cnciUUID
-	releaseIP.ReleaseIP.TenantUUID = tenantUUID
-	releaseIP.ReleaseIP.InstanceUUID = instanceUUID
-	releaseIP.ReleaseIP.PublicIP = instancePublicIP
-	releaseIP.ReleaseIP.PrivateIP = instancePrivateIP
-	releaseIP.ReleaseIP.VnicMAC = vnicMAC
+	releaseIP.ReleaseIP.ConcentratorUUID = testutil.CNCIUUID
+	releaseIP.ReleaseIP.TenantUUID = testutil.TenantUUID
+	releaseIP.ReleaseIP.InstanceUUID = testutil.InstanceUUID
+	releaseIP.ReleaseIP.PublicIP = testutil.InstancePublicIP
+	releaseIP.ReleaseIP.PrivateIP = testutil.InstancePrivateIP
+	releaseIP.ReleaseIP.VnicMAC = testutil.VNICMAC
 
 	y, err := yaml.Marshal(&releaseIP)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if string(y) != releaseIPYaml {
-		t.Errorf("ReleasePublicIP marshalling failed\n[%s]\n vs\n[%s]", string(y), releaseIPYaml)
+	if string(y) != testutil.ReleaseIPYaml {
+		t.Errorf("ReleasePublicIP marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.ReleaseIPYaml)
 	}
 }
 

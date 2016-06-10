@@ -40,7 +40,7 @@ func (c *controller) restartInstance(instanceID string) error {
 	}
 
 	if i.NodeID == "" {
-		return errors.New("Instance Not Assigned to Node")
+		return errors.New("Cannot restart instance not assigned to Node")
 	}
 
 	if i.State != "exited" {
@@ -59,7 +59,7 @@ func (c *controller) stopInstance(instanceID string) error {
 	}
 
 	if i.NodeID == "" {
-		return errors.New("Instance Not Assigned to Node")
+		return errors.New("Cannot stop instance not assigned to Node")
 	}
 
 	if i.State == "pending" {
@@ -78,7 +78,7 @@ func (c *controller) deleteInstance(instanceID string) error {
 	}
 
 	if i.NodeID == "" {
-		return errors.New("Instance Not Assigned to Node")
+		return errors.New("Cannot delete instance not assigned to Node")
 	}
 
 	go c.client.DeleteInstance(instanceID, i.NodeID)

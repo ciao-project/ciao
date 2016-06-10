@@ -270,7 +270,25 @@ func findTestFiles(packs []string) ([]PackageInfo, error) {
 	return testPackages, nil
 }
 
-func runPackageTests(p *PackageTests, coverFile string) (int, error) {
+func dumpErrorOutput(errorOutput *bytes.Buffer) {
+	scanner := bufio.NewScanner(errorOutput)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Fprintln(os.Stderr, line)
+	}
+}
+
+func dumpColourErrorOutput(errorOutput *bytes.Buffer) {
+	scanner := bufio.NewScanner(errorOutput)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Fprintf(os.Stderr, "%c[%dm", 0x1b, 31)
+		fmt.Fprintln(os.Stderr, line)
+	}
+	fmt.Fprintf(os.Stderr, "%c[%dm\n", 0x1b, 0)
+}
+
+func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffer) (int, error) {
 	var output bytes.Buffer
 	var coverage string
 
@@ -288,6 +306,7 @@ func runPackageTests(p *PackageTests, coverFile string) (int, error) {
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = &output
+	cmd.Stderr = errorOutput
 	err := cmd.Run()
 
 	scanner := bufio.NewScanner(&output)
@@ -507,41 +526,44 @@ func appendCoverageData(f *os.File, coverFile string) error {
 	return nil
 }
 
-func runTests(tests []*PackageTests) (int, error) {
+func runTests(tests []*PackageTests) (int, *bytes.Buffer, error) {
+	var errorOutput bytes.Buffer
 	exitCode := 0
 	if coverProfile != "" {
 		coverDir, err := ioutil.TempDir("", "cover-profiles")
 		if err != nil {
-			return 1, fmt.Errorf("Unable to create temporary directory for coverage profiles: %v", err)
+			err = fmt.Errorf("Unable to create temporary directory for coverage profiles: %v", err)
+			return 1, &errorOutput, err
+
 		}
 		defer func() { _ = os.RemoveAll(coverDir) }()
 
 		f, err := createCoverFile()
 		if err != nil {
-			return 1, err
+			return 1, &errorOutput, err
 		}
 		defer func() { _ = f.Close() }()
 
 		for i, p := range tests {
 			coverFile := path.Join(coverDir, fmt.Sprintf("%d", i))
-			ec, err := runPackageTests(p, coverFile)
+			ec, err := runPackageTests(p, coverFile, &errorOutput)
 			exitCode |= ec
 			if err != nil {
 				continue
 			}
 			err = appendCoverageData(f, coverFile)
 			if err != nil {
-				return 1, err
+				return 1, &errorOutput, err
 			}
 		}
 	} else {
 		for _, p := range tests {
-			ec, _ := runPackageTests(p, "")
+			ec, _ := runPackageTests(p, "", &errorOutput)
 			exitCode |= ec
 		}
 	}
 
-	return exitCode, nil
+	return exitCode, &errorOutput, nil
 }
 
 func main() {
@@ -556,7 +578,7 @@ func main() {
 	}
 
 	tests := extractTests(packages)
-	exitCode, err := runTests(tests)
+	exitCode, errorOutput, err := runTests(tests)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -569,6 +591,14 @@ func main() {
 		}
 	} else {
 		err = generateHTMLReport(tests)
+	}
+
+	if exitCode != 0 {
+		if colour {
+			dumpColourErrorOutput(errorOutput)
+		} else {
+			dumpErrorOutput(errorOutput)
+		}
 	}
 
 	if err != nil {

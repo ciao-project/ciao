@@ -37,6 +37,8 @@ var cacert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", 
 var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
 var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
 var logDir = "/var/lib/ciao/logs/scheduler"
+var configURI = flag.String("configuration-uri", "file:///etc/ciao/configuration.yaml",
+	"Cluster configuration URI")
 
 type ssntpSchedulerServer struct {
 	// user config overrides ------------------------------------------
@@ -552,6 +554,7 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 	defer sched.cnMutex.RUnlock()
 
 	if len(sched.cnList) == 0 {
+		glog.Errorf("No compute nodes connected, unable to start workload")
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoComputeNodes)
 		return nil
 	}
@@ -595,6 +598,7 @@ func (sched *ssntpSchedulerServer) pickNetworkNode(controllerUUID string, worklo
 	defer sched.nnMutex.RUnlock()
 
 	if len(sched.nnMap) == 0 {
+		glog.Errorf("No network nodes connected, unable to start network workload")
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoNetworkNodes)
 		return nil
 	}
@@ -1006,8 +1010,9 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 	toggleDebug(sched)
 
 	sched.config = &ssntp.Config{
-		CAcert: *cacert,
-		Cert:   *cert,
+		CAcert:    *cacert,
+		Cert:      *cert,
+		ConfigURI: *configURI,
 	}
 
 	setSSNTPForwardRules(sched)

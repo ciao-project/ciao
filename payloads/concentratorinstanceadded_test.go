@@ -20,42 +20,31 @@ import (
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
-
-const cnciUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
-const tenantUUID = "2491851d-dce9-48d6-b83a-a717417072ce"
-const cnciIP = "10.1.2.3"
-const cnciMAC = "CA:FE:C0:00:01:02"
-
-const cnciAddedYaml = "" +
-	"concentrator_instance_added:\n" +
-	"  instance_uuid: " + cnciUUID + "\n" +
-	"  tenant_uuid: " + tenantUUID + "\n" +
-	"  concentrator_ip: " + cnciIP + "\n" +
-	"  concentrator_mac: " + cnciMAC + "\n"
 
 func TestConcentratorAddedUnmarshal(t *testing.T) {
 	var cnciAdded EventConcentratorInstanceAdded
 
-	err := yaml.Unmarshal([]byte(cnciAddedYaml), &cnciAdded)
+	err := yaml.Unmarshal([]byte(testutil.CNCIAddedYaml), &cnciAdded)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if cnciAdded.CNCIAdded.InstanceUUID != cnciUUID {
+	if cnciAdded.CNCIAdded.InstanceUUID != testutil.CNCIUUID {
 		t.Errorf("Wrong instance UUID field [%s]", cnciAdded.CNCIAdded.InstanceUUID)
 	}
 
-	if cnciAdded.CNCIAdded.TenantUUID != tenantUUID {
+	if cnciAdded.CNCIAdded.TenantUUID != testutil.TenantUUID {
 		t.Errorf("Wrong tenant UUID field [%s]", cnciAdded.CNCIAdded.TenantUUID)
 	}
 
-	if cnciAdded.CNCIAdded.ConcentratorIP != cnciIP {
+	if cnciAdded.CNCIAdded.ConcentratorIP != testutil.CNCIIP {
 		t.Errorf("Wrong CNCI IP field [%s]", cnciAdded.CNCIAdded.ConcentratorIP)
 	}
 
-	if cnciAdded.CNCIAdded.ConcentratorMAC != cnciMAC {
+	if cnciAdded.CNCIAdded.ConcentratorMAC != testutil.CNCIMAC {
 		t.Errorf("Wrong CNCI MAC field [%s]", cnciAdded.CNCIAdded.ConcentratorMAC)
 	}
 }
@@ -63,17 +52,17 @@ func TestConcentratorAddedUnmarshal(t *testing.T) {
 func TestConcentratorAddedMarshal(t *testing.T) {
 	var cnciAdded EventConcentratorInstanceAdded
 
-	cnciAdded.CNCIAdded.InstanceUUID = cnciUUID
-	cnciAdded.CNCIAdded.TenantUUID = tenantUUID
-	cnciAdded.CNCIAdded.ConcentratorIP = cnciIP
-	cnciAdded.CNCIAdded.ConcentratorMAC = cnciMAC
+	cnciAdded.CNCIAdded.InstanceUUID = testutil.CNCIUUID
+	cnciAdded.CNCIAdded.TenantUUID = testutil.TenantUUID
+	cnciAdded.CNCIAdded.ConcentratorIP = testutil.CNCIIP
+	cnciAdded.CNCIAdded.ConcentratorMAC = testutil.CNCIMAC
 
 	y, err := yaml.Marshal(&cnciAdded)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if string(y) != cnciAddedYaml {
-		t.Errorf("ConcentratorInstanceAdded marshalling failed\n[%s]\n vs\n[%s]", string(y), cnciAddedYaml)
+	if string(y) != testutil.CNCIAddedYaml {
+		t.Errorf("ConcentratorInstanceAdded marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.CNCIAddedYaml)
 	}
 }

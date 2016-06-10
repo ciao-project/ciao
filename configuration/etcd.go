@@ -1,3 +1,4 @@
+//
 // Copyright (c) 2016 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,24 +12,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
 
-package testutil_test
+package configuration
 
 import (
-	"testing"
+	"errors"
 
-	. "github.com/01org/ciao/testutil"
+	"github.com/01org/ciao/payloads"
 )
 
-func TestStartIdentityServer(t *testing.T) {
-	config := IdentityConfig{
-		ComputeURL: "https://localhost:8888",
-		ProjectID:  "30dedd5c-48d9-45d3-8b44-f973e4f35e48",
-	}
+// TODO: implement etcd struct
+type etcd struct {
+}
 
-	id := StartIdentityServer(config)
-	if id == nil {
-		t.Fatal("Could not start test identity server")
-	}
-	defer id.Close()
+func (e *etcd) fetchConfiguration(uriStr string) (conf payloads.Configure, err error) {
+	return conf, errors.New("Not implemented")
+}
+
+func (e *etcd) storeConfiguration(payloads.Configure) error {
+	//empty for now
+	return nil
 }

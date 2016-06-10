@@ -128,7 +128,8 @@ func (f *Frame) setTrace(trace *TraceConfig) {
 	}
 }
 
-func (f Frame) major() uint8 {
+// GetMajor returns the SSNTP major number for the frame.
+func (f Frame) GetMajor() uint8 {
 	return f.Major & majorMask
 }
 
@@ -166,11 +167,11 @@ func (f Frame) String() string {
 		}
 
 		return fmt.Sprintf("\n\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tOrigin %s\n\tPayload len %d\n\tPath %s\n",
-			f.major(), f.Minor, t, op, f.Origin, f.PayloadLength, path)
+			f.GetMajor(), f.Minor, t, op, f.Origin, f.PayloadLength, path)
 	}
 
 	return fmt.Sprintf("\n\tMajor %d\n\tMinor %d\n\tType %s\n\tOp %s\n\tOrigin %s\n\tPayload len %d\n",
-		f.major(), f.Minor, t, op, f.Origin, f.PayloadLength)
+		f.GetMajor(), f.Minor, t, op, f.Origin, f.PayloadLength)
 }
 
 func (f ConnectFrame) String() string {

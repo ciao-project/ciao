@@ -14,13 +14,15 @@
 // limitations under the License.
 //
 
-package ssntp
+package ssntp_test
 
 import (
 	"bytes"
 	"encoding/asn1"
 	"flag"
 	"fmt"
+	. "github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 	"io/ioutil"
 	"os"
 	"path"
@@ -60,7 +62,7 @@ func (server *ssntpEchoServer) StatusNotify(uuid string, status Status, frame *F
 
 func (server *ssntpEchoServer) CommandNotify(uuid string, command Command, frame *Frame) {
 	if server.majorChannel != nil {
-		if frame.major() == major {
+		if frame.GetMajor() == Major {
 			close(server.majorChannel)
 		}
 	}
@@ -337,7 +339,7 @@ func TestUUID(t *testing.T) {
 }
 
 func testGetOIDsFromRole(t *testing.T, role Role, expectedOIDs []asn1.ObjectIdentifier) {
-	oids, err := getOIDsFromRole(role)
+	oids, err := GetOIDsFromRole(role)
 	if err != nil {
 		t.Fatalf("%s\n", err)
 	}
@@ -358,7 +360,7 @@ func testGetOIDsFromRole(t *testing.T, role Role, expectedOIDs []asn1.ObjectIden
 }
 
 func testGetRoleFromOIDs(t *testing.T, oids []asn1.ObjectIdentifier, expected Role) {
-	role := getRoleFromOIDs(oids)
+	role := GetRoleFromOIDs(oids)
 
 	if role|expected != expected {
 		t.Fatalf("Role mismatch: 0x%x vs 0x%x\n", role, expected)
@@ -434,7 +436,7 @@ func TestGetOIDFromNetAgentCnAgentRole(t *testing.T) {
 //
 // Test is expected to pass.
 func TestGetOIDFromInvalidRole(t *testing.T) {
-	_, err := getOIDsFromRole(UNKNOWN)
+	_, err := GetOIDsFromRole(UNKNOWN)
 	if err == nil {
 		t.Fatalf("Got OID for an invalid role\n")
 	}
@@ -827,27 +829,6 @@ func TestMajor(t *testing.T) {
 	server.ssntp.Stop()
 }
 
-func roleToCert(role Role) string {
-	switch role {
-	case SCHEDULER:
-		return testCertScheduler
-	case SERVER:
-		return testCertServer
-	case AGENT:
-		return testCertAgent
-	case Controller:
-		return testCertController
-	case CNCIAGENT:
-		return testCertCNCIAgent
-	case NETAGENT:
-		return testCertNetAgent
-	case AGENT | NETAGENT:
-		return testCertAgentNetAgent
-	}
-
-	return testCertUnknown
-}
-
 /* Mark D. Ryan FTW ! */
 func _getCert(CACertFileName, certFileName string, CACert, certString string) (string, string, error) {
 	caPath := path.Join(tempCertPath, CACertFileName)
@@ -867,7 +848,7 @@ func _getCert(CACertFileName, certFileName string, CACert, certString string) (s
 func getCert(role Role) (string, string, error) {
 	var newRole = role
 
-	return _getCert("CACert", newRole.String(), testCACert, roleToCert(role))
+	return _getCert("CACert", newRole.String(), testutil.TestCACert, testutil.RoleToTestCert(role))
 }
 
 func validRoles(serverRole, clientRole Role) bool {
@@ -1023,7 +1004,7 @@ func testMultiURIs(t *testing.T, CACert string, expectedURIs []string, configURI
 		t.Fatalf("Could not build a test config")
 	}
 
-	CAcert, _, err := _getCert("CACertMultiURI", "CertAgentMultiURI", CACert, roleToCert(role))
+	CAcert, _, err := _getCert("CACertMultiURI", "CertAgentMultiURI", CACert, testutil.RoleToTestCert(role))
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -1035,7 +1016,7 @@ func testMultiURIs(t *testing.T, CACert string, expectedURIs []string, configURI
 		expectedURIs = append([]string{configURI}, expectedURIs...)
 	}
 
-	parsedURIs := clientConfig.configURIs(nil, configPort)
+	parsedURIs := clientConfig.ConfigURIs(nil, configPort)
 
 	if len(parsedURIs) != len(expectedURIs)+1 {
 		t.Fatalf("Wrong parsed URI slice length %d", len(parsedURIs))
@@ -1055,7 +1036,7 @@ func testMultiURIs(t *testing.T, CACert string, expectedURIs []string, configURI
 //
 // Test is expected to pass
 func TestURIMultiHomed(t *testing.T) {
-	testMultiURIs(t, testCACertSchedulerMultiHomed,
+	testMultiURIs(t, testutil.TestCACertSchedulerMultiHomed,
 		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "", 8888)
 }
 
@@ -1067,7 +1048,7 @@ func TestURIMultiHomed(t *testing.T) {
 //
 // Test is expected to pass
 func TestURIMultiHomedConfigured(t *testing.T) {
-	testMultiURIs(t, testCACertSchedulerMultiHomed,
+	testMultiURIs(t, testutil.TestCACertSchedulerMultiHomed,
 		[]string{"192.168.0.0", "clearlinux.org", "intel.com"}, "github.com", 8888)
 }
 
@@ -1077,7 +1058,7 @@ func TestURIMultiHomedConfigured(t *testing.T) {
 //
 // Test is expected to pass
 func TestURILocalhost(t *testing.T) {
-	testMultiURIs(t, testCACert, []string{"localhost"}, "", 8888)
+	testMultiURIs(t, testutil.TestCACert, []string{"localhost"}, "", 8888)
 }
 
 // Test SSNTP client connection closure before Dial.
@@ -2494,7 +2475,7 @@ func TestMain(m *testing.M) {
 	/* Create temp certs directory if necessary */
 	err := os.MkdirAll(tempCertPath, 0755)
 	if err != nil {
-		fmt.Printf("Unable to create %s %v\n", uuidPrefix, err)
+		fmt.Printf("Unable to create %s %v\n", UUIDPrefix, err)
 		os.Exit(1)
 	}
 

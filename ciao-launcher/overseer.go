@@ -28,10 +28,11 @@ import (
 	"syscall"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
-	"gopkg.in/yaml.v2"
 )
 
 type ovsAddResult struct {
@@ -109,8 +110,10 @@ type ovsInstanceState struct {
 }
 
 type overseer struct {
+	instancesDir       string
 	instances          map[string]*ovsInstanceState
 	ovsCh              chan interface{}
+	ovsInstanceCh      chan interface{}
 	childDoneCh        chan struct{}
 	parentWg           *sync.WaitGroup
 	childWg            *sync.WaitGroup
@@ -121,6 +124,10 @@ type overseer struct {
 	diskSpaceAvailable int
 	memoryAvailable    int
 	traceFrames        *list.List
+	memInfo            string
+	stat               string
+	loadavg            string
+	statsInterval      time.Duration
 }
 
 type cnStats struct {
@@ -233,7 +240,7 @@ func getOnlineCPUs() int {
 	return cpusOnline
 }
 
-func getFSInfo() (total, available int) {
+func getFSInfo(instancesDir string) (total, available int) {
 
 	total = -1
 	available = -1
@@ -458,13 +465,13 @@ func (ovs *overseer) sendTraceReport() {
 	}
 }
 
-func getStats() *cnStats {
+func getStats(instancesDir string) *cnStats {
 	var s cnStats
 
 	s.totalMemMB, s.availableMemMB = getMemoryInfo()
 	s.load = getLoadAvg()
 	s.cpusOnline = getOnlineCPUs()
-	s.totalDiskMB, s.availableDiskMB = getFSInfo()
+	s.totalDiskMB, s.availableDiskMB = getFSInfo(instancesDir)
 
 	return &s
 }
@@ -511,7 +518,7 @@ func (ovs *overseer) processAddCommand(cmd *ovsAddCmd) {
 		ovs.diskSpaceAllocated += cfg.Disk
 		ovs.memoryAllocated += cfg.Mem
 		targetCh = startInstance(cmd.instance, cfg, ovs.childWg, ovs.childDoneCh,
-			ovs.ac, ovs.ovsCh)
+			ovs.ac, ovs.ovsInstanceCh)
 		ovs.instances[cmd.instance] = &ovsInstanceState{
 			cmdCh:          targetCh,
 			running:        ovsPending,
@@ -565,7 +572,7 @@ func (ovs *overseer) processStatusCommand(cmd *ovsStatusCmd) {
 	if !ovs.ac.conn.isConnected() {
 		return
 	}
-	cns := getStats()
+	cns := getStats(ovs.instancesDir)
 	ovs.updateAvailableResources(cns)
 	ovs.sendStatusCommand(cns, ovs.computeStatus())
 }
@@ -575,7 +582,7 @@ func (ovs *overseer) processStatsStatusCommand(cmd *ovsStatsStatusCmd) {
 	if !ovs.ac.conn.isConnected() {
 		return
 	}
-	cns := getStats()
+	cns := getStats(ovs.instancesDir)
 	ovs.updateAvailableResources(cns)
 	status := ovs.computeStatus()
 	ovs.sendStatusCommand(cns, status)
@@ -634,7 +641,7 @@ func (ovs *overseer) processCommand(cmd interface{}) {
 
 func (ovs *overseer) runOverseer() {
 
-	statsTimer := time.After(time.Second * statsPeriod)
+	statsTimer := time.After(ovs.statsInterval)
 DONE:
 	for {
 		select {
@@ -643,19 +650,21 @@ DONE:
 				break DONE
 			}
 			ovs.processCommand(cmd)
+		case cmd := <-ovs.ovsInstanceCh:
+			ovs.processCommand(cmd)
 		case <-statsTimer:
 			if !ovs.ac.conn.isConnected() {
-				statsTimer = time.After(time.Second * statsPeriod)
+				statsTimer = time.After(ovs.statsInterval)
 				continue
 			}
 
-			cns := getStats()
+			cns := getStats(ovs.instancesDir)
 			ovs.updateAvailableResources(cns)
 			status := ovs.computeStatus()
 			ovs.sendStatusCommand(cns, status)
 			ovs.sendStats(cns, status)
 			ovs.sendTraceReport()
-			statsTimer = time.After(time.Second * statsPeriod)
+			statsTimer = time.After(ovs.statsInterval)
 			if glog.V(1) {
 				glog.Infof("Consumed: Disk %d Mem %d CPUs %d",
 					ovs.diskSpaceAllocated, ovs.memoryAllocated, ovs.vcpusAllocated)
@@ -664,17 +673,43 @@ DONE:
 	}
 
 	close(ovs.childDoneCh)
-	ovs.childWg.Wait()
+
+DRAIN:
+
+	// Here we have the problem that we have multiple go routines writing to the
+	// same channel.   We cannot therefore use the closure of this channel as
+	// a signal that all writes are done.  Instead we need to use waitgroups.
+	// But here's the catch.  We need to keep reading on the ovsInstanceCh channel
+	// until the childWg indicates that all instances have exitted, otherwise some
+	// of them might block trying to write to ovsInstanceCh.
+
+	for {
+		select {
+		case <-ovs.ovsInstanceCh:
+		case <-func() chan struct{} {
+			ch := make(chan struct{})
+			go func() {
+				ovs.childWg.Wait()
+				close(ch)
+			}()
+			return ch
+		}():
+			break DRAIN
+		}
+	}
+
 	glog.Info("All instance go routines have exitted")
 	ovs.parentWg.Done()
 
 	glog.Info("Overseer exitting")
 }
 
-func startOverseer(wg *sync.WaitGroup, ac *agentClient) chan<- interface{} {
+func startOverseerFull(instancesDir string, wg *sync.WaitGroup, ac *agentClient, statsInterval time.Duration,
+	memInfo, stat, loadavg string) chan<- interface{} {
 
 	instances := make(map[string]*ovsInstanceState)
 	ovsCh := make(chan interface{})
+	ovsInstanceCh := make(chan interface{})
 	toMonitor := make([]chan<- interface{}, 0, 1024)
 	childDoneCh := make(chan struct{})
 	childWg := new(sync.WaitGroup)
@@ -707,7 +742,7 @@ func startOverseer(wg *sync.WaitGroup, ac *agentClient) chan<- interface{} {
 		diskSpaceAllocated += cfg.Disk
 		memoryAllocated += cfg.Mem
 
-		target := startInstance(instance, cfg, childWg, childDoneCh, ac, ovsCh)
+		target := startInstance(instance, cfg, childWg, childDoneCh, ac, ovsInstanceCh)
 		instances[instance] = &ovsInstanceState{
 			cmdCh:          target,
 			running:        ovsPending,
@@ -726,8 +761,10 @@ func startOverseer(wg *sync.WaitGroup, ac *agentClient) chan<- interface{} {
 	})
 
 	ovs := &overseer{
+		instancesDir:       instancesDir,
 		instances:          instances,
 		ovsCh:              ovsCh,
+		ovsInstanceCh:      ovsInstanceCh,
 		parentWg:           wg,
 		childWg:            childWg,
 		childDoneCh:        childDoneCh,
@@ -736,6 +773,10 @@ func startOverseer(wg *sync.WaitGroup, ac *agentClient) chan<- interface{} {
 		diskSpaceAllocated: diskSpaceAllocated,
 		memoryAllocated:    memoryAllocated,
 		traceFrames:        list.New(),
+		statsInterval:      statsInterval,
+		memInfo:            memInfo,
+		stat:               stat,
+		loadavg:            loadavg,
 	}
 	ovs.parentWg.Add(1)
 	glog.Info("Starting Overseer")
@@ -757,4 +798,8 @@ func startOverseer(wg *sync.WaitGroup, ac *agentClient) chan<- interface{} {
 	}
 
 	return ovsCh
+}
+
+func startOverseer(wg *sync.WaitGroup, ac *agentClient) chan<- interface{} {
+	return startOverseerFull(instancesDir, wg, ac, time.Second*statsPeriod, "/proc/meminfo", "/proc/stat", "/proc/loadavg")
 }

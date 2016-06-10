@@ -29,7 +29,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/glog"
 
 	"github.com/01org/ciao/payloads"
@@ -122,6 +121,23 @@ type queryValue struct {
 	name, value string
 }
 
+func dumpJSON(body interface{}) {
+	switch b := body.(type) {
+	case []byte:
+		var dump bytes.Buffer
+
+		json.Indent(&dump, b, "", "\t")
+		dump.WriteTo(os.Stdout)
+	case map[string]interface{}:
+		new, err := json.MarshalIndent(b, "", "\t")
+		if err == nil {
+			os.Stdout.Write(new)
+		}
+	}
+
+	fmt.Printf("\n")
+}
+
 func buildComputeURL(format string, args ...interface{}) string {
 	prefix := fmt.Sprintf("https://%s:%d/%s/", *controllerURL, *computePort, openstackComputeVersion)
 	return fmt.Sprintf(prefix+format, args...)
@@ -175,7 +191,7 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			errorf("Could not read the HTTP response %s\n", err)
-			spew.Dump(resp.Body)
+			dumpJSON(respBody)
 			return resp, err
 		}
 
@@ -205,7 +221,7 @@ func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
 	}
 
 	if glog.V(2) {
-		spew.Dump(v)
+		dumpJSON(body)
 	}
 
 	return nil

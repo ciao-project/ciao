@@ -14,9 +14,12 @@
 // limitations under the License.
 //
 
-package ssntp
+package testutil
 
-const testCACert = `
+import "github.com/01org/ciao/ssntp"
+
+// TestCACert is a snake oil Certificate Authority for test automation.
+const TestCACert = `
 -----BEGIN CERTIFICATE-----
 MIIDFzCCAf+gAwIBAgIRAP+4vV/CO3EX1kfxO6jJJvAwDQYJKoZIhvcNAQELBQAw
 CzEJMAcGA1UEChMAMB4XDTE2MDUxOTEyNTEzM1oXDTE3MDUxOTEyNTEzM1owCzEJ
@@ -37,7 +40,9 @@ AhUd9Gk2Fb9V/YQ9UWp9tl+hEzVrpBuYPXqrMXHif55Fo5JoTMeZeIgHPLZ9/Utc
 jlsGuomSwavQtm+V18VUt3U3XIghFeqc5OVL
 -----END CERTIFICATE-----`
 
-const testCertScheduler = `
+// TestCertScheduler is a snake oil SSNTP Scheduler role certificate
+// for test automation.
+const TestCertScheduler = `
 -----BEGIN CERTIFICATE-----
 MIIDFzCCAf+gAwIBAgIRAP+4vV/CO3EX1kfxO6jJJvAwDQYJKoZIhvcNAQELBQAw
 CzEJMAcGA1UEChMAMB4XDTE2MDUxOTEyNTEzM1oXDTE3MDUxOTEyNTEzM1owCzEJ
@@ -85,7 +90,9 @@ ObDxa2XeZP1bWAvDzngY2XY/O43eY1fyRocp0mzTnFjGxB1tzZZNrMhXGy/6eL1p
 P4VdmGGSMY/EUowzeKqktHRvBJDMGKxfaxTivlfyUNGQ3Bo/7UoxSU4=
 -----END RSA PRIVATE KEY-----`
 
-const testCertServer = `
+// TestCertServer is a snake oil SSNTP Server role certificate
+// for test automation.
+const TestCertServer = `
 -----BEGIN CERTIFICATE-----
 MIIDFDCCAfygAwIBAgIRALpy2XcRn5fAkBK+D0BR/FUwDQYJKoZIhvcNAQELBQAw
 CzEJMAcGA1UEChMAMB4XDTE2MDUyMDEyNTEyNloXDTE3MDUyMDEyNTEyNlowCzEJ
@@ -133,7 +140,9 @@ itgD7Q1oMEGS2OA3l6XhdI/GxxXhxA2kXf0Q0vLq76RXHOpFmugdDbcLZABmjhUW
 b4BEfHCZNDdcAGJ28MgfLlIuvGJIREM5wfRiKQFfXH2kvV8ua74=
 -----END RSA PRIVATE KEY-----`
 
-const testCertAgent = `
+// TestCertAgent is a snake oil SSNTP Agent role certificate
+// for test automation.
+const TestCertAgent = `
 -----BEGIN CERTIFICATE-----
 MIIDFDCCAfygAwIBAgIRALFQMUl+gspsJnYGQTXl6lowDQYJKoZIhvcNAQELBQAw
 CzEJMAcGA1UEChMAMB4XDTE2MDUxOTEyNTIwOFoXDTE3MDUxOTEyNTIwOFowCzEJ
@@ -181,7 +190,9 @@ As96gP0LdkPCPDUGjjxWvw6IVd7v4Gadv6z8olNS4PZshDusLz4NBet990ZgZ3vr
 nPFs9Q3f0Ck/Cblt6XyXAlEUBrS3bXDyO+vsrgpXVqzQ8xhNYT+w
 -----END RSA PRIVATE KEY-----`
 
-const testCertController = `
+// TestCertController is a snake oil SSNTP Controller role
+// certificate for test automation.
+const TestCertController = `
 -----BEGIN CERTIFICATE-----
 MIIDEzCCAfugAwIBAgIQLj/lv0z3zgYtBuILQsFRMjANBgkqhkiG9w0BAQsFADAL
 MQkwBwYDVQQKEwAwHhcNMTYwNTIwMTE1NjAyWhcNMTcwNTIwMTE1NjAyWjALMQkw
@@ -229,7 +240,9 @@ jMy3pNuv6YJw8kd6wfDIn6G2axcJ3KZVo0Fg+kvIwcaUFHntCENBc+8eqR0IZV2k
 cwf5P/DR8p7NHn92HOvnAzBYHvuxlRBibrQsLWgATT99sgSU1+/AKwM=
 -----END RSA PRIVATE KEY-----`
 
-const testCertNetAgent = `
+// TestCertNetAgent is a snake oil SSNTP NetAgent role certificate
+// for test automation.
+const TestCertNetAgent = `
 -----BEGIN CERTIFICATE-----
 MIIDFDCCAfygAwIBAgIRAMv1c1CPD4YjMjsPzByml+0wDQYJKoZIhvcNAQELBQAw
 CzEJMAcGA1UEChMAMB4XDTE2MDUyMDEyNDkzMloXDTE3MDUyMDEyNDkzMlowCzEJ
@@ -277,7 +290,9 @@ H/UuqKkWlKaejQqOBPVIwi8vOr6jhCkZCtgVHEqHtZCHPkwlqgzB+LoSp4qjZYE+
 wv2lAUxo7ePQK1f4g88nRmGpHubAhqk2xYZ02Mka1c5L71ZUKqhM0Q==
 -----END RSA PRIVATE KEY-----`
 
-const testCertCNCIAgent = `
+// TestCertCNCIAgent is a snake oil SSNTP CNCIAgent role certificate
+// for test automation.
+const TestCertCNCIAgent = `
 -----BEGIN CERTIFICATE-----
 MIIDFDCCAfygAwIBAgIRAIYATy+4q5KBXFu+uNNJRUkwDQYJKoZIhvcNAQELBQAw
 CzEJMAcGA1UEChMAMB4XDTE2MDUyMDExNTYyMFoXDTE3MDUyMDExNTYyMFowCzEJ
@@ -325,7 +340,9 @@ lciys3+eEwnKCtkfL3teIRzENFbCqRFy/Wtbtl43J3u7OTEJaimDev2NZrqwoUUw
 zeDHaZVad3qfU7X0z5eT+JZfi7yAcqEI3VEslBReWIIzHL5HR9rzyCU=
 -----END RSA PRIVATE KEY-----`
 
-const testCertUnknown = `
+// TestCertUnknown is a snake oil SSNTP Unknown role certificate
+// for test automation.
+const TestCertUnknown = `
 -----BEGIN CERTIFICATE-----
 MIIDCDCCAfCgAwIBAgIQeJh5KJ7Y2cFuI7RD+DnWPDANBgkqhkiG9w0BAQsFADAL
 MQkwBwYDVQQKEwAwHhcNMTYwNTIwMTI0NzE1WhcNMTcwNTIwMTI0NzE1WjALMQkw
@@ -373,7 +390,9 @@ b1v7j/lNE5+Yx8rBJJrMRs0hub5TTxfnOp0X28dlDmHTXQrbJs7WygfFlnJDigCk
 E8y6D+kRk5Kli/23SeFR9N7SNBXQEB43KsiKMAzSUCLmaigyi3d8LQ==
 -----END RSA PRIVATE KEY-----`
 
-const testCertAgentNetAgent = `
+// TestCertAgentNetAgent is a snake oil SSNTP AGENT|NETAGENT role
+// certificate for test automation.
+const TestCertAgentNetAgent = `
 -----BEGIN CERTIFICATE-----
 MIIDHjCCAgagAwIBAgIQH3ZiRo+kbCIiddp+7/65EzANBgkqhkiG9w0BAQsFADAL
 MQkwBwYDVQQKEwAwHhcNMTYwNTE5MTI1MjE2WhcNMTcwNTE5MTI1MjE2WjALMQkw
@@ -421,7 +440,9 @@ Ez8n8SEhYVyZtVG+RpScJVHPnaon7yUHHdzVnDmiHkQ95g45+OrigzuQaUEZW8Nd
 5Dizzh4+Ik4kUjV+JrFK9TDu4vUPYNfa7lDfKMvCdSraIudNzGEv
 -----END RSA PRIVATE KEY-----`
 
-const testCACertSchedulerMultiHomed = `
+// TestCACertSchedulerMultiHomed is a snake oil SSNTP multihomed
+// scheduler role Certificate Authority for test automation.
+const TestCACertSchedulerMultiHomed = `
 -----BEGIN CERTIFICATE-----
 MIIDLjCCAhagAwIBAgIQEzJ+Q0fNrVJYOTxilkF03jANBgkqhkiG9w0BAQsFADAL
 MQkwBwYDVQQKEwAwHhcNMTYwNTI1MTYxOTQxWhcNMTcwNTI1MTYxOTQxWjALMQkw
@@ -442,3 +463,26 @@ mzZXQFY+Z3Y/v3Hn9EBr08yjSps8hH2ZmEy7zOHEQT7aswKHe3WUt98MAHpx9IVS
 6XdH1TF5KWFm2tBozhuK04EbwZyrF1Oa6oZqKw3YAURpy7+NF7gYXJ0xaGIU6kWV
 AuA=
 -----END CERTIFICATE-----`
+
+// RoleToTestCert returns a string containing the testutil certificate
+// matching the specified ssntp.Role
+func RoleToTestCert(role ssntp.Role) string {
+	switch role {
+	case ssntp.SCHEDULER:
+		return TestCertScheduler
+	case ssntp.SERVER:
+		return TestCertServer
+	case ssntp.AGENT:
+		return TestCertAgent
+	case ssntp.Controller:
+		return TestCertController
+	case ssntp.CNCIAGENT:
+		return TestCertCNCIAgent
+	case ssntp.NETAGENT:
+		return TestCertNetAgent
+	case ssntp.AGENT | ssntp.NETAGENT:
+		return TestCertAgentNetAgent
+	}
+
+	return TestCertUnknown
+}
