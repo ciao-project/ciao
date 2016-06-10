@@ -571,7 +571,7 @@ func TestStartWorkload(t *testing.T) {
 	decision := fwd.Decision()
 	recipients := fwd.Recipients()
 	if decision != ssntp.Forward ||
-		uuid != "fb3e089c-62bd-476c-b22a-9d6d09599306" {
+		uuid != testutil.CNCIUUID {
 		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
 	}
 	for _, dest = range recipients[:] {
@@ -585,8 +585,8 @@ func TestStartWorkload(t *testing.T) {
 	decision = fwd.Decision()
 	recipients = fwd.Recipients()
 	if decision != ssntp.Forward ||
-		uuid != "3390740c-dce9-48d6-b83a-a717417072ce" {
-		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
+		uuid != testutil.InstanceUUID {
+		t.Errorf("unable to start workload 1, got decision=0x%x, workload uuid=%s", decision, uuid)
 	}
 	for _, dest = range recipients[:] {
 		if sched.cnMap[dest] == nil {
@@ -602,8 +602,8 @@ func TestStartWorkload(t *testing.T) {
 	decision = fwd.Decision()
 	recipients = fwd.Recipients()
 	if decision != ssntp.Forward ||
-		uuid != "3390740c-dce9-48d6-b83a-a717417072ce" {
-		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
+		uuid != testutil.InstanceUUID {
+		t.Errorf("unable to start workload 2, got decision=0x%x, workload uuid=%s", decision, uuid)
 	}
 	for _, dest = range recipients[:] {
 		if sched.cnMap[dest] == nil {
@@ -624,10 +624,10 @@ func TestGetWorkloadAgentUUID(t *testing.T) {
 		expectedInstanceUUID string
 		expectedAgentUUID    string
 	}{
-		{ssntp.RESTART, []byte(testutil.RestartYaml), "0e8516d7-af2f-454a-87ed-072aeb9faf53", "d37e8dd5-3625-42bb-97b5-05291013abad"},
-		{ssntp.STOP, []byte(testutil.StopYaml), "3390740c-dce9-48d6-b83a-a717417072ce", "59460b8a-5f53-4e3e-b5ce-b71fed8c7e64"},
-		{ssntp.DELETE, []byte(testutil.DeleteYaml), "3390740c-dce9-48d6-b83a-a717417072ce", "59460b8a-5f53-4e3e-b5ce-b71fed8c7e64"},
-		{ssntp.EVACUATE, []byte(testutil.EvacuateYaml), "", "64803ffa-fb47-49fa-8191-15d2c34e4dd3"},
+		{ssntp.RESTART, []byte(testutil.RestartYaml), testutil.InstanceUUID, testutil.AgentUUID},
+		{ssntp.STOP, []byte(testutil.StopYaml), testutil.InstanceUUID, testutil.AgentUUID},
+		{ssntp.DELETE, []byte(testutil.DeleteYaml), testutil.InstanceUUID, testutil.AgentUUID},
+		{ssntp.EVACUATE, []byte(testutil.EvacuateYaml), "", testutil.AgentUUID},
 	}
 	for _, test := range stringTests {
 		instanceUUID, agentUUID, _ := GetWorkloadAgentUUID(sched, test.cmd, test.yaml)
