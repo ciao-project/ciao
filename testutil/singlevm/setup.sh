@@ -39,6 +39,14 @@ if [ ! -d /var/lib/ciao/images ]
 then
 	echo "FATAL ERROR: Unable to create /var/lib/ciao/images"
 	exit 1
+
+fi
+
+sudo mkdir -p /etc/pki/ciao
+if [ ! -d /etc/pki/ciao ]
+then
+	echo "FATAL ERROR: Unable to create /etc/pki/ciao"
+	exit 1
 fi
 
 sudo mkdir -p /etc/ciao/
@@ -47,7 +55,7 @@ then
 	echo "FATAL ERROR: Unable to create /etc/ciao"
 	exit 1
 fi
-sudo cp "$ciao_scripts"/configuration.yaml /etc/ciao
+sudo cp -f "$ciao_scripts"/configuration.yaml /etc/ciao
 
 #Stop any running agents and CNCIs
 sudo killall ciao-scheduler
@@ -109,6 +117,10 @@ fi
 "$GOPATH"/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=ciao.example.com"
+
+#Copy the certs 
+sudo cp -f controller_key.pem /etc/pki/ciao
+sudo cp -f controller_cert.pem /etc/pki/ciao 
 
 
 #Copy the configuration
@@ -204,13 +216,48 @@ echo "$identity" >> "$ciao_env"
 export CIAO_CONTROLLER="$ciao_host"
 export CIAO_USERNAME=admin
 export CIAO_PASSWORD=giveciaoatry
+
 eval "$identity"
 "$ciao_gobin"/ciao-cli --list-workloads
+
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to list workloads"
+	exit 1
+fi
+
 "$ciao_gobin"/ciao-cli --launch-instances --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --instances=2
+
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to launch VMs"
+	exit 1
+fi
+
 "$ciao_gobin"/ciao-cli --list-instances
+
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to list instances"
+	exit 1
+fi
+
 "$ciao_gobin"/ciao-cli --launch-instances --workload=ab68111c-03a6-11e6-87de-001320fb6e31 --instances=2
+
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to launch containers"
+	exit 1
+fi
+
 sleep 30
+
 "$ciao_gobin"/ciao-cli --list-instances
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to list instances"
+	exit 1
+fi
 
 #Check docker networking
 docker_id=$(sudo docker ps -q | head -1)
@@ -224,6 +271,13 @@ head -1 < /dev/tcp/"$ssh_ip"/33002
 
 #Now delete all instances
 "$ciao_gobin"/ciao-cli --all-instances --delete-instance
+
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to delete instances"
+	exit 1
+fi
+
 "$ciao_gobin"/ciao-cli --list-instances
 #Also kill the CNCI (as there is no other way to delete it today)
 sudo killall qemu-system-x86_64
