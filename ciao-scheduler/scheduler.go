@@ -554,6 +554,7 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 	defer sched.cnMutex.RUnlock()
 
 	if len(sched.cnList) == 0 {
+		glog.Errorf("No compute nodes connected, unable to start workload")
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoComputeNodes)
 		return nil
 	}
@@ -597,6 +598,7 @@ func (sched *ssntpSchedulerServer) pickNetworkNode(controllerUUID string, worklo
 	defer sched.nnMutex.RUnlock()
 
 	if len(sched.nnMap) == 0 {
+		glog.Errorf("No network nodes connected, unable to start network workload")
 		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoNetworkNodes)
 		return nil
 	}
