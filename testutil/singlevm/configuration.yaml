@@ -1,0 +1,14 @@
+configure:
+  scheduler:
+    storage_uri: /etc/ciao/configuration.yaml
+  controller:
+    compute_ca: /etc/pki/ciao/compute_ca.pem
+    compute_cert: /etc/pki/ciao/compute_key.pem
+    identity_user: controller
+    identity_password: ciao
+  image_service:
+    url: http://glance.example.com
+  launcher:
+    disk_limit: false
+  identity_service:
+    url: http://keystone.example.com
