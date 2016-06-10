@@ -34,15 +34,9 @@ type controller struct {
 	id     *identity
 }
 
-const defaultControllerCert = "/etc/pki/ciao/cert-Controller-localhost.pem"
-const defaultAgentCert = "/etc/pki/ciao/cert-CNAgent-localhost.pem"
-const defaultCNCIAgentCert = "/etc/pki/ciao/cert-CNCIAgent-localhost.pem"
-const defaultNetAgentCert = "/etc/pki/ciao/cert-NetworkingAgent-localhost.pem"
-const defaultServerCert = "/etc/pki/ciao/cert-Server-localhost.pem"
-
 var singleMachine = flag.Bool("single", false, "Enable single machine test")
-var cert = flag.String("cert", defaultControllerCert, "Client certificate")
-var caCert = flag.String("cacert", "/etc/pki/ciao/CAcert-localhost.pem", "CA certificate")
+var cert = flag.String("cert", ssntp.RoleToDefaultCertName(ssntp.Controller), "Client certificate")
+var caCert = flag.String("cacert", ssntp.DefaultCACert, "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
 var identityURL = "identity:35357"
 var serviceUser = "csr"
@@ -126,12 +120,12 @@ func main() {
 	if *singleMachine {
 		hostname, _ := os.Hostname()
 		computeURL := "https://" + hostname + ":" + strconv.Itoa(computeAPIPort)
-		testIdentityConfig := testutil.TestIdentityConfig{
+		testIdentityConfig := testutil.IdentityConfig{
 			ComputeURL: computeURL,
 			ProjectID:  "f452bbc7-5076-44d5-922c-3b9d2ce1503f",
 		}
 
-		id := testutil.StartIdentityTestServer(testIdentityConfig)
+		id := testutil.StartIdentityServer(testIdentityConfig)
 		defer id.Close()
 		identityURL = id.URL
 		glog.Errorf("========================")

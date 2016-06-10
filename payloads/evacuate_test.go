@@ -24,11 +24,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const evacAgentUUID = "64803ffa-fb47-49fa-8191-15d2c34e4dd3"
-
 func TestEvacMarshal(t *testing.T) {
 	var cmd Evacuate
-	cmd.Evacuate.WorkloadAgentUUID = evacAgentUUID
+	cmd.Evacuate.WorkloadAgentUUID = testutil.AgentUUID
 
 	y, err := yaml.Marshal(&cmd)
 	if err != nil {
@@ -47,7 +45,7 @@ func TestEvacUnmarshal(t *testing.T) {
 		t.Error(err)
 	}
 
-	if cmd.Evacuate.WorkloadAgentUUID != evacAgentUUID {
+	if cmd.Evacuate.WorkloadAgentUUID != testutil.AgentUUID {
 		t.Errorf("Wrong Agent UUID field [%s]", cmd.Evacuate.WorkloadAgentUUID)
 	}
 }

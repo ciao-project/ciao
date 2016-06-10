@@ -1,5 +1,4 @@
-/*
-// Copyright (c) 2016 Intel Corporation
+/* // Copyright (c) 2016 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,25 +16,21 @@
 package payloads_test
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
 
 func TestRestartFailureUnmarshal(t *testing.T) {
-	restartFailureYaml := `instance_uuid: 2400bce6-ccc8-4a45-b2aa-b5cc3790077b
-reason: already_running
-`
 	var error ErrorRestartFailure
-	err := yaml.Unmarshal([]byte(restartFailureYaml), &error)
+	err := yaml.Unmarshal([]byte(testutil.RestartFailureYaml), &error)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if error.InstanceUUID != "2400bce6-ccc8-4a45-b2aa-b5cc3790077b" {
+	if error.InstanceUUID != testutil.InstanceUUID {
 		t.Error("Wrong UUID field")
 	}
 
@@ -46,15 +41,18 @@ reason: already_running
 
 func TestRestartFailureMarshal(t *testing.T) {
 	error := ErrorRestartFailure{
-		InstanceUUID: uuid.Generate().String(),
-		Reason:       RestartInvalidPayload,
+		InstanceUUID: testutil.InstanceUUID,
+		Reason:       RestartAlreadyRunning,
 	}
 
 	y, err := yaml.Marshal(&error)
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(string(y))
+
+	if string(y) != testutil.RestartFailureYaml {
+		t.Errorf("RestartFailure marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.RestartFailureYaml)
+	}
 }
 
 func TestRestartFailureString(t *testing.T) {
@@ -71,7 +69,7 @@ func TestRestartFailureString(t *testing.T) {
 		{RestartNetworkFailure, "Failed to locate VNIC for instance"},
 	}
 	error := ErrorRestartFailure{
-		InstanceUUID: uuid.Generate().String(),
+		InstanceUUID: testutil.InstanceUUID,
 	}
 	for _, test := range stringTests {
 		error.Reason = test.r

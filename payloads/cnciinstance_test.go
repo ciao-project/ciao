@@ -20,32 +20,31 @@ import (
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
 
-const cnciInstanceData = "scheduler_addr: 192.168.42.5\n"
-
 func TestCNCIInstanceUnmarshal(t *testing.T) {
 	var config CNCIInstanceConfig
-	err := yaml.Unmarshal([]byte(cnciInstanceData), &config)
+	err := yaml.Unmarshal([]byte(testutil.CNCIInstanceData), &config)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if config.SchedulerAddr != "192.168.42.5" {
+	if config.SchedulerAddr != testutil.SchedulerAddr {
 		t.Errorf("Wrong ADDR field [%s]", config.SchedulerAddr)
 	}
 }
 
 func TestCNCIInstanceMarshal(t *testing.T) {
-	config := CNCIInstanceConfig{SchedulerAddr: "192.168.42.5"}
+	config := CNCIInstanceConfig{SchedulerAddr: testutil.SchedulerAddr}
 
 	y, err := yaml.Marshal(&config)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if string(y) != cnciInstanceData {
-		t.Errorf("CNCIInstance marshalling failed\n[%s]\n vs\n[%s]", string(y), cnciInstanceData)
+	if string(y) != testutil.CNCIInstanceData {
+		t.Errorf("CNCIInstance marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.CNCIInstanceData)
 	}
 }

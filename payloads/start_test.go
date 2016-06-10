@@ -17,7 +17,6 @@
 package payloads_test
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
@@ -31,8 +30,6 @@ func TestStartUnmarshal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
-	fmt.Printf("Instance UUID [%s]\n", cmd.Start.InstanceUUID)
 }
 
 func TestStartMarshal(t *testing.T) {
@@ -64,9 +61,10 @@ func TestStartMarshal(t *testing.T) {
 		Value: 4096,
 	}
 	var cmd Start
-	cmd.Start.InstanceUUID = "c73322e8-d5fe-4d57-874c-dcee4fd368cd"
-	cmd.Start.ImageUUID = "b265f62b-e957-47fd-a0a2-6dc261c7315c"
-	cmd.Start.DockerImage = "ubuntu/latest"
+	cmd.Start.TenantUUID = testutil.TenantUUID
+	cmd.Start.InstanceUUID = testutil.InstanceUUID
+	cmd.Start.ImageUUID = testutil.ImageUUID
+	cmd.Start.DockerImage = testutil.DockerImage
 	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqVcpus)
 	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqMem)
 	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqDisk)
@@ -81,7 +79,10 @@ func TestStartMarshal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(string(y))
+
+	if string(y) != testutil.StartYaml {
+		t.Errorf("Start marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.StartYaml)
+	}
 }
 
 // make sure the yaml can be unmarshaled into the Start struct with
@@ -92,12 +93,11 @@ func TestStartUnmarshalPartial(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(cmd)
 
 	var expectedCmd Start
-	expectedCmd.Start.InstanceUUID = "923d1f2b-aabe-4a9b-9982-8664b0e52f93"
-	expectedCmd.Start.ImageUUID = "53cdd9ef-228f-4ce1-911d-706c2b41454a"
-	expectedCmd.Start.DockerImage = "ubuntu/latest"
+	expectedCmd.Start.InstanceUUID = testutil.InstanceUUID
+	expectedCmd.Start.ImageUUID = testutil.ImageUUID
+	expectedCmd.Start.DockerImage = testutil.DockerImage
 	expectedCmd.Start.FWType = EFI
 	expectedCmd.Start.InstancePersistence = Host
 	expectedCmd.Start.VMType = QEMU
@@ -121,6 +121,4 @@ func TestStartUnmarshalPartial(t *testing.T) {
 		cmd.Start.RequestedResources[0].Mandatory != expectedCmd.Start.RequestedResources[0].Mandatory {
 		t.Error("Unexpected values in Start")
 	}
-
-	fmt.Println(cmd)
 }

@@ -14,10 +14,11 @@
 // limitations under the License.
 //
 
-package ssntp
+package ssntp_test
 
 import (
 	"fmt"
+	. "github.com/01org/ciao/ssntp"
 )
 
 type logger struct{}

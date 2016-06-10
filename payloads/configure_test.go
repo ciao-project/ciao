@@ -17,51 +17,18 @@
 package payloads_test
 
 import (
-	"fmt"
+	"strconv"
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
-
-const keystoneURL = "http://keystone.example.com"
-const glanceURL = "http://glance.example.com"
-const computeNet = "192.168.1.110"
-const mgmtNet = "192.168.1.111"
-const storageURI = "/etc/ciao/ciao.json"
-const identityUser = "controller"
-const identityPassword = "ciao"
-const computePort = 443
-const httpsKey = "/etc/pki/ciao/compute_key.pem"
-const httpsCACert = "/etc/pki/ciao/compute_ca.pem"
-
-var configureYaml = "" +
-	"configure:\n" +
-	"  scheduler:\n" +
-	"    storage_type: " + Filesystem.String() + "\n" +
-	"    storage_uri: " + storageURI + "\n" +
-	"  controller:\n" +
-	"    compute_port: " + fmt.Sprintf("%d", computePort) + "\n" +
-	"    compute_ca: " + httpsCACert + "\n" +
-	"    compute_cert: " + httpsKey + "\n" +
-	"    identity_user: " + identityUser + "\n" +
-	"    identity_password: " + identityPassword + "\n" +
-	"  launcher:\n" +
-	"    compute_net: " + computeNet + "\n" +
-	"    mgmt_net: " + mgmtNet + "\n" +
-	"    disk_limit: false\n" +
-	"    mem_limit: false\n" +
-	"  image_service:\n" +
-	"    type: " + Glance.String() + "\n" +
-	"    url: " + glanceURL + "\n" +
-	"  identity_service:\n" +
-	"    type: " + Keystone.String() + "\n" +
-	"    url: " + keystoneURL + "\n"
 
 func TestConfigureUnmarshal(t *testing.T) {
 	var cfg Configure
 
-	err := yaml.Unmarshal([]byte(configureYaml), &cfg)
+	err := yaml.Unmarshal([]byte(testutil.ConfigureYaml), &cfg)
 	if err != nil {
 		t.Error(err)
 	}
@@ -74,11 +41,11 @@ func TestConfigureUnmarshal(t *testing.T) {
 		t.Errorf("Wrong identity service type [%s]", cfg.Configure.IdentityService.Type)
 	}
 
-	if cfg.Configure.Launcher.ManagementNetwork != mgmtNet {
+	if cfg.Configure.Launcher.ManagementNetwork != testutil.MgmtNet {
 		t.Errorf("Wrong launcher management network [%s]", cfg.Configure.Launcher.ManagementNetwork)
 	}
 
-	if cfg.Configure.Launcher.ComputeNetwork != computeNet {
+	if cfg.Configure.Launcher.ComputeNetwork != testutil.ComputeNet {
 		t.Errorf("Wrong launcher compute network [%s]", cfg.Configure.Launcher.ComputeNetwork)
 	}
 
@@ -86,7 +53,8 @@ func TestConfigureUnmarshal(t *testing.T) {
 		t.Errorf("Wrong scheduler storage type [%s]", cfg.Configure.Scheduler.ConfigStorageType)
 	}
 
-	if cfg.Configure.Controller.ComputePort != computePort {
+	p, _ := strconv.Atoi(testutil.ComputePort)
+	if cfg.Configure.Controller.ComputePort != p {
 		t.Errorf("Wrong controller compute port [%d]", cfg.Configure.Controller.ComputePort)
 	}
 }
@@ -95,32 +63,33 @@ func TestConfigureMarshal(t *testing.T) {
 	var cfg Configure
 
 	cfg.Configure.ImageService.Type = Glance
-	cfg.Configure.ImageService.URL = glanceURL
+	cfg.Configure.ImageService.URL = testutil.GlanceURL
 
 	cfg.Configure.IdentityService.Type = Keystone
-	cfg.Configure.IdentityService.URL = keystoneURL
+	cfg.Configure.IdentityService.URL = testutil.KeystoneURL
 
-	cfg.Configure.Launcher.ComputeNetwork = computeNet
-	cfg.Configure.Launcher.ManagementNetwork = mgmtNet
+	cfg.Configure.Launcher.ComputeNetwork = testutil.ComputeNet
+	cfg.Configure.Launcher.ManagementNetwork = testutil.MgmtNet
 	cfg.Configure.Launcher.DiskLimit = false
 	cfg.Configure.Launcher.MemoryLimit = false
 
-	cfg.Configure.Controller.ComputePort = computePort
-	cfg.Configure.Controller.HTTPSCACert = httpsCACert
-	cfg.Configure.Controller.HTTPSKey = httpsKey
-	cfg.Configure.Controller.IdentityUser = identityUser
-	cfg.Configure.Controller.IdentityPassword = identityPassword
+	p, _ := strconv.Atoi(testutil.ComputePort)
+	cfg.Configure.Controller.ComputePort = p
+	cfg.Configure.Controller.HTTPSCACert = testutil.HTTPSCACert
+	cfg.Configure.Controller.HTTPSKey = testutil.HTTPSKey
+	cfg.Configure.Controller.IdentityUser = testutil.IdentityUser
+	cfg.Configure.Controller.IdentityPassword = testutil.IdentityPassword
 
 	cfg.Configure.Scheduler.ConfigStorageType = Filesystem
-	cfg.Configure.Scheduler.ConfigStorageURI = storageURI
+	cfg.Configure.Scheduler.ConfigStorageURI = testutil.StorageURI
 
 	y, err := yaml.Marshal(&cfg)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if string(y) != configureYaml {
-		t.Errorf("CONFIGURE marshalling failed\n[%s]\n vs\n[%s]", string(y), configureYaml)
+	if string(y) != testutil.ConfigureYaml {
+		t.Errorf("CONFIGURE marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.ConfigureYaml)
 	}
 }
 
@@ -129,8 +98,8 @@ func TestConfigureStorageTypeString(t *testing.T) {
 		s        StorageType
 		expected string
 	}{
-		{Filesystem, "file"},
-		{Etcd, "etcd"},
+		{Filesystem, Filesystem.String()},
+		{Etcd, Etcd.String()},
 	}
 	for _, test := range stringTests {
 		obj := test.s
@@ -146,8 +115,8 @@ func TestConfigureServiceTypeString(t *testing.T) {
 		s        ServiceType
 		expected string
 	}{
-		{Glance, "glance"},
-		{Keystone, "keystone"},
+		{Glance, Glance.String()},
+		{Keystone, Keystone.String()},
 	}
 	for _, test := range stringTests {
 		obj := test.s

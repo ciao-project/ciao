@@ -17,6 +17,7 @@
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -31,6 +32,7 @@ type SsntpTestClient struct {
 	Ssntp             ssntp.Client
 	Name              string
 	instances         []payloads.InstanceStat
+	instancesLock     *sync.Mutex
 	ticker            *time.Ticker
 	UUID              string
 	Role              ssntp.Role
@@ -40,28 +42,142 @@ type SsntpTestClient struct {
 	StopFailReason    payloads.StopFailureReason
 	RestartFail       bool
 	RestartFailReason payloads.RestartFailureReason
+	DeleteFail        bool
+	DeleteFailReason  payloads.DeleteFailureReason
 	traces            []*ssntp.Frame
+	tracesLock        *sync.Mutex
 
-	CmdChans     map[ssntp.Command]chan CmdResult
-	CmdChansLock *sync.Mutex
+	CmdChans       map[ssntp.Command]chan CmdResult
+	CmdChansLock   *sync.Mutex
+	EventChans     map[ssntp.Event]chan CmdResult
+	EventChansLock *sync.Mutex
 }
 
-// AddCmdChan opens and command channel to the SsntpTestClient
-func (client *SsntpTestClient) AddCmdChan(cmd ssntp.Command, c chan CmdResult) {
+// NewSsntpTestClientConnection creates an SsntpTestClient and dials the server.
+// Calling with a unique name parameter string for inclusion in the SsntpTestClient.Name
+// field aides in debugging.  The role parameter is mandatory.  The uuid string
+// parameter allows tests to specify a known uuid for simpler tests.
+func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*SsntpTestClient, error) {
+	if role == ssntp.UNKNOWN {
+		return nil, errors.New("no role specified")
+	}
+	if uuid == "" {
+		return nil, errors.New("no uuid specified")
+	}
+
+	client := new(SsntpTestClient)
+	client.Name = "Test " + role.String() + " " + name
+	client.UUID = uuid
+	client.Role = role
+	client.CmdChans = make(map[ssntp.Command]chan CmdResult)
+	client.CmdChansLock = &sync.Mutex{}
+	client.EventChans = make(map[ssntp.Event]chan CmdResult)
+	client.EventChansLock = &sync.Mutex{}
+	client.instancesLock = &sync.Mutex{}
+	client.tracesLock = &sync.Mutex{}
+
+	config := &ssntp.Config{
+		CAcert: ssntp.DefaultCACert,
+		Cert:   ssntp.RoleToDefaultCertName(role),
+		Log:    ssntp.Log,
+		UUID:   client.UUID,
+	}
+
+	if err := client.Ssntp.Dial(config, client); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+// AddCmdChan adds a command to the SsntpTestClient command channel
+func (client *SsntpTestClient) AddCmdChan(cmd ssntp.Command) *chan CmdResult {
+	c := make(chan CmdResult)
+
 	client.CmdChansLock.Lock()
 	client.CmdChans[cmd] = c
 	client.CmdChansLock.Unlock()
+
+	return &c
 }
 
-// ConnectNotify is an SSNTP callback stub for SsntpTestClient
+// GetCmdChanResult gets a CmdResult from the SsntpTestClient command channel
+func (client *SsntpTestClient) GetCmdChanResult(c *chan CmdResult, cmd ssntp.Command) (result CmdResult, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Client error sending %s command: %s\n", cmd, result.Err)
+		}
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("Timeout waiting for client %s command result\n", cmd)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelCmdChan deletes a command from the SsntpTestClient command channel
+func (client *SsntpTestClient) SendResultAndDelCmdChan(cmd ssntp.Command, result CmdResult) {
+	client.CmdChansLock.Lock()
+	defer client.CmdChansLock.Unlock()
+	c, ok := client.CmdChans[cmd]
+	if ok {
+		delete(client.CmdChans, cmd)
+		c <- result
+		close(c)
+	}
+}
+
+// AddEventChan adds a command to the SsntpTestClient event channel
+func (client *SsntpTestClient) AddEventChan(evt ssntp.Event) *chan CmdResult {
+	c := make(chan CmdResult)
+
+	client.EventChansLock.Lock()
+	client.EventChans[evt] = c
+	client.EventChansLock.Unlock()
+
+	return &c
+}
+
+// GetEventChanResult gets a CmdResult from the SsntpTestClient event channel
+func (client *SsntpTestClient) GetEventChanResult(c *chan CmdResult, evt ssntp.Event) (result CmdResult, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Client error sending %s event: %s\n", evt, result.Err)
+		}
+	case <-time.After(20 * time.Second):
+		err = fmt.Errorf("Timeout waiting for client %s event result\n", evt)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelEventChan deletes an event from the SsntpTestClient event channel
+func (client *SsntpTestClient) SendResultAndDelEventChan(evt ssntp.Event, result CmdResult) {
+	client.EventChansLock.Lock()
+	defer client.EventChansLock.Unlock()
+	c, ok := client.EventChans[evt]
+	if ok {
+		delete(client.EventChans, evt)
+		c <- result
+		close(c)
+	}
+}
+
+// ConnectNotify implements the SSNTP client ConnectNotify callback for SsntpTestClient
 func (client *SsntpTestClient) ConnectNotify() {
+	var result CmdResult
+
+	client.SendResultAndDelEventChan(ssntp.NodeConnected, result)
 }
 
-// DisconnectNotify is an SSNTP callback stub for SsntpTestClient
+// DisconnectNotify implements the SSNTP client ConnectNotify callback for SsntpTestClient
 func (client *SsntpTestClient) DisconnectNotify() {
+	var result CmdResult
+
+	client.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
 }
 
-// StatusNotify is an SSNTP callback stub for SsntpTestClient
+// StatusNotify implements the SSNTP client StatusNotify callback for SsntpTestClient
 func (client *SsntpTestClient) StatusNotify(status ssntp.Status, frame *ssntp.Frame) {
 }
 
@@ -77,6 +193,7 @@ func (client *SsntpTestClient) handleStart(payload []byte) CmdResult {
 
 	result.InstanceUUID = start.Start.InstanceUUID
 	result.TenantUUID = start.Start.TenantUUID
+	result.NodeUUID = client.UUID
 
 	if client.Role == ssntp.NETAGENT {
 		networking := start.Start.Networking
@@ -95,7 +212,9 @@ func (client *SsntpTestClient) handleStart(payload []byte) CmdResult {
 			CPUUsage:      0,
 		}
 
+		client.instancesLock.Lock()
 		client.instances = append(client.instances, istat)
+		client.instancesLock.Unlock()
 	} else {
 		client.sendStartFailure(start.Start.InstanceUUID, client.StartFailReason)
 	}
@@ -114,6 +233,8 @@ func (client *SsntpTestClient) handleStop(payload []byte) CmdResult {
 	}
 
 	if !client.StopFail {
+		client.instancesLock.Lock()
+		defer client.instancesLock.Unlock()
 		for i := range client.instances {
 			istat := client.instances[i]
 			if istat.InstanceUUID == stopCmd.Stop.InstanceUUID {
@@ -138,6 +259,8 @@ func (client *SsntpTestClient) handleRestart(payload []byte) CmdResult {
 	}
 
 	if !client.RestartFail {
+		client.instancesLock.Lock()
+		defer client.instancesLock.Unlock()
 		for i := range client.instances {
 			istat := client.instances[i]
 			if istat.InstanceUUID == restartCmd.Restart.InstanceUUID {
@@ -151,6 +274,33 @@ func (client *SsntpTestClient) handleRestart(payload []byte) CmdResult {
 	return result
 }
 
+func (client *SsntpTestClient) handleDelete(payload []byte) CmdResult {
+	var result CmdResult
+	var deleteCmd payloads.Delete
+
+	err := yaml.Unmarshal(payload, &deleteCmd)
+	if err != nil {
+		result.Err = err
+		return result
+	}
+
+	if !client.DeleteFail {
+		client.instancesLock.Lock()
+		defer client.instancesLock.Unlock()
+		for i := range client.instances {
+			istat := client.instances[i]
+			if istat.InstanceUUID == deleteCmd.Delete.InstanceUUID {
+				client.instances = append(client.instances[:i], client.instances[i+1:]...)
+				break
+			}
+		}
+	} else {
+		client.sendDeleteFailure(deleteCmd.Delete.InstanceUUID, client.DeleteFailReason)
+	}
+
+	return result
+}
+
 // CommandNotify implements the SSNTP client CommandNotify callback for SsntpTestClient
 func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp.Frame) {
 	payload := frame.Payload
@@ -159,12 +309,10 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 	if frame.Trace != nil {
 		frame.SetEndStamp()
+		client.tracesLock.Lock()
 		client.traces = append(client.traces, frame)
+		client.tracesLock.Unlock()
 	}
-
-	client.CmdChansLock.Lock()
-	c, ok := client.CmdChans[command]
-	client.CmdChansLock.Unlock()
 
 	switch command {
 	case ssntp.START:
@@ -175,83 +323,87 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 	case ssntp.RESTART:
 		result = client.handleRestart(payload)
+
+	case ssntp.DELETE:
+		result = client.handleDelete(payload)
+
+	default:
+		fmt.Printf("client unhandled command %s\n", command.String())
 	}
 
-	if ok {
-		client.CmdChansLock.Lock()
-		delete(client.CmdChans, command)
-		client.CmdChansLock.Unlock()
-
-		c <- result
-
-		close(c)
-	}
-
-	return
+	client.SendResultAndDelCmdChan(command, result)
 }
 
-// EventNotify implements the SSNTP client EventNotify callback for SsntpTestClient
+// EventNotify is an SSNTP callback stub for SsntpTestClient
 func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 }
 
-// ErrorNotify implements the SSNTP client ErrorNotify callback for SsntpTestClient
+// ErrorNotify is an SSNTP callback stub for SsntpTestClient
 func (client *SsntpTestClient) ErrorNotify(error ssntp.Error, frame *ssntp.Frame) {
 }
 
-// SendStats allows an SsntpTestClient to push an ssntp.STATS command frame
+// SendStats pushes an ssntp.STATS command frame from the SsntpTestClient
 func (client *SsntpTestClient) SendStats() {
-	stat := payloads.Stat{
-		NodeUUID:        client.UUID,
-		MemTotalMB:      256,
-		MemAvailableMB:  256,
-		DiskTotalMB:     1024,
-		DiskAvailableMB: 1024,
-		Load:            20,
-		CpusOnline:      4,
-		NodeHostName:    client.Name,
-		Instances:       client.instances,
+	var result CmdResult
+
+	payload := StatsPayload(client.UUID, client.Name, client.instances, nil)
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendCommand(ssntp.STATS, y)
+		if err != nil {
+			result.Err = err
+		}
 	}
 
-	y, err := yaml.Marshal(stat)
-	if err != nil {
-		return
-	}
-
-	_, err = client.Ssntp.SendCommand(ssntp.STATS, y)
-	if err != nil {
-		fmt.Println(err)
+	client.CmdChansLock.Lock()
+	defer client.CmdChansLock.Unlock()
+	c, ok := client.CmdChans[ssntp.STATS]
+	if ok {
+		delete(client.CmdChans, ssntp.STATS)
+		c <- result
+		close(c)
 	}
 }
 
 // SendTrace allows an SsntpTestClient to push an ssntp.TraceReport event frame
 func (client *SsntpTestClient) SendTrace() {
+	var result CmdResult
 	var s payloads.Trace
+
+	client.tracesLock.Lock()
+	defer client.tracesLock.Unlock()
 
 	for _, f := range client.traces {
 		t, err := f.DumpTrace()
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
 
 		s.Frames = append(s.Frames, *t)
 	}
 
-	payload, err := yaml.Marshal(&s)
+	y, err := yaml.Marshal(&s)
 	if err != nil {
-		fmt.Println(err)
+		result.Err = err
+	} else {
+		client.traces = nil
+
+		_, err = client.Ssntp.SendEvent(ssntp.TraceReport, y)
+		if err != nil {
+			result.Err = err
+		}
 	}
 
-	client.traces = nil
-
-	_, err = client.Ssntp.SendEvent(ssntp.TraceReport, payload)
-	if err != nil {
-		fmt.Println(err)
-	}
+	client.SendResultAndDelEventChan(ssntp.TraceReport, result)
 }
 
 // SendDeleteEvent allows an SsntpTestClient to push an ssntp.InstanceDeleted event frame
 func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
+	var result CmdResult
+
 	evt := payloads.InstanceDeletedEvent{
 		InstanceUUID: uuid,
 	}
@@ -262,14 +414,16 @@ func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
 
 	y, err := yaml.Marshal(event)
 	if err != nil {
-		return
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendEvent(ssntp.InstanceDeleted, y)
+		if err != nil {
+			result.Err = err
+			fmt.Println(err)
+		}
 	}
 
-	_, err = client.Ssntp.SendEvent(ssntp.InstanceDeleted, y)
-	if err != nil {
-		fmt.Println(err)
-	}
-
+	client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
 }
 
 func (client *SsntpTestClient) sendConcentratorAddedEvent(instanceUUID string, tenantUUID string, vnicMAC string) {
@@ -341,6 +495,23 @@ func (client *SsntpTestClient) sendRestartFailure(instanceUUID string, reason pa
 	}
 
 	_, err = client.Ssntp.SendError(ssntp.RestartFailure, y)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (client *SsntpTestClient) sendDeleteFailure(instanceUUID string, reason payloads.DeleteFailureReason) {
+	e := payloads.ErrorDeleteFailure{
+		InstanceUUID: instanceUUID,
+		Reason:       reason,
+	}
+
+	y, err := yaml.Marshal(e)
+	if err != nil {
+		return
+	}
+
+	_, err = client.Ssntp.SendError(ssntp.DeleteFailure, y)
 	if err != nil {
 		fmt.Println(err)
 	}

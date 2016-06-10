@@ -17,7 +17,6 @@
 package payloads_test
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
@@ -62,9 +61,10 @@ func TestRestartMarshal(t *testing.T) {
 		Value: 4096,
 	}
 	var cmd Restart
-	cmd.Restart.InstanceUUID = "3ad186a6-7343-4541-a747-78f0dddd9e3e"
-	cmd.Restart.ImageUUID = "11a94b09-85b6-4434-9f4a-c19d863465f1"
-	cmd.Restart.WorkloadAgentUUID = "d3acac98-17db-42dc-9fc3-6f737b7b73c2"
+	cmd.Restart.TenantUUID = testutil.TenantUUID
+	cmd.Restart.InstanceUUID = testutil.InstanceUUID
+	cmd.Restart.ImageUUID = testutil.ImageUUID
+	cmd.Restart.WorkloadAgentUUID = testutil.AgentUUID
 	cmd.Restart.RequestedResources = append(cmd.Restart.RequestedResources, reqVcpus)
 	cmd.Restart.RequestedResources = append(cmd.Restart.RequestedResources, reqMem)
 	cmd.Restart.RequestedResources = append(cmd.Restart.RequestedResources, reqDisk)
@@ -78,7 +78,10 @@ func TestRestartMarshal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(string(y))
+
+	if string(y) != testutil.RestartYaml {
+		t.Errorf("Restart marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.RestartYaml)
+	}
 }
 
 // make sure the yaml can be unmarshaled into the Restart struct with
@@ -89,11 +92,10 @@ func TestRestartUnmarshalPartial(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(cmd)
 
 	var expectedCmd Restart
-	expectedCmd.Restart.InstanceUUID = "a2675987-fa30-45ce-84a2-93ce67106f47"
-	expectedCmd.Restart.WorkloadAgentUUID = "1ab3a664-d344-4a41-acf9-c94d8606e069"
+	expectedCmd.Restart.InstanceUUID = testutil.InstanceUUID
+	expectedCmd.Restart.WorkloadAgentUUID = testutil.AgentUUID
 	expectedCmd.Restart.FWType = EFI
 	expectedCmd.Restart.InstancePersistence = Host
 	vcpus := RequestedResource{
@@ -114,6 +116,4 @@ func TestRestartUnmarshalPartial(t *testing.T) {
 		cmd.Restart.RequestedResources[0].Mandatory != expectedCmd.Restart.RequestedResources[0].Mandatory {
 		t.Error("Unexpected values in Restart")
 	}
-
-	fmt.Println(cmd)
 }

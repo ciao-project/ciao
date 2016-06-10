@@ -24,9 +24,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const instanceUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
-const agentUUID = "59460b8a-5f53-4e3e-b5ce-b71fed8c7e64"
-
 func TestStopUnmarshal(t *testing.T) {
 	var stop Stop
 	err := yaml.Unmarshal([]byte(testutil.StopYaml), &stop)
@@ -34,11 +31,11 @@ func TestStopUnmarshal(t *testing.T) {
 		t.Error(err)
 	}
 
-	if stop.Stop.InstanceUUID != instanceUUID {
+	if stop.Stop.InstanceUUID != testutil.InstanceUUID {
 		t.Errorf("Wrong instance UUID field [%s]", stop.Stop.InstanceUUID)
 	}
 
-	if stop.Stop.WorkloadAgentUUID != agentUUID {
+	if stop.Stop.WorkloadAgentUUID != testutil.AgentUUID {
 		t.Errorf("Wrong Agent UUID field [%s]", stop.Stop.WorkloadAgentUUID)
 	}
 }
@@ -50,19 +47,19 @@ func TestDeleteUnmarshal(t *testing.T) {
 		t.Error(err)
 	}
 
-	if delete.Delete.InstanceUUID != instanceUUID {
+	if delete.Delete.InstanceUUID != testutil.InstanceUUID {
 		t.Errorf("Wrong instance UUID field [%s]", delete.Delete.InstanceUUID)
 	}
 
-	if delete.Delete.WorkloadAgentUUID != agentUUID {
+	if delete.Delete.WorkloadAgentUUID != testutil.AgentUUID {
 		t.Errorf("Wrong Agent UUID field [%s]", delete.Delete.WorkloadAgentUUID)
 	}
 }
 
 func TestStopMarshal(t *testing.T) {
 	var stop Stop
-	stop.Stop.InstanceUUID = instanceUUID
-	stop.Stop.WorkloadAgentUUID = agentUUID
+	stop.Stop.InstanceUUID = testutil.InstanceUUID
+	stop.Stop.WorkloadAgentUUID = testutil.AgentUUID
 
 	y, err := yaml.Marshal(&stop)
 	if err != nil {
@@ -76,8 +73,8 @@ func TestStopMarshal(t *testing.T) {
 
 func TestDeleteMarshal(t *testing.T) {
 	var delete Delete
-	delete.Delete.InstanceUUID = instanceUUID
-	delete.Delete.WorkloadAgentUUID = agentUUID
+	delete.Delete.InstanceUUID = testutil.InstanceUUID
+	delete.Delete.WorkloadAgentUUID = testutil.AgentUUID
 
 	y, err := yaml.Marshal(&delete)
 	if err != nil {

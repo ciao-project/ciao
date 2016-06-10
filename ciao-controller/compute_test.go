@@ -65,7 +65,7 @@ func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse i
 }
 
 func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 		t.Fatal("No valid workloads")
 	}
 
-	url := computeURL + "/v2.1/" + tenant.ID + "/servers"
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers"
 
 	var server payloads.ComputeCreateServer
 	server.Server.MaxInstances = n
@@ -108,7 +108,7 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 }
 
 func testListServerDetailsTenant(t *testing.T, tenantID string) payloads.ComputeServers {
-	url := computeURL + "/v2.1/" + tenantID + "/servers/detail"
+	url := testutil.ComputeURL + "/v2.1/" + tenantID + "/servers/detail"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -126,7 +126,7 @@ func TestCreateSingleServer(t *testing.T) {
 }
 
 func TestListServerDetailsTenant(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestListServerDetailsWorkload(t *testing.T) {
 		t.Fatal("failed to create enough servers")
 	}
 
-	url := computeURL + "/v2.1/flavors/" + wls[0].ID + "/servers/detail"
+	url := testutil.ComputeURL + "/v2.1/flavors/" + wls[0].ID + "/servers/detail"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -175,12 +175,12 @@ func TestListServerDetailsWorkload(t *testing.T) {
 }
 
 func TestShowServerDetails(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tURL := computeURL + "/v2.1/" + tenant.ID + "/servers/"
+	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/"
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -212,16 +212,19 @@ func TestShowServerDetails(t *testing.T) {
 }
 
 func TestDeleteServer(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// instances have to be assigned to a node to be deleted
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("DeleteServer", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
-	tURL := computeURL + "/v2.1/" + tenant.ID + "/servers/"
+	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/"
 
 	servers := testCreateServer(t, 10)
 	if servers.TotalServers != 10 {
@@ -230,7 +233,12 @@ func TestDeleteServer(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(2 * time.Second)
 
@@ -252,14 +260,17 @@ func TestDeleteServer(t *testing.T) {
 }
 
 func TestServersActionStart(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	url := computeURL + "/v2.1/" + tenant.ID + "/servers/action"
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/action"
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("ServersActionStart", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
@@ -269,7 +280,12 @@ func TestServersActionStart(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -279,7 +295,15 @@ func TestServersActionStart(t *testing.T) {
 	}
 
 	time.Sleep(1 * time.Second)
-	client.SendStats()
+
+	c = client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(1 * time.Second)
 
 	var ids []string
 	ids = append(ids, servers.Servers[0].ID)
@@ -298,14 +322,17 @@ func TestServersActionStart(t *testing.T) {
 }
 
 func TestServersActionStop(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	url := computeURL + "/v2.1/" + tenant.ID + "/servers/action"
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/action"
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("ServersActionStop", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
@@ -315,7 +342,12 @@ func TestServersActionStop(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -338,12 +370,15 @@ func TestServersActionStop(t *testing.T) {
 func TestServerActionStop(t *testing.T) {
 	action := "os-stop"
 
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("ServerActionStop", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
@@ -353,23 +388,31 @@ func TestServerActionStop(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
-	url := computeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
 }
 
 func TestServerActionStart(t *testing.T) {
 	action := "os-start"
 
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	client := newTestClient(0, ssntp.AGENT)
+	client, err := testutil.NewSsntpTestClientConnection("ServerActionStart", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Ssntp.Close()
 
 	servers := testCreateServer(t, 1)
@@ -379,46 +422,49 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	c := client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
-	c := make(chan testutil.CmdResult)
-	server.AddCmdChan(ssntp.STOP, c)
+	c = server.AddCmdChan(ssntp.STOP)
 
 	err = context.stopInstance(servers.Servers[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	select {
-	case result := <-c:
-		if result.Err != nil {
-			t.Fatal("Error parsing command yaml")
-		}
-
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for STOP command")
-	}
-
-	time.Sleep(1 * time.Second)
-
-	client.SendStats()
-
-	time.Sleep(1 * time.Second)
-
-	url := computeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
-
-	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
-}
-
-func TestListFlavors(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	_, err = server.GetCmdChanResult(c, ssntp.STOP)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	url := computeURL + "/v2.1/" + tenant.ID + "/flavors"
+	time.Sleep(1 * time.Second)
+
+	c = client.AddCmdChan(ssntp.STATS)
+	go client.SendStats()
+	_, err = client.GetCmdChanResult(c, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
+	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
+}
+
+func TestListFlavors(t *testing.T) {
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors"
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {
@@ -453,12 +499,12 @@ func TestListFlavors(t *testing.T) {
 }
 
 func TestShowFlavorDetails(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tURL := computeURL + "/v2.1/" + tenant.ID + "/flavors/"
+	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors/"
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {
@@ -505,12 +551,12 @@ func TestListTenantResources(t *testing.T) {
 	endTime := time.Now()
 	startTime := endTime.Add(-15 * time.Minute)
 
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tURL := computeURL + "/v2.1/" + tenant.ID + "/resources?"
+	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/resources?"
 
 	usage.Usages, err = context.ds.GetTenantUsage(tenant.ID, startTime, endTime)
 	if err != nil {
@@ -538,12 +584,12 @@ func TestListTenantResources(t *testing.T) {
 }
 
 func TestListTenantQuotas(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	url := computeURL + "/v2.1/" + tenant.ID + "/quotas"
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/quotas"
 
 	var expected payloads.CiaoTenantResources
 
@@ -586,12 +632,12 @@ func TestListTenantQuotas(t *testing.T) {
 }
 
 func TestListEventsTenant(t *testing.T) {
-	tenant, err := context.ds.GetTenant(computeTestUser)
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	url := computeURL + "/v2.1/" + tenant.ID + "/events"
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/events"
 
 	expected := payloads.NewCiaoEvents()
 
@@ -637,7 +683,7 @@ func TestListNodeServers(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		url := computeURL + "/v2.1/nodes/" + n.ID + "/servers/detail"
+		url := testutil.ComputeURL + "/v2.1/nodes/" + n.ID + "/servers/detail"
 
 		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -678,7 +724,7 @@ func TestListTenants(t *testing.T) {
 		)
 	}
 
-	url := computeURL + "/v2.1/tenants"
+	url := testutil.ComputeURL + "/v2.1/tenants"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -718,7 +764,7 @@ func TestListNodes(t *testing.T) {
 
 	sort.Sort(types.SortedComputeNodesByID(expected.Nodes))
 
-	url := computeURL + "/v2.1/nodes"
+	url := testutil.ComputeURL + "/v2.1/nodes"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -756,7 +802,7 @@ func TestNodeSummary(t *testing.T) {
 		}
 	}
 
-	url := computeURL + "/v2.1/nodes/summary"
+	url := testutil.ComputeURL + "/v2.1/nodes/summary"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -805,7 +851,7 @@ func TestListCNCIs(t *testing.T) {
 		)
 	}
 
-	url := computeURL + "/v2.1/cncis"
+	url := testutil.ComputeURL + "/v2.1/cncis"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -855,7 +901,7 @@ func TestListCNCIDetails(t *testing.T) {
 			}
 		}
 
-		url := computeURL + "/v2.1/cncis/" + cnci.InstanceID + "/detail"
+		url := testutil.ComputeURL + "/v2.1/cncis/" + cnci.InstanceID + "/detail"
 
 		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -895,7 +941,7 @@ func TestListTraces(t *testing.T) {
 		expected.Summaries = append(expected.Summaries, summary)
 	}
 
-	url := computeURL + "/v2.1/traces"
+	url := testutil.ComputeURL + "/v2.1/traces"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 
@@ -912,7 +958,7 @@ func TestListTraces(t *testing.T) {
 }
 
 func TestListEvents(t *testing.T) {
-	url := computeURL + "/v2.1/events"
+	url := testutil.ComputeURL + "/v2.1/events"
 
 	expected := payloads.NewCiaoEvents()
 
@@ -946,7 +992,7 @@ func TestListEvents(t *testing.T) {
 }
 
 func TestClearEvents(t *testing.T) {
-	url := computeURL + "/v2.1/events"
+	url := testutil.ComputeURL + "/v2.1/events"
 
 	_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil)
 
@@ -993,7 +1039,7 @@ func TestTraceData(t *testing.T) {
 			VarianceScheduler:        batchStats[0].VarianceScheduler,
 		}
 
-		url := computeURL + "/v2.1/traces/" + s.BatchID
+		url := testutil.ComputeURL + "/v2.1/traces/" + s.BatchID
 
 		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
 

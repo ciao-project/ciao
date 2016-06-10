@@ -17,25 +17,16 @@
 package payloads_test
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
 
 func TestReadyUnmarshal(t *testing.T) {
-	readyYaml := `node_uuid: 2400bce6-ccc8-4a45-b2aa-b5cc3790077b
-mem_total_mb: 3896
-mem_available_mb: 3896
-disk_total_mb: 500000
-disk_available_mb: 256000
-load: 0
-cpus_online: 4
-`
 	var cmd Ready
-	err := yaml.Unmarshal([]byte(readyYaml), &cmd)
+	err := yaml.Unmarshal([]byte(testutil.ReadyYaml), &cmd)
 	if err != nil {
 		t.Error(err)
 	}
@@ -43,7 +34,7 @@ cpus_online: 4
 
 func TestReadyMarshal(t *testing.T) {
 	cmd := Ready{
-		NodeUUID:        uuid.Generate().String(),
+		NodeUUID:        testutil.AgentUUID,
 		MemTotalMB:      3896,
 		MemAvailableMB:  3896,
 		DiskTotalMB:     500000,
@@ -56,25 +47,25 @@ func TestReadyMarshal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(string(y))
+
+	if string(y) != testutil.ReadyYaml {
+		t.Errorf("Ready marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.ReadyYaml)
+	}
 }
 
 // make sure the yaml can be unmarshaled into the Ready struct
 // when only some node stats are present
 func TestReadyNodeNotAllStats(t *testing.T) {
-	readyYaml := `node_uuid: 2400bce6-ccc8-4a45-b2aa-b5cc3790077b
-load: 1
-`
 	var cmd Ready
 	cmd.Init()
 
-	err := yaml.Unmarshal([]byte(readyYaml), &cmd)
+	err := yaml.Unmarshal([]byte(testutil.PartialReadyYaml), &cmd)
 	if err != nil {
 		t.Error(err)
 	}
 
 	expectedCmd := Ready{
-		NodeUUID:        "2400bce6-ccc8-4a45-b2aa-b5cc3790077b",
+		NodeUUID:        testutil.AgentUUID,
 		MemTotalMB:      -1,
 		MemAvailableMB:  -1,
 		DiskTotalMB:     -1,
@@ -91,6 +82,4 @@ load: 1
 		cmd.CpusOnline != expectedCmd.CpusOnline {
 		t.Error("Unexpected values in Ready")
 	}
-
-	fmt.Println(cmd)
 }

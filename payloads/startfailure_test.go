@@ -17,25 +17,21 @@
 package payloads_test
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
 
 func TestStartFailureUnmarshal(t *testing.T) {
-	startFailureYaml := `instance_uuid: 2400bce6-ccc8-4a45-b2aa-b5cc3790077b
-reason: full_cloud
-`
 	var error ErrorStartFailure
-	err := yaml.Unmarshal([]byte(startFailureYaml), &error)
+	err := yaml.Unmarshal([]byte(testutil.StartFailureYaml), &error)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if error.InstanceUUID != "2400bce6-ccc8-4a45-b2aa-b5cc3790077b" {
+	if error.InstanceUUID != testutil.InstanceUUID {
 		t.Error("Wrong UUID field")
 	}
 
@@ -46,7 +42,7 @@ reason: full_cloud
 
 func TestStartFailureMarshal(t *testing.T) {
 	error := ErrorStartFailure{
-		InstanceUUID: uuid.Generate().String(),
+		InstanceUUID: testutil.InstanceUUID,
 		Reason:       FullCloud,
 	}
 
@@ -54,7 +50,10 @@ func TestStartFailureMarshal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(string(y))
+
+	if string(y) != testutil.StartFailureYaml {
+		t.Errorf("StartFailure marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.StartFailureYaml)
+	}
 }
 
 func TestStartFailureString(t *testing.T) {
@@ -75,7 +74,7 @@ func TestStartFailureString(t *testing.T) {
 		{NetworkFailure, "Failed to create VNIC for instance"},
 	}
 	error := ErrorStartFailure{
-		InstanceUUID: uuid.Generate().String(),
+		InstanceUUID: testutil.InstanceUUID,
 	}
 	for _, test := range stringTests {
 		error.Reason = test.r

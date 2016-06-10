@@ -24,17 +24,17 @@ import (
 	"github.com/rackspace/gophercloud"
 )
 
-// TestIdentityConfig contains the URL of the ciao compute service, and the TenantID of
-// the tenant you want tokens to be sent for.  The test Identity service only supports
-// authentication of a single tenant, and gives the token an admin role.
-type TestIdentityConfig struct {
-	ComputeURL string
-	ProjectID  string
-}
+// ComputeAPIPort is the compute service port the testutil identity service will use by default
+const ComputeAPIPort = "8774"
 
-var computeURL string
-var testIdentityURL string
-var computeTestUser string
+// ComputeURL is the compute service URL the testutil identity service will use by default
+var ComputeURL = "https://localhost:" + ComputeAPIPort
+
+// IdentityURL is the URL for the testutil identity service
+var IdentityURL string
+
+// ComputeUser is the test user/tenant name the testutil identity service will use by default
+var ComputeUser = "f452bbc7-5076-44d5-922c-3b9d2ce1503f"
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	token := `
@@ -106,15 +106,15 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	t := []byte(fmt.Sprintf(token,
 		time.Now().Add(1*time.Hour).Format(gophercloud.RFC3339Milli),
-		computeTestUser, testIdentityURL, testIdentityURL,
-		testIdentityURL, time.Now().Format(gophercloud.RFC3339Milli)))
+		ComputeUser, IdentityURL, IdentityURL,
+		IdentityURL, time.Now().Format(gophercloud.RFC3339Milli)))
 	w.Header().Set("X-Subject-Token", "imavalidtoken")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(t)
 }
 
 func validateHandler(w http.ResponseWriter, r *http.Request) {
-	tenantURL := computeURL + "/v2.1/" + computeTestUser
+	tenantURL := ComputeURL + "/v2.1/" + ComputeUser
 	token := `
 	{
 		"token": {
@@ -212,8 +212,8 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 
 	t := []byte(fmt.Sprintf(token,
 		time.Now().Add(1*time.Hour).Format(gophercloud.RFC3339Milli),
-		computeTestUser, testIdentityURL, testIdentityURL,
-		testIdentityURL, tenantURL, tenantURL,
+		ComputeUser, IdentityURL, IdentityURL,
+		IdentityURL, tenantURL, tenantURL,
 		tenantURL, time.Now().Format(gophercloud.RFC3339Milli)))
 	w.WriteHeader(http.StatusOK)
 	w.Write(t)
@@ -242,12 +242,13 @@ func projectsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}`
 
-	p := []byte(fmt.Sprintf(response, testIdentityURL, testIdentityURL))
+	p := []byte(fmt.Sprintf(response, IdentityURL, IdentityURL))
 	w.WriteHeader(http.StatusOK)
 	w.Write(p)
 }
 
-func identityHandlers() *mux.Router {
+// IdentityHandlers creates a mux.Router for identity POST and GET handlers
+func IdentityHandlers() *mux.Router {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/v3/auth/tokens", authHandler).Methods("POST")
@@ -257,13 +258,28 @@ func identityHandlers() *mux.Router {
 	return r
 }
 
-// StartIdentityTestServer starts a fake keystone service for unit testing ciao.
-func StartIdentityTestServer(config TestIdentityConfig) *httptest.Server {
-	id := httptest.NewServer(identityHandlers())
+// IdentityConfig contains the URL of the ciao compute service, and the TenantID of
+// the tenant you want tokens to be sent for.  The test Identity service only supports
+// authentication of a single tenant, and gives the token an admin role.
+type IdentityConfig struct {
+	ComputeURL string
+	ProjectID  string
+}
 
-	computeURL = config.ComputeURL
-	testIdentityURL = id.URL
-	computeTestUser = config.ProjectID
+// StartIdentityServer starts a fake keystone service for unit testing ciao.
+func StartIdentityServer(config IdentityConfig) *httptest.Server {
+	id := httptest.NewServer(IdentityHandlers())
+	if id == nil {
+		return nil
+	}
+
+	if config.ComputeURL != "" {
+		ComputeURL = config.ComputeURL
+	}
+	if config.ProjectID != "" {
+		ComputeUser = config.ProjectID
+	}
+	IdentityURL = id.URL
 
 	return id
 }
