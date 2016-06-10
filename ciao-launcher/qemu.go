@@ -39,7 +39,6 @@ import (
 const (
 	qemuEfiFw  = "/usr/share/qemu/OVMF.fd"
 	seedImage  = "seed.iso"
-	ciaoImage  = "ciao.iso"
 	imagesPath = "/var/lib/ciao/images"
 	vcTries    = 10
 )
@@ -60,14 +59,12 @@ type qemu struct {
 	prevCPUTime    int64
 	prevSampleTime time.Time
 	isoPath        string
-	ciaoISOPath    string
 }
 
 func (q *qemu) init(cfg *vmConfig, instanceDir string) {
 	q.cfg = cfg
 	q.instanceDir = instanceDir
 	q.isoPath = path.Join(instanceDir, seedImage)
-	q.ciaoISOPath = path.Join(instanceDir, ciaoImage)
 }
 
 func (q *qemu) imageInfo(imagePath string) (imageSizeMB int, err error) {
@@ -274,13 +271,6 @@ func (q *qemu) createImage(bridge string, userData, metaData []byte) error {
 		return err
 	}
 
-	if q.cfg.NetworkNode {
-		err = createCiaoISO(q.instanceDir, q.ciaoISOPath)
-		if err != nil {
-			return err
-		}
-	}
-
 	return q.createRootfs()
 }
 
@@ -480,10 +470,6 @@ func (q *qemu) startVM(vnicName, ipAddress string) error {
 	params := make([]string, 0, 32)
 	params = append(params, "-drive", fileParam)
 	params = append(params, "-drive", isoParam)
-	if q.cfg.NetworkNode {
-		ciaoParam := fmt.Sprintf("file=%s,if=virtio,media=cdrom", q.ciaoISOPath)
-		params = append(params, "-drive", ciaoParam)
-	}
 
 	if vnicName != "" {
 		if q.cfg.NetworkNode {

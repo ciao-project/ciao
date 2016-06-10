@@ -368,28 +368,9 @@ func discoverScheduler() error {
 		return nil
 	}
 
-	//TODO: Do this via systemd
-	out, err := exec.Command("mount", "/dev/vdc", "/mnt").Output()
-	if err != nil {
-		//Ignore this error, we may be already mounted
-		glog.Errorf("Unable to mount /dev/vdc %v %s", err, string(out))
-	}
-
-	payload, err := ioutil.ReadFile("/mnt/ciao.yaml")
-	if err != nil {
-		glog.Errorf("Unable to read /mnt/ciao.yaml %v", err)
-		return err
-	}
-
-	var config payloads.CNCIInstanceConfig
-	err = yaml.Unmarshal([]byte(payload), &config)
-	if err != nil {
-		glog.Errorf("Unable to unmarshal scheduler addr %v", err)
-		return err
-	}
-
-	serverURL = config.SchedulerAddr
+	serverURL = ""
 	return nil
+
 }
 
 //CloudInitJSON represents the contents of the cloud init file
