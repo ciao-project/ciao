@@ -165,13 +165,16 @@ func testPayload(t *testing.T, blob []byte, expectedConf payloads.Configure, pos
 	conf, err := Payload(blob)
 
 	// expected FAIL
-	if positive == false && err == nil {
-		t.Fatalf("%s", err)
+	if positive == false && err != nil {
+		// do nothing...expected case.
 	}
-	// expected PASS
+
+	// unexpected FAIL
 	if positive == true && err != nil {
 		t.Fatalf("%s", err)
 	}
+
+	// unexpected FAIL
 	if positive == true && emptyPayload(expectedConf) == false {
 		if equalPayload(expectedConf, conf) == false {
 			t.Fatalf("Expected %v got %v", expectedConf, conf)
