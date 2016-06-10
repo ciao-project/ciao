@@ -1536,6 +1536,6 @@ func createComputeAPI(context *controller) {
 		traceData(w, r, context)
 	}).Methods("GET")
 
-	service := fmt.Sprintf(":%d", *computeAPIPort)
-	log.Fatal(http.ListenAndServeTLS(service, *httpsCAcert, *httpsKey, r))
+	service := fmt.Sprintf(":%d", computeAPIPort)
+	log.Fatal(http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r))
 }

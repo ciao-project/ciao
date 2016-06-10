@@ -100,16 +100,8 @@ Usage of ciao-controller/ciao-controller:
     	CA certificate (default "/etc/pki/ciao/CAcert-server-localhost.pem")
   -cert string
     	Client certificate (default "/etc/pki/ciao/cert-client-localhost.pem")
-  -computeport int
-    	Openstack Compute API port (default 8774)
   -database_path string
     	path to persistent database (default "./ciao-controller.db")
-  -httpscert string
-    	HTTPS CA certificate (default "/etc/pki/ciao/ciao-controller-cacert.pem")
-  -httpskey string
-    	HTTPS cert key (default "/etc/pki/ciao/ciao-controller-key.pem")
-  -identity string
-    	Keystone URL (default "identity:35357")
   -log_backtrace_at value
     	when logging hits line file:N, emit a stack trace (default :0)
   -log_dir string
@@ -118,8 +110,6 @@ Usage of ciao-controller/ciao-controller:
     	log to standard error instead of files
   -nonetwork
     	Debug with no networking
-  -password string
-    	Openstack Service Username
   -stats_path string
     	path to stats database (default "/tmp/ciao-controller-stats.db")
   -stderrthreshold value
@@ -128,8 +118,6 @@ Usage of ciao-controller/ciao-controller:
 	path to csv files (default "./tables")
   -url string
     	Server URL (default "localhost")
-  -username string
-    	Openstack Service Username (default "ciao")
   -v value
     	log level for V logs
   -vmodule value
@@ -141,7 +129,7 @@ Usage of ciao-controller/ciao-controller:
 ### Example
 
 ```shell
-sudo ./ciao-controller --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Controller-localhost.pem --identity=https://your.keystone.server.com:35357 --username=csr --password=hello --url ciao.ctl.intel.com -computeport 443 --httpskey=/etc/pki/ciao/csr_key.pem --httpscert=/etc/pki/ciao/csr_cert.pem
+sudo ./ciao-controller --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Controller-localhost.pem --url ciao.ctl.intel.com
 ```
 
 # OpenStack Compatibility
