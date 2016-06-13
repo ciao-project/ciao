@@ -83,7 +83,6 @@ func (f *uiFlag) Enabled() bool {
 	return string(*f) != "none"
 }
 
-var serverURL string
 var serverCertPath string
 var clientCertPath string
 var computeNet string
@@ -96,7 +95,6 @@ var simulate bool
 var maxInstances = int(math.MaxInt32)
 
 func init() {
-	flag.StringVar(&serverURL, "server", "", "URL of SSNTP server")
 	flag.StringVar(&serverCertPath, "cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "Client certificate")
 	flag.StringVar(&clientCertPath, "cert", "/etc/pki/ciao/cert-client-localhost.pem", "CA certificate")
 	flag.Var(&networking, "network", "Can be none, cn (compute node) or nn (network node)")
@@ -362,7 +360,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 
 	glog.Infof("Agent Role: %s", role.String())
 
-	cfg := &ssntp.Config{URI: serverURL, CAcert: serverCertPath, Cert: clientCertPath,
+	cfg := &ssntp.Config{CAcert: serverCertPath, Cert: clientCertPath,
 		Log: ssntp.Log}
 	client := &agentClient{
 		conn:  &ssntpConn{},

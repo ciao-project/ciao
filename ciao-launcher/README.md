@@ -34,6 +34,10 @@ tool.
 ciao-launcher client certificates need to be generated with the agent or
 the netagent roles or a combination of the two.
 
+Correct generation of a cluster's certificates using the ciao-cert tool is required,
+because metadata embedded within the certificates indicates where is the server
+to which a launcher instance shall connect.
+
 ## Install Dependencies
 
 ciao-launcher has dependencies on five external packages:
@@ -68,7 +72,7 @@ Currently, this is the only data source supported by launcher.
 
 ciao-launcher can be launched from the command line as follows
 ```
-sudo ciao-launcher -server <URL of my server> -network [cn|nn|none]
+sudo ciao-launcher -network [cn|nn|none]
 ```
 
 Currently, launcher needs to be run as root so that it can create network links and
@@ -103,8 +107,6 @@ Usage of ./launcher:
     	log to standard error instead of files
   -network value
     	Can be none, cn (compute node) or nn (network node) (default none)
-  -server string
-    	URL of SSNTP server (default "localhost")
   -simulation
     	Launcher simulation
   -stderrthreshold value
