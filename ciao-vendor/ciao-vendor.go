@@ -99,7 +99,6 @@ var repos = map[string]repoInfo{
 	"golang.org/x/net":                  {"https://go.googlesource.com/net", "origin/release-branch.go1.6", "BSD (3 clause)"},
 }
 
-var vendorTmpPath = "/tmp/ciao-vendor"
 var listTemplate = `
 {{- range .Deps -}}
 {{.}}
@@ -205,51 +204,6 @@ func checkWD() (string, string, error) {
 	}
 
 	return "", "", fmt.Errorf("ciao-vendor must be run from $GOPATH/src/01org/ciao")
-}
-
-func cloneRepos() error {
-	err := os.MkdirAll(vendorTmpPath, 0755)
-	if err != nil {
-		return fmt.Errorf("Unable to create %s : %v", vendorTmpPath, err)
-	}
-
-	errCh := make(chan error)
-
-	for _, r := range repos {
-		go func(URL string) {
-			cmd := exec.Command("git", "clone", URL)
-			cmd.Dir = vendorTmpPath
-			err := cmd.Run()
-			if err != nil {
-				errCh <- fmt.Errorf("git clone %s failed : %v", URL, err)
-			} else {
-				errCh <- nil
-			}
-		}(r.URL)
-	}
-
-	for range repos {
-		rcvErr := <-errCh
-		if err == nil && rcvErr != nil {
-			err = rcvErr
-		}
-	}
-
-	return err
-}
-
-func baseCloneDir(URL string) string {
-	index := strings.LastIndex(URL, "/")
-	if index == -1 {
-		return URL
-	}
-
-	dir := URL[index+1:]
-	index = strings.LastIndex(dir, ".git")
-	if index == -1 {
-		return dir
-	}
-	return dir[:index]
 }
 
 func copyRepos(cwd, sourceRoot string, subPackages map[string][]*subPackage) error {
