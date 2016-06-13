@@ -31,9 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/payloads"
 	"github.com/golang/glog"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -177,46 +175,6 @@ func createCloudInitISO(instanceDir, isoPath string, cfg *vmConfig, userData, me
 	}
 
 	glog.Infof("ISO image %s created", isoPath)
-
-	return nil
-}
-
-func createCiaoISO(instanceDir, isoPath string) error {
-	ciaoDrivePath := path.Join(instanceDir, "ciao")
-	ciaoPath := path.Join(ciaoDrivePath, "ciao.yaml")
-
-	defer func() {
-		_ = os.RemoveAll(ciaoDrivePath)
-	}()
-
-	err := os.MkdirAll(ciaoDrivePath, 0755)
-	if err != nil {
-		glog.Errorf("Unable to create ciao drive directory %s", ciaoDrivePath)
-		return err
-	}
-
-	config := payloads.CNCIInstanceConfig{SchedulerAddr: serverURL}
-	y, err := yaml.Marshal(&config)
-	if err != nil {
-		glog.Errorf("Unable to create yaml ciao file %s", err)
-		return err
-	}
-
-	err = ioutil.WriteFile(ciaoPath, y, 0644)
-	if err != nil {
-		glog.Errorf("Unable to create %s", ciaoPath)
-		return err
-	}
-
-	cmd := exec.Command("xorriso", "-as", "mkisofs", "-R", "-V", "ciao", "-o", isoPath,
-		ciaoPath)
-	err = cmd.Run()
-	if err != nil {
-		glog.Errorf("Unable to create ciao iso image %v", err)
-		return err
-	}
-
-	glog.Infof("Ciao ISO image %s created", isoPath)
 
 	return nil
 }
