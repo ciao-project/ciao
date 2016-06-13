@@ -35,6 +35,8 @@ type SsntpTestController struct {
 	CmdChansLock   *sync.Mutex
 	EventChans     map[ssntp.Event]chan Result
 	EventChansLock *sync.Mutex
+	ErrorChans     map[ssntp.Error]chan Result
+	ErrorChansLock *sync.Mutex
 }
 
 // NewSsntpTestControllerConnection creates an SsntpTestController and dials the server.
@@ -56,6 +58,8 @@ func NewSsntpTestControllerConnection(name string, uuid string) (*SsntpTestContr
 	ctl.CmdChansLock = &sync.Mutex{}
 	ctl.EventChans = make(map[ssntp.Event]chan Result)
 	ctl.EventChansLock = &sync.Mutex{}
+	ctl.ErrorChans = make(map[ssntp.Error]chan Result)
+	ctl.ErrorChansLock = &sync.Mutex{}
 
 	config := &ssntp.Config{
 		URI:    "",
@@ -140,6 +144,43 @@ func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, resul
 	c, ok := ctl.EventChans[evt]
 	if ok {
 		delete(ctl.EventChans, evt)
+		c <- result
+		close(c)
+	}
+}
+
+// AddErrorChan adds a command to the SsntpTestController error channel
+func (ctl *SsntpTestController) AddErrorChan(error ssntp.Error) *chan Result {
+	c := make(chan Result)
+
+	ctl.ErrorChansLock.Lock()
+	ctl.ErrorChans[error] = c
+	ctl.ErrorChansLock.Unlock()
+
+	return &c
+}
+
+// GetErrorChanResult gets a CmdResult from the SsntpTestController error channel
+func (ctl *SsntpTestController) GetErrorChanResult(c *chan Result, error ssntp.Error) (result Result, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Controller error sending %s error: %s\n", error, result.Err)
+		}
+	case <-time.After(20 * time.Second):
+		err = fmt.Errorf("Timeout waiting for controller %s error result\n", error)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelErrorChan deletes an error from the SsntpTestController error channel
+func (ctl *SsntpTestController) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
+	ctl.ErrorChansLock.Lock()
+	defer ctl.ErrorChansLock.Unlock()
+	c, ok := ctl.ErrorChans[error]
+	if ok {
+		delete(ctl.ErrorChans, error)
 		c <- result
 		close(c)
 	}

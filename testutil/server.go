@@ -36,6 +36,8 @@ type SsntpTestServer struct {
 	CmdChansLock   *sync.Mutex
 	EventChans     map[ssntp.Event]chan Result
 	EventChansLock *sync.Mutex
+	ErrorChans     map[ssntp.Error]chan Result
+	ErrorChansLock *sync.Mutex
 
 	NetClients     map[string]bool
 	NetClientsLock *sync.RWMutex
@@ -110,6 +112,43 @@ func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result
 	c, ok := server.EventChans[evt]
 	if ok {
 		delete(server.EventChans, evt)
+		c <- result
+		close(c)
+	}
+}
+
+// AddErrorChan adds a command to the SsntpTestServer error channel
+func (server *SsntpTestServer) AddErrorChan(error ssntp.Error) *chan Result {
+	c := make(chan Result)
+
+	server.ErrorChansLock.Lock()
+	server.ErrorChans[error] = c
+	server.ErrorChansLock.Unlock()
+
+	return &c
+}
+
+// GetErrorChanResult gets a CmdResult from the SsntpTestServer error channel
+func (server *SsntpTestServer) GetErrorChanResult(c *chan Result, error ssntp.Error) (result Result, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Server error handling %s error: %s\n", error, result.Err)
+		}
+	case <-time.After(20 * time.Second):
+		err = fmt.Errorf("Timeout waiting for server %s error result\n", error)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelErrorChan deletes an error from the SsntpTestServer error channel
+func (server *SsntpTestServer) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
+	server.ErrorChansLock.Lock()
+	defer server.ErrorChansLock.Unlock()
+	c, ok := server.ErrorChans[error]
+	if ok {
+		delete(server.ErrorChans, error)
 		c <- result
 		close(c)
 	}
@@ -412,6 +451,9 @@ func StartTestServer(server *SsntpTestServer) {
 
 	server.EventChans = make(map[ssntp.Event]chan Result)
 	server.EventChansLock = &sync.Mutex{}
+
+	server.ErrorChans = make(map[ssntp.Error]chan Result)
+	server.ErrorChansLock = &sync.Mutex{}
 
 	server.NetClients = make(map[string]bool)
 	server.NetClientsLock = &sync.RWMutex{}

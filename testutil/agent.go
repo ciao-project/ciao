@@ -51,6 +51,8 @@ type SsntpTestClient struct {
 	CmdChansLock   *sync.Mutex
 	EventChans     map[ssntp.Event]chan Result
 	EventChansLock *sync.Mutex
+	ErrorChans     map[ssntp.Error]chan Result
+	ErrorChansLock *sync.Mutex
 }
 
 // NewSsntpTestClientConnection creates an SsntpTestClient and dials the server.
@@ -73,6 +75,8 @@ func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*S
 	client.CmdChansLock = &sync.Mutex{}
 	client.EventChans = make(map[ssntp.Event]chan Result)
 	client.EventChansLock = &sync.Mutex{}
+	client.ErrorChans = make(map[ssntp.Error]chan Result)
+	client.ErrorChansLock = &sync.Mutex{}
 	client.instancesLock = &sync.Mutex{}
 	client.tracesLock = &sync.Mutex{}
 
@@ -158,6 +162,43 @@ func (client *SsntpTestClient) SendResultAndDelEventChan(evt ssntp.Event, result
 	c, ok := client.EventChans[evt]
 	if ok {
 		delete(client.EventChans, evt)
+		c <- result
+		close(c)
+	}
+}
+
+// AddErrorChan adds a command to the SsntpTestClient error channel
+func (client *SsntpTestClient) AddErrorChan(error ssntp.Error) *chan Result {
+	c := make(chan Result)
+
+	client.ErrorChansLock.Lock()
+	client.ErrorChans[error] = c
+	client.ErrorChansLock.Unlock()
+
+	return &c
+}
+
+// GetErrorChanResult gets a CmdResult from the SsntpTestClient error channel
+func (client *SsntpTestClient) GetErrorChanResult(c *chan Result, error ssntp.Error) (result Result, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Client error sending %s error: %s\n", error, result.Err)
+		}
+	case <-time.After(20 * time.Second):
+		err = fmt.Errorf("Timeout waiting for client %s error result\n", error)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelErrorChan deletes an error from the SsntpTestClient error channel
+func (client *SsntpTestClient) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
+	client.ErrorChansLock.Lock()
+	defer client.ErrorChansLock.Unlock()
+	c, ok := client.ErrorChans[error]
+	if ok {
+		delete(client.ErrorChans, error)
 		c <- result
 		close(c)
 	}
