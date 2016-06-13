@@ -32,9 +32,9 @@ type SsntpTestServer struct {
 	Ssntp          ssntp.Server
 	clients        []string
 	clientsLock    *sync.Mutex
-	CmdChans       map[ssntp.Command]chan CmdResult
+	CmdChans       map[ssntp.Command]chan Result
 	CmdChansLock   *sync.Mutex
-	EventChans     map[ssntp.Event]chan CmdResult
+	EventChans     map[ssntp.Event]chan Result
 	EventChansLock *sync.Mutex
 
 	NetClients     map[string]bool
@@ -42,8 +42,8 @@ type SsntpTestServer struct {
 }
 
 // AddCmdChan adds a command to the SsntpTestServer command channel
-func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan CmdResult {
-	c := make(chan CmdResult)
+func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan Result {
+	c := make(chan Result)
 
 	server.CmdChansLock.Lock()
 	server.CmdChans[cmd] = c
@@ -53,7 +53,7 @@ func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan CmdResult {
 }
 
 // GetCmdChanResult gets a CmdResult from the SsntpTestServer command channel
-func (server *SsntpTestServer) GetCmdChanResult(c *chan CmdResult, cmd ssntp.Command) (result CmdResult, err error) {
+func (server *SsntpTestServer) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
 	case result = <-*c:
 		if result.Err != nil {
@@ -67,7 +67,7 @@ func (server *SsntpTestServer) GetCmdChanResult(c *chan CmdResult, cmd ssntp.Com
 }
 
 // SendResultAndDelCmdChan deletes a command from the SsntpTestServer command channel
-func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result CmdResult) {
+func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	server.CmdChansLock.Lock()
 	defer server.CmdChansLock.Unlock()
 	c, ok := server.CmdChans[cmd]
@@ -79,8 +79,8 @@ func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result
 }
 
 // AddEventChan adds a command to the SsntpTestServer event channel
-func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan CmdResult {
-	c := make(chan CmdResult)
+func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan Result {
+	c := make(chan Result)
 
 	server.EventChansLock.Lock()
 	server.EventChans[evt] = c
@@ -90,7 +90,7 @@ func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan CmdResult {
 }
 
 // GetEventChanResult gets a CmdResult from the SsntpTestServer event channel
-func (server *SsntpTestServer) GetEventChanResult(c *chan CmdResult, evt ssntp.Event) (result CmdResult, err error) {
+func (server *SsntpTestServer) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
 	case result = <-*c:
 		if result.Err != nil {
@@ -104,7 +104,7 @@ func (server *SsntpTestServer) GetEventChanResult(c *chan CmdResult, evt ssntp.E
 }
 
 // SendResultAndDelEventChan deletes an event from the SsntpTestServer event channel
-func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result CmdResult) {
+func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	server.EventChansLock.Lock()
 	defer server.EventChansLock.Unlock()
 	c, ok := server.EventChans[evt]
@@ -117,7 +117,7 @@ func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result
 
 // ConnectNotify implements an SSNTP ConnectNotify callback for SsntpTestServer
 func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
-	var result CmdResult
+	var result Result
 
 	switch role {
 	case ssntp.AGENT:
@@ -136,7 +136,7 @@ func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 
 // DisconnectNotify implements an SSNTP DisconnectNotify callback for SsntpTestServer
 func (server *SsntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
-	var result CmdResult
+	var result Result
 
 	server.clientsLock.Lock()
 	for index := range server.clients {
@@ -162,7 +162,7 @@ func (server *SsntpTestServer) StatusNotify(uuid string, status ssntp.Status, fr
 
 // CommandNotify implements an SSNTP CommandNotify callback for SsntpTestServer
 func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command, frame *ssntp.Frame) {
-	var result CmdResult
+	var result Result
 	var nn bool
 
 	payload := frame.Payload
@@ -247,7 +247,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 
 // EventNotify implements an SSNTP EventNotify callback for SsntpTestServer
 func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame *ssntp.Frame) {
-	var result CmdResult
+	var result Result
 
 	payload := frame.Payload
 
@@ -407,10 +407,10 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 func StartTestServer(server *SsntpTestServer) {
 	server.clientsLock = &sync.Mutex{}
 
-	server.CmdChans = make(map[ssntp.Command]chan CmdResult)
+	server.CmdChans = make(map[ssntp.Command]chan Result)
 	server.CmdChansLock = &sync.Mutex{}
 
-	server.EventChans = make(map[ssntp.Event]chan CmdResult)
+	server.EventChans = make(map[ssntp.Event]chan Result)
 	server.EventChansLock = &sync.Mutex{}
 
 	server.NetClients = make(map[string]bool)

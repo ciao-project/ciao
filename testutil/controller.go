@@ -31,9 +31,9 @@ type SsntpTestController struct {
 	Ssntp          ssntp.Client
 	Name           string
 	UUID           string
-	CmdChans       map[ssntp.Command]chan CmdResult
+	CmdChans       map[ssntp.Command]chan Result
 	CmdChansLock   *sync.Mutex
-	EventChans     map[ssntp.Event]chan CmdResult
+	EventChans     map[ssntp.Event]chan Result
 	EventChansLock *sync.Mutex
 }
 
@@ -52,9 +52,9 @@ func NewSsntpTestControllerConnection(name string, uuid string) (*SsntpTestContr
 		UUID: uuid,
 	}
 
-	ctl.CmdChans = make(map[ssntp.Command]chan CmdResult)
+	ctl.CmdChans = make(map[ssntp.Command]chan Result)
 	ctl.CmdChansLock = &sync.Mutex{}
-	ctl.EventChans = make(map[ssntp.Event]chan CmdResult)
+	ctl.EventChans = make(map[ssntp.Event]chan Result)
 	ctl.EventChansLock = &sync.Mutex{}
 
 	config := &ssntp.Config{
@@ -72,8 +72,8 @@ func NewSsntpTestControllerConnection(name string, uuid string) (*SsntpTestContr
 }
 
 // AddCmdChan adds a command to the SsntpTestController command channel
-func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command) *chan CmdResult {
-	c := make(chan CmdResult)
+func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command) *chan Result {
+	c := make(chan Result)
 
 	ctl.CmdChansLock.Lock()
 	ctl.CmdChans[cmd] = c
@@ -83,7 +83,7 @@ func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command) *chan CmdResult {
 }
 
 // GetCmdChanResult gets a CmdResult from the SsntpTestController command channel
-func (ctl *SsntpTestController) GetCmdChanResult(c *chan CmdResult, cmd ssntp.Command) (result CmdResult, err error) {
+func (ctl *SsntpTestController) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
 	case result = <-*c:
 		if result.Err != nil {
@@ -97,7 +97,7 @@ func (ctl *SsntpTestController) GetCmdChanResult(c *chan CmdResult, cmd ssntp.Co
 }
 
 // SendResultAndDelCmdChan deletes a command from the SsntpTestController command channel
-func (ctl *SsntpTestController) SendResultAndDelCmdChan(cmd ssntp.Command, result CmdResult) {
+func (ctl *SsntpTestController) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	ctl.CmdChansLock.Lock()
 	defer ctl.CmdChansLock.Unlock()
 	c, ok := ctl.CmdChans[cmd]
@@ -109,8 +109,8 @@ func (ctl *SsntpTestController) SendResultAndDelCmdChan(cmd ssntp.Command, resul
 }
 
 // AddEventChan adds a command to the SsntpTestController event channel
-func (ctl *SsntpTestController) AddEventChan(evt ssntp.Event) *chan CmdResult {
-	c := make(chan CmdResult)
+func (ctl *SsntpTestController) AddEventChan(evt ssntp.Event) *chan Result {
+	c := make(chan Result)
 
 	ctl.EventChansLock.Lock()
 	ctl.EventChans[evt] = c
@@ -120,7 +120,7 @@ func (ctl *SsntpTestController) AddEventChan(evt ssntp.Event) *chan CmdResult {
 }
 
 // GetEventChanResult gets a CmdResult from the SsntpTestController event channel
-func (ctl *SsntpTestController) GetEventChanResult(c *chan CmdResult, evt ssntp.Event) (result CmdResult, err error) {
+func (ctl *SsntpTestController) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
 	case result = <-*c:
 		if result.Err != nil {
@@ -134,7 +134,7 @@ func (ctl *SsntpTestController) GetEventChanResult(c *chan CmdResult, evt ssntp.
 }
 
 // SendResultAndDelEventChan deletes an event from the SsntpTestController event channel
-func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, result CmdResult) {
+func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	ctl.EventChansLock.Lock()
 	defer ctl.EventChansLock.Unlock()
 	c, ok := ctl.EventChans[evt]
@@ -147,7 +147,7 @@ func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, resul
 
 // ConnectNotify implements the SSNTP client ConnectNotify callback for SsntpTestController
 func (ctl *SsntpTestController) ConnectNotify() {
-	var result CmdResult
+	var result Result
 
 	ctl.EventChansLock.Lock()
 	defer ctl.EventChansLock.Unlock()
@@ -161,7 +161,7 @@ func (ctl *SsntpTestController) ConnectNotify() {
 
 // DisconnectNotify implements the SSNTP client DisconnectNotify callback for SsntpTestController
 func (ctl *SsntpTestController) DisconnectNotify() {
-	var result CmdResult
+	var result Result
 
 	ctl.EventChansLock.Lock()
 	defer ctl.EventChansLock.Unlock()
@@ -179,7 +179,7 @@ func (ctl *SsntpTestController) StatusNotify(status ssntp.Status, frame *ssntp.F
 
 // CommandNotify implements the SSNTP client CommandNotify callback for SsntpTestController
 func (ctl *SsntpTestController) CommandNotify(command ssntp.Command, frame *ssntp.Frame) {
-	var result CmdResult
+	var result Result
 
 	switch command {
 	case ssntp.STATS:
@@ -207,7 +207,7 @@ func (ctl *SsntpTestController) CommandNotify(command ssntp.Command, frame *ssnt
 
 // EventNotify implements the SSNTP client EventNotify callback for SsntpTestController
 func (ctl *SsntpTestController) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
-	var result CmdResult
+	var result Result
 
 	switch event {
 	case ssntp.InstanceDeleted:
