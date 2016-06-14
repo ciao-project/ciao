@@ -66,3 +66,16 @@ script:
 
 after_success:
    - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=/tmp/cover.out
+
+before_deploy:
+   - cd $GOPATH/src/github.com/01org/ciao
+   - tag=`git describe --abbrev=0 --tags`
+   - git show $tag > release.txt
+
+deploy:
+        provider: releases
+        api_key: $GH_TOKEN
+        file: release.txt
+        skip_cleanup: true
+        on:
+                tags: true
