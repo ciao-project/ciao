@@ -190,28 +190,14 @@ func (ctl *SsntpTestController) SendResultAndDelErrorChan(error ssntp.Error, res
 func (ctl *SsntpTestController) ConnectNotify() {
 	var result Result
 
-	ctl.EventChansLock.Lock()
-	defer ctl.EventChansLock.Unlock()
-	c, ok := ctl.EventChans[ssntp.NodeConnected]
-	if ok {
-		delete(ctl.EventChans, ssntp.NodeConnected)
-		c <- result
-		close(c)
-	}
+	ctl.SendResultAndDelEventChan(ssntp.NodeConnected, result)
 }
 
 // DisconnectNotify implements the SSNTP client DisconnectNotify callback for SsntpTestController
 func (ctl *SsntpTestController) DisconnectNotify() {
 	var result Result
 
-	ctl.EventChansLock.Lock()
-	defer ctl.EventChansLock.Unlock()
-	c, ok := ctl.EventChans[ssntp.NodeDisconnected]
-	if ok {
-		delete(ctl.EventChans, ssntp.NodeDisconnected)
-		c <- result
-		close(c)
-	}
+	ctl.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
 }
 
 // StatusNotify implements the SSNTP client StatusNotify callback for SsntpTestController
@@ -240,18 +226,12 @@ func (ctl *SsntpTestController) CommandNotify(command ssntp.Command, frame *ssnt
 		if err != nil {
 			result.Err = err
 		}
+
 	default:
 		fmt.Printf("controller unhandled command: %s\n", command.String())
 	}
 
-	ctl.CmdChansLock.Lock()
-	defer ctl.CmdChansLock.Unlock()
-	c, ok := ctl.CmdChans[command]
-	if ok {
-		delete(ctl.CmdChans, command)
-		c <- result
-		close(c)
-	}
+	ctl.SendResultAndDelCmdChan(command, result)
 }
 
 // EventNotify implements the SSNTP client EventNotify callback for SsntpTestController

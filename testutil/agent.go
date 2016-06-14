@@ -462,14 +462,7 @@ func (client *SsntpTestClient) SendStats() {
 		}
 	}
 
-	client.CmdChansLock.Lock()
-	defer client.CmdChansLock.Unlock()
-	c, ok := client.CmdChans[ssntp.STATS]
-	if ok {
-		delete(client.CmdChans, ssntp.STATS)
-		c <- result
-		close(c)
-	}
+	client.SendResultAndDelCmdChan(ssntp.STATS, result)
 }
 
 // SendTrace allows an SsntpTestClient to push an ssntp.TraceReport event frame

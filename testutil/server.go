@@ -319,14 +319,7 @@ func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 		fmt.Printf("server unhandled event %s\n", event.String())
 	}
 
-	server.EventChansLock.Lock()
-	defer server.EventChansLock.Unlock()
-	c, ok := server.EventChans[event]
-	if ok {
-		delete(server.EventChans, event)
-		c <- result
-		close(c)
-	}
+	server.SendResultAndDelEventChan(event, result)
 }
 
 func getConcentratorUUID(event ssntp.Event, payload []byte) (string, error) {
