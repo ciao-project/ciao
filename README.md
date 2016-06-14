@@ -4,6 +4,7 @@
 [![Build Status](https://travis-ci.org/01org/ciao.svg?branch=master)](https://travis-ci.org/01org/ciao)
 [![Coverage Status](https://coveralls.io/repos/github/01org/ciao/badge.svg?branch=master)](https://coveralls.io/github/01org/ciao?branch=master)
 [![GoDoc](https://godoc.org/github.com/01org/ciao?status.svg)](https://godoc.org/github.com/01org/ciao)
+[![Stories in Ready](https://badge.waffle.io/01org/ciao.png?label=ready&title=Ready)](https://waffle.io/01org/ciao)
 
 Ciao is the "Cloud Integrated Advanced Orchestrator".  Its goal is
 to provide an easy to deploy, secure, scalable cloud orchestration
