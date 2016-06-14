@@ -71,6 +71,7 @@ func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*S
 	client.Name = "Test " + role.String() + " " + name
 	client.UUID = uuid
 	client.Role = role
+	client.StartFail = false
 	client.CmdChans = make(map[ssntp.Command]chan Result)
 	client.CmdChansLock = &sync.Mutex{}
 	client.EventChans = make(map[ssntp.Event]chan Result)
@@ -224,66 +225,71 @@ func (client *SsntpTestClient) StatusNotify(status ssntp.Status, frame *ssntp.Fr
 
 func (client *SsntpTestClient) handleStart(payload []byte) Result {
 	var result Result
-	var start payloads.Start
+	var cmd payloads.Start
 
-	err := yaml.Unmarshal(payload, &start)
+	err := yaml.Unmarshal(payload, &cmd)
 	if err != nil {
 		result.Err = err
 		return result
 	}
 
-	result.InstanceUUID = start.Start.InstanceUUID
-	result.TenantUUID = start.Start.TenantUUID
+	result.InstanceUUID = cmd.Start.InstanceUUID
+	result.TenantUUID = cmd.Start.TenantUUID
 	result.NodeUUID = client.UUID
 
 	if client.Role == ssntp.NETAGENT {
-		networking := start.Start.Networking
+		networking := cmd.Start.Networking
 
-		client.sendConcentratorAddedEvent(start.Start.InstanceUUID, start.Start.TenantUUID, networking.VnicMAC)
+		client.sendConcentratorAddedEvent(cmd.Start.InstanceUUID, cmd.Start.TenantUUID, networking.VnicMAC)
 		result.CNCI = true
 		return result
 	}
 
-	if !client.StartFail {
-		istat := payloads.InstanceStat{
-			InstanceUUID:  start.Start.InstanceUUID,
-			State:         payloads.Running,
-			MemoryUsageMB: 0,
-			DiskUsageMB:   0,
-			CPUUsage:      0,
-		}
-
-		client.instancesLock.Lock()
-		client.instances = append(client.instances, istat)
-		client.instancesLock.Unlock()
-	} else {
-		client.sendStartFailure(start.Start.InstanceUUID, client.StartFailReason)
+	if client.StartFail == true {
+		result.Err = errors.New(client.StartFailReason.String())
+		client.sendStartFailure(cmd.Start.InstanceUUID, client.StartFailReason)
+		client.SendResultAndDelErrorChan(ssntp.StartFailure, result)
+		return result
 	}
 
+	istat := payloads.InstanceStat{
+		InstanceUUID:  cmd.Start.InstanceUUID,
+		State:         payloads.Running,
+		MemoryUsageMB: 0,
+		DiskUsageMB:   0,
+		CPUUsage:      0,
+	}
+
+	client.instancesLock.Lock()
+	client.instances = append(client.instances, istat)
+	client.instancesLock.Unlock()
 	return result
 }
 
 func (client *SsntpTestClient) handleStop(payload []byte) Result {
 	var result Result
-	var stopCmd payloads.Stop
+	var cmd payloads.Stop
 
-	err := yaml.Unmarshal(payload, &stopCmd)
+	err := yaml.Unmarshal(payload, &cmd)
 	if err != nil {
 		result.Err = err
 		return result
 	}
 
-	if !client.StopFail {
-		client.instancesLock.Lock()
-		defer client.instancesLock.Unlock()
-		for i := range client.instances {
-			istat := client.instances[i]
-			if istat.InstanceUUID == stopCmd.Stop.InstanceUUID {
-				client.instances[i].State = payloads.Exited
-			}
+	if client.StopFail == true {
+		result.Err = errors.New(client.StopFailReason.String())
+		client.sendStopFailure(cmd.Stop.InstanceUUID, client.StopFailReason)
+		client.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+		return result
+	}
+
+	client.instancesLock.Lock()
+	defer client.instancesLock.Unlock()
+	for i := range client.instances {
+		istat := client.instances[i]
+		if istat.InstanceUUID == cmd.Stop.InstanceUUID {
+			client.instances[i].State = payloads.Exited
 		}
-	} else {
-		client.sendStopFailure(stopCmd.Stop.InstanceUUID, client.StopFailReason)
 	}
 
 	return result
@@ -291,25 +297,28 @@ func (client *SsntpTestClient) handleStop(payload []byte) Result {
 
 func (client *SsntpTestClient) handleRestart(payload []byte) Result {
 	var result Result
-	var restartCmd payloads.Restart
+	var cmd payloads.Restart
 
-	err := yaml.Unmarshal(payload, &restartCmd)
+	err := yaml.Unmarshal(payload, &cmd)
 	if err != nil {
 		result.Err = err
 		return result
 	}
 
-	if !client.RestartFail {
-		client.instancesLock.Lock()
-		defer client.instancesLock.Unlock()
-		for i := range client.instances {
-			istat := client.instances[i]
-			if istat.InstanceUUID == restartCmd.Restart.InstanceUUID {
-				client.instances[i].State = payloads.Running
-			}
+	if client.RestartFail == true {
+		result.Err = errors.New(client.RestartFailReason.String())
+		client.sendRestartFailure(cmd.Restart.InstanceUUID, client.RestartFailReason)
+		client.SendResultAndDelErrorChan(ssntp.RestartFailure, result)
+		return result
+	}
+
+	client.instancesLock.Lock()
+	defer client.instancesLock.Unlock()
+	for i := range client.instances {
+		istat := client.instances[i]
+		if istat.InstanceUUID == cmd.Restart.InstanceUUID {
+			client.instances[i].State = payloads.Running
 		}
-	} else {
-		client.sendRestartFailure(restartCmd.Restart.InstanceUUID, client.RestartFailReason)
 	}
 
 	return result
@@ -317,26 +326,29 @@ func (client *SsntpTestClient) handleRestart(payload []byte) Result {
 
 func (client *SsntpTestClient) handleDelete(payload []byte) Result {
 	var result Result
-	var deleteCmd payloads.Delete
+	var cmd payloads.Delete
 
-	err := yaml.Unmarshal(payload, &deleteCmd)
+	err := yaml.Unmarshal(payload, &cmd)
 	if err != nil {
 		result.Err = err
 		return result
 	}
 
-	if !client.DeleteFail {
-		client.instancesLock.Lock()
-		defer client.instancesLock.Unlock()
-		for i := range client.instances {
-			istat := client.instances[i]
-			if istat.InstanceUUID == deleteCmd.Delete.InstanceUUID {
-				client.instances = append(client.instances[:i], client.instances[i+1:]...)
-				break
-			}
+	if client.DeleteFail == true {
+		result.Err = errors.New(client.DeleteFailReason.String())
+		client.sendDeleteFailure(cmd.Delete.InstanceUUID, client.DeleteFailReason)
+		client.SendResultAndDelErrorChan(ssntp.DeleteFailure, result)
+		return result
+	}
+
+	client.instancesLock.Lock()
+	defer client.instancesLock.Unlock()
+	for i := range client.instances {
+		istat := client.instances[i]
+		if istat.InstanceUUID == cmd.Delete.InstanceUUID {
+			client.instances = append(client.instances[:i], client.instances[i+1:]...)
+			break
 		}
-	} else {
-		client.sendDeleteFailure(deleteCmd.Delete.InstanceUUID, client.DeleteFailReason)
 	}
 
 	return result

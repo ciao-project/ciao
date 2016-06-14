@@ -518,6 +518,10 @@ func StartTestServer(server *SsntpTestServer) {
 				Operand: ssntp.RestartFailure,
 				Dest:    ssntp.Controller,
 			},
+			{ // all DeleteFailure events go to all Controllers
+				Operand: ssntp.DeleteFailure,
+				Dest:    ssntp.Controller,
+			},
 			{ // all START command are processed by the Command forwarder
 				Operand:        ssntp.START,
 				CommandForward: server,
