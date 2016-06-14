@@ -95,11 +95,11 @@ var repos = map[string]repoInfo{
 	"github.com/opencontainers/runc":    {"https://github.com/opencontainers/runc.git", "v0.1.0", "Apache v2.0"},
 	"github.com/rackspace/gophercloud":  {"https://github.com/rackspace/gophercloud.git", "67139b9", "Apache v2.0"},
 	"github.com/tylerb/graceful":        {"https://github.com/tylerb/graceful.git", "9a3d423", "MIT"},
-	"github.com/vishvananda/netlink":    {"https://github.com/vishvananda/netlink.git", "a632d6d", "Apache v2.0"},
+	"github.com/vishvananda/netlink":    {"https://github.com/vishvananda/netlink.git", "7995ff5", "Apache v2.0"},
+	"github.com/vishvananda/netns":      {"https://github.com/vishvananda/netns.git", "8ba1072", "Apache v2.0"},
 	"golang.org/x/net":                  {"https://go.googlesource.com/net", "origin/release-branch.go1.6", "BSD (3 clause)"},
 }
 
-var vendorTmpPath = "/tmp/ciao-vendor"
 var listTemplate = `
 {{- range .Deps -}}
 {{.}}
@@ -205,51 +205,6 @@ func checkWD() (string, string, error) {
 	}
 
 	return "", "", fmt.Errorf("ciao-vendor must be run from $GOPATH/src/01org/ciao")
-}
-
-func cloneRepos() error {
-	err := os.MkdirAll(vendorTmpPath, 0755)
-	if err != nil {
-		return fmt.Errorf("Unable to create %s : %v", vendorTmpPath, err)
-	}
-
-	errCh := make(chan error)
-
-	for _, r := range repos {
-		go func(URL string) {
-			cmd := exec.Command("git", "clone", URL)
-			cmd.Dir = vendorTmpPath
-			err := cmd.Run()
-			if err != nil {
-				errCh <- fmt.Errorf("git clone %s failed : %v", URL, err)
-			} else {
-				errCh <- nil
-			}
-		}(r.URL)
-	}
-
-	for range repos {
-		rcvErr := <-errCh
-		if err == nil && rcvErr != nil {
-			err = rcvErr
-		}
-	}
-
-	return err
-}
-
-func baseCloneDir(URL string) string {
-	index := strings.LastIndex(URL, "/")
-	if index == -1 {
-		return URL
-	}
-
-	dir := URL[index+1:]
-	index = strings.LastIndex(dir, ".git")
-	if index == -1 {
-		return dir
-	}
-	return dir[:index]
 }
 
 func copyRepos(cwd, sourceRoot string, subPackages map[string][]*subPackage) error {
@@ -872,6 +827,64 @@ func uses(pkg string, projectRoot string, direct bool) error {
 	return nil
 }
 
+func updates(sourceRoot, projectRoot string) error {
+	deps, err := calcDeps(projectRoot, []string{"./..."})
+	if err != nil {
+		return err
+	}
+
+	vendorRoot := path.Join(projectRoot, "vendor") + "/"
+
+	for _, d := range deps {
+		if strings.HasPrefix(d.name, vendorRoot) {
+			d.name = d.name[len(vendorRoot):]
+		}
+	}
+
+	err = updateNonVendoredDeps(deps, projectRoot)
+	if err != nil {
+		return err
+	}
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
+	fmt.Fprintln(w, "Package\tStatus\t")
+
+	keys := make([]string, 0, len(repos))
+
+	for k := range repos {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := repos[k]
+		var output bytes.Buffer
+		cmd := exec.Command("git", "log", "--oneline", fmt.Sprintf("%s..HEAD", v.version))
+		cmd.Stdout = &output
+		cmd.Dir = path.Join(sourceRoot, k)
+		err = cmd.Run()
+		if err != nil {
+			fmt.Fprintf(w, "%s\tUnknown: %v\t\n", k, err)
+			continue
+		}
+		scanner := bufio.NewScanner(&output)
+		count := 0
+		for scanner.Scan() {
+			count++
+		}
+		if count != 0 {
+			fmt.Fprintf(w, "%s\t%d commits behind HEAD\t\n", k, count)
+		} else {
+			fmt.Fprintf(w, "%s\tUp to date\t\n", k)
+		}
+	}
+	w.Flush()
+
+	return nil
+}
+
 func runCommand(cwd, sourceRoot string, args []string) error {
 	var err error
 
@@ -895,6 +908,8 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 		}
 
 		err = uses(fs.Args()[0], projectRoot, direct)
+	case "updates":
+		err = updates(sourceRoot, projectRoot)
 	}
 
 	return err
@@ -903,7 +918,7 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 func main() {
 	if !((len(os.Args) == 2 &&
 		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
-			os.Args[1] == "packages")) || (len(os.Args) >= 3 && os.Args[1] == "uses")) {
+			os.Args[1] == "packages" || os.Args[1] == "updates")) || (len(os.Args) >= 3 && os.Args[1] == "uses")) {
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendor|check|deps|packages")
 		os.Exit(1)
 	}
