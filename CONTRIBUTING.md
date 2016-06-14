@@ -73,6 +73,9 @@ the problem and work toward resolution.
 For feature requests we're also using github issues, with the label
 "enhancement".
 
+Our github bug/enhancement backlog and work queue are tracked in a
+[Ciao waffle.io kanban](https://waffle.io/01org/ciao).
+
 ## Closing issues
 
 You can either close issues manually by adding the fixing commit SHA1 to the issue
