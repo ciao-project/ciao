@@ -218,7 +218,7 @@ export CIAO_USERNAME=admin
 export CIAO_PASSWORD=giveciaoatry
 
 eval "$identity"
-"$ciao_gobin"/ciao-cli --list-workloads
+"$ciao_gobin"/ciao-cli workload list
 
 if [ $? -ne 0 ]
 then
@@ -226,7 +226,7 @@ then
 	exit 1
 fi
 
-"$ciao_gobin"/ciao-cli --launch-instances --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --instances=2
+"$ciao_gobin"/ciao-cli instance add --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --instances=2
 
 if [ $? -ne 0 ]
 then
@@ -234,7 +234,7 @@ then
 	exit 1
 fi
 
-"$ciao_gobin"/ciao-cli --list-instances
+"$ciao_gobin"/ciao-cli instance list
 
 if [ $? -ne 0 ]
 then
@@ -242,7 +242,7 @@ then
 	exit 1
 fi
 
-"$ciao_gobin"/ciao-cli --launch-instances --workload=ab68111c-03a6-11e6-87de-001320fb6e31 --instances=2
+"$ciao_gobin"/ciao-cli instance add --workload=ab68111c-03a6-11e6-87de-001320fb6e31 --instances=2
 
 if [ $? -ne 0 ]
 then
@@ -252,7 +252,7 @@ fi
 
 sleep 30
 
-"$ciao_gobin"/ciao-cli --list-instances
+"$ciao_gobin"/ciao-cli instance list
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to list instances"
@@ -265,12 +265,12 @@ sudo docker logs "$docker_id"
 
 #Check SSH connectivity
 sleep 2
-"$ciao_gobin"/ciao-cli --list-instances
-ssh_ip=$(ciao-cli --list-instances |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
+"$ciao_gobin"/ciao-cli instance list
+ssh_ip=$(ciao-cli instance list |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
 head -1 < /dev/tcp/"$ssh_ip"/33002
 
 #Now delete all instances
-"$ciao_gobin"/ciao-cli --all-instances --delete-instance
+"$ciao_gobin"/ciao-cli instance delete --all
 
 if [ $? -ne 0 ]
 then
@@ -278,7 +278,7 @@ then
 	exit 1
 fi
 
-"$ciao_gobin"/ciao-cli --list-instances
+"$ciao_gobin"/ciao-cli instance list
 #Also kill the CNCI (as there is no other way to delete it today)
 sudo killall qemu-system-x86_64
 sudo rm -rf /var/lib/ciao/instances
