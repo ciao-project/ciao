@@ -826,6 +826,64 @@ func uses(pkg string, projectRoot string, direct bool) error {
 	return nil
 }
 
+func updates(sourceRoot, projectRoot string) error {
+	deps, err := calcDeps(projectRoot, []string{"./..."})
+	if err != nil {
+		return err
+	}
+
+	vendorRoot := path.Join(projectRoot, "vendor") + "/"
+
+	for _, d := range deps {
+		if strings.HasPrefix(d.name, vendorRoot) {
+			d.name = d.name[len(vendorRoot):]
+		}
+	}
+
+	err = updateNonVendoredDeps(deps, projectRoot)
+	if err != nil {
+		return err
+	}
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
+	fmt.Fprintln(w, "Package\tStatus\t")
+
+	keys := make([]string, 0, len(repos))
+
+	for k := range repos {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := repos[k]
+		var output bytes.Buffer
+		cmd := exec.Command("git", "log", "--oneline", fmt.Sprintf("%s..HEAD", v.version))
+		cmd.Stdout = &output
+		cmd.Dir = path.Join(sourceRoot, k)
+		err = cmd.Run()
+		if err != nil {
+			fmt.Fprintf(w, "%s\tUnknown: %v\t\n", k, err)
+			continue
+		}
+		scanner := bufio.NewScanner(&output)
+		count := 0
+		for scanner.Scan() {
+			count++
+		}
+		if count != 0 {
+			fmt.Fprintf(w, "%s\t%d commits behind HEAD\t\n", k, count)
+		} else {
+			fmt.Fprintf(w, "%s\tUp to date\t\n", k)
+		}
+	}
+	w.Flush()
+
+	return nil
+}
+
 func runCommand(cwd, sourceRoot string, args []string) error {
 	var err error
 
@@ -849,6 +907,8 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 		}
 
 		err = uses(fs.Args()[0], projectRoot, direct)
+	case "updates":
+		err = updates(sourceRoot, projectRoot)
 	}
 
 	return err
@@ -857,7 +917,7 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 func main() {
 	if !((len(os.Args) == 2 &&
 		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
-			os.Args[1] == "packages")) || (len(os.Args) >= 3 && os.Args[1] == "uses")) {
+			os.Args[1] == "packages" || os.Args[1] == "updates")) || (len(os.Args) >= 3 && os.Args[1] == "uses")) {
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendor|check|deps|packages")
 		os.Exit(1)
 	}
