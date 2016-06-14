@@ -356,6 +356,14 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 	}
 
 	switch command {
+	/* FIXME: implement
+	case ssntp.CONNECT:
+	case ssntp.STATS:
+	case ssntp.EVACUATE:
+	case ssntp.AssignPublicIP:
+	case ssntp.ReleasePublicIP:
+	case ssntp.CONFIGURE:
+	*/
 	case ssntp.START:
 		result = client.handleStart(payload)
 
@@ -377,10 +385,65 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 // EventNotify is an SSNTP callback stub for SsntpTestClient
 func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
+	var result Result
+
+	//payload := frame.Payload
+
+	if frame.Trace != nil {
+		frame.SetEndStamp()
+		client.tracesLock.Lock()
+		client.traces = append(client.traces, frame)
+		client.tracesLock.Unlock()
+	}
+
+	switch event {
+	/* FIXME: implement
+	case ssntp.InvalidFrameType:
+	case ssntp.StartFailure:
+	case ssntp.StopFailure:
+	case ssntp.ConnectionFailure:
+	case ssntp.RestartFailure:
+	case ssntp.DeleteFailure:
+	case ssntp.ConnectionAborted:
+	case ssntp.InvalidConfiguration:
+	*/
+
+	default:
+		fmt.Printf("client unhandled event %s\n", event.String())
+	}
+
+	client.SendResultAndDelEventChan(event, result)
 }
 
 // ErrorNotify is an SSNTP callback stub for SsntpTestClient
 func (client *SsntpTestClient) ErrorNotify(error ssntp.Error, frame *ssntp.Frame) {
+	var result Result
+
+	//payload := frame.Payload
+
+	if frame.Trace != nil {
+		frame.SetEndStamp()
+		client.tracesLock.Lock()
+		client.traces = append(client.traces, frame)
+		client.tracesLock.Unlock()
+	}
+
+	switch error {
+	/* FIXME: implement
+	case ssntp.InvalidFrameType:
+	case ssntp.StartFailure:
+	case ssntp.StopFailure:
+	case ssntp.ConnectionFailure:
+	case ssntp.RestartFailure:
+	case ssntp.DeleteFailure:
+	case ssntp.ConnectionAborted:
+	case ssntp.InvalidConfiguration:
+	*/
+	default:
+		fmt.Printf("client unhandled error %s\n", error.String())
+	}
+
+	client.SendResultAndDelErrorChan(error, result)
 }
 
 // SendStats pushes an ssntp.STATS command frame from the SsntpTestClient

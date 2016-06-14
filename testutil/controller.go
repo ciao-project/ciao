@@ -222,7 +222,15 @@ func (ctl *SsntpTestController) StatusNotify(status ssntp.Status, frame *ssntp.F
 func (ctl *SsntpTestController) CommandNotify(command ssntp.Command, frame *ssntp.Frame) {
 	var result Result
 
+	//payload := frame.Payload
+
 	switch command {
+	/* FIXME: implement
+	case ssntp.START:
+	case ssntp.STOP:
+	case ssntp.RESTART:
+	case ssntp.DELETE:
+	*/
 	case ssntp.STATS:
 		var stats payloads.Stat
 
@@ -276,16 +284,29 @@ func (ctl *SsntpTestController) EventNotify(event ssntp.Event, frame *ssntp.Fram
 		fmt.Printf("controller unhandled event: %s\n", event.String())
 	}
 
-	ctl.EventChansLock.Lock()
-	defer ctl.EventChansLock.Unlock()
-	c, ok := ctl.EventChans[event]
-	if ok {
-		delete(ctl.EventChans, event)
-		c <- result
-		close(c)
-	}
+	ctl.SendResultAndDelEventChan(event, result)
 }
 
 // ErrorNotify implements the SSNTP client ErrorNotify callback for SsntpTestController
 func (ctl *SsntpTestController) ErrorNotify(error ssntp.Error, frame *ssntp.Frame) {
+	var result Result
+
+	//payload := frame.Payload
+
+	switch error {
+	/* FIXME: implement
+	case ssntp.InvalidFrameType:
+	case ssntp.StartFailure:
+	case ssntp.StopFailure:
+	case ssntp.ConnectionFailure:
+	case ssntp.RestartFailure:
+	case ssntp.DeleteFailure:
+	case ssntp.ConnectionAborted:
+	case ssntp.InvalidConfiguration:
+	*/
+	default:
+		fmt.Printf("controller unhandled error %s\n", error.String())
+	}
+
+	ctl.SendResultAndDelErrorChan(error, result)
 }

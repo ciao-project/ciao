@@ -383,6 +383,40 @@ func (server *SsntpTestServer) EventForward(uuid string, event ssntp.Event, fram
 
 // ErrorNotify is an SSNTP callback stub for SsntpTestServer
 func (server *SsntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame *ssntp.Frame) {
+	var result Result
+
+	//payload := frame.Payload
+
+	switch error {
+	case ssntp.InvalidFrameType: //FIXME
+		fallthrough
+
+	case ssntp.StartFailure: //FIXME
+		fallthrough
+
+	case ssntp.StopFailure: //FIXME
+		fallthrough
+
+	case ssntp.ConnectionFailure: //FIXME
+		fallthrough
+
+	case ssntp.RestartFailure: //FIXME
+		fallthrough
+
+	case ssntp.DeleteFailure: //FIXME
+		fallthrough
+
+	case ssntp.ConnectionAborted: //FIXME
+		fallthrough
+
+	case ssntp.InvalidConfiguration: //FIXME
+		fallthrough
+
+	default:
+		fmt.Printf("server unhandled error %s\n", error.String())
+	}
+
+	server.SendResultAndDelErrorChan(error, result)
 }
 
 // CommandForward implements an SSNTP CommandForward callback for SsntpTestServer
