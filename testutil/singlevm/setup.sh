@@ -1,5 +1,4 @@
 #!/bin/bash
-
 ciao_host=$(hostname)
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
@@ -34,6 +33,8 @@ do
     esac
 done
 
+set -o nounset
+
 sudo mkdir -p /var/lib/ciao/images
 if [ ! -d /var/lib/ciao/images ]
 then
@@ -63,8 +64,8 @@ sudo killall ciao-controller
 sudo killall ciao-launcher
 sudo killall qemu-system-x86_64
 sudo rm -rf /var/lib/ciao/instances
-sleep 5
-
+echo "Deleting docker containers. This may take time"
+sudo docker rm -f $(sudo docker ps -a -q)
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -166,6 +167,12 @@ else
 	"$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image"
 fi
 
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to mount CNCI Image"
+	exit 1
+fi
+
 if [ ! -f "$ciao_cnci_image" ]
 then
 	echo "FATAL ERROR: unable to download CNCI Image"
@@ -250,7 +257,7 @@ then
 	exit 1
 fi
 
-sleep 30
+sleep 5
 
 "$ciao_gobin"/ciao-cli instance list
 if [ $? -ne 0 ]
@@ -259,15 +266,54 @@ then
 	exit 1
 fi
 
+
+#Check SSH connectivity
+"$ciao_gobin"/ciao-cli instance list
+
+#The VM takes time to boot as you are running on two
+#layers of virtualization. Hence wait a bit
+retry=0
+until [ $retry -ge 6 ]
+do
+	ssh_ip=$(ciao-cli instance list --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
+
+
+	if [ "$ssh_ip" == "" ] 
+	then
+		echo "Waiting for instance to boot"
+		let retry=retry+1
+		sleep 30
+		continue
+	fi
+	
+	ssh_check=$(head -1 < /dev/tcp/"$ssh_ip"/33002)
+	echo "$ssh_check"
+
+	echo "Attempting to ssh to: $ssh_ip"
+
+	if [[ "$ssh_check" == *SSH-2.0-OpenSSH_7.2* ]]
+	then
+		echo "SSH connectivity verified"
+		break
+	else
+		let retry=retry+1
+		echo "Retrying ssh connection $retry"
+	fi
+	sleep 30
+done
+
+if [ $retry -ge 6 ]
+then
+	echo "Unable check ssh connectivity into VM"
+	exit 1
+fi
+
 #Check docker networking
+echo "Checking Docker Networking"
+sleep 30
 docker_id=$(sudo docker ps -q | head -1)
 sudo docker logs "$docker_id"
 
-#Check SSH connectivity
-sleep 2
-"$ciao_gobin"/ciao-cli instance list
-ssh_ip=$(ciao-cli instance list |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
-head -1 < /dev/tcp/"$ssh_ip"/33002
 
 #Now delete all instances
 "$ciao_gobin"/ciao-cli instance delete --all
