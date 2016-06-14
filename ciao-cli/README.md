@@ -185,7 +185,7 @@ $GOBIN/ciao-cli -username admin -password ciao tenant list -all
 ### List quotas
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser tenant list -quotas
+$GOBIN/ciao-cli tenant list -quotas
 ```
 
 ### List consumed resources
@@ -276,7 +276,7 @@ $GOBIN/ciao-cli -username admin -password ciao trace show -label start_trace_201
 
 ```shell
 $GOBIN/ciao-cli -username admin -password ciao event list -all
-``
+```
 
 ### List all cluster events for a given tenant
 
