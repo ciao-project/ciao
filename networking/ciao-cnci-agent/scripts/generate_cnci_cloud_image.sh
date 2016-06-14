@@ -1,5 +1,4 @@
 #!/bin/bash
-
 #Defaults
 image="clear-8260-ciao-networking.img"
 certs_dir=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/certs
@@ -44,46 +43,64 @@ do
     esac
 done
 
+set -o nounset
 
 if [ $download -eq 1 ]
 then
-	rm "$image"
+	rm -f "$image"
 	curl -O https://download.clearlinux.org/demos/ciao/"$image".xz
 	unxz "$image".xz
 fi
 
 echo -e "\nMounting image: $image"
-sudo mkdir -p /mnt/tmp
+tmpdir=$(mktemp -d)
 sudo modprobe nbd max_part=63
-sudo qemu-nbd -c /dev/nbd0 "$image"
-sudo mount /dev/nbd0p$partition /mnt/tmp
+sudo qemu-nbd --format=raw -c /dev/nbd0 "$image" 
+
+#it can take some time for the device to get created
+retry=0
+until [ $retry -ge 3 ]
+do
+	sudo udevadm settle
+	sudo mount /dev/nbd0p$partition "$tmpdir" && break
+	let retry=retry+1
+	echo "Mount failed, retrying $retry"
+	sleep 10
+done
+
+if [ $retry -ge 3 ]
+then
+	echo "Unable to mount CNCI Image"
+	return 1
+fi
 
 echo -e "Cleaning up any artifacts"
-sudo rm -rf /mnt/tmp/var/lib/ciao
+sudo rm -rf "$tmpdir"/var/lib/ciao
 
 echo -e "Copying agent image"
-sudo cp "$cnci_agent" /mnt/tmp/usr/sbin/
+sudo cp "$cnci_agent" "$tmpdir"/usr/sbin/
 
 echo -e "Copying agent systemd service script"
-sudo cp "$cnci_sysd" /mnt/tmp/usr/lib/systemd/system/
+sudo cp "$cnci_sysd" "$tmpdir"/usr/lib/systemd/system/
 
 echo -e "Installing the service"
-sudo mkdir -p /mnt/tmp/etc/systemd/system/default.target.wants
-sudo rm -f /mnt/tmp/etc/systemd/system/default.target.wants/ciao-cnci-agent.service
-sudo chroot /mnt/tmp /bin/bash -c "sudo ln -s /usr/lib/systemd/system/ciao-cnci-agent.service /etc/systemd/system/default.target.wants/"
+sudo mkdir -p "$tmpdir"/etc/systemd/system/default.target.wants
+sudo rm -f "$tmpdir"/etc/systemd/system/default.target.wants/ciao-cnci-agent.service
+sudo chroot "$tmpdir" /bin/bash -c "sudo ln -s /usr/lib/systemd/system/ciao-cnci-agent.service /etc/systemd/system/default.target.wants/"
 
 echo -e "Copying CA certificates"
-sudo mkdir -p /mnt/tmp/var/lib/ciao/
-sudo cp "$certs_dir"/CAcert-* /mnt/tmp/var/lib/ciao/CAcert-server-localhost.pem
+sudo mkdir -p "$tmpdir"/var/lib/ciao/
+sudo cp "$certs_dir"/CAcert-* "$tmpdir"/var/lib/ciao/CAcert-server-localhost.pem
 
 echo -e "Copying CNCI Agent certificate"
-sudo cp "$certs_dir"/cert-CNCIAgent-* /mnt/tmp/var/lib/ciao/cert-client-localhost.pem
+sudo cp "$certs_dir"/cert-CNCIAgent-* "$tmpdir"/var/lib/ciao/cert-client-localhost.pem
 
 echo -e "Removing cloud-init traces"
-sudo rm -rf /mnt/tmp/var/lib/cloud
+sudo rm -rf "$tmpdir"/var/lib/cloud
 
 #Umount
 echo -e "Done! unmounting\n"
-sudo umount /mnt/tmp
+sudo umount "$tmpdir"
 sudo qemu-nbd -d /dev/nbd0
+sudo rm -rf "$tmpdir"
 exit 0
