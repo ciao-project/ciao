@@ -126,6 +126,7 @@ func validPhysicalLink(link netlink.Link) bool {
 	case "device":
 	case "bond":
 	case "vlan":
+	case "bridge":
 	default:
 		phyDevice = false
 	}
