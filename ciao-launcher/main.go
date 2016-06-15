@@ -503,7 +503,6 @@ func purgeLauncherState() {
 	glog.Info("Shutting down running instances")
 
 	toRemove := make([]string, 0, 1024)
-	networking := false
 	dockerNetworking := false
 
 	glog.Info("Init networking")
@@ -511,7 +510,6 @@ func purgeLauncherState() {
 	if err := initNetworkPhase1(); err != nil {
 		glog.Warningf("Failed to init network: %v\n", err)
 	} else {
-		networking = true
 		defer shutdownNetwork()
 		if err := initDockerNetworking(context.Background()); err != nil {
 			glog.Info("Unable to initialise docker networking")
@@ -554,10 +552,6 @@ func purgeLauncherState() {
 		glog.Info("Reset docker networking")
 
 		resetDockerNetworking()
-	}
-
-	if !networking {
-		return
 	}
 
 	glog.Info("Reset networking")
