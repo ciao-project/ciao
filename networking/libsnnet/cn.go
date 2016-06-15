@@ -1195,9 +1195,11 @@ func (cn *ComputeNode) ResetNetwork() error {
 		return NewFatalError("Cannot retrieve links" + err.Error())
 	}
 
-	cn.cnTopology.Lock()
-	defer cn.cnTopology.Unlock()
-	initCnTopology(cn.cnTopology)
+	if cn != nil && cn.cnTopology != nil {
+		cn.cnTopology.Lock()
+		defer cn.cnTopology.Unlock()
+		initCnTopology(cn.cnTopology)
+	}
 
 	//Delete everything with an alias
 	for _, link := range links {
