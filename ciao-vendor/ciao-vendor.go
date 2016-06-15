@@ -907,7 +907,7 @@ func updates(sourceRoot, projectRoot string) error {
 	return nil
 }
 
-func test(sourceRoot, projectRoot, pkg, version string, goTestFlags []string) error {
+func test(sudo bool, sourceRoot, projectRoot, pkg, version string, goTestFlags []string) error {
 	fmt.Printf("Go getting %s\n", pkg)
 	cmd := exec.Command("go", "get", "-t", "-u", pkg)
 	cmd.Stdout = os.Stdout
@@ -929,13 +929,24 @@ func test(sourceRoot, projectRoot, pkg, version string, goTestFlags []string) er
 			version, pkg, err)
 	}
 
-	args := []string{"test"}
+	var args []string
+	var command string
+	if sudo {
+		command = "sudo"
+		args = []string{"-E", "go"}
+	} else {
+		command = "go"
+	}
+	args = append(args, "test")
 	args = append(args, goTestFlags...)
 	args = append(args, pkg)
-	cmd = exec.Command("go", args...)
+	cmd = exec.Command(command, args...)
 	cmd.Dir = path.Join(sourceRoot, pkg)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	if sudo {
+		cmd.Stdin = os.Stdin
+	}
 	err = cmd.Run()
 
 	cmd = exec.Command("git", "checkout", branch)
@@ -971,7 +982,16 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 	case "updates":
 		err = updates(sourceRoot, projectRoot)
 	case "test":
-		err = test(sourceRoot, projectRoot, args[2], args[3], args[4:])
+		fs := flag.NewFlagSet("test", flag.ExitOnError)
+		sudo := false
+		fs.BoolVar(&sudo, "s", false, "run tests with sudo")
+
+		if err := fs.Parse(args[2:]); err != nil {
+			return err
+		}
+
+		args = fs.Args()
+		err = test(sudo, sourceRoot, projectRoot, args[0], args[1], args[2:])
 	}
 
 	return err
