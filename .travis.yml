@@ -70,12 +70,12 @@ after_success:
 before_deploy:
    - cd $GOPATH/src/github.com/01org/ciao
    - tag=`git describe --abbrev=0 --tags`
-   - git show $tag > release.txt
+   - git show $tag > /tmp/release.txt
 
 deploy:
         provider: releases
         api_key: $GH_TOKEN
-        file: release.txt
+        file: /tmp/release.txt
         skip_cleanup: true
         on:
                 tags: true
