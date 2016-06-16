@@ -192,7 +192,7 @@ if [ $download -eq 1 ] || [ ! -f clear-"${LATEST}"-cloud.img ]
 then
 	rm -f clear-"${LATEST}"-cloud.img.xz
 	rm -f clear-"${LATEST}"-cloud.img
-	curl -O https://download.clearlinux.org/image/clear-"${LATEST}"-cloud.img.xz
+	curl -O https://download.clearlinux.org/releases/"$LATEST"/clear/clear-"$LATEST"-cloud.img.xz
 	xz -T0 --decompress clear-"${LATEST}"-cloud.img.xz
 fi
 
