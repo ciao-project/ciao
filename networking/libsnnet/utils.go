@@ -126,6 +126,11 @@ func validPhysicalLink(link netlink.Link) bool {
 	case "device":
 	case "bond":
 	case "vlan":
+	case "macvlan":
+	case "bridge":
+		if strings.HasPrefix(link.Attrs().Name, "docker") {
+			phyDevice = false
+		}
 	default:
 		phyDevice = false
 	}

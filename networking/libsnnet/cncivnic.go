@@ -27,11 +27,7 @@ import (
 func newCnciVnic(id string) (*CnciVnic, error) {
 	CnciVnic := &CnciVnic{}
 	CnciVnic.Link = &netlink.Macvtap{}
-	CnciVnic.Link.Mode = netlink.MACVLAN_MODE_VEPA
-	//TODO: Use bridge mode as default for now for easier integration
-	//CnciVnic.Link.Mode = netlink.MACVLAN_MODE_BRIDGE
-	//TODO: Figure out correct default
-	//Currently using the same as ip command
+	CnciVnic.Link.Mode = netlink.MACVLAN_MODE_BRIDGE
 	CnciVnic.Link.TxQLen = 500
 	CnciVnic.GlobalID = id
 	return CnciVnic, nil

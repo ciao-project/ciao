@@ -35,11 +35,7 @@ func getFirstPhyDevice() (int, error) {
 
 	for _, link := range links {
 
-		if link.Type() != "device" {
-			continue
-		}
-
-		if link.Attrs().Name == "lo" {
+		if !validPhysicalLink(link) {
 			continue
 		}
 
