@@ -1029,7 +1029,7 @@ func testMultiURIs(t *testing.T, CACert string, expectedURIs []string, configURI
 	}
 }
 
-// Test the CA parsing routine for an emtpy URI configuration
+// Test the CA parsing routine for an empty URI configuration
 //
 // Test that when not passing a server URI through the SSNTP
 // configuration the CA parsing routine gets the expected URIs list.
