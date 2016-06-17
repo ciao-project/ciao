@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -32,9 +33,9 @@ import (
 )
 
 type repoInfo struct {
-	URL     string
-	version string
-	license string
+	URL     string `json:"url"`
+	Version string `json:"version"`
+	License string `json:"license"`
 }
 
 type packageDeps struct {
@@ -76,29 +77,7 @@ func (p piList) Less(i, j int) bool {
 	return p[i].name < p[j].name
 }
 
-var repos = map[string]repoInfo{
-	"github.com/docker/distribution":    {"https://github.com/docker/distribution.git", "v2.4.0", "Apache v2.0"},
-	"gopkg.in/yaml.v2":                  {"https://gopkg.in/yaml.v2", "a83829b", "LGPL v3.0 + MIT"},
-	"github.com/Sirupsen/logrus":        {"https://github.com/Sirupsen/logrus.git", "v0.9.0", "MIT"},
-	"github.com/boltdb/bolt":            {"https://github.com/boltdb/bolt.git", "144418e", "MIT"},
-	"github.com/coreos/go-iptables":     {"https://github.com/coreos/go-iptables.git", "fbb7337", "Apache v2.0"},
-	"github.com/docker/docker":          {"https://github.com/docker/docker.git", "v1.10.3", "Apache v2.0"},
-	"github.com/docker/engine-api":      {"https://github.com/docker/engine-api.git", "v0.3.3", "Apache v2.0"},
-	"github.com/docker/go-connections":  {"https://github.com/docker/go-connections.git", "5b7154b", "Apache v2.0"},
-	"github.com/docker/go-units":        {"https://github.com/docker/go-units.git", "651fc22", "Apache v2.0"},
-	"github.com/docker/libnetwork":      {"https://github.com/docker/libnetwork.git", "dbb0722", "Apache v2.0"},
-	"github.com/golang/glog":            {"https://github.com/golang/glog.git", "23def4e", "Apache v2.0"},
-	"github.com/gorilla/context":        {"https://github.com/gorilla/context.git", "1ea2538", "BSD (3 clause)"},
-	"github.com/gorilla/mux":            {"https://github.com/gorilla/mux.git", "0eeaf83", "BSD (3 clause)"},
-	"github.com/mattn/go-sqlite3":       {"https://github.com/mattn/go-sqlite3.git", "467f50b", "MIT + Public domain"},
-	"github.com/mitchellh/mapstructure": {"https://github.com/mitchellh/mapstructure.git", "d2dd026", "MIT"},
-	"github.com/opencontainers/runc":    {"https://github.com/opencontainers/runc.git", "v0.1.0", "Apache v2.0"},
-	"github.com/rackspace/gophercloud":  {"https://github.com/rackspace/gophercloud.git", "67139b9", "Apache v2.0"},
-	"github.com/tylerb/graceful":        {"https://github.com/tylerb/graceful.git", "9a3d423", "MIT"},
-	"github.com/vishvananda/netlink":    {"https://github.com/vishvananda/netlink.git", "293adec", "Apache v2.0"},
-	"github.com/vishvananda/netns":      {"https://github.com/vishvananda/netns.git", "8ba1072", "Apache v2.0"},
-	"golang.org/x/net":                  {"https://go.googlesource.com/net", "origin/release-branch.go1.6", "BSD (3 clause)"},
-}
+var repos = map[string]repoInfo{}
 
 var listTemplate = `
 {{- range .Deps -}}
@@ -217,7 +196,7 @@ func copyRepos(cwd, sourceRoot string, subPackages map[string][]*subPackage) err
 				return
 			}
 
-			cmd1 := exec.Command("git", "archive", repos[k].version)
+			cmd1 := exec.Command("git", "archive", repos[k].Version)
 			cmd1.Dir = path.Join(sourceRoot, k)
 			os.MkdirAll(path.Join(cwd, "vendor", k), 0755)
 			args := []string{"-xC", path.Join(cwd, "vendor", k), "--wildcards",
@@ -337,7 +316,7 @@ func getCurrentBranch(repo string) (string, error) {
 
 func checkoutVersion(sourceRoot string) {
 	for k, v := range repos {
-		cmd := exec.Command("git", "checkout", v.version)
+		cmd := exec.Command("git", "checkout", v.Version)
 		cmd.Dir = path.Join(sourceRoot, k)
 		_ = cmd.Run()
 	}
@@ -734,11 +713,11 @@ func packages(cwd, projectRoot string) error {
 		if repos[r].URL != "" {
 			fmt.Fprintf(w, "%s\t", r)
 			if d.vendored {
-				fmt.Fprintf(w, "%s\t", repos[r].version)
+				fmt.Fprintf(w, "%s\t", repos[r].Version)
 			} else {
 				fmt.Fprintf(w, "master\t")
 			}
-			fmt.Fprintf(w, "%s", repos[r].license)
+			fmt.Fprintf(w, "%s", repos[r].License)
 		} else {
 			fmt.Fprintf(w, "Unknown\tUnknown\tUnknown")
 		}
@@ -777,7 +756,7 @@ func deps(projectRoot string) error {
 
 	for _, k := range keys {
 		r := repos[k]
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", k, r.URL, r.version, r.license)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", k, r.URL, r.Version, r.License)
 	}
 	w.Flush()
 
@@ -883,7 +862,7 @@ func updates(sourceRoot, projectRoot string) error {
 	for _, k := range keys {
 		v := repos[k]
 		var output bytes.Buffer
-		cmd := exec.Command("git", "log", "--oneline", fmt.Sprintf("%s..HEAD", v.version))
+		cmd := exec.Command("git", "log", "--oneline", fmt.Sprintf("%s..HEAD", v.Version))
 		cmd.Stdout = &output
 		cmd.Dir = path.Join(sourceRoot, k)
 		err = cmd.Run()
@@ -997,6 +976,37 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 	return err
 }
 
+func readRepos(projectRoot string) error {
+	packageFile := path.Join(projectRoot, "ciao-vendor", "packages.json")
+	d, err := ioutil.ReadFile(packageFile)
+	if err != nil {
+		return fmt.Errorf("Unable to read %s : %v", packageFile, err)
+	}
+
+	err = json.Unmarshal(d, &repos)
+	if err != nil {
+		return fmt.Errorf("Unable to unmarshall %s : %v", packageFile, err)
+	}
+
+	return nil
+}
+
+func writeRepos(projectRoot string) error {
+	packageFile := path.Join(projectRoot, "ciao-vendor", "packages.json")
+
+	d, err := json.MarshalIndent(&repos, "", "\t")
+	if err != nil {
+		return fmt.Errorf("Unable to marhsall %s : %v", packageFile, err)
+	}
+
+	err = ioutil.WriteFile(packageFile, d, 0755)
+	if err != nil {
+		return fmt.Errorf("Unable to write %s : %v", packageFile, err)
+	}
+
+	return nil
+}
+
 func main() {
 	if !((len(os.Args) == 2 &&
 		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
@@ -1010,6 +1020,12 @@ func main() {
 	}
 
 	cwd, goPath, err := checkWD()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	err = readRepos(cwd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
