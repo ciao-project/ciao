@@ -883,9 +883,9 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	nInstances := 1
 
-	if server.Server.MaxInstances != 0 {
+	if server.Server.MaxInstances > 0 {
 		nInstances = server.Server.MaxInstances
-	} else if server.Server.MinInstances != 0 {
+	} else if server.Server.MinInstances > 0 {
 		nInstances = server.Server.MinInstances
 	}
 
