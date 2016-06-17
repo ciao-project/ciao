@@ -935,6 +935,38 @@ func test(sudo bool, sourceRoot, projectRoot, pkg, version string, goTestFlags [
 	return err
 }
 
+func revendor(cwd, sourceRoot, projectRoot, repo, version string) error {
+	ri, ok := repos[repo]
+	if !ok {
+		return fmt.Errorf("%s is not a vendored repository", repo)
+	}
+	fmt.Printf("Go getting %s\n", repo)
+	cmd := exec.Command("go", "get", "-v", "-u", "-d", repo+"/...")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Unable to go get %s", repo)
+	}
+
+	ri.Version = version
+	repos[repo] = ri
+	err = writeRepos(cwd)
+	if err != nil {
+		return err
+	}
+
+	vendoredDir := path.Join(cwd, "vendor", repo)
+	err = os.RemoveAll(vendoredDir)
+	if err != nil {
+		return fmt.Errorf("Unable to remove vendored directory %s : %v",
+			vendoredDir, err)
+	}
+
+	return vendor(cwd, projectRoot, sourceRoot)
+}
+
 func runCommand(cwd, sourceRoot string, args []string) error {
 	var err error
 
@@ -971,6 +1003,8 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 
 		args = fs.Args()
 		err = test(sudo, sourceRoot, projectRoot, args[0], args[1], args[2:])
+	case "revendor":
+		err = revendor(cwd, sourceRoot, projectRoot, args[2], args[3])
 	}
 
 	return err
@@ -1011,11 +1045,12 @@ func main() {
 	if !((len(os.Args) == 2 &&
 		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
 			os.Args[1] == "packages" || os.Args[1] == "updates")) ||
-		(len(os.Args) >= 3 && (os.Args[1] == "uses")) ||
+		(len(os.Args) >= 3 && (os.Args[1] == "uses" || os.Args[1] == "revendor")) ||
 		(len(os.Args) >= 4 && (os.Args[1] == "test"))) {
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendor|check|deps|packages|updates")
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor uses [-d] package")
-		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor test  package version [go-test flags]")
+		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor test package version [go-test flags]")
+		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor revendor package version")
 		os.Exit(1)
 	}
 
