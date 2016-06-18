@@ -681,7 +681,10 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	}
 
 	result, err := client.GetCmdChanResult(c, ssntp.START)
-	if err != nil {
+	if fail == true && err == nil { // unexpected success
+		t.Fatal(err)
+	}
+	if fail == false && err != nil { // unexpected failure
 		t.Fatal(err)
 	}
 	if result.InstanceUUID != instances[0].ID {
