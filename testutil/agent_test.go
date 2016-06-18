@@ -24,6 +24,18 @@ import (
 	. "github.com/01org/ciao/testutil"
 )
 
+func TestNewSsntpTestClientonnectionArgs(t *testing.T) {
+	_, err := NewSsntpTestClientConnection("AGENT Client", ssntp.UNKNOWN, AgentUUID)
+	if err == nil {
+		t.Fatalf("NewSsntpTestClientConnection incorrectly accepted unknown role")
+	}
+
+	_, err = NewSsntpTestClientConnection("AGENT Client", ssntp.AGENT, "")
+	if err == nil {
+		t.Fatalf("NewSsntpTestClientConnection incorrectly accepted empty uuid")
+	}
+}
+
 func TestAgentErrorChan(t *testing.T) {
 	agentCh := agent.AddErrorChan(ssntp.StopFailure)
 

@@ -24,6 +24,13 @@ import (
 	. "github.com/01org/ciao/testutil"
 )
 
+func TestNewSsntpTestControllerConnectionArgs(t *testing.T) {
+	_, err := NewSsntpTestControllerConnection("Controller Client", "")
+	if err == nil {
+		t.Fatalf("NewSsntpTestControllerConnection incorrectly accepted empty uuid")
+	}
+}
+
 func TestControllerErrorChan(t *testing.T) {
 	controllerCh := controller.AddErrorChan(ssntp.StopFailure)
 
