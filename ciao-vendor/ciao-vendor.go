@@ -967,6 +967,20 @@ func revendor(cwd, sourceRoot, projectRoot, repo, version string) error {
 	return vendor(cwd, projectRoot, sourceRoot)
 }
 
+func vendorNew(cwd, sourceRoot, projectRoot, repo string, ri repoInfo) error {
+	_, ok := repos[repo]
+	if ok {
+		return fmt.Errorf("%s is already vendored", repo)
+	}
+
+	repos[repo] = ri
+	if err := writeRepos(cwd); err != nil {
+		return err
+	}
+
+	return vendor(cwd, projectRoot, sourceRoot)
+}
+
 func runCommand(cwd, sourceRoot string, args []string) error {
 	var err error
 
@@ -1005,6 +1019,9 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 		err = test(sudo, sourceRoot, projectRoot, args[0], args[1], args[2:])
 	case "revendor":
 		err = revendor(cwd, sourceRoot, projectRoot, args[2], args[3])
+	case "vendornew":
+		ri := repoInfo{URL: args[5], Version: args[3], License: args[4]}
+		err = vendorNew(cwd, sourceRoot, projectRoot, args[2], ri)
 	}
 
 	return err
@@ -1048,12 +1065,15 @@ func main() {
 	if !((len(os.Args) == 2 &&
 		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
 			os.Args[1] == "packages" || os.Args[1] == "updates")) ||
-		(len(os.Args) >= 3 && (os.Args[1] == "uses" || os.Args[1] == "revendor")) ||
+		(len(os.Args) >= 3 && (os.Args[1] == "uses")) ||
+		(len(os.Args) == 4 && (os.Args[1] == "revendor")) ||
+		(len(os.Args) == 6 && (os.Args[1] == "vendornew")) ||
 		(len(os.Args) >= 4 && (os.Args[1] == "test"))) {
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendor|check|deps|packages|updates")
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor uses [-d] package")
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor test package version [go-test flags]")
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor revendor package version")
+		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendornew package version license URL")
 		os.Exit(1)
 	}
 
