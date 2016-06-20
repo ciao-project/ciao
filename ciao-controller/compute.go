@@ -482,6 +482,11 @@ func showServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 		return
 	}
 
+	// OpenStack compatibility: expect active status not running for API Call
+	if server.Server.Status == "running" {
+		server.Server.Status = "active"
+	}
+
 	b, err := json.Marshal(server)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -878,9 +883,9 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	nInstances := 1
 
-	if server.Server.MaxInstances != 0 {
+	if server.Server.MaxInstances > 0 {
 		nInstances = server.Server.MaxInstances
-	} else if server.Server.MinInstances != 0 {
+	} else if server.Server.MinInstances > 0 {
 		nInstances = server.Server.MinInstances
 	}
 
@@ -906,7 +911,24 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 	servers.TotalServers = len(instances)
 
-	b, err := json.Marshal(servers)
+	// set machine ID for OpenStack compatibility
+	server.Server.ID = instances[0].ID
+
+	// builtServers is define to meet OpenStack compatibility on result format and keep CIAOs
+	builtServers := struct {
+		payloads.ComputeCreateServer
+		payloads.ComputeServers
+	}{
+		payloads.ComputeCreateServer{
+			Server: server.Server,
+		},
+		payloads.ComputeServers{
+			TotalServers: servers.TotalServers,
+			Servers:      servers.Servers,
+		},
+	}
+
+	b, err := json.Marshal(builtServers)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

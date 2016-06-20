@@ -197,6 +197,7 @@ func NewComputeFlavorsDetails() (flavors ComputeFlavorsDetails) {
 // one or more instances.
 type ComputeCreateServer struct {
 	Server struct {
+		ID           string `json:"id"`
 		Name         string `json:"name"`
 		Image        string `json:"imageRef"`
 		Workload     string `json:"flavorRef"`
