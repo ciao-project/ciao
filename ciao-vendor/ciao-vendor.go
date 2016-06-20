@@ -1026,6 +1026,10 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 			return err
 		}
 
+		if len(fs.Args()) == 0 {
+			return fmt.Errorf("Missing package for uses command")
+		}
+
 		err = uses(fs.Args()[0], projectRoot, direct)
 	case "updates":
 		err = updates(sourceRoot, projectRoot)
