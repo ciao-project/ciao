@@ -1014,7 +1014,10 @@ func readRepos(projectRoot string) error {
 	packageFile := path.Join(projectRoot, "ciao-vendor", "packages.json")
 	d, err := ioutil.ReadFile(packageFile)
 	if err != nil {
-		return fmt.Errorf("Unable to read %s : %v", packageFile, err)
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("Unable to read %s : %v", packageFile, err)
+		}
+		return nil
 	}
 
 	err = json.Unmarshal(d, &repos)
