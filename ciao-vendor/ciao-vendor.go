@@ -1086,15 +1086,23 @@ func writeRepos(projectRoot string) error {
 	return nil
 }
 
+func checkTwoArgs(args []string) bool {
+	return (len(args) == 2 &&
+		(args[1] == "vendor" || args[1] == "check" || args[1] == "deps" ||
+			args[1] == "packages" || args[1] == "updates"))
+}
+
+func checkArgs(args []string) bool {
+	return checkTwoArgs(args) ||
+		(len(args) == 3 && (args[1] == "unvendor")) ||
+		(len(args) >= 3 && (args[1] == "uses")) ||
+		(len(args) == 4 && (args[1] == "revendor")) ||
+		(len(args) == 6 && (args[1] == "vendornew")) ||
+		(len(args) >= 4 && (args[1] == "test"))
+}
+
 func main() {
-	if !((len(os.Args) == 2 &&
-		(os.Args[1] == "vendor" || os.Args[1] == "check" || os.Args[1] == "deps" ||
-			os.Args[1] == "packages" || os.Args[1] == "updates")) ||
-		(len(os.Args) == 3 && (os.Args[1] == "unvendor")) ||
-		(len(os.Args) >= 3 && (os.Args[1] == "uses")) ||
-		(len(os.Args) == 4 && (os.Args[1] == "revendor")) ||
-		(len(os.Args) == 6 && (os.Args[1] == "vendornew")) ||
-		(len(os.Args) >= 4 && (os.Args[1] == "test"))) {
+	if !checkArgs(os.Args) {
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor vendor|check|deps|packages|updates")
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor uses [-d] package")
 		fmt.Fprintln(os.Stderr, "Usage: ciao-vendor test package version [go-test flags]")
