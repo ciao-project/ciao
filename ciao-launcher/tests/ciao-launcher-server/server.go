@@ -39,6 +39,11 @@ var caServerPath string
 var serverPath string
 var serverURL string
 var traceCommands bool
+var computeNet string
+var mgmtNet string
+var diskLimit bool
+var memLimit bool
+
 var ssntpServer = &ssntp.Server{}
 
 func init() {
@@ -46,6 +51,10 @@ func init() {
 	flag.StringVar(&serverPath, "server-cert", "", "Path to server certificate")
 	flag.BoolVar(&traceCommands, "trace", false, "Turn on ssntp command tracing")
 	flag.StringVar(&serverURL, "server", "127.0.0.1:9000", "IP port of server")
+	flag.StringVar(&computeNet, "compute-net", "", "Compute Subnet")
+	flag.StringVar(&mgmtNet, "mgmt-net", "", "Management Subnet")
+	flag.BoolVar(&diskLimit, "disk-limit", true, "Use disk usage limits")
+	flag.BoolVar(&memLimit, "mem-limit", true, "Use memory usage limits")
 }
 
 type client struct {
@@ -458,10 +467,50 @@ func serve(done chan os.Signal) {
 	wg.Wait()
 }
 
+func createConfigFile(confPath string) error {
+	conf := payloads.Configure{}
+	conf.InitDefaults()
+
+	conf.Configure.Scheduler.ConfigStorageURI = "file://" + confPath
+	conf.Configure.Controller.HTTPSCACert = "n/a"
+	conf.Configure.Controller.HTTPSKey = "n/a"
+	conf.Configure.Controller.IdentityUser = "n/a"
+	conf.Configure.Controller.IdentityPassword = "n/a"
+	conf.Configure.ImageService.URL = "http://127.0.0.1"
+	conf.Configure.IdentityService.URL = "http://127.0.0.1"
+
+	conf.Configure.Launcher.DiskLimit = diskLimit
+	conf.Configure.Launcher.MemoryLimit = memLimit
+	conf.Configure.Launcher.ComputeNetwork = computeNet
+	conf.Configure.Launcher.ManagementNetwork = mgmtNet
+
+	d, err := yaml.Marshal(&conf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to marshall configuration data: %v", err)
+		return err
+	}
+
+	return ioutil.WriteFile(confPath, d, 0755)
+}
+
 func main() {
 	flag.Parse()
 
 	cfg := new(ssntp.Config)
+	confDir, err := ioutil.TempDir("", "ciao-server-launcher")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Unable to create temporary conf directory.")
+		os.Exit(1)
+	}
+	defer func() { _ = os.RemoveAll(confDir) }()
+
+	confPath := path.Join(confDir, "conf.yaml")
+	if err = createConfigFile(confPath); err != nil {
+		fmt.Fprintln(os.Stderr, "Unable to create conf file.")
+		os.Exit(1)
+	}
+
+	cfg.ConfigURI = "file://" + confPath
 
 	if (caServerPath == "" && serverPath != "") || (caServerPath != "" && serverPath == "") {
 		fmt.Fprintln(os.Stderr, "Either both or neither certificate paths must be defined")
