@@ -17,10 +17,12 @@
 package testutil_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	. "github.com/01org/ciao/testutil"
 	"github.com/docker/distribution/uuid"
@@ -32,19 +34,52 @@ var agent *SsntpTestClient
 var netAgent *SsntpTestClient
 
 func TestStart(t *testing.T) {
-	agentCh := agent.AddCmdChan(ssntp.START)
 	serverCh := server.AddCmdChan(ssntp.START)
+	agentCh := agent.AddCmdChan(ssntp.START)
 
-	_, err := agent.Ssntp.SendCommand(ssntp.START, []byte(StartYaml))
-	if err != nil {
-		t.Fatal(err)
-	}
+	go controller.Ssntp.SendCommand(ssntp.START, []byte(StartYaml))
 
-	_, err = agent.GetCmdChanResult(agentCh, ssntp.START)
+	_, err := agent.GetCmdChanResult(agentCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = server.GetCmdChanResult(serverCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStartFailure(t *testing.T) {
+	agentCh := agent.AddCmdChan(ssntp.START)
+	serverCh := server.AddCmdChan(ssntp.START)
+
+	serverErrorCh := server.AddErrorChan(ssntp.StartFailure)
+	controllerErrorCh := controller.AddErrorChan(ssntp.StartFailure)
+	fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.StartFailure)
+
+	agent.StartFail = true
+	agent.StartFailReason = payloads.FullCloud
+	defer func() {
+		agent.StartFail = false
+		agent.StartFailReason = ""
+	}()
+
+	go controller.Ssntp.SendCommand(ssntp.START, []byte(StartYaml))
+
+	_, err := server.GetCmdChanResult(serverCh, ssntp.START)
+	if err != nil { // server sees the START on its way down to agent
+		t.Fatal(err)
+	}
+	_, err = agent.GetCmdChanResult(agentCh, ssntp.START)
+	if err == nil { // agent will process the START and does error
+		t.Fatal(err)
+	}
+
+	_, err = server.GetErrorChanResult(serverErrorCh, ssntp.StartFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = controller.GetErrorChanResult(controllerErrorCh, ssntp.StartFailure)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,23 +147,6 @@ func TestSendTrace(t *testing.T) {
 	}
 }
 
-/*
-func TestStartFailure(t *testing.T) {
-	// do a start, but with bool fail == true (leads to a helper broken
-	// out of starter aboeve
-}
-
-func TestRestartFailure(t *testing.T) {
-	// agent.Ssntp.SendCommand(ssntp.RESTART, yaml)
-	// ...yaml needs to include the instance UUID and the agent UUID
-	// ...to get the agent UUID I need a stats
-}
-
-func TestStopFailure(t *testing.T) {
-	// stop instance uuid which is not actually running
-}
-*/
-
 func TestStartCNCI(t *testing.T) {
 	netAgentCh := netAgent.AddCmdChan(ssntp.START)
 	serverCh := server.AddCmdChan(ssntp.START)
@@ -167,6 +185,42 @@ func TestStop(t *testing.T) {
 	}
 }
 
+func TestStopFailure(t *testing.T) {
+	agentCh := agent.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.STOP)
+
+	serverErrorCh := server.AddErrorChan(ssntp.StopFailure)
+	controllerErrorCh := controller.AddErrorChan(ssntp.StopFailure)
+	fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.StopFailure)
+
+	agent.StopFail = true
+	agent.StopFailReason = payloads.StopNoInstance
+	defer func() {
+		agent.StopFail = false
+		agent.StopFailReason = ""
+	}()
+
+	go controller.Ssntp.SendCommand(ssntp.STOP, []byte(StopYaml))
+
+	_, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
+	if err != nil { // server sees the STOP on its way down to agent
+		t.Fatal(err)
+	}
+	_, err = agent.GetCmdChanResult(agentCh, ssntp.STOP)
+	if err == nil { // agent will process the STOP and does error
+		t.Fatal(err)
+	}
+
+	_, err = server.GetErrorChanResult(serverErrorCh, ssntp.StopFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = controller.GetErrorChanResult(controllerErrorCh, ssntp.StopFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRestart(t *testing.T) {
 	agentCh := agent.AddCmdChan(ssntp.RESTART)
 	serverCh := server.AddCmdChan(ssntp.RESTART)
@@ -186,23 +240,88 @@ func TestRestart(t *testing.T) {
 	}
 }
 
-func doDelete() error {
+func TestRestartFailure(t *testing.T) {
+	agentCh := agent.AddCmdChan(ssntp.RESTART)
+	serverCh := server.AddCmdChan(ssntp.RESTART)
+
+	serverErrorCh := server.AddErrorChan(ssntp.RestartFailure)
+	controllerErrorCh := controller.AddErrorChan(ssntp.RestartFailure)
+	fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.RestartFailure)
+
+	agent.RestartFail = true
+	agent.RestartFailReason = payloads.RestartNoInstance
+	defer func() {
+		agent.RestartFail = false
+		agent.RestartFailReason = ""
+	}()
+
+	go controller.Ssntp.SendCommand(ssntp.RESTART, []byte(RestartYaml))
+
+	_, err := server.GetCmdChanResult(serverCh, ssntp.RESTART)
+	if err != nil { // server sees the RESTART on its way down to agent
+		t.Fatal(err)
+	}
+	_, err = agent.GetCmdChanResult(agentCh, ssntp.RESTART)
+	if err == nil { // agent will process the RESTART and does error
+		t.Fatal(err)
+	}
+
+	_, err = server.GetErrorChanResult(serverErrorCh, ssntp.RestartFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = controller.GetErrorChanResult(controllerErrorCh, ssntp.RestartFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func doDelete(fail bool) error {
 	agentCh := agent.AddCmdChan(ssntp.DELETE)
 	serverCh := server.AddCmdChan(ssntp.DELETE)
 
-	_, err := agent.Ssntp.SendCommand(ssntp.DELETE, []byte(DeleteYaml))
-	if err != nil {
+	var serverErrorCh *chan Result
+	var controllerErrorCh *chan Result
+
+	if fail == true {
+		serverErrorCh = server.AddErrorChan(ssntp.DeleteFailure)
+		controllerErrorCh = controller.AddErrorChan(ssntp.DeleteFailure)
+		fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.DeleteFailure)
+
+		agent.DeleteFail = true
+		agent.DeleteFailReason = payloads.DeleteNoInstance
+
+		defer func() {
+			agent.DeleteFail = false
+			agent.DeleteFailReason = ""
+		}()
+	}
+
+	go controller.Ssntp.SendCommand(ssntp.DELETE, []byte(DeleteYaml))
+
+	_, err := server.GetCmdChanResult(serverCh, ssntp.DELETE)
+	if err != nil { // server sees the DELETE on its way down to agent
+		return err
+	}
+	_, err = agent.GetCmdChanResult(agentCh, ssntp.DELETE)
+	if fail == false && err != nil { // agent unexpected fail
 		return err
 	}
 
-	_, err = agent.GetCmdChanResult(agentCh, ssntp.DELETE)
-	if err != nil {
-		return err
+	if fail == true {
+		if err == nil { // agent unexpected success
+			return err
+		}
+		_, err = server.GetErrorChanResult(serverErrorCh, ssntp.DeleteFailure)
+		if err != nil {
+			return err
+		}
+		_, err = controller.GetErrorChanResult(controllerErrorCh, ssntp.DeleteFailure)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = server.GetCmdChanResult(serverCh, ssntp.DELETE)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
@@ -229,12 +348,23 @@ func propagateInstanceDeleted() error {
 }
 
 func TestDelete(t *testing.T) {
-	err := doDelete()
+	fail := false
+
+	err := doDelete(fail)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	err = propagateInstanceDeleted()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDeleteFailure(t *testing.T) {
+	fail := true
+
+	err := doDelete(fail)
 	if err != nil {
 		t.Fatal(err)
 	}

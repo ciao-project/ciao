@@ -16,10 +16,10 @@
 
 package testutil
 
-// CmdResult is a common result structure for tests spanning between
+// Result is a common result structure for tests spanning between
 // controller client, scheduler server, and the various (eg: Agent,
 // NetAgent, CNCIAgent) agent roles.
-type CmdResult struct {
+type Result struct {
 	InstanceUUID string
 	Err          error
 	NodeUUID     string
