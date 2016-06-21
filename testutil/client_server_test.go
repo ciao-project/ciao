@@ -138,7 +138,7 @@ func TestStartTraced(t *testing.T) {
 		Label:     []byte("testutilTracedSTART"),
 	}
 
-	_, err := agent.Ssntp.SendTracedCommand(ssntp.START, []byte(StartYaml), traceConfig)
+	_, err := controller.Ssntp.SendTracedCommand(ssntp.START, []byte(StartYaml), traceConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestStartCNCI(t *testing.T) {
 	netAgentCh := netAgent.AddCmdChan(ssntp.START)
 	serverCh := server.AddCmdChan(ssntp.START)
 
-	_, err := netAgent.Ssntp.SendCommand(ssntp.START, []byte(CNCIStartYaml))
+	_, err := controller.Ssntp.SendCommand(ssntp.START, []byte(CNCIStartYaml))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func TestStop(t *testing.T) {
 	agentCh := agent.AddCmdChan(ssntp.STOP)
 	serverCh := server.AddCmdChan(ssntp.STOP)
 
-	_, err := agent.Ssntp.SendCommand(ssntp.STOP, []byte(StopYaml))
+	_, err := controller.Ssntp.SendCommand(ssntp.STOP, []byte(StopYaml))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestRestart(t *testing.T) {
 	agentCh := agent.AddCmdChan(ssntp.RESTART)
 	serverCh := server.AddCmdChan(ssntp.RESTART)
 
-	_, err := agent.Ssntp.SendCommand(ssntp.RESTART, []byte(RestartYaml))
+	_, err := controller.Ssntp.SendCommand(ssntp.RESTART, []byte(RestartYaml))
 	if err != nil {
 		t.Fatal(err)
 	}
