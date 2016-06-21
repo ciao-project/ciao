@@ -1,0 +1,525 @@
+Help on module release_test:
+
+NAME
+    release_test - Basic Acceptance Tests for the ciao project
+
+FILE
+    _release/bat/release_test.py
+
+DESCRIPTION
+    This module contains a set of tests that should be run on a ciao
+    cluster prior to submitting a pull request. The tests can be
+    run on a physical cluster, or on the ciao single VM setup.
+    The output is a TAP (Test Anything Protocol) format file, report.tap.
+    These tests utilize the python unittest framework.
+
+    Prior to running the tests, the following environment variables
+    must be set:
+        "CIAO_IDENTITY" - the URL and port number of your identity service
+        "CIAO_CONTROLLER" - the URL and port number of the ciao compute service
+        "CIAO_USERNAME" - a test user with user level access to a test tenant
+        "CIAO_PASSWORD" - your test user's password
+        "CIAO_ADMIN_USERNAME" - your cluster admin user name
+        "CIAO_ADMIN_PASSWORD" - your cluster admin pass word.
+
+    There are 2 configurable parameters that may be set:
+
+        command_timeout - the length of time the test will wait for a
+                          ciao-cli command to return. (default is 30 seconds)
+        cluster_timeout - the length of time to wait till an action has occurred
+                          in the cluster (default is 60 seconds).
+
+CLASSES
+    unittest.case.TestCase(__builtin__.object)
+        BATTests
+
+    class BATTests(unittest.case.TestCase)
+     |  Basic Acceptance Tests for the ciao project
+     |
+     |  Method resolution order:
+     |      BATTests
+     |      unittest.case.TestCase
+     |      __builtin__.object
+     |
+     |  Methods defined here:
+     |
+     |  setUp(self)
+     |
+     |  tearDown(self)
+     |
+     |  test_cluster_status(self)
+     |      Confirm that the cluster is ready
+     |
+     |  test_delete_all_instances(self)
+     |      Start a random workload, then delete it
+     |
+     |  test_get_cncis(self)
+     |      Start a random workload, then get CNCI information
+     |
+     |  test_get_instances(self)
+     |      Start a random workload, then make sure it's listed
+     |
+     |  test_get_tenants(self)
+     |      Get all tenants
+     |
+     |  test_get_workloads(self)
+     |      Get all available workloads
+     |
+     |  test_start_all_workloads(self)
+     |      Start one instance of all workloads
+     |
+     |  test_start_all_workloads10(self)
+     |      Start 10 instances of all workloads
+     |
+     |  ----------------------------------------------------------------------
+     |  Methods inherited from unittest.case.TestCase:
+     |
+     |  __call__(self, *args, **kwds)
+     |
+     |  __eq__(self, other)
+     |
+     |  __hash__(self)
+     |
+     |  __init__(self, methodName='runTest')
+     |      Create an instance of the class that will use the named test
+     |      method when executed. Raises a ValueError if the instance does
+     |      not have a method with the specified name.
+     |
+     |  __ne__(self, other)
+     |
+     |  __repr__(self)
+     |
+     |  __str__(self)
+     |
+     |  addCleanup(self, function, *args, **kwargs)
+     |      Add a function, with arguments, to be called when the test is
+     |      completed. Functions added are called on a LIFO basis and are
+     |      called after tearDown on test failure or success.
+     |
+     |      Cleanup items are called even if setUp fails (unlike tearDown).
+     |
+     |  addTypeEqualityFunc(self, typeobj, function)
+     |      Add a type specific assertEqual style function to compare a type.
+     |
+     |      This method is for use by TestCase subclasses that need to register
+     |      their own type equality functions to provide nicer error messages.
+     |
+     |      Args:
+     |          typeobj: The data type to call this function on when both values
+     |                  are of the same type in assertEqual().
+     |          function: The callable taking two arguments and an optional
+     |                  msg= argument that raises self.failureException with a
+     |                  useful error message when the two arguments are not equal.
+     |
+     |  assertAlmostEqual(self, first, second, places=None, msg=None, delta=None)
+     |      Fail if the two objects are unequal as determined by their
+     |      difference rounded to the given number of decimal places
+     |      (default 7) and comparing to zero, or by comparing that the
+     |      between the two objects is more than the given delta.
+     |
+     |      Note that decimal places (from zero) are usually not the same
+     |      as significant digits (measured from the most signficant digit).
+     |
+     |      If the two objects compare equal then they will automatically
+     |      compare almost equal.
+     |
+     |  assertAlmostEquals = assertAlmostEqual(self, first, second, places=None, msg=None, delta=None)
+     |      Fail if the two objects are unequal as determined by their
+     |      difference rounded to the given number of decimal places
+     |      (default 7) and comparing to zero, or by comparing that the
+     |      between the two objects is more than the given delta.
+     |
+     |      Note that decimal places (from zero) are usually not the same
+     |      as significant digits (measured from the most signficant digit).
+     |
+     |      If the two objects compare equal then they will automatically
+     |      compare almost equal.
+     |
+     |  assertDictContainsSubset(self, expected, actual, msg=None)
+     |      Checks whether actual is a superset of expected.
+     |
+     |  assertDictEqual(self, d1, d2, msg=None)
+     |
+     |  assertEqual(self, first, second, msg=None)
+     |      Fail if the two objects are unequal as determined by the '=='
+     |      operator.
+     |
+     |  assertEquals = assertEqual(self, first, second, msg=None)
+     |      Fail if the two objects are unequal as determined by the '=='
+     |      operator.
+     |
+     |  assertFalse(self, expr, msg=None)
+     |      Check that the expression is false.
+     |
+     |  assertGreater(self, a, b, msg=None)
+     |      Just like self.assertTrue(a > b), but with a nicer default message.
+     |
+     |  assertGreaterEqual(self, a, b, msg=None)
+     |      Just like self.assertTrue(a >= b), but with a nicer default message.
+     |
+     |  assertIn(self, member, container, msg=None)
+     |      Just like self.assertTrue(a in b), but with a nicer default message.
+     |
+     |  assertIs(self, expr1, expr2, msg=None)
+     |      Just like self.assertTrue(a is b), but with a nicer default message.
+     |
+     |  assertIsInstance(self, obj, cls, msg=None)
+     |      Same as self.assertTrue(isinstance(obj, cls)), with a nicer
+     |      default message.
+     |
+     |  assertIsNone(self, obj, msg=None)
+     |      Same as self.assertTrue(obj is None), with a nicer default message.
+     |
+     |  assertIsNot(self, expr1, expr2, msg=None)
+     |      Just like self.assertTrue(a is not b), but with a nicer default message.
+     |
+     |  assertIsNotNone(self, obj, msg=None)
+     |      Included for symmetry with assertIsNone.
+     |
+     |  assertItemsEqual(self, expected_seq, actual_seq, msg=None)
+     |      An unordered sequence specific comparison. It asserts that
+     |      actual_seq and expected_seq have the same element counts.
+     |      Equivalent to::
+     |
+     |          self.assertEqual(Counter(iter(actual_seq)),
+     |                           Counter(iter(expected_seq)))
+     |
+     |      Asserts that each element has the same count in both sequences.
+     |      Example:
+     |          - [0, 1, 1] and [1, 0, 1] compare equal.
+     |          - [0, 0, 1] and [0, 1] compare unequal.
+     |
+     |  assertLess(self, a, b, msg=None)
+     |      Just like self.assertTrue(a < b), but with a nicer default message.
+     |
+     |  assertLessEqual(self, a, b, msg=None)
+     |      Just like self.assertTrue(a <= b), but with a nicer default message.
+     |
+     |  assertListEqual(self, list1, list2, msg=None)
+     |      A list-specific equality assertion.
+     |
+     |      Args:
+     |          list1: The first list to compare.
+     |          list2: The second list to compare.
+     |          msg: Optional message to use on failure instead of a list of
+     |                  differences.
+     |
+     |  assertMultiLineEqual(self, first, second, msg=None)
+     |      Assert that two multi-line strings are equal.
+     |
+     |  assertNotAlmostEqual(self, first, second, places=None, msg=None, delta=None)
+     |      Fail if the two objects are equal as determined by their
+     |      difference rounded to the given number of decimal places
+     |      (default 7) and comparing to zero, or by comparing that the
+     |      between the two objects is less than the given delta.
+     |
+     |      Note that decimal places (from zero) are usually not the same
+     |      as significant digits (measured from the most signficant digit).
+     |
+     |      Objects that are equal automatically fail.
+     |
+     |  assertNotAlmostEquals = assertNotAlmostEqual(self, first, second, places=None, msg=None, delta=None)
+     |      Fail if the two objects are equal as determined by their
+     |      difference rounded to the given number of decimal places
+     |      (default 7) and comparing to zero, or by comparing that the
+     |      between the two objects is less than the given delta.
+     |
+     |      Note that decimal places (from zero) are usually not the same
+     |      as significant digits (measured from the most signficant digit).
+     |
+     |      Objects that are equal automatically fail.
+     |
+     |  assertNotEqual(self, first, second, msg=None)
+     |      Fail if the two objects are equal as determined by the '!='
+     |      operator.
+     |
+     |  assertNotEquals = assertNotEqual(self, first, second, msg=None)
+     |      Fail if the two objects are equal as determined by the '!='
+     |      operator.
+     |
+     |  assertNotIn(self, member, container, msg=None)
+     |      Just like self.assertTrue(a not in b), but with a nicer default message.
+     |
+     |  assertNotIsInstance(self, obj, cls, msg=None)
+     |      Included for symmetry with assertIsInstance.
+     |
+     |  assertNotRegexpMatches(self, text, unexpected_regexp, msg=None)
+     |      Fail the test if the text matches the regular expression.
+     |
+     |  assertRaises(self, excClass, callableObj=None, *args, **kwargs)
+     |      Fail unless an exception of class excClass is raised
+     |      by callableObj when invoked with arguments args and keyword
+     |      arguments kwargs. If a different type of exception is
+     |      raised, it will not be caught, and the test case will be
+     |      deemed to have suffered an error, exactly as for an
+     |      unexpected exception.
+     |
+     |      If called with callableObj omitted or None, will return a
+     |      context object used like this::
+     |
+     |           with self.assertRaises(SomeException):
+     |               do_something()
+     |
+     |      The context manager keeps a reference to the exception as
+     |      the 'exception' attribute. This allows you to inspect the
+     |      exception after the assertion::
+     |
+     |          with self.assertRaises(SomeException) as cm:
+     |              do_something()
+     |          the_exception = cm.exception
+     |          self.assertEqual(the_exception.error_code, 3)
+     |
+     |  assertRaisesRegexp(self, expected_exception, expected_regexp, callable_obj=None, *args, **kwargs)
+     |      Asserts that the message in a raised exception matches a regexp.
+     |
+     |      Args:
+     |          expected_exception: Exception class expected to be raised.
+     |          expected_regexp: Regexp (re pattern object or string) expected
+     |                  to be found in error message.
+     |          callable_obj: Function to be called.
+     |          args: Extra args.
+     |          kwargs: Extra kwargs.
+     |
+     |  assertRegexpMatches(self, text, expected_regexp, msg=None)
+     |      Fail the test unless the text matches the regular expression.
+     |
+     |  assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None)
+     |      An equality assertion for ordered sequences (like lists and tuples).
+     |
+     |      For the purposes of this function, a valid ordered sequence type is one
+     |      which can be indexed, has a length, and has an equality operator.
+     |
+     |      Args:
+     |          seq1: The first sequence to compare.
+     |          seq2: The second sequence to compare.
+     |          seq_type: The expected datatype of the sequences, or None if no
+     |                  datatype should be enforced.
+     |          msg: Optional message to use on failure instead of a list of
+     |                  differences.
+     |
+     |  assertSetEqual(self, set1, set2, msg=None)
+     |      A set-specific equality assertion.
+     |
+     |      Args:
+     |          set1: The first set to compare.
+     |          set2: The second set to compare.
+     |          msg: Optional message to use on failure instead of a list of
+     |                  differences.
+     |
+     |      assertSetEqual uses ducktyping to support different types of sets, and
+     |      is optimized for sets specifically (parameters must support a
+     |      difference method).
+     |
+     |  assertTrue(self, expr, msg=None)
+     |      Check that the expression is true.
+     |
+     |  assertTupleEqual(self, tuple1, tuple2, msg=None)
+     |      A tuple-specific equality assertion.
+     |
+     |      Args:
+     |          tuple1: The first tuple to compare.
+     |          tuple2: The second tuple to compare.
+     |          msg: Optional message to use on failure instead of a list of
+     |                  differences.
+     |
+     |  assert_ = assertTrue(self, expr, msg=None)
+     |      Check that the expression is true.
+     |
+     |  countTestCases(self)
+     |
+     |  debug(self)
+     |      Run the test without collecting errors in a TestResult
+     |
+     |  defaultTestResult(self)
+     |
+     |  doCleanups(self)
+     |      Execute all cleanup functions. Normally called for you after
+     |      tearDown.
+     |
+     |  fail(self, msg=None)
+     |      Fail immediately, with the given message.
+     |
+     |  failIf = deprecated_func(*args, **kwargs)
+     |
+     |  failIfAlmostEqual = deprecated_func(*args, **kwargs)
+     |
+     |  failIfEqual = deprecated_func(*args, **kwargs)
+     |
+     |  failUnless = deprecated_func(*args, **kwargs)
+     |
+     |  failUnlessAlmostEqual = deprecated_func(*args, **kwargs)
+     |
+     |  failUnlessEqual = deprecated_func(*args, **kwargs)
+     |
+     |  failUnlessRaises = deprecated_func(*args, **kwargs)
+     |
+     |  id(self)
+     |
+     |  run(self, result=None)
+     |
+     |  shortDescription(self)
+     |      Returns a one-line description of the test, or None if no
+     |      description has been provided.
+     |
+     |      The default implementation of this method returns the first line of
+     |      the specified test method's docstring.
+     |
+     |  skipTest(self, reason)
+     |      Skip this test.
+     |
+     |  ----------------------------------------------------------------------
+     |  Class methods inherited from unittest.case.TestCase:
+     |
+     |  setUpClass(cls) from __builtin__.type
+     |      Hook method for setting up class fixture before running tests in the class.
+     |
+     |  tearDownClass(cls) from __builtin__.type
+     |      Hook method for deconstructing the class fixture after running all tests in the class.
+     |
+     |  ----------------------------------------------------------------------
+     |  Data descriptors inherited from unittest.case.TestCase:
+     |
+     |  __dict__
+     |      dictionary for instance variables (if defined)
+     |
+     |  __weakref__
+     |      list of weak references to the object (if defined)
+     |
+     |  ----------------------------------------------------------------------
+     |  Data and other attributes inherited from unittest.case.TestCase:
+     |
+     |  failureException = <type 'exceptions.AssertionError'>
+     |      Assertion failed.
+     |
+     |  longMessage = False
+     |
+     |  maxDiff = 640
+
+FUNCTIONS
+    check_cluster_status()
+        Confirms that the ciao cluster is fully operational
+
+        This function uses ciao-cli to get the list of all compute/network nodes.
+        It confirms that the number of ready nodes is equal to the total number of nodes
+        It is called with the admin context.
+
+        Returns:
+            A boolean indicating whether the cluster is ready or not.
+
+    ciao_admin_env()
+        Sets the user environment up for ciao-cli with the admin role
+
+        Copies the current environment and returns an environment
+        that ciao-cli will use for admin role operations
+
+        Returns:
+            an os env dict
+
+    ciao_user_env()
+        Sets the user environment up for ciao-cli with the user role
+
+        Copies the current environment and returns an environment
+        that ciao-cli will use for user role operations
+
+        Returns:
+            an os env dict
+
+    delete_all_instances()
+        Deletes all instances for a particular tenant
+
+        This function uses ciao-cli to try to delete all previously created instances.
+        It then confirms that the instances were deleted by looping for retry_count
+        waiting for the instance to no longer appear in the tenants instance list.
+
+        Returns:
+            A boolean indicating that the instances have all been confirmed deleted.
+
+    get_all_tenants()
+        Retrieves the list of all tenants from the keystone service
+
+        This function uses ciao-cli to get a list of all possible tenants
+        from the keystone service. It is called using the admin context.
+
+        Returns:
+            A list of dictionary representations of the tenants found
+
+    get_all_workloads()
+        Retrieves the list of workload templates from the ciao cluster
+
+        Returns:
+            A list of dictionary representations of the workloads found
+
+    get_cnci()
+        Gets a list of all CNCIs on the ciao cluster.
+
+        This function is called with the admin context.
+
+        Returns:
+            A list of dictionary representations of a CNCI
+
+    get_instances()
+        Retrieve all created instances for a tenant
+
+        Returns:
+            A list of dictionary representations of an instance
+
+    launch_all_workloads(num='1')
+        Attempt to create an instance for all possible workloads
+
+        This function will get all the possible workloads, then
+        attempt to create an instance for each one.
+
+        Args:
+            num: the number of instances per workload to create. Default is 1
+
+        Returns:
+            A boolean indicating whether the instances where successfully started
+
+    launch_workload(uuid, num)
+        Attempt to start a number of instances of a specified workload type
+
+        This function will call ciao-cli and tell it to create an instance
+        of a particular workload.
+
+        Args:
+            uuid: The workload UUID to start
+            num: The number of instances of this workload to start
+
+        Returns:
+            A boolean indicating whether the instances were successfully started
+
+    main()
+        Start the BAT tests
+
+        Confirm that the user has defined the environment variables we need,
+        and check for optional arguments. Start the unittests - output in
+        TAP format.
+
+        Returns:
+            Error if ENV is not set
+
+    start_random_workload(num='1')
+        Attempt to start a number of instances of a random workload
+
+        This function will get all the possible workloads, then randomly
+        pick one to start.
+
+        Args:
+            num: the number of instances to create. Default is 1
+
+        Returns:
+            A boolean indicating whether the instances where successfully started
+
+    wait_till_running(uuid)
+        Wait in a loop till an instances status has changed to active
+
+        This function will loop for retry_count number of times checking
+        the status of an Instance. If the status is not active, it
+        will sleep for one second and try again.
+
+        Returns:
+            A boolean indicating whether the instance is active or not
+
+DATA
+    cli_timeout = 30
+    retry_count = 60
