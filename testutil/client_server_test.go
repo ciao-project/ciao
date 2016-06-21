@@ -477,8 +477,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// start netagent
-	netAgentUUID := uuid.Generate().String()
-	netAgent, err = NewSsntpTestClientConnection("NETAGENT Client", ssntp.NETAGENT, netAgentUUID)
+	netAgent, err = NewSsntpTestClientConnection("NETAGENT Client", ssntp.NETAGENT, NetAgentUUID)
 	if err != nil {
 		os.Exit(1)
 	}
