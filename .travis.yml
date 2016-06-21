@@ -60,7 +60,7 @@ script:
    - go list ./... | grep -v github.com/01org/ciao/vendor | xargs go list -f '{{.Dir}}' | xargs gofmt -s -l | wc -l | xargs -I % bash -c "test % -eq 0"
    - sudo mkdir -p /var/lib/ciao/instances
    - sudo chmod 0777 /var/lib/ciao/instances
-   - test-cases -text -coverprofile /tmp/cover.out -short github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/ciao-controller/... github.com/01org/ciao/payloads github.com/01org/ciao/configuration github.com/01org/ciao/testutil
+   - test-cases -text -coverprofile /tmp/cover.out -short github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/ciao-controller/... github.com/01org/ciao/payloads github.com/01org/ciao/configuration github.com/01org/ciao/testutil github.com/01org/ciao/ssntp/uuid
    - export GOROOT=`go env GOROOT` && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -text -coverprofile /tmp/cover.out -append-profile github.com/01org/ciao/ssntp
    - export GOROOT=`go env GOROOT` && export SNNET_ENV=198.51.100.0/24 && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -text -short -tags travis -coverprofile /tmp/cover.out -append-profile github.com/01org/ciao/networking/libsnnet
 
