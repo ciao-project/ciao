@@ -36,6 +36,35 @@ func TestNewSsntpTestClientonnectionArgs(t *testing.T) {
 	}
 }
 
+func TestAgentStatusChan(t *testing.T) {
+	agentCh := agent.AddStatusChan(ssntp.READY)
+
+	var result Result
+	result.Err = errors.New("foo")
+	go agent.SendResultAndDelStatusChan(ssntp.READY, result)
+
+	r, err := agent.GetStatusChanResult(agentCh, ssntp.READY)
+	if err == nil {
+		t.Fatal(err)
+	}
+	if r.Err != result.Err {
+		t.Fatalf("channel returned wrong result: expected \"%s\", got \"%s\"\n", result.Err, r.Err)
+	}
+}
+
+func TestAgentStatusChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	agentCh := agent.AddStatusChan(ssntp.READY)
+
+	_, err := agent.GetStatusChanResult(agentCh, ssntp.READY)
+	if err == nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAgentErrorChan(t *testing.T) {
 	agentCh := agent.AddErrorChan(ssntp.StopFailure)
 

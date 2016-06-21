@@ -24,6 +24,35 @@ import (
 	. "github.com/01org/ciao/testutil"
 )
 
+func TestServerStatusChan(t *testing.T) {
+	serverCh := server.AddStatusChan(ssntp.READY)
+
+	var result Result
+	result.Err = errors.New("foo")
+	go server.SendResultAndDelStatusChan(ssntp.READY, result)
+
+	r, err := server.GetStatusChanResult(serverCh, ssntp.READY)
+	if err == nil {
+		t.Fatal(err)
+	}
+	if r.Err != result.Err {
+		t.Fatalf("channel returned wrong result: expected \"%s\", got \"%s\"\n", result.Err, r.Err)
+	}
+}
+
+func TestServerStatusChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	serverCh := server.AddStatusChan(ssntp.READY)
+
+	_, err := server.GetStatusChanResult(serverCh, ssntp.READY)
+	if err == nil {
+		t.Fatal(err)
+	}
+}
+
 func TestServerErrorChan(t *testing.T) {
 	serverCh := server.AddErrorChan(ssntp.StopFailure)
 

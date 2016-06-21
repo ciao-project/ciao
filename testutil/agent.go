@@ -47,12 +47,14 @@ type SsntpTestClient struct {
 	traces            []*ssntp.Frame
 	tracesLock        *sync.Mutex
 
-	CmdChans       map[ssntp.Command]chan Result
-	CmdChansLock   *sync.Mutex
-	EventChans     map[ssntp.Event]chan Result
-	EventChansLock *sync.Mutex
-	ErrorChans     map[ssntp.Error]chan Result
-	ErrorChansLock *sync.Mutex
+	CmdChans        map[ssntp.Command]chan Result
+	CmdChansLock    *sync.Mutex
+	EventChans      map[ssntp.Event]chan Result
+	EventChansLock  *sync.Mutex
+	ErrorChans      map[ssntp.Error]chan Result
+	ErrorChansLock  *sync.Mutex
+	StatusChans     map[ssntp.Status]chan Result
+	StatusChansLock *sync.Mutex
 }
 
 // NewSsntpTestClientConnection creates an SsntpTestClient and dials the server.
@@ -78,6 +80,8 @@ func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*S
 	client.EventChansLock = &sync.Mutex{}
 	client.ErrorChans = make(map[ssntp.Error]chan Result)
 	client.ErrorChansLock = &sync.Mutex{}
+	client.StatusChans = make(map[ssntp.Status]chan Result)
+	client.StatusChansLock = &sync.Mutex{}
 	client.instancesLock = &sync.Mutex{}
 	client.tracesLock = &sync.Mutex{}
 
@@ -200,6 +204,43 @@ func (client *SsntpTestClient) SendResultAndDelErrorChan(error ssntp.Error, resu
 	c, ok := client.ErrorChans[error]
 	if ok {
 		delete(client.ErrorChans, error)
+		c <- result
+		close(c)
+	}
+}
+
+// AddStatusChan adds an ssntp.Status to the SsntpTestClient status channel
+func (client *SsntpTestClient) AddStatusChan(status ssntp.Status) *chan Result {
+	c := make(chan Result)
+
+	client.StatusChansLock.Lock()
+	client.StatusChans[status] = c
+	client.StatusChansLock.Unlock()
+
+	return &c
+}
+
+// GetStatusChanResult gets a Result from the SsntpTestClient status channel
+func (client *SsntpTestClient) GetStatusChanResult(c *chan Result, status ssntp.Status) (result Result, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Client error sending %s status: %s\n", status, result.Err)
+		}
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("Timeout waiting for client %s status result\n", status)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelStatusChan deletes an ssntp.Status from the SsntpTestClient status channel
+func (client *SsntpTestClient) SendResultAndDelStatusChan(status ssntp.Status, result Result) {
+	client.StatusChansLock.Lock()
+	defer client.StatusChansLock.Unlock()
+	c, ok := client.StatusChans[status]
+	if ok {
+		delete(client.StatusChans, status)
 		c <- result
 		close(c)
 	}

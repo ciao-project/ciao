@@ -29,15 +29,17 @@ import (
 
 // SsntpTestServer is global state for the testutil SSNTP server
 type SsntpTestServer struct {
-	Ssntp          ssntp.Server
-	clients        []string
-	clientsLock    *sync.Mutex
-	CmdChans       map[ssntp.Command]chan Result
-	CmdChansLock   *sync.Mutex
-	EventChans     map[ssntp.Event]chan Result
-	EventChansLock *sync.Mutex
-	ErrorChans     map[ssntp.Error]chan Result
-	ErrorChansLock *sync.Mutex
+	Ssntp           ssntp.Server
+	clients         []string
+	clientsLock     *sync.Mutex
+	CmdChans        map[ssntp.Command]chan Result
+	CmdChansLock    *sync.Mutex
+	EventChans      map[ssntp.Event]chan Result
+	EventChansLock  *sync.Mutex
+	ErrorChans      map[ssntp.Error]chan Result
+	ErrorChansLock  *sync.Mutex
+	StatusChans     map[ssntp.Status]chan Result
+	StatusChansLock *sync.Mutex
 
 	NetClients     map[string]bool
 	NetClientsLock *sync.RWMutex
@@ -149,6 +151,43 @@ func (server *SsntpTestServer) SendResultAndDelErrorChan(error ssntp.Error, resu
 	c, ok := server.ErrorChans[error]
 	if ok {
 		delete(server.ErrorChans, error)
+		c <- result
+		close(c)
+	}
+}
+
+// AddStatusChan adds an ssntp.Status to the SsntpTestServer status channel
+func (server *SsntpTestServer) AddStatusChan(status ssntp.Status) *chan Result {
+	c := make(chan Result)
+
+	server.StatusChansLock.Lock()
+	server.StatusChans[status] = c
+	server.StatusChansLock.Unlock()
+
+	return &c
+}
+
+// GetStatusChanResult gets a Result from the SsntpTestServer status channel
+func (server *SsntpTestServer) GetStatusChanResult(c *chan Result, status ssntp.Status) (result Result, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Server error handling %s status: %s\n", status, result.Err)
+		}
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("Timeout waiting for server %s status result\n", status)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelStatusChan deletes an ssntp.Status from the SsntpTestServer status channel
+func (server *SsntpTestServer) SendResultAndDelStatusChan(error ssntp.Status, result Result) {
+	server.StatusChansLock.Lock()
+	defer server.StatusChansLock.Unlock()
+	c, ok := server.StatusChans[error]
+	if ok {
+		delete(server.StatusChans, error)
 		c <- result
 		close(c)
 	}
@@ -481,6 +520,9 @@ func StartTestServer(server *SsntpTestServer) {
 
 	server.ErrorChans = make(map[ssntp.Error]chan Result)
 	server.ErrorChansLock = &sync.Mutex{}
+
+	server.StatusChans = make(map[ssntp.Status]chan Result)
+	server.StatusChansLock = &sync.Mutex{}
 
 	server.NetClients = make(map[string]bool)
 	server.NetClientsLock = &sync.RWMutex{}
