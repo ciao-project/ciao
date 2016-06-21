@@ -149,7 +149,7 @@ func init() {
 	flag.StringVar(&coverProfile, "coverprofile", "", "Path of coverage profile to be generated")
 	flag.BoolVar(&appendProfile, "append-profile", false, "Append generated coverage profiles an existing file")
 	flag.BoolVar(&colour, "colour", true, "If true failed tests are coloured red in text mode")
-	resultRegexp = regexp.MustCompile(`--- (FAIL|PASS): ([^\s]+) \(([^\)]+)\)`)
+	resultRegexp = regexp.MustCompile(`--- (FAIL|PASS|SKIP): ([^\s]+) \(([^\)]+)\)`)
 	coverageRegexp = regexp.MustCompile(`^coverage: ([^\s]+)`)
 }
 
@@ -335,7 +335,7 @@ func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffe
 			exitCode = 1
 		} else {
 			t.Result = res.result
-			t.Pass = res.result == "PASS"
+			t.Pass = (res.result == "PASS" || res.result == "SKIP")
 			if !t.Pass {
 				exitCode = 1
 			}
