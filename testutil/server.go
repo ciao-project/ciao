@@ -236,6 +236,16 @@ func (server *SsntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 
 // StatusNotify is an SSNTP callback stub for SsntpTestServer
 func (server *SsntpTestServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
+	var result Result
+
+	switch status {
+	case ssntp.READY:
+		fmt.Printf("server received READY from node %s\n", uuid)
+	default:
+		fmt.Printf("server unhandled status frame from node %s\n", uuid)
+	}
+
+	server.SendResultAndDelStatusChan(status, result)
 }
 
 // CommandNotify implements an SSNTP CommandNotify callback for SsntpTestServer

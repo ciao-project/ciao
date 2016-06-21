@@ -444,8 +444,8 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 func (client *SsntpTestClient) ErrorNotify(error ssntp.Error, frame *ssntp.Frame) {
 }
 
-// SendStats pushes an ssntp.STATS command frame from the SsntpTestClient
-func (client *SsntpTestClient) SendStats() {
+// SendStatsCmd pushes an ssntp.STATS command frame from the SsntpTestClient
+func (client *SsntpTestClient) SendStatsCmd() {
 	var result Result
 
 	payload := StatsPayload(client.UUID, client.Name, client.instances, nil)
@@ -455,6 +455,26 @@ func (client *SsntpTestClient) SendStats() {
 		result.Err = err
 	} else {
 		_, err = client.Ssntp.SendCommand(ssntp.STATS, y)
+		if err != nil {
+			result.Err = err
+		}
+	}
+
+	client.SendResultAndDelCmdChan(ssntp.STATS, result)
+}
+
+// SendStatus pushes an ssntp status frame from the SsntpTestClient with
+// the indicated total and available memory statistics
+func (client *SsntpTestClient) SendStatus(memTotal int, memAvail int) {
+	var result Result
+
+	payload := ReadyPayload(client.UUID, memTotal, memAvail)
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendStatus(ssntp.READY, y)
 		if err != nil {
 			result.Err = err
 		}

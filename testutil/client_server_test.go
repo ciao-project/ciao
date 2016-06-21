@@ -33,6 +33,28 @@ var controller *SsntpTestController
 var agent *SsntpTestClient
 var netAgent *SsntpTestClient
 
+func TestSendAgentStatus(t *testing.T) {
+	serverCh := server.AddStatusChan(ssntp.READY)
+
+	go agent.SendStatus(16384, 16384)
+
+	_, err := server.GetStatusChanResult(serverCh, ssntp.READY)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSendNetAgentStatus(t *testing.T) {
+	serverCh := server.AddStatusChan(ssntp.READY)
+
+	go netAgent.SendStatus(16384, 16384)
+
+	_, err := server.GetStatusChanResult(serverCh, ssntp.READY)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStart(t *testing.T) {
 	serverCh := server.AddCmdChan(ssntp.START)
 	agentCh := agent.AddCmdChan(ssntp.START)
@@ -85,12 +107,12 @@ func TestStartFailure(t *testing.T) {
 	}
 }
 
-func TestSendStatus(t *testing.T) {
+func TestSendStats(t *testing.T) {
 	agentCh := agent.AddCmdChan(ssntp.STATS)
 	serverCh := server.AddCmdChan(ssntp.STATS)
 	controllerCh := controller.AddCmdChan(ssntp.STATS)
 
-	go agent.SendStats()
+	go agent.SendStatsCmd()
 
 	_, err := agent.GetCmdChanResult(agentCh, ssntp.STATS)
 	if err != nil {

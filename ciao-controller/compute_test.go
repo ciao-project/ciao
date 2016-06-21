@@ -234,7 +234,7 @@ func TestDeleteServer(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	c := client.AddCmdChan(ssntp.STATS)
-	go client.SendStats()
+	go client.SendStatsCmd()
 	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
@@ -281,7 +281,7 @@ func TestServersActionStart(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	c := client.AddCmdChan(ssntp.STATS)
-	go client.SendStats()
+	go client.SendStatsCmd()
 	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
@@ -297,7 +297,7 @@ func TestServersActionStart(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	c = client.AddCmdChan(ssntp.STATS)
-	go client.SendStats()
+	go client.SendStatsCmd()
 	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
@@ -343,7 +343,7 @@ func TestServersActionStop(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	c := client.AddCmdChan(ssntp.STATS)
-	go client.SendStats()
+	go client.SendStatsCmd()
 	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
@@ -389,7 +389,7 @@ func TestServerActionStop(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	c := client.AddCmdChan(ssntp.STATS)
-	go client.SendStats()
+	go client.SendStatsCmd()
 	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
@@ -423,7 +423,7 @@ func TestServerActionStart(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	c := client.AddCmdChan(ssntp.STATS)
-	go client.SendStats()
+	go client.SendStatsCmd()
 	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
@@ -446,7 +446,7 @@ func TestServerActionStart(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	c = client.AddCmdChan(ssntp.STATS)
-	go client.SendStats()
+	go client.SendStatsCmd()
 	_, err = client.GetCmdChanResult(c, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
