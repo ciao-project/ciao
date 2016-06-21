@@ -70,6 +70,10 @@ func TestServerErrorChan(t *testing.T) {
 }
 
 func TestServerErrorChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	serverCh := server.AddErrorChan(ssntp.StopFailure)
 
 	_, err := server.GetErrorChanResult(serverCh, ssntp.StopFailure)
@@ -95,6 +99,10 @@ func TestServerEventChan(t *testing.T) {
 }
 
 func TestServerEventChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	serverCh := server.AddEventChan(ssntp.TraceReport)
 
 	_, err := server.GetEventChanResult(serverCh, ssntp.TraceReport)
@@ -120,6 +128,10 @@ func TestServerCmdChan(t *testing.T) {
 }
 
 func TestServerCmdChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	serverCh := server.AddCmdChan(ssntp.START)
 
 	_, err := server.GetCmdChanResult(serverCh, ssntp.START)

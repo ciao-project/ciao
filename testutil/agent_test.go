@@ -82,6 +82,10 @@ func TestAgentErrorChan(t *testing.T) {
 }
 
 func TestAgentErrorChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	agentCh := agent.AddErrorChan(ssntp.StopFailure)
 
 	_, err := agent.GetErrorChanResult(agentCh, ssntp.StopFailure)
@@ -107,6 +111,10 @@ func TestAgentEventChan(t *testing.T) {
 }
 
 func TestAgentEventChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	agentCh := agent.AddEventChan(ssntp.TraceReport)
 
 	_, err := agent.GetEventChanResult(agentCh, ssntp.TraceReport)
@@ -132,6 +140,10 @@ func TestAgentCmdChan(t *testing.T) {
 }
 
 func TestAgentCmdChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	agentCh := agent.AddCmdChan(ssntp.START)
 
 	_, err := agent.GetCmdChanResult(agentCh, ssntp.START)

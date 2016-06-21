@@ -48,6 +48,10 @@ func TestControllerErrorChan(t *testing.T) {
 }
 
 func TestControllerErrorChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	controllerCh := controller.AddErrorChan(ssntp.StopFailure)
 
 	_, err := controller.GetErrorChanResult(controllerCh, ssntp.StopFailure)
@@ -73,6 +77,10 @@ func TestControllerEventChan(t *testing.T) {
 }
 
 func TestControllerEventChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	controllerCh := controller.AddEventChan(ssntp.TraceReport)
 
 	_, err := controller.GetEventChanResult(controllerCh, ssntp.TraceReport)
@@ -98,6 +106,10 @@ func TestControllerCmdChan(t *testing.T) {
 }
 
 func TestControllerCmdChanTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	controllerCh := controller.AddCmdChan(ssntp.START)
 
 	_, err := controller.GetCmdChanResult(controllerCh, ssntp.START)
