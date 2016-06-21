@@ -891,7 +891,10 @@ func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
 	var VMType string
 
 	err := datastore.QueryRow(query, id).Scan(&work.ID, &work.Description, &work.filename, &work.FWType, &VMType, &work.ImageID, &work.ImageName)
-	if err != nil {
+	switch {
+	case err == sql.ErrNoRows:
+		return nil, fmt.Errorf("Workload %q not found", id)
+	case err != nil:
 		return nil, err
 	}
 
