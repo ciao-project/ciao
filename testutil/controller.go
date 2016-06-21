@@ -75,7 +75,7 @@ func NewSsntpTestControllerConnection(name string, uuid string) (*SsntpTestContr
 	return ctl, nil
 }
 
-// AddCmdChan adds a command to the SsntpTestController command channel
+// AddCmdChan adds an ssntp.Command to the SsntpTestController command channel
 func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command) *chan Result {
 	c := make(chan Result)
 
@@ -86,7 +86,7 @@ func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command) *chan Result {
 	return &c
 }
 
-// GetCmdChanResult gets a CmdResult from the SsntpTestController command channel
+// GetCmdChanResult gets a Result from the SsntpTestController command channel
 func (ctl *SsntpTestController) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -100,7 +100,7 @@ func (ctl *SsntpTestController) GetCmdChanResult(c *chan Result, cmd ssntp.Comma
 	return result, err
 }
 
-// SendResultAndDelCmdChan deletes a command from the SsntpTestController command channel
+// SendResultAndDelCmdChan deletes an ssntp.Command from the SsntpTestController command channel
 func (ctl *SsntpTestController) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	ctl.CmdChansLock.Lock()
 	defer ctl.CmdChansLock.Unlock()
@@ -112,7 +112,7 @@ func (ctl *SsntpTestController) SendResultAndDelCmdChan(cmd ssntp.Command, resul
 	}
 }
 
-// AddEventChan adds a command to the SsntpTestController event channel
+// AddEventChan adds an ssntp.Event to the SsntpTestController event channel
 func (ctl *SsntpTestController) AddEventChan(evt ssntp.Event) *chan Result {
 	c := make(chan Result)
 
@@ -123,7 +123,7 @@ func (ctl *SsntpTestController) AddEventChan(evt ssntp.Event) *chan Result {
 	return &c
 }
 
-// GetEventChanResult gets a CmdResult from the SsntpTestController event channel
+// GetEventChanResult gets a Result from the SsntpTestController event channel
 func (ctl *SsntpTestController) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -137,7 +137,7 @@ func (ctl *SsntpTestController) GetEventChanResult(c *chan Result, evt ssntp.Eve
 	return result, err
 }
 
-// SendResultAndDelEventChan deletes an event from the SsntpTestController event channel
+// SendResultAndDelEventChan deletes an ssntpEvent from the SsntpTestController event channel
 func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	ctl.EventChansLock.Lock()
 	defer ctl.EventChansLock.Unlock()
@@ -149,7 +149,7 @@ func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, resul
 	}
 }
 
-// AddErrorChan adds a command to the SsntpTestController error channel
+// AddErrorChan adds an ssntp.Error to the SsntpTestController error channel
 func (ctl *SsntpTestController) AddErrorChan(error ssntp.Error) *chan Result {
 	c := make(chan Result)
 
@@ -160,7 +160,7 @@ func (ctl *SsntpTestController) AddErrorChan(error ssntp.Error) *chan Result {
 	return &c
 }
 
-// GetErrorChanResult gets a CmdResult from the SsntpTestController error channel
+// GetErrorChanResult gets a Result from the SsntpTestController error channel
 func (ctl *SsntpTestController) GetErrorChanResult(c *chan Result, error ssntp.Error) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -174,7 +174,7 @@ func (ctl *SsntpTestController) GetErrorChanResult(c *chan Result, error ssntp.E
 	return result, err
 }
 
-// SendResultAndDelErrorChan deletes an error from the SsntpTestController error channel
+// SendResultAndDelErrorChan deletes an ssntp.Error from the SsntpTestController error channel
 func (ctl *SsntpTestController) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
 	ctl.ErrorChansLock.Lock()
 	defer ctl.ErrorChansLock.Unlock()

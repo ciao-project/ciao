@@ -43,7 +43,7 @@ type SsntpTestServer struct {
 	NetClientsLock *sync.RWMutex
 }
 
-// AddCmdChan adds a command to the SsntpTestServer command channel
+// AddCmdChan adds an ssntp.Command to the SsntpTestServer command channel
 func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan Result {
 	c := make(chan Result)
 
@@ -54,7 +54,7 @@ func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan Result {
 	return &c
 }
 
-// GetCmdChanResult gets a CmdResult from the SsntpTestServer command channel
+// GetCmdChanResult gets a Result from the SsntpTestServer command channel
 func (server *SsntpTestServer) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -68,7 +68,7 @@ func (server *SsntpTestServer) GetCmdChanResult(c *chan Result, cmd ssntp.Comman
 	return result, err
 }
 
-// SendResultAndDelCmdChan deletes a command from the SsntpTestServer command channel
+// SendResultAndDelCmdChan deletes an ssntp.Command from the SsntpTestServer command channel
 func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	server.CmdChansLock.Lock()
 	defer server.CmdChansLock.Unlock()
@@ -80,7 +80,7 @@ func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result
 	}
 }
 
-// AddEventChan adds a command to the SsntpTestServer event channel
+// AddEventChan adds an ssntp.Event to the SsntpTestServer event channel
 func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan Result {
 	c := make(chan Result)
 
@@ -91,7 +91,7 @@ func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan Result {
 	return &c
 }
 
-// GetEventChanResult gets a CmdResult from the SsntpTestServer event channel
+// GetEventChanResult gets a Result from the SsntpTestServer event channel
 func (server *SsntpTestServer) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -105,7 +105,7 @@ func (server *SsntpTestServer) GetEventChanResult(c *chan Result, evt ssntp.Even
 	return result, err
 }
 
-// SendResultAndDelEventChan deletes an event from the SsntpTestServer event channel
+// SendResultAndDelEventChan deletes an ssntp.Event from the SsntpTestServer event channel
 func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	server.EventChansLock.Lock()
 	defer server.EventChansLock.Unlock()
@@ -117,7 +117,7 @@ func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result
 	}
 }
 
-// AddErrorChan adds a command to the SsntpTestServer error channel
+// AddErrorChan adds an ssntp.Error to the SsntpTestServer error channel
 func (server *SsntpTestServer) AddErrorChan(error ssntp.Error) *chan Result {
 	c := make(chan Result)
 
@@ -142,7 +142,7 @@ func (server *SsntpTestServer) GetErrorChanResult(c *chan Result, error ssntp.Er
 	return result, err
 }
 
-// SendResultAndDelErrorChan deletes an error from the SsntpTestServer error channel
+// SendResultAndDelErrorChan deletes an ssntp.Error from the SsntpTestServer error channel
 func (server *SsntpTestServer) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
 	server.ErrorChansLock.Lock()
 	defer server.ErrorChansLock.Unlock()
