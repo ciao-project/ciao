@@ -452,6 +452,22 @@ func instanceToServer(context *controller, instance *types.Instance) (payloads.S
 	return server, nil
 }
 
+// returnErrorCode returns error codes for the http call
+func returnErrorCode(w http.ResponseWriter, httpError int, message string) {
+	var returnCode payloads.HTTPReturnErrorCode
+	returnCode.Error.Code = httpError
+	returnCode.Error.Name = http.StatusText(returnCode.Error.Code)
+	returnCode.Error.Message = message
+
+	b, err := json.Marshal(returnCode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Error(w, string(b), httpError)
+}
+
 func showServerDetails(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -461,24 +477,24 @@ func showServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	instance, err := context.ds.GetInstance(instanceID)
 	if err != nil {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance could not be found")
 		return
 	}
 
 	if instance.TenantID != tenant {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance does not belong to tenant")
 		return
 	}
 
 	server.Server, err = instanceToServer(context, instance)
 	if err != nil {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance could not be found")
 		return
 	}
 

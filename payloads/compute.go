@@ -451,3 +451,19 @@ func NewCiaoEvents() (events CiaoEvents) {
 	events.Events = []CiaoEvent{}
 	return
 }
+
+// HTTPErrorData represents the HTTP response body for
+// a compute API request error.
+type HTTPErrorData struct {
+	Code    int    `json:"code"`
+	Name    string `json:"name"`
+	Message string `json:"message"`
+}
+
+// HTTPReturnErrorCode represents the unmarshalled version for Return codes
+// when a API call is made and you need to return explicit data of
+// the call as OpenStack format
+// http://developer.openstack.org/api-guide/compute/faults.html
+type HTTPReturnErrorCode struct {
+	Error HTTPErrorData `json:"error"`
+}
