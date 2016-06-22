@@ -14,11 +14,6 @@
 		"version": "fbb7337",
 		"license": "Apache v2.0"
 	},
-	"github.com/docker/distribution": {
-		"url": "https://github.com/docker/distribution.git",
-		"version": "v2.4.0",
-		"license": "Apache v2.0"
-	},
 	"github.com/docker/docker": {
 		"url": "https://github.com/docker/docker.git",
 		"version": "v1.10.3",
