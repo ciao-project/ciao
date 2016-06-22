@@ -360,6 +360,14 @@ func dumpImage(i *images.Image) {
 	fmt.Printf("\tContainer format [%s]\n", i.ContainerFormat)
 	fmt.Printf("\tMinimal disk     [%d GB]\n", i.MinDiskGigabytes)
 	fmt.Printf("\tMinimal memory   [%d MB]\n", i.MinRAMMegabytes)
+	fmt.Printf("\tChecksum         [%s]\n", i.Checksum)
+	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)
+	fmt.Printf("\tProtected        [%t]\n", i.Protected)
+	fmt.Printf("\tCreatedDate      [%s]\n", i.CreatedDate)
+	fmt.Printf("\tLastUpdate       [%s]\n", i.LastUpdate)
+	fmt.Printf("\tTags             [%s]\n", i.Tags)
+	fmt.Printf("\tFile             [%s]\n", i.File)
+	fmt.Printf("\tSchema           [%s]\n", i.Schema)
 }
 
 func imageServiceClient(username, password, tenant string) (*gophercloud.ServiceClient, error) {
