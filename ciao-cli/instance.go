@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"text/tabwriter"
 
 	"github.com/01org/ciao/payloads"
 )
@@ -279,6 +280,7 @@ type instanceListCommand struct {
 	limit    int
 	cn       string
 	tenant   string
+	detail   bool
 }
 
 func (cmd *instanceListCommand) usage(...string) {
@@ -294,6 +296,7 @@ The list flags are:
 }
 
 func (cmd *instanceListCommand) parseArgs(args []string) []string {
+	cmd.Flag.BoolVar(&cmd.detail, "detail", false, "Print detailed information about each instance")
 	cmd.Flag.StringVar(&cmd.workload, "workload", "", "Workload UUID")
 	cmd.Flag.StringVar(&cmd.cn, "cn", "", "Computer node to list instances from (default to all nodes when empty)")
 	cmd.Flag.StringVar(&cmd.marker, "marker", "", "Show instance list starting from the next instance after marker")
@@ -355,18 +358,40 @@ func (cmd *instanceListCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
+	w := new(tabwriter.Writer)
+	if !cmd.detail {
+		w.Init(os.Stdout, 0, 1, 1, ' ', 0)
+		fmt.Fprintln(w, "#\tUUID\tStatus\tPrivate IP\tSSH IP\tSSH PORT")
+	}
+
 	for i, server := range servers.Servers {
-		fmt.Printf("Instance #%d\n", i+1)
-		fmt.Printf("\tUUID: %s\n", server.ID)
-		fmt.Printf("\tStatus: %s\n", server.Status)
-		fmt.Printf("\tPrivate IP: %s\n", server.Addresses.Private[0].Addr)
-		fmt.Printf("\tMAC Address: %s\n", server.Addresses.Private[0].OSEXTIPSMACMacAddr)
-		fmt.Printf("\tCN UUID: %s\n", server.HostID)
-		fmt.Printf("\tImage UUID: %s\n", server.Image.ID)
-		fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
-		if server.SSHIP != "" {
-			fmt.Printf("\tSSH IP: %s\n", server.SSHIP)
-			fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
+		if !cmd.detail {
+			fmt.Fprintf(w, "%d", i+1)
+			fmt.Fprintf(w, "\t%s", server.ID)
+			fmt.Fprintf(w, "\t%s", server.Status)
+			fmt.Fprintf(w, "\t%s", server.Addresses.Private[0].Addr)
+			if server.SSHIP != "" {
+				fmt.Fprintf(w, "\t%s", server.SSHIP)
+				fmt.Fprintf(w, "\t%d\n", server.SSHPort)
+			} else {
+				fmt.Fprintf(w, "\tN/A")
+				fmt.Fprintf(w, "\tN/A\n")
+			}
+
+			w.Flush()
+		} else {
+			fmt.Printf("Instance #%d\n", i+1)
+			fmt.Printf("\tUUID: %s\n", server.ID)
+			fmt.Printf("\tStatus: %s\n", server.Status)
+			fmt.Printf("\tPrivate IP: %s\n", server.Addresses.Private[0].Addr)
+			fmt.Printf("\tMAC Address: %s\n", server.Addresses.Private[0].OSEXTIPSMACMacAddr)
+			fmt.Printf("\tCN UUID: %s\n", server.HostID)
+			fmt.Printf("\tImage UUID: %s\n", server.Image.ID)
+			fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
+			if server.SSHIP != "" {
+				fmt.Printf("\tSSH IP: %s\n", server.SSHIP)
+				fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
+			}
 		}
 	}
 	return nil
