@@ -505,7 +505,7 @@ func showServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 
 	b, err := json.Marshal(server)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -521,25 +521,25 @@ func deleteServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	/* First check that the instance belongs to this tenant */
 	i, err := context.ds.GetInstance(instance)
 	if err != nil {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance could not be found")
 		return
 	}
 
 	if i.TenantID != tenant {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance does not belong to tenant")
 		return
 	}
 
 	err = context.deleteInstance(instance)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -831,7 +831,7 @@ func listServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -842,7 +842,7 @@ func listServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 	}
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -862,7 +862,7 @@ func listServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 
 	b, err := pager.nextPage(filterType, filter, r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -879,7 +879,7 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequestBody(r, true)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -887,13 +887,13 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusBadRequest, "Service cannot read Request Body")
 		return
 	}
 
 	err = json.Unmarshal(body, &server)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -913,14 +913,14 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 	instances, err := context.startWorkload(server.Server.Workload, tenant, nInstances, trace, label)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	for _, instance := range instances {
 		server, err := instanceToServer(context, instance)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			returnErrorCode(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		servers.Servers = append(servers.Servers, server)
@@ -946,7 +946,7 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(builtServers)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -965,7 +965,7 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 	dumpRequestBody(r, true)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -973,13 +973,13 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusBadRequest, "Service cannot read Request Body")
 		return
 	}
 
 	err = json.Unmarshal(body, &servers)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -993,7 +993,7 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 		actionFunc = context.deleteInstance
 		statusFilter = ""
 	} else {
-		http.Error(w, "Unsupported action", http.StatusServiceUnavailable)
+		returnErrorCode(w, http.StatusServiceUnavailable, "Unsupported action")
 		return
 	}
 
@@ -1009,7 +1009,7 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 		/* We want to act on all relevant instances */
 		instances, err := context.ds.GetAllInstancesFromTenant(tenant)
 		if err != nil {
-			http.Error(w, "No instances for tenant", http.StatusInternalServerError)
+			returnErrorCode(w, http.StatusNotFound, "No instances for tenant")
 			return
 		}
 
@@ -1037,19 +1037,19 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequestBody(r, true)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	/* First check that the instance belongs to this tenant */
 	i, err := context.ds.GetInstance(instance)
 	if err != nil {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance could not be found")
 		return
 	}
 
 	if i.TenantID != tenant {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance does not belong to tenant")
 		return
 	}
 
@@ -1057,7 +1057,7 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusBadRequest, "Service cannot read Request Body")
 		return
 	}
 
@@ -1068,7 +1068,7 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	} else if strings.Contains(bodyString, "os-stop") {
 		action = computeActionStop
 	} else {
-		http.Error(w, "Unsupported action", http.StatusServiceUnavailable)
+		returnErrorCode(w, http.StatusServiceUnavailable, "Unsupported action")
 		return
 	}
 
@@ -1080,7 +1080,7 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
