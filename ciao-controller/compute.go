@@ -697,13 +697,13 @@ func listTenantQuotas(w http.ResponseWriter, r *http.Request, context *controlle
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	t, err := context.ds.GetTenant(tenant)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Tenant could not be found")
 		return
 	}
 
@@ -711,20 +711,20 @@ func listTenantQuotas(w http.ResponseWriter, r *http.Request, context *controlle
 		if *noNetwork {
 			_, err := context.ds.AddTenant(tenant)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				returnErrorCode(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		} else {
 			err = context.addTenant(tenant)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				returnErrorCode(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		}
 
 		t, err = context.ds.GetTenant(tenant)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			returnErrorCode(w, http.StatusNotFound, "Tenant could not be found")
 			return
 		}
 	}
@@ -755,7 +755,7 @@ func listTenantQuotas(w http.ResponseWriter, r *http.Request, context *controlle
 
 	b, err := json.Marshal(tenantResource)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -792,13 +792,13 @@ func listTenantResources(w http.ResponseWriter, r *http.Request, context *contro
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	start, end, err := tenantQueryParse(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -807,13 +807,13 @@ func listTenantResources(w http.ResponseWriter, r *http.Request, context *contro
 
 	usage.Usages, err = context.ds.GetTenantUsage(tenant, start, end)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	b, err := json.Marshal(usage)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1093,13 +1093,13 @@ func listTenants(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Unauthorized token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	tenants, err := context.ds.GetAllTenants()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1117,7 +1117,7 @@ func listTenants(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(computeTenants)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
