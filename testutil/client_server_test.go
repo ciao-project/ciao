@@ -33,6 +33,28 @@ var controller *SsntpTestController
 var agent *SsntpTestClient
 var netAgent *SsntpTestClient
 
+func TestSendAgentStatus(t *testing.T) {
+	serverCh := server.AddStatusChan(ssntp.READY)
+
+	go agent.SendStatus(16384, 16384)
+
+	_, err := server.GetStatusChanResult(serverCh, ssntp.READY)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSendNetAgentStatus(t *testing.T) {
+	serverCh := server.AddStatusChan(ssntp.READY)
+
+	go netAgent.SendStatus(16384, 16384)
+
+	_, err := server.GetStatusChanResult(serverCh, ssntp.READY)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStart(t *testing.T) {
 	serverCh := server.AddCmdChan(ssntp.START)
 	agentCh := agent.AddCmdChan(ssntp.START)
@@ -85,12 +107,12 @@ func TestStartFailure(t *testing.T) {
 	}
 }
 
-func TestSendStatus(t *testing.T) {
+func TestSendStats(t *testing.T) {
 	agentCh := agent.AddCmdChan(ssntp.STATS)
 	serverCh := server.AddCmdChan(ssntp.STATS)
 	controllerCh := controller.AddCmdChan(ssntp.STATS)
 
-	go agent.SendStats()
+	go agent.SendStatsCmd()
 
 	_, err := agent.GetCmdChanResult(agentCh, ssntp.STATS)
 	if err != nil {
@@ -116,7 +138,7 @@ func TestStartTraced(t *testing.T) {
 		Label:     []byte("testutilTracedSTART"),
 	}
 
-	_, err := agent.Ssntp.SendTracedCommand(ssntp.START, []byte(StartYaml), traceConfig)
+	_, err := controller.Ssntp.SendTracedCommand(ssntp.START, []byte(StartYaml), traceConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +173,7 @@ func TestStartCNCI(t *testing.T) {
 	netAgentCh := netAgent.AddCmdChan(ssntp.START)
 	serverCh := server.AddCmdChan(ssntp.START)
 
-	_, err := netAgent.Ssntp.SendCommand(ssntp.START, []byte(CNCIStartYaml))
+	_, err := controller.Ssntp.SendCommand(ssntp.START, []byte(CNCIStartYaml))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +192,7 @@ func TestStop(t *testing.T) {
 	agentCh := agent.AddCmdChan(ssntp.STOP)
 	serverCh := server.AddCmdChan(ssntp.STOP)
 
-	_, err := agent.Ssntp.SendCommand(ssntp.STOP, []byte(StopYaml))
+	_, err := controller.Ssntp.SendCommand(ssntp.STOP, []byte(StopYaml))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +247,7 @@ func TestRestart(t *testing.T) {
 	agentCh := agent.AddCmdChan(ssntp.RESTART)
 	serverCh := server.AddCmdChan(ssntp.RESTART)
 
-	_, err := agent.Ssntp.SendCommand(ssntp.RESTART, []byte(RestartYaml))
+	_, err := controller.Ssntp.SendCommand(ssntp.RESTART, []byte(RestartYaml))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,8 +477,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// start netagent
-	netAgentUUID := uuid.Generate().String()
-	netAgent, err = NewSsntpTestClientConnection("NETAGENT Client", ssntp.NETAGENT, netAgentUUID)
+	netAgent, err = NewSsntpTestClientConnection("NETAGENT Client", ssntp.NETAGENT, NetAgentUUID)
 	if err != nil {
 		os.Exit(1)
 	}

@@ -352,6 +352,21 @@ const NodeConnectedYaml = `node_connected:
   node_type: ` + payloads.NetworkNode + `
 `
 
+// ReadyPayload is a helper to craft a mostly fixed ssntp.READY status
+// payload, with parameters to specify the source node uuid and memory metrics
+func ReadyPayload(uuid string, memTotal int, memAvail int) payloads.Ready {
+	p := payloads.Ready{
+		NodeUUID:        uuid,
+		MemTotalMB:      memTotal,
+		MemAvailableMB:  memAvail,
+		DiskTotalMB:     500000,
+		DiskAvailableMB: 256000,
+		Load:            0,
+		CpusOnline:      4,
+	}
+	return p
+}
+
 // ReadyYaml is a sample node READY ssntp.Status payload for test cases
 const ReadyYaml = `node_uuid: ` + AgentUUID + `
 mem_total_mb: 3896

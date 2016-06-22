@@ -47,12 +47,14 @@ type SsntpTestClient struct {
 	traces            []*ssntp.Frame
 	tracesLock        *sync.Mutex
 
-	CmdChans       map[ssntp.Command]chan Result
-	CmdChansLock   *sync.Mutex
-	EventChans     map[ssntp.Event]chan Result
-	EventChansLock *sync.Mutex
-	ErrorChans     map[ssntp.Error]chan Result
-	ErrorChansLock *sync.Mutex
+	CmdChans        map[ssntp.Command]chan Result
+	CmdChansLock    *sync.Mutex
+	EventChans      map[ssntp.Event]chan Result
+	EventChansLock  *sync.Mutex
+	ErrorChans      map[ssntp.Error]chan Result
+	ErrorChansLock  *sync.Mutex
+	StatusChans     map[ssntp.Status]chan Result
+	StatusChansLock *sync.Mutex
 }
 
 // NewSsntpTestClientConnection creates an SsntpTestClient and dials the server.
@@ -78,6 +80,8 @@ func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*S
 	client.EventChansLock = &sync.Mutex{}
 	client.ErrorChans = make(map[ssntp.Error]chan Result)
 	client.ErrorChansLock = &sync.Mutex{}
+	client.StatusChans = make(map[ssntp.Status]chan Result)
+	client.StatusChansLock = &sync.Mutex{}
 	client.instancesLock = &sync.Mutex{}
 	client.tracesLock = &sync.Mutex{}
 
@@ -94,7 +98,7 @@ func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*S
 	return client, nil
 }
 
-// AddCmdChan adds a command to the SsntpTestClient command channel
+// AddCmdChan adds an ssntp.Command to the SsntpTestClient command channel
 func (client *SsntpTestClient) AddCmdChan(cmd ssntp.Command) *chan Result {
 	c := make(chan Result)
 
@@ -105,7 +109,7 @@ func (client *SsntpTestClient) AddCmdChan(cmd ssntp.Command) *chan Result {
 	return &c
 }
 
-// GetCmdChanResult gets a CmdResult from the SsntpTestClient command channel
+// GetCmdChanResult gets a Result from the SsntpTestClient command channel
 func (client *SsntpTestClient) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -119,7 +123,7 @@ func (client *SsntpTestClient) GetCmdChanResult(c *chan Result, cmd ssntp.Comman
 	return result, err
 }
 
-// SendResultAndDelCmdChan deletes a command from the SsntpTestClient command channel
+// SendResultAndDelCmdChan deletes an ssntp.Command from the SsntpTestClient command channel
 func (client *SsntpTestClient) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	client.CmdChansLock.Lock()
 	defer client.CmdChansLock.Unlock()
@@ -131,7 +135,7 @@ func (client *SsntpTestClient) SendResultAndDelCmdChan(cmd ssntp.Command, result
 	}
 }
 
-// AddEventChan adds a command to the SsntpTestClient event channel
+// AddEventChan adds a ssntp.Event to the SsntpTestClient event channel
 func (client *SsntpTestClient) AddEventChan(evt ssntp.Event) *chan Result {
 	c := make(chan Result)
 
@@ -142,7 +146,7 @@ func (client *SsntpTestClient) AddEventChan(evt ssntp.Event) *chan Result {
 	return &c
 }
 
-// GetEventChanResult gets a CmdResult from the SsntpTestClient event channel
+// GetEventChanResult gets a Result from the SsntpTestClient event channel
 func (client *SsntpTestClient) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -156,7 +160,7 @@ func (client *SsntpTestClient) GetEventChanResult(c *chan Result, evt ssntp.Even
 	return result, err
 }
 
-// SendResultAndDelEventChan deletes an event from the SsntpTestClient event channel
+// SendResultAndDelEventChan deletes an ssntp.Event from the SsntpTestClient event channel
 func (client *SsntpTestClient) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	client.EventChansLock.Lock()
 	defer client.EventChansLock.Unlock()
@@ -168,7 +172,7 @@ func (client *SsntpTestClient) SendResultAndDelEventChan(evt ssntp.Event, result
 	}
 }
 
-// AddErrorChan adds a command to the SsntpTestClient error channel
+// AddErrorChan adds a ssntp.Error to the SsntpTestClient error channel
 func (client *SsntpTestClient) AddErrorChan(error ssntp.Error) *chan Result {
 	c := make(chan Result)
 
@@ -179,7 +183,7 @@ func (client *SsntpTestClient) AddErrorChan(error ssntp.Error) *chan Result {
 	return &c
 }
 
-// GetErrorChanResult gets a CmdResult from the SsntpTestClient error channel
+// GetErrorChanResult gets a Result from the SsntpTestClient error channel
 func (client *SsntpTestClient) GetErrorChanResult(c *chan Result, error ssntp.Error) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -193,13 +197,50 @@ func (client *SsntpTestClient) GetErrorChanResult(c *chan Result, error ssntp.Er
 	return result, err
 }
 
-// SendResultAndDelErrorChan deletes an error from the SsntpTestClient error channel
+// SendResultAndDelErrorChan deletes an ssntp.Error from the SsntpTestClient error channel
 func (client *SsntpTestClient) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
 	client.ErrorChansLock.Lock()
 	defer client.ErrorChansLock.Unlock()
 	c, ok := client.ErrorChans[error]
 	if ok {
 		delete(client.ErrorChans, error)
+		c <- result
+		close(c)
+	}
+}
+
+// AddStatusChan adds an ssntp.Status to the SsntpTestClient status channel
+func (client *SsntpTestClient) AddStatusChan(status ssntp.Status) *chan Result {
+	c := make(chan Result)
+
+	client.StatusChansLock.Lock()
+	client.StatusChans[status] = c
+	client.StatusChansLock.Unlock()
+
+	return &c
+}
+
+// GetStatusChanResult gets a Result from the SsntpTestClient status channel
+func (client *SsntpTestClient) GetStatusChanResult(c *chan Result, status ssntp.Status) (result Result, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Client error sending %s status: %s\n", status, result.Err)
+		}
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("Timeout waiting for client %s status result\n", status)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelStatusChan deletes an ssntp.Status from the SsntpTestClient status channel
+func (client *SsntpTestClient) SendResultAndDelStatusChan(status ssntp.Status, result Result) {
+	client.StatusChansLock.Lock()
+	defer client.StatusChansLock.Unlock()
+	c, ok := client.StatusChans[status]
+	if ok {
+		delete(client.StatusChans, status)
 		c <- result
 		close(c)
 	}
@@ -403,8 +444,8 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 func (client *SsntpTestClient) ErrorNotify(error ssntp.Error, frame *ssntp.Frame) {
 }
 
-// SendStats pushes an ssntp.STATS command frame from the SsntpTestClient
-func (client *SsntpTestClient) SendStats() {
+// SendStatsCmd pushes an ssntp.STATS command frame from the SsntpTestClient
+func (client *SsntpTestClient) SendStatsCmd() {
 	var result Result
 
 	payload := StatsPayload(client.UUID, client.Name, client.instances, nil)
@@ -414,6 +455,26 @@ func (client *SsntpTestClient) SendStats() {
 		result.Err = err
 	} else {
 		_, err = client.Ssntp.SendCommand(ssntp.STATS, y)
+		if err != nil {
+			result.Err = err
+		}
+	}
+
+	client.SendResultAndDelCmdChan(ssntp.STATS, result)
+}
+
+// SendStatus pushes an ssntp status frame from the SsntpTestClient with
+// the indicated total and available memory statistics
+func (client *SsntpTestClient) SendStatus(memTotal int, memAvail int) {
+	var result Result
+
+	payload := ReadyPayload(client.UUID, memTotal, memAvail)
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendStatus(ssntp.READY, y)
 		if err != nil {
 			result.Err = err
 		}

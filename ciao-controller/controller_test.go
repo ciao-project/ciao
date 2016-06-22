@@ -269,7 +269,7 @@ func TestDeleteInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	client.SendStatsCmd()
 
 	c := server.AddCmdChan(ssntp.DELETE)
 
@@ -297,7 +297,7 @@ func TestStopInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	client.SendStatsCmd()
 
 	c := server.AddCmdChan(ssntp.STOP)
 
@@ -325,7 +325,7 @@ func TestRestartInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	client.SendStatsCmd()
 
 	c := server.AddCmdChan(ssntp.STOP)
 
@@ -347,7 +347,7 @@ func TestRestartInstance(t *testing.T) {
 	// now attempt to restart
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	client.SendStatsCmd()
 
 	c = server.AddCmdChan(ssntp.RESTART)
 
@@ -400,7 +400,7 @@ func TestInstanceDeletedEvent(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	client.SendStatsCmd()
 
 	time.Sleep(1 * time.Second)
 
@@ -482,7 +482,7 @@ func TestStopFailure(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	client.SendStatsCmd()
 
 	time.Sleep(1 * time.Second)
 
@@ -534,7 +534,7 @@ func TestRestartFailure(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	client.SendStatsCmd()
 
 	time.Sleep(1 * time.Second)
 
@@ -555,7 +555,7 @@ func TestRestartFailure(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStats()
+	client.SendStatsCmd()
 
 	time.Sleep(1 * time.Second)
 

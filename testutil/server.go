@@ -29,21 +29,23 @@ import (
 
 // SsntpTestServer is global state for the testutil SSNTP server
 type SsntpTestServer struct {
-	Ssntp          ssntp.Server
-	clients        []string
-	clientsLock    *sync.Mutex
-	CmdChans       map[ssntp.Command]chan Result
-	CmdChansLock   *sync.Mutex
-	EventChans     map[ssntp.Event]chan Result
-	EventChansLock *sync.Mutex
-	ErrorChans     map[ssntp.Error]chan Result
-	ErrorChansLock *sync.Mutex
+	Ssntp           ssntp.Server
+	clients         []string
+	clientsLock     *sync.Mutex
+	CmdChans        map[ssntp.Command]chan Result
+	CmdChansLock    *sync.Mutex
+	EventChans      map[ssntp.Event]chan Result
+	EventChansLock  *sync.Mutex
+	ErrorChans      map[ssntp.Error]chan Result
+	ErrorChansLock  *sync.Mutex
+	StatusChans     map[ssntp.Status]chan Result
+	StatusChansLock *sync.Mutex
 
 	NetClients     map[string]bool
 	NetClientsLock *sync.RWMutex
 }
 
-// AddCmdChan adds a command to the SsntpTestServer command channel
+// AddCmdChan adds an ssntp.Command to the SsntpTestServer command channel
 func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan Result {
 	c := make(chan Result)
 
@@ -54,7 +56,7 @@ func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan Result {
 	return &c
 }
 
-// GetCmdChanResult gets a CmdResult from the SsntpTestServer command channel
+// GetCmdChanResult gets a Result from the SsntpTestServer command channel
 func (server *SsntpTestServer) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -68,7 +70,7 @@ func (server *SsntpTestServer) GetCmdChanResult(c *chan Result, cmd ssntp.Comman
 	return result, err
 }
 
-// SendResultAndDelCmdChan deletes a command from the SsntpTestServer command channel
+// SendResultAndDelCmdChan deletes an ssntp.Command from the SsntpTestServer command channel
 func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	server.CmdChansLock.Lock()
 	defer server.CmdChansLock.Unlock()
@@ -80,7 +82,7 @@ func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result
 	}
 }
 
-// AddEventChan adds a command to the SsntpTestServer event channel
+// AddEventChan adds an ssntp.Event to the SsntpTestServer event channel
 func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan Result {
 	c := make(chan Result)
 
@@ -91,7 +93,7 @@ func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan Result {
 	return &c
 }
 
-// GetEventChanResult gets a CmdResult from the SsntpTestServer event channel
+// GetEventChanResult gets a Result from the SsntpTestServer event channel
 func (server *SsntpTestServer) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
 	case result = <-*c:
@@ -105,7 +107,7 @@ func (server *SsntpTestServer) GetEventChanResult(c *chan Result, evt ssntp.Even
 	return result, err
 }
 
-// SendResultAndDelEventChan deletes an event from the SsntpTestServer event channel
+// SendResultAndDelEventChan deletes an ssntp.Event from the SsntpTestServer event channel
 func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	server.EventChansLock.Lock()
 	defer server.EventChansLock.Unlock()
@@ -117,7 +119,7 @@ func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result
 	}
 }
 
-// AddErrorChan adds a command to the SsntpTestServer error channel
+// AddErrorChan adds an ssntp.Error to the SsntpTestServer error channel
 func (server *SsntpTestServer) AddErrorChan(error ssntp.Error) *chan Result {
 	c := make(chan Result)
 
@@ -142,13 +144,50 @@ func (server *SsntpTestServer) GetErrorChanResult(c *chan Result, error ssntp.Er
 	return result, err
 }
 
-// SendResultAndDelErrorChan deletes an error from the SsntpTestServer error channel
+// SendResultAndDelErrorChan deletes an ssntp.Error from the SsntpTestServer error channel
 func (server *SsntpTestServer) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
 	server.ErrorChansLock.Lock()
 	defer server.ErrorChansLock.Unlock()
 	c, ok := server.ErrorChans[error]
 	if ok {
 		delete(server.ErrorChans, error)
+		c <- result
+		close(c)
+	}
+}
+
+// AddStatusChan adds an ssntp.Status to the SsntpTestServer status channel
+func (server *SsntpTestServer) AddStatusChan(status ssntp.Status) *chan Result {
+	c := make(chan Result)
+
+	server.StatusChansLock.Lock()
+	server.StatusChans[status] = c
+	server.StatusChansLock.Unlock()
+
+	return &c
+}
+
+// GetStatusChanResult gets a Result from the SsntpTestServer status channel
+func (server *SsntpTestServer) GetStatusChanResult(c *chan Result, status ssntp.Status) (result Result, err error) {
+	select {
+	case result = <-*c:
+		if result.Err != nil {
+			err = fmt.Errorf("Server error handling %s status: %s\n", status, result.Err)
+		}
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("Timeout waiting for server %s status result\n", status)
+	}
+
+	return result, err
+}
+
+// SendResultAndDelStatusChan deletes an ssntp.Status from the SsntpTestServer status channel
+func (server *SsntpTestServer) SendResultAndDelStatusChan(error ssntp.Status, result Result) {
+	server.StatusChansLock.Lock()
+	defer server.StatusChansLock.Unlock()
+	c, ok := server.StatusChans[error]
+	if ok {
+		delete(server.StatusChans, error)
 		c <- result
 		close(c)
 	}
@@ -197,6 +236,16 @@ func (server *SsntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 
 // StatusNotify is an SSNTP callback stub for SsntpTestServer
 func (server *SsntpTestServer) StatusNotify(uuid string, status ssntp.Status, frame *ssntp.Frame) {
+	var result Result
+
+	switch status {
+	case ssntp.READY:
+		fmt.Printf("server received READY from node %s\n", uuid)
+	default:
+		fmt.Printf("server unhandled status frame from node %s\n", uuid)
+	}
+
+	server.SendResultAndDelStatusChan(status, result)
 }
 
 // CommandNotify implements an SSNTP CommandNotify callback for SsntpTestServer
@@ -481,6 +530,9 @@ func StartTestServer(server *SsntpTestServer) {
 
 	server.ErrorChans = make(map[ssntp.Error]chan Result)
 	server.ErrorChansLock = &sync.Mutex{}
+
+	server.StatusChans = make(map[ssntp.Status]chan Result)
+	server.StatusChansLock = &sync.Mutex{}
 
 	server.NetClients = make(map[string]bool)
 	server.NetClientsLock = &sync.RWMutex{}
