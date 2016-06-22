@@ -577,13 +577,13 @@ func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	workloads, err := context.ds.GetWorkloads()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -602,7 +602,7 @@ func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(flavors)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -617,13 +617,13 @@ func listFlavorsDetails(w http.ResponseWriter, r *http.Request, context *control
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	workloads, err := context.ds.GetWorkloads()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -638,7 +638,7 @@ func listFlavorsDetails(w http.ResponseWriter, r *http.Request, context *control
 
 	b, err := json.Marshal(flavors)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -654,19 +654,19 @@ func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controll
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	workload, err := context.ds.GetWorkload(workloadID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Workload not found")
 		return
 	}
 
 	details, err := buildFlavorDetails(workload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -674,7 +674,7 @@ func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controll
 
 	b, err := json.Marshal(flavor)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
