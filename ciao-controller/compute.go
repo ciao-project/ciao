@@ -1129,7 +1129,7 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -1137,7 +1137,7 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	nodeSummary, err := context.ds.GetNodeSummary()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1163,7 +1163,7 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := pager.nextPage(none, "", r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1177,7 +1177,7 @@ func nodesSummary(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -1200,7 +1200,7 @@ func nodesSummary(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(nodesStatus)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1215,7 +1215,7 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -1223,7 +1223,7 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 
 	instances, err := context.ds.GetAllInstancesByNode(nodeID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instances could not be found in node")
 		return
 	}
 
@@ -1245,7 +1245,7 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 
 	b, err := pager.nextPage(none, "", r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
