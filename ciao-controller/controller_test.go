@@ -28,8 +28,8 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/01org/ciao/testutil"
-	"github.com/docker/distribution/uuid"
 )
 
 func addTestTenant() (tenant *types.Tenant, err error) {

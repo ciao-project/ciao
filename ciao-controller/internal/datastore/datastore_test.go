@@ -29,7 +29,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/ssntp/uuid"
 )
 
 func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {

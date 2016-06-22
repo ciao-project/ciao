@@ -31,7 +31,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 )
 

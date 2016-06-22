@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/payloads"
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/ssntp/uuid"
 )
 
 // TraceConfig is the SSNTP tracing configuration to be used

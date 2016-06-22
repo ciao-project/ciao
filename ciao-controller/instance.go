@@ -24,7 +24,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 )
