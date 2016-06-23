@@ -18,6 +18,11 @@ package uuid
 
 import "testing"
 
+// Test UUID parsing and string conversation.
+//
+// This test simply converts a set of strings to UUIDs and back again.
+//
+// The original strings and the strings generated from the UUIDs match.
 func TestUUID(t *testing.T) {
 	testUUIDs := []string{
 		"f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
@@ -41,6 +46,13 @@ func TestUUID(t *testing.T) {
 	}
 }
 
+// Test UUID generation.
+//
+// This test generates 100 new UUIDs and then verifies that those UUIDs
+// can be parsed.
+//
+// The UUIDs are generated correctly, their version number is correct,
+// and they can be parsed.
 func TestGenUUID(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		u := Generate()
