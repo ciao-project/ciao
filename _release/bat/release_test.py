@@ -348,7 +348,7 @@ def get_instances():
     Returns:
         A list of dictionary representations of an instance
     """
-    args = ['ciao-cli', 'instance', 'list']
+    args = ['ciao-cli', 'instance', 'list', '-detail']
 
     instances = []
 
