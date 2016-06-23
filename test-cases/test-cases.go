@@ -74,6 +74,8 @@ type TestInfo struct {
 
 	// TimeTaken is a description of the time taken to run the test case.
 	TimeTaken string
+
+	logs []string
 }
 
 // PackageTests contains information about the tests that have been executed for
@@ -92,6 +94,7 @@ type PackageTests struct {
 type testResults struct {
 	result    string
 	timeTaken string
+	logs      []string
 }
 
 type colouredRow struct {
@@ -271,6 +274,8 @@ func findTestFiles(packs []string) ([]PackageInfo, error) {
 }
 
 func dumpErrorOutput(errorOutput *bytes.Buffer) {
+	fmt.Fprintln(os.Stderr, "Output from stderr")
+	fmt.Fprintln(os.Stderr, "------------------")
 	scanner := bufio.NewScanner(errorOutput)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -279,6 +284,8 @@ func dumpErrorOutput(errorOutput *bytes.Buffer) {
 }
 
 func dumpColourErrorOutput(errorOutput *bytes.Buffer) {
+	fmt.Fprintln(os.Stderr, "Output from stderr")
+	fmt.Fprintln(os.Stderr, "------------------")
 	scanner := bufio.NewScanner(errorOutput)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -288,9 +295,48 @@ func dumpColourErrorOutput(errorOutput *bytes.Buffer) {
 	fmt.Fprintf(os.Stderr, "%c[%dm\n", 0x1b, 0)
 }
 
+func parseTestOutput(output bytes.Buffer, results map[string]*testResults) string {
+	var coverage string
+
+	scanner := bufio.NewScanner(&output)
+	key := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		stripped := strings.TrimSpace(line)
+		if strings.HasPrefix(stripped, "PASS") || strings.HasPrefix(stripped, "FAIL") ||
+			strings.HasPrefix(stripped, "=== RUN") {
+			key = ""
+			continue
+		}
+
+		matches := resultRegexp.FindStringSubmatch(line)
+		if matches != nil && len(matches) == 4 {
+			key = matches[2]
+			results[key] = &testResults{
+				result:    matches[1],
+				timeTaken: matches[3],
+				logs:      make([]string, 0, 16)}
+			continue
+		}
+
+		if key != "" {
+			results[key].logs = append(results[key].logs, line)
+		}
+
+		if coverage == "" {
+			matches := coverageRegexp.FindStringSubmatch(line)
+			if matches == nil || len(matches) != 2 {
+				continue
+			}
+			coverage = matches[1]
+		}
+	}
+	return coverage
+}
+
 func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffer) (int, error) {
 	var output bytes.Buffer
-	var coverage string
 
 	exitCode := 0
 	results := make(map[string]*testResults)
@@ -309,23 +355,7 @@ func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffe
 	cmd.Stderr = errorOutput
 	err := cmd.Run()
 
-	scanner := bufio.NewScanner(&output)
-	for scanner.Scan() {
-		line := scanner.Text()
-		matches := resultRegexp.FindStringSubmatch(line)
-		if matches != nil && len(matches) == 4 {
-			results[matches[2]] = &testResults{matches[1], matches[3]}
-			continue
-		}
-
-		if coverage == "" {
-			matches := coverageRegexp.FindStringSubmatch(line)
-			if matches == nil || len(matches) != 2 {
-				continue
-			}
-			coverage = matches[1]
-		}
-	}
+	coverage := parseTestOutput(output, results)
 
 	for _, t := range p.Tests {
 		res := results[t.Name]
@@ -340,6 +370,7 @@ func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffe
 				exitCode = 1
 			}
 			t.TimeTaken = res.timeTaken
+			t.logs = res.logs
 		}
 	}
 
@@ -416,7 +447,27 @@ OUTER:
 	}
 }
 
-func generateColourTextReport(tests []*PackageTests) {
+func dumpFailedTestOutput(prefix string, tests []*PackageTests, colourOn, colourOff string) {
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "Logs for failed tests")
+	fmt.Fprintln(os.Stderr, "---------------------")
+	for _, p := range tests {
+		for _, t := range p.Tests {
+			if !t.Pass && len(t.logs) > 0 {
+				fmt.Fprintf(os.Stderr, "%s", colourOff)
+				pkgName := p.Name[len(prefix):]
+				fmt.Fprintf(os.Stderr, "Logs for %s.%s\n", pkgName, t.Name)
+				for _, s := range t.logs {
+					fmt.Fprintf(os.Stderr, "%s%s\n", colourOn, s)
+				}
+			}
+		}
+	}
+}
+
+func generateColourTextReport(tests []*PackageTests, exitCode int) {
+	colourOn := fmt.Sprintf("%c[%dm", 0x1b, 31)
+	colourOff := fmt.Sprintf("%c[%dm", 0x1b, 0)
 	prefix := findCommonPrefix(tests)
 	table := make([]colouredRow, 0, 128)
 	table = append(table, colouredRow{
@@ -434,11 +485,11 @@ func generateColourTextReport(tests []*PackageTests) {
 		for _, t := range p.Tests {
 			row := colouredRow{}
 			if !t.Pass {
-				row.ansiSeq = fmt.Sprintf("%c[%dm", 0x1b, 31)
+				row.ansiSeq = colourOn
 				coloured = true
 			} else if t.Pass && coloured {
 				coloured = false
-				row.ansiSeq = fmt.Sprintf("%c[%dm", 0x1b, 0)
+				row.ansiSeq = colourOff
 			}
 			row.columns = []string{pkgName, t.Name, t.TimeTaken, t.Result}
 			for i := range colWidth {
@@ -463,9 +514,14 @@ func generateColourTextReport(tests []*PackageTests) {
 	if coloured {
 		fmt.Printf("%c[%dm\n", 0x1b, 0)
 	}
+
+	if exitCode != 0 {
+		dumpFailedTestOutput(prefix, tests, colourOn, colourOff)
+		fmt.Println(colourOff)
+	}
 }
 
-func generateTextReport(tests []*PackageTests) {
+func generateTextReport(tests []*PackageTests, exitCode int) {
 	prefix := findCommonPrefix(tests)
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 1, ' ', 0)
@@ -478,7 +534,10 @@ func generateTextReport(tests []*PackageTests) {
 		}
 	}
 	_ = w.Flush()
-	fmt.Println()
+	if exitCode != 0 {
+		dumpFailedTestOutput(prefix, tests, "", "")
+		fmt.Println()
+	}
 }
 
 func createCoverFile() (*os.File, error) {
@@ -585,9 +644,9 @@ func main() {
 
 	if textOutput {
 		if colour {
-			generateColourTextReport(tests)
+			generateColourTextReport(tests, exitCode)
 		} else {
-			generateTextReport(tests)
+			generateTextReport(tests, exitCode)
 		}
 	} else {
 		err = generateHTMLReport(tests)
