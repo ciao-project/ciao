@@ -424,27 +424,30 @@ func generateHTMLReport(tests []*PackageTests) error {
 }
 
 func findCommonPrefix(tests []*PackageTests) string {
-	if len(tests) == 0 {
-		return ""
-	}
-
-	pkgName := tests[0].Name
-OUTER:
-	for {
+	for j := range tests {
+		pkgName := tests[j].Name
 		index := strings.LastIndex(pkgName, "/")
 		if index == -1 {
 			return ""
 		}
-		pkgName := pkgName[:index+1]
+		pkgRoot := pkgName[:index+1]
 
 		var i int
-		for i = 1; i < len(tests); i++ {
-			if !strings.HasPrefix(tests[i].Name, pkgName) {
-				continue OUTER
+		for i = 0; i < len(tests); i++ {
+			if i == j {
+				continue
+			}
+			if !strings.HasPrefix(tests[i].Name, pkgRoot) {
+				break
 			}
 		}
-		return pkgName
+
+		if i == len(tests) {
+			return pkgRoot
+		}
 	}
+
+	return ""
 }
 
 func dumpFailedTestOutput(prefix string, tests []*PackageTests, colourOn, colourOff string) {
