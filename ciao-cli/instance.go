@@ -40,6 +40,7 @@ var instanceCommand = &command{
 		"add":     new(instanceAddCommand),
 		"delete":  new(instanceDeleteCommand),
 		"list":    new(instanceListCommand),
+		"show":    new(instanceShowCommand),
 		"restart": new(instanceRestartCommand),
 		"stop":    new(instanceStopCommand),
 	},
@@ -377,24 +378,73 @@ func (cmd *instanceListCommand) run(args []string) error {
 				fmt.Fprintf(w, "\tN/A")
 				fmt.Fprintf(w, "\tN/A\n")
 			}
-
 			w.Flush()
 		} else {
 			fmt.Printf("Instance #%d\n", i+1)
-			fmt.Printf("\tUUID: %s\n", server.ID)
-			fmt.Printf("\tStatus: %s\n", server.Status)
-			fmt.Printf("\tPrivate IP: %s\n", server.Addresses.Private[0].Addr)
-			fmt.Printf("\tMAC Address: %s\n", server.Addresses.Private[0].OSEXTIPSMACMacAddr)
-			fmt.Printf("\tCN UUID: %s\n", server.HostID)
-			fmt.Printf("\tImage UUID: %s\n", server.Image.ID)
-			fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
-			if server.SSHIP != "" {
-				fmt.Printf("\tSSH IP: %s\n", server.SSHIP)
-				fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
-			}
+			dumpInstance(&server)
 		}
 	}
 	return nil
+}
+
+type instanceShowCommand struct {
+	Flag     flag.FlagSet
+	instance string
+}
+
+func (cmd *instanceShowCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] instance show [flags]
+
+Print detailed information about an instance
+
+The show flags are:
+
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *instanceShowCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.instance, "instance", "", "Instance UUID")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *instanceShowCommand) run(args []string) error {
+	if cmd.instance == "" {
+		errorf("Missing required -instance parameter")
+		cmd.usage()
+	}
+
+	var server payloads.ComputeServer
+	url := buildComputeURL("%s/servers/%s", *tenantID, cmd.instance)
+
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	err = unmarshalHTTPResponse(resp, &server)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	dumpInstance(&server.Server)
+	return nil
+}
+
+func dumpInstance(server *payloads.Server) {
+	fmt.Printf("\tUUID: %s\n", server.ID)
+	fmt.Printf("\tStatus: %s\n", server.Status)
+	fmt.Printf("\tPrivate IP: %s\n", server.Addresses.Private[0].Addr)
+	fmt.Printf("\tMAC Address: %s\n", server.Addresses.Private[0].OSEXTIPSMACMacAddr)
+	fmt.Printf("\tCN UUID: %s\n", server.HostID)
+	fmt.Printf("\tImage UUID: %s\n", server.Image.ID)
+	fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
+	if server.SSHIP != "" {
+		fmt.Printf("\tSSH IP: %s\n", server.SSHIP)
+		fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
+	}
 }
 
 func listNodeInstances(node string) error {
