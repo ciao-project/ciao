@@ -1391,13 +1391,13 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	events := payloads.NewCiaoEvents()
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	logs, err := context.ds.GetEventLog()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1417,7 +1417,7 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(events)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1427,13 +1427,13 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 
 func clearEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	err := context.ds.ClearLog()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
