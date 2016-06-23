@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/configuration"
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/ssntp/uuid"
 )
 
 // ServerNotifier is the SSNTP server notification interface.

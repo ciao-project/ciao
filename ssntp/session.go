@@ -21,7 +21,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/docker/distribution/uuid"
+	"github.com/01org/ciao/ssntp/uuid"
 )
 
 func setReadTimeout(conn net.Conn) {

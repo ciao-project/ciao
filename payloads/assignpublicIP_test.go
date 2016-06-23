@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	. "github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/01org/ciao/testutil"
-	"github.com/docker/distribution/uuid"
 	"gopkg.in/yaml.v2"
 )
 
