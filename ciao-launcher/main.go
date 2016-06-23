@@ -95,8 +95,8 @@ var simulate bool
 var maxInstances = int(math.MaxInt32)
 
 func init() {
-	flag.StringVar(&serverCertPath, "cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "Client certificate")
-	flag.StringVar(&clientCertPath, "cert", "/etc/pki/ciao/cert-client-localhost.pem", "CA certificate")
+	flag.StringVar(&serverCertPath, "cacert", "", "Client certificate")
+	flag.StringVar(&clientCertPath, "cert", "", "CA certificate")
 	flag.Var(&networking, "network", "Can be none, cn (compute node) or nn (network node)")
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")

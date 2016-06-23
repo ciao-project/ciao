@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -710,6 +711,9 @@ const defaultServerCert = "/etc/pki/ciao/cert-Server-localhost.pem"
 const defaultClientCert = "/etc/pki/ciao/client.pem"
 const defaultSchedulerCert = "/etc/pki/ciao/cert-Scheduler-localhost.pem"
 
+// Default CIAO certs path
+const ciaoCertsPath = "etc/pki/ciao/"
+
 // RoleToDefaultCertName returns default certificate names for each SSNTP role
 func RoleToDefaultCertName(role Role) string {
 	switch role {
@@ -1151,13 +1155,75 @@ func (config *Config) port() uint32 {
 	return port
 }
 
-func (config *Config) setCerts() {
-	if config.CAcert == "" {
-		config.CAcert = DefaultCACert
+func loadCertificate(certPath string) (*x509.Certificate, error) {
+	certPEM, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return nil, fmt.Errorf("Failed to parse certificate PEM")
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %v", err)
+	}
+	return cert, nil
+}
+
+func getDefaultCertificate() (cacert, cert string, err error) {
+	certs := []string{}
+
+	files, err := filepath.Glob(ciaoCertsPath)
+	if err != nil {
+		return "", "", err
 	}
 
-	if config.Cert == "" {
-		config.Cert = defaultClientCert
+certsLoop:
+	for _, file := range files {
+		if cacert == "" {
+			cert, err := loadCertificate(file)
+			if err != nil {
+				return "", "", err
+			}
+			if cert.IsCA == true {
+				cacert = file
+				continue certsLoop
+			}
+		}
+		certs = append(certs, file)
+	}
+
+	if len(certs) > 1 {
+		return "", "", fmt.Errorf("More than one cert files at: %s", ciaoCertsPath)
+	} else if len(certs) == 0 {
+		return "", "", fmt.Errorf("%s Certificates are not found", ciaoCertsPath)
+	}
+
+	certPEM, err := ioutil.ReadFile(cacert)
+	certPool := x509.NewCertPool()
+	certPool.AppendCertsFromPEM(certPEM)
+	vOpts := x509.VerifyOptions{Roots: certPool}
+
+	clientCert, err := loadCertificate(certs[0])
+	if err != nil {
+		return "", "", err
+	}
+	_, err = clientCert.Verify(vOpts)
+	if err != nil {
+		return "", "", err
+	}
+
+	return cacert, certs[0], nil
+}
+
+func (config *Config) setCerts() {
+	var err error
+	if config.CAcert == "" {
+		config.CAcert, config.Cert, err = getDefaultCertificate()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
