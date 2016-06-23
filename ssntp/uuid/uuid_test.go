@@ -69,3 +69,27 @@ func TestGenUUID(t *testing.T) {
 		}
 	}
 }
+
+// Test uuid.Parse on invalid input.
+//
+// This test attempts to parse a set of invalid UUIDs.
+//
+// uuid.Parse should return an error for each invalid UUID.
+func TestBadUUID(t *testing.T) {
+	badTestUUIDs := []string{
+		"",
+		"48d9-45d3-8b44-f973e4f35e48",
+		"69e8426--ed01-4738-b15f-b47de06b62e7",
+		"e35ed972-46c-4aad-a1e7-ef103ae079a2",
+		"sba04826-62a5-48bd-876f-9119667b1487",
+		"ca957444fa4611e594f938607786d9ec0000",
+		"ab68111c-03a6-11e6-87de-001320fb6e31a",
+	}
+
+	for _, s := range badTestUUIDs {
+		_, err := Parse(s)
+		if err == nil {
+			t.Fatalf("uuid.Parse should fail to parse %s", s)
+		}
+	}
+}
