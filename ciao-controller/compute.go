@@ -1259,13 +1259,13 @@ func listCNCIs(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	cncis, err := context.ds.GetTenantCNCISummary("")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1296,7 +1296,7 @@ func listCNCIs(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(ciaoCNCIs)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1312,13 +1312,13 @@ func listCNCIDetails(w http.ResponseWriter, r *http.Request, context *controller
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	cncis, err := context.ds.GetTenantCNCISummary(cnciID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "CNCI could not be found")
 		return
 	}
 
@@ -1344,7 +1344,7 @@ func listCNCIDetails(w http.ResponseWriter, r *http.Request, context *controller
 
 	b, err := json.Marshal(ciaoCNCI)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
