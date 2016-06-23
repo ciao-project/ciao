@@ -1356,13 +1356,13 @@ func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
 	var traces payloads.CiaoTracesSummary
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	summaries, err := context.ds.GetBatchFrameSummary()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1376,7 +1376,7 @@ func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(traces)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1446,13 +1446,13 @@ func traceData(w http.ResponseWriter, r *http.Request, context *controller) {
 	var traceData payloads.CiaoTraceData
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	batchStats, err := context.ds.GetBatchFrameStatistics(label)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Could not found trace with label")
 		return
 	}
 
@@ -1470,7 +1470,7 @@ func traceData(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(traceData)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
