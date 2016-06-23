@@ -782,8 +782,8 @@ func TestMain(m *testing.M) {
 
 	config := &ssntp.Config{
 		URI:    "localhost",
-		CAcert: *caCert,
-		Cert:   *cert,
+		CAcert: ssntp.DefaultCACert,
+		Cert:   ssntp.RoleToDefaultCertName(ssntp.Controller),
 	}
 
 	context.client, err = newSSNTPClient(context, config)
