@@ -275,7 +275,7 @@ fi
 retry=0
 until [ $retry -ge 6 ]
 do
-	ssh_ip=$("$ciao_gobin"/ciao-cli instance list --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
+	ssh_ip=$("$ciao_gobin"/ciao-cli instance list --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --detail |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
 
 	if [ "$ssh_ip" == "" ] 
 	then
