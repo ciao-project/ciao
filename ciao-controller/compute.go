@@ -505,7 +505,7 @@ func showServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 
 	b, err := json.Marshal(server)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -521,25 +521,25 @@ func deleteServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	/* First check that the instance belongs to this tenant */
 	i, err := context.ds.GetInstance(instance)
 	if err != nil {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance could not be found")
 		return
 	}
 
 	if i.TenantID != tenant {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance does not belong to tenant")
 		return
 	}
 
 	err = context.deleteInstance(instance)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -577,13 +577,13 @@ func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	workloads, err := context.ds.GetWorkloads()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -602,7 +602,7 @@ func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(flavors)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -617,13 +617,13 @@ func listFlavorsDetails(w http.ResponseWriter, r *http.Request, context *control
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	workloads, err := context.ds.GetWorkloads()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -638,7 +638,7 @@ func listFlavorsDetails(w http.ResponseWriter, r *http.Request, context *control
 
 	b, err := json.Marshal(flavors)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -654,19 +654,19 @@ func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controll
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	workload, err := context.ds.GetWorkload(workloadID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Workload not found")
 		return
 	}
 
 	details, err := buildFlavorDetails(workload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -674,7 +674,7 @@ func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controll
 
 	b, err := json.Marshal(flavor)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -697,13 +697,13 @@ func listTenantQuotas(w http.ResponseWriter, r *http.Request, context *controlle
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	t, err := context.ds.GetTenant(tenant)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Tenant could not be found")
 		return
 	}
 
@@ -711,20 +711,20 @@ func listTenantQuotas(w http.ResponseWriter, r *http.Request, context *controlle
 		if *noNetwork {
 			_, err := context.ds.AddTenant(tenant)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				returnErrorCode(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		} else {
 			err = context.addTenant(tenant)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				returnErrorCode(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		}
 
 		t, err = context.ds.GetTenant(tenant)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			returnErrorCode(w, http.StatusNotFound, "Tenant could not be found")
 			return
 		}
 	}
@@ -755,7 +755,7 @@ func listTenantQuotas(w http.ResponseWriter, r *http.Request, context *controlle
 
 	b, err := json.Marshal(tenantResource)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -792,13 +792,13 @@ func listTenantResources(w http.ResponseWriter, r *http.Request, context *contro
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	start, end, err := tenantQueryParse(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -807,13 +807,13 @@ func listTenantResources(w http.ResponseWriter, r *http.Request, context *contro
 
 	usage.Usages, err = context.ds.GetTenantUsage(tenant, start, end)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	b, err := json.Marshal(usage)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -831,7 +831,7 @@ func listServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -842,7 +842,7 @@ func listServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 	}
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -862,7 +862,7 @@ func listServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 
 	b, err := pager.nextPage(filterType, filter, r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -879,7 +879,7 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequestBody(r, true)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -887,13 +887,13 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusBadRequest, "Service cannot read Request Body")
 		return
 	}
 
 	err = json.Unmarshal(body, &server)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -913,14 +913,14 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 	instances, err := context.startWorkload(server.Server.Workload, tenant, nInstances, trace, label)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	for _, instance := range instances {
 		server, err := instanceToServer(context, instance)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			returnErrorCode(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		servers.Servers = append(servers.Servers, server)
@@ -946,7 +946,7 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(builtServers)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -965,7 +965,7 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 	dumpRequestBody(r, true)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -973,13 +973,13 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusBadRequest, "Service cannot read Request Body")
 		return
 	}
 
 	err = json.Unmarshal(body, &servers)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -993,7 +993,7 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 		actionFunc = context.deleteInstance
 		statusFilter = ""
 	} else {
-		http.Error(w, "Unsupported action", http.StatusServiceUnavailable)
+		returnErrorCode(w, http.StatusServiceUnavailable, "Unsupported action")
 		return
 	}
 
@@ -1009,7 +1009,7 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 		/* We want to act on all relevant instances */
 		instances, err := context.ds.GetAllInstancesFromTenant(tenant)
 		if err != nil {
-			http.Error(w, "No instances for tenant", http.StatusInternalServerError)
+			returnErrorCode(w, http.StatusNotFound, "No instances for tenant")
 			return
 		}
 
@@ -1037,19 +1037,19 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequestBody(r, true)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	/* First check that the instance belongs to this tenant */
 	i, err := context.ds.GetInstance(instance)
 	if err != nil {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance could not be found")
 		return
 	}
 
 	if i.TenantID != tenant {
-		http.Error(w, "Instance not available", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instance does not belong to tenant")
 		return
 	}
 
@@ -1057,7 +1057,7 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusBadRequest, "Service cannot read Request Body")
 		return
 	}
 
@@ -1068,7 +1068,7 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	} else if strings.Contains(bodyString, "os-stop") {
 		action = computeActionStop
 	} else {
-		http.Error(w, "Unsupported action", http.StatusServiceUnavailable)
+		returnErrorCode(w, http.StatusServiceUnavailable, "Unsupported action")
 		return
 	}
 
@@ -1080,7 +1080,7 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	}
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1093,13 +1093,13 @@ func listTenants(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Unauthorized token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	tenants, err := context.ds.GetAllTenants()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1117,7 +1117,7 @@ func listTenants(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(computeTenants)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1129,7 +1129,7 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -1137,7 +1137,7 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	nodeSummary, err := context.ds.GetNodeSummary()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1163,7 +1163,7 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := pager.nextPage(none, "", r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1177,7 +1177,7 @@ func nodesSummary(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -1200,7 +1200,7 @@ func nodesSummary(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(nodesStatus)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1215,7 +1215,7 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -1223,7 +1223,7 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 
 	instances, err := context.ds.GetAllInstancesByNode(nodeID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Instances could not be found in node")
 		return
 	}
 
@@ -1245,7 +1245,7 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 
 	b, err := pager.nextPage(none, "", r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1259,13 +1259,13 @@ func listCNCIs(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	cncis, err := context.ds.GetTenantCNCISummary("")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1296,7 +1296,7 @@ func listCNCIs(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(ciaoCNCIs)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1312,13 +1312,13 @@ func listCNCIDetails(w http.ResponseWriter, r *http.Request, context *controller
 	dumpRequest(r)
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	cncis, err := context.ds.GetTenantCNCISummary(cnciID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "CNCI could not be found")
 		return
 	}
 
@@ -1344,7 +1344,7 @@ func listCNCIDetails(w http.ResponseWriter, r *http.Request, context *controller
 
 	b, err := json.Marshal(ciaoCNCI)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1356,13 +1356,13 @@ func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
 	var traces payloads.CiaoTracesSummary
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	summaries, err := context.ds.GetBatchFrameSummary()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1376,7 +1376,7 @@ func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(traces)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1391,13 +1391,13 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	events := payloads.NewCiaoEvents()
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	logs, err := context.ds.GetEventLog()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1417,7 +1417,7 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(events)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1427,13 +1427,13 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 
 func clearEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	err := context.ds.ClearLog()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1446,13 +1446,13 @@ func traceData(w http.ResponseWriter, r *http.Request, context *controller) {
 	var traceData payloads.CiaoTraceData
 
 	if validateToken(context, r) == false {
-		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
 	batchStats, err := context.ds.GetBatchFrameStatistics(label)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusNotFound, "Could not found trace with label")
 		return
 	}
 
@@ -1470,7 +1470,7 @@ func traceData(w http.ResponseWriter, r *http.Request, context *controller) {
 
 	b, err := json.Marshal(traceData)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		returnErrorCode(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
