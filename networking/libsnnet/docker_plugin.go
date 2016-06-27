@@ -33,7 +33,6 @@ import (
 	ipamapi "github.com/docker/libnetwork/ipams/remote/api"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/tylerb/graceful"
 )
 
 /*
@@ -194,9 +193,11 @@ type DockerPlugin struct {
 	//This is needed as the Docker Daemon and ciao have
 	//different life cycles and UUIDs
 	*mux.Router
-	*graceful.Server
+	*http.Server
 	DockerEpMap
 	DockerNwMap
+	wg       sync.WaitGroup
+	listener net.Listener
 }
 
 func sendResponse(resp interface{}, w http.ResponseWriter) {
@@ -792,22 +793,24 @@ func (d *DockerPlugin) Init() error {
 // The DockerPlugin has to be started prior to the launch of the
 // Docker Daemon
 func (d *DockerPlugin) Start() error {
-
-	d.Server = &graceful.Server{
-		Timeout: DockerPluginCfg.Timeout,
-
-		Server: &http.Server{
-			Addr:    DockerPluginCfg.Addr,
-			Handler: d.Router,
-		},
+	var err error
+	d.listener, err = net.Listen("tcp", DockerPluginCfg.Addr)
+	if err != nil {
+		return fmt.Errorf("Unable to create listener: %v\n", err)
 	}
 
+	d.Server = &http.Server{
+		Handler: d.Router,
+	}
+
+	d.wg.Add(1)
 	go func() {
 		glog.Infof("Starting HTTP Server")
-		err := d.Server.ListenAndServe()
+		err := d.Server.Serve(d.listener)
 		if err != nil {
 			glog.Errorf("Unable to start HTTP Server [%v]", err)
 		}
+		d.wg.Done()
 	}()
 	return nil
 }
@@ -819,8 +822,11 @@ func (d *DockerPlugin) Start() error {
 //retry mechanism. Hence if the docker plugin is restarted
 //within the retry windows, the docker APIs will still succeed
 func (d *DockerPlugin) Stop() error {
-	//TODO: To be implemented
-	d.Server.Stop(DockerPluginCfg.Timeout)
+	if err := d.listener.Close(); err != nil {
+		return fmt.Errorf("Unable to shutdown http server: %v", err)
+	}
+	d.wg.Wait()
+	glog.Info("Docker plugin has shut down")
 	return nil
 }
 

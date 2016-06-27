@@ -74,11 +74,6 @@
 		"version": "67139b9",
 		"license": "Apache v2.0"
 	},
-	"github.com/tylerb/graceful": {
-		"url": "https://github.com/tylerb/graceful.git",
-		"version": "9a3d423",
-		"license": "MIT"
-	},
 	"github.com/vishvananda/netlink": {
 		"url": "https://github.com/vishvananda/netlink.git",
 		"version": "293adec",
