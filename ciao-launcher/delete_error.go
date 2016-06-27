@@ -17,8 +17,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
@@ -44,45 +42,4 @@ func (de *deleteError) send(conn serverConn, instance string) {
 	if err != nil {
 		glog.Errorf("Unable to send delete_failure: %v", err)
 	}
-}
-
-func deleteVnic(instanceDir string, conn serverConn) {
-	cfg, err := loadVMConfig(instanceDir)
-	if err != nil {
-		glog.Warningf("Unable to load instance state %s: %s", instanceDir, err)
-		return
-	}
-
-	vnicCfg, err := createVnicCfg(cfg)
-	if err != nil {
-		glog.Warningf("Unable to create vnicCfg: %s", err)
-		return
-	}
-
-	err = destroyVnic(conn, vnicCfg)
-	if err != nil {
-		glog.Warningf("Unable to destroy vnic: %s", err)
-	}
-}
-
-func processDelete(vm virtualizer, instanceDir string, conn serverConn, running ovsRunningState) error {
-
-	// We have to ignore these errors for the time being.  There's no way to distinguish
-	// between the various sort of errors that docker can return.  We could be getting
-	// a container not found error, if someone had deleted the container manually.  In this
-	// case we definitely want to delete the instance.
-
-	_ = vm.deleteImage()
-
-	if networking.Enabled() && running != ovsPending {
-		glog.Info("Deleting Vnic")
-		deleteVnic(instanceDir, conn)
-	}
-
-	err := os.RemoveAll(instanceDir)
-	if err != nil {
-		glog.Warningf("Unable to remove instance dir: %v", err)
-	}
-
-	return err
 }

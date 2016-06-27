@@ -25,14 +25,8 @@ import (
 
 	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
 )
-
-type startError struct {
-	err  error
-	code payloads.StartFailureReason
-}
 
 type startTimes struct {
 	startStamp        time.Time
@@ -40,23 +34,6 @@ type startTimes struct {
 	networkStamp      time.Time
 	creationStamp     time.Time
 	runStamp          time.Time
-}
-
-func (se *startError) send(conn serverConn, instance string) {
-	if !conn.isConnected() {
-		return
-	}
-
-	payload, err := generateStartError(instance, se)
-	if err != nil {
-		glog.Errorf("Unable to generate payload for start_failure: %v", err)
-		return
-	}
-
-	_, err = conn.SendError(ssntp.StartFailure, payload)
-	if err != nil {
-		glog.Errorf("Unable to send start_failure: %v", err)
-	}
 }
 
 func ensureBackingImage(vm virtualizer) error {

@@ -17,7 +17,6 @@
 package main
 
 import (
-	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
@@ -43,29 +42,4 @@ func (re *restartError) send(conn serverConn, instance string) {
 	if err != nil {
 		glog.Errorf("Unable to send restart_failure: %v", err)
 	}
-}
-
-func processRestart(instanceDir string, vm virtualizer, conn serverConn, cfg *vmConfig) *restartError {
-	var vnicName string
-	var vnicCfg *libsnnet.VnicConfig
-	var err error
-
-	if networking.Enabled() {
-		vnicCfg, err = createVnicCfg(cfg)
-		if err != nil {
-			glog.Errorf("Could not create VnicCFG: %s", err)
-			return &restartError{err, payloads.RestartInstanceCorrupt}
-		}
-		vnicName, _, err = createVnic(conn, vnicCfg)
-		if err != nil {
-			return &restartError{err, payloads.RestartNetworkFailure}
-		}
-	}
-
-	err = vm.startVM(vnicName, getNodeIPAddress())
-	if err != nil {
-		return &restartError{err, payloads.RestartLaunchFailure}
-	}
-
-	return nil
 }
