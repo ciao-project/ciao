@@ -1196,7 +1196,7 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 	)
 	SELECT	instances.id,
 		instances.tenant_id,
-		IFNULL(latest.state, "pending") AS state,
+		IFNULL(latest.state, "` + payloads.ComputeStatusPending + `") AS state,
 		workload_id,
 		IFNULL(latest.ssh_ip, "Not Assigned") as ssh_ip,
 		latest.ssh_port as ssh_port,
@@ -1289,7 +1289,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 	)
 	SELECT	instances.id,
 		instances.tenant_id,
-		IFNULL(latest.state, "pending") AS state,
+		IFNULL(latest.state, "` + payloads.ComputeStatusPending + `") AS state,
 		IFNULL(latest.ssh_ip, "Not Assigned") AS ssh_ip,
 		latest.ssh_port AS ssh_port,
 		workload_id,
@@ -1628,7 +1628,7 @@ WITH instances AS
 		GROUP BY instance_id
 	)
 	SELECT db.instances.id AS instance_id,
-	       IFNULL(latest.state, "pending") AS state,
+	       IFNULL(latest.state, "` + payloads.ComputeStatusPending + `") AS state,
 	       IFNULL(latest.node_id, "Not Assigned") AS node_id
 	FROM db.instances
 	LEFT JOIN latest
@@ -1646,7 +1646,7 @@ total_running AS
 	SELECT	instances.node_id AS node_id,
 		count(instances.instance_id) AS total
 	FROM instances
-	WHERE state='running'
+	WHERE state='` + payloads.ComputeStatusRunning + `'
 	GROUP BY node_id
 ),
 total_pending AS
@@ -1654,7 +1654,7 @@ total_pending AS
 	SELECT	instances.node_id AS node_id,
 		count(instances.instance_id) AS total
 	FROM instances
-	WHERE state='pending'
+	WHERE state='` + payloads.ComputeStatusPending + `'
 	GROUP BY node_id
 ),
 total_exited AS
@@ -1662,7 +1662,7 @@ total_exited AS
 	SELECT	instances.node_id,
 		count(instances.instance_id) AS total
 	FROM instances
-	WHERE state='exited'
+	WHERE state='` + payloads.ComputeStatusStopped + `'
 	GROUP BY node_id
 )
 SELECT	total_instances.node_id,

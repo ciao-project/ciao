@@ -128,7 +128,7 @@ func addTestInstanceStats(t *testing.T) ([]*types.Instance, payloads.Stat) {
 	for i := range instances {
 		stat := payloads.InstanceStat{
 			InstanceUUID:  instances[i].ID,
-			State:         "running",
+			State:         payloads.ComputeStatusRunning,
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
 			MemoryUsageMB: 0,
@@ -512,7 +512,7 @@ func TestGetInstance(t *testing.T) {
 		t.Error("retrieved incorrect NodeID")
 	}
 
-	if instance.State != "running" {
+	if instance.State != payloads.ComputeStatusRunning {
 		t.Error("retrieved incorrect state")
 	}
 }
@@ -547,7 +547,7 @@ func TestHandleStats(t *testing.T) {
 	for i := range instances {
 		stat := payloads.InstanceStat{
 			InstanceUUID:  instances[i].ID,
-			State:         "running",
+			State:         payloads.ComputeStatusRunning,
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
 			MemoryUsageMB: 0,
@@ -587,7 +587,7 @@ func TestHandleStats(t *testing.T) {
 			t.Error("Incorrect NodeID in stats table")
 		}
 
-		if instance.State != "running" {
+		if instance.State != payloads.ComputeStatusRunning {
 			t.Error("state not updated")
 		}
 	}
@@ -623,7 +623,7 @@ func TestGetInstanceLastStats(t *testing.T) {
 	for i := range instances {
 		stat := payloads.InstanceStat{
 			InstanceUUID:  instances[i].ID,
-			State:         "running",
+			State:         payloads.ComputeStatusRunning,
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
 			MemoryUsageMB: 0,
@@ -688,7 +688,7 @@ func TestGetNodeLastStats(t *testing.T) {
 	for i := range instances {
 		stat := payloads.InstanceStat{
 			InstanceUUID:  instances[i].ID,
-			State:         "running",
+			State:         payloads.ComputeStatusRunning,
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
 			MemoryUsageMB: 0,
@@ -870,7 +870,7 @@ func TestAddInstanceStats(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		stat := payloads.InstanceStat{
 			InstanceUUID:  uuid.Generate().String(),
-			State:         "running",
+			State:         payloads.ComputeStatusRunning,
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
 			MemoryUsageMB: 0,
@@ -894,7 +894,7 @@ func TestAddNodeStats(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		stat := payloads.InstanceStat{
 			InstanceUUID:  uuid.Generate().String(),
-			State:         "running",
+			State:         payloads.ComputeStatusRunning,
 			SSHIP:         "192.168.0.1",
 			SSHPort:       34567,
 			MemoryUsageMB: 0,
