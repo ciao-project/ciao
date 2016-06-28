@@ -449,6 +449,12 @@ func instanceToServer(context *controller, instance *types.Instance) (payloads.S
 		SSHPort: instance.SSHPort,
 	}
 
+	// OpenStack compatibility: expected status for a running
+	// instance is 'active and not 'running'.
+	if server.Status == "running" {
+		server.Status = "active"
+	}
+
 	return server, nil
 }
 
@@ -496,11 +502,6 @@ func showServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 	if err != nil {
 		returnErrorCode(w, http.StatusNotFound, "Instance could not be found")
 		return
-	}
-
-	// OpenStack compatibility: expect active status not running for API Call
-	if server.Server.Status == "running" {
-		server.Server.Status = "active"
 	}
 
 	b, err := json.Marshal(server)
