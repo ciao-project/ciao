@@ -107,15 +107,15 @@ const (
 	// instance is in the process of being created, or ciao-launcher itself
 	// has just started and is still gathering information about the
 	// existing instances.
-	Pending = "pending"
+	Pending = ComputeStatusPending
 
 	// Running indicates an instance is running
-	Running = "running"
+	Running = ComputeStatusRunning
 
 	// Exited indicates that an instance has been successfully created but
 	// is not currently running, either because it failed to start or was
 	// explicitly stopped by a STOP command or perhaps by a CN reboot.
-	Exited = "exited"
+	Exited = ComputeStatusStopped
 	// ExitFailed is not currently used
 	ExitFailed = "exit_failed"
 	// ExitPaused is not currently used
