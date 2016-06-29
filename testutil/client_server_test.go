@@ -61,11 +61,11 @@ func TestStart(t *testing.T) {
 
 	go controller.Ssntp.SendCommand(ssntp.START, []byte(StartYaml))
 
-	_, err := agent.GetCmdChanResult(agentCh, ssntp.START)
+	_, err := server.GetCmdChanResult(serverCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = server.GetCmdChanResult(serverCh, ssntp.START)
+	_, err = agent.GetCmdChanResult(agentCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
