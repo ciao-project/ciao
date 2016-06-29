@@ -62,9 +62,11 @@ func (f *filter) String() string {
 }
 
 func (f *filter) Set(val string) error {
-	if val != "none" && val != "exited" && val != "pending" &&
-		val != "running" {
-		return fmt.Errorf("exited, pending, running expected")
+	if val != "none" &&
+		val != payloads.ComputeStatusStopped &&
+		val != payloads.ComputeStatusPending &&
+		val != payloads.ComputeStatusRunning {
+		return fmt.Errorf("exited, pending, active expected")
 	}
 	*f = filter(val)
 
