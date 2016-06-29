@@ -64,7 +64,7 @@ const (
 
 	// ComputeStatusRunning is a filter that used to select running
 	// instances in requests to the controller.
-	ComputeStatusRunning = "running"
+	ComputeStatusRunning = "active"
 
 	// ComputeStatusStopped is a filter that used to select exited
 	// instances in requests to the controller.

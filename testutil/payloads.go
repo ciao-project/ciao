@@ -465,14 +465,14 @@ networks:
   mac: 02:00:8c:ba:f9:45
 instances:
 - instance_uuid: fe2970fa-7b36-460b-8b79-9eb4745e62f2
-  state: running
+  state: active
   ssh_ip: ""
   ssh_port: 0
   memory_usage_mb: 40
   disk_usage_mb: 2
   cpu_usage: 90
 - instance_uuid: cbda5bd8-33bd-4d39-9f52-ace8c9f0b99c
-  state: running
+  state: active
   ssh_ip: 172.168.2.2
   ssh_port: 8768
   memory_usage_mb: 50

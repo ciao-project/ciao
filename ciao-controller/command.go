@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
 	"github.com/golang/glog"
 )
 
@@ -62,7 +63,7 @@ func (c *controller) stopInstance(instanceID string) error {
 		return errors.New("Cannot stop instance not assigned to Node")
 	}
 
-	if i.State == "pending" {
+	if i.State == payloads.ComputeStatusPending {
 		return errors.New("You may not stop a pending instance")
 	}
 
