@@ -340,14 +340,8 @@ func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 	payload := frame.Payload
 
 	switch event {
-	case ssntp.NodeConnected:
-		var connectEvent payloads.NodeConnected
-
-		result.Err = yaml.Unmarshal(payload, &connectEvent)
-	case ssntp.NodeDisconnected:
-		var disconnectEvent payloads.NodeDisconnected
-
-		result.Err = yaml.Unmarshal(payload, &disconnectEvent)
+	// case ssntp.NodeConnected:	handled by ConnectNotify()
+	// case ssntp.NodeDisconnected:	handled by DisconnectNotify()
 	case ssntp.TraceReport:
 		var traceEvent payloads.Trace
 
