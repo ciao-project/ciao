@@ -37,6 +37,7 @@ var server *ssntpSchedulerServer
 var controller *testutil.SsntpTestController
 var agent *testutil.SsntpTestClient
 var netAgent *testutil.SsntpTestClient
+var cnciAgent *testutil.SsntpTestClient
 
 // these status sends need to come early so the agents are marked online
 // for later ssntp.START's
@@ -93,6 +94,32 @@ func TestSendNetAgentStatus(t *testing.T) {
 		t.Fatalf("netagent node incorrect status: expected %s, got %s", tgtStatus.String(), nn.status.String())
 	}
 	server.nnMutex.Unlock()
+}
+
+func TestCNCIStart(t *testing.T) {
+	netAgentCh := netAgent.AddCmdChan(ssntp.START)
+
+	go controller.Ssntp.SendCommand(ssntp.START, []byte(testutil.CNCIStartYaml))
+
+	_, err := netAgent.GetCmdChanResult(netAgentCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// start CNCI agent
+	cnciAgent, err = testutil.NewSsntpTestClientConnection("CNCI Client", ssntp.CNCIAGENT, testutil.CNCIUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	controllerCh := controller.AddEventChan(ssntp.ConcentratorInstanceAdded)
+
+	cnciAgent.SendConcentratorAddedEvent(testutil.CNCIInstanceUUID, testutil.TenantUUID, testutil.CNCIIP, testutil.CNCIMAC)
+
+	_, err = controller.GetEventChanResult(controllerCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestStart(t *testing.T) {
