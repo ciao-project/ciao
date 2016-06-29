@@ -72,6 +72,7 @@ var imageCommand = &command{
 		"upload":   new(imageUploadCommand),
 		"download": new(imageDownloadCommand),
 		"delete":   new(imageDeleteCommand),
+		"modify":   new(imageModifyCommand),
 	},
 }
 
@@ -348,6 +349,87 @@ func uploadTenantImage(username, password, tenant, image, filename string) error
 		fatalf("Could not upload %s [%s]", filename, res.Err)
 	}
 	return res.Err
+}
+
+type imageModifyCommand struct {
+	Flag       flag.FlagSet
+	name       string
+	visibility string
+	tags       string
+	image      string
+}
+
+func (cmd *imageModifyCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] image modify [flags]
+
+Modify an image
+
+The modify flags are:
+
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *imageModifyCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.name, "name", "", "Image Name")
+	cmd.Flag.StringVar(&cmd.visibility, "visibility", "public", "Image visibility (public or private)")
+	cmd.Flag.StringVar(&cmd.tags, "tags", "", "Image tags separated by comma")
+	cmd.Flag.StringVar(&cmd.image, "image", "", "Image UUID")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *imageModifyCommand) run(args []string) error {
+	if cmd.image == "" {
+		return errors.New("Missing required -image parameter")
+	}
+
+	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
+	if err != nil {
+		fatalf("Could not get Image service client [%s]\n", err)
+	}
+
+	var opts images.UpdateOpts
+	if cmd.visibility != "" {
+		var visibility images.ImageVisibility
+		if cmd.visibility == "public" {
+			visibility = images.ImageVisibilityPublic
+		} else if cmd.visibility == "private" {
+			visibility = images.ImageVisibilityPrivate
+		} else {
+			fatalf("Image visibility should be public or private")
+		}
+		v := images.UpdateVisibility{
+			Visibility: visibility,
+		}
+		opts = append(opts, v)
+	}
+
+	if cmd.name != "" {
+		n := images.ReplaceImageName{
+			NewName: cmd.name,
+		}
+		opts = append(opts, n)
+	}
+
+	if len(cmd.tags) > 0 {
+		inputTags := strings.Split(cmd.tags, ",")
+		t := images.ReplaceImageTags{
+			NewTags: inputTags,
+		}
+		opts = append(opts, t)
+	}
+
+	image, err := images.Update(client, cmd.image, opts).Extract()
+	if err != nil {
+		fatalf("Could not update image's properties [%s]\n", err)
+	}
+
+	fmt.Printf("Updated image:\n")
+	dumpImage(image)
+	return nil
 }
 
 func dumpImage(i *images.Image) {
