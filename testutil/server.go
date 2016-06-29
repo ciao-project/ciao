@@ -29,9 +29,13 @@ import (
 
 // SsntpTestServer is global state for the testutil SSNTP server
 type SsntpTestServer struct {
-	Ssntp           ssntp.Server
-	clients         []string
-	clientsLock     *sync.Mutex
+	Ssntp ssntp.Server
+
+	clients        []string
+	clientsLock    *sync.Mutex
+	netClients     []string
+	netClientsLock *sync.Mutex
+
 	CmdChans        map[ssntp.Command]chan Result
 	CmdChansLock    *sync.Mutex
 	EventChans      map[ssntp.Event]chan Result
@@ -40,9 +44,6 @@ type SsntpTestServer struct {
 	ErrorChansLock  *sync.Mutex
 	StatusChans     map[ssntp.Status]chan Result
 	StatusChansLock *sync.Mutex
-
-	NetClients     map[string]bool
-	NetClientsLock *sync.RWMutex
 }
 
 // AddCmdChan adds an ssntp.Command to the SsntpTestServer command channel
@@ -204,9 +205,9 @@ func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 		server.clients = append(server.clients, uuid)
 
 	case ssntp.NETAGENT:
-		server.NetClientsLock.Lock()
-		server.NetClients[uuid] = true
-		server.NetClientsLock.Unlock()
+		server.netClientsLock.Lock()
+		defer server.netClientsLock.Unlock()
+		server.netClients = append(server.netClients, uuid)
 	}
 
 	server.SendResultAndDelEventChan(ssntp.NodeConnected, result)
@@ -216,20 +217,27 @@ func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 func (server *SsntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	var result Result
 
-	server.clientsLock.Lock()
-	for index := range server.clients {
-		if server.clients[index] == uuid {
-			server.clients = append(server.clients[:index], server.clients[index+1:]...)
-			break
+	switch role {
+	case ssntp.AGENT:
+		server.clientsLock.Lock()
+		for index := range server.clients {
+			if server.clients[index] == uuid {
+				server.clients = append(server.clients[:index], server.clients[index+1:]...)
+				break
+			}
 		}
-	}
-	server.clientsLock.Unlock()
+		server.clientsLock.Unlock()
 
-	server.NetClientsLock.Lock()
-	if server.NetClients[uuid] == true {
-		delete(server.NetClients, uuid)
+	case ssntp.NETAGENT:
+		server.netClientsLock.Lock()
+		for index := range server.netClients {
+			if server.netClients[index] == uuid {
+				server.netClients = append(server.netClients[:index], server.netClients[index+1:]...)
+				break
+			}
+		}
+		server.netClientsLock.Unlock()
 	}
-	server.NetClientsLock.Unlock()
 
 	server.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
 }
@@ -455,47 +463,51 @@ func (server *SsntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame
 	server.SendResultAndDelErrorChan(error, result)
 }
 
-// CommandForward implements an SSNTP CommandForward callback for SsntpTestServer
-func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command, frame *ssntp.Frame) (dest ssntp.ForwardDestination) {
-	switch command {
-	case ssntp.START:
-		//TODO: move to a workload start function
-		var startCmd payloads.Start
-		var nn bool
+func (server *SsntpTestServer) handleStart(payload []byte) (dest ssntp.ForwardDestination) {
+	var startCmd payloads.Start
+	var nn bool
 
-		payload := frame.Payload
+	err := yaml.Unmarshal(payload, &startCmd)
 
-		err := yaml.Unmarshal(payload, &startCmd)
+	if err != nil {
+		return
+	}
 
-		if err != nil {
-			return
+	resources := startCmd.Start.RequestedResources
+
+	for i := range resources {
+		if resources[i].Type == payloads.NetworkNode {
+			nn = true
+			break
 		}
+	}
 
-		resources := startCmd.Start.RequestedResources
-
-		for i := range resources {
-			if resources[i].Type == payloads.NetworkNode {
-				nn = true
-				break
-			}
+	if nn {
+		server.netClientsLock.Lock()
+		defer server.netClientsLock.Unlock()
+		if len(server.netClients) > 0 {
+			index := rand.Intn(len(server.netClients))
+			dest.AddRecipient(server.netClients[index])
 		}
-
-		if nn {
-			server.NetClientsLock.RLock()
-			for key := range server.NetClients {
-				dest.AddRecipient(key)
-				break
-			}
-			server.NetClientsLock.RUnlock()
-			return
-		}
-
+	} else {
 		server.clientsLock.Lock()
 		defer server.clientsLock.Unlock()
 		if len(server.clients) > 0 {
 			index := rand.Intn(len(server.clients))
 			dest.AddRecipient(server.clients[index])
 		}
+	}
+
+	return dest
+}
+
+// CommandForward implements an SSNTP CommandForward callback for SsntpTestServer
+func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command, frame *ssntp.Frame) (dest ssntp.ForwardDestination) {
+	payload := frame.Payload
+
+	switch command {
+	case ssntp.START:
+		dest = server.handleStart(payload)
 	case ssntp.EVACUATE:
 		fallthrough
 	case ssntp.STOP:
@@ -515,6 +527,7 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 // testutil.SsntpTestServer configuration with standard ssntp.FrameRorwardRules
 func StartTestServer(server *SsntpTestServer) {
 	server.clientsLock = &sync.Mutex{}
+	server.netClientsLock = &sync.Mutex{}
 
 	server.CmdChans = make(map[ssntp.Command]chan Result)
 	server.CmdChansLock = &sync.Mutex{}
@@ -527,9 +540,6 @@ func StartTestServer(server *SsntpTestServer) {
 
 	server.StatusChans = make(map[ssntp.Status]chan Result)
 	server.StatusChansLock = &sync.Mutex{}
-
-	server.NetClients = make(map[string]bool)
-	server.NetClientsLock = &sync.RWMutex{}
 
 	serverConfig := ssntp.Config{
 		CAcert: ssntp.DefaultCACert,
