@@ -480,10 +480,6 @@ func (sched *ssntpSchedulerServer) getConcentratorUUID(event ssntp.Event, payloa
 		var ev payloads.EventTenantRemoved
 		err := yaml.Unmarshal(payload, &ev)
 		return ev.TenantRemoved.ConcentratorUUID, err
-	case ssntp.PublicIPAssigned:
-		var ev payloads.EventPublicIPAssigned
-		err := yaml.Unmarshal(payload, &ev)
-		return ev.AssignedIP.ConcentratorUUID, err
 	}
 }
 
@@ -723,8 +719,6 @@ func (sched *ssntpSchedulerServer) EventForward(uuid string, event ssntp.Event, 
 	case ssntp.TenantAdded:
 		fallthrough
 	case ssntp.TenantRemoved:
-		fallthrough
-	case ssntp.PublicIPAssigned:
 		dest = sched.fwdEventToCNCI(event, payload)
 	}
 
@@ -958,6 +952,10 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 			Operand: ssntp.DeleteFailure,
 			Dest:    ssntp.Controller,
 		},
+		{ // all PublicIPAssigned events go to all Controllers
+			Operand: ssntp.PublicIPAssigned,
+			Dest:    ssntp.Controller,
+		},
 		{ // all START command are processed by the Command forwarder
 			Operand:        ssntp.START,
 			CommandForward: sched,
@@ -984,10 +982,6 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 		},
 		{ // all TenantRemoved events are processed by the Event forwarder
 			Operand:      ssntp.TenantRemoved,
-			EventForward: sched,
-		},
-		{ // all PublicIPAssigned events are processed by the Event forwarder
-			Operand:      ssntp.PublicIPAssigned,
 			EventForward: sched,
 		},
 	}
