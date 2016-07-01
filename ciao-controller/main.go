@@ -35,8 +35,8 @@ type controller struct {
 }
 
 var singleMachine = flag.Bool("single", false, "Enable single machine test")
-var cert = flag.String("cert", ssntp.RoleToDefaultCertName(ssntp.Controller), "Client certificate")
-var caCert = flag.String("cacert", ssntp.DefaultCACert, "CA certificate")
+var cert = flag.String("cert", "", "Client certificate")
+var caCert = flag.String("cacert", "", "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
 var identityURL = "identity:35357"
 var serviceUser = "csr"
