@@ -763,7 +763,6 @@ func TestMain(m *testing.M) {
 
 	// create fake ssntp server
 	testutil.StartTestServer(&server)
-	defer server.Ssntp.Stop()
 
 	context = new(controller)
 	context.ds = new(datastore.Datastore)
@@ -797,7 +796,6 @@ func TestMain(m *testing.M) {
 	}
 
 	id := testutil.StartIdentityServer(testIdentityConfig)
-	defer id.Close()
 
 	idConfig := identityConfig{
 		endpoint:        id.URL,
@@ -820,6 +818,8 @@ func TestMain(m *testing.M) {
 
 	context.client.Disconnect()
 	context.ds.Exit()
+	id.Close()
+	server.Ssntp.Stop()
 
 	os.Remove("./ciao-controller-test.db")
 	os.Remove("./ciao-controller-test.db-shm")
