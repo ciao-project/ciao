@@ -50,7 +50,7 @@ func processDelete(vm virtualizer, instanceDir string, conn serverConn, running 
 
 	_ = vm.deleteImage()
 
-	if networking.Enabled() && running != ovsPending {
+	if networking && running != ovsPending {
 		glog.Info("Deleting Vnic")
 		deleteVnic(instanceDir, conn)
 	}

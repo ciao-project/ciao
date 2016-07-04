@@ -27,7 +27,7 @@ func processRestart(instanceDir string, vm virtualizer, conn serverConn, cfg *vm
 	var vnicCfg *libsnnet.VnicConfig
 	var err error
 
-	if networking.Enabled() {
+	if networking {
 		vnicCfg, err = createVnicCfg(cfg)
 		if err != nil {
 			glog.Errorf("Could not create VnicCFG: %s", err)

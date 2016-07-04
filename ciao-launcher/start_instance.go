@@ -131,7 +131,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 		return nil, &startError{err, payloads.InvalidData}
 	}
 
-	if networking.Enabled() {
+	if networking {
 		vnicCfg, err = createVnicCfg(cfg)
 		if err != nil {
 			glog.Errorf("Could not create VnicCFG: %s", err)
