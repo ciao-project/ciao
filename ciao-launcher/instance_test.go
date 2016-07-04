@@ -501,6 +501,7 @@ func TestStopNotRunning(t *testing.T) {
 }
 
 func startVMWithCFG(t *testing.T, wg *sync.WaitGroup, cfg *vmConfig, connect bool, errorOk bool) (*instanceTestState, chan interface{}, chan<- interface{}, chan struct{}) {
+	networking = false
 	doneCh := make(chan struct{})
 	ovsCh := make(chan interface{})
 	state := &instanceTestState{

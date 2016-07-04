@@ -36,33 +36,6 @@ import (
 
 var profileFN func() func()
 
-type networkFlag string
-
-func (f *networkFlag) String() string {
-	return string(*f)
-}
-
-func (f *networkFlag) Set(val string) error {
-	if val != "none" && val != "cn" && val != "nn" && val != "dual" {
-		return fmt.Errorf("none, cn, nn or dual expected")
-	}
-	*f = networkFlag(val)
-
-	return nil
-}
-
-func (f *networkFlag) Enabled() bool {
-	return string(*f) != "none"
-}
-
-func (f *networkFlag) NetworkNode() bool {
-	return string(*f) == "nn"
-}
-
-func (f *networkFlag) DualMode() bool {
-	return string(*f) == "dual"
-}
-
 type uiFlag string
 
 func (f *uiFlag) String() string {
@@ -86,7 +59,7 @@ var serverCertPath string
 var clientCertPath string
 var computeNet string
 var mgmtNet string
-var networking networkFlag = "none"
+var networking bool
 var hardReset bool
 var diskLimit bool
 var memLimit bool
@@ -96,7 +69,7 @@ var maxInstances = int(math.MaxInt32)
 func init() {
 	flag.StringVar(&serverCertPath, "cacert", "", "Client certificate")
 	flag.StringVar(&clientCertPath, "cert", "", "CA certificate")
-	flag.Var(&networking, "network", "Can be none, cn (compute node) or nn (network node)")
+	flag.BoolVar(&networking, "network", true, "Enable networking")
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
 }
@@ -313,7 +286,7 @@ func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) 
 }
 
 func startNetwork(doneCh chan struct{}) error {
-	if networking.Enabled() {
+	if networking {
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		ch := initNetworking(ctx)
 		select {
@@ -347,17 +320,6 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 	}()
 
 	var wg sync.WaitGroup
-
-	var role ssntp.Role
-	if networking.NetworkNode() {
-		role = ssntp.NETAGENT
-	} else if networking.DualMode() {
-		role = ssntp.AGENT | ssntp.NETAGENT
-	} else {
-		role = ssntp.AGENT
-	}
-
-	glog.Infof("Agent Role: %s", role.String())
 
 	cfg := &ssntp.Config{CAcert: serverCertPath, Cert: clientCertPath,
 		Log: ssntp.Log}

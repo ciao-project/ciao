@@ -72,7 +72,7 @@ Currently, this is the only data source supported by launcher.
 
 ciao-launcher can be launched from the command line as follows
 ```
-sudo ciao-launcher -network [cn|nn|none]
+sudo ciao-launcher
 ```
 
 Currently, launcher needs to be run as root so that it can create network links and
@@ -105,8 +105,8 @@ Usage of ./launcher:
     	If non-empty, write log files in this directory
   -logtostderr
     	log to standard error instead of files
-  -network value
-    	Can be none, cn (compute node) or nn (network node) (default none)
+  -network
+    	Enable networking (default true)
   -simulation
     	Launcher simulation
   -stderrthreshold value
@@ -273,7 +273,7 @@ ciao-launcher-server.
 
 Open a new terminal and start ciao-launcher, e.g.,
 
-./ciao-launcher --logtostderr --network cn
+./ciao-launcher --logtostderr
 
 Open a new terminal and try some ciaolc commands
 
