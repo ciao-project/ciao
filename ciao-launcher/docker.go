@@ -424,28 +424,3 @@ func (d *docker) lostVM() {
 	d.pid = 0
 	d.prevCPUTime = -1
 }
-
-//BUG(markus): Everything from here onwards should be in a different file.  It's confusing
-
-func dockerKillInstance(instanceDir string) {
-	idPath := path.Join(instanceDir, "docker-id")
-	data, err := ioutil.ReadFile(idPath)
-	if err != nil {
-		glog.Errorf("Unable to read docker container ID %v", err)
-		return
-	}
-
-	cli, err := getDockerClient()
-	if err != nil {
-		return
-	}
-
-	dockerID := string(data)
-	err = cli.ContainerRemove(context.Background(),
-		types.ContainerRemoveOptions{
-			ContainerID: dockerID,
-			Force:       true})
-	if err != nil {
-		glog.Warningf("Unable to delete docker instance %s err %v", dockerID, err)
-	}
-}
