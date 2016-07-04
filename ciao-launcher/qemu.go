@@ -730,37 +730,3 @@ func (q *qemu) connected() {
 	}
 	q.prevCPUTime = -1
 }
-
-func qemuKillInstance(instanceDir string) {
-	var conn net.Conn
-
-	qmpSocket := path.Join(instanceDir, "socket")
-	conn, err := net.DialTimeout("unix", qmpSocket, time.Second*30)
-	if err != nil {
-		return
-	}
-
-	defer func() { _ = conn.Close() }()
-
-	_, err = fmt.Fprintln(conn, "{ \"execute\": \"qmp_capabilities\" }")
-	if err != nil {
-		glog.Errorf("Unable to send qmp_capabilities to instance %s: %v", instanceDir, err)
-		return
-	}
-
-	glog.Infof("Powering Down %s", instanceDir)
-
-	_, err = fmt.Fprintln(conn, "{ \"execute\": \"quit\" }")
-	if err != nil {
-		glog.Errorf("Unable to send power down command to %s: %v\n", instanceDir, err)
-	}
-
-	// Keep reading until the socket fails.  If we close the socket straight away, qemu does not
-	// honour our quit command.
-
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-	}
-
-	return
-}

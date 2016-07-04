@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -494,72 +493,6 @@ func createMandatoryDirs() error {
 	}
 
 	return nil
-}
-
-func purgeLauncherState() {
-
-	glog.Info("======= HARD RESET ======")
-
-	glog.Info("Shutting down running instances")
-
-	toRemove := make([]string, 0, 1024)
-	dockerNetworking := false
-
-	glog.Info("Init networking")
-
-	if err := initNetworkPhase1(); err != nil {
-		glog.Warningf("Failed to init network: %v\n", err)
-	} else {
-		defer shutdownNetwork()
-		if err := initDockerNetworking(context.Background()); err != nil {
-			glog.Info("Unable to initialise docker networking")
-		} else {
-			dockerNetworking = true
-		}
-	}
-
-	_ = filepath.Walk(instancesDir, func(path string, info os.FileInfo, err error) error {
-		if path == instancesDir {
-			return nil
-		}
-
-		if !info.IsDir() {
-			return nil
-		}
-
-		cfg, err := loadVMConfig(path)
-		if err != nil {
-			glog.Warningf("Unable to load config for %s: %v", path, err)
-		} else {
-			if cfg.Container {
-				dockerKillInstance(path)
-			} else {
-				qemuKillInstance(path)
-			}
-		}
-		toRemove = append(toRemove, path)
-		return nil
-	})
-
-	for _, p := range toRemove {
-		err := os.RemoveAll(p)
-		if err != nil {
-			glog.Warningf("Unable to remove instance dir for %s: %v", p, err)
-		}
-	}
-
-	if dockerNetworking {
-		glog.Info("Reset docker networking")
-
-		resetDockerNetworking()
-	}
-
-	glog.Info("Reset networking")
-
-	err := cnNet.ResetNetwork()
-	if err != nil {
-		glog.Warningf("Unable to reset network: %v", err)
-	}
 }
 
 func setLimits() {
