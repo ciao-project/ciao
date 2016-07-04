@@ -32,8 +32,10 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"syscall"
 	"text/tabwriter"
 	"text/template"
+	"time"
 )
 
 // PackageInfo contains information about a package under test.
@@ -144,6 +146,9 @@ var colour bool
 var coverProfile string
 var appendProfile bool
 
+var timeout int
+var verbose bool
+
 func init() {
 	flag.StringVar(&cssPath, "css", "", "Full path to CSS file")
 	flag.BoolVar(&textOutput, "text", false, "Output text instead of HTML")
@@ -152,6 +157,9 @@ func init() {
 	flag.StringVar(&coverProfile, "coverprofile", "", "Path of coverage profile to be generated")
 	flag.BoolVar(&appendProfile, "append-profile", false, "Append generated coverage profiles an existing file")
 	flag.BoolVar(&colour, "colour", true, "If true failed tests are coloured red in text mode")
+	flag.BoolVar(&verbose, "v", false, "Output package names under test if true")
+	flag.IntVar(&timeout, "timeout", 0, "Time in minutes after which a package's unit tests should time out.  0 = no timeout")
+
 	resultRegexp = regexp.MustCompile(`--- (FAIL|PASS|SKIP): ([^\s]+) \(([^\)]+)\)`)
 	coverageRegexp = regexp.MustCompile(`^coverage: ([^\s]+)`)
 }
@@ -335,8 +343,38 @@ func parseTestOutput(output bytes.Buffer, results map[string]*testResults) strin
 	return coverage
 }
 
+func runCommandWithTimeout(pkg string, cmd *exec.Cmd) error {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	errCh := make(chan error)
+	go func() {
+		errCh <- cmd.Wait()
+	}()
+
+	select {
+	case <-time.After(time.Minute * time.Duration(timeout)):
+		if verbose {
+			fmt.Printf("Aborting %s\n", pkg)
+		}
+		syscall.Kill(-cmd.Process.Pid, syscall.SIGABRT)
+		err = <-errCh
+	case err = <-errCh:
+	}
+
+	return err
+}
+
 func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffer) (int, error) {
 	var output bytes.Buffer
+
+	if verbose {
+		fmt.Printf("Testing %s\n", p.Name)
+	}
 
 	exitCode := 0
 	results := make(map[string]*testResults)
@@ -353,7 +391,13 @@ func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffe
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = &output
 	cmd.Stderr = errorOutput
-	err := cmd.Run()
+
+	var err error
+	if timeout == 0 {
+		err = cmd.Run()
+	} else {
+		err = runCommandWithTimeout(p.Name, cmd)
+	}
 
 	coverage := parseTestOutput(output, results)
 
