@@ -17,6 +17,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
@@ -32,20 +33,10 @@ const repo = "ciao"
 
 var rcSHA = flag.String("head", "", "The sha of the release candidate")
 
-func main() {
-	flag.Parse()
-
-	f, err := os.Create("release.txt")
-	if err != nil {
-		glog.Error(err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
+func getAuthenticatedClient() (*github.Client, error) {
 	ghToken := os.Getenv("GITHUB_TOKEN")
 	if ghToken == "" {
-		glog.Fatal("You must set GITHUB_TOKEN env var")
-		os.Exit(1)
+		return nil, errors.New("You must set GITHUB_TOKEN env var")
 	}
 
 	ts := oauth2.StaticTokenSource(
@@ -56,11 +47,23 @@ func main() {
 
 	client := github.NewClient(tc)
 
+	return client, nil
+}
+
+func getReleaseCandidateTime(client *github.Client) (time.Time, error) {
+	rc := time.Time{}
+
 	headCommit, _, _ := client.Repositories.GetCommit(repoOwner, repo, *rcSHA)
 	if headCommit == nil {
-		glog.Fatal("The SHA was not valid")
-		os.Exit(1)
+		return rc, errors.New("The SHA was not valid")
 	}
+	rc = *headCommit.Commit.Committer.Date
+
+	return rc, nil
+}
+
+func getLastReleaseTime(client *github.Client) (time.Time, error) {
+	var lastRelease time.Time
 
 	release, _, _ := client.Repositories.GetLatestRelease(repoOwner, repo)
 
@@ -82,23 +85,20 @@ func main() {
 		tagsOpts.Page = resp.NextPage
 	}
 
-	var lastRelease time.Time
-
 	for _, t := range tags {
 		if *t.Name == *release.TagName {
 			c, _, _ := client.Repositories.GetCommit(repoOwner, repo, *t.Commit.SHA)
 			if c == nil {
-				glog.Fatal("The SHA was not valid")
-				os.Exit(1)
+				return lastRelease, errors.New("The SHA was not valid")
 			}
 			lastRelease = *c.Commit.Committer.Date
 		}
 	}
 
-	rc := *headCommit.Commit.Committer.Date
+	return lastRelease, nil
+}
 
-	fmt.Fprintf(f, "Changes since last release\n\n")
-
+func getAllPullRequests(client *github.Client) (map[int]github.PullRequest, error) {
 	var prs []*github.PullRequest
 
 	prOpts := github.PullRequestListOptions{
@@ -109,7 +109,7 @@ func main() {
 	for {
 		pr, resp, err := client.PullRequests.List(repoOwner, repo, &prOpts)
 		if err != nil {
-			glog.Fatal(err)
+			return nil, err
 		}
 
 		prs = append(prs, pr...)
@@ -126,13 +126,22 @@ func main() {
 		prmap[*pr.Number] = *pr
 	}
 
+	return prmap, nil
+}
+
+func getIssueEvents(client *github.Client, lastRelease time.Time, rc time.Time) (map[string][]*github.IssueEvent, error) {
+	prmap, err := getAllPullRequests(client)
+	if err != nil {
+		return nil, err
+	}
+
 	var events []*github.IssueEvent
 	var eventOpts github.ListOptions
 
 	for {
 		e, resp, err := client.Issues.ListRepositoryEvents(repoOwner, repo, &eventOpts)
 		if err != nil {
-			glog.Fatal(err)
+			return nil, err
 		}
 
 		events = append(events, e...)
@@ -171,26 +180,21 @@ func main() {
 		}
 	}
 
-	for key, list := range eventsmap {
-		fmt.Fprintf(f, "---%s---\n", key)
-		for _, e := range list {
-			i := *e.Issue
-			fmt.Fprintf(f, "\tIssue/PR #%d: %s\n", *i.Number, *i.Title)
-			fmt.Fprintf(f, "\tURL: %s\n\n", *i.HTMLURL)
-		}
-		fmt.Fprintf(f, "\n")
-	}
+	return eventsmap, err
+}
+
+func getCommits(client *github.Client, since time.Time, until time.Time) ([]*github.RepositoryCommit, error) {
+	var commits []*github.RepositoryCommit
 
 	copts := github.CommitsListOptions{
-		Since: lastRelease,
-		Until: rc,
+		Since: since,
+		Until: until,
 	}
 
-	var commits []*github.RepositoryCommit
 	for {
 		c, resp, err := client.Repositories.ListCommits(repoOwner, repo, &copts)
 		if err != nil {
-			glog.Fatal(err)
+			return nil, err
 		}
 
 		commits = append(commits, c...)
@@ -202,6 +206,53 @@ func main() {
 		}
 	}
 
+	return commits, nil
+}
+
+func generateReleaseNotes() error {
+	client, err := getAuthenticatedClient()
+	if err != nil {
+		return err
+	}
+
+	rc, err := getReleaseCandidateTime(client)
+	if err != nil {
+		return err
+	}
+
+	lastRelease, err := getLastReleaseTime(client)
+	if err != nil {
+		return err
+	}
+
+	eventsmap, err := getIssueEvents(client, lastRelease, rc)
+	if err != nil {
+		return err
+	}
+
+	commits, err := getCommits(client, lastRelease, rc)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create("release.txt")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	fmt.Fprintf(f, "Changes since last release\n\n")
+
+	for key, list := range eventsmap {
+		fmt.Fprintf(f, "---%s---\n", key)
+		for _, e := range list {
+			i := *e.Issue
+			fmt.Fprintf(f, "\tIssue/PR #%d: %s\n", *i.Number, *i.Title)
+			fmt.Fprintf(f, "\tURL: %s\n\n", *i.HTMLURL)
+		}
+		fmt.Fprintf(f, "\n")
+	}
+
 	if len(commits) > 0 {
 		fmt.Fprintln(f, "---Full Change Log---")
 	}
@@ -209,5 +260,17 @@ func main() {
 	for _, c := range commits {
 		lines := strings.Split(*c.Commit.Message, "\n")
 		fmt.Fprintf(f, "\t%s\n", lines[0])
+	}
+
+	return nil
+}
+
+func main() {
+	flag.Parse()
+
+	err := generateReleaseNotes()
+	if err != nil {
+		glog.Fatal(err)
+		os.Exit(1)
 	}
 }
