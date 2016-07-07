@@ -51,8 +51,6 @@ const minValidConf = `configure:
   launcher:
     compute_net: 192.168.1.110
     mgmt_net: 192.168.1.111
-  image_service:
-    url: http://glance.example.com
   identity_service:
     url: http://keystone.example.com
 `
@@ -230,7 +228,6 @@ func TestValidMinConf(t *testing.T) {
 	conf.Configure.Controller.IdentityPassword = identityPassword
 	conf.Configure.Launcher.ComputeNetwork = computeNet
 	conf.Configure.Launcher.ManagementNetwork = mgmtNet
-	conf.Configure.ImageService.URL = glanceURL
 
 	valid := validMinConf(&conf)
 	if valid != false {
