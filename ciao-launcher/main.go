@@ -307,8 +307,8 @@ func startNetwork(doneCh chan struct{}) error {
 func printClusterConfig() {
 	glog.Info("Cluster Configuration")
 	glog.Info("-----------------------")
-	glog.Infof("Compute Netowork:     %v", computeNet)
-	glog.Infof("Management Netowork:  %v", mgmtNet)
+	glog.Infof("Compute Network:      %v", computeNet)
+	glog.Infof("Management Network:   %v", mgmtNet)
 	glog.Infof("Disk Limit:           %v", diskLimit)
 	glog.Infof("Memory Limit:         %v", memLimit)
 }
