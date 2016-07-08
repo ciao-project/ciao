@@ -503,15 +503,28 @@ func ssntpTestsSetup() error {
 
 func ssntpTestsTeardown() {
 	// stop everybody
-	time.Sleep(1 * time.Second)
-	controller.Ssntp.Close()
+	var wg sync.WaitGroup
+	wg.Add(3)
 
-	time.Sleep(1 * time.Second)
-	netAgent.Ssntp.Close()
+	go func() {
+		controller.Ssntp.Close()
+		wg.Done()
+	}()
 
-	time.Sleep(1 * time.Second)
-	agent.Ssntp.Close()
+	go func() {
+		netAgent.Ssntp.Close()
+		wg.Done()
+	}()
 
-	time.Sleep(1 * time.Second)
+	go func() {
+		agent.Ssntp.Close()
+		wg.Done()
+	}()
+
+	fmt.Println("Awaiting clients' shutdown")
+	wg.Wait()
+	fmt.Println("Got clients' shutdown")
+	fmt.Println("Awaiting server shutdown")
 	server.ssntp.Stop()
+	fmt.Println("Got server shutdown")
 }
