@@ -767,7 +767,29 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 		t.Fatal("this is not a CNCI launch request")
 	}
 
+	// start a test CNCI client
+	cnciClient, err := testutil.NewSsntpTestClientConnection("StartWorkloadLaunchCNCI", ssntp.CNCIAGENT, newTenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// make CNCI send an ssntp.ConcentratorInstanceAdded event, and await results
+	cnciEventCh := cnciClient.AddEventChan(ssntp.ConcentratorInstanceAdded)
+	serverEventCh := server.AddEventChan(ssntp.ConcentratorInstanceAdded)
 	tenantCNCI, _ := context.ds.GetTenantCNCISummary(result.InstanceUUID)
+	go cnciClient.SendConcentratorAddedEvent(result.InstanceUUID, newTenant, testutil.CNCIIP, tenantCNCI[0].MACAddress)
+	result, err = cnciClient.GetEventChanResult(cnciEventCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = server.GetEventChanResult(serverEventCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// shutdown the test CNCI client
+	cnciClient.Ssntp.Close()
+
 	if result.InstanceUUID != tenantCNCI[0].InstanceID {
 		t.Fatalf("Did not get correct Instance ID, got %s, expected %s", result.InstanceUUID, tenantCNCI[0].InstanceID)
 	}

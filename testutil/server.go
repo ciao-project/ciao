@@ -365,7 +365,7 @@ func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 	case ssntp.TenantRemoved:
 		// forwards to CNCI via server.EventForward()
 	case ssntp.PublicIPAssigned:
-		// forwards to CNCI via server.EventForward()
+		// forwards from CNCI Controller(s) via server.EventForward()
 	default:
 		fmt.Printf("server unhandled event %s\n", event.String())
 	}

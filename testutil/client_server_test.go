@@ -32,6 +32,7 @@ var server SsntpTestServer
 var controller *SsntpTestController
 var agent *SsntpTestClient
 var netAgent *SsntpTestClient
+var cnciAgent *SsntpTestClient
 
 func TestSendAgentStatus(t *testing.T) {
 	serverCh := server.AddStatusChan(ssntp.READY)
@@ -50,6 +51,42 @@ func TestSendNetAgentStatus(t *testing.T) {
 	go netAgent.SendStatus(16384, 16384)
 
 	_, err := server.GetStatusChanResult(serverCh, ssntp.READY)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCNCIStart(t *testing.T) {
+	serverCh := server.AddCmdChan(ssntp.START)
+	netAgentCh := netAgent.AddCmdChan(ssntp.START)
+
+	go controller.Ssntp.SendCommand(ssntp.START, []byte(CNCIStartYaml))
+
+	_, err := server.GetCmdChanResult(serverCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = netAgent.GetCmdChanResult(netAgentCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	serverCh = server.AddEventChan(ssntp.ConcentratorInstanceAdded)
+	controllerCh := controller.AddEventChan(ssntp.ConcentratorInstanceAdded)
+
+	// start CNCI agent
+	cnciAgent, err = NewSsntpTestClientConnection("CNCI Client", ssntp.CNCIAGENT, CNCIUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cnciAgent.SendConcentratorAddedEvent(CNCIInstanceUUID, TenantUUID, CNCIIP, CNCIMAC)
+
+	_, err = server.GetEventChanResult(serverCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = controller.GetEventChanResult(controllerCh, ssntp.ConcentratorInstanceAdded)
 	if err != nil {
 		t.Fatal(err)
 	}

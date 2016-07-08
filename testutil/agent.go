@@ -278,12 +278,8 @@ func (client *SsntpTestClient) handleStart(payload []byte) Result {
 	result.TenantUUID = cmd.Start.TenantUUID
 	result.NodeUUID = client.UUID
 
-	if client.Role == ssntp.NETAGENT {
-		networking := cmd.Start.Networking
-
-		client.sendConcentratorAddedEvent(cmd.Start.InstanceUUID, cmd.Start.TenantUUID, networking.VnicMAC)
+	if client.Role.IsNetAgent() {
 		result.CNCI = true
-		return result
 	}
 
 	if client.StartFail == true {
@@ -534,20 +530,23 @@ func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
 		_, err = client.Ssntp.SendEvent(ssntp.InstanceDeleted, y)
 		if err != nil {
 			result.Err = err
-			fmt.Println(err)
 		}
 	}
 
 	client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
 }
 
-func (client *SsntpTestClient) sendConcentratorAddedEvent(instanceUUID string, tenantUUID string, vnicMAC string) {
+// SendConcentratorAddedEvent allows an SsntpTestClient to push an ssntp.ConcentratorInstanceAdded event frame
+func (client *SsntpTestClient) SendConcentratorAddedEvent(instanceUUID string, tenantUUID string, ip string, vnicMAC string) {
+	var result Result
+
 	evt := payloads.ConcentratorInstanceAddedEvent{
 		InstanceUUID:    instanceUUID,
 		TenantUUID:      tenantUUID,
-		ConcentratorIP:  "192.168.0.1",
+		ConcentratorIP:  ip,
 		ConcentratorMAC: vnicMAC,
 	}
+	result.InstanceUUID = instanceUUID
 
 	event := payloads.EventConcentratorInstanceAdded{
 		CNCIAdded: evt,
@@ -555,13 +554,15 @@ func (client *SsntpTestClient) sendConcentratorAddedEvent(instanceUUID string, t
 
 	y, err := yaml.Marshal(event)
 	if err != nil {
-		return
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendEvent(ssntp.ConcentratorInstanceAdded, y)
+		if err != nil {
+			result.Err = err
+		}
 	}
 
-	_, err = client.Ssntp.SendEvent(ssntp.ConcentratorInstanceAdded, y)
-	if err != nil {
-		fmt.Println(err)
-	}
+	client.SendResultAndDelEventChan(ssntp.ConcentratorInstanceAdded, result)
 }
 
 func (client *SsntpTestClient) sendStartFailure(instanceUUID string, reason payloads.StartFailureReason) {
