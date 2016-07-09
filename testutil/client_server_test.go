@@ -523,6 +523,21 @@ func TestReconnects(t *testing.T) {
 	}
 }
 
+func TestTenantRemoved(t *testing.T) {
+	serverCh := server.AddEventChan(ssntp.TenantRemoved)
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantRemoved)
+
+	go agent.SendTenantRemovedEvent()
+
+	_, err := server.GetEventChanResult(serverCh, ssntp.TenantRemoved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.TenantRemoved)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 func TestMain(m *testing.M) {
 	var err error
 

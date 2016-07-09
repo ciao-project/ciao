@@ -444,6 +444,13 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 		if err != nil {
 			result.Err = err
 		}
+	case ssntp.TenantRemoved:
+		var tenantRemovedEvent payloads.EventTenantRemoved
+
+		err := yaml.Unmarshal(frame.Payload, &tenantRemovedEvent)
+		if err != nil {
+			result.Err = err
+		}
 	default:
 		fmt.Printf("client unhandled event: %s\n", event.String())
 	}
@@ -563,6 +570,17 @@ func (client *SsntpTestClient) SendTenantAddedEvent() {
 	client.SendResultAndDelEventChan(ssntp.TenantAdded, result)
 }
 
+// SendTenantRemovedEvent allows an SsntpTestClient to push an ssntp.TenantRemoved event frame
+func (client *SsntpTestClient) SendTenantRemovedEvent() {
+	var result Result
+
+	_, err := client.Ssntp.SendEvent(ssntp.TenantRemoved, []byte(TenantRemovedYaml))
+	if err != nil {
+		result.Err = err
+	}
+
+	client.SendResultAndDelEventChan(ssntp.TenantRemoved, result)
+}
 // SendConcentratorAddedEvent allows an SsntpTestClient to push an ssntp.ConcentratorInstanceAdded event frame
 func (client *SsntpTestClient) SendConcentratorAddedEvent(instanceUUID string, tenantUUID string, ip string, vnicMAC string) {
 	var result Result
