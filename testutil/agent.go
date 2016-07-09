@@ -426,7 +426,7 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 		result = client.handleDelete(payload)
 
 	default:
-		fmt.Printf("client unhandled command %s\n", command.String())
+		fmt.Printf("client %s unhandled command %s\n", client.Role.String(), command.String())
 	}
 
 	client.SendResultAndDelCmdChan(command, result)
@@ -452,7 +452,7 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 			result.Err = err
 		}
 	default:
-		fmt.Printf("client unhandled event: %s\n", event.String())
+		fmt.Printf("client %s unhandled event: %s\n", client.Role.String(), event.String())
 	}
 
 	client.SendResultAndDelEventChan(event, result)
