@@ -538,6 +538,23 @@ func TestTenantRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestPublicIPAssigned(t *testing.T) {
+	serverCh := server.AddEventChan(ssntp.PublicIPAssigned)
+	controllerCh := controller.AddEventChan(ssntp.PublicIPAssigned)
+
+	go cnciAgent.SendPublicIPAssignedEvent()
+
+	_, err := server.GetEventChanResult(serverCh, ssntp.PublicIPAssigned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = controller.GetEventChanResult(controllerCh, ssntp.PublicIPAssigned)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMain(m *testing.M) {
 	var err error
 

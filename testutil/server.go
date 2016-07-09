@@ -385,10 +385,6 @@ func getConcentratorUUID(event ssntp.Event, payload []byte) (string, error) {
 		var ev payloads.EventTenantRemoved
 		err := yaml.Unmarshal(payload, &ev)
 		return ev.TenantRemoved.ConcentratorUUID, err
-	case ssntp.PublicIPAssigned:
-		var ev payloads.EventPublicIPAssigned
-		err := yaml.Unmarshal(payload, &ev)
-		return ev.AssignedIP.ConcentratorUUID, err
 	}
 }
 
@@ -414,8 +410,6 @@ func (server *SsntpTestServer) EventForward(uuid string, event ssntp.Event, fram
 	case ssntp.TenantAdded:
 		fallthrough
 	case ssntp.TenantRemoved:
-		fallthrough
-	case ssntp.PublicIPAssigned:
 		dest, err = fwdEventToCNCI(event, frame.Payload)
 	}
 
@@ -582,6 +576,10 @@ func StartTestServer(server *SsntpTestServer) {
 				Operand: ssntp.DeleteFailure,
 				Dest:    ssntp.Controller,
 			},
+			{ // all PublicIPAssigned events go to all Controllers
+				Operand: ssntp.PublicIPAssigned,
+				Dest:    ssntp.Controller,
+			},
 			{ // all START command are processed by the Command forwarder
 				Operand:        ssntp.START,
 				CommandForward: server,
@@ -608,10 +606,6 @@ func StartTestServer(server *SsntpTestServer) {
 			},
 			{ // all TenantRemoved events are processed by the Event forwarder
 				Operand:      ssntp.TenantRemoved,
-				EventForward: server,
-			},
-			{ // all PublicIPAssigned events are processed by the Event forwarder
-				Operand:      ssntp.PublicIPAssigned,
 				EventForward: server,
 			},
 		},
