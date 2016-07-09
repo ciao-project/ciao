@@ -404,6 +404,7 @@ func restartServer() error {
 	controllerCh := controller.AddEventChan(ssntp.NodeConnected)
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeConnected)
 	agentCh := agent.AddEventChan(ssntp.NodeConnected)
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.NodeConnected)
 
 	server = configSchedulerServer()
 	if server == nil {
@@ -412,17 +413,29 @@ func restartServer() error {
 	go server.ssntp.Serve(server.config, server)
 	//go heartBeatLoop(server)  ...handy for debugging
 
-	_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if controller != nil {
+		_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = netAgent.GetEventChanResult(netAgentCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if netAgent != nil {
+		_, err := netAgent.GetEventChanResult(netAgentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = agent.GetEventChanResult(agentCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if agent != nil {
+		_, err := agent.GetEventChanResult(agentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
+	}
+	if cnciAgent != nil {
+		_, err := cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
