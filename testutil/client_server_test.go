@@ -429,6 +429,22 @@ func TestDeleteFailure(t *testing.T) {
 	}
 }
 
+func TestTenantAdded(t *testing.T) {
+	serverCh := server.AddEventChan(ssntp.TenantAdded)
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantAdded)
+
+	go agent.SendTenantAddedEvent()
+
+	_, err := server.GetEventChanResult(serverCh, ssntp.TenantAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.TenantAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func stopServer() error {
 	controllerCh := controller.AddEventChan(ssntp.NodeDisconnected)
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeDisconnected)

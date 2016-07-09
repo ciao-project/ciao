@@ -241,6 +241,7 @@ func (ctl *SsntpTestController) EventNotify(event ssntp.Event, frame *ssntp.Fram
 	switch event {
 	// case ssntp.NodeConnected:	handled by ConnectNotify()
 	// case ssntp.NodeDisconnected:	handled by DisconnectNotify()
+	// case ssntp.TenantAdded: does not reach controller
 	case ssntp.InstanceDeleted:
 		var deleteEvent payloads.EventInstanceDeleted
 

@@ -408,6 +408,7 @@ func fwdEventToCNCI(event ssntp.Event, payload []byte) (ssntp.ForwardDestination
 func (server *SsntpTestServer) EventForward(uuid string, event ssntp.Event, frame *ssntp.Frame) ssntp.ForwardDestination {
 	var err error
 	var dest ssntp.ForwardDestination
+	var result Result
 
 	switch event {
 	case ssntp.TenantAdded:
@@ -420,7 +421,10 @@ func (server *SsntpTestServer) EventForward(uuid string, event ssntp.Event, fram
 
 	if err != nil {
 		fmt.Println("server error parsing event yaml for forwarding")
+		result.Err = err
 	}
+
+	server.SendResultAndDelEventChan(event, result)
 
 	return dest
 }

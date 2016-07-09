@@ -434,6 +434,21 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 // EventNotify is an SSNTP callback stub for SsntpTestClient
 func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
+	var result Result
+
+	switch event {
+	case ssntp.TenantAdded:
+		var tenantAddedEvent payloads.EventTenantAdded
+
+		err := yaml.Unmarshal(frame.Payload, &tenantAddedEvent)
+		if err != nil {
+			result.Err = err
+		}
+	default:
+		fmt.Printf("client unhandled event: %s\n", event.String())
+	}
+
+	client.SendResultAndDelEventChan(event, result)
 }
 
 // ErrorNotify is an SSNTP callback stub for SsntpTestClient
@@ -534,6 +549,18 @@ func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
 	}
 
 	client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
+}
+
+// SendTenantAddedEvent allows an SsntpTestClient to push an ssntp.TenantAdded event frame
+func (client *SsntpTestClient) SendTenantAddedEvent() {
+	var result Result
+
+	_, err := client.Ssntp.SendEvent(ssntp.TenantAdded, []byte(TenantAddedYaml))
+	if err != nil {
+		result.Err = err
+	}
+
+	client.SendResultAndDelEventChan(ssntp.TenantAdded, result)
 }
 
 // SendConcentratorAddedEvent allows an SsntpTestClient to push an ssntp.ConcentratorInstanceAdded event frame
