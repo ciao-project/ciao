@@ -454,6 +454,39 @@ func TestReconnects(t *testing.T) {
 	}
 }
 
+func TestTenantAdded(t *testing.T) {
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantAdded)
+
+	go agent.SendTenantAddedEvent()
+
+	_, err := cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.TenantAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTenantRemoved(t *testing.T) {
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantRemoved)
+
+	go agent.SendTenantRemovedEvent()
+
+	_, err := cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.TenantRemoved)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPublicIPAssigned(t *testing.T) {
+	controllerCh := controller.AddEventChan(ssntp.PublicIPAssigned)
+
+	go cnciAgent.SendPublicIPAssignedEvent()
+
+	_, err := controller.GetEventChanResult(controllerCh, ssntp.PublicIPAssigned)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func waitForController(uuid string) {
 	for {
 		server.controllerMutex.Lock()
