@@ -453,11 +453,12 @@ func instanceToServer(context *controller, instance *types.Instance) (payloads.S
 }
 
 // returnErrorCode returns error codes for the http call
-func returnErrorCode(w http.ResponseWriter, httpError int, message string) {
+func returnErrorCode(w http.ResponseWriter, httpError int, messageFormat string, messageArgs ...interface{}) {
 	var returnCode payloads.HTTPReturnErrorCode
 	returnCode.Error.Code = httpError
 	returnCode.Error.Name = http.StatusText(returnCode.Error.Code)
-	returnCode.Error.Message = message
+
+	returnCode.Error.Message = fmt.Sprintf(messageFormat, messageArgs...)
 
 	b, err := json.Marshal(returnCode)
 	if err != nil {
