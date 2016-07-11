@@ -2580,6 +2580,46 @@ func TestRoleToDefaultCertName(t *testing.T) {
 	}
 }
 
+func TestRoleSet(t *testing.T) {
+	var stringTests = []struct {
+		r        string
+		expected Role
+	}{
+		{"unknown", UNKNOWN},
+		{"server", SERVER},
+		{"controller", Controller},
+		{"agent", AGENT},
+		{"netagent", NETAGENT},
+		{"scheduler", SCHEDULER},
+		{"cnciagent", CNCIAGENT},
+	}
+
+	for _, test := range stringTests {
+		var role Role
+		role.Set(test.r)
+		if role != test.expected {
+			t.Errorf("expected \"%x\", got \"%x\"", test.expected, role)
+		}
+	}
+
+	var role Role
+	err := role.Set("asdf")
+	if err == nil {
+		t.Error("expected \"Unknown role\" error, got nil")
+	}
+
+	role.Set("agent")
+	role.Set("netagent")
+	if role != AGENT|NETAGENT {
+		t.Error("didn't correctly sequantially assign role")
+	}
+
+	role.Set("agent, netagent")
+	if role != AGENT|NETAGENT {
+		t.Error("didn't correctly multi-assign role")
+	}
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 
