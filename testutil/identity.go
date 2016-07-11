@@ -267,6 +267,7 @@ type IdentityConfig struct {
 }
 
 // StartIdentityServer starts a fake keystone service for unit testing ciao.
+// Caller must call Close() on the returned *httptest.Server.
 func StartIdentityServer(config IdentityConfig) *httptest.Server {
 	id := httptest.NewServer(IdentityHandlers())
 	if id == nil {
