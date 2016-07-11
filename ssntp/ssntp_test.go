@@ -2557,6 +2557,29 @@ func TestErrorStringer(t *testing.T) {
 	}
 }
 
+func TestRoleToDefaultCertName(t *testing.T) {
+	var stringTests = []struct {
+		r        Role
+		expected string
+	}{
+		{Controller, "/etc/pki/ciao/cert-Controller-localhost.pem"},
+		{AGENT, "/etc/pki/ciao/cert-CNAgent-localhost.pem"},
+		{CNCIAGENT, "/etc/pki/ciao/cert-CNCIAgent-localhost.pem"},
+		{NETAGENT, "/etc/pki/ciao/cert-NetworkingAgent-localhost.pem"},
+		{AGENT | NETAGENT, "/etc/pki/ciao/cert-CNAgent-NetworkingAgent-localhost.pem"},
+		{SERVER, "/etc/pki/ciao/cert-Server-localhost.pem"},
+		{SCHEDULER, "/etc/pki/ciao/cert-Scheduler-localhost.pem"},
+		{UNKNOWN, ""},
+	}
+
+	for _, test := range stringTests {
+		certname := RoleToDefaultCertName(test.r)
+		if certname != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, certname)
+		}
+	}
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 
