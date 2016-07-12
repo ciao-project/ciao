@@ -336,8 +336,6 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		err := client.conn.Dial(cfg, client)
 		if err != nil {
 			glog.Errorf("Unable to connect to server %v", err)
-			dialCh <- err
-			return
 		}
 
 		dialCh <- err
