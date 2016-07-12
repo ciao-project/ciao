@@ -528,32 +528,34 @@ func main() {
 		log.Fatalf("Unable to initialise logs: %v", err)
 	}
 
-	if profileFN != nil {
-		stopProfile := profileFN()
-		if stopProfile != nil {
-			defer stopProfile()
-		}
-	}
-
-	defer func() {
-		glog.Flush()
-		glog.Info("Exit")
-	}()
-
 	glog.Info("Starting Launcher")
+
+	exitCode := 0
+	var stopProfile func()
+	if profileFN != nil {
+		stopProfile = profileFN()
+	}
 
 	if hardReset {
 		purgeLauncherState()
-		os.Exit(0)
+	} else {
+		setLimits()
+
+		glog.Infof("Launcher will allow a maximum of %d instances", maxInstances)
+
+		if err := createMandatoryDirs(); err != nil {
+			glog.Fatalf("Unable to create mandatory dirs: %v", err)
+		}
+
+		exitCode = startLauncher()
 	}
 
-	setLimits()
-
-	glog.Infof("Launcher will allow a maximum of %d instances", maxInstances)
-
-	if err := createMandatoryDirs(); err != nil {
-		glog.Fatalf("Unable to create mandatory dirs: %v", err)
+	if stopProfile != nil {
+		stopProfile()
 	}
 
-	os.Exit(startLauncher())
+	glog.Flush()
+	glog.Info("Exit")
+
+	os.Exit(exitCode)
 }
