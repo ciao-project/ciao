@@ -75,12 +75,13 @@ func init() {
 }
 
 const (
-	lockDir       = "/tmp/lock/ciao"
-	instancesDir  = "/var/lib/ciao/instances"
-	logDir        = "/var/lib/ciao/logs/launcher"
-	instanceState = "state"
-	lockFile      = "client-agent.lock"
-	statsPeriod   = 30
+	lockDir        = "/tmp/lock/ciao"
+	instancesDir   = "/var/lib/ciao/instances"
+	logDir         = "/var/lib/ciao/logs/launcher"
+	instanceState  = "state"
+	lockFile       = "client-agent.lock"
+	statsPeriod    = 6
+	resourcePeriod = 30
 )
 
 type cmdWrapper struct {
@@ -527,32 +528,34 @@ func main() {
 		log.Fatalf("Unable to initialise logs: %v", err)
 	}
 
-	if profileFN != nil {
-		stopProfile := profileFN()
-		if stopProfile != nil {
-			defer stopProfile()
-		}
-	}
-
-	defer func() {
-		glog.Flush()
-		glog.Info("Exit")
-	}()
-
 	glog.Info("Starting Launcher")
+
+	exitCode := 0
+	var stopProfile func()
+	if profileFN != nil {
+		stopProfile = profileFN()
+	}
 
 	if hardReset {
 		purgeLauncherState()
-		os.Exit(0)
+	} else {
+		setLimits()
+
+		glog.Infof("Launcher will allow a maximum of %d instances", maxInstances)
+
+		if err := createMandatoryDirs(); err != nil {
+			glog.Fatalf("Unable to create mandatory dirs: %v", err)
+		}
+
+		exitCode = startLauncher()
 	}
 
-	setLimits()
-
-	glog.Infof("Launcher will allow a maximum of %d instances", maxInstances)
-
-	if err := createMandatoryDirs(); err != nil {
-		glog.Fatalf("Unable to create mandatory dirs: %v", err)
+	if stopProfile != nil {
+		stopProfile()
 	}
 
-	os.Exit(startLauncher())
+	glog.Flush()
+	glog.Info("Exit")
+
+	os.Exit(exitCode)
 }
