@@ -37,6 +37,7 @@ var server *ssntpSchedulerServer
 var controller *testutil.SsntpTestController
 var agent *testutil.SsntpTestClient
 var netAgent *testutil.SsntpTestClient
+var cnciAgent *testutil.SsntpTestClient
 
 // these status sends need to come early so the agents are marked online
 // for later ssntp.START's
@@ -93,6 +94,32 @@ func TestSendNetAgentStatus(t *testing.T) {
 		t.Fatalf("netagent node incorrect status: expected %s, got %s", tgtStatus.String(), nn.status.String())
 	}
 	server.nnMutex.Unlock()
+}
+
+func TestCNCIStart(t *testing.T) {
+	netAgentCh := netAgent.AddCmdChan(ssntp.START)
+
+	go controller.Ssntp.SendCommand(ssntp.START, []byte(testutil.CNCIStartYaml))
+
+	_, err := netAgent.GetCmdChanResult(netAgentCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// start CNCI agent
+	cnciAgent, err = testutil.NewSsntpTestClientConnection("CNCI Client", ssntp.CNCIAGENT, testutil.CNCIUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	controllerCh := controller.AddEventChan(ssntp.ConcentratorInstanceAdded)
+
+	cnciAgent.SendConcentratorAddedEvent(testutil.CNCIInstanceUUID, testutil.TenantUUID, testutil.CNCIIP, testutil.CNCIMAC)
+
+	_, err = controller.GetEventChanResult(controllerCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestStart(t *testing.T) {
@@ -377,6 +404,7 @@ func restartServer() error {
 	controllerCh := controller.AddEventChan(ssntp.NodeConnected)
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeConnected)
 	agentCh := agent.AddEventChan(ssntp.NodeConnected)
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.NodeConnected)
 
 	server = configSchedulerServer()
 	if server == nil {
@@ -385,17 +413,29 @@ func restartServer() error {
 	go server.ssntp.Serve(server.config, server)
 	//go heartBeatLoop(server)  ...handy for debugging
 
-	_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if controller != nil {
+		_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = netAgent.GetEventChanResult(netAgentCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if netAgent != nil {
+		_, err := netAgent.GetEventChanResult(netAgentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = agent.GetEventChanResult(agentCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if agent != nil {
+		_, err := agent.GetEventChanResult(agentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
+	}
+	if cnciAgent != nil {
+		_, err := cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -409,6 +449,39 @@ func TestReconnects(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	err = restartServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTenantAdded(t *testing.T) {
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantAdded)
+
+	go agent.SendTenantAddedEvent()
+
+	_, err := cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.TenantAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTenantRemoved(t *testing.T) {
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantRemoved)
+
+	go agent.SendTenantRemovedEvent()
+
+	_, err := cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.TenantRemoved)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPublicIPAssigned(t *testing.T) {
+	controllerCh := controller.AddEventChan(ssntp.PublicIPAssigned)
+
+	go cnciAgent.SendPublicIPAssignedEvent()
+
+	_, err := controller.GetEventChanResult(controllerCh, ssntp.PublicIPAssigned)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -503,15 +576,28 @@ func ssntpTestsSetup() error {
 
 func ssntpTestsTeardown() {
 	// stop everybody
-	time.Sleep(1 * time.Second)
-	controller.Ssntp.Close()
+	var wg sync.WaitGroup
+	wg.Add(3)
 
-	time.Sleep(1 * time.Second)
-	netAgent.Ssntp.Close()
+	go func() {
+		controller.Ssntp.Close()
+		wg.Done()
+	}()
 
-	time.Sleep(1 * time.Second)
-	agent.Ssntp.Close()
+	go func() {
+		netAgent.Ssntp.Close()
+		wg.Done()
+	}()
 
-	time.Sleep(1 * time.Second)
+	go func() {
+		agent.Ssntp.Close()
+		wg.Done()
+	}()
+
+	fmt.Println("Awaiting clients' shutdown")
+	wg.Wait()
+	fmt.Println("Got clients' shutdown")
+	fmt.Println("Awaiting server shutdown")
 	server.ssntp.Stop()
+	fmt.Println("Got server shutdown")
 }

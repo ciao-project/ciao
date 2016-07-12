@@ -579,9 +579,11 @@ func TestStartWorkload(t *testing.T) {
 	fwd, uuid := startWorkload(sched, controllerUUID, []byte(testutil.CNCIStartYaml))
 	decision := fwd.Decision()
 	recipients := fwd.Recipients()
-	if decision != ssntp.Forward ||
-		uuid != testutil.CNCIUUID {
-		t.Errorf("unable to start CNCI, got decision=0x%x, workload uuid=%s", decision, uuid)
+	if decision != ssntp.Forward {
+		t.Errorf("bad decision, got 0x%x, expected 0x%x", decision, ssntp.Forward)
+	}
+	if uuid != testutil.CNCIInstanceUUID {
+		t.Errorf("bad uuid, got %s, expected %s", uuid, testutil.CNCIInstanceUUID)
 	}
 	for _, dest = range recipients[:] {
 		if sched.nnMap[dest] == nil {

@@ -36,6 +36,9 @@ const InstancePrivateIP = "192.168.1.2"
 // VNICMAC is a test instance VNIC MAC address
 const VNICMAC = "aa:bb:cc:01:02:03"
 
+// VNICUUID is a test instance VNIC UUID
+const VNICUUID = "7f49d00d-1995-4156-8c79-5f5ab24ce138"
+
 // TenantUUID is a test tenant UUID
 const TenantUUID = "2491851d-dce9-48d6-b83a-a717417072ce"
 
@@ -90,6 +93,9 @@ const ImageUUID = "59460b8a-5f53-4e3e-b5ce-b71fed8c7e64"
 // InstanceUUID is an instance UUID for use in start/stop/restart/delete tests
 const InstanceUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
 
+// CNCIInstanceUUID is a CNCI instance UUID for use in start/stop/restart/delete tests
+const CNCIInstanceUUID = "c6beb8b5-0bfc-43fd-9638-7dd788179fd8"
+
 // NetAgentUUID is a network node UUID for coordinated tests
 const NetAgentUUID = "6be56328-92e2-4ecd-b426-8fe529c04e0c"
 
@@ -138,7 +144,7 @@ const StartYaml = `start:
 
 // CNCIStartYaml is a sample CNCI workload START ssntp.Command payload for test cases
 const CNCIStartYaml = `start:
-  instance_uuid: ` + CNCIUUID + `
+  instance_uuid: ` + CNCIInstanceUUID + `
   image_uuid: ` + ImageUUID + `
   fw_type: efi
   persistence: host
@@ -153,6 +159,16 @@ const CNCIStartYaml = `start:
     - type: network_node
       value: 1
       mandatory: true
+  networking:
+    vnic_mac: ` + VNICMAC + `
+    vnic_uuid: ` + VNICUUID + `
+    concentrator_uuid: ` + CNCIUUID + `
+    concentrator_ip: ` + CNCIIP + `
+    subnet: ` + TenantSubnet + `
+    subnet_key: ` + SubnetKey + `
+    subnet_uuid: ""
+    private_ip: ""
+    public_ip: false
 `
 
 // PartialStartYaml is a sample minimal workload START ssntp.Command payload for test cases

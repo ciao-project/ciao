@@ -239,6 +239,17 @@ func (ctl *SsntpTestController) EventNotify(event ssntp.Event, frame *ssntp.Fram
 	var result Result
 
 	switch event {
+	// case ssntp.NodeConnected:	handled by ConnectNotify()
+	// case ssntp.NodeDisconnected:	handled by DisconnectNotify()
+	// case ssntp.TenantAdded: does not reach controller
+	// case ssntp.TenantRemoved: does not reach controller
+	case ssntp.PublicIPAssigned:
+		var publicIPAssignedEvent payloads.EventPublicIPAssigned
+
+		err := yaml.Unmarshal(frame.Payload, &publicIPAssignedEvent)
+		if err != nil {
+			result.Err = err
+		}
 	case ssntp.InstanceDeleted:
 		var deleteEvent payloads.EventInstanceDeleted
 

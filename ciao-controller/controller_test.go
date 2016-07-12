@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -258,6 +259,34 @@ func TestStartWorkloadLaunchCNCI(t *testing.T) {
 
 }
 
+func sendTraceReportEvent(client *testutil.SsntpTestClient, t *testing.T) {
+	clientCh := client.AddEventChan(ssntp.TraceReport)
+	serverCh := server.AddEventChan(ssntp.TraceReport)
+	go client.SendTrace()
+	_, err := client.GetEventChanResult(clientCh, ssntp.TraceReport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = server.GetEventChanResult(serverCh, ssntp.TraceReport)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func sendStatsCmd(client *testutil.SsntpTestClient, t *testing.T) {
+	clientCh := client.AddCmdChan(ssntp.STATS)
+	serverCh := server.AddCmdChan(ssntp.STATS)
+	go client.SendStatsCmd()
+	_, err := client.GetCmdChanResult(clientCh, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = server.GetCmdChanResult(serverCh, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TBD: for the launch CNCI tests, I really need to create a fake
 // network node and test that way.
 
@@ -267,11 +296,9 @@ func TestDeleteInstance(t *testing.T) {
 	client, instances := testStartWorkload(t, 1, false, reason)
 	defer client.Ssntp.Close()
 
-	time.Sleep(1 * time.Second)
+	sendStatsCmd(client, t)
 
-	client.SendStatsCmd()
-
-	c := server.AddCmdChan(ssntp.DELETE)
+	serverCh := server.AddCmdChan(ssntp.DELETE)
 
 	time.Sleep(1 * time.Second)
 
@@ -280,7 +307,7 @@ func TestDeleteInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := server.GetCmdChanResult(c, ssntp.DELETE)
+	result, err := server.GetCmdChanResult(serverCh, ssntp.DELETE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,11 +322,9 @@ func TestStopInstance(t *testing.T) {
 	client, instances := testStartWorkload(t, 1, false, reason)
 	defer client.Ssntp.Close()
 
-	time.Sleep(1 * time.Second)
+	sendStatsCmd(client, t)
 
-	client.SendStatsCmd()
-
-	c := server.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.STOP)
 
 	time.Sleep(1 * time.Second)
 
@@ -308,7 +333,7 @@ func TestStopInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := server.GetCmdChanResult(c, ssntp.STOP)
+	result, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,9 +350,10 @@ func TestRestartInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	client.SendStatsCmd()
+	sendStatsCmd(client, t)
 
-	c := server.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.STOP)
+	clientCh := client.AddCmdChan(ssntp.STOP)
 
 	time.Sleep(1 * time.Second)
 
@@ -336,7 +362,11 @@ func TestRestartInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := server.GetCmdChanResult(c, ssntp.STOP)
+	result, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.GetCmdChanResult(clientCh, ssntp.STOP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,11 +375,10 @@ func TestRestartInstance(t *testing.T) {
 	}
 
 	// now attempt to restart
-	time.Sleep(1 * time.Second)
 
-	client.SendStatsCmd()
+	sendStatsCmd(client, t)
 
-	c = server.AddCmdChan(ssntp.RESTART)
+	serverCh = server.AddCmdChan(ssntp.RESTART)
 
 	time.Sleep(1 * time.Second)
 
@@ -358,7 +387,7 @@ func TestRestartInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err = server.GetCmdChanResult(c, ssntp.RESTART)
+	result, err = server.GetCmdChanResult(serverCh, ssntp.RESTART)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,7 +403,7 @@ func TestEvacuateNode(t *testing.T) {
 	}
 	defer client.Ssntp.Close()
 
-	c := server.AddCmdChan(ssntp.EVACUATE)
+	serverCh := server.AddCmdChan(ssntp.EVACUATE)
 
 	// ok to not send workload first?
 
@@ -383,7 +412,7 @@ func TestEvacuateNode(t *testing.T) {
 		t.Error(err)
 	}
 
-	result, err := server.GetCmdChanResult(c, ssntp.EVACUATE)
+	result, err := server.GetCmdChanResult(serverCh, ssntp.EVACUATE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,9 +427,9 @@ func TestInstanceDeletedEvent(t *testing.T) {
 	client, instances := testStartWorkload(t, 1, false, reason)
 	defer client.Ssntp.Close()
 
-	time.Sleep(1 * time.Second)
+	sendStatsCmd(client, t)
 
-	client.SendStatsCmd()
+	serverCh := server.AddCmdChan(ssntp.DELETE)
 
 	time.Sleep(1 * time.Second)
 
@@ -409,9 +438,22 @@ func TestInstanceDeletedEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
+	_, err = server.GetCmdChanResult(serverCh, ssntp.DELETE)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	client.SendDeleteEvent(instances[0].ID)
+	clientEvtCh := client.AddEventChan(ssntp.InstanceDeleted)
+	serverEvtCh := server.AddEventChan(ssntp.InstanceDeleted)
+	go client.SendDeleteEvent(instances[0].ID)
+	_, err = client.GetEventChanResult(clientEvtCh, ssntp.InstanceDeleted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = server.GetEventChanResult(serverEvtCh, ssntp.InstanceDeleted)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -419,43 +461,6 @@ func TestInstanceDeletedEvent(t *testing.T) {
 	_, err = context.ds.GetInstance(instances[0].ID)
 	if err == nil {
 		t.Error("Instance not deleted")
-	}
-}
-
-func TestLaunchCNCI(t *testing.T) {
-	netClient, err := testutil.NewSsntpTestClientConnection("LaunchCNCI", ssntp.NETAGENT, testutil.NetAgentUUID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer netClient.Ssntp.Close()
-
-	c := server.AddCmdChan(ssntp.START)
-
-	id := uuid.Generate().String()
-
-	// this blocks till it get success or failure
-	go context.addTenant(id)
-
-	result, err := server.GetCmdChanResult(c, ssntp.START)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.TenantUUID != id {
-		t.Fatal("Did not get correct tenant ID")
-	}
-	if !result.CNCI {
-		t.Fatal("this is not a CNCI launch request")
-	}
-
-	time.Sleep(2 * time.Second)
-
-	tenant, err := context.ds.GetTenant(id)
-	if err != nil || tenant == nil {
-		t.Fatal(err)
-	}
-
-	if tenant.CNCIIP == "" {
-		t.Fatal("CNCI Info not updated")
 	}
 }
 
@@ -480,13 +485,9 @@ func TestStopFailure(t *testing.T) {
 	client.StopFail = true
 	client.StopFailReason = payloads.StopNoInstance
 
-	time.Sleep(1 * time.Second)
+	sendStatsCmd(client, t)
 
-	client.SendStatsCmd()
-
-	time.Sleep(1 * time.Second)
-
-	c := server.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.STOP)
 
 	time.Sleep(1 * time.Second)
 
@@ -495,7 +496,7 @@ func TestStopFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := server.GetCmdChanResult(c, ssntp.STOP)
+	result, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -532,20 +533,23 @@ func TestRestartFailure(t *testing.T) {
 	client.RestartFail = true
 	client.RestartFailReason = payloads.RestartLaunchFailure
 
-	time.Sleep(1 * time.Second)
-
-	client.SendStatsCmd()
+	sendStatsCmd(client, t)
 
 	time.Sleep(1 * time.Second)
 
-	c := server.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.STOP)
+	clientCh := client.AddCmdChan(ssntp.STOP)
 
 	err := context.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err := server.GetCmdChanResult(c, ssntp.STOP)
+	_, err = client.GetCmdChanResult(clientCh, ssntp.STOP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -553,20 +557,18 @@ func TestRestartFailure(t *testing.T) {
 		t.Fatal("Did not get correct Instance ID")
 	}
 
-	time.Sleep(1 * time.Second)
-
-	client.SendStatsCmd()
+	sendStatsCmd(client, t)
 
 	time.Sleep(1 * time.Second)
 
-	c = server.AddCmdChan(ssntp.RESTART)
+	serverCh = server.AddCmdChan(ssntp.RESTART)
 
 	err = context.restartInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err = server.GetCmdChanResult(c, ssntp.RESTART)
+	result, err = server.GetCmdChanResult(serverCh, ssntp.RESTART)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -625,7 +627,8 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
 	}
 
-	c := client.AddCmdChan(ssntp.START)
+	clientCh := client.AddCmdChan(ssntp.START)
+	serverCh := server.AddCmdChan(ssntp.START)
 
 	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, true, "testtrace1")
 	if err != nil {
@@ -635,7 +638,11 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 		t.Fatalf("Wrong number of instances, expected 1, got %d", len(instances))
 	}
 
-	result, err := client.GetCmdChanResult(c, ssntp.START)
+	_, err = client.GetCmdChanResult(clientCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := server.GetCmdChanResult(serverCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,7 +675,8 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
 	}
 
-	c := client.AddCmdChan(ssntp.START)
+	clientCmdCh := client.AddCmdChan(ssntp.START)
+	clientErrCh := client.AddErrorChan(ssntp.StartFailure)
 	client.StartFail = fail
 	client.StartFailReason = reason
 
@@ -680,7 +688,14 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 		t.Fatalf("Wrong number of instances, expected %d, got %d", len(instances), num)
 	}
 
-	result, err := client.GetCmdChanResult(c, ssntp.START)
+	if fail == true {
+		_, err := client.GetErrorChanResult(clientErrCh, ssntp.StartFailure)
+		if err == nil { // unexpected success
+			t.Fatal(err)
+		}
+	}
+
+	result, err := client.GetCmdChanResult(clientCmdCh, ssntp.START)
 	if fail == true && err == nil { // unexpected success
 		t.Fatal(err)
 	}
@@ -694,14 +709,13 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	return client, instances
 }
 
-// TestStartWorkloadLaunchCNCI starts a test CNCI
 // NOTE: the caller is responsible for calling Ssntp.Close() on the *SsntpTestClient
 func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClient, []*types.Instance) {
 	netClient, err := testutil.NewSsntpTestClientConnection("StartWorkloadLaunchCNCI", ssntp.NETAGENT, testutil.NetAgentUUID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// caller of TestStartWorkloadLaunchCNCI() owns doing the close
+	// caller of testStartWorkloadLaunchCNCI() owns doing the close
 	//defer netClient.Ssntp.Close()
 
 	wls, err := context.ds.GetWorkloads()
@@ -712,14 +726,20 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
 	}
 
-	c := server.AddCmdChan(ssntp.START)
+	serverCmdCh := server.AddCmdChan(ssntp.START)
+	netClientCmdCh := netClient.AddCmdChan(ssntp.START)
 
-	id := uuid.Generate().String()
+	newTenant := uuid.Generate().String() // random ~= new tenant and thus triggers start of a CNCI
 
+	// trigger the START command flow, and await results
+	// NOTE: "instances" is shared with the go subroutine and we must
+	// insure consistency between parent and child processes
 	var instances []*types.Instance
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		instances, err = context.startWorkload(wls[0].ID, id, 1, false, "")
+		instances, err = context.startWorkload(wls[0].ID, newTenant, 1, false, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -727,13 +747,19 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 		if len(instances) != 1 {
 			t.Fatalf("Wrong number of instances, expected 1, got %d", len(instances))
 		}
+		wg.Done()
 	}()
 
-	result, err := server.GetCmdChanResult(c, ssntp.START)
+	_, err = netClient.GetCmdChanResult(netClientCmdCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TenantUUID != id {
+	result, err := server.GetCmdChanResult(serverCmdCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.TenantUUID != newTenant {
 		t.Fatal("Did not get correct tenant ID")
 	}
 
@@ -741,14 +767,36 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 		t.Fatal("this is not a CNCI launch request")
 	}
 
-	c = server.AddCmdChan(ssntp.START)
-
-	result, err = server.GetCmdChanResult(c, ssntp.START)
+	// start a test CNCI client
+	cnciClient, err := testutil.NewSsntpTestClientConnection("StartWorkloadLaunchCNCI", ssntp.CNCIAGENT, newTenant)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.InstanceUUID != instances[0].ID {
-		t.Fatal("Did not get correct Instance ID")
+
+	// make CNCI send an ssntp.ConcentratorInstanceAdded event, and await results
+	cnciEventCh := cnciClient.AddEventChan(ssntp.ConcentratorInstanceAdded)
+	serverEventCh := server.AddEventChan(ssntp.ConcentratorInstanceAdded)
+	tenantCNCI, _ := context.ds.GetTenantCNCISummary(result.InstanceUUID)
+	go cnciClient.SendConcentratorAddedEvent(result.InstanceUUID, newTenant, testutil.CNCIIP, tenantCNCI[0].MACAddress)
+	result, err = cnciClient.GetEventChanResult(cnciEventCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = server.GetEventChanResult(serverEventCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// shutdown the test CNCI client
+	cnciClient.Ssntp.Close()
+
+	if result.InstanceUUID != tenantCNCI[0].InstanceID {
+		t.Fatalf("Did not get correct Instance ID, got %s, expected %s", result.InstanceUUID, tenantCNCI[0].InstanceID)
+	}
+
+	wg.Wait() // for "instances"
+	if instances == nil {
+		t.Fatal("did not receive instance")
 	}
 
 	return netClient, instances
@@ -763,7 +811,6 @@ func TestMain(m *testing.M) {
 
 	// create fake ssntp server
 	testutil.StartTestServer(&server)
-	defer server.Ssntp.Stop()
 
 	context = new(controller)
 	context.ds = new(datastore.Datastore)
@@ -797,7 +844,6 @@ func TestMain(m *testing.M) {
 	}
 
 	id := testutil.StartIdentityServer(testIdentityConfig)
-	defer id.Close()
 
 	idConfig := identityConfig{
 		endpoint:        id.URL,
@@ -820,6 +866,8 @@ func TestMain(m *testing.M) {
 
 	context.client.Disconnect()
 	context.ds.Exit()
+	id.Close()
+	server.Ssntp.Stop()
 
 	os.Remove("./ciao-controller-test.db")
 	os.Remove("./ciao-controller-test.db-shm")

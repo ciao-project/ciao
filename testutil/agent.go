@@ -278,12 +278,8 @@ func (client *SsntpTestClient) handleStart(payload []byte) Result {
 	result.TenantUUID = cmd.Start.TenantUUID
 	result.NodeUUID = client.UUID
 
-	if client.Role == ssntp.NETAGENT {
-		networking := cmd.Start.Networking
-
-		client.sendConcentratorAddedEvent(cmd.Start.InstanceUUID, cmd.Start.TenantUUID, networking.VnicMAC)
+	if client.Role.IsNetAgent() {
 		result.CNCI = true
-		return result
 	}
 
 	if client.StartFail == true {
@@ -430,7 +426,7 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 		result = client.handleDelete(payload)
 
 	default:
-		fmt.Printf("client unhandled command %s\n", command.String())
+		fmt.Printf("client %s unhandled command %s\n", client.Role.String(), command.String())
 	}
 
 	client.SendResultAndDelCmdChan(command, result)
@@ -438,6 +434,28 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 // EventNotify is an SSNTP callback stub for SsntpTestClient
 func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
+	var result Result
+
+	switch event {
+	case ssntp.TenantAdded:
+		var tenantAddedEvent payloads.EventTenantAdded
+
+		err := yaml.Unmarshal(frame.Payload, &tenantAddedEvent)
+		if err != nil {
+			result.Err = err
+		}
+	case ssntp.TenantRemoved:
+		var tenantRemovedEvent payloads.EventTenantRemoved
+
+		err := yaml.Unmarshal(frame.Payload, &tenantRemovedEvent)
+		if err != nil {
+			result.Err = err
+		}
+	default:
+		fmt.Printf("client %s unhandled event: %s\n", client.Role.String(), event.String())
+	}
+
+	client.SendResultAndDelEventChan(event, result)
 }
 
 // ErrorNotify is an SSNTP callback stub for SsntpTestClient
@@ -534,20 +552,59 @@ func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
 		_, err = client.Ssntp.SendEvent(ssntp.InstanceDeleted, y)
 		if err != nil {
 			result.Err = err
-			fmt.Println(err)
 		}
 	}
 
 	client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
 }
 
-func (client *SsntpTestClient) sendConcentratorAddedEvent(instanceUUID string, tenantUUID string, vnicMAC string) {
+// SendTenantAddedEvent allows an SsntpTestClient to push an ssntp.TenantAdded event frame
+func (client *SsntpTestClient) SendTenantAddedEvent() {
+	var result Result
+
+	_, err := client.Ssntp.SendEvent(ssntp.TenantAdded, []byte(TenantAddedYaml))
+	if err != nil {
+		result.Err = err
+	}
+
+	client.SendResultAndDelEventChan(ssntp.TenantAdded, result)
+}
+
+// SendTenantRemovedEvent allows an SsntpTestClient to push an ssntp.TenantRemoved event frame
+func (client *SsntpTestClient) SendTenantRemovedEvent() {
+	var result Result
+
+	_, err := client.Ssntp.SendEvent(ssntp.TenantRemoved, []byte(TenantRemovedYaml))
+	if err != nil {
+		result.Err = err
+	}
+
+	client.SendResultAndDelEventChan(ssntp.TenantRemoved, result)
+}
+
+// SendPublicIPAssignedEvent allows an SsntpTestClient to push an ssntp.PublicIPAssigned event frame
+func (client *SsntpTestClient) SendPublicIPAssignedEvent() {
+	var result Result
+
+	_, err := client.Ssntp.SendEvent(ssntp.PublicIPAssigned, []byte(AssignedIPYaml))
+	if err != nil {
+		result.Err = err
+	}
+
+	client.SendResultAndDelEventChan(ssntp.PublicIPAssigned, result)
+}
+
+// SendConcentratorAddedEvent allows an SsntpTestClient to push an ssntp.ConcentratorInstanceAdded event frame
+func (client *SsntpTestClient) SendConcentratorAddedEvent(instanceUUID string, tenantUUID string, ip string, vnicMAC string) {
+	var result Result
+
 	evt := payloads.ConcentratorInstanceAddedEvent{
 		InstanceUUID:    instanceUUID,
 		TenantUUID:      tenantUUID,
-		ConcentratorIP:  "192.168.0.1",
+		ConcentratorIP:  ip,
 		ConcentratorMAC: vnicMAC,
 	}
+	result.InstanceUUID = instanceUUID
 
 	event := payloads.EventConcentratorInstanceAdded{
 		CNCIAdded: evt,
@@ -555,13 +612,15 @@ func (client *SsntpTestClient) sendConcentratorAddedEvent(instanceUUID string, t
 
 	y, err := yaml.Marshal(event)
 	if err != nil {
-		return
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendEvent(ssntp.ConcentratorInstanceAdded, y)
+		if err != nil {
+			result.Err = err
+		}
 	}
 
-	_, err = client.Ssntp.SendEvent(ssntp.ConcentratorInstanceAdded, y)
-	if err != nil {
-		fmt.Println(err)
-	}
+	client.SendResultAndDelEventChan(ssntp.ConcentratorInstanceAdded, result)
 }
 
 func (client *SsntpTestClient) sendStartFailure(instanceUUID string, reason payloads.StartFailureReason) {

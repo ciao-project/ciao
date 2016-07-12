@@ -21,14 +21,15 @@ import (
 	"encoding/asn1"
 	"flag"
 	"fmt"
-	. "github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/testutil"
 	"io/ioutil"
 	"os"
 	"path"
 	"sync"
 	"testing"
 	"time"
+
+	. "github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 )
 
 const tempCertPath = "/tmp/ssntp-test-certs"
@@ -2464,6 +2465,160 @@ var (
 	frames      = flag.Int("frames", 1000, "Number of frames per client to send")
 	payloadSize = flag.Int("payload", 1<<11, "Frames payload size")
 )
+
+func TestCommandStringer(t *testing.T) {
+	var stringTests = []struct {
+		cmd      Command
+		expected string
+	}{
+		{CONNECT, "CONNECT"},
+		{START, "START"},
+		{STOP, "STOP"},
+		{STATS, "STATISTICS"},
+		{EVACUATE, "EVACUATE"},
+		{DELETE, "DELETE"},
+		{RESTART, "RESTART"},
+		{AssignPublicIP, "Assign public IP"},
+		{ReleasePublicIP, "Release public IP"},
+		{CONFIGURE, "CONFIGURE"},
+	}
+
+	for _, test := range stringTests {
+		str := test.cmd.String()
+		if str != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, str)
+		}
+	}
+}
+
+func TestStatusStringer(t *testing.T) {
+	var stringTests = []struct {
+		sta      Status
+		expected string
+	}{
+		{CONNECTED, "CONNECTED"},
+		{READY, "READY"},
+		{FULL, "FULL"},
+		{OFFLINE, "OFFLINE"},
+		{MAINTENANCE, "MAINTENANCE"},
+	}
+
+	for _, test := range stringTests {
+		str := test.sta.String()
+		if str != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, str)
+		}
+	}
+}
+
+func TestEventStringer(t *testing.T) {
+	var stringTests = []struct {
+		evt      Event
+		expected string
+	}{
+		{TenantAdded, "Tenant Added"},
+		{TenantRemoved, "Tenant Removed"},
+		{InstanceDeleted, "Instance Deleted"},
+		{ConcentratorInstanceAdded, "Network Concentrator Instance Added"},
+		{PublicIPAssigned, "Public IP Assigned"},
+		{TraceReport, "Trace Report"},
+		{NodeConnected, "Node Connected"},
+		{NodeDisconnected, "Node Disconnected"},
+	}
+
+	for _, test := range stringTests {
+		str := test.evt.String()
+		if str != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, str)
+		}
+	}
+}
+
+func TestErrorStringer(t *testing.T) {
+	var stringTests = []struct {
+		err      Error
+		expected string
+	}{
+		{InvalidFrameType, "Invalid SSNTP frame type"},
+		{StartFailure, "Could not start instance"},
+		{StopFailure, "Could not stop instance"},
+		{ConnectionFailure, "SSNTP Connection failed"},
+		{RestartFailure, "Could not restart instance"},
+		{DeleteFailure, "Could not delete instance"},
+		{ConnectionAborted, "SSNTP Connection aborted"},
+		{InvalidConfiguration, "Cluster configuration is invalid"},
+	}
+
+	for _, test := range stringTests {
+		str := test.err.String()
+		if str != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, str)
+		}
+	}
+}
+
+func TestRoleToDefaultCertName(t *testing.T) {
+	var stringTests = []struct {
+		r        Role
+		expected string
+	}{
+		{Controller, "/etc/pki/ciao/cert-Controller-localhost.pem"},
+		{AGENT, "/etc/pki/ciao/cert-CNAgent-localhost.pem"},
+		{CNCIAGENT, "/etc/pki/ciao/cert-CNCIAgent-localhost.pem"},
+		{NETAGENT, "/etc/pki/ciao/cert-NetworkingAgent-localhost.pem"},
+		{AGENT | NETAGENT, "/etc/pki/ciao/cert-CNAgent-NetworkingAgent-localhost.pem"},
+		{SERVER, "/etc/pki/ciao/cert-Server-localhost.pem"},
+		{SCHEDULER, "/etc/pki/ciao/cert-Scheduler-localhost.pem"},
+		{UNKNOWN, ""},
+	}
+
+	for _, test := range stringTests {
+		certname := RoleToDefaultCertName(test.r)
+		if certname != test.expected {
+			t.Errorf("expected \"%s\", got \"%s\"", test.expected, certname)
+		}
+	}
+}
+
+func TestRoleSet(t *testing.T) {
+	var stringTests = []struct {
+		r        string
+		expected Role
+	}{
+		{"unknown", UNKNOWN},
+		{"server", SERVER},
+		{"controller", Controller},
+		{"agent", AGENT},
+		{"netagent", NETAGENT},
+		{"scheduler", SCHEDULER},
+		{"cnciagent", CNCIAGENT},
+	}
+
+	for _, test := range stringTests {
+		var role Role
+		role.Set(test.r)
+		if role != test.expected {
+			t.Errorf("expected \"%x\", got \"%x\"", test.expected, role)
+		}
+	}
+
+	var role Role
+	err := role.Set("asdf")
+	if err == nil {
+		t.Error("expected \"Unknown role\" error, got nil")
+	}
+
+	role.Set("agent")
+	role.Set("netagent")
+	if role != AGENT|NETAGENT {
+		t.Error("didn't correctly sequantially assign role")
+	}
+
+	role.Set("agent, netagent")
+	if role != AGENT|NETAGENT {
+		t.Error("didn't correctly multi-assign role")
+	}
+}
 
 func TestMain(m *testing.M) {
 	flag.Parse()

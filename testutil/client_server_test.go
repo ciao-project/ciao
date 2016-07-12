@@ -32,6 +32,7 @@ var server SsntpTestServer
 var controller *SsntpTestController
 var agent *SsntpTestClient
 var netAgent *SsntpTestClient
+var cnciAgent *SsntpTestClient
 
 func TestSendAgentStatus(t *testing.T) {
 	serverCh := server.AddStatusChan(ssntp.READY)
@@ -55,17 +56,53 @@ func TestSendNetAgentStatus(t *testing.T) {
 	}
 }
 
+func TestCNCIStart(t *testing.T) {
+	serverCh := server.AddCmdChan(ssntp.START)
+	netAgentCh := netAgent.AddCmdChan(ssntp.START)
+
+	go controller.Ssntp.SendCommand(ssntp.START, []byte(CNCIStartYaml))
+
+	_, err := server.GetCmdChanResult(serverCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = netAgent.GetCmdChanResult(netAgentCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	serverCh = server.AddEventChan(ssntp.ConcentratorInstanceAdded)
+	controllerCh := controller.AddEventChan(ssntp.ConcentratorInstanceAdded)
+
+	// start CNCI agent
+	cnciAgent, err = NewSsntpTestClientConnection("CNCI Client", ssntp.CNCIAGENT, CNCIUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cnciAgent.SendConcentratorAddedEvent(CNCIInstanceUUID, TenantUUID, CNCIIP, CNCIMAC)
+
+	_, err = server.GetEventChanResult(serverCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = controller.GetEventChanResult(controllerCh, ssntp.ConcentratorInstanceAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStart(t *testing.T) {
 	serverCh := server.AddCmdChan(ssntp.START)
 	agentCh := agent.AddCmdChan(ssntp.START)
 
 	go controller.Ssntp.SendCommand(ssntp.START, []byte(StartYaml))
 
-	_, err := agent.GetCmdChanResult(agentCh, ssntp.START)
+	_, err := server.GetCmdChanResult(serverCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = server.GetCmdChanResult(serverCh, ssntp.START)
+	_, err = agent.GetCmdChanResult(agentCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -392,6 +429,22 @@ func TestDeleteFailure(t *testing.T) {
 	}
 }
 
+func TestTenantAdded(t *testing.T) {
+	serverCh := server.AddEventChan(ssntp.TenantAdded)
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantAdded)
+
+	go agent.SendTenantAddedEvent()
+
+	_, err := server.GetEventChanResult(serverCh, ssntp.TenantAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.TenantAdded)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func stopServer() error {
 	controllerCh := controller.AddEventChan(ssntp.NodeDisconnected)
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeDisconnected)
@@ -418,25 +471,38 @@ func restartServer() error {
 	controllerCh := controller.AddEventChan(ssntp.NodeConnected)
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeConnected)
 	agentCh := agent.AddEventChan(ssntp.NodeConnected)
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.NodeConnected)
 
 	StartTestServer(&server)
 
 	//MUST be after StartTestServer becase the channels are initialized on start
 	serverCh := server.AddEventChan(ssntp.NodeConnected)
 
-	_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if controller != nil {
+		_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = netAgent.GetEventChanResult(netAgentCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if netAgent != nil {
+		_, err := netAgent.GetEventChanResult(netAgentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = agent.GetEventChanResult(agentCh, ssntp.NodeConnected)
-	if err != nil {
-		return err
+	if agent != nil {
+		_, err := agent.GetEventChanResult(agentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = server.GetEventChanResult(serverCh, ssntp.NodeConnected)
+	if cnciAgent != nil {
+		_, err := cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.NodeConnected)
+		if err != nil {
+			return err
+		}
+	}
+	_, err := server.GetEventChanResult(serverCh, ssntp.NodeConnected)
 	if err != nil {
 		return err
 	}
@@ -452,6 +518,38 @@ func TestReconnects(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	err = restartServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTenantRemoved(t *testing.T) {
+	serverCh := server.AddEventChan(ssntp.TenantRemoved)
+	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantRemoved)
+
+	go agent.SendTenantRemovedEvent()
+
+	_, err := server.GetEventChanResult(serverCh, ssntp.TenantRemoved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cnciAgent.GetEventChanResult(cnciAgentCh, ssntp.TenantRemoved)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPublicIPAssigned(t *testing.T) {
+	serverCh := server.AddEventChan(ssntp.PublicIPAssigned)
+	controllerCh := controller.AddEventChan(ssntp.PublicIPAssigned)
+
+	go cnciAgent.SendPublicIPAssignedEvent()
+
+	_, err := server.GetEventChanResult(serverCh, ssntp.PublicIPAssigned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = controller.GetEventChanResult(controllerCh, ssntp.PublicIPAssigned)
 	if err != nil {
 		t.Fatal(err)
 	}
