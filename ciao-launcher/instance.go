@@ -18,6 +18,7 @@ package main
 
 import (
 	"path"
+	"runtime"
 	"sync"
 	"time"
 
@@ -61,6 +62,12 @@ type insDeleteCmd struct {
 type insStopCmd struct{}
 type insMonitorCmd struct{}
 
+var startSemaphore chan struct{}
+
+func init() {
+	startSemaphore = make(chan struct{}, runtime.NumCPU()*2)
+}
+
 /*
 This functions asks the server loop to kill the instance.  An instance
 needs to request that the server loop kill it if Start fails completly.
@@ -103,7 +110,15 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 		startErr.send(id.ac.conn, id.instance)
 		return
 	}
+
+	select {
+	case startSemaphore <- struct{}{}:
+	case <-id.doneCh:
+		glog.Warningf("Abandoning instance %s start due to shutdown", id.instance)
+		return
+	}
 	st, startErr := processStart(cmd, id.instanceDir, id.vm, id.ac.conn)
+	_ = <-startSemaphore
 	if startErr != nil {
 		glog.Errorf("Unable to start instance[%s]: %v", string(startErr.code), startErr.err)
 		startErr.send(id.ac.conn, id.instance)
@@ -270,7 +285,7 @@ DONE:
 		case <-id.statsTimer:
 			d, m, c := id.vm.stats()
 			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
-			id.statsTimer = time.After(time.Second * statsPeriod)
+			id.statsTimer = time.After(time.Second * resourcePeriod)
 		case cmd := <-id.cmdCh:
 			if !id.instanceCommand(cmd) {
 				break DONE
@@ -296,7 +311,7 @@ DONE:
 			id.ovsCh <- &ovsStateChange{id.instance, ovsRunning}
 			d, m, c := id.vm.stats()
 			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
-			id.statsTimer = time.After(time.Second * statsPeriod)
+			id.statsTimer = time.After(time.Second * resourcePeriod)
 		}
 	}
 
