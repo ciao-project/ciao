@@ -453,11 +453,12 @@ func instanceToServer(context *controller, instance *types.Instance) (payloads.S
 }
 
 // returnErrorCode returns error codes for the http call
-func returnErrorCode(w http.ResponseWriter, httpError int, message string) {
+func returnErrorCode(w http.ResponseWriter, httpError int, messageFormat string, messageArgs ...interface{}) {
 	var returnCode payloads.HTTPReturnErrorCode
 	returnCode.Error.Code = httpError
 	returnCode.Error.Name = http.StatusText(returnCode.Error.Code)
-	returnCode.Error.Message = message
+
+	returnCode.Error.Message = fmt.Sprintf(messageFormat, messageArgs...)
 
 	b, err := json.Marshal(returnCode)
 	if err != nil {
@@ -952,7 +953,12 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 
 type instanceAction func(string) error
 
+// tenantServersAction will apply the operation sent in POST (as os-start, os-stop, os-delete)
+// to all servers of a tenant or if ServersID size is greater than zero it will be applied
+// only to the subset provided that also belongs to the tenant
 func tenantServersAction(w http.ResponseWriter, r *http.Request, context *controller) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
 	var servers payloads.CiaoServersAction
 	var actionFunc instanceAction
 	var statusFilter string
@@ -993,14 +999,22 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 	}
 
 	if len(servers.ServerIDs) > 0 {
-		/* TODO Check that instance belongs to the right tenant */
-		for _, instance := range servers.ServerIDs {
-			actionFunc(instance)
+		for _, instanceID := range servers.ServerIDs {
+			// make sure the instance belongs to the tenant
+			instance, err := context.ds.GetInstance(instanceID)
+
+			if err != nil {
+				returnErrorCode(w, http.StatusNotFound, "Instance %s could not be found", instanceID)
+				return
+			}
+
+			if instance.TenantID != tenant {
+				returnErrorCode(w, http.StatusNotFound, "Instance %s does not belong to tenant %s", instanceID, tenant)
+				return
+			}
+			actionFunc(instanceID)
 		}
 	} else {
-		vars := mux.Vars(r)
-		tenant := vars["tenant"]
-
 		/* We want to act on all relevant instances */
 		instances, err := context.ds.GetAllInstancesFromTenant(tenant)
 		if err != nil {
