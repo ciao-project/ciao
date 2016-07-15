@@ -34,6 +34,11 @@ import (
 	"github.com/golang/glog"
 )
 
+// custom errors
+var (
+	ErrNoTenant = errors.New("Tenant not found")
+)
+
 // Config contains configuration information for the datastore.
 type Config struct {
 	PersistentURI     string
@@ -60,6 +65,7 @@ type tenant struct {
 	network   map[int]map[int]bool
 	subnets   []int
 	instances map[string]*types.Instance
+	devices   map[string]types.BlockData
 }
 
 type node struct {
@@ -132,6 +138,9 @@ type Datastore struct {
 
 	tenantUsage     map[string][]payloads.CiaoUsage
 	tenantUsageLock *sync.RWMutex
+
+	blockDevices map[string]types.BlockData
+	bdLock       *sync.RWMutex
 }
 
 // Init initializes the private data for the Datastore object.
@@ -223,6 +232,9 @@ func (ds *Datastore) Init(config Config) error {
 
 	ds.tenantUsage = make(map[string][]payloads.CiaoUsage)
 	ds.tenantUsageLock = &sync.RWMutex{}
+
+	ds.blockDevices = make(map[string]types.BlockData)
+	ds.bdLock = &sync.RWMutex{}
 
 	return err
 }
@@ -418,7 +430,7 @@ func (ds *Datastore) AddCNCIIP(cnciMAC string, ip string) error {
 
 	if !ok {
 		ds.tenantsLock.Unlock()
-		return errors.New("No Tenant")
+		return ErrNoTenant
 	}
 
 	tenant.CNCIIP = ip
@@ -454,7 +466,7 @@ func (ds *Datastore) AddTenantCNCI(tenantID string, instanceID string, mac strin
 	tenant, ok := ds.tenants[tenantID]
 	if !ok {
 		ds.tenantsLock.Unlock()
-		return errors.New("No Tenant")
+		return ErrNoTenant
 	}
 
 	tenant.CNCIID = instanceID
@@ -472,7 +484,7 @@ func (ds *Datastore) removeTenantCNCI(tenantID string) error {
 	tenant, ok := ds.tenants[tenantID]
 	if !ok {
 		ds.tenantsLock.Unlock()
-		return errors.New("No Tenant")
+		return ErrNoTenant
 	}
 
 	tenant.CNCIID = ""
@@ -1271,4 +1283,40 @@ func (ds *Datastore) GetEventLog() ([]*types.LogEntry, error) {
 func (ds *Datastore) ClearLog() error {
 	// we don't as of yet cache any of the events that are logged.
 	return ds.db.clearLog()
+}
+
+func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
+	ds.bdLock.Lock()
+	ds.blockDevices[device.ID] = device
+	ds.bdLock.Unlock()
+
+	// update tenants cache
+	ds.tenantsLock.Lock()
+	devices := ds.tenants[device.TenantID].devices
+	devices[device.ID] = device
+	ds.tenantsLock.Unlock()
+
+	// TBD - store persistently
+	return nil
+}
+
+func (ds *Datastore) GetBlockDevices(tenant string) ([]types.BlockData, error) {
+	devices := make([]types.BlockData, 0)
+
+	ds.tenantsLock.RLock()
+
+	_, ok := ds.tenants[tenant]
+	if !ok {
+		ds.tenantsLock.RUnlock()
+		return devices, ErrNoTenant
+	}
+
+	for _, value := range ds.tenants[tenant].devices {
+		devices = append(devices, value)
+	}
+
+	ds.tenantsLock.RUnlock()
+
+	return devices, nil
+
 }
