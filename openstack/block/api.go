@@ -324,13 +324,13 @@ type APIConfig struct {
 // The caller who is starting the api service needs to provide this
 // interface.
 type Service interface {
-	GetAbsoluteLimits(string) (AbsoluteLimits, error)
-	CreateVolume(string, RequestedVolume) (Volume, error)
-	DeleteVolume(string, string) error
-	AttachVolume(string, string, string, string) error
-	ListVolumes(string) ([]ListVolume, error)
-	ListVolumesDetail(string) ([]VolumeDetail, error)
-	ShowVolumeDetails(string, string) (VolumeDetail, error)
+	GetAbsoluteLimits(tenant string) (AbsoluteLimits, error)
+	CreateVolume(tenant string, req RequestedVolume) (Volume, error)
+	DeleteVolume(tenant string, volume string) error
+	AttachVolume(tenant string, volume string, instance string, mountpoint string) error
+	ListVolumes(tenant string) ([]ListVolume, error)
+	ListVolumesDetail(tenant string) ([]VolumeDetail, error)
+	ShowVolumeDetails(tenant string, volume string) (VolumeDetail, error)
 }
 
 // Context contains data and interfaces that the block api will need.
