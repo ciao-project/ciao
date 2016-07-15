@@ -23,7 +23,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -317,10 +316,8 @@ func errorResponse(err error) APIResponse {
 
 // APIConfig contains information needed to start the block api service.
 type APIConfig struct {
-	Port        int     // the https port of the block api service
-	HTTPSCACert string  // the https CA certificate
-	HTTPSKey    string  // the https key for the certificate
-	VolService  Service // the service interface
+	Port       int     // the https port of the block api service
+	VolService Service // the service interface
 }
 
 // Service contains the required interface to the block service.
@@ -606,13 +603,11 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 	return APIResponse{http.StatusAccepted, nil}, nil
 }
 
-// StartAPI starts the block API v2 http service.
-func StartAPI(config APIConfig) {
+// Routes provides gorilla mux routes for the supported endpoints.
+func Routes(config APIConfig) *mux.Router {
 	// make new Context
 	context := &Context{config.Port, config.VolService}
 
-	// TBD: it'd be nice to return the handlers somehow and then
-	// add the keystone middleware layer somewhere else somehow.
 	r := mux.NewRouter()
 
 	// API versions
@@ -639,7 +634,5 @@ func StartAPI(config APIConfig) {
 	r.Handle("/v2/{tenant}/volumes/{volume_id}/action",
 		APIHandler{context, volumeAction}).Methods("POST")
 
-	service := fmt.Sprintf(":%d", config.Port)
-	glog.Fatal(http.ListenAndServeTLS(service, config.HTTPSCACert,
-		config.HTTPSKey, r))
+	return r
 }
