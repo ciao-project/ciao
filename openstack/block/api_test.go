@@ -262,3 +262,13 @@ func TestAPIResponse(t *testing.T) {
 		}
 	}
 }
+
+func TestRoutes(t *testing.T) {
+	var vs testVolumeService
+	config := APIConfig{8776, vs}
+
+	r := Routes(config)
+	if r == nil {
+		t.Fatalf("No routes returned")
+	}
+}
