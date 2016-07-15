@@ -163,3 +163,16 @@ type Node struct {
 	IPAddr   string `json:"ip_address"`
 	Hostname string `json:"hostname"`
 }
+
+type BlockState string
+
+// TBD - do we really need to store this as actual data,
+// or can we use a set of interfaces to get the info?
+type BlockData struct {
+	ID         string     // a uuid
+	TenantID   string     // the tenant who owns this volume
+	Instances  []Instance // any instances using this volume
+	Size       int        // size in GB
+	State      BlockState // status of
+	CreateTime time.Time  // when we created the volume
+}

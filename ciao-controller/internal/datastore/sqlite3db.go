@@ -869,6 +869,11 @@ func (ds *sqliteDB) getTenantNoCache(ID string) (*tenant, error) {
 	}
 
 	t.instances, err = ds.getTenantInstances(t.ID)
+	if err != nil {
+		glog.V(2).Info(err)
+	}
+
+	t.devices, err = ds.getTenantDevices(t.ID)
 
 	return t, err
 }
@@ -2016,4 +2021,8 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 	ds.tdbLock.RUnlock()
 
 	return stats, err
+}
+
+func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockData, error) {
+	return make(map[string]types.BlockData), nil
 }
