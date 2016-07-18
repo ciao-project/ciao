@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 )
 
@@ -124,5 +125,75 @@ func TestExtractImageInfo(t *testing.T) {
 		if result != ti.result {
 			t.Fatalf("%s failed. %d != %d", ti.name, result, ti.result)
 		}
+	}
+}
+
+func genQEMUParams(networkParams []string) []string {
+	baseParams := []string{
+		"-drive",
+		"file=/var/lib/ciao/instance/1/image.qcow2,if=virtio,aio=threads,format=qcow2",
+		"-drive",
+		"file=/var/lib/ciao/instance/1/seed.iso,if=virtio,media=cdrom",
+	}
+	baseParams = append(baseParams, networkParams...)
+	baseParams = append(baseParams, "-enable-kvm", "-cpu", "host", "-daemonize",
+		"-qmp", "unix:/var/lib/ciao/instance/1/socket,server,nowait")
+
+	return baseParams
+}
+
+func TestGenerateQEMULaunchParams(t *testing.T) {
+	var cfg vmConfig
+
+	params := genQEMUParams(nil)
+	cfg.Legacy = true
+	genParams := generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
+		"/var/lib/ciao/instance/1", nil)
+	if !reflect.DeepEqual(params, genParams) {
+		t.Fatalf("%s and %s do not match", params, genParams)
+	}
+
+	params = genQEMUParams(nil)
+	cfg.Legacy = false
+	cfg.Mem = 0
+	cfg.Cpus = 0
+	params = append(params, "-bios", qemuEfiFw)
+	genParams = generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
+		"/var/lib/ciao/instance/1", nil)
+	if !reflect.DeepEqual(params, genParams) {
+		t.Fatalf("%s and %s do not match", params, genParams)
+	}
+
+	params = genQEMUParams(nil)
+	cfg.Mem = 100
+	cfg.Cpus = 0
+	cfg.Legacy = true
+	params = append(params, "-m", "100")
+	genParams = generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
+		"/var/lib/ciao/instance/1", nil)
+	if !reflect.DeepEqual(params, genParams) {
+		t.Fatalf("%s and %s do not match", params, genParams)
+	}
+
+	params = genQEMUParams(nil)
+	cfg.Mem = 0
+	cfg.Cpus = 4
+	cfg.Legacy = true
+	params = append(params, "-smp", "cpus=4")
+	genParams = generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
+		"/var/lib/ciao/instance/1", nil)
+	if !reflect.DeepEqual(params, genParams) {
+		t.Fatalf("%s and %s do not match", params, genParams)
+	}
+
+	netParams := []string{"-net", "nic,model=virtio", "-net", "user"}
+	params = genQEMUParams(netParams)
+	cfg.Mem = 0
+	cfg.Cpus = 0
+	cfg.Legacy = true
+	genParams = generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
+		"/var/lib/ciao/instance/1", netParams)
+	if !reflect.DeepEqual(params, genParams) {
+		t.Fatalf("%s and %s do not match", params, genParams)
 	}
 }
