@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -65,28 +66,9 @@ func (q *qemu) init(cfg *vmConfig, instanceDir string) {
 	q.isoPath = path.Join(instanceDir, seedImage)
 }
 
-func (q *qemu) imageInfo(imagePath string) (imageSizeMB int, err error) {
-	imageSizeMB = -1
-
-	params := make([]string, 0, 8)
-	params = append(params, "info")
-	params = append(params, imagePath)
-
-	cmd := exec.Command("qemu-img", params...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		glog.Errorf("Unable to read output from qemu-img: %v", err)
-		return -1, err
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		_ = stdout.Close()
-		glog.Errorf("Unable start qemu-img: %v", err)
-		return -1, err
-	}
-
-	scanner := bufio.NewScanner(stdout)
+func extractImageInfo(r io.Reader) int {
+	imageSizeMB := -1
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() && imageSizeMB == -1 {
 		line := scanner.Text()
 		matches := virtualSizeRegexp.FindStringSubmatch(line)
@@ -119,6 +101,30 @@ func (q *qemu) imageInfo(imagePath string) (imageSizeMB int, err error) {
 			imageSizeMB++
 		}
 	}
+
+	return imageSizeMB
+}
+
+func (q *qemu) imageInfo(imagePath string) (int, error) {
+	params := make([]string, 0, 8)
+	params = append(params, "info")
+	params = append(params, imagePath)
+
+	cmd := exec.Command("qemu-img", params...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		glog.Errorf("Unable to read output from qemu-img: %v", err)
+		return -1, err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		_ = stdout.Close()
+		glog.Errorf("Unable start qemu-img: %v", err)
+		return -1, err
+	}
+
+	imageSizeMB := extractImageInfo(stdout)
 
 	err = cmd.Wait()
 	if err != nil {
