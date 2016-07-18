@@ -130,7 +130,15 @@ func (client *Client) handleSSNTPServer() {
 				break
 			}
 
+			client.status.Lock()
+			if client.status.status == ssntpClosed {
+				client.status.Unlock()
+				return
+			}
+			//insure new frame doesn't race with client.Close()
 			client.frameWg.Add(1)
+			client.status.Unlock()
+
 			go client.processSSNTPFrame(&frame)
 		}
 

@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -732,14 +731,10 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	newTenant := uuid.Generate().String() // random ~= new tenant and thus triggers start of a CNCI
 
 	// trigger the START command flow, and await results
-	// NOTE: "instances" is shared with the go subroutine and we must
-	// insure consistency between parent and child processes
-	var instances []*types.Instance
+	instanceCh := make(chan []*types.Instance)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
-		instances, err = context.startWorkload(wls[0].ID, newTenant, 1, false, "")
+		instances, err := context.startWorkload(wls[0].ID, newTenant, 1, false, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -747,7 +742,8 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 		if len(instances) != 1 {
 			t.Fatalf("Wrong number of instances, expected 1, got %d", len(instances))
 		}
-		wg.Done()
+
+		instanceCh <- instances
 	}()
 
 	_, err = netClient.GetCmdChanResult(netClientCmdCh, ssntp.START)
@@ -794,7 +790,7 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 		t.Fatalf("Did not get correct Instance ID, got %s, expected %s", result.InstanceUUID, tenantCNCI[0].InstanceID)
 	}
 
-	wg.Wait() // for "instances"
+	instances := <-instanceCh
 	if instances == nil {
 		t.Fatal("did not receive instance")
 	}
