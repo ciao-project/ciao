@@ -17,9 +17,16 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"fmt"
+	"net"
+	"os"
+	"path"
 	"reflect"
+	"sync"
 	"testing"
+	"time"
 )
 
 var imageInfoTestGood = `
@@ -196,4 +203,115 @@ func TestGenerateQEMULaunchParams(t *testing.T) {
 	if !reflect.DeepEqual(params, genParams) {
 		t.Fatalf("%s and %s do not match", params, genParams)
 	}
+}
+
+func TestQmpConnectBadSocket(t *testing.T) {
+	var wg sync.WaitGroup
+	qmpChannel := make(chan string)
+	closedCh := make(chan struct{})
+	connectedCh := make(chan struct{})
+	instance := "testInstance"
+	instanceDir := path.Join("/tmp", instance)
+
+	wg.Add(1)
+	go qmpConnect(qmpChannel, instance, instanceDir, closedCh, connectedCh, &wg, false)
+	wg.Wait()
+	select {
+	case <-closedCh:
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting for closedCh to close")
+	}
+}
+
+func setupQmpSocket(t *testing.T, runTest func(net.Conn, *bufio.Scanner, chan string, *testing.T) bool) {
+	var wg sync.WaitGroup
+	qmpChannel := make(chan string)
+	closedCh := make(chan struct{})
+	connectedCh := make(chan struct{})
+	instance := "testInstance"
+	instanceDir := path.Join("/tmp", instance)
+
+	err := os.MkdirAll(instanceDir, 0755)
+	if err != nil {
+		t.Fatalf("Unable to create %s: %v", instanceDir, err)
+	}
+	defer func() {
+		_ = os.RemoveAll(instanceDir)
+	}()
+
+	socketPath := path.Join(instanceDir, "socket")
+	ln, err := net.Listen("unix", socketPath)
+	if err != nil {
+		t.Fatalf("Unable to open domain socket %s: %v", socketPath, err)
+	}
+	defer ln.Close()
+	wg.Add(1)
+	go qmpConnect(qmpChannel, instance, instanceDir, closedCh, connectedCh, &wg, false)
+	fd, err := ln.Accept()
+	if err != nil {
+		t.Fatalf("Unable to accept client %v", err)
+	}
+
+	fd.SetDeadline(time.Now().Add(5. * time.Second))
+	sc := bufio.NewScanner(fd)
+	if !sc.Scan() {
+		fd.Close()
+		t.Fatalf("query capabilities not received")
+	}
+
+	_, err = fmt.Fprintln(fd, "{}")
+	if err != nil {
+		fd.Close()
+		t.Fatalf("Unable to write to qmpChannel %v", err)
+	}
+
+	select {
+	case <-connectedCh:
+	case <-time.After(time.Second):
+		fd.Close()
+		t.Fatalf("Timed out waiting for connectedCh to close")
+	}
+
+	if runTest(fd, sc, qmpChannel, t) {
+		defer fd.Close()
+	}
+	close(qmpChannel)
+	wg.Wait()
+	select {
+	case <-closedCh:
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting for closedCh to close")
+	}
+}
+
+func TestQmpConnect(t *testing.T) {
+	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan string, t *testing.T) bool {
+		return true
+	})
+}
+
+func TestQmpShutdown(t *testing.T) {
+	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan string, t *testing.T) bool {
+		qmpChannel <- virtualizerStopCmd
+		if !sc.Scan() {
+			t.Fatalf("power down command expected")
+		}
+		_, err := fmt.Fprintln(fd, `{ "return": {}}`)
+		if err != nil {
+			t.Fatalf("Unable to write to domain socket: %v", err)
+		}
+		return true
+	})
+}
+
+func TestQmpLost(t *testing.T) {
+	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan string, t *testing.T) bool {
+		qmpChannel <- virtualizerStopCmd
+		if !sc.Scan() {
+			t.Fatalf("power down command expected")
+		}
+		fd.Close()
+
+		return false
+	})
 }
