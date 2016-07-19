@@ -51,6 +51,14 @@ var tests = []test{
 		http.StatusCreated,
 		`{"status":"queued","container_format":"bare","min_ram":0,"updated_at":"2015-11-29T22:21:42Z","owner":"bab7d5c60cd041a0a36f7c4b6e1dd978","min_disk":0,"tags":[],"locations":[],"visibility":"private","id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","size":null,"virtual_size":null,"name":"Ubuntu","checksum":null,"created_at":"2015-11-29T22:21:42Z","disk_format":"raw","properties":null,"protected":false,"self":"/v2/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb","file":"/v2/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb/file","schema":"/v2/schemas/image"}`,
 	},
+	{
+		"GET",
+		"/v2/images",
+		listImages,
+		"",
+		http.StatusOK,
+		`{"images":[{"status":"queued","container_format":"bare","min_ram":0,"updated_at":"2015-11-29T22:21:42Z","owner":"bab7d5c60cd041a0a36f7c4b6e1dd978","min_disk":0,"tags":[],"locations":[],"visibility":"private","id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","size":null,"virtual_size":null,"name":"Ubuntu","checksum":null,"created_at":"2015-11-29T22:21:42Z","disk_format":"raw","properties":null,"protected":false,"self":"/v2/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb","file":"/v2/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb/file","schema":"/v2/schemas/image"}],"schema":"/v2/schemas/images","first":"/v2/images"}`,
+	},
 }
 
 func myHostname() string {
@@ -88,6 +96,41 @@ func (is testImageService) CreateImage(req CreateImageRequest) (CreateImageRespo
 		Schema:          "/v2/schemas/image",
 		Name:            &name,
 	}, nil
+}
+
+func (is testImageService) ListImages() ([]CreateImageResponse, error) {
+	format := Bare
+	name := "Ubuntu"
+	createdAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
+	minDisk := 0
+	minRAM := 0
+	owner := "bab7d5c60cd041a0a36f7c4b6e1dd978"
+
+	image := CreateImageResponse{
+		Status:          Queued,
+		ContainerFormat: &format,
+		CreatedAt:       createdAt,
+		Tags:            make([]string, 0),
+		DiskFormat:      Raw,
+		Visibility:      Private,
+		UpdatedAt:       &updatedAt,
+		Locations:       make([]string, 0),
+		Self:            "/v2/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb",
+		MinDisk:         &minDisk,
+		Protected:       false,
+		ID:              "b2173dd3-7ad6-4362-baa6-a68bce3565cb",
+		File:            "/v2/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb/file",
+		Owner:           &owner,
+		MinRAM:          &minRAM,
+		Schema:          "/v2/schemas/image",
+		Name:            &name,
+	}
+
+	images := make([]CreateImageResponse, 0)
+	images = append(images, image)
+
+	return images, nil
 }
 
 func TestRoutes(t *testing.T) {
