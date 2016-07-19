@@ -20,14 +20,17 @@ import (
 	"flag"
 	"os"
 	"runtime/pprof"
+	"runtime/trace"
 
 	"github.com/golang/glog"
 )
 
 var cpuProfile string
+var traceFile string
 
 func init() {
 	flag.StringVar(&cpuProfile, "cpuprofile", "", "write profile information to file")
+	flag.StringVar(&traceFile, "trace", "", "write trace information to file")
 	profileFN = func() func() {
 		if cpuProfile == "" {
 			return nil
@@ -42,6 +45,24 @@ func init() {
 		pprof.StartCPUProfile(f)
 		return func() {
 			pprof.StopCPUProfile()
+			f.Close()
+		}
+	}
+
+	traceFN = func() func() {
+		if traceFile == "" {
+			return nil
+		}
+
+		f, err := os.Create(traceFile)
+		if err != nil {
+			glog.Warning("Unable to create trace file %s: %v",
+				traceFile, err)
+			return nil
+		}
+		trace.Start(f)
+		return func() {
+			trace.Stop()
 			f.Close()
 		}
 	}

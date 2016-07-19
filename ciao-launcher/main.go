@@ -35,6 +35,7 @@ import (
 )
 
 var profileFN func() func()
+var traceFN func() func()
 
 type uiFlag string
 
@@ -536,6 +537,11 @@ func main() {
 		stopProfile = profileFN()
 	}
 
+	var stopTrace func()
+	if traceFN != nil {
+		stopTrace = traceFN()
+	}
+
 	if hardReset {
 		purgeLauncherState()
 	} else {
@@ -548,6 +554,10 @@ func main() {
 		}
 
 		exitCode = startLauncher()
+	}
+
+	if stopTrace != nil {
+		stopTrace()
 	}
 
 	if stopProfile != nil {
