@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -65,28 +66,9 @@ func (q *qemu) init(cfg *vmConfig, instanceDir string) {
 	q.isoPath = path.Join(instanceDir, seedImage)
 }
 
-func (q *qemu) imageInfo(imagePath string) (imageSizeMB int, err error) {
-	imageSizeMB = -1
-
-	params := make([]string, 0, 8)
-	params = append(params, "info")
-	params = append(params, imagePath)
-
-	cmd := exec.Command("qemu-img", params...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		glog.Errorf("Unable to read output from qemu-img: %v", err)
-		return -1, err
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		_ = stdout.Close()
-		glog.Errorf("Unable start qemu-img: %v", err)
-		return -1, err
-	}
-
-	scanner := bufio.NewScanner(stdout)
+func extractImageInfo(r io.Reader) int {
+	imageSizeMB := -1
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() && imageSizeMB == -1 {
 		line := scanner.Text()
 		matches := virtualSizeRegexp.FindStringSubmatch(line)
@@ -119,6 +101,30 @@ func (q *qemu) imageInfo(imagePath string) (imageSizeMB int, err error) {
 			imageSizeMB++
 		}
 	}
+
+	return imageSizeMB
+}
+
+func (q *qemu) imageInfo(imagePath string) (int, error) {
+	params := make([]string, 0, 8)
+	params = append(params, "info")
+	params = append(params, imagePath)
+
+	cmd := exec.Command("qemu-img", params...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		glog.Errorf("Unable to read output from qemu-img: %v", err)
+		return -1, err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		_ = stdout.Close()
+		glog.Errorf("Unable start qemu-img: %v", err)
+		return -1, err
+	}
+
+	imageSizeMB := extractImageInfo(stdout)
 
 	err = cmd.Wait()
 	if err != nil {
@@ -413,21 +419,45 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 	return port, err
 }
 
+func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string, networkParams []string) []string {
+	vmImage := path.Join(instanceDir, "image.qcow2")
+	qmpSocket := path.Join(instanceDir, "socket")
+	fileParam := fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage)
+	isoParam := fmt.Sprintf("file=%s,if=virtio,media=cdrom", isoPath)
+	qmpParam := fmt.Sprintf("unix:%s,server,nowait", qmpSocket)
+
+	params := make([]string, 0, 32)
+	params = append(params, "-drive", fileParam)
+	params = append(params, "-drive", isoParam)
+	params = append(params, networkParams...)
+
+	params = append(params, "-enable-kvm")
+	params = append(params, "-cpu", "host")
+	params = append(params, "-daemonize")
+	params = append(params, "-qmp", qmpParam)
+
+	if cfg.Mem > 0 {
+		memoryParam := fmt.Sprintf("%d", cfg.Mem)
+		params = append(params, "-m", memoryParam)
+	}
+	if cfg.Cpus > 0 {
+		cpusParam := fmt.Sprintf("cpus=%d", cfg.Cpus)
+		params = append(params, "-smp", cpusParam)
+	}
+
+	if !cfg.Legacy {
+		params = append(params, "-bios", qemuEfiFw)
+	}
+	return params
+}
+
 func (q *qemu) startVM(vnicName, ipAddress string) error {
 
 	var fds []*os.File
 
 	glog.Info("Launching qemu")
 
-	vmImage := path.Join(q.instanceDir, "image.qcow2")
-	qmpSocket := path.Join(q.instanceDir, "socket")
-	fileParam := fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage)
-	isoParam := fmt.Sprintf("file=%s,if=virtio,media=cdrom", q.isoPath)
-	qmpParam := fmt.Sprintf("unix:%s,server,nowait", qmpSocket)
-
-	params := make([]string, 0, 32)
-	params = append(params, "-drive", fileParam)
-	params = append(params, "-drive", isoParam)
+	networkParams := make([]string, 0, 32)
 
 	if vnicName != "" {
 		if q.cfg.NetworkNode {
@@ -440,36 +470,20 @@ func (q *qemu) startVM(vnicName, ipAddress string) error {
 				return err
 			}
 			defer cleanupFds(fds, len(fds))
-			params = append(params, macvtapParam...)
+			networkParams = append(networkParams, macvtapParam...)
 		} else {
 			tapParam, err := computeTapParam(vnicName, q.cfg.VnicMAC)
 			if err != nil {
 				return err
 			}
-			params = append(params, tapParam...)
+			networkParams = append(networkParams, tapParam...)
 		}
 	} else {
-		params = append(params, "-net", "nic,model=virtio")
-		params = append(params, "-net", "user")
+		networkParams = append(networkParams, "-net", "nic,model=virtio")
+		networkParams = append(networkParams, "-net", "user")
 	}
 
-	params = append(params, "-enable-kvm")
-	params = append(params, "-cpu", "host")
-	params = append(params, "-daemonize")
-	params = append(params, "-qmp", qmpParam)
-
-	if q.cfg.Mem > 0 {
-		memoryParam := fmt.Sprintf("%d", q.cfg.Mem)
-		params = append(params, "-m", memoryParam)
-	}
-	if q.cfg.Cpus > 0 {
-		cpusParam := fmt.Sprintf("cpus=%d", q.cfg.Cpus)
-		params = append(params, "-smp", cpusParam)
-	}
-
-	if !q.cfg.Legacy {
-		params = append(params, "-bios", qemuEfiFw)
-	}
+	params := generateQEMULaunchParams(q.cfg, q.isoPath, q.instanceDir, networkParams)
 
 	var err error
 
