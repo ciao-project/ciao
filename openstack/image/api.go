@@ -25,6 +25,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const APIPort = 9292
+
 // TBD - are these thing shared enough between OpenStack services
 // to be pulled out to a common area?
 // ---------
@@ -167,6 +169,12 @@ type CreateImageResponse struct {
 	Schema          string           `json:"schema"`
 }
 
+type ListImagesResponse struct {
+	Images []CreateImageResponse `json:"images"`
+	Schema string                `json:"schema"`
+	First  string                `json:"first"`
+}
+
 // TBD - can we pull these structs out into some sort of common
 // api service file?
 // ----------
@@ -179,6 +187,7 @@ type APIConfig struct {
 
 type Service interface {
 	CreateImage(CreateImageRequest) (CreateImageResponse, error)
+	ListImages() ([]CreateImageResponse, error)
 }
 
 // Context contains data and interfaces that the image api will need.
@@ -262,6 +271,12 @@ func listAPIVersions(context *Context, w http.ResponseWriter, r *http.Request) (
 	return APIResponse{http.StatusOK, resp}, nil
 }
 
+// createImage creates information about an image, but doesn't contain
+// any actual image.
+//
+// TBD: this endpoint has no tenant var - how do you know who owns the
+// image if the tenant id isn't passed in? Default visibility is supposed
+// to be private.
 func createImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	defer r.Body.Close()
 
@@ -285,6 +300,24 @@ func createImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 	return APIResponse{http.StatusCreated, resp}, nil
 }
 
+// listImages returns a list of all created images.
+//
+// TBD: support query & sort parameters
+func listImages(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	images, err := context.ListImages()
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	resp := ListImagesResponse{
+		Images: images,
+		Schema: "/v2/schemas/images",
+		First:  "/v2/images",
+	}
+
+	return APIResponse{http.StatusOK, resp}, nil
+}
+
 // Routes provides gorilla mux routes for the supported endpoints.
 func Routes(config APIConfig) *mux.Router {
 	// make new Context
@@ -295,6 +328,7 @@ func Routes(config APIConfig) *mux.Router {
 	// API versions
 	r.Handle("/", APIHandler{context, listAPIVersions}).Methods("GET")
 	r.Handle("/v2/images", APIHandler{context, createImage}).Methods("POST")
+	r.Handle("/v2/images", APIHandler{context, listImages}).Methods("GET")
 
 	return r
 }
