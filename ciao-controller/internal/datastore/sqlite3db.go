@@ -592,7 +592,7 @@ func (ds *sqliteDB) sqliteConnect(name string, URI string, config []string) (*sq
 // other is for transient data that does not need to be restored
 // on restart.
 func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
-	sql.Register("sqlite_attach_tdb", &sqlite3.SQLiteDriver{
+	sql.Register(transientURI, &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
 			cmd := fmt.Sprintf("ATTACH '%s' AS tdb", transientURI)
 			conn.Exec(cmd, nil)
@@ -600,7 +600,7 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 		},
 	})
 
-	datastore, err := ds.sqliteConnect("sqlite_attach_tdb", persistentURI, pSQLLiteConfig)
+	datastore, err := ds.sqliteConnect(transientURI, persistentURI, pSQLLiteConfig)
 	if err != nil {
 		return err
 	}
@@ -608,7 +608,7 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 	ds.db = datastore
 	ds.dbName = persistentURI
 
-	sql.Register("sqlite_attach_db", &sqlite3.SQLiteDriver{
+	sql.Register(persistentURI, &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
 			cmd := fmt.Sprintf("ATTACH '%s' AS db", persistentURI)
 			conn.Exec(cmd, nil)
@@ -616,7 +616,7 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 		},
 	})
 
-	datastore, err = ds.sqliteConnect("sqlite_attach_db", transientURI, pSQLLiteConfig)
+	datastore, err = ds.sqliteConnect(persistentURI, transientURI, pSQLLiteConfig)
 	if err != nil {
 		return err
 	}
@@ -744,6 +744,17 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 	}
 
 	return defaults, nil
+}
+
+func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
+	// fake this for now. We are going to always request a
+	// new bootable image which will persist.
+	return &types.StorageResource{
+		ID:         "",
+		Bootable:   true,
+		Persistent: true,
+		SourceType: types.ImageService,
+	}, nil
 }
 
 func (ds *sqliteDB) addLimit(tenantID string, resourceID int, limit int) error {
@@ -915,6 +926,11 @@ func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
 		return nil, err
 	}
 
+	work.Storage, err = ds.getWorkloadStorage(id)
+	if err != nil {
+		return nil, err
+	}
+
 	return work, nil
 }
 
@@ -955,6 +971,11 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 		}
 
 		wl.Defaults, err = ds.getWorkloadDefaults(wl.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		wl.Storage, err = ds.getWorkloadStorage(wl.ID)
 		if err != nil {
 			return nil, err
 		}
