@@ -136,6 +136,7 @@ const (
 	ciaoUsernameEnv    = "CIAO_USERNAME"
 	ciaoPasswordEnv    = "CIAO_PASSWORD"
 	ciaoComputePortEnv = "CIAO_COMPUTEPORT"
+	ciaoTenantNameEnv  = "CIAO_TENANT_NAME"
 )
 
 type queryValue struct {
@@ -262,6 +263,7 @@ func getCiaoEnvVariables() {
 	username := os.Getenv(ciaoUsernameEnv)
 	password := os.Getenv(ciaoPasswordEnv)
 	port := os.Getenv(ciaoComputePortEnv)
+	tenant := os.Getenv(ciaoTenantNameEnv)
 
 	infof("Ciao environment variables:\n")
 	infof("\t%s:%s\n", ciaoIdentityEnv, identity)
@@ -269,6 +271,7 @@ func getCiaoEnvVariables() {
 	infof("\t%s:%s\n", ciaoUsernameEnv, username)
 	infof("\t%s:%s\n", ciaoPasswordEnv, password)
 	infof("\t%s:%s\n", ciaoComputePortEnv, port)
+	infof("\t%s:%s\n", ciaoTenantNameEnv, tenantName)
 
 	if identity != "" && *identityURL == "" {
 		*identityURL = identity
@@ -290,6 +293,9 @@ func getCiaoEnvVariables() {
 		*computePort, _ = strconv.Atoi(port)
 	}
 
+	if tenant != "" && *tenantName == "" {
+		*tenantName = tenant
+	}
 }
 
 func checkCompulsoryOptions() {
