@@ -19,8 +19,43 @@ package types
 import (
 	"time"
 
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 )
+
+// SourceType contains the valid values of the storage source.
+type SourceType string
+
+const (
+	// ImageService indicates the source comes from the image service.
+	ImageService SourceType = "image"
+
+	// VolumeService indicates the source comes from the volume service.
+	VolumeService SourceType = "volume"
+)
+
+// StorageResource defines a storage resource for a workload.
+// TBD: should the workload support multiple of these?
+type StorageResource struct {
+	// ID indicates a volumeID. If ID is blank, then it needs to be created.
+	ID string
+
+	// Bootable indicates whether should the resource be used for booting
+	Bootable bool
+
+	// Persistent indicates whether the storage is temporary
+	// TBD: do we bother to save info about temp storage?
+	//      does it count against quota?
+	Persistent bool
+
+	// Size is the size of the storage to be created if new.
+	Size int
+
+	// ImageType indicates whether we are making a new resource
+	// based on an image or existing volume.
+	// Needed only for new storage.
+	SourceType SourceType
+}
 
 // Workload contains resource and configuration information for a user
 // workload.
@@ -33,6 +68,7 @@ type Workload struct {
 	ImageName   string                       `json:"-"`
 	Config      string                       `json:"-"`
 	Defaults    []payloads.RequestedResource `json:"-"`
+	Storage     *StorageResource             `json:"-"`
 }
 
 // Instance contains information about an instance of a workload.
@@ -172,7 +208,7 @@ type BlockState string
 // TBD - do we really need to store this as actual data,
 // or can we use a set of interfaces to get the info?
 type BlockData struct {
-	ID         string     // a uuid
+	storage.BlockDevice
 	TenantID   string     // the tenant who owns this volume
 	Instances  []Instance // any instances using this volume
 	Size       int        // size in GB

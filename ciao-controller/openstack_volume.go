@@ -23,10 +23,10 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	// TBD - do we really need to do this, or can we associate
 	// the block device data with the device itself?
 	data := types.BlockData{
-		ID:         bd.ID,
-		Size:       req.Size,
-		CreateTime: time.Now(),
-		TenantID:   tenant,
+		BlockDevice: bd,
+		Size:        req.Size,
+		CreateTime:  time.Now(),
+		TenantID:    tenant,
 	}
 	err = c.ds.AddBlockDevice(data)
 	if err != nil {

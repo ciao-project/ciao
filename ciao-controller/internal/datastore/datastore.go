@@ -107,6 +107,9 @@ type persistentStore interface {
 	addFrameStat(stat payloads.FrameTrace) (err error)
 	getBatchFrameSummary() (stats []types.BatchFrameSummary, err error)
 	getBatchFrameStatistics(label string) (stats []types.BatchFrameStat, err error)
+
+	// storage interfaces
+	getWorkloadStorage(ID string) (*types.StorageResource, error)
 }
 
 // Datastore provides context for the datastore package.
