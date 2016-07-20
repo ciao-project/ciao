@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
@@ -144,6 +145,40 @@ func (c *config) GetResources() map[string]int {
 	return resources
 }
 
+func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.StorageResources, error) {
+	s := wl.Storage
+
+	var bd storage.BlockDevice
+
+	// is it existing storage or new storage?
+	if s.ID == "" {
+		// assume always persistent for now.
+		// assume we have already checked quotas.
+		// ID of source is the image id.
+		device, err := c.CreateBlockDevice(&wl.ImageID, s.Size)
+		if err != nil {
+			return payloads.StorageResources{}, err
+		}
+
+		data := types.BlockData{
+			BlockDevice: bd,
+			Size:        s.Size,
+			CreateTime:  time.Now(),
+			TenantID:    tenant,
+		}
+
+		err = c.ds.AddBlockDevice(data)
+		if err != nil {
+			c.DeleteBlockDevice(bd.ID)
+			return payloads.StorageResources{}, err
+		}
+
+		bd = device
+	}
+
+	return payloads.StorageResources{ID: bd.ID, Bootable: s.Bootable}, nil
+}
+
 func newConfig(context *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {
 	type UserData struct {
 		UUID     string `json:"uuid"`
@@ -166,6 +201,7 @@ func newConfig(context *controller, wl *types.Workload, instanceID string, tenan
 	config.cnci = isCNCIWorkload(wl)
 
 	var networking payloads.NetworkResources
+	var storage payloads.StorageResources
 
 	// do we ever need to save the vnic uuid?
 	networking.VnicUUID = uuid.Generate().String()
@@ -197,6 +233,16 @@ func newConfig(context *controller, wl *types.Workload, instanceID string, tenan
 		// set the hostname and uuid for userdata
 		userData.UUID = instanceID
 		userData.Hostname = instanceID
+
+		// handle storage resources
+		if wl.Storage != nil {
+			storage, err = getStorage(context, wl, tenantID)
+			if err != nil {
+				glog.Warning(err)
+				// we should really clean up and return here,
+				// but just keep going for now.
+			}
+		}
 	} else {
 		networking.VnicMAC = tenant.CNCIMAC
 
@@ -217,6 +263,7 @@ func newConfig(context *controller, wl *types.Workload, instanceID string, tenan
 		InstancePersistence: payloads.Host,
 		RequestedResources:  defaults,
 		Networking:          networking,
+		Storage:             storage,
 	}
 
 	if wl.VMType == payloads.Docker {

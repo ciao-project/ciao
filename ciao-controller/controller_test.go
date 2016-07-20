@@ -26,6 +26,7 @@ import (
 
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/uuid"
@@ -798,6 +799,39 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	return netClient, instances
 }
 
+func TestGetStorage(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := &types.StorageResource{
+		ID:         "",
+		Bootable:   true,
+		Persistent: true,
+		SourceType: types.ImageService,
+	}
+
+	wl := &types.Workload{
+		ID:      "validID",
+		ImageID: "testImageID",
+		Storage: s,
+	}
+
+	pl, err := getStorage(context, wl, tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pl.ID == "" {
+		t.Errorf("storage ID does not exist")
+	}
+
+	if pl.Bootable != true {
+		t.Errorf("bootable flag not correct")
+	}
+}
+
 var testClients []*testutil.SsntpTestClient
 var context *controller
 var server testutil.SsntpTestServer
@@ -811,9 +845,11 @@ func TestMain(m *testing.M) {
 	context = new(controller)
 	context.ds = new(datastore.Datastore)
 
+	context.BlockDriver = storage.GetBlockDriver()
+
 	dsConfig := datastore.Config{
-		PersistentURI:     "./ciao-controller-test.db",
-		TransientURI:      "./ciao-controller-test-tdb.db",
+		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
+		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitTablesPath:    *tablesInitPath,
 		InitWorkloadsPath: *workloadsPath,
 	}
@@ -864,13 +900,6 @@ func TestMain(m *testing.M) {
 	context.ds.Exit()
 	id.Close()
 	server.Ssntp.Stop()
-
-	os.Remove("./ciao-controller-test.db")
-	os.Remove("./ciao-controller-test.db-shm")
-	os.Remove("./ciao-controller-test.db-wal")
-	os.Remove("./ciao-controller-test-tdb.db")
-	os.Remove("./ciao-controller-test-tdb.db-shm")
-	os.Remove("./ciao-controller-test-tdb.db-wal")
 
 	os.Exit(code)
 }
