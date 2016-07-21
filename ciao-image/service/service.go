@@ -34,7 +34,7 @@ const (
 	Created State = "created"
 )
 
-func stateToStatus(state State) image.ImageStatus {
+func stateToStatus(state State) image.Status {
 	switch state {
 	case Created:
 		return image.Queued
@@ -43,7 +43,7 @@ func stateToStatus(state State) image.ImageStatus {
 	return image.Active
 }
 
-func visibility(i Image) image.ImageVisibility {
+func visibility(i Image) image.Visibility {
 	if i.TenantID == "" {
 		return image.Public
 	}
