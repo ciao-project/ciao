@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
+	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
 	"github.com/golang/glog"
@@ -32,6 +33,7 @@ type controller struct {
 	client *ssntpClient
 	ds     *datastore.Datastore
 	id     *identity
+	storage.BlockDriver
 }
 
 var singleMachine = flag.Bool("single", false, "Enable single machine test")
@@ -76,6 +78,8 @@ func main() {
 
 	context := new(controller)
 	context.ds = new(datastore.Datastore)
+
+	context.BlockDriver = storage.GetBlockDriver()
 
 	dsConfig := datastore.Config{
 		PersistentURI:     *persistentDatastoreLocation,
