@@ -230,7 +230,7 @@ type VolumeResponse struct {
 	Volume Volume `json:"volume"`
 }
 
-// ListVolume is the containes volume information for the listVolume endpoint.
+// ListVolume is the contains volume information for the listVolume endpoint.
 // http://developer.openstack.org/api-ref-blockstorage-v2.html#listVolumes
 type ListVolume struct {
 	ID    string `json:"id"`
