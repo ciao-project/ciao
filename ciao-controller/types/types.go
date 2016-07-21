@@ -164,8 +164,11 @@ type Node struct {
 	Hostname string `json:"hostname"`
 }
 
+// BlockState represents the state of the block device in the controller
+// datastore.
 type BlockState string
 
+// BlockData respresents the attributes of this block device.
 // TBD - do we really need to store this as actual data,
 // or can we use a set of interfaces to get the info?
 type BlockData struct {
