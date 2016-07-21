@@ -1285,6 +1285,8 @@ func (ds *Datastore) ClearLog() error {
 	return ds.db.clearLog()
 }
 
+// AddBlockDevice will store information about new BlockData into
+// the datastore.
 func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	ds.bdLock.Lock()
 	ds.blockDevices[device.ID] = device
@@ -1300,8 +1302,9 @@ func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	return nil
 }
 
+// GetBlockDevices will return all the BlockDevices associated with a tenant.
 func (ds *Datastore) GetBlockDevices(tenant string) ([]types.BlockData, error) {
-	devices := make([]types.BlockData, 0)
+	var devices []types.BlockData
 
 	ds.tenantsLock.RLock()
 
