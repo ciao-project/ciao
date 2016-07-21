@@ -215,7 +215,7 @@ func (vs testVolumeService) ListVolumesDetail(tenant string) ([]VolumeDetail, er
 	}
 
 	return []VolumeDetail{
-		VolumeDetail{
+		{
 			Attachments:       []Attachment{attachment},
 			Links:             []Link{selfLink, bookLink},
 			ReplicationStatus: ReplicationDisabled,
