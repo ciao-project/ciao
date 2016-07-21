@@ -127,7 +127,7 @@ func (is testImageService) ListImages() ([]CreateImageResponse, error) {
 		Name:            &name,
 	}
 
-	images := make([]CreateImageResponse, 0)
+	var images []CreateImageResponse
 	images = append(images, image)
 
 	return images, nil
