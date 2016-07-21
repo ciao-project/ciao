@@ -2481,6 +2481,8 @@ func TestCommandStringer(t *testing.T) {
 		{AssignPublicIP, "Assign public IP"},
 		{ReleasePublicIP, "Release public IP"},
 		{CONFIGURE, "CONFIGURE"},
+		{AttachVolume, "Attach storage volume"},
+		{DetachVolume, "Detach storage volume"},
 	}
 
 	for _, test := range stringTests {
