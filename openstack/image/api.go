@@ -25,6 +25,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// APIPort is the standard OpenStack Image port
 const APIPort = 9292
 
 // TBD - are these thing shared enough between OpenStack services
@@ -68,48 +69,50 @@ type Versions struct {
 // --------
 // end possible common json
 
-// ImageStatus defines the possible states for an image
-type ImageStatus string
+// Status defines the possible states for an image
+type Status string
 
 const (
-	// The image service reserved an image ID for the image but did
-	// not yet upload any image data.
-	Queued ImageStatus = "queued"
+	// Queued means that the image service reserved an image ID
+	// for the image but did not yet upload any image data.
+	Queued Status = "queued"
 
-	// the image service is currently uploading the raw data for the image.
-	Saving ImageStatus = "saving"
+	// Saving means that the image service is currently uploading
+	// the raw data for the image.
+	Saving Status = "saving"
 
-	// The image is active and fully available in the image service
-	Active ImageStatus = "active"
+	// Active means that the image is active and fully available
+	// in the image service.
+	Active Status = "active"
 
-	// An image data upload error occurred
-	Killed ImageStatus = "killed"
+	// Killed means that an image data upload error occurred.
+	Killed Status = "killed"
 
-	// The image service retains information abou tthe image but the image
-	// is no longer available for use.
-	Deleted ImageStatus = "deleted"
+	// Deleted means that the image service retains information
+	// about the image but the image is no longer available for use.
+	Deleted Status = "deleted"
 
-	// Similar to the deleted status. An image in this state is not
-	// recoverable.
-	PendingDelete ImageStatus = "pending_delete"
+	// PendingDelete is similar to the deleted status.
+	// An image in this state is not recoverable.
+	PendingDelete Status = "pending_delete"
 )
 
-// ImageVisibility defines whether an image is per tenant or public
-type ImageVisibility string
+// Visibility defines whether an image is per tenant or public.
+type Visibility string
 
 const (
 	// Public indicates that the image can be used by anyone.
-	Public ImageVisibility = "public"
+	Public Visibility = "public"
 
 	// Private indicates that the image is only available to a tenant.
-	Private ImageVisibility = "private"
+	Private Visibility = "private"
 )
 
 // ContainerFormat defines the acceptable container format strings.
 type ContainerFormat string
 
 const (
-	// we support the bare format only
+	// Bare is the only format we support right now.
 	Bare ContainerFormat = "bare"
 )
 
@@ -133,7 +136,7 @@ const (
 type CreateImageRequest struct {
 	Name            string          `json:"name,omitempty"`
 	ID              string          `json:"id,omitempty"`
-	Visibility      ImageVisibility `json:"visibility,omitempty"`
+	Visibility      Visibility      `json:"visibility,omitempty"`
 	Tags            []string        `json:"tags,omitempty"`
 	ContainerFormat ContainerFormat `json:"container_format,omitempty"`
 	DiskFormat      DiskFormat      `json:"disk_format,omitempty"`
@@ -146,7 +149,7 @@ type CreateImageRequest struct {
 // CreateImageResponse contains information about a created image
 // http://developer.openstack.org/api-ref-image-v2.html#createImage-v2
 type CreateImageResponse struct {
-	Status          ImageStatus      `json:"status"`
+	Status          Status           `json:"status"`
 	ContainerFormat *ContainerFormat `json:"container_format"`
 	MinRAM          *int             `json:"min_ram"`
 	UpdatedAt       *time.Time       `json:"updated_at"`
@@ -154,7 +157,7 @@ type CreateImageResponse struct {
 	MinDisk         *int             `json:"min_disk"`
 	Tags            []string         `json:"tags"`
 	Locations       []string         `json:"locations"`
-	Visibility      ImageVisibility  `json:"visibility"`
+	Visibility      Visibility       `json:"visibility"`
 	ID              string           `json:"id"`
 	Size            *int             `json:"size"`
 	VirtualSize     *int             `json:"virtual_size"`
@@ -169,6 +172,8 @@ type CreateImageResponse struct {
 	Schema          string           `json:"schema"`
 }
 
+// ListImagesResponse contains the list of all images that have been created.
+// http://developer.openstack.org/api-ref-image-v2.html#listImages-v2
 type ListImagesResponse struct {
 	Images []CreateImageResponse `json:"images"`
 	Schema string                `json:"schema"`
@@ -185,6 +190,8 @@ type APIConfig struct {
 	ImageService Service // the service interface
 }
 
+// Service is the interface that the api requires in order to get
+// information needed to implement the image endpoints.
 type Service interface {
 	CreateImage(CreateImageRequest) (CreateImageResponse, error)
 	ListImages() ([]CreateImageResponse, error)
