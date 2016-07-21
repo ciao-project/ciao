@@ -28,9 +28,11 @@ import (
 	"github.com/rackspace/gophercloud/openstack"
 )
 
+// State represents the state of the image.
 type State string
 
 const (
+	// Created means that an empty image has been created
 	Created State = "created"
 )
 
@@ -50,12 +52,18 @@ func visibility(i Image) image.Visibility {
 	return image.Private
 }
 
+// Type represents the valid image types.
 type Type string
 
 const (
-	Raw  Type = "raw"
+	// Raw is the raw image format.
+	Raw Type = "raw"
+
+	// QCow is the qcow2 format.
 	QCow Type = "qcow2"
-	ISO  Type = "iso"
+
+	// ISO is the iso format.
+	ISO Type = "iso"
 )
 
 // Image contains the information that ciao will store about the image
@@ -68,6 +76,8 @@ type Image struct {
 	Type       Type
 }
 
+// Datastore is the datastore interface that the service implementation
+// requires.
 type Datastore interface {
 	Create(Image) error
 	RetrieveAll() ([]Image, error)
@@ -77,13 +87,16 @@ type Datastore interface {
 }
 
 var (
+	// ErrNoImage is returned when an image is not found.
 	ErrNoImage = errors.New("Image not found")
 )
 
+// ImageService is the context for the image service implementation.
 type ImageService struct {
 	ds Datastore
 }
 
+// CreateImage will create an empty image in the image datastore.
 func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateImageResponse, error) {
 	// create an ImageInfo struct and store it in our image
 	// datastore.
@@ -115,8 +128,9 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 	}, nil
 }
 
+// ListImages will return a list of all the images in the datastore.
 func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
-	response := make([]image.CreateImageResponse, 0)
+	var response []image.CreateImageResponse
 
 	images, err := is.ds.RetrieveAll()
 	if err != nil {
@@ -145,14 +159,28 @@ func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
 	return response, nil
 }
 
+// Config is required to setup the API context for the image service.
 type Config struct {
-	Port             int
-	HTTPSCACert      string
-	HTTPSKey         string
-	Datastore        Datastore
+	// Port represents the http port that should be used for the service.
+	Port int
+
+	// HTTPSCACert is the path to the http ca cert to use.
+	HTTPSCACert string
+
+	// HTTPSKey is the path to the https cert key.
+	HTTPSKey string
+
+	// Datastore is an interface to a persistent datastore.
+	Datastore Datastore
+
+	// IdentityEndpoint is the location of the keystone service.
 	IdentityEndpoint string
-	Username         string
-	Password         string
+
+	// Username is the service username for the image service in keystone.
+	Username string
+
+	// Password is the password for the image service user in keystone.
+	Password string
 }
 
 func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
@@ -177,6 +205,9 @@ func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
 	return v3client, nil
 }
 
+// Start will get the Image API endpoints from the OpenStack image api,
+// then wrap them in keystone validation. It will then start the https
+// service.
 func Start(config Config) error {
 	is := ImageService{config.Datastore}
 

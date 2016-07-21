@@ -28,6 +28,7 @@ type Datastore struct {
 	imagesLock *sync.RWMutex
 }
 
+// New returns a pointer to a fully initialized Datastore struct
 func New() service.Datastore {
 	var ds = &Datastore{}
 
