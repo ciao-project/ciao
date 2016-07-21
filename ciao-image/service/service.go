@@ -221,13 +221,13 @@ func Start(config Config) error {
 
 	// setup identity for these routes.
 	validServices := []identity.ValidService{
-		{"image", "ciao"},
-		{"image", "glance"},
+		{ServiceType: "image", ServiceName: "ciao"},
+		{ServiceType: "image", ServiceName: "glance"},
 	}
 
 	validAdmins := []identity.ValidAdmin{
-		{"service", "admin"},
-		{"admin", "admin"},
+		{Project: "service", Role: "admin"},
+		{Project: "admin", Role: "admin"},
 	}
 
 	client, err := getIdentityClient(config)
