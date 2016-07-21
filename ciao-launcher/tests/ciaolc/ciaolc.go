@@ -49,6 +49,8 @@ func init() {
 		fmt.Fprintln(os.Stderr, "\tstats")
 		fmt.Fprintln(os.Stderr, "\tistats")
 		fmt.Fprintln(os.Stderr, "\tstatus")
+		fmt.Fprintln(os.Stderr, "\tattach")
+		fmt.Fprintln(os.Stderr, "\tdetach")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Flags:")
 		flag.PrintDefaults()
@@ -357,6 +359,28 @@ func getSimplePostArgs(cmd string) (string, string, error) {
 	return cp, instance, nil
 }
 
+func getVolumePostArgs(cmd string) (string, string, string, error) {
+	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
+	cp := ""
+	fs.StringVar(&cp, "client", "", "UUID of client")
+
+	if err := fs.Parse(flag.Args()[1:]); err != nil {
+		return "", "", "", err
+	}
+
+	instance := fs.Arg(0)
+	if instance == "" {
+		return "", "", "", fmt.Errorf("Missing instance-uuid")
+	}
+
+	volume := fs.Arg(1)
+	if volume == "" {
+		return "", "", "", fmt.Errorf("Missing volume-uuid")
+	}
+
+	return cp, instance, volume, nil
+}
+
 func postYaml(host, cmd, client string, data interface{}) error {
 	u := queryURL(host, cmd, client, "")
 	payload, err := yaml.Marshal(data)
@@ -421,6 +445,30 @@ func del(host string) error {
 	return postYaml(host, "delete", client, &del)
 }
 
+func attach(host string) error {
+	var attach payloads.AttachVolume
+	client, instance, volume, err := getVolumePostArgs("attach")
+	if err != nil {
+		return err
+	}
+
+	attach.Attach.InstanceUUID = instance
+	attach.Attach.VolumeUUID = volume
+	return postYaml(host, "attach", client, &attach)
+}
+
+func detach(host string) error {
+	var detach payloads.DetachVolume
+	client, instance, volume, err := getVolumePostArgs("detach")
+	if err != nil {
+		return err
+	}
+
+	detach.Detach.InstanceUUID = instance
+	detach.Detach.VolumeUUID = volume
+	return postYaml(host, "detach", client, &detach)
+}
+
 func main() {
 
 	flag.Parse()
@@ -440,6 +488,8 @@ func main() {
 		"delete":    del,
 		"drain":     drain,
 		"startf":    startf,
+		"attach":    attach,
+		"detach":    detach,
 	}
 
 	cmd := cmdMap[os.Args[1]]
