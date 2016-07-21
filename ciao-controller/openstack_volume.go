@@ -55,7 +55,7 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 }
 
 func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
-	vols := make([]block.ListVolume, 0)
+	var vols []block.ListVolume
 
 	data, err := c.ds.GetBlockDevices(tenant)
 	if err != nil {
