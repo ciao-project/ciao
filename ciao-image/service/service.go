@@ -247,6 +247,9 @@ func Start(config Config) error {
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	// start service.
 	service := fmt.Sprintf(":%d", config.Port)
