@@ -517,6 +517,14 @@ const (
 	// When the scheduler receives such error back from any client it should revert
 	// back to the previous valid configuration.
 	InvalidConfiguration
+
+	// AttachVolumeFailure is sent by launcher agents to report a failure to attach
+	// a volume to an instance.
+	AttachVolumeFailure
+
+	// DetachVolumeFailure is sent by launcher agents to report a failure to detach
+	// a volume from an instance.
+	DetachVolumeFailure
 )
 
 // Major is the SSNTP protocol major version
