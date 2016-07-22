@@ -1500,8 +1500,8 @@ func TestMain(m *testing.M) {
 	ds = new(Datastore)
 
 	dsConfig := Config{
-		PersistentURI:     "ciao-controller-test.db",
-		TransientURI:      "ciao-controller-test-tdb.db",
+		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
+		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitTablesPath:    *tablesInitPath,
 		InitWorkloadsPath: *workloadsPath,
 	}
@@ -1514,12 +1514,6 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	ds.Exit()
-	os.Remove("./ciao-controller-test.db")
-	os.Remove("./ciao-controller-test.db-wal")
-	os.Remove("./ciao-controller-test.db-shm")
-	os.Remove("./ciao-controller-test-tdb.db")
-	os.Remove("./ciao-controller-test-tdb.db-wal")
-	os.Remove("./ciao-controller-test-tdb.db-shm")
 
 	os.Exit(code)
 }

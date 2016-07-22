@@ -83,6 +83,15 @@ const (
 	Docker = "docker"
 )
 
+// StorageResources represents a requested storage resource for a workload.
+type StorageResources struct {
+	// ID is passed to the Block Driver to operate on the resource
+	ID string `yaml:"id"`
+
+	// Bootable indicates that this is a bootable storage device.
+	Bootable bool `yaml:"boot"`
+}
+
 // RequestedResource is used to specify an individual resource contained within
 // a Start or Restart command.  Example of resources include number of VCPUs or
 // MBs of RAM to assign to an instance
@@ -180,6 +189,10 @@ type StartCmd struct {
 	// Networking contains all the information required to set up networking
 	// for the new instance.
 	Networking NetworkResources `yaml:"networking"`
+
+	// Storage contains all the information required to attach or boot
+	// from storage for the new instance.
+	Storage StorageResources `yaml:"storage,omitempty"`
 }
 
 // Start represents the unmarshalled version of the contents of a SSNTP START
