@@ -69,6 +69,7 @@ credentials and networking information:
 * `CIAO_COMPUTEPORT` exports the Ciao compute alternative port
 * `CIAO_USERNAME` exports the Ciao username
 * `CIAO_PASSWORD` export the Ciao password for `CIAO_USERNAME`
+* `CIAO_TENANT_NAME` export the Ciao tenant name for `CIAO_USERNAME`
 
 All those environment variables can be set through an rc file.
 For example:
@@ -80,6 +81,7 @@ export CIAO_CONTROLLER=ciao-ctl.intel.com
 export CIAO_IDENTITY=https://ciao-identity.intel.com:35357
 export CIAO_USERNAME=user
 export CIAO_PASSWORD=ciaouser
+export CIAO_TENANT_NAME=admin
 ```
 
 Exporting those variables is not compulsory and they can be defined
@@ -146,6 +148,7 @@ Let's assume we're running a Ciao cluster with the following settings:
 * The `user` user is part of only one project: `project1`
 * The password for `user` is `ciaouser`
 * `project1` UUID is `68a76514-5c8e-40a8-8c9e-0570a11d035b`
+*
 
 This can be defined through the following Ciao rc file:
 
@@ -156,6 +159,7 @@ export CIAO_CONTROLLER=ciao-ctl.intel.com
 export CIAO_IDENTITY=https://ciao-identity.intel.com:35357
 export CIAO_USERNAME=user
 export CIAO_PASSWORD=ciaouser
+export CIAO_TENANT_NAME=project1
 ```
 
 ### Cluster status (Privileged)
