@@ -102,6 +102,9 @@ const NetAgentUUID = "6be56328-92e2-4ecd-b426-8fe529c04e0c"
 // AgentUUID is a node UUID for coordinated stop/restart/delete tests
 const AgentUUID = "4cb19522-1e18-439a-883a-f9b2a3a95f5e"
 
+// VolumeUUID is a node UUID for storage tests
+const VolumeUUID = "67d86208-b46c-4465-9018-e14187d4010"
+
 //////////////////////////////////////////////////////////////////////////////
 
 // StartYaml is a sample workload START ssntp.Command payload for test usage
@@ -522,4 +525,26 @@ networks:
 // with limited node statistics and no per-instance statistics
 const PartialStatsYaml = `node_uuid: ` + AgentUUID + `
 load: 1
+`
+
+// AttachVolumeYaml is a sample yaml payload for the ssntp Attach Volume command.
+const AttachVolumeYaml = `attach_volume:
+  instance_uuid: ` + InstanceUUID + `
+  volume_uuid: ` + VolumeUUID + `
+`
+
+// DetachVolumeYaml is a sample yaml payload for the ssntp Detach Volume command.
+const DetachVolumeYaml = `detach_volume:
+  instance_uuid: ` + InstanceUUID + `
+  volume_uuid: ` + VolumeUUID + `
+`
+
+// AttachVolumeFailureYaml is a sample AttachVolumeFailure ssntp.Error payload for test cases
+const AttachVolumeFailureYaml = `instance_uuid: ` + InstanceUUID + `
+reason: attach_failure
+`
+
+// DetachVolumeFailureYaml is a sample DetachVolumeFailure ssntp.Error payload for test cases
+const DetachVolumeFailureYaml = `instance_uuid: ` + InstanceUUID + `
+reason: detach_failure
 `
