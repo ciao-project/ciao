@@ -17,10 +17,8 @@
 package main
 
 import (
-	"encoding/gob"
 	"fmt"
 	"os"
-	"path"
 	"time"
 
 	"github.com/01org/ciao/networking/libsnnet"
@@ -62,14 +60,10 @@ func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig, bridge st
 		return
 	}
 
-	var cfgFile *os.File
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
 			_ = os.RemoveAll(instanceDir)
-			if cfgFile != nil {
-				_ = cfgFile.Close()
-			}
 		}
 	}()
 
@@ -79,22 +73,7 @@ func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig, bridge st
 		panic(err)
 	}
 
-	cfgFilePath := path.Join(instanceDir, instanceState)
-	cfgFile, err = os.OpenFile(cfgFilePath, os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		glog.Errorf("Unable to create state file %v", err)
-		panic(err)
-	}
-
-	enc := gob.NewEncoder(cfgFile)
-	err = enc.Encode(cfg)
-	if err != nil {
-		glog.Errorf("Failed to store state information %v", err)
-		panic(err)
-	}
-
-	err = cfgFile.Close()
-	cfgFile = nil
+	err = cfg.save(instanceDir)
 	if err != nil {
 		glog.Errorf("Failed to store state information %v", err)
 		panic(err)
