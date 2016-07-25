@@ -85,6 +85,7 @@ var commands = map[string]subCommand{
 	"event":    eventCommand,
 	"node":     nodeCommand,
 	"trace":    traceCommand,
+	"image":    imageCommand,
 }
 
 var scopedToken string
