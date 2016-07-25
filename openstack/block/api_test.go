@@ -38,7 +38,7 @@ var tests = []test{
 		showAPIv2Details,
 		"",
 		http.StatusOK,
-		`{"choices":[{"status":"CURRENT","media-types":[{"base":"application/json","type":"application/vnd.openstack.volume+json;version=1"}],"id":"v2.0","links":[{"href":"https://kcaccard-mobl3.jf.intel.com:8776/v2/v2.json","rel":"self"}]}]}`,
+		`{"choices":[{"status":"CURRENT","media-types":[{"base":"application/json","type":"application/vnd.openstack.volume+json;version=1"}],"id":"v2.0","links":[{"href":"` + fmt.Sprintf("https://%s:8776/v2/v2.json", myHostname()) + `","rel":"self"}]}]}`,
 	},
 	{
 		"GET",
