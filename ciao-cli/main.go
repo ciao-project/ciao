@@ -86,6 +86,7 @@ var commands = map[string]subCommand{
 	"node":     nodeCommand,
 	"trace":    traceCommand,
 	"image":    imageCommand,
+	"volume":   volumeCommand,
 }
 
 var scopedToken string
