@@ -19,13 +19,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/types"
+	image "github.com/01org/ciao/ciao-image/client"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
@@ -805,6 +808,15 @@ func TestGetStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// add fake image to images store
+	//
+	tmpfile, err := ioutil.TempFile(context.image.MountPoint, "testImage")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	// a temporary in memory filesystem?
 	s := &types.StorageResource{
 		ID:         "",
 		Bootable:   true,
@@ -814,7 +826,7 @@ func TestGetStorage(t *testing.T) {
 
 	wl := &types.Workload{
 		ID:      "validID",
-		ImageID: "testImageID",
+		ImageID: filepath.Base(tmpfile.Name()),
 		Storage: s,
 	}
 
@@ -845,7 +857,17 @@ func TestMain(m *testing.M) {
 	context = new(controller)
 	context.ds = new(datastore.Datastore)
 
-	context.BlockDriver = storage.GetBlockDriver()
+	context.BlockDriver = func() storage.BlockDriver {
+		return storage.NoopDriver{}
+	}()
+
+	dir, err := ioutil.TempDir("", "controller_test")
+	if err != nil {
+		os.Exit(1)
+	}
+	defer os.RemoveAll(dir)
+
+	context.image = image.Client{MountPoint: dir}
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
@@ -854,7 +876,7 @@ func TestMain(m *testing.M) {
 		InitWorkloadsPath: *workloadsPath,
 	}
 
-	err := context.ds.Init(dsConfig)
+	err = context.ds.Init(dsConfig)
 	if err != nil {
 		os.Exit(1)
 	}
