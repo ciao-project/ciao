@@ -15,21 +15,22 @@
 package storage
 
 import (
-	"errors"
+	"fmt"
+	"testing"
 )
 
-var (
-	// ErrNoDevice is returned from a driver
-	ErrNoDevice = errors.New("Not able to create device")
-)
+func TestCreateBlockDevice(t *testing.T) {
+	driver := cephDriver{
+		SecretPath: "/etc/ceph/ceph.client.kristen.keyring",
+		ID:         "kristen",
+	}
 
-// BlockDriver is the interface that all block drivers must implement.
-type BlockDriver interface {
-	CreateBlockDevice(image *string, sizeGB int) (BlockDevice, error)
-	DeleteBlockDevice(string) error
-}
+	imagePath := "/var/lib/ciao/images/73a86d7e-93c0-480e-9c41-ab42f69b7799"
 
-// BlockDevice contains information about a block devices.
-type BlockDevice struct {
-	ID string
+	device, err := driver.CreateBlockDevice(&imagePath, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(device.ID)
 }
