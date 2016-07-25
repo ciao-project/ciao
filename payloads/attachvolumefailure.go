@@ -47,6 +47,9 @@ type ErrorAttachVolumeFailure struct {
 	// attached.
 	InstanceUUID string `yaml:"instance_uuid"`
 
+	// VolumeUUID is the UUID of the volume that could not be attached.
+	VolumeUUID string `yaml:"volume_uuid"`
+
 	// Reason provides the reason for the attach failure, e.g.,
 	// AttachVolumehNoInstance.
 	Reason AttachVolumeFailureReason `yaml:"reason"`

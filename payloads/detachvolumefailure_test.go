@@ -35,6 +35,10 @@ func TestDetachVolumeFailureUnmarshal(t *testing.T) {
 		t.Error("Wrong UUID field")
 	}
 
+	if error.VolumeUUID != testutil.VolumeUUID {
+		t.Error("Wrong UUID field")
+	}
+
 	if error.Reason != DetachVolumeDetachFailure {
 		t.Error("Wrong Error field")
 	}
@@ -43,6 +47,7 @@ func TestDetachVolumeFailureUnmarshal(t *testing.T) {
 func TestDetachVolumeFailureMarshal(t *testing.T) {
 	error := ErrorDetachVolumeFailure{
 		InstanceUUID: testutil.InstanceUUID,
+		VolumeUUID:   testutil.VolumeUUID,
 		Reason:       DetachVolumeDetachFailure,
 	}
 
