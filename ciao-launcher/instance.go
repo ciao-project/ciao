@@ -61,6 +61,13 @@ type insDeleteCmd struct {
 type insStopCmd struct{}
 type insMonitorCmd struct{}
 
+type insAttachVolumeCmd struct {
+	volumeUUID string
+}
+type insDetachVolumeCmd struct {
+	volumeUUID string
+}
+
 /*
 This functions asks the server loop to kill the instance.  An instance
 needs to request that the server loop kill it if Start fails completly.
@@ -205,6 +212,42 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	return true
 }
 
+func (id *instanceData) attachVolumeCommand(cmd *insAttachVolumeCmd) {
+	if id.shuttingDown {
+		attachErr := &attachVolumeError{nil, payloads.AttachVolumeInstanceFailure}
+		glog.Errorf("Unable to attach instance[%s]", string(attachErr.code))
+		attachErr.send(id.ac.conn, id.instance, cmd.volumeUUID)
+		return
+	}
+
+	attachErr := processAttachVolume(id.vm, id.cfg, id.instance, id.instanceDir,
+		cmd.volumeUUID, id.ac.conn)
+	if attachErr != nil {
+		attachErr.send(id.ac.conn, id.instance, cmd.volumeUUID)
+		return
+	}
+
+	glog.Infof("Volume %s attached to instance %s", cmd.volumeUUID, id.instance)
+}
+
+func (id *instanceData) detachVolumeCommand(cmd *insDetachVolumeCmd) {
+	if id.shuttingDown {
+		detachErr := &detachVolumeError{nil, payloads.DetachVolumeInstanceFailure}
+		glog.Errorf("Unable to detach instance[%s]", string(detachErr.code))
+		detachErr.send(id.ac.conn, id.instance, cmd.volumeUUID)
+		return
+	}
+
+	detachErr := processDetachVolume(id.vm, id.cfg, id.instance, id.instanceDir,
+		cmd.volumeUUID, id.ac.conn)
+	if detachErr != nil {
+		detachErr.send(id.ac.conn, cmd.volumeUUID, id.instance)
+		return
+	}
+
+	glog.Infof("Volume %s detched from instance %s", id.instance, cmd.volumeUUID)
+}
+
 func (id *instanceData) logStartTrace() {
 	if id.st == nil {
 		return
@@ -244,6 +287,10 @@ func (id *instanceData) instanceCommand(cmd interface{}) bool {
 		id.monitorCommand(cmd)
 	case *insStopCmd:
 		id.stopCommand(cmd)
+	case *insAttachVolumeCmd:
+		id.attachVolumeCommand(cmd)
+	case *insDetachVolumeCmd:
+		id.detachVolumeCommand(cmd)
 	case *insDeleteCmd:
 		if id.deleteCommand(cmd) {
 			return false
