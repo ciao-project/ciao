@@ -47,6 +47,9 @@ type ErrorDetachVolumeFailure struct {
 	// detached.
 	InstanceUUID string `yaml:"instance_uuid"`
 
+	// VolumeUUID is the UUID of the volume that could not be detached.
+	VolumeUUID string `yaml:"volume_uuid"`
+
 	// Reason provides the reason for the detach failure, e.g.,
 	// DetachVolumeNoInstance.
 	Reason DetachVolumeFailureReason `yaml:"reason"`
