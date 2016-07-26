@@ -458,6 +458,61 @@ func TestAttachVolume(t *testing.T) {
 	}
 }
 
+func TestAttachVolumeCommand(t *testing.T) {
+	var reason payloads.StartFailureReason
+
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.Ssntp.Close()
+
+	tenantID := instances[0].TenantID
+
+	sendStatsCmd(client, t)
+
+	bd, err := context.CreateBlockDevice(nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data := types.BlockData{
+		BlockDevice: bd,
+		CreateTime:  time.Now(),
+		TenantID:    tenantID,
+		State:       types.Available,
+	}
+
+	err = context.ds.AddBlockDevice(data)
+	if err != nil {
+		context.DeleteBlockDevice(bd.ID)
+		t.Fatal(err)
+	}
+
+	serverCh := server.AddCmdChan(ssntp.AttachVolume)
+
+	time.Sleep(1 * time.Second)
+
+	err = context.AttachVolume(tenantID, data.ID, instances[0].ID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := server.GetCmdChanResult(serverCh, ssntp.AttachVolume)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.InstanceUUID != instances[0].ID {
+		t.Fatal("Did not get correct Instance ID")
+	}
+
+	if result.NodeUUID != client.UUID {
+		t.Fatal("Did not get node ID")
+	}
+
+	if result.VolumeUUID != data.ID {
+		t.Fatal("Did not get volume ID")
+	}
+}
+
 func TestInstanceDeletedEvent(t *testing.T) {
 	var reason payloads.StartFailureReason
 

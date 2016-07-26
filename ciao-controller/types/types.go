@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/payloads"
 )
 
@@ -201,8 +202,21 @@ type Node struct {
 }
 
 // BlockState represents the state of the block device in the controller
-// datastore.
+// datastore. This is a subset of the openstack status type.
 type BlockState string
+
+const (
+	// Available means that the volume is ok for attaching.
+	Available BlockState = BlockState(block.Available)
+
+	// Attaching means that the volume is in the process
+	// of attaching to an instance.
+	Attaching BlockState = BlockState(block.Attaching)
+
+	// InUse means that the volume has been successfully
+	// attached to an instance.
+	InUse BlockState = BlockState(block.InUse)
+)
 
 // BlockData respresents the attributes of this block device.
 // TBD - do we really need to store this as actual data,
