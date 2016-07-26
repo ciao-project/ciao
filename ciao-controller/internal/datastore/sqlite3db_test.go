@@ -16,6 +16,11 @@ package datastore
 
 import (
 	"testing"
+	"time"
+
+	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/ssntp/uuid"
 )
 
 func TestGetWorkloadStorage(t *testing.T) {
@@ -33,4 +38,89 @@ func TestGetWorkloadStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	db.disconnect()
+}
+
+func TestGetTenantDevices(t *testing.T) {
+	config := Config{
+		PersistentURI: "file:memdb5?mode=memory&cache=shared",
+		TransientURI:  "file:memdb6?mode=memory&cache=shared",
+	}
+
+	db, err := getPersistentStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    uuid.Generate().String(),
+		CreateTime:  time.Now(),
+	}
+
+	err = db.createBlockData(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// make sure our query works.
+	devices, err := db.getTenantDevices(data.TenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := devices[data.ID]
+	if !ok {
+		t.Fatal(err)
+	}
+
+	db.disconnect()
+}
+
+func TestGetAllBlockData(t *testing.T) {
+	config := Config{
+		PersistentURI: "file:memdb7?mode=memory&cache=shared",
+		TransientURI:  "file:memdb8?mode=memory&cache=shared",
+	}
+
+	db, err := getPersistentStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    uuid.Generate().String(),
+		CreateTime:  time.Now(),
+	}
+
+	err = db.createBlockData(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	devices, err := db.getAllBlockData()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := devices[data.ID]
+	if !ok {
+		t.Fatal(err)
+	}
+
+	db.disconnect()
 }
