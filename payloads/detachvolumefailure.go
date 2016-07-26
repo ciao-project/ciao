@@ -38,6 +38,19 @@ const (
 	// DetachVolumeDetachFailure indicates that the attempt to detach a
 	// volume from an instance failed.
 	DetachVolumeDetachFailure = "detach_failure"
+
+	// DetachVolumeNotAttached indicates that the volume is not
+	// attached to the instance.
+	DetachVolumeNotAttached = "not_attached"
+
+	// DetachVolumeStateFailure indicates that launcher was unable to
+	// update its internal state to remove the volume.
+	DetachVolumeStateFailure = "state_failure"
+
+	// DetachVolumeInstanceFailure indicates that the volume could not
+	// be detached as the instance has failed to start and is being
+	// deleted
+	DetachVolumeInstanceFailure = "instance_failure"
 )
 
 // ErrorDetachVolumeFailure represents the unmarshalled version of the contents of a
@@ -65,6 +78,12 @@ func (r DetachVolumeFailureReason) String() string {
 		return "Command section of YAML payload is corrupt or missing required information"
 	case DetachVolumeDetachFailure:
 		return "Failed to detach volume from instance"
+	case DetachVolumeNotAttached:
+		return "Volume not attached"
+	case DetachVolumeStateFailure:
+		return "State failure"
+	case DetachVolumeInstanceFailure:
+		return "Instance failure"
 	}
 
 	return ""
