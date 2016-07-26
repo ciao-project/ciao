@@ -424,6 +424,40 @@ func TestEvacuateNode(t *testing.T) {
 	}
 }
 
+func TestAttachVolume(t *testing.T) {
+	client, err := testutil.NewSsntpTestClientConnection("AttachVolume", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Ssntp.Close()
+
+	serverCh := server.AddCmdChan(ssntp.AttachVolume)
+
+	// ok to not send workload first?
+
+	err = context.client.attachVolume("volID", "instanceID", client.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := server.GetCmdChanResult(serverCh, ssntp.AttachVolume)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.NodeUUID != client.UUID {
+		t.Fatal("Did not get node ID")
+	}
+
+	if result.VolumeUUID != "volID" {
+		t.Fatal("Did not get volume ID")
+	}
+
+	if result.InstanceUUID != "instanceID" {
+		t.Fatal("Did not get instance ID")
+	}
+}
+
 func TestInstanceDeletedEvent(t *testing.T) {
 	var reason payloads.StartFailureReason
 
