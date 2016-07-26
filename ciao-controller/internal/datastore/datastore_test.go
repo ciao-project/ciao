@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 )
@@ -1487,6 +1488,137 @@ func TestAllocate100IPs(t *testing.T) {
 
 func TestAllocate1024IPs(t *testing.T) {
 	testAllocateTenantIPs(t, 1024)
+}
+
+func TestAddBlockDevice(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we can retrieve the block data.
+	_, err = ds.GetBlockDevice("validID")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that this is associate with our tenant.
+	devices, err := ds.GetBlockDevices(newTenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, d := range devices {
+		if d.ID != "validID" {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestUpdateBlockDevice(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we can retrieve the block data.
+	_, err = ds.GetBlockDevice(blockDevice.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// update the state of the block device.
+	data.State = types.Attaching
+
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we can retrieve the block data.
+	d, err := ds.GetBlockDevice(blockDevice.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if d.State != types.Attaching {
+		t.Fatalf("expected State == %s, got %s\n", types.Attaching, d.State)
+	}
+}
+
+func TestGetBlockDevicesErr(t *testing.T) {
+	// confirm that sending a bad tenant id results in error
+	_, err := ds.GetBlockDevices("badID")
+	if err != ErrNoTenant {
+		t.Fatal(err)
+	}
+}
+
+func TestGetBlockDeviceErr(t *testing.T) {
+	// confirm that we get the correct error for missing id
+	_, err := ds.GetBlockDevice("badID")
+	if err != ErrNoBlockData {
+		t.Fatal(err)
+	}
+}
+
+func TestUpdateBlockDeviceErr(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	// confirm that we get the correct error for missing id
+	err = ds.UpdateBlockDevice(data)
+	if err != ErrNoBlockData {
+		t.Fatal(err)
+	}
 }
 
 var ds *Datastore

@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
@@ -181,6 +182,42 @@ func (d instanceData) Init() error {
 		foreign key(tenant_id) references tenants(id),
 		foreign key(workload_id) references workload_template(id),
 		unique(tenant_id, ip, mac_address)
+		);`
+
+	return d.ds.exec(d.db, cmd)
+}
+
+// Volume Data
+type blockData struct {
+	namedData
+}
+
+func (d blockData) Init() error {
+	cmd := `CREATE TABLE IF NOT EXISTS block_data
+		(
+		id string primary_key,
+		tenant_id string,
+		size integer,
+		state string,
+		create_time DATETIME,
+		foreign key(tenant_id) references tenants(id)
+		);`
+
+	return d.ds.exec(d.db, cmd)
+}
+
+type attachment struct {
+	namedData
+}
+
+func (d attachment) Init() error {
+	cmd := `CREATE TABLE IF NOT EXISTS attachments
+		(
+		id string primary key,
+		instance_id string,
+		block_id string,
+		foreign key(instance_id) references instances(id),
+		foreign key(block_id) references block_data(id)
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -536,6 +573,7 @@ func getPersistentStore(config Config) (persistentStore, error) {
 		instanceStatisticsData{namedData{ds: ds, name: "instance_statistics", db: ds.tdb}},
 		frameStatisticsData{namedData{ds: ds, name: "frame_statistics", db: ds.tdb}},
 		traceData{namedData{ds: ds, name: "trace_data", db: ds.tdb}},
+		blockData{namedData{ds: ds, name: "block_data", db: ds.db}},
 	}
 
 	ds.tableInitPath = config.InitTablesPath
@@ -2045,5 +2083,102 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 }
 
 func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockData, error) {
-	return make(map[string]types.BlockData), nil
+	devices := make(map[string]types.BlockData)
+
+	datastore := ds.getTableDB("block_data")
+
+	query := `SELECT	block_data.id,
+				block_data.tenant_id,
+				block_data.size,
+				block_data.state,
+				block_data.create_time
+		  FROM	block_data
+		  WHERE block_data.tenant_id = ?`
+
+	rows, err := datastore.Query(query, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var data types.BlockData
+
+		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &data.State, &data.CreateTime)
+		if err != nil {
+			devices[data.ID] = data
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return devices, nil
+}
+
+func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
+	devices := make(map[string]types.BlockData)
+
+	datastore := ds.getTableDB("block_data")
+
+	query := `SELECT	block_data.id,
+				block_data.tenant_id,
+				block_data.size,
+				block_data.state,
+				block_data.create_time
+		  FROM	block_data `
+
+	rows, err := datastore.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var data types.BlockData
+
+		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &data.State, &data.CreateTime)
+		if err != nil {
+			devices[data.ID] = data
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return devices, nil
+}
+
+func (ds *sqliteDB) createBlockData(data types.BlockData) error {
+	ds.dbLock.Lock()
+	err := ds.create("block_data", data.ID, data.TenantID, data.Size, string(data.State), data.CreateTime.Format(time.RFC3339Nano))
+	ds.dbLock.Unlock()
+
+	return err
+}
+
+// For now we only support updating the state.
+func (ds *sqliteDB) updateBlockData(data types.BlockData) error {
+	db := ds.getTableDB("block_data")
+
+	ds.dbLock.Lock()
+
+	tx, err := db.Begin()
+	if err != nil {
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE block_data SET state = ? WHERE id = ?", string(data.State), data.ID)
+	if err != nil {
+		tx.Rollback()
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
+
+	ds.dbLock.Unlock()
+
+	return err
 }
