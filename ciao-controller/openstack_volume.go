@@ -5,6 +5,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/openstack/block"
+	"github.com/golang/glog"
 )
 
 // Implement the Block Service interface
@@ -27,6 +28,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 		Size:        req.Size,
 		CreateTime:  time.Now(),
 		TenantID:    tenant,
+		State:       types.Available,
 	}
 	err = c.ds.AddBlockDevice(data)
 	if err != nil {
@@ -51,6 +53,55 @@ func (c *controller) DeleteVolume(tenant string, volume string) error {
 }
 
 func (c *controller) AttachVolume(tenant string, volume string, instance string, mountpoint string) error {
+	// get the block device information
+	info, err := c.ds.GetBlockDevice(volume)
+	if err != nil {
+		return err
+	}
+
+	// check that the block device is available.
+	if info.State != types.Available {
+		return block.ErrVolumeNotAvailable
+	}
+
+	// check that the block device is owned by the tenant.
+	if info.TenantID != tenant {
+		return block.ErrVolumeOwner
+	}
+
+	// check that the instance is owned by the tenant.
+	i, err := c.ds.GetInstance(instance)
+	if err != nil {
+		return block.ErrInstanceNotFound
+	}
+
+	if i.TenantID != tenant {
+		return block.ErrInstanceOwner
+	}
+
+	if i.NodeID == "" {
+		return block.ErrInstanceNotAvailable
+	}
+
+	// update volume state to attaching
+	info.State = types.Attaching
+
+	err = c.ds.UpdateBlockDevice(info)
+	if err != nil {
+		return err
+	}
+
+	// send command to attach volume.
+	err = c.client.attachVolume(volume, instance, i.NodeID)
+	if err != nil {
+		info.State = types.Available
+		dsErr := c.ds.UpdateBlockDevice(info)
+		if dsErr != nil {
+			glog.Error(dsErr)
+		}
+		return err
+	}
+
 	return nil
 }
 

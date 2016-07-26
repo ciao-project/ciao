@@ -36,7 +36,8 @@ import (
 
 // custom errors
 var (
-	ErrNoTenant = errors.New("Tenant not found")
+	ErrNoTenant    = errors.New("Tenant not found")
+	ErrNoBlockData = errors.New("Block Device not found")
 )
 
 // Config contains configuration information for the datastore.
@@ -1325,4 +1326,31 @@ func (ds *Datastore) GetBlockDevices(tenant string) ([]types.BlockData, error) {
 
 	return devices, nil
 
+}
+
+// GetBlockDevice will return information about a block device from the
+// datastore.
+func (ds *Datastore) GetBlockDevice(ID string) (types.BlockData, error) {
+	ds.bdLock.RLock()
+	data, ok := ds.blockDevices[ID]
+	ds.bdLock.RUnlock()
+
+	if !ok {
+		return types.BlockData{}, ErrNoBlockData
+	}
+	return data, nil
+}
+
+// UpdateBlockDevice will replace existing information about a block device
+// in the datastore.
+func (ds *Datastore) UpdateBlockDevice(data types.BlockData) error {
+	ds.bdLock.RLock()
+	data, ok := ds.blockDevices[data.ID]
+	ds.bdLock.RUnlock()
+
+	if !ok {
+		return ErrNoBlockData
+	}
+
+	return ds.AddBlockDevice(data)
 }
