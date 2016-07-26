@@ -71,6 +71,9 @@ func TestAttachVolmeFailureString(t *testing.T) {
 		{AttachVolumeInvalidPayload, "YAML payload is corrupt"},
 		{AttachVolumeInvalidData, "Command section of YAML payload is corrupt or missing required information"},
 		{AttachVolumeAttachFailure, "Failed to attach volume to instance"},
+		{AttachVolumeAlreadyAttached, "Volume already attached"},
+		{AttachVolumeStateFailure, "State failure"},
+		{AttachVolumeInstanceFailure, "Instance failure"},
 	}
 	error := ErrorAttachVolumeFailure{
 		InstanceUUID: testutil.InstanceUUID,
