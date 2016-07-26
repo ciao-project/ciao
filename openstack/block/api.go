@@ -290,10 +290,14 @@ type ShowVolumeDetails struct {
 
 // These errors can be returned by the Service interface
 var (
-	ErrQuota            = errors.New("Tenant over quota")
-	ErrTenantNotFound   = errors.New("Tenant not found")
-	ErrVolumeNotFound   = errors.New("Volume not found")
-	ErrInstanceNotFound = errors.New("Instance not found")
+	ErrQuota                = errors.New("Tenant over quota")
+	ErrTenantNotFound       = errors.New("Tenant not found")
+	ErrVolumeNotFound       = errors.New("Volume not found")
+	ErrInstanceNotFound     = errors.New("Instance not found")
+	ErrVolumeNotAvailable   = errors.New("Volume not available")
+	ErrVolumeOwner          = errors.New("You are not volume owner")
+	ErrInstanceOwner        = errors.New("You are not instance owner")
+	ErrInstanceNotAvailable = errors.New("Instance not available")
 )
 
 // errorResponse maps service error responses to http responses.
@@ -309,6 +313,16 @@ func errorResponse(err error) APIResponse {
 		return APIResponse{http.StatusNotFound, nil}
 	case ErrInstanceNotFound:
 		return APIResponse{http.StatusNotFound, nil}
+	case ErrVolumeNotAvailable:
+		return APIResponse{http.StatusForbidden, nil}
+	case ErrVolumeNotAvailable:
+		return APIResponse{http.StatusForbidden, nil}
+	case ErrVolumeOwner:
+		return APIResponse{http.StatusForbidden, nil}
+	case ErrInstanceOwner:
+		return APIResponse{http.StatusForbidden, nil}
+	case ErrInstanceNotAvailable:
+		return APIResponse{http.StatusForbidden, nil}
 	default:
 		return APIResponse{http.StatusInternalServerError, nil}
 	}
