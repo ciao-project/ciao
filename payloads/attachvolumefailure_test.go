@@ -35,6 +35,10 @@ func TestAttachVolumeFailureUnmarshal(t *testing.T) {
 		t.Error("Wrong UUID field")
 	}
 
+	if error.VolumeUUID != testutil.VolumeUUID {
+		t.Error("Wrong UUID field")
+	}
+
 	if error.Reason != AttachVolumeAttachFailure {
 		t.Error("Wrong Error field")
 	}
@@ -43,6 +47,7 @@ func TestAttachVolumeFailureUnmarshal(t *testing.T) {
 func TestAttachVolumeFailureMarshal(t *testing.T) {
 	error := ErrorAttachVolumeFailure{
 		InstanceUUID: testutil.InstanceUUID,
+		VolumeUUID:   testutil.VolumeUUID,
 		Reason:       AttachVolumeAttachFailure,
 	}
 
@@ -66,6 +71,9 @@ func TestAttachVolmeFailureString(t *testing.T) {
 		{AttachVolumeInvalidPayload, "YAML payload is corrupt"},
 		{AttachVolumeInvalidData, "Command section of YAML payload is corrupt or missing required information"},
 		{AttachVolumeAttachFailure, "Failed to attach volume to instance"},
+		{AttachVolumeAlreadyAttached, "Volume already attached"},
+		{AttachVolumeStateFailure, "State failure"},
+		{AttachVolumeInstanceFailure, "Instance failure"},
 	}
 	error := ErrorAttachVolumeFailure{
 		InstanceUUID: testutil.InstanceUUID,

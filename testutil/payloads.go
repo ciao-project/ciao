@@ -533,18 +533,30 @@ const AttachVolumeYaml = `attach_volume:
   volume_uuid: ` + VolumeUUID + `
 `
 
+// BadAttachVolumeYaml is a corrupt yaml payload for the ssntp Attach Volume command.
+const BadAttachVolumeYaml = `attach_volume:
+  volume_uuid: ` + VolumeUUID + `
+`
+
 // DetachVolumeYaml is a sample yaml payload for the ssntp Detach Volume command.
 const DetachVolumeYaml = `detach_volume:
   instance_uuid: ` + InstanceUUID + `
   volume_uuid: ` + VolumeUUID + `
 `
 
+// BadDetachVolumeYaml is a corrupt yaml payload for the ssntp Detach Volume command.
+const BadDetachVolumeYaml = `detach_volume:
+  instance_uuid: ` + InstanceUUID + `
+`
+
 // AttachVolumeFailureYaml is a sample AttachVolumeFailure ssntp.Error payload for test cases
 const AttachVolumeFailureYaml = `instance_uuid: ` + InstanceUUID + `
+volume_uuid: ` + VolumeUUID + `
 reason: attach_failure
 `
 
 // DetachVolumeFailureYaml is a sample DetachVolumeFailure ssntp.Error payload for test cases
 const DetachVolumeFailureYaml = `instance_uuid: ` + InstanceUUID + `
+volume_uuid: ` + VolumeUUID + `
 reason: detach_failure
 `
