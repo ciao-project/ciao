@@ -12,24 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package client
 
 import (
-	"errors"
+	"fmt"
+	"os"
 )
 
-var (
-	// ErrNoDevice is returned from a driver
-	ErrNoDevice = errors.New("Not able to create device")
-)
-
-// BlockDriver is the interface that all block drivers must implement.
-type BlockDriver interface {
-	CreateBlockDevice(image *string, sizeGB int) (BlockDevice, error)
-	DeleteBlockDevice(string) error
+// Client maintains context for ciao clients of the image service
+type Client struct {
+	// MountPoint specifies where the images are located
+	// in the filesystem.
+	MountPoint string
 }
 
-// BlockDevice contains information about a block devices.
-type BlockDevice struct {
-	ID string
+// GetImagePath returns the file system location of the image
+func GetImagePath(c Client, ID string) (string, error) {
+	path := fmt.Sprintf("%s/%s", c.MountPoint, ID)
+
+	_, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+
+	return path, nil
 }
