@@ -256,10 +256,42 @@ func (server *SsntpTestServer) StatusNotify(uuid string, status ssntp.Status, fr
 	server.SendResultAndDelStatusChan(status, result)
 }
 
+func getAttachVolumeResult(payload []byte, result *Result) {
+	var volCmd payloads.AttachVolume
+
+	err := yaml.Unmarshal(payload, &volCmd)
+	result.Err = err
+	if err == nil {
+		result.NodeUUID = volCmd.Attach.WorkloadAgentUUID
+		result.InstanceUUID = volCmd.Attach.InstanceUUID
+		result.VolumeUUID = volCmd.Attach.VolumeUUID
+	}
+}
+
+func getStartResults(payload []byte, result *Result) {
+	var startCmd payloads.Start
+	var nn bool
+
+	err := yaml.Unmarshal(payload, &startCmd)
+	result.Err = err
+	if err == nil {
+		resources := startCmd.Start.RequestedResources
+
+		for i := range resources {
+			if resources[i].Type == payloads.NetworkNode {
+				nn = true
+				break
+			}
+		}
+		result.InstanceUUID = startCmd.Start.InstanceUUID
+		result.TenantUUID = startCmd.Start.TenantUUID
+		result.CNCI = nn
+	}
+}
+
 // CommandNotify implements an SSNTP CommandNotify callback for SsntpTestServer
 func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command, frame *ssntp.Frame) {
 	var result Result
-	var nn bool
 
 	payload := frame.Payload
 
@@ -271,23 +303,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 	case CONFIGURE:
 	*/
 	case ssntp.START:
-		var startCmd payloads.Start
-
-		err := yaml.Unmarshal(payload, &startCmd)
-		result.Err = err
-		if err == nil {
-			resources := startCmd.Start.RequestedResources
-
-			for i := range resources {
-				if resources[i].Type == payloads.NetworkNode {
-					nn = true
-					break
-				}
-			}
-			result.InstanceUUID = startCmd.Start.InstanceUUID
-			result.TenantUUID = startCmd.Start.TenantUUID
-			result.CNCI = nn
-		}
+		getStartResults(payload, &result)
 
 	case ssntp.DELETE:
 		var delCmd payloads.Delete
@@ -333,6 +349,9 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 
 		err := yaml.Unmarshal(payload, &statsCmd)
 		result.Err = err
+
+	case ssntp.AttachVolume:
+		getAttachVolumeResult(payload, &result)
 
 	default:
 		fmt.Printf("server unhandled command %s\n", command.String())
@@ -512,6 +531,8 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 		fallthrough
 	case ssntp.DELETE:
 		fallthrough
+	case ssntp.AttachVolume:
+		fallthrough
 	case ssntp.RESTART:
 		//TODO: dest, instanceUUID = sched.fwdCmdToComputeNode(command, payload)
 	default:
@@ -607,6 +628,10 @@ func StartTestServer(server *SsntpTestServer) {
 			{ // all TenantRemoved events are processed by the Event forwarder
 				Operand:      ssntp.TenantRemoved,
 				EventForward: server,
+			},
+			{ // all AttachVolume commands are processed by the Command forwarder
+				Operand:        ssntp.AttachVolume,
+				CommandForward: server,
 			},
 		},
 	}
