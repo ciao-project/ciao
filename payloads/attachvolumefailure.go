@@ -38,6 +38,19 @@ const (
 	// AttachVolumeAttachFailure indicates that the attempt to attach a
 	// volume to an instance failed.
 	AttachVolumeAttachFailure = "attach_failure"
+
+	// AttachVolumeAlreadyAttached indicates that the volume is already
+	// attached to the instance.
+	AttachVolumeAlreadyAttached = "already_attached"
+
+	// AttachVolumeStateFailure indicates that launcher was unable to
+	// update its internal state to register the new volume.
+	AttachVolumeStateFailure = "state_failure"
+
+	// AttachVolumeInstanceFailure indicates that the volume could not
+	// be attached as the instance has failed to start and is being
+	// deleted
+	AttachVolumeInstanceFailure = "instance_failure"
 )
 
 // ErrorAttachVolumeFailure represents the unmarshalled version of the contents of a
@@ -65,6 +78,12 @@ func (r AttachVolumeFailureReason) String() string {
 		return "Command section of YAML payload is corrupt or missing required information"
 	case AttachVolumeAttachFailure:
 		return "Failed to attach volume to instance"
+	case AttachVolumeAlreadyAttached:
+		return "Volume already attached"
+	case AttachVolumeStateFailure:
+		return "State failure"
+	case AttachVolumeInstanceFailure:
+		return "Instance failure"
 	}
 
 	return ""

@@ -71,6 +71,9 @@ func TestDetachVolmeFailureString(t *testing.T) {
 		{DetachVolumeInvalidPayload, "YAML payload is corrupt"},
 		{DetachVolumeInvalidData, "Command section of YAML payload is corrupt or missing required information"},
 		{DetachVolumeDetachFailure, "Failed to detach volume from instance"},
+		{DetachVolumeNotAttached, "Volume not attached"},
+		{DetachVolumeStateFailure, "State failure"},
+		{DetachVolumeInstanceFailure, "Instance failure"},
 	}
 	error := ErrorDetachVolumeFailure{
 		InstanceUUID: testutil.InstanceUUID,
