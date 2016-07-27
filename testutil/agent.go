@@ -29,23 +29,25 @@ import (
 
 // SsntpTestClient is global state for the testutil SSNTP client worker
 type SsntpTestClient struct {
-	Ssntp             ssntp.Client
-	Name              string
-	instances         []payloads.InstanceStat
-	instancesLock     *sync.Mutex
-	ticker            *time.Ticker
-	UUID              string
-	Role              ssntp.Role
-	StartFail         bool
-	StartFailReason   payloads.StartFailureReason
-	StopFail          bool
-	StopFailReason    payloads.StopFailureReason
-	RestartFail       bool
-	RestartFailReason payloads.RestartFailureReason
-	DeleteFail        bool
-	DeleteFailReason  payloads.DeleteFailureReason
-	traces            []*ssntp.Frame
-	tracesLock        *sync.Mutex
+	Ssntp                  ssntp.Client
+	Name                   string
+	instances              []payloads.InstanceStat
+	instancesLock          *sync.Mutex
+	ticker                 *time.Ticker
+	UUID                   string
+	Role                   ssntp.Role
+	StartFail              bool
+	StartFailReason        payloads.StartFailureReason
+	StopFail               bool
+	StopFailReason         payloads.StopFailureReason
+	RestartFail            bool
+	RestartFailReason      payloads.RestartFailureReason
+	DeleteFail             bool
+	DeleteFailReason       payloads.DeleteFailureReason
+	AttachFail             bool
+	AttachVolumeFailReason payloads.AttachVolumeFailureReason
+	traces                 []*ssntp.Frame
+	tracesLock             *sync.Mutex
 
 	CmdChans        map[ssntp.Command]chan Result
 	CmdChansLock    *sync.Mutex
@@ -391,6 +393,26 @@ func (client *SsntpTestClient) handleDelete(payload []byte) Result {
 	return result
 }
 
+func (client *SsntpTestClient) handleAttachVolume(payload []byte) Result {
+	var result Result
+	var cmd payloads.AttachVolume
+
+	err := yaml.Unmarshal(payload, &cmd)
+	if err != nil {
+		result.Err = err
+		return result
+	}
+
+	if client.AttachFail == true {
+		result.Err = errors.New(client.AttachVolumeFailReason.String())
+		client.sendAttachVolumeFailure(cmd.Attach.InstanceUUID, cmd.Attach.VolumeUUID, client.AttachVolumeFailReason)
+		client.SendResultAndDelErrorChan(ssntp.AttachVolumeFailure, result)
+		return result
+	}
+
+	return result
+}
+
 // CommandNotify implements the SSNTP client CommandNotify callback for SsntpTestClient
 func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp.Frame) {
 	payload := frame.Payload
@@ -424,6 +446,9 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 	case ssntp.DELETE:
 		result = client.handleDelete(payload)
+
+	case ssntp.AttachVolume:
+		result = client.handleAttachVolume(payload)
 
 	default:
 		fmt.Printf("client %s unhandled command %s\n", client.Role.String(), command.String())
@@ -686,6 +711,24 @@ func (client *SsntpTestClient) sendDeleteFailure(instanceUUID string, reason pay
 	}
 
 	_, err = client.Ssntp.SendError(ssntp.DeleteFailure, y)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (client *SsntpTestClient) sendAttachVolumeFailure(instanceUUID string, volumeUUID string, reason payloads.AttachVolumeFailureReason) {
+	e := payloads.ErrorAttachVolumeFailure{
+		InstanceUUID: instanceUUID,
+		VolumeUUID:   volumeUUID,
+		Reason:       reason,
+	}
+
+	y, err := yaml.Marshal(e)
+	if err != nil {
+		return
+	}
+
+	_, err = client.Ssntp.SendError(ssntp.AttachVolumeFailure, y)
 	if err != nil {
 		fmt.Println(err)
 	}
