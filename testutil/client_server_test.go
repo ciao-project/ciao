@@ -17,6 +17,7 @@
 package testutil_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -424,6 +425,73 @@ func TestDeleteFailure(t *testing.T) {
 	fail := true
 
 	err := doDelete(fail)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func doAttachVolume(fail bool) error {
+	agentCh := agent.AddCmdChan(ssntp.AttachVolume)
+	serverCh := server.AddCmdChan(ssntp.AttachVolume)
+
+	var serverErrorCh *chan Result
+	var controllerErrorCh *chan Result
+
+	if fail == true {
+		serverErrorCh = server.AddErrorChan(ssntp.AttachVolumeFailure)
+		controllerErrorCh = controller.AddErrorChan(ssntp.AttachVolumeFailure)
+		fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.AttachVolumeFailure)
+
+		agent.AttachFail = true
+		agent.AttachVolumeFailReason = payloads.AttachVolumeAlreadyAttached
+
+		defer func() {
+			agent.AttachFail = false
+			agent.AttachVolumeFailReason = ""
+		}()
+	}
+
+	go controller.Ssntp.SendCommand(ssntp.AttachVolume, []byte(AttachVolumeYaml))
+	_, err := server.GetCmdChanResult(serverCh, ssntp.AttachVolume)
+	if err != nil { // server sees the AttachVolume on its way down to agent
+		return err
+	}
+
+	_, err = agent.GetCmdChanResult(agentCh, ssntp.AttachVolume)
+	if fail == false && err != nil { // agent unexpected fail
+		return err
+	}
+
+	if fail == true {
+		if err == nil { // agent unexpected success
+			return errors.New("Success when Failure expected")
+		}
+		_, err = server.GetErrorChanResult(serverErrorCh, ssntp.AttachVolumeFailure)
+		if err != nil {
+			return err
+		}
+		_, err = controller.GetErrorChanResult(controllerErrorCh, ssntp.AttachVolumeFailure)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+func TestAttachVolume(t *testing.T) {
+	fail := false
+
+	err := doAttachVolume(fail)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAttachVolumeFailure(t *testing.T) {
+	fail := true
+
+	err := doAttachVolume(fail)
 	if err != nil {
 		t.Fatal(err)
 	}
