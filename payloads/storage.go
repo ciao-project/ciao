@@ -25,6 +25,11 @@ type VolumeCmd struct {
 
 	// VolumeUUID is the UUID of the volume to attach.
 	VolumeUUID string `yaml:"volume_uuid"`
+
+	// WorkloadAgentUUID identifies the node on which the instance is
+	// running.  This information is needed by the scheduler to route
+	// the command to the correct CN/NN.
+	WorkloadAgentUUID string `yaml:"workload_agent_uuid"`
 }
 
 // AttachVolume represents the unmarshalled version of the contents of a SSNTP

@@ -38,6 +38,10 @@ func TestAttachVolumeUnmarshal(t *testing.T) {
 	if attach.Attach.VolumeUUID != testutil.VolumeUUID {
 		t.Errorf("Wrong Volume UUID field [%s]", attach.Attach.VolumeUUID)
 	}
+
+	if attach.Attach.WorkloadAgentUUID != testutil.AgentUUID {
+		t.Errorf("Wrong WorkloadAgentUUID field [%s]", attach.Attach.WorkloadAgentUUID)
+	}
 }
 
 func TestDetachVolumeUnmarshal(t *testing.T) {
@@ -60,6 +64,7 @@ func TestAttachVolmeMarshal(t *testing.T) {
 	var attach AttachVolume
 	attach.Attach.InstanceUUID = testutil.InstanceUUID
 	attach.Attach.VolumeUUID = testutil.VolumeUUID
+	attach.Attach.WorkloadAgentUUID = testutil.AgentUUID
 
 	y, err := yaml.Marshal(&attach)
 	if err != nil {
@@ -76,6 +81,7 @@ func TestDetachVolmeMarshal(t *testing.T) {
 	var detach DetachVolume
 	detach.Detach.InstanceUUID = testutil.InstanceUUID
 	detach.Detach.VolumeUUID = testutil.VolumeUUID
+	detach.Detach.WorkloadAgentUUID = testutil.AgentUUID
 
 	y, err := yaml.Marshal(&detach)
 	if err != nil {
