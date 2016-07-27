@@ -559,7 +559,7 @@ func TestNN_Base(t *testing.T) {
 	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg2))
 	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg))
 
-	//Destory again, it should work
+	//Destroy again, it should work
 	assert.Nil(cn.DestroyCnciVnic(cnciVnicCfg))
 }
 
