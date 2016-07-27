@@ -1443,6 +1443,63 @@ func TestStartFailureFullCloud(t *testing.T) {
 	}
 }
 
+func TestAttachVolumeFailure(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// add test instances
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	instance, err := addTestInstance(newTenant, wls[0])
+	if err != nil {
+		t.Error(err)
+	}
+
+	// add test block data
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// update block data to indicate it is attaching
+	data.State = types.Attaching
+
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// pretend we got a failure to attach.
+	ds.AttachVolumeFailure(instance.ID, data.ID, payloads.AttachVolumeAlreadyAttached)
+
+	// make sure state has been switched to Available again.
+	bd, err := ds.GetBlockDevice(data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if bd.State != types.Available {
+		t.Fatalf("expected state: %s, got %s\n", types.Available, bd.State)
+	}
+}
+
 func testAllocateTenantIPs(t *testing.T, nIPs int) {
 	nIPsPerSubnet := 253
 

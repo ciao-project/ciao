@@ -906,6 +906,28 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 	return nil
 }
 
+// AttachVolumeFailure will clean up after a failure to attach a volume.
+// The volume state will be changed back to available, and an error message
+// will be logged.
+func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, reason payloads.AttachVolumeFailureReason) {
+	// update the block data to reflect correct state
+	data, err := ds.GetBlockDevice(volumeID)
+	if err == nil {
+		data.State = types.Available
+		_ = ds.UpdateBlockDevice(data)
+	}
+
+	// get owner of this instance
+	i, err := ds.GetInstance(instanceID)
+	if err != nil {
+		return
+	}
+
+	msg := fmt.Sprintf("Attach Volume Failure %s to %s: %s", volumeID, instanceID, reason.String())
+
+	ds.db.logEvent(i.TenantID, string(userError), msg)
+}
+
 func (ds *Datastore) deleteInstance(instanceID string) error {
 	ds.instanceLastStatLock.Lock()
 	delete(ds.instanceLastStat, instanceID)
