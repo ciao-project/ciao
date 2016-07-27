@@ -568,7 +568,7 @@ func (ovs *overseer) processRemoveCommand(cmd *ovsRemoveCmd) {
 }
 
 func (ovs *overseer) processStatusCommand(cmd *ovsStatusCmd) {
-	glog.Info("Overseer: Recieved Status Command")
+	glog.Info("Overseer: Received Status Command")
 	if !ovs.ac.conn.isConnected() {
 		return
 	}
@@ -578,7 +578,7 @@ func (ovs *overseer) processStatusCommand(cmd *ovsStatusCmd) {
 }
 
 func (ovs *overseer) processStatsStatusCommand(cmd *ovsStatsStatusCmd) {
-	glog.Info("Overseer: Recieved StatsStatus Command")
+	glog.Info("Overseer: Received StatsStatus Command")
 	if !ovs.ac.conn.isConnected() {
 		return
 	}
@@ -590,7 +590,7 @@ func (ovs *overseer) processStatsStatusCommand(cmd *ovsStatsStatusCmd) {
 }
 
 func (ovs *overseer) processStateChangeCommand(cmd *ovsStateChange) {
-	glog.Infof("Overseer: Recieved State Change %v", *cmd)
+	glog.Infof("Overseer: Received State Change %v", *cmd)
 	target := ovs.instances[cmd.instance]
 	if target != nil {
 		target.running = cmd.state
