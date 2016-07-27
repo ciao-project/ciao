@@ -111,6 +111,10 @@ type persistentStore interface {
 
 	// storage interfaces
 	getWorkloadStorage(ID string) (*types.StorageResource, error)
+	getAllBlockData() (map[string]types.BlockData, error)
+	createBlockData(data types.BlockData) error
+	updateBlockData(data types.BlockData) error
+	getTenantDevices(tenantID string) (map[string]types.BlockData, error)
 }
 
 // Datastore provides context for the datastore package.
@@ -237,7 +241,11 @@ func (ds *Datastore) Init(config Config) error {
 	ds.tenantUsage = make(map[string][]payloads.CiaoUsage)
 	ds.tenantUsageLock = &sync.RWMutex{}
 
-	ds.blockDevices = make(map[string]types.BlockData)
+	ds.blockDevices, err = ds.db.getAllBlockData()
+	if err != nil {
+		glog.Warning(err)
+	}
+
 	ds.bdLock = &sync.RWMutex{}
 
 	return err
@@ -1293,6 +1301,7 @@ func (ds *Datastore) ClearLog() error {
 // the datastore.
 func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	ds.bdLock.Lock()
+	_, update := ds.blockDevices[device.ID]
 	ds.blockDevices[device.ID] = device
 	ds.bdLock.Unlock()
 
@@ -1302,7 +1311,13 @@ func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	devices[device.ID] = device
 	ds.tenantsLock.Unlock()
 
-	// TBD - store persistently
+	// store persistently
+	if !update {
+		go ds.db.createBlockData(device)
+	} else {
+		go ds.db.updateBlockData(device)
+	}
+
 	return nil
 }
 
@@ -1345,7 +1360,7 @@ func (ds *Datastore) GetBlockDevice(ID string) (types.BlockData, error) {
 // in the datastore.
 func (ds *Datastore) UpdateBlockDevice(data types.BlockData) error {
 	ds.bdLock.RLock()
-	data, ok := ds.blockDevices[data.ID]
+	_, ok := ds.blockDevices[data.ID]
 	ds.bdLock.RUnlock()
 
 	if !ok {
