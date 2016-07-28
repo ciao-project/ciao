@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"html/template"
 	"io"
 	"io/ioutil"
 	"net"
@@ -42,12 +43,78 @@ const (
 	vcTries    = 10
 )
 
+const attachVolumeDriveTemplateString = `
+{
+    "execute": "blockdev-add",
+    "arguments": {
+        "options": {
+            "driver": "raw",
+            "file": {
+                "driver": "file",
+                "filename": "{{.Device}}"
+            },
+            "id": "{{.VolumeUUID}}_drive"
+        }
+    }
+}
+`
+
+const attachVolumeDeviceTemplateString = `
+{
+    "execute": "device_add",
+    "arguments": {
+        "drive": "{{.VolumeUUID}}_drive",
+        "driver": "virtio-blk-pci",
+        "id": "{{.VolumeUUID}}_device"
+    }
+}
+`
+
+const detachVolumeDriveTemplateString = `
+{
+    "execute": "x-blockdev-del",
+    "arguments": {
+        "id": "{{.VolumeUUID}}_drive"
+    }
+}
+`
+
+const detachVolumeDeviceTemplateString = `
+{
+    "execute": "device_del",
+    "arguments": {
+        "id": "{{.VolumeUUID}}_device"
+    }
+}
+`
+
 var virtualSizeRegexp *regexp.Regexp
 var pssRegexp *regexp.Regexp
+var attachVolumeDriveTemplate *template.Template
+var attachVolumeDeviceTemplate *template.Template
+var detachVolumeDriveTemplate *template.Template
+var detachVolumeDeviceTemplate *template.Template
 
 func init() {
 	virtualSizeRegexp = regexp.MustCompile(`virtual size:.*\(([0-9]+) bytes\)`)
 	pssRegexp = regexp.MustCompile(`^Pss:\s*([0-9]+)`)
+	var err error
+	attachVolumeDriveTemplate, err = template.New("attachVolumeDriveTemplate").Parse(attachVolumeDriveTemplateString)
+	if err != nil {
+		panic(err)
+	}
+	attachVolumeDeviceTemplate, err = template.New("attachVolumeDeviceTemplate").Parse(attachVolumeDeviceTemplateString)
+	if err != nil {
+		panic(err)
+	}
+	detachVolumeDriveTemplate, err = template.New("detachVolumeDriveTemplate").Parse(detachVolumeDriveTemplateString)
+	if err != nil {
+		panic(err)
+	}
+	detachVolumeDeviceTemplate, err = template.New("detachVolumeDeviceTemplate").Parse(detachVolumeDeviceTemplateString)
+	if err != nil {
+		panic(err)
+	}
 }
 
 type qemu struct {
@@ -572,7 +639,51 @@ func connectToVM(instance, instanceDir string, eventCh chan string, connectedCh 
 	return retval, nil
 }
 
-func qmpLoop(instance string, conn net.Conn, qmpChannel chan string, eventCh chan string, closedCh chan struct{}) (chan string, chan struct{}) {
+func qmpAttach(cmd virtualizerAttachCmd, conn net.Conn) {
+	volInfo := &struct {
+		Device     string
+		VolumeUUID string
+	}{
+		cmd.device,
+		cmd.volumeUUID,
+	}
+	err := attachVolumeDriveTemplate.Execute(conn, &volInfo)
+	if err != nil {
+		cmd.responseCh <- err
+	}
+
+	// TODO,this code is no good.  We need to wait for the first command to
+	// exit first.
+
+	err = attachVolumeDeviceTemplate.Execute(conn, &volInfo)
+
+	// TODO try to delete block device if this fails.
+
+	cmd.responseCh <- err
+}
+
+func qmpDetach(cmd virtualizerDetachCmd, conn net.Conn) {
+	glog.Info("Detach command received")
+	volInfo := &struct {
+		VolumeUUID string
+	}{
+		cmd.volumeUUID,
+	}
+
+	err := detachVolumeDeviceTemplate.Execute(conn, &volInfo)
+	if err != nil {
+		cmd.responseCh <- err
+	}
+
+	// TODO,this code is no good.  We need to wait for the first command to
+	// exit first.
+
+	err = detachVolumeDriveTemplate.Execute(conn, &volInfo)
+
+	cmd.responseCh <- err
+}
+
+func qmpLoop(instance string, conn net.Conn, qmpChannel chan interface{}, eventCh chan string, closedCh chan struct{}) (chan string, chan struct{}) {
 	waitForShutdown := false
 	quitting := false
 
@@ -588,7 +699,8 @@ DONE:
 					quitting = true
 				}
 			}
-			if cmd == virtualizerStopCmd {
+			switch cmd := cmd.(type) {
+			case virtualizerStopCmd:
 				glog.Info("Sending STOP")
 				_, err := fmt.Fprintln(conn, "{ \"execute\": \"quit\" }")
 				if err != nil {
@@ -596,6 +708,10 @@ DONE:
 				} else {
 					waitForShutdown = true
 				}
+			case virtualizerAttachCmd:
+				qmpAttach(cmd, conn)
+			case virtualizerDetachCmd:
+				qmpDetach(cmd, conn)
 			}
 		case event, ok := <-eventCh:
 			if !ok {
@@ -623,7 +739,7 @@ DONE:
 	return eventCh, closedCh
 }
 
-func qmpConnect(qmpChannel chan string, instance, instanceDir string, closedCh chan struct{},
+func qmpConnect(qmpChannel chan interface{}, instance, instanceDir string, closedCh chan struct{},
 	connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) {
 	var conn net.Conn
 
@@ -665,8 +781,8 @@ func qmpConnect(qmpChannel chan string, instance, instanceDir string, closedCh c
 */
 
 func (q *qemu) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
-	wg *sync.WaitGroup, boot bool) chan string {
-	qmpChannel := make(chan string)
+	wg *sync.WaitGroup, boot bool) chan interface{} {
+	qmpChannel := make(chan interface{})
 	wg.Add(1)
 	go qmpConnect(qmpChannel, q.cfg.Instance, q.instanceDir, closedCh, connectedCh, wg, boot)
 	return qmpChannel

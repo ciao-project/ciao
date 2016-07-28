@@ -21,10 +21,16 @@ import (
 	"sync"
 )
 
-const (
-	virtualizerStartCmd = "START"
-	virtualizerStopCmd  = "STOP"
-)
+type virtualizerStopCmd struct{}
+type virtualizerAttachCmd struct {
+	responseCh chan error
+	volumeUUID string
+	device     string
+}
+type virtualizerDetachCmd struct {
+	responseCh chan error
+	volumeUUID string
+}
 
 var errImageNotFound = errors.New("Image Not Found")
 
@@ -96,7 +102,7 @@ type virtualizer interface {
 	// 2. It closes the channel when it is itself asked to shutdown.  When the channel is
 	//    closed, any go routines returned by monitor vm should shutdown.
 	monitorVM(closedCh chan struct{}, connectedCh chan struct{},
-		wg *sync.WaitGroup, boot bool) chan string
+		wg *sync.WaitGroup, boot bool) chan interface{}
 
 	// Returns current statistics for the instance.
 	// disk: Size of the VM/container rootfs in GB or -1 if not known.

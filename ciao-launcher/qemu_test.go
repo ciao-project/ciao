@@ -207,7 +207,7 @@ func TestGenerateQEMULaunchParams(t *testing.T) {
 
 func TestQmpConnectBadSocket(t *testing.T) {
 	var wg sync.WaitGroup
-	qmpChannel := make(chan string)
+	qmpChannel := make(chan interface{})
 	closedCh := make(chan struct{})
 	connectedCh := make(chan struct{})
 	instance := "testInstance"
@@ -223,9 +223,9 @@ func TestQmpConnectBadSocket(t *testing.T) {
 	}
 }
 
-func setupQmpSocket(t *testing.T, runTest func(net.Conn, *bufio.Scanner, chan string, *testing.T) bool) {
+func setupQmpSocket(t *testing.T, runTest func(net.Conn, *bufio.Scanner, chan interface{}, *testing.T) bool) {
 	var wg sync.WaitGroup
-	qmpChannel := make(chan string)
+	qmpChannel := make(chan interface{})
 	closedCh := make(chan struct{})
 	connectedCh := make(chan struct{})
 	instance := "testInstance"
@@ -285,14 +285,14 @@ func setupQmpSocket(t *testing.T, runTest func(net.Conn, *bufio.Scanner, chan st
 }
 
 func TestQmpConnect(t *testing.T) {
-	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan string, t *testing.T) bool {
+	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan interface{}, t *testing.T) bool {
 		return true
 	})
 }
 
 func TestQmpShutdown(t *testing.T) {
-	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan string, t *testing.T) bool {
-		qmpChannel <- virtualizerStopCmd
+	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan interface{}, t *testing.T) bool {
+		qmpChannel <- virtualizerStopCmd{}
 		if !sc.Scan() {
 			t.Fatalf("power down command expected")
 		}
@@ -305,8 +305,8 @@ func TestQmpShutdown(t *testing.T) {
 }
 
 func TestQmpLost(t *testing.T) {
-	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan string, t *testing.T) bool {
-		qmpChannel <- virtualizerStopCmd
+	setupQmpSocket(t, func(fd net.Conn, sc *bufio.Scanner, qmpChannel chan interface{}, t *testing.T) bool {
+		qmpChannel <- virtualizerStopCmd{}
 		if !sc.Scan() {
 			t.Fatalf("power down command expected")
 		}
