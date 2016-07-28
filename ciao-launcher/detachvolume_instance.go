@@ -17,11 +17,12 @@
 package main
 
 import (
+	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/golang/glog"
 )
 
-func processDetachVolume(vm virtualizer, cfg *vmConfig, instance, instanceDir, volumeUUID string, conn serverConn) *detachVolumeError {
+func processDetachVolume(storageDriver storage.BlockDriver, monitorCh chan interface{}, cfg *vmConfig, instance, instanceDir, volumeUUID string, conn serverConn) *detachVolumeError {
 	if _, found := cfg.Volumes[volumeUUID]; !found {
 		detachErr := &detachVolumeError{nil, payloads.DetachVolumeNotAttached}
 		glog.Errorf("%s not attached to attach instance %s [%s]",
@@ -29,10 +30,32 @@ func processDetachVolume(vm virtualizer, cfg *vmConfig, instance, instanceDir, v
 		return detachErr
 	}
 
+	if monitorCh != nil {
+		responseCh := make(chan error)
+		monitorCh <- virtualizerDetachCmd{
+			responseCh: responseCh,
+			volumeUUID: volumeUUID,
+		}
+
+		glog.Infof("Detaching Volume %v", volumeUUID)
+
+		err := <-responseCh
+		if err != nil {
+			glog.Errorf("Unable to detach volume %s from instance %s", volumeUUID, instance)
+			attachErr := &detachVolumeError{err, payloads.DetachVolumeDetachFailure}
+			return attachErr
+		}
+	}
+
+	// May fail if other instances are using the same device.  We'll ignore error for now
+	// but we might be able to get good error info out of rbd.
+	_ = storageDriver.UnmapVolumeFromNode(volumeUUID)
+
 	delete(cfg.Volumes, volumeUUID)
 
 	err := cfg.save(instanceDir)
 	if err != nil {
+		// TODO: What should I do here.  Try to re-attach?
 		cfg.Volumes[volumeUUID] = struct{}{}
 		detachErr := &detachVolumeError{err, payloads.DetachVolumeDetachFailure}
 		glog.Errorf("Unable to persist instance %s state [%s]: %v",

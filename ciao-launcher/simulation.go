@@ -31,7 +31,7 @@ type simulation struct {
 	closedCh    chan struct{}
 	connectedCh chan struct{}
 	killCh      chan struct{}
-	monitorCh   chan string
+	monitorCh   chan interface{}
 	wg          *sync.WaitGroup
 
 	cpus int
@@ -80,7 +80,7 @@ VM:
 				s.monitorCh = nil
 				break VM
 			}
-			if cmd == virtualizerStopCmd {
+			if _, stopCmd := cmd.(virtualizerStopCmd); stopCmd {
 				break VM
 			}
 		case <-s.killCh:
@@ -106,13 +106,13 @@ func (s *simulation) startVM(vnicName, ipAddress string) error {
 	return nil
 }
 
-func (s *simulation) monitorVM(closedCh chan struct{}, connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) chan string {
+func (s *simulation) monitorVM(closedCh chan struct{}, connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) chan interface{} {
 	glog.Infof("monitorVM\n")
 	s.closedCh = closedCh
 	s.connectedCh = connectedCh
 	s.wg = wg
 
-	s.monitorCh = make(chan string)
+	s.monitorCh = make(chan interface{})
 
 	go fakeVM(s)
 

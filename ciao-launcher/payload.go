@@ -313,10 +313,9 @@ func extractVolumeInfo(cmd *payloads.VolumeCmd, errString string) (string, strin
 
 	volume := strings.TrimSpace(cmd.VolumeUUID)
 	if !uuidRegexp.MatchString(volume) {
-		err := fmt.Errorf("Invalid instance id received: %s", volume)
+		err := fmt.Errorf("Invalid volume id received: %s", volume)
 		return "", "", &payloadError{err, errString}
 	}
-
 	return instance, volume, nil
 }
 
