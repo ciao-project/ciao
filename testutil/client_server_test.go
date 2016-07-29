@@ -17,6 +17,7 @@
 package testutil_test
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"testing"
@@ -557,6 +558,10 @@ func TestPublicIPAssigned(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	var err error
+
+	// anything that uses ssntp must call flag.Parse first
+	// due to glog.
+	flag.Parse()
 
 	// start server
 	StartTestServer(&server)
