@@ -203,15 +203,16 @@ func istats(host string) error {
 	w := new(tabwriter.Writer)
 
 	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
-	fmt.Fprintln(w, "UUID\tStatus\tSSH\tMem\tDisk\tCPU")
+	fmt.Fprintln(w, "UUID\tStatus\tSSH\tMem\tDisk\tCPU\tVolumes")
 	for _, i := range stats.Instances {
-		fmt.Fprintf(w, "%s\t%s\t%s:%d\t%d MB\t%d MB\t%d%%\n",
+		fmt.Fprintf(w, "%s\t%s\t%s:%d\t%d MB\t%d MB\t%d%%\t%s\n",
 			i.InstanceUUID,
 			i.State,
 			i.SSHIP, i.SSHPort,
 			i.MemoryUsageMB,
 			i.DiskUsageMB,
-			i.CPUUsage)
+			i.CPUUsage,
+			i.Volumes)
 	}
 	w.Flush()
 

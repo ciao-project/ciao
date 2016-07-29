@@ -430,6 +430,7 @@ var InstanceStat003 = payloads.InstanceStat{
 	MemoryUsageMB: -1,
 	DiskUsageMB:   2,
 	CPUUsage:      -1,
+	Volumes:       []string{VolumeUUID},
 }
 
 // NetworkStat001 is a sample payloads.NetworkStat
@@ -490,6 +491,7 @@ instances:
   memory_usage_mb: 40
   disk_usage_mb: 2
   cpu_usage: 90
+  volumes: []
 - instance_uuid: cbda5bd8-33bd-4d39-9f52-ace8c9f0b99c
   state: active
   ssh_ip: 172.168.2.2
@@ -497,6 +499,7 @@ instances:
   memory_usage_mb: 50
   disk_usage_mb: 10
   cpu_usage: 0
+  volumes: []
 - instance_uuid: 1f5b2fe6-4493-4561-904a-8f4e956218d9
   state: exited
   ssh_ip: ""
@@ -504,6 +507,8 @@ instances:
   memory_usage_mb: -1
   disk_usage_mb: 2
   cpu_usage: -1
+  volumes:
+  - 67d86208-b46c-4465-9018-e14187d4010
 `
 
 // NodeOnlyStatsYaml is a sample minimal node STATS ssntp.Command payload for test cases
