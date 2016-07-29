@@ -304,12 +304,20 @@ func (id *instanceData) instanceCommand(cmd interface{}) bool {
 	return true
 }
 
+func (id *instanceData) getVolumes() []string {
+	volumes := make([]string, 0, len(id.cfg.Volumes))
+	for k := range id.cfg.Volumes {
+		volumes = append(volumes, k)
+	}
+	return volumes
+}
+
 func (id *instanceData) instanceLoop() {
 
 	id.vm.init(id.cfg, id.instanceDir)
 
 	d, m, c := id.vm.stats()
-	id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+	id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 
 DONE:
 	for {
@@ -318,7 +326,7 @@ DONE:
 			break DONE
 		case <-id.statsTimer:
 			d, m, c := id.vm.stats()
-			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 			id.statsTimer = time.After(time.Second * resourcePeriod)
 		case cmd := <-id.cmdCh:
 			if !id.instanceCommand(cmd) {
@@ -328,7 +336,7 @@ DONE:
 			// Means we've lost VM for now
 			id.vm.lostVM()
 			d, m, c := id.vm.stats()
-			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 
 			glog.Infof("Lost VM instance: %s", id.instance)
 			id.monitorCloseCh = nil
@@ -344,7 +352,7 @@ DONE:
 			id.vm.connected()
 			id.ovsCh <- &ovsStateChange{id.instance, ovsRunning}
 			d, m, c := id.vm.stats()
-			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 			id.statsTimer = time.After(time.Second * resourcePeriod)
 		}
 	}
