@@ -458,16 +458,7 @@ func TestAttachVolume(t *testing.T) {
 	}
 }
 
-func TestAttachVolumeCommand(t *testing.T) {
-	var reason payloads.StartFailureReason
-
-	client, instances := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
-
-	tenantID := instances[0].TenantID
-
-	sendStatsCmd(client, t)
-
+func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
 	bd, err := context.CreateBlockDevice(nil, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -486,11 +477,39 @@ func TestAttachVolumeCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	return data
+}
+
+func doAttachVolumeCommand(t *testing.T, fail bool) {
+	var reason payloads.StartFailureReason
+
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.Ssntp.Close()
+
+	tenantID := instances[0].TenantID
+
+	sendStatsCmd(client, t)
+
+	data := addTestBlockDevice(t, tenantID)
+
 	serverCh := server.AddCmdChan(ssntp.AttachVolume)
+	agentCh := client.AddCmdChan(ssntp.AttachVolume)
+	var serverErrorCh *chan testutil.Result
 
 	time.Sleep(1 * time.Second)
 
-	err = context.AttachVolume(tenantID, data.ID, instances[0].ID, "")
+	if fail == true {
+		serverErrorCh = server.AddErrorChan(ssntp.AttachVolumeFailure)
+		client.AttachFail = true
+		client.AttachVolumeFailReason = payloads.AttachVolumeAlreadyAttached
+
+		defer func() {
+			client.AttachFail = false
+			client.AttachVolumeFailReason = ""
+		}()
+	}
+
+	err := context.AttachVolume(tenantID, data.ID, instances[0].ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,17 +519,48 @@ func TestAttachVolumeCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if result.InstanceUUID != instances[0].ID {
-		t.Fatal("Did not get correct Instance ID")
+	if result.InstanceUUID != instances[0].ID ||
+		result.NodeUUID != client.UUID ||
+		result.VolumeUUID != data.ID {
+		t.Fatalf("expected %s %s %s, got %s %s %s", instances[0].ID, client.UUID, data.ID, result.InstanceUUID, result.NodeUUID, result.VolumeUUID)
 	}
 
-	if result.NodeUUID != client.UUID {
-		t.Fatal("Did not get node ID")
+	_, err = client.GetCmdChanResult(agentCh, ssntp.AttachVolume)
+	if fail == false && err != nil {
+		t.Fatal(err)
 	}
 
-	if result.VolumeUUID != data.ID {
-		t.Fatal("Did not get volume ID")
+	if fail == true {
+		if err == nil {
+			t.Fatal("Success when Failure expected")
+		}
+
+		_, err = server.GetErrorChanResult(serverErrorCh, ssntp.AttachVolumeFailure)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// at this point, the state of the block device should
+		// be set back to available.
+		time.Sleep(time.Second)
+
+		data2, err := context.ds.GetBlockDevice(data.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if data2.State != types.Available {
+			t.Fatalf("block device state not updated")
+		}
 	}
+}
+
+func TestAttachVolumeCommand(t *testing.T) {
+	doAttachVolumeCommand(t, false)
+}
+
+func TestAttachVolumeFailure(t *testing.T) {
+	doAttachVolumeCommand(t, true)
 }
 
 func TestInstanceDeletedEvent(t *testing.T) {

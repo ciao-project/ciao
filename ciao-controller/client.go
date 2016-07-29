@@ -145,6 +145,15 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			return
 		}
 		client.context.ds.RestartFailure(failure.InstanceUUID, failure.Reason)
+	case ssntp.AttachVolumeFailure:
+		var failure payloads.ErrorAttachVolumeFailure
+		err := yaml.Unmarshal(payload, &failure)
+		if err != nil {
+			glog.Warning("Error unmarshalling AttachVolumeFailure")
+			return
+		}
+		client.context.ds.AttachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
+
 	}
 	glog.V(1).Info(string(payload))
 }
