@@ -947,7 +947,7 @@ func TestMain(m *testing.M) {
 	context.ds = new(datastore.Datastore)
 
 	context.BlockDriver = func() storage.BlockDriver {
-		return storage.NoopDriver{}
+		return &storage.NoopDriver{}
 	}()
 
 	dir, err := ioutil.TempDir("", "controller_test")
