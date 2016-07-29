@@ -206,11 +206,11 @@ func (d blockData) Init() error {
 	return d.ds.exec(d.db, cmd)
 }
 
-type attachment struct {
+type attachments struct {
 	namedData
 }
 
-func (d attachment) Init() error {
+func (d attachments) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS attachments
 		(
 		id string primary key,
@@ -574,6 +574,7 @@ func getPersistentStore(config Config) (persistentStore, error) {
 		frameStatisticsData{namedData{ds: ds, name: "frame_statistics", db: ds.tdb}},
 		traceData{namedData{ds: ds, name: "trace_data", db: ds.tdb}},
 		blockData{namedData{ds: ds, name: "block_data", db: ds.db}},
+		attachments{namedData{ds: ds, name: "attachments", db: ds.db}},
 	}
 
 	ds.tableInitPath = config.InitTablesPath
@@ -2178,6 +2179,68 @@ func (ds *sqliteDB) updateBlockData(data types.BlockData) error {
 
 	tx.Commit()
 
+	ds.dbLock.Unlock()
+
+	return err
+}
+
+func (ds *sqliteDB) createStorageAttachment(a types.StorageAttachment) error {
+	ds.dbLock.Lock()
+	err := ds.create("attachments", a.ID, a.InstanceID, a.BlockID)
+	ds.dbLock.Unlock()
+	return err
+}
+
+func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachment, error) {
+	attachments := make(map[string]types.StorageAttachment)
+
+	datastore := ds.getTableDB("attachments")
+
+	query := `SELECT	attachments.id,
+				attachments.instance_id,
+				attachments.block_id
+		  FROM	attachments `
+
+	rows, err := datastore.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var a types.StorageAttachment
+
+		err = rows.Scan(&a.ID, &a.InstanceID, &a.BlockID)
+		if err != nil {
+			attachments[a.ID] = a
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return attachments, nil
+}
+
+func (ds *sqliteDB) deleteStorageAttachment(ID string) error {
+	datastore := ds.getTableDB("attachments")
+
+	ds.dbLock.Lock()
+	tx, err := datastore.Begin()
+	if err != nil {
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM attachments WHERE id = ?", ID)
+	if err != nil {
+		tx.Rollback()
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
 	ds.dbLock.Unlock()
 
 	return err

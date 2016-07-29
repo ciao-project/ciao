@@ -74,17 +74,18 @@ type Workload struct {
 
 // Instance contains information about an instance of a workload.
 type Instance struct {
-	ID         string         `json:"instance_id"`
-	TenantID   string         `json:"tenant_id"`
-	State      string         `json:"instance_state"`
-	WorkloadID string         `json:"workload_id"`
-	NodeID     string         `json:"node_id"`
-	MACAddress string         `json:"mac_address"`
-	IPAddress  string         `json:"ip_address"`
-	SSHIP      string         `json:"ssh_ip"`
-	SSHPort    int            `json:"ssh_port"`
-	CNCI       bool           `json:"-"`
-	Usage      map[string]int `json:"-"`
+	ID          string              `json:"instance_id"`
+	TenantID    string              `json:"tenant_id"`
+	State       string              `json:"instance_state"`
+	WorkloadID  string              `json:"workload_id"`
+	NodeID      string              `json:"node_id"`
+	MACAddress  string              `json:"mac_address"`
+	IPAddress   string              `json:"ip_address"`
+	SSHIP       string              `json:"ssh_ip"`
+	SSHPort     int                 `json:"ssh_port"`
+	CNCI        bool                `json:"-"`
+	Usage       map[string]int      `json:"-"`
+	Attachments []StorageAttachment `json:"-"`
 }
 
 // SortedInstancesByID implements sort.Interface for Instance by ID string
@@ -224,8 +225,15 @@ const (
 type BlockData struct {
 	storage.BlockDevice
 	TenantID   string     // the tenant who owns this volume
-	Instances  []Instance // any instances using this volume
 	Size       int        // size in GB
 	State      BlockState // status of
 	CreateTime time.Time  // when we created the volume
+}
+
+// StorageAttachment represents a link between a block device and
+// an instance.
+type StorageAttachment struct {
+	ID         string // a uuid
+	InstanceID string // the instance this volume is attached to
+	BlockID    string // the ID of the block device
 }
