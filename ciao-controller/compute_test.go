@@ -510,6 +510,17 @@ func TestShowFlavorDetails(t *testing.T) {
 	}
 }
 
+func TestListFlavorsDetails(t *testing.T) {
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors/detail"
+
+	_ = testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+}
+
 func TestListTenantResources(t *testing.T) {
 	var usage payloads.CiaoUsageHistory
 
