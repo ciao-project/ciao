@@ -1263,6 +1263,8 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 			ds.nodesLock.Unlock()
 		}
 		ds.instancesLock.Unlock()
+
+		ds.updateStorageAttachments(stat.InstanceUUID, stat.Volumes)
 	}
 
 	return ds.db.addInstanceStatsDB(stats, nodeID)
@@ -1459,6 +1461,91 @@ func (ds *Datastore) GetStorageAttachments(instanceID string) ([]types.StorageAt
 	ds.attachLock.RUnlock()
 
 	return links, nil
+}
+
+func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []string) {
+
+	m := make(map[string]bool)
+
+	// this for handy searching.
+	for _, v := range volumes {
+		m[v] = true
+	}
+
+	// see if we already know about each attachment.
+	ds.attachLock.Lock()
+
+	for _, v := range volumes {
+		key := attachment{
+			instanceID: instanceID,
+			volumeID:   v,
+		}
+
+		_, ok := ds.instanceVolumes[key]
+		if !ok {
+			// add the attachment
+			a := types.StorageAttachment{
+				InstanceID: instanceID,
+				ID:         uuid.Generate().String(),
+				BlockID:    v,
+			}
+			ds.attachments[a.ID] = a
+			ds.instanceVolumes[key] = a.ID
+
+			// not sure what to do with an error here.
+			err := ds.db.createStorageAttachment(a)
+			if err != nil {
+				glog.Warning(err)
+				continue
+			}
+
+			// update the state of the volume.
+			bd, err := ds.GetBlockDevice(v)
+			if err != nil {
+				glog.Warning(err)
+				// well, maybe we should add it, it obviously
+				// exists.
+				continue
+			}
+
+			bd.State = types.InUse
+			err = ds.UpdateBlockDevice(bd)
+			if err != nil {
+				glog.Warning(err)
+			}
+		}
+	}
+
+	// finally, check to see if all the attachments we already
+	// know about are in the list.
+	for _, ID := range ds.instanceVolumes {
+		a := ds.attachments[ID]
+
+		if !m[a.BlockID] {
+			bd, err := ds.GetBlockDevice(a.BlockID)
+			if err != nil {
+				glog.Warning(err)
+				continue
+			}
+
+			// update the state of the volume.
+			bd.State = types.Available
+			err = ds.UpdateBlockDevice(bd)
+			if err != nil {
+				glog.Warning(err)
+			}
+
+			// delete the attachment.
+			key := attachment{
+				instanceID: a.InstanceID,
+				volumeID:   a.BlockID,
+			}
+
+			delete(ds.attachments, ID)
+			delete(ds.instanceVolumes, key)
+		}
+	}
+	ds.attachLock.Unlock()
 }
 
 func (ds *Datastore) getStorageAttachment(instanceID string, volumeID string) (types.StorageAttachment, error) {
