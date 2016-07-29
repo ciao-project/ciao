@@ -15,18 +15,40 @@
 package storage
 
 import (
+	"fmt"
+	"sync/atomic"
+
 	"github.com/01org/ciao/ssntp/uuid"
 )
 
 // NoopDriver is a driver which does nothing.
-type NoopDriver struct{}
+type NoopDriver struct {
+	deviceNum int64
+}
 
 // CreateBlockDevice pretends to create a block device.
-func (d NoopDriver) CreateBlockDevice(image *string, size int) (BlockDevice, error) {
+func (d *NoopDriver) CreateBlockDevice(image *string, size int) (BlockDevice, error) {
 	return BlockDevice{ID: uuid.Generate().String()}, nil
 }
 
 // DeleteBlockDevice pretends to delete a block device.
-func (d NoopDriver) DeleteBlockDevice(string) error {
+func (d *NoopDriver) DeleteBlockDevice(string) error {
 	return nil
+}
+
+// MapVolumeToNode pretends to map a volume to a local device on a node.
+func (d *NoopDriver) MapVolumeToNode(volumeUUID string) (string, error) {
+	dNum := atomic.AddInt64(&d.deviceNum, 1)
+	return fmt.Sprintf("/dev/blk%d", dNum), nil
+}
+
+// UnmapVolumeFromNode pretends to unmap a volume from a local device on a node.
+func (d *NoopDriver) UnmapVolumeFromNode(devNmae string) error {
+	return nil
+}
+
+// GetVolumeMapping returns an empty slice, indicating no devices are mapped to the
+// specified volume.
+func (d *NoopDriver) GetVolumeMapping() (map[string][]string, error) {
+	return nil, nil
 }
