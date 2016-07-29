@@ -257,7 +257,7 @@ func (d *docker) startVM(vnicName, ipAddress string) error {
 	return nil
 }
 
-func dockerConnect(dockerChannel chan string, instance, dockerID string, closedCh chan struct{},
+func dockerConnect(dockerChannel chan interface{}, instance, dockerID string, closedCh chan struct{},
 	connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) {
 
 	defer func() {
@@ -311,7 +311,7 @@ DONE:
 				cancelFunc()
 				_ = <-lostContainerCh
 				break DONE
-			} else if cmd == virtualizerStopCmd {
+			} else if _, isStop := cmd.(virtualizerStopCmd); isStop {
 				err := cli.ContainerKill(context.Background(), dockerID, "KILL")
 				if err != nil {
 					glog.Errorf("Unable to stop instance %s:%s", instance, dockerID)
@@ -324,7 +324,7 @@ DONE:
 }
 
 func (d *docker) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
-	wg *sync.WaitGroup, boot bool) chan string {
+	wg *sync.WaitGroup, boot bool) chan interface{} {
 
 	if d.dockerID == "" {
 		idPath := path.Join(d.instanceDir, "docker-id")
@@ -337,7 +337,7 @@ func (d *docker) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
 			glog.Infof("Instance UUID %s -> Docker UUID %s", d.cfg.Instance, d.dockerID)
 		}
 	}
-	dockerChannel := make(chan string)
+	dockerChannel := make(chan interface{})
 	wg.Add(1)
 	go dockerConnect(dockerChannel, d.cfg.Instance, d.dockerID, closedCh, connectedCh, wg, boot)
 	return dockerChannel

@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
@@ -58,7 +59,7 @@ type instanceTestState struct {
 	avf             payloads.ErrorAttachVolumeFailure
 	dvf             payloads.ErrorDetachVolumeFailure
 	connect         bool
-	monitorCh       chan string
+	monitorCh       chan interface{}
 	errorCh         chan struct{}
 	monitorClosedCh chan struct{}
 	failStartVM     bool
@@ -93,14 +94,14 @@ func (v *instanceTestState) startVM(vnicName, ipAddress string) error {
 }
 
 func (v *instanceTestState) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
-	wg *sync.WaitGroup, boot bool) chan string {
+	wg *sync.WaitGroup, boot bool) chan interface{} {
 
 	// Need to be careful here not to modify any state inside v before
 	// we've closed the channel.
 
 	v.monitorClosedCh = closedCh
 
-	monitorCh := make(chan string)
+	monitorCh := make(chan interface{})
 	v.monitorCh = monitorCh
 	if v.connect {
 		close(connectedCh)
@@ -251,8 +252,8 @@ func (v *instanceTestState) deleteInstance(t *testing.T, ovsCh chan interface{},
 				return false
 			}
 		case monCmd := <-v.monitorCh:
-			if monCmd != virtualizerStopCmd {
-				t.Errorf("Invalid monitor command found %s, expected %s", monCmd, virtualizerStopCmd)
+			if _, stopCmd := monCmd.(virtualizerStopCmd); !stopCmd {
+				t.Errorf("Invalid monitor command found %t, expected virtualizerStopCmd", monCmd)
 				return false
 			}
 		case <-time.After(time.Second):
@@ -415,7 +416,7 @@ func TestStartInstanceLoop(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	_ = startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state)
+	_ = startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
 	shutdownInstanceLoop(doneCh, ovsCh)
 	if !ok {
@@ -444,7 +445,7 @@ func TestDeleteInstanceLoop(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
@@ -478,7 +479,7 @@ func TestStopNotRunning(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
@@ -524,7 +525,7 @@ func startVMWithCFG(t *testing.T, wg *sync.WaitGroup, cfg *vmConfig, connect boo
 		connect:    connect,
 	}
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
-	cmdCh := startInstanceWithVM(state.instance, cfg, wg, doneCh, state.ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, cfg, wg, doneCh, state.ac, ovsCh, state, &storage.NoopDriver{})
 	if !state.expectStatsUpdate(t, ovsCh) {
 		shutdownInstanceLoop(doneCh, ovsCh)
 		t.FailNow()
@@ -624,7 +625,7 @@ func TestRestart(t *testing.T) {
 	}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
 		shutdownInstanceLoop(doneCh, ovsCh)
@@ -662,7 +663,7 @@ func TestRestartFail(t *testing.T) {
 	}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
 		shutdownInstanceLoop(doneCh, ovsCh)
@@ -918,6 +919,13 @@ func TestAttachVolumeToInstance(t *testing.T) {
 		t.Error("Timed out sending attach volume command")
 	}
 
+	select {
+	case monCmd := <-state.monitorCh:
+		monCmd.(virtualizerAttachCmd).responseCh <- nil
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach volume command result")
+	}
+
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
 		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
 	}
@@ -943,6 +951,13 @@ func TestAttachExistingVolumeToInstance(t *testing.T) {
 	case cmdCh <- &insAttachVolumeCmd{testutil.VolumeUUID}:
 	case <-time.After(time.Second):
 		t.Error("Timed out sending attach volume command")
+	}
+
+	select {
+	case monCmd := <-state.monitorCh:
+		monCmd.(virtualizerAttachCmd).responseCh <- nil
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach volume command result")
 	}
 
 	select {
@@ -992,9 +1007,23 @@ func TestDetachVolumeFromInstance(t *testing.T) {
 	}
 
 	select {
+	case monCmd := <-state.monitorCh:
+		monCmd.(virtualizerAttachCmd).responseCh <- nil
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach volume command result")
+	}
+
+	select {
 	case cmdCh <- &insDetachVolumeCmd{testutil.VolumeUUID}:
 	case <-time.After(time.Second):
 		t.Error("Timed out sending attach volume command")
+	}
+
+	select {
+	case monCmd := <-state.monitorCh:
+		monCmd.(virtualizerDetachCmd).responseCh <- nil
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach volume command result")
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {

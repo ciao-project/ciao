@@ -17,11 +17,13 @@
 package main
 
 import (
+	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/golang/glog"
 )
 
-func processAttachVolume(vm virtualizer, cfg *vmConfig, instance, instanceDir, volumeUUID string, conn serverConn) *attachVolumeError {
+func processAttachVolume(storageDriver storage.BlockDriver, monitorCh chan interface{}, cfg *vmConfig,
+	instance, instanceDir, volumeUUID string, conn serverConn) *attachVolumeError {
 	if _, found := cfg.Volumes[volumeUUID]; found {
 		attachErr := &attachVolumeError{nil, payloads.AttachVolumeAlreadyAttached}
 		glog.Errorf("%s is already attached to attach instance %s [%s]",
@@ -29,10 +31,53 @@ func processAttachVolume(vm virtualizer, cfg *vmConfig, instance, instanceDir, v
 		return attachErr
 	}
 
+	if monitorCh != nil {
+		volumeMap, err := storageDriver.GetVolumeMapping()
+		if err != nil {
+			attachErr := &attachVolumeError{err, payloads.AttachVolumeAttachFailure}
+			glog.Errorf("Unable to retrieve list of mapped volumes [%s]: %v",
+				string(attachErr.code), err)
+			return attachErr
+		}
+
+		var devName string
+
+		if len(volumeMap[volumeUUID]) > 0 {
+			devName = volumeMap[volumeUUID][0]
+			glog.Infof("Volume %s already mapped %s", volumeUUID, devName)
+		} else {
+			devName, err = storageDriver.MapVolumeToNode(volumeUUID)
+			if err != nil {
+				attachErr := &attachVolumeError{err, payloads.AttachVolumeAttachFailure}
+				glog.Errorf("Unable to map volume  %s [%s]: %v",
+					volumeUUID, string(attachErr.code), err)
+				return attachErr
+			}
+			glog.Infof("Mapped instance %s volume %s as %s", instance, volumeUUID, devName)
+		}
+
+		responseCh := make(chan error)
+
+		monitorCh <- virtualizerAttachCmd{
+			responseCh: responseCh,
+			volumeUUID: volumeUUID,
+			device:     devName,
+		}
+
+		err = <-responseCh
+		if err != nil {
+			glog.Errorf("Unable to attach volume %s to instance %s", volumeUUID, instance)
+			_ = storageDriver.UnmapVolumeFromNode(devName)
+			attachErr := &attachVolumeError{err, payloads.AttachVolumeAttachFailure}
+			return attachErr
+		}
+	}
+
 	cfg.Volumes[volumeUUID] = struct{}{}
 
 	err := cfg.save(instanceDir)
 	if err != nil {
+		// TODO: should we detach and unmap here?
 		delete(cfg.Volumes, volumeUUID)
 		attachErr := &attachVolumeError{err, payloads.AttachVolumeStateFailure}
 		glog.Errorf("Unable to persist instance %s state [%s]: %v",

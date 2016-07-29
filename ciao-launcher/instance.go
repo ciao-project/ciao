@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
@@ -35,7 +36,7 @@ type instanceData struct {
 	ac             *agentClient
 	ovsCh          chan<- interface{}
 	instanceWg     sync.WaitGroup
-	monitorCh      chan string
+	monitorCh      chan interface{}
 	connectedCh    chan struct{}
 	monitorCloseCh chan struct{}
 	statsTimer     <-chan time.Time
@@ -44,6 +45,7 @@ type instanceData struct {
 	shuttingDown   bool
 	rcvStamp       time.Time
 	st             *startTimes
+	storageDriver  storage.BlockDriver
 }
 
 type insStartCmd struct {
@@ -187,7 +189,7 @@ func (id *instanceData) stopCommand(cmd *insStopCmd) {
 		return
 	}
 	glog.Infof("Powerdown %s", id.instance)
-	id.monitorCh <- virtualizerStopCmd
+	id.monitorCh <- virtualizerStopCmd{}
 }
 
 func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
@@ -200,7 +202,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 
 	if id.monitorCh != nil {
 		glog.Infof("Powerdown %s before deleting", id.instance)
-		id.monitorCh <- virtualizerStopCmd
+		id.monitorCh <- virtualizerStopCmd{}
 		id.vm.lostVM()
 	}
 
@@ -220,7 +222,7 @@ func (id *instanceData) attachVolumeCommand(cmd *insAttachVolumeCmd) {
 		return
 	}
 
-	attachErr := processAttachVolume(id.vm, id.cfg, id.instance, id.instanceDir,
+	attachErr := processAttachVolume(id.storageDriver, id.monitorCh, id.cfg, id.instance, id.instanceDir,
 		cmd.volumeUUID, id.ac.conn)
 	if attachErr != nil {
 		attachErr.send(id.ac.conn, id.instance, cmd.volumeUUID)
@@ -238,14 +240,14 @@ func (id *instanceData) detachVolumeCommand(cmd *insDetachVolumeCmd) {
 		return
 	}
 
-	detachErr := processDetachVolume(id.vm, id.cfg, id.instance, id.instanceDir,
+	detachErr := processDetachVolume(id.storageDriver, id.monitorCh, id.cfg, id.instance, id.instanceDir,
 		cmd.volumeUUID, id.ac.conn)
 	if detachErr != nil {
 		detachErr.send(id.ac.conn, cmd.volumeUUID, id.instance)
 		return
 	}
 
-	glog.Infof("Volume %s detched from instance %s", id.instance, cmd.volumeUUID)
+	glog.Infof("Volume %s detched from instance %s", cmd.volumeUUID, id.instance)
 }
 
 func (id *instanceData) logStartTrace() {
@@ -302,12 +304,20 @@ func (id *instanceData) instanceCommand(cmd interface{}) bool {
 	return true
 }
 
+func (id *instanceData) getVolumes() []string {
+	volumes := make([]string, 0, len(id.cfg.Volumes))
+	for k := range id.cfg.Volumes {
+		volumes = append(volumes, k)
+	}
+	return volumes
+}
+
 func (id *instanceData) instanceLoop() {
 
 	id.vm.init(id.cfg, id.instanceDir)
 
 	d, m, c := id.vm.stats()
-	id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+	id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 
 DONE:
 	for {
@@ -316,7 +326,7 @@ DONE:
 			break DONE
 		case <-id.statsTimer:
 			d, m, c := id.vm.stats()
-			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 			id.statsTimer = time.After(time.Second * resourcePeriod)
 		case cmd := <-id.cmdCh:
 			if !id.instanceCommand(cmd) {
@@ -326,7 +336,7 @@ DONE:
 			// Means we've lost VM for now
 			id.vm.lostVM()
 			d, m, c := id.vm.stats()
-			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 
 			glog.Infof("Lost VM instance: %s", id.instance)
 			id.monitorCloseCh = nil
@@ -342,7 +352,7 @@ DONE:
 			id.vm.connected()
 			id.ovsCh <- &ovsStateChange{id.instance, ovsRunning}
 			d, m, c := id.vm.stats()
-			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c}
+			id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 			id.statsTimer = time.After(time.Second * resourcePeriod)
 		}
 	}
@@ -358,17 +368,18 @@ DONE:
 }
 
 func startInstanceWithVM(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
-	ac *agentClient, ovsCh chan<- interface{}, vm virtualizer) chan<- interface{} {
+	ac *agentClient, ovsCh chan<- interface{}, vm virtualizer, storageDriver storage.BlockDriver) chan<- interface{} {
 	id := &instanceData{
-		cmdCh:       make(chan interface{}),
-		instance:    instance,
-		cfg:         cfg,
-		wg:          wg,
-		doneCh:      doneCh,
-		ac:          ac,
-		ovsCh:       ovsCh,
-		vm:          vm,
-		instanceDir: path.Join(instancesDir, instance),
+		cmdCh:         make(chan interface{}),
+		instance:      instance,
+		cfg:           cfg,
+		wg:            wg,
+		doneCh:        doneCh,
+		ac:            ac,
+		ovsCh:         ovsCh,
+		vm:            vm,
+		instanceDir:   path.Join(instancesDir, instance),
+		storageDriver: storageDriver,
 	}
 
 	wg.Add(1)
@@ -387,5 +398,5 @@ func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh ch
 	} else {
 		vm = &qemu{}
 	}
-	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm)
+	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm, storage.CephDriver{})
 }
