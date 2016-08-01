@@ -31,9 +31,12 @@ import (
 	"github.com/01org/ciao/testutil"
 )
 
-func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse int, data []byte) []byte {
+func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse int, data []byte, validToken bool) []byte {
 	req, err := http.NewRequest(method, URL, bytes.NewBuffer(data))
-	req.Header.Set("X-Auth-Token", "imavalidtoken")
+
+	if validToken {
+		req.Header.Set("X-Auth-Token", "imavalidtoken")
+	}
 	if data != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -91,7 +94,7 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 		t.Fatal(err)
 	}
 
-	body := testHTTPRequest(t, "POST", url, http.StatusAccepted, b)
+	body := testHTTPRequest(t, "POST", url, http.StatusAccepted, b, true)
 
 	servers := payloads.NewComputeServers()
 
@@ -110,7 +113,7 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 func testListServerDetailsTenant(t *testing.T, tenantID string) payloads.ComputeServers {
 	url := testutil.ComputeURL + "/v2.1/" + tenantID + "/servers/detail"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	s := payloads.NewComputeServers()
 	err := json.Unmarshal(body, &s)
@@ -161,7 +164,7 @@ func TestListServerDetailsWorkload(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/flavors/" + wls[0].ID + "/servers/detail"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var s payloads.ComputeServers
 	err = json.Unmarshal(body, &s)
@@ -196,7 +199,7 @@ func TestShowServerDetails(t *testing.T) {
 	for _, s1 := range s.Servers {
 		url := tURL + s1.ID
 
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 		var s2 payloads.ComputeServer
 		err = json.Unmarshal(body, &s2)
@@ -246,9 +249,9 @@ func TestDeleteServer(t *testing.T) {
 	for _, s1 := range s.Servers {
 		url := tURL + s1.ID
 		if s1.HostID != "" {
-			_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil)
+			_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil, true)
 		} else {
-			_ = testHTTPRequest(t, "DELETE", url, http.StatusInternalServerError, nil)
+			_ = testHTTPRequest(t, "DELETE", url, http.StatusInternalServerError, nil, true)
 		}
 
 	}
@@ -303,7 +306,7 @@ func TestServersActionStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b)
+	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b, true)
 }
 
 func TestServersActionStop(t *testing.T) {
@@ -344,7 +347,7 @@ func TestServersActionStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b)
+	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b, true)
 }
 
 func TestServerActionStop(t *testing.T) {
@@ -373,7 +376,7 @@ func TestServerActionStop(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
-	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
+	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action), true)
 }
 
 func TestServerActionStart(t *testing.T) {
@@ -420,7 +423,7 @@ func TestServerActionStart(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
-	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action))
+	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action), true)
 }
 
 func TestListFlavors(t *testing.T) {
@@ -436,7 +439,7 @@ func TestListFlavors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var flavors payloads.ComputeFlavors
 	err = json.Unmarshal(body, &flavors)
@@ -495,7 +498,7 @@ func TestShowFlavorDetails(t *testing.T) {
 		}
 
 		url := tURL + w.ID
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 		var f payloads.ComputeFlavorDetails
 
@@ -518,7 +521,7 @@ func TestListFlavorsDetails(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors/detail"
 
-	_ = testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	_ = testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 }
 
 func TestListTenantResources(t *testing.T) {
@@ -545,7 +548,7 @@ func TestListTenantResources(t *testing.T) {
 
 	tURL += v.Encode()
 
-	body := testHTTPRequest(t, "GET", tURL, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", tURL, http.StatusOK, nil, true)
 
 	var result payloads.CiaoUsageHistory
 
@@ -591,7 +594,7 @@ func TestListTenantQuotas(t *testing.T) {
 
 	expected.ID = tenant.ID
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var result payloads.CiaoTenantResources
 
@@ -636,7 +639,7 @@ func TestListEventsTenant(t *testing.T) {
 		expected.Events = append(expected.Events, event)
 	}
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var result payloads.CiaoEvents
 
@@ -661,7 +664,7 @@ func TestListNodeServers(t *testing.T) {
 
 		url := testutil.ComputeURL + "/v2.1/nodes/" + n.ID + "/servers/detail"
 
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 		var result payloads.CiaoServersStats
 
@@ -702,7 +705,7 @@ func TestListTenants(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/tenants"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var result payloads.CiaoComputeTenants
 
@@ -742,7 +745,7 @@ func TestListNodes(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/nodes"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var result payloads.CiaoComputeNodes
 
@@ -780,7 +783,7 @@ func TestNodeSummary(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/nodes/summary"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var result payloads.CiaoClusterStatus
 
@@ -829,7 +832,7 @@ func TestListCNCIs(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/cncis"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var result payloads.CiaoCNCIs
 
@@ -879,7 +882,7 @@ func TestListCNCIDetails(t *testing.T) {
 
 		url := testutil.ComputeURL + "/v2.1/cncis/" + cnci.InstanceID + "/detail"
 
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 		var result payloads.CiaoCNCI
 
@@ -919,7 +922,7 @@ func TestListTraces(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/traces"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var result payloads.CiaoTracesSummary
 
@@ -953,7 +956,7 @@ func TestListEvents(t *testing.T) {
 		expected.Events = append(expected.Events, event)
 	}
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 	var result payloads.CiaoEvents
 
@@ -970,7 +973,7 @@ func TestListEvents(t *testing.T) {
 func TestClearEvents(t *testing.T) {
 	url := testutil.ComputeURL + "/v2.1/events"
 
-	_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil)
+	_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil, true)
 
 	logs, err := context.ds.GetEventLog()
 	if err != nil {
@@ -1017,7 +1020,7 @@ func TestTraceData(t *testing.T) {
 
 		url := testutil.ComputeURL + "/v2.1/traces/" + s.BatchID
 
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil)
+		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
 		var result payloads.CiaoTraceData
 
