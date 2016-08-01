@@ -19,11 +19,8 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/gob"
 	"fmt"
 	"net"
-	"os"
-	"path"
 	"regexp"
 	"strings"
 
@@ -36,25 +33,6 @@ import (
 type payloadError struct {
 	err  error
 	code string
-}
-
-type vmConfig struct {
-	Cpus        int
-	Mem         int
-	Disk        int
-	Instance    string
-	Image       string
-	Legacy      bool
-	Container   bool
-	NetworkNode bool
-	VnicMAC     string
-	VnicIP      string
-	ConcIP      string
-	SubnetIP    string
-	TennantUUID string
-	ConcUUID    string
-	VnicUUID    string
-	SSHPort     int
 }
 
 type extractedDoc struct {
@@ -194,6 +172,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 		ConcUUID:    strings.TrimSpace(net.ConcentratorUUID),
 		VnicUUID:    strings.TrimSpace(net.VnicUUID),
 		SSHPort:     sshPort,
+		Volumes:     make(map[string]struct{}),
 	}, nil
 }
 
@@ -227,6 +206,24 @@ func generateDeleteError(instance string, deleteErr *deleteError) (out []byte, e
 		Reason:       deleteErr.code,
 	}
 	return yaml.Marshal(df)
+}
+
+func generateAttachVolumeError(instance, volume string, ave *attachVolumeError) (out []byte, err error) {
+	avf := &payloads.ErrorAttachVolumeFailure{
+		InstanceUUID: instance,
+		VolumeUUID:   volume,
+		Reason:       ave.code,
+	}
+	return yaml.Marshal(avf)
+}
+
+func generateDetachVolumeError(instance, volume string, dve *detachVolumeError) (out []byte, err error) {
+	dvf := &payloads.ErrorDetachVolumeFailure{
+		InstanceUUID: instance,
+		VolumeUUID:   volume,
+		Reason:       dve.code,
+	}
+	return yaml.Marshal(dvf)
 }
 
 func generateNetEventPayload(ssntpEvent *libsnnet.SsntpEventInfo, agentUUID string) ([]byte, error) {
@@ -307,25 +304,43 @@ func parseStopPayload(data []byte) (string, *payloadError) {
 	return instance, nil
 }
 
-func loadVMConfig(instanceDir string) (*vmConfig, error) {
-	cfgFilePath := path.Join(instanceDir, instanceState)
-	cfgFile, err := os.Open(cfgFilePath)
-	if err != nil {
-		glog.Errorf("Unable to open instance file %s", cfgFilePath)
-		return nil, err
+func extractVolumeInfo(cmd *payloads.VolumeCmd, errString string) (string, string, *payloadError) {
+	instance := strings.TrimSpace(cmd.InstanceUUID)
+	if !uuidRegexp.MatchString(instance) {
+		err := fmt.Errorf("Invalid instance id received: %s", instance)
+		return "", "", &payloadError{err, errString}
 	}
 
-	dec := gob.NewDecoder(cfgFile)
-	cfg := &vmConfig{}
-	err = dec.Decode(cfg)
-	_ = cfgFile.Close()
+	volume := strings.TrimSpace(cmd.VolumeUUID)
+	if !uuidRegexp.MatchString(volume) {
+		err := fmt.Errorf("Invalid volume id received: %s", volume)
+		return "", "", &payloadError{err, errString}
+	}
+	return instance, volume, nil
+}
 
+func parseAttachVolumePayload(data []byte) (string, string, *payloadError) {
+	var clouddata payloads.AttachVolume
+
+	err := yaml.Unmarshal(data, &clouddata)
 	if err != nil {
-		glog.Error("Unable to retrieve state info")
-		return nil, err
+		glog.Errorf("YAML error: %v", err)
+		return "", "", &payloadError{err, payloads.AttachVolumeInvalidPayload}
 	}
 
-	return cfg, nil
+	return extractVolumeInfo(&clouddata.Attach, payloads.AttachVolumeInvalidData)
+}
+
+func parseDetachVolumePayload(data []byte) (string, string, *payloadError) {
+	var clouddata payloads.DetachVolume
+
+	err := yaml.Unmarshal(data, &clouddata)
+	if err != nil {
+		glog.Errorf("YAML error: %v", err)
+		return "", "", &payloadError{err, payloads.DetachVolumeInvalidPayload}
+	}
+
+	return extractVolumeInfo(&clouddata.Detach, payloads.DetachVolumeInvalidData)
 }
 
 func linesToBytes(doc []string, buf *bytes.Buffer) {

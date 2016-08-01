@@ -639,6 +639,7 @@ func TestGetWorkloadAgentUUID(t *testing.T) {
 		{ssntp.STOP, []byte(testutil.StopYaml), testutil.InstanceUUID, testutil.AgentUUID},
 		{ssntp.DELETE, []byte(testutil.DeleteYaml), testutil.InstanceUUID, testutil.AgentUUID},
 		{ssntp.EVACUATE, []byte(testutil.EvacuateYaml), "", testutil.AgentUUID},
+		{ssntp.AttachVolume, []byte(testutil.AttachVolumeYaml), testutil.InstanceUUID, testutil.AgentUUID},
 	}
 	for _, test := range stringTests {
 		instanceUUID, agentUUID, _ := GetWorkloadAgentUUID(sched, test.cmd, test.yaml)

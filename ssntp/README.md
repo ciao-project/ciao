@@ -359,6 +359,32 @@ compared to the last CONFIGURE command sent.
 +-----------------------------------------------------------------------------+
 ```
 
+#### AttachVolume ####
+AttachVolume is a command sent to ciao-launcher for attaching a storage volume
+to a specific running or paused instance.
+
+The AttachVolume command payload includes a volume UUID and an instance UUID.
+
+```
++-----------------------------------------------------------------------------+
+| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload  |
+|       |       | (0x0) |  (0xa)  |                 |                         |
++-----------------------------------------------------------------------------+
+```
+
+#### DetachVolume ####
+DetachVolume is a command sent to ciao-launcher for detaching a storage volume
+from a specific running or paused instance.
+
+The DetachVolume command payload includes a volume UUID and an instance UUID.
+
+```
++-----------------------------------------------------------------------------+
+| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload  |
+|       |       | (0x0) |  (0xb)  |                 |                         |
++-----------------------------------------------------------------------------+
+```
+
 ### SSNTP STATUS frames ###
 
 There are 5 different SSNTP STATUS frames:

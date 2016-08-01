@@ -256,10 +256,42 @@ func (server *SsntpTestServer) StatusNotify(uuid string, status ssntp.Status, fr
 	server.SendResultAndDelStatusChan(status, result)
 }
 
+func getAttachVolumeResult(payload []byte, result *Result) {
+	var volCmd payloads.AttachVolume
+
+	err := yaml.Unmarshal(payload, &volCmd)
+	result.Err = err
+	if err == nil {
+		result.NodeUUID = volCmd.Attach.WorkloadAgentUUID
+		result.InstanceUUID = volCmd.Attach.InstanceUUID
+		result.VolumeUUID = volCmd.Attach.VolumeUUID
+	}
+}
+
+func getStartResults(payload []byte, result *Result) {
+	var startCmd payloads.Start
+	var nn bool
+
+	err := yaml.Unmarshal(payload, &startCmd)
+	result.Err = err
+	if err == nil {
+		resources := startCmd.Start.RequestedResources
+
+		for i := range resources {
+			if resources[i].Type == payloads.NetworkNode {
+				nn = true
+				break
+			}
+		}
+		result.InstanceUUID = startCmd.Start.InstanceUUID
+		result.TenantUUID = startCmd.Start.TenantUUID
+		result.CNCI = nn
+	}
+}
+
 // CommandNotify implements an SSNTP CommandNotify callback for SsntpTestServer
 func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command, frame *ssntp.Frame) {
 	var result Result
-	var nn bool
 
 	payload := frame.Payload
 
@@ -271,23 +303,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 	case CONFIGURE:
 	*/
 	case ssntp.START:
-		var startCmd payloads.Start
-
-		err := yaml.Unmarshal(payload, &startCmd)
-		result.Err = err
-		if err == nil {
-			resources := startCmd.Start.RequestedResources
-
-			for i := range resources {
-				if resources[i].Type == payloads.NetworkNode {
-					nn = true
-					break
-				}
-			}
-			result.InstanceUUID = startCmd.Start.InstanceUUID
-			result.TenantUUID = startCmd.Start.TenantUUID
-			result.CNCI = nn
-		}
+		getStartResults(payload, &result)
 
 	case ssntp.DELETE:
 		var delCmd payloads.Delete
@@ -333,6 +349,9 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 
 		err := yaml.Unmarshal(payload, &statsCmd)
 		result.Err = err
+
+	case ssntp.AttachVolume:
+		getAttachVolumeResult(payload, &result)
 
 	default:
 		fmt.Printf("server unhandled command %s\n", command.String())
@@ -499,6 +518,27 @@ func (server *SsntpTestServer) handleStart(payload []byte) (dest ssntp.ForwardDe
 	return dest
 }
 
+func (server *SsntpTestServer) handleAttachVolume(payload []byte) ssntp.ForwardDestination {
+	var cmd payloads.AttachVolume
+	var dest ssntp.ForwardDestination
+
+	err := yaml.Unmarshal(payload, &cmd)
+	if err != nil {
+		return dest
+	}
+
+	server.clientsLock.Lock()
+	defer server.clientsLock.Unlock()
+
+	for _, c := range server.clients {
+		if c == cmd.Attach.WorkloadAgentUUID {
+			dest.AddRecipient(c)
+		}
+	}
+
+	return dest
+}
+
 // CommandForward implements an SSNTP CommandForward callback for SsntpTestServer
 func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command, frame *ssntp.Frame) (dest ssntp.ForwardDestination) {
 	payload := frame.Payload
@@ -506,6 +546,8 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 	switch command {
 	case ssntp.START:
 		dest = server.handleStart(payload)
+	case ssntp.AttachVolume:
+		dest = server.handleAttachVolume(payload)
 	case ssntp.EVACUATE:
 		fallthrough
 	case ssntp.STOP:
@@ -576,6 +618,10 @@ func StartTestServer(server *SsntpTestServer) {
 				Operand: ssntp.DeleteFailure,
 				Dest:    ssntp.Controller,
 			},
+			{ // all VolumeAttachFailure events go to all Controllers
+				Operand: ssntp.AttachVolumeFailure,
+				Dest:    ssntp.Controller,
+			},
 			{ // all PublicIPAssigned events go to all Controllers
 				Operand: ssntp.PublicIPAssigned,
 				Dest:    ssntp.Controller,
@@ -607,6 +653,10 @@ func StartTestServer(server *SsntpTestServer) {
 			{ // all TenantRemoved events are processed by the Event forwarder
 				Operand:      ssntp.TenantRemoved,
 				EventForward: server,
+			},
+			{ // all AttachVolume commands are processed by the Command forwarder
+				Operand:        ssntp.AttachVolume,
+				CommandForward: server,
 			},
 		},
 	}

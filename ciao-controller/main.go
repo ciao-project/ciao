@@ -23,15 +23,20 @@ import (
 	"sync"
 
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
+	image "github.com/01org/ciao/ciao-image/client"
+	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
 	"github.com/golang/glog"
 )
 
 type controller struct {
+	storage.BlockDriver
+
 	client *ssntpClient
 	ds     *datastore.Datastore
 	id     *identity
+	image  image.Client
 }
 
 var singleMachine = flag.Bool("single", false, "Enable single machine test")
@@ -50,6 +55,11 @@ var noNetwork = flag.Bool("nonetwork", false, "Debug with no networking")
 var persistentDatastoreLocation = flag.String("database_path", "./ciao-controller.db", "path to persistent database")
 var transientDatastoreLocation = flag.String("stats_path", "/tmp/ciao-controller-stats.db", "path to stats database")
 var logDir = "/var/lib/ciao/logs/controller"
+
+var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
+
+var keyringPath = flag.String("ceph_keyring", "/etc/ceph/ceph.client.ciao.keyring", "path to ceph client keyring")
+var cephID = flag.String("ceph_id", "ciao", "ceph client id")
 
 func init() {
 	flag.Parse()
@@ -76,6 +86,16 @@ func main() {
 
 	context := new(controller)
 	context.ds = new(datastore.Datastore)
+
+	context.BlockDriver = func() storage.BlockDriver {
+		driver := storage.CephDriver{
+			SecretPath: *keyringPath,
+			ID:         *cephID,
+		}
+		return driver
+	}()
+
+	context.image = image.Client{MountPoint: *imagesPath}
 
 	dsConfig := datastore.Config{
 		PersistentURI:     *persistentDatastoreLocation,

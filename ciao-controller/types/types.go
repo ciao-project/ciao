@@ -19,8 +19,44 @@ package types
 import (
 	"time"
 
+	"github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/payloads"
 )
+
+// SourceType contains the valid values of the storage source.
+type SourceType string
+
+const (
+	// ImageService indicates the source comes from the image service.
+	ImageService SourceType = "image"
+
+	// VolumeService indicates the source comes from the volume service.
+	VolumeService SourceType = "volume"
+)
+
+// StorageResource defines a storage resource for a workload.
+// TBD: should the workload support multiple of these?
+type StorageResource struct {
+	// ID indicates a volumeID. If ID is blank, then it needs to be created.
+	ID string
+
+	// Bootable indicates whether should the resource be used for booting
+	Bootable bool
+
+	// Persistent indicates whether the storage is temporary
+	// TBD: do we bother to save info about temp storage?
+	//      does it count against quota?
+	Persistent bool
+
+	// Size is the size of the storage to be created if new.
+	Size int
+
+	// ImageType indicates whether we are making a new resource
+	// based on an image or existing volume.
+	// Needed only for new storage.
+	SourceType SourceType
+}
 
 // Workload contains resource and configuration information for a user
 // workload.
@@ -33,6 +69,7 @@ type Workload struct {
 	ImageName   string                       `json:"-"`
 	Config      string                       `json:"-"`
 	Defaults    []payloads.RequestedResource `json:"-"`
+	Storage     *StorageResource             `json:"-"`
 }
 
 // Instance contains information about an instance of a workload.
@@ -162,4 +199,33 @@ type Node struct {
 	ID       string `json:"node_id"`
 	IPAddr   string `json:"ip_address"`
 	Hostname string `json:"hostname"`
+}
+
+// BlockState represents the state of the block device in the controller
+// datastore. This is a subset of the openstack status type.
+type BlockState string
+
+const (
+	// Available means that the volume is ok for attaching.
+	Available BlockState = BlockState(block.Available)
+
+	// Attaching means that the volume is in the process
+	// of attaching to an instance.
+	Attaching BlockState = BlockState(block.Attaching)
+
+	// InUse means that the volume has been successfully
+	// attached to an instance.
+	InUse BlockState = BlockState(block.InUse)
+)
+
+// BlockData respresents the attributes of this block device.
+// TBD - do we really need to store this as actual data,
+// or can we use a set of interfaces to get the info?
+type BlockData struct {
+	storage.BlockDevice
+	TenantID   string     // the tenant who owns this volume
+	Instances  []Instance // any instances using this volume
+	Size       int        // size in GB
+	State      BlockState // status of
+	CreateTime time.Time  // when we created the volume
 }

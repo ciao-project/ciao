@@ -20,7 +20,7 @@ start:
 ---
 #cloud-config
 runcmd:
-  - [ /usr/bin/python3, -m, http.server]
+  - [ /bin/bash, -c, "while true; do sleep 60; done" ]
 ...
 ---
 {

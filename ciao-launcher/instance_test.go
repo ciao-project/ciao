@@ -24,8 +24,10 @@ import (
 	"testing"
 	"time"
 
+	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
 
@@ -54,8 +56,10 @@ type instanceTestState struct {
 	stf             payloads.ErrorStartFailure
 	df              payloads.ErrorDeleteFailure
 	rf              payloads.ErrorRestartFailure
+	avf             payloads.ErrorAttachVolumeFailure
+	dvf             payloads.ErrorDetachVolumeFailure
 	connect         bool
-	monitorCh       chan string
+	monitorCh       chan interface{}
 	errorCh         chan struct{}
 	monitorClosedCh chan struct{}
 	failStartVM     bool
@@ -90,14 +94,14 @@ func (v *instanceTestState) startVM(vnicName, ipAddress string) error {
 }
 
 func (v *instanceTestState) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
-	wg *sync.WaitGroup, boot bool) chan string {
+	wg *sync.WaitGroup, boot bool) chan interface{} {
 
 	// Need to be careful here not to modify any state inside v before
 	// we've closed the channel.
 
 	v.monitorClosedCh = closedCh
 
-	monitorCh := make(chan string)
+	monitorCh := make(chan interface{})
 	v.monitorCh = monitorCh
 	if v.connect {
 		close(connectedCh)
@@ -137,6 +141,16 @@ func (v *instanceTestState) SendError(error ssntp.Error, payload []byte) (int, e
 		err := yaml.Unmarshal(payload, &v.rf)
 		if err != nil {
 			v.t.Fatalf("Failed to unmarshall restart error %v", err)
+		}
+	case ssntp.AttachVolumeFailure:
+		err := yaml.Unmarshal(payload, &v.avf)
+		if err != nil {
+			v.t.Fatalf("Failed to unmarshall attach volume error %v", err)
+		}
+	case ssntp.DetachVolumeFailure:
+		err := yaml.Unmarshal(payload, &v.dvf)
+		if err != nil {
+			v.t.Fatalf("Failed to unmarshall detach volume error %v", err)
 		}
 	}
 
@@ -238,8 +252,8 @@ func (v *instanceTestState) deleteInstance(t *testing.T, ovsCh chan interface{},
 				return false
 			}
 		case monCmd := <-v.monitorCh:
-			if monCmd != virtualizerStopCmd {
-				t.Errorf("Invalid monitor command found %s, expected %s", monCmd, virtualizerStopCmd)
+			if _, stopCmd := monCmd.(virtualizerStopCmd); !stopCmd {
+				t.Errorf("Invalid monitor command found %t, expected virtualizerStopCmd", monCmd)
 				return false
 			}
 		case <-time.After(time.Second):
@@ -402,7 +416,7 @@ func TestStartInstanceLoop(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	_ = startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state)
+	_ = startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
 	shutdownInstanceLoop(doneCh, ovsCh)
 	if !ok {
@@ -431,7 +445,7 @@ func TestDeleteInstanceLoop(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
@@ -465,7 +479,7 @@ func TestStopNotRunning(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
@@ -511,7 +525,7 @@ func startVMWithCFG(t *testing.T, wg *sync.WaitGroup, cfg *vmConfig, connect boo
 		connect:    connect,
 	}
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
-	cmdCh := startInstanceWithVM(state.instance, cfg, wg, doneCh, state.ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, cfg, wg, doneCh, state.ac, ovsCh, state, &storage.NoopDriver{})
 	if !state.expectStatsUpdate(t, ovsCh) {
 		shutdownInstanceLoop(doneCh, ovsCh)
 		t.FailNow()
@@ -611,7 +625,7 @@ func TestRestart(t *testing.T) {
 	}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
 		shutdownInstanceLoop(doneCh, ovsCh)
@@ -649,7 +663,7 @@ func TestRestartFail(t *testing.T) {
 	}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state)
+	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
 		shutdownInstanceLoop(doneCh, ovsCh)
@@ -876,6 +890,176 @@ func TestStartRunningInstance(t *testing.T) {
 	if state.stf.Reason != payloads.AlreadyRunning {
 		t.Errorf("Invalid Error received.  Expected %s found %s",
 			string(state.stf.Reason), string(payloads.AlreadyRunning))
+	}
+
+	if !state.deleteInstance(t, ovsCh, cmdCh) {
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+	}
+
+	wg.Wait()
+}
+
+// Check we can add a volume to an instance
+//
+// We start the instance loop, add a volume, wait for the instance statistics
+// and then delete the instance.
+//
+// The instanceLoop and then instance should start correctly.  The volume should
+// be correctly attached and the stats command should verify this.  The instance
+// should be correctly deleted.
+func TestAttachVolumeToInstance(t *testing.T) {
+	var wg sync.WaitGroup
+	cfg := standardCfg
+	cfg.Volumes = make(map[string]struct{})
+	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
+
+	select {
+	case cmdCh <- &insAttachVolumeCmd{testutil.VolumeUUID}:
+	case <-time.After(time.Second):
+		t.Error("Timed out sending attach volume command")
+	}
+
+	select {
+	case monCmd := <-state.monitorCh:
+		monCmd.(virtualizerAttachCmd).responseCh <- nil
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach volume command result")
+	}
+
+	if !state.deleteInstance(t, ovsCh, cmdCh) {
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+	}
+
+	wg.Wait()
+}
+
+// Check that adding an existing volume fails
+//
+// We start the instance loop, add a volume, add the volume a second time
+// and then delete the instance.
+//
+// The instanceLoop and then instance should start correctly.  The volume should
+// be correctly attached the first time.  The second attempt should fail. The
+// instance should be correctly deleted.
+func TestAttachExistingVolumeToInstance(t *testing.T) {
+	var wg sync.WaitGroup
+	cfg := standardCfg
+	cfg.Volumes = make(map[string]struct{})
+	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
+
+	select {
+	case cmdCh <- &insAttachVolumeCmd{testutil.VolumeUUID}:
+	case <-time.After(time.Second):
+		t.Error("Timed out sending attach volume command")
+	}
+
+	select {
+	case monCmd := <-state.monitorCh:
+		monCmd.(virtualizerAttachCmd).responseCh <- nil
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach volume command result")
+	}
+
+	select {
+	case <-state.errorCh:
+		t.Error("Initial Volume attach failed")
+	case cmdCh <- &insAttachVolumeCmd{testutil.VolumeUUID}:
+	case <-time.After(time.Second):
+		t.Error("Timed out sending attach volume command")
+	}
+
+	select {
+	case <-state.errorCh:
+		if state.avf.Reason != payloads.AttachVolumeAlreadyAttached {
+			t.Errorf("Unexpected error.  Expected %s got %s",
+				payloads.AttachVolumeAlreadyAttached, state.avf.Reason)
+		}
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach to fail")
+	}
+
+	if !state.deleteInstance(t, ovsCh, cmdCh) {
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+	}
+
+	wg.Wait()
+}
+
+// Check we can detach a volume from an instance
+//
+// We start the instance loop, add a volume, wait for the instance statistics,
+// detach the volume, wait for more statistics and then delete the instance.
+//
+// The instanceLoop and then instance should start correctly.  The volume should
+// be correctly attached and the stats command should verify this.  The volume
+// should be successfully detached, verified again by stats, and the instance
+// should be correctly deleted.
+func TestDetachVolumeFromInstance(t *testing.T) {
+	var wg sync.WaitGroup
+	cfg := standardCfg
+	cfg.Volumes = make(map[string]struct{})
+	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
+
+	select {
+	case cmdCh <- &insAttachVolumeCmd{testutil.VolumeUUID}:
+	case <-time.After(time.Second):
+		t.Error("Timed out sending attach volume command")
+	}
+
+	select {
+	case monCmd := <-state.monitorCh:
+		monCmd.(virtualizerAttachCmd).responseCh <- nil
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach volume command result")
+	}
+
+	select {
+	case cmdCh <- &insDetachVolumeCmd{testutil.VolumeUUID}:
+	case <-time.After(time.Second):
+		t.Error("Timed out sending attach volume command")
+	}
+
+	select {
+	case monCmd := <-state.monitorCh:
+		monCmd.(virtualizerDetachCmd).responseCh <- nil
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach volume command result")
+	}
+
+	if !state.deleteInstance(t, ovsCh, cmdCh) {
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+	}
+
+	wg.Wait()
+}
+
+// Check that detaching a nonexistent volume fails
+//
+// We start the instance loop, detach a volume delete the instance.
+//
+// The instanceLoop and then instance should start correctly.  The volume should
+// be fail to be detached as it doesn't exist. The instance should be correctly
+// deleted.
+func TestDetachNonexistingVolumeFromInstance(t *testing.T) {
+	var wg sync.WaitGroup
+	cfg := standardCfg
+	cfg.Volumes = make(map[string]struct{})
+	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
+
+	select {
+	case cmdCh <- &insDetachVolumeCmd{testutil.VolumeUUID}:
+	case <-time.After(time.Second):
+		t.Error("Timed out sending attach volume command")
+	}
+
+	select {
+	case <-state.errorCh:
+		if state.dvf.Reason != payloads.DetachVolumeNotAttached {
+			t.Errorf("Unexpected error.  Expected %s got %s",
+				payloads.DetachVolumeNotAttached, state.dvf.Reason)
+		}
+	case <-time.After(time.Second):
+		t.Error("Timed out waiting for attach to fail")
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
