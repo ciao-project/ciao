@@ -16,7 +16,7 @@
 
 package payloads
 
-// PublicIPCommand is reserved for future use.
+// PublicIPCommand contains information about a IP and its associated data.
 type PublicIPCommand struct {
 	ConcentratorUUID string `yaml:"concentrator_uuid"`
 	TenantUUID       string `yaml:"tenant_uuid"`
@@ -26,37 +26,46 @@ type PublicIPCommand struct {
 	VnicMAC          string `yaml:"vnic_mac"`
 }
 
-// CommandAssignPublicIP is reserved for future use.
+// CommandAssignPublicIP is a wrapper around PublicIPCommand. It is the
+// AssignPublicIP command payload.
 type CommandAssignPublicIP struct {
 	AssignIP PublicIPCommand `yaml:"assign_public_ip"`
 }
 
-// CommandReleasePublicIP is reserved for future use.
+// CommandReleasePublicIP is a wrapper around PublicIPCommand. It is the
+// ReleasePublicIP command payload.
 type CommandReleasePublicIP struct {
 	ReleaseIP PublicIPCommand `yaml:"release_public_ip"`
 }
 
-// PublicIPFailureReason is reserved for future use.
+// PublicIPFailureReason represents the potential
+// AssignPublicIP/ReleasePublicIP commands failure reasons.
 type PublicIPFailureReason string
 
 const (
-	// PublicIPNoInstance is reserved for future use.
+	// PublicIPNoInstance indicates that a public IP assignment/release failed
+	// because the corresponding instance does not exist
 	PublicIPNoInstance PublicIPFailureReason = "no_instance"
 
-	// PublicIPInvalidPayload is reserved for future use.
+	// PublicIPInvalidPayload constant is used to denote when YAML payload
+	//  is corrupt.
 	PublicIPInvalidPayload = "invalid_payload"
 
-	// PublicIPInvalidData is reserved for future use.
+	// PublicIPInvalidData constant is used to denote when command section
+	// of YAML payload is corrupt or missing required information.
 	PublicIPInvalidData = "invalid_data"
 
-	// PublicIPAssignFailure is reserved for future use.
+	// PublicIPAssignFailure constant is used to denote when Public IP assignment
+	// operation failed.
 	PublicIPAssignFailure = "assign_failure"
 
-	// PublicIPReleaseFailure is reserved for future use.
+	// PublicIPReleaseFailure constant is used to denote when Public IP release
+	// operation failed.
 	PublicIPReleaseFailure = "release_failure"
 )
 
-// ErrorPublicIPFailure is reserved for future use.
+// ErrorPublicIPFailure represents the PublicIPFailure SSNTP error payload.
+// It includes information about the IP itself and the actual reason for failure.
 type ErrorPublicIPFailure struct {
 	ConcentratorUUID string                `yaml:"concentrator_uuid"`
 	TenantUUID       string                `yaml:"tenant_uuid"`
