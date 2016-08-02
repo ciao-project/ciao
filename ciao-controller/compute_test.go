@@ -385,7 +385,7 @@ func TestServersActionStartInvalidToken(t *testing.T) {
 	testServersActionStart(t, http.StatusUnauthorized, false)
 }
 
-func TestServersActionStop(t *testing.T) {
+func testServersActionStop(t *testing.T, httpExpectedStatus int, action string) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -414,7 +414,7 @@ func TestServersActionStop(t *testing.T) {
 	ids = append(ids, servers.Servers[0].ID)
 
 	cmd := payloads.CiaoServersAction{
-		Action:    "os-stop",
+		Action:    action,
 		ServerIDs: ids,
 	}
 
@@ -423,7 +423,15 @@ func TestServersActionStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b, true)
+	_ = testHTTPRequest(t, "POST", url, httpExpectedStatus, b, true)
+}
+
+func TestServersActionStop(t *testing.T) {
+	testServersActionStop(t, http.StatusAccepted, "os-stop")
+}
+
+func TestServersActionStopWrongAction(t *testing.T) {
+	testServersActionStop(t, http.StatusServiceUnavailable, "wrong-action")
 }
 
 func testServerActionStop(t *testing.T, httpExpectedStatus int, validToken bool) {
