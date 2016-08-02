@@ -128,6 +128,36 @@ func TestCreateSingleServer(t *testing.T) {
 	_ = testCreateServer(t, 1)
 }
 
+func TestCreateSingleServerInvalidToken(t *testing.T) {
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get a valid workload ID
+	wls, err := context.ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No valid workloads")
+	}
+
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers"
+
+	var server payloads.ComputeCreateServer
+	server.Server.MaxInstances = 1
+	server.Server.Workload = wls[0].ID
+
+	b, err := json.Marshal(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = testHTTPRequest(t, "POST", url, http.StatusUnauthorized, b, false)
+}
+
 func TestListServerDetailsTenant(t *testing.T) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
@@ -144,6 +174,21 @@ func TestListServerDetailsTenant(t *testing.T) {
 	if s.TotalServers < 1 {
 		t.Fatal("Not enough servers returned")
 	}
+}
+
+func TestListServerDetailsTenantInvalidToken(t *testing.T) {
+	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	servers := testCreateServer(t, 1)
+	if servers.TotalServers != 1 {
+		t.Fatal(err)
+	}
+
+	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/detail"
+	_ = testHTTPRequest(t, "GET", url, http.StatusUnauthorized, nil, false)
 }
 
 func testListServerDetailsWorkload(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -204,6 +249,10 @@ func testShowServerDetails(t *testing.T, httpExpectedStatus int, validToken bool
 		url := tURL + s1.ID
 
 		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+		// stop evaluating in case the scenario is InvalidToken
+		if httpExpectedStatus == 401 {
+			return
+		}
 
 		var s2 payloads.ComputeServer
 		err = json.Unmarshal(body, &s2)
@@ -222,7 +271,11 @@ func TestShowServerDetails(t *testing.T) {
 	testShowServerDetails(t, http.StatusOK, true)
 }
 
-func testDeleteServer(t *testing.T, httpExpectedStatus int, validToken bool) {
+func TestShowServerDetailsInvalidToken(t *testing.T) {
+	testShowServerDetails(t, http.StatusUnauthorized, false)
+}
+
+func testDeleteServer(t *testing.T, httpExpectedStatus int, httpExpectedErrorStatus int, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -259,13 +312,17 @@ func testDeleteServer(t *testing.T, httpExpectedStatus int, validToken bool) {
 		if s1.HostID != "" {
 			_ = testHTTPRequest(t, "DELETE", url, httpExpectedStatus, nil, validToken)
 		} else {
-			_ = testHTTPRequest(t, "DELETE", url, http.StatusInternalServerError, nil, validToken)
+			_ = testHTTPRequest(t, "DELETE", url, httpExpectedErrorStatus, nil, validToken)
 		}
 	}
 }
 
 func TestDeleteServer(t *testing.T) {
-	testDeleteServer(t, http.StatusAccepted, true)
+	testDeleteServer(t, http.StatusAccepted, http.StatusInternalServerError, true)
+}
+
+func TestDeleteServerInvalidToken(t *testing.T) {
+	testDeleteServer(t, http.StatusUnauthorized, http.StatusUnauthorized, false)
 }
 
 func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -322,6 +379,10 @@ func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken boo
 
 func TestServersActionStart(t *testing.T) {
 	testServersActionStart(t, http.StatusAccepted, true)
+}
+
+func TestServersActionStartInvalidToken(t *testing.T) {
+	testServersActionStart(t, http.StatusUnauthorized, false)
 }
 
 func TestServersActionStop(t *testing.T) {
@@ -398,6 +459,10 @@ func TestServerActionStop(t *testing.T) {
 	testServerActionStop(t, http.StatusAccepted, true)
 }
 
+func TestServerActionStopInvalidToken(t *testing.T) {
+	testServerActionStop(t, http.StatusUnauthorized, false)
+}
+
 func TestServerActionStart(t *testing.T) {
 	action := "os-start"
 
@@ -459,6 +524,10 @@ func testListFlavors(t *testing.T, httpExpectedStatus int, data []byte, validTok
 	}
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, data, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var flavors payloads.ComputeFlavors
 	err = json.Unmarshal(body, &flavors)
@@ -487,6 +556,10 @@ func testListFlavors(t *testing.T, httpExpectedStatus int, data []byte, validTok
 
 func TestListFlavors(t *testing.T) {
 	testListFlavors(t, http.StatusOK, nil, true)
+}
+
+func TestListFlavorsInvalidToken(t *testing.T) {
+	testListFlavors(t, http.StatusUnauthorized, nil, false)
 }
 
 func testShowFlavorDetails(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -522,6 +595,10 @@ func testShowFlavorDetails(t *testing.T, httpExpectedStatus int, validToken bool
 
 		url := tURL + w.ID
 		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+		// stop evaluating in case the scenario is InvalidToken
+		if httpExpectedStatus == 401 {
+			return
+		}
 
 		var f payloads.ComputeFlavorDetails
 
@@ -540,6 +617,10 @@ func TestShowFlavorDetails(t *testing.T) {
 	testShowFlavorDetails(t, http.StatusOK, true)
 }
 
+func TestShowFlavorDetailsInvalidToken(t *testing.T) {
+	testShowFlavorDetails(t, http.StatusUnauthorized, false)
+}
+
 func testListFlavorsDetails(t *testing.T, httpExpectedStatus int, data []byte, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
@@ -552,6 +633,10 @@ func testListFlavorsDetails(t *testing.T, httpExpectedStatus int, data []byte, v
 
 func TestListFlavorsDetails(t *testing.T) {
 	testListFlavorsDetails(t, http.StatusOK, nil, true)
+}
+
+func TestListFlavorsDetailsInvalidToken(t *testing.T) {
+	testListFlavorsDetails(t, http.StatusUnauthorized, nil, false)
 }
 
 func testListTenantResources(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -579,6 +664,10 @@ func testListTenantResources(t *testing.T, httpExpectedStatus int, validToken bo
 	tURL += v.Encode()
 
 	body := testHTTPRequest(t, "GET", tURL, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var result payloads.CiaoUsageHistory
 
@@ -594,6 +683,10 @@ func testListTenantResources(t *testing.T, httpExpectedStatus int, validToken bo
 
 func TestListTenantResources(t *testing.T) {
 	testListTenantResources(t, http.StatusOK, true)
+}
+
+func TestListTenantResourcesInvalidToken(t *testing.T) {
+	testListTenantResources(t, http.StatusUnauthorized, false)
 }
 
 func testListTenantQuotas(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -629,6 +722,10 @@ func testListTenantQuotas(t *testing.T, httpExpectedStatus int, validToken bool)
 	expected.ID = tenant.ID
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var result payloads.CiaoTenantResources
 
@@ -646,6 +743,10 @@ func testListTenantQuotas(t *testing.T, httpExpectedStatus int, validToken bool)
 
 func TestListTenantQuotas(t *testing.T) {
 	testListTenantQuotas(t, http.StatusOK, true)
+}
+
+func TestListTenantQuotasInvalidToken(t *testing.T) {
+	testListTenantQuotas(t, http.StatusUnauthorized, false)
 }
 
 func testListEventsTenant(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -707,6 +808,10 @@ func testListNodeServers(t *testing.T, httpExpectedStatus int, validToken bool) 
 		url := testutil.ComputeURL + "/v2.1/nodes/" + n.ID + "/servers/detail"
 
 		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+		// stop evaluating in case the scenario is InvalidToken
+		if httpExpectedStatus == 401 {
+			return
+		}
 
 		var result payloads.CiaoServersStats
 
@@ -727,6 +832,10 @@ func testListNodeServers(t *testing.T, httpExpectedStatus int, validToken bool) 
 
 func TestListNodeServers(t *testing.T) {
 	testListNodeServers(t, http.StatusOK, true)
+}
+
+func TestListNodeServersInvalidToken(t *testing.T) {
+	testListNodeServers(t, http.StatusUnauthorized, false)
 }
 
 func testListTenants(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -752,6 +861,10 @@ func testListTenants(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/tenants"
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var result payloads.CiaoComputeTenants
 
@@ -767,6 +880,10 @@ func testListTenants(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 func TestListTenants(t *testing.T) {
 	testListTenants(t, http.StatusOK, true)
+}
+
+func TestListTenantsInvalidToken(t *testing.T) {
+	testListTenants(t, http.StatusUnauthorized, false)
 }
 
 func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -796,6 +913,10 @@ func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/nodes"
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var result payloads.CiaoComputeNodes
 
@@ -815,6 +936,10 @@ func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 func TestListNodes(t *testing.T) {
 	testListNodes(t, http.StatusOK, true)
+}
+
+func TestListNodesInvalidToken(t *testing.T) {
+	testListNodes(t, http.StatusUnauthorized, false)
 }
 
 func testNodeSummary(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -838,6 +963,10 @@ func testNodeSummary(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/nodes/summary"
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var result payloads.CiaoClusterStatus
 
@@ -853,6 +982,10 @@ func testNodeSummary(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 func TestNodeSummary(t *testing.T) {
 	testNodeSummary(t, http.StatusOK, true)
+}
+
+func TestNodeSummaryInvalidToken(t *testing.T) {
+	testNodeSummary(t, http.StatusUnauthorized, false)
 }
 
 func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -891,6 +1024,10 @@ func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/cncis"
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var result payloads.CiaoCNCIs
 
@@ -906,6 +1043,10 @@ func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 func TestListCNCIs(t *testing.T) {
 	testListCNCIs(t, http.StatusOK, true)
+}
+
+func TestListCNCIsInvalidToken(t *testing.T) {
+	testListCNCIs(t, http.StatusUnauthorized, false)
 }
 
 func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -945,6 +1086,10 @@ func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) 
 		url := testutil.ComputeURL + "/v2.1/cncis/" + cnci.InstanceID + "/detail"
 
 		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+		// stop evaluating in case the scenario is InvalidToken
+		if httpExpectedStatus == 401 {
+			return
+		}
 
 		var result payloads.CiaoCNCI
 
@@ -961,6 +1106,10 @@ func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) 
 
 func TestListCNCIDetails(t *testing.T) {
 	testListCNCIDetails(t, http.StatusOK, true)
+}
+
+func TestListCNCIDetailsInvalidToken(t *testing.T) {
+	testListCNCIDetails(t, http.StatusUnauthorized, false)
 }
 
 func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -989,6 +1138,10 @@ func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/traces"
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var result payloads.CiaoTracesSummary
 
@@ -1004,6 +1157,10 @@ func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 func TestListTraces(t *testing.T) {
 	testListTraces(t, http.StatusOK, true)
+}
+
+func TestListTracesInvalidToken(t *testing.T) {
+	testListTraces(t, http.StatusUnauthorized, false)
 }
 
 func testListEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -1027,6 +1184,10 @@ func testListEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 	}
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	var result payloads.CiaoEvents
 
@@ -1044,10 +1205,18 @@ func TestListEvents(t *testing.T) {
 	testListEvents(t, http.StatusOK, true)
 }
 
+func TestListEventsInvalidToken(t *testing.T) {
+	testListEvents(t, http.StatusUnauthorized, false)
+}
+
 func testClearEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/events"
 
 	_ = testHTTPRequest(t, "DELETE", url, httpExpectedStatus, nil, validToken)
+	// stop evaluating in case the scenario is InvalidToken
+	if httpExpectedStatus == 401 {
+		return
+	}
 
 	logs, err := context.ds.GetEventLog()
 	if err != nil {
@@ -1061,6 +1230,10 @@ func testClearEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 func TestClearEvents(t *testing.T) {
 	testClearEvents(t, http.StatusAccepted, true)
+}
+
+func TestClearEventsInvalidToken(t *testing.T) {
+	testClearEvents(t, http.StatusUnauthorized, false)
 }
 
 func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
@@ -1099,6 +1272,10 @@ func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
 		url := testutil.ComputeURL + "/v2.1/traces/" + s.BatchID
 
 		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
+		// stop evaluating in case the scenario is InvalidToken
+		if httpExpectedStatus == 401 {
+			return
+		}
 
 		var result payloads.CiaoTraceData
 
@@ -1115,4 +1292,8 @@ func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 func TestTraceData(t *testing.T) {
 	testTraceData(t, http.StatusOK, true)
+}
+
+func TestTraceDataInvalidToken(t *testing.T) {
+	testTraceData(t, http.StatusUnauthorized, false)
 }
