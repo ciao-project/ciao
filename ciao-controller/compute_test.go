@@ -146,7 +146,7 @@ func TestListServerDetailsTenant(t *testing.T) {
 	}
 }
 
-func TestListServerDetailsWorkload(t *testing.T) {
+func testListServerDetailsWorkload(t *testing.T, httpExpectedStatus int, validToken bool) {
 	// get a valid workload ID
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {
@@ -164,7 +164,7 @@ func TestListServerDetailsWorkload(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/flavors/" + wls[0].ID + "/servers/detail"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var s payloads.ComputeServers
 	err = json.Unmarshal(body, &s)
@@ -177,7 +177,11 @@ func TestListServerDetailsWorkload(t *testing.T) {
 	}
 }
 
-func TestShowServerDetails(t *testing.T) {
+func TestListServerDetailsWorkload(t *testing.T) {
+	testListServerDetailsWorkload(t, http.StatusOK, true)
+}
+
+func testShowServerDetails(t *testing.T, httpExpectedStatus int, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -199,7 +203,7 @@ func TestShowServerDetails(t *testing.T) {
 	for _, s1 := range s.Servers {
 		url := tURL + s1.ID
 
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 		var s2 payloads.ComputeServer
 		err = json.Unmarshal(body, &s2)
@@ -214,7 +218,11 @@ func TestShowServerDetails(t *testing.T) {
 	}
 }
 
-func TestDeleteServer(t *testing.T) {
+func TestShowServerDetails(t *testing.T) {
+	testShowServerDetails(t, http.StatusOK, true)
+}
+
+func testDeleteServer(t *testing.T, httpExpectedStatus int, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -249,15 +257,18 @@ func TestDeleteServer(t *testing.T) {
 	for _, s1 := range s.Servers {
 		url := tURL + s1.ID
 		if s1.HostID != "" {
-			_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil, true)
+			_ = testHTTPRequest(t, "DELETE", url, httpExpectedStatus, nil, validToken)
 		} else {
-			_ = testHTTPRequest(t, "DELETE", url, http.StatusInternalServerError, nil, true)
+			_ = testHTTPRequest(t, "DELETE", url, http.StatusInternalServerError, nil, validToken)
 		}
-
 	}
 }
 
-func TestServersActionStart(t *testing.T) {
+func TestDeleteServer(t *testing.T) {
+	testDeleteServer(t, http.StatusAccepted, true)
+}
+
+func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -306,7 +317,11 @@ func TestServersActionStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b, true)
+	_ = testHTTPRequest(t, "POST", url, httpExpectedStatus, b, validToken)
+}
+
+func TestServersActionStart(t *testing.T) {
+	testServersActionStart(t, http.StatusAccepted, true)
 }
 
 func TestServersActionStop(t *testing.T) {
@@ -350,7 +365,7 @@ func TestServersActionStop(t *testing.T) {
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, b, true)
 }
 
-func TestServerActionStop(t *testing.T) {
+func testServerActionStop(t *testing.T, httpExpectedStatus int, validToken bool) {
 	action := "os-stop"
 
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
@@ -376,7 +391,11 @@ func TestServerActionStop(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
-	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action), true)
+	_ = testHTTPRequest(t, "POST", url, httpExpectedStatus, []byte(action), validToken)
+}
+
+func TestServerActionStop(t *testing.T) {
+	testServerActionStop(t, http.StatusAccepted, true)
 }
 
 func TestServerActionStart(t *testing.T) {
@@ -426,7 +445,7 @@ func TestServerActionStart(t *testing.T) {
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action), true)
 }
 
-func TestListFlavors(t *testing.T) {
+func testListFlavors(t *testing.T, httpExpectedStatus int, data []byte, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -439,7 +458,7 @@ func TestListFlavors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, data, validToken)
 
 	var flavors payloads.ComputeFlavors
 	err = json.Unmarshal(body, &flavors)
@@ -466,7 +485,11 @@ func TestListFlavors(t *testing.T) {
 	}
 }
 
-func TestShowFlavorDetails(t *testing.T) {
+func TestListFlavors(t *testing.T) {
+	testListFlavors(t, http.StatusOK, nil, true)
+}
+
+func testShowFlavorDetails(t *testing.T, httpExpectedStatus int, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -498,7 +521,7 @@ func TestShowFlavorDetails(t *testing.T) {
 		}
 
 		url := tURL + w.ID
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 		var f payloads.ComputeFlavorDetails
 
@@ -513,18 +536,25 @@ func TestShowFlavorDetails(t *testing.T) {
 	}
 }
 
-func TestListFlavorsDetails(t *testing.T) {
+func TestShowFlavorDetails(t *testing.T) {
+	testShowFlavorDetails(t, http.StatusOK, true)
+}
+
+func testListFlavorsDetails(t *testing.T, httpExpectedStatus int, data []byte, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors/detail"
-
-	_ = testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	_ = testHTTPRequest(t, "GET", url, httpExpectedStatus, data, validToken)
 }
 
-func TestListTenantResources(t *testing.T) {
+func TestListFlavorsDetails(t *testing.T) {
+	testListFlavorsDetails(t, http.StatusOK, nil, true)
+}
+
+func testListTenantResources(t *testing.T, httpExpectedStatus int, validToken bool) {
 	var usage payloads.CiaoUsageHistory
 
 	endTime := time.Now()
@@ -548,7 +578,7 @@ func TestListTenantResources(t *testing.T) {
 
 	tURL += v.Encode()
 
-	body := testHTTPRequest(t, "GET", tURL, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", tURL, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoUsageHistory
 
@@ -562,7 +592,11 @@ func TestListTenantResources(t *testing.T) {
 	}
 }
 
-func TestListTenantQuotas(t *testing.T) {
+func TestListTenantResources(t *testing.T) {
+	testListTenantResources(t, http.StatusOK, true)
+}
+
+func testListTenantQuotas(t *testing.T, httpExpectedStatus int, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -594,7 +628,7 @@ func TestListTenantQuotas(t *testing.T) {
 
 	expected.ID = tenant.ID
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoTenantResources
 
@@ -610,7 +644,11 @@ func TestListTenantQuotas(t *testing.T) {
 	}
 }
 
-func TestListEventsTenant(t *testing.T) {
+func TestListTenantQuotas(t *testing.T) {
+	testListTenantQuotas(t, http.StatusOK, true)
+}
+
+func testListEventsTenant(t *testing.T, httpExpectedStatus int, validToken bool) {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -639,7 +677,7 @@ func TestListEventsTenant(t *testing.T) {
 		expected.Events = append(expected.Events, event)
 	}
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoEvents
 
@@ -653,7 +691,11 @@ func TestListEventsTenant(t *testing.T) {
 	}
 }
 
-func TestListNodeServers(t *testing.T) {
+func TestListEventsTenant(t *testing.T) {
+	testListEventsTenant(t, http.StatusOK, true)
+}
+
+func testListNodeServers(t *testing.T, httpExpectedStatus int, validToken bool) {
 	computeNodes := context.ds.GetNodeLastStats()
 
 	for _, n := range computeNodes.Nodes {
@@ -664,7 +706,7 @@ func TestListNodeServers(t *testing.T) {
 
 		url := testutil.ComputeURL + "/v2.1/nodes/" + n.ID + "/servers/detail"
 
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 		var result payloads.CiaoServersStats
 
@@ -683,7 +725,11 @@ func TestListNodeServers(t *testing.T) {
 	}
 }
 
-func TestListTenants(t *testing.T) {
+func TestListNodeServers(t *testing.T) {
+	testListNodeServers(t, http.StatusOK, true)
+}
+
+func testListTenants(t *testing.T, httpExpectedStatus int, validToken bool) {
 	tenants, err := context.ds.GetAllTenants()
 	if err != nil {
 		t.Fatal(err)
@@ -705,7 +751,7 @@ func TestListTenants(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/tenants"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoComputeTenants
 
@@ -719,7 +765,11 @@ func TestListTenants(t *testing.T) {
 	}
 }
 
-func TestListNodes(t *testing.T) {
+func TestListTenants(t *testing.T) {
+	testListTenants(t, http.StatusOK, true)
+}
+
+func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
 	expected := context.ds.GetNodeLastStats()
 
 	summary, err := context.ds.GetNodeSummary()
@@ -745,7 +795,7 @@ func TestListNodes(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/nodes"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoComputeNodes
 
@@ -763,7 +813,11 @@ func TestListNodes(t *testing.T) {
 	}
 }
 
-func TestNodeSummary(t *testing.T) {
+func TestListNodes(t *testing.T) {
+	testListNodes(t, http.StatusOK, true)
+}
+
+func testNodeSummary(t *testing.T, httpExpectedStatus int, validToken bool) {
 	var expected payloads.CiaoClusterStatus
 
 	computeNodes := context.ds.GetNodeLastStats()
@@ -783,7 +837,7 @@ func TestNodeSummary(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/nodes/summary"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoClusterStatus
 
@@ -797,7 +851,11 @@ func TestNodeSummary(t *testing.T) {
 	}
 }
 
-func TestListCNCIs(t *testing.T) {
+func TestNodeSummary(t *testing.T) {
+	testNodeSummary(t, http.StatusOK, true)
+}
+
+func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 	var expected payloads.CiaoCNCIs
 
 	cncis, err := context.ds.GetTenantCNCISummary("")
@@ -832,7 +890,7 @@ func TestListCNCIs(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/cncis"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoCNCIs
 
@@ -846,7 +904,11 @@ func TestListCNCIs(t *testing.T) {
 	}
 }
 
-func TestListCNCIDetails(t *testing.T) {
+func TestListCNCIs(t *testing.T) {
+	testListCNCIs(t, http.StatusOK, true)
+}
+
+func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) {
 	cncis, err := context.ds.GetTenantCNCISummary("")
 	if err != nil {
 		t.Fatal(err)
@@ -882,7 +944,7 @@ func TestListCNCIDetails(t *testing.T) {
 
 		url := testutil.ComputeURL + "/v2.1/cncis/" + cnci.InstanceID + "/detail"
 
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 		var result payloads.CiaoCNCI
 
@@ -897,7 +959,11 @@ func TestListCNCIDetails(t *testing.T) {
 	}
 }
 
-func TestListTraces(t *testing.T) {
+func TestListCNCIDetails(t *testing.T) {
+	testListCNCIDetails(t, http.StatusOK, true)
+}
+
+func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
 	var expected payloads.CiaoTracesSummary
 
 	client := testStartTracedWorkload(t)
@@ -922,7 +988,7 @@ func TestListTraces(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/traces"
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoTracesSummary
 
@@ -936,7 +1002,11 @@ func TestListTraces(t *testing.T) {
 	}
 }
 
-func TestListEvents(t *testing.T) {
+func TestListTraces(t *testing.T) {
+	testListTraces(t, http.StatusOK, true)
+}
+
+func testListEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/events"
 
 	expected := payloads.NewCiaoEvents()
@@ -956,7 +1026,7 @@ func TestListEvents(t *testing.T) {
 		expected.Events = append(expected.Events, event)
 	}
 
-	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 	var result payloads.CiaoEvents
 
@@ -970,10 +1040,14 @@ func TestListEvents(t *testing.T) {
 	}
 }
 
-func TestClearEvents(t *testing.T) {
+func TestListEvents(t *testing.T) {
+	testListEvents(t, http.StatusOK, true)
+}
+
+func testClearEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/events"
 
-	_ = testHTTPRequest(t, "DELETE", url, http.StatusAccepted, nil, true)
+	_ = testHTTPRequest(t, "DELETE", url, httpExpectedStatus, nil, validToken)
 
 	logs, err := context.ds.GetEventLog()
 	if err != nil {
@@ -985,7 +1059,11 @@ func TestClearEvents(t *testing.T) {
 	}
 }
 
-func TestTraceData(t *testing.T) {
+func TestClearEvents(t *testing.T) {
+	testClearEvents(t, http.StatusAccepted, true)
+}
+
+func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
 	client := testStartTracedWorkload(t)
 	defer client.Ssntp.Close()
 
@@ -1020,7 +1098,7 @@ func TestTraceData(t *testing.T) {
 
 		url := testutil.ComputeURL + "/v2.1/traces/" + s.BatchID
 
-		body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
+		body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
 		var result payloads.CiaoTraceData
 
@@ -1033,4 +1111,8 @@ func TestTraceData(t *testing.T) {
 			t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
 		}
 	}
+}
+
+func TestTraceData(t *testing.T) {
+	testTraceData(t, http.StatusOK, true)
 }
