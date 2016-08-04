@@ -62,6 +62,7 @@ retry=0
 until [ $retry -ge 3 ]
 do
 	sudo udevadm settle
+	sudo partprobe /dev/nbd0
 	sudo mount /dev/nbd0p$partition "$tmpdir" && break
 	let retry=retry+1
 	echo "Mount failed, retrying $retry"
