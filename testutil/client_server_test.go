@@ -511,6 +511,7 @@ func restartServer() error {
 }
 
 func TestReconnects(t *testing.T) {
+	fmt.Println("stopping server")
 	err := stopServer()
 	if err != nil {
 		t.Fatal(err)
@@ -518,6 +519,7 @@ func TestReconnects(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
+	fmt.Println("restarting server")
 	err = restartServer()
 	if err != nil {
 		t.Fatal(err)

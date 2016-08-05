@@ -60,6 +60,9 @@ func NewSsntpTestControllerConnection(name string, uuid string) (*SsntpTestContr
 		UUID: uuid,
 	}
 
+	ctl.CmdChansLock = &sync.Mutex{}
+	ctl.EventChansLock = &sync.Mutex{}
+	ctl.ErrorChansLock = &sync.Mutex{}
 	openControllerChans(ctl)
 
 	config := &ssntp.Config{
@@ -104,13 +107,15 @@ func (ctl *SsntpTestController) GetCmdChanResult(c *chan Result, cmd ssntp.Comma
 // SendResultAndDelCmdChan deletes an ssntp.Command from the SsntpTestController command channel
 func (ctl *SsntpTestController) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	ctl.CmdChansLock.Lock()
-	defer ctl.CmdChansLock.Unlock()
 	c, ok := ctl.CmdChans[cmd]
 	if ok {
 		delete(ctl.CmdChans, cmd)
+		ctl.CmdChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	ctl.CmdChansLock.Unlock()
 }
 
 // AddEventChan adds an ssntp.Event to the SsntpTestController event channel
@@ -141,13 +146,15 @@ func (ctl *SsntpTestController) GetEventChanResult(c *chan Result, evt ssntp.Eve
 // SendResultAndDelEventChan deletes an ssntpEvent from the SsntpTestController event channel
 func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	ctl.EventChansLock.Lock()
-	defer ctl.EventChansLock.Unlock()
 	c, ok := ctl.EventChans[evt]
 	if ok {
 		delete(ctl.EventChans, evt)
+		ctl.EventChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	ctl.EventChansLock.Unlock()
 }
 
 // AddErrorChan adds an ssntp.Error to the SsntpTestController error channel
@@ -178,22 +185,29 @@ func (ctl *SsntpTestController) GetErrorChanResult(c *chan Result, error ssntp.E
 // SendResultAndDelErrorChan deletes an ssntp.Error from the SsntpTestController error channel
 func (ctl *SsntpTestController) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
 	ctl.ErrorChansLock.Lock()
-	defer ctl.ErrorChansLock.Unlock()
 	c, ok := ctl.ErrorChans[error]
 	if ok {
 		delete(ctl.ErrorChans, error)
+		ctl.ErrorChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	ctl.ErrorChansLock.Unlock()
 }
 
 func openControllerChans(ctl *SsntpTestController) {
+	ctl.CmdChansLock.Lock()
 	ctl.CmdChans = make(map[ssntp.Command]chan Result)
-	ctl.CmdChansLock = &sync.Mutex{}
+	ctl.CmdChansLock.Unlock()
+
+	ctl.EventChansLock.Lock()
 	ctl.EventChans = make(map[ssntp.Event]chan Result)
-	ctl.EventChansLock = &sync.Mutex{}
+	ctl.EventChansLock.Unlock()
+
+	ctl.ErrorChansLock.Lock()
 	ctl.ErrorChans = make(map[ssntp.Error]chan Result)
-	ctl.ErrorChansLock = &sync.Mutex{}
+	ctl.ErrorChansLock.Unlock()
 }
 
 func closeControllerChans(ctl *SsntpTestController) {
