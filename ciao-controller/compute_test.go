@@ -286,7 +286,7 @@ func testDeleteServer(t *testing.T, httpExpectedStatus int, httpExpectedErrorSta
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/"
 
@@ -337,7 +337,7 @@ func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken boo
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -397,7 +397,7 @@ func testServersActionStop(t *testing.T, httpExpectedStatus int, action string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -446,7 +446,7 @@ func testServerActionStop(t *testing.T, httpExpectedStatus int, validToken bool)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -483,7 +483,7 @@ func TestServerActionStart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -1124,7 +1124,7 @@ func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
 	var expected payloads.CiaoTracesSummary
 
 	client := testStartTracedWorkload(t)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	sendTraceReportEvent(client, t)
 
@@ -1246,7 +1246,7 @@ func TestClearEventsInvalidToken(t *testing.T) {
 
 func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
 	client := testStartTracedWorkload(t)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	sendTraceReportEvent(client, t)
 

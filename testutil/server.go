@@ -194,6 +194,33 @@ func (server *SsntpTestServer) SendResultAndDelStatusChan(error ssntp.Status, re
 	}
 }
 
+// CloseChans closes all the test results channels for the test server
+func (server *SsntpTestServer) CloseChans() {
+	server.CmdChansLock.Lock()
+	for _, ch := range server.CmdChans {
+		close(ch)
+	}
+	server.CmdChansLock.Unlock()
+
+	server.EventChansLock.Lock()
+	for _, ch := range server.EventChans {
+		close(ch)
+	}
+	server.EventChansLock.Unlock()
+
+	server.ErrorChansLock.Lock()
+	for _, ch := range server.ErrorChans {
+		close(ch)
+	}
+	server.ErrorChansLock.Unlock()
+
+	server.StatusChansLock.Lock()
+	for _, ch := range server.StatusChans {
+		close(ch)
+	}
+	server.StatusChansLock.Unlock()
+}
+
 // ConnectNotify implements an SSNTP ConnectNotify callback for SsntpTestServer
 func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 	var result Result
@@ -519,6 +546,12 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 	}
 
 	return dest
+}
+
+// Shutdown shuts down the testutil.SsntpTestServer and cleans up state
+func (server *SsntpTestServer) Shutdown() {
+	server.Ssntp.Stop()
+	server.CloseChans()
 }
 
 // StartTestServer starts a go routine for based on a

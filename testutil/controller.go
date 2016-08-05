@@ -39,6 +39,12 @@ type SsntpTestController struct {
 	ErrorChansLock *sync.Mutex
 }
 
+// Shutdown shuts down the testutil.SsntpTestClient and cleans up state
+func (ctl *SsntpTestController) Shutdown() {
+	ctl.Ssntp.Close()
+	ctl.CloseChans()
+}
+
 // NewSsntpTestControllerConnection creates an SsntpTestController and dials the server.
 // Calling with a unique name parameter string for inclusion in the
 // SsntpTestClient.Name field aides in debugging.  The uuid string
@@ -184,6 +190,27 @@ func (ctl *SsntpTestController) SendResultAndDelErrorChan(error ssntp.Error, res
 		c <- result
 		close(c)
 	}
+}
+
+// CloseChans closes all the test results channels for the test controller
+func (ctl *SsntpTestController) CloseChans() {
+	ctl.CmdChansLock.Lock()
+	for _, ch := range ctl.CmdChans {
+		close(ch)
+	}
+	ctl.CmdChansLock.Unlock()
+
+	ctl.EventChansLock.Lock()
+	for _, ch := range ctl.EventChans {
+		close(ch)
+	}
+	ctl.EventChansLock.Unlock()
+
+	ctl.ErrorChansLock.Lock()
+	for _, ch := range ctl.ErrorChans {
+		close(ch)
+	}
+	ctl.ErrorChansLock.Unlock()
 }
 
 // ConnectNotify implements the SSNTP client ConnectNotify callback for SsntpTestController
