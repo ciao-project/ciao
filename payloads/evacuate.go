@@ -16,12 +16,12 @@
 
 package payloads
 
-// EvacuateCmd is reserved for future use.
+// EvacuateCmd contains the nodeID of a SSNTP Agent.
 type EvacuateCmd struct {
 	WorkloadAgentUUID string `yaml:"workload_agent_uuid"`
 }
 
-// Evacuate is reserved for future use.
+// Evacuate represents the SSNTP EVACUATE command payload.
 type Evacuate struct {
 	Evacuate EvacuateCmd `yaml:"evacuate"`
 }
