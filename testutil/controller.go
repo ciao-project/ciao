@@ -39,6 +39,12 @@ type SsntpTestController struct {
 	ErrorChansLock *sync.Mutex
 }
 
+// Shutdown shuts down the testutil.SsntpTestClient and cleans up state
+func (ctl *SsntpTestController) Shutdown() {
+	ctl.Ssntp.Close()
+	closeControllerChans(ctl)
+}
+
 // NewSsntpTestControllerConnection creates an SsntpTestController and dials the server.
 // Calling with a unique name parameter string for inclusion in the
 // SsntpTestClient.Name field aides in debugging.  The uuid string
@@ -54,12 +60,7 @@ func NewSsntpTestControllerConnection(name string, uuid string) (*SsntpTestContr
 		UUID: uuid,
 	}
 
-	ctl.CmdChans = make(map[ssntp.Command]chan Result)
-	ctl.CmdChansLock = &sync.Mutex{}
-	ctl.EventChans = make(map[ssntp.Event]chan Result)
-	ctl.EventChansLock = &sync.Mutex{}
-	ctl.ErrorChans = make(map[ssntp.Error]chan Result)
-	ctl.ErrorChansLock = &sync.Mutex{}
+	openControllerChans(ctl)
 
 	config := &ssntp.Config{
 		URI:    "",
@@ -184,6 +185,38 @@ func (ctl *SsntpTestController) SendResultAndDelErrorChan(error ssntp.Error, res
 		c <- result
 		close(c)
 	}
+}
+
+func openControllerChans(ctl *SsntpTestController) {
+	ctl.CmdChans = make(map[ssntp.Command]chan Result)
+	ctl.CmdChansLock = &sync.Mutex{}
+	ctl.EventChans = make(map[ssntp.Event]chan Result)
+	ctl.EventChansLock = &sync.Mutex{}
+	ctl.ErrorChans = make(map[ssntp.Error]chan Result)
+	ctl.ErrorChansLock = &sync.Mutex{}
+}
+
+func closeControllerChans(ctl *SsntpTestController) {
+	ctl.CmdChansLock.Lock()
+	for k := range ctl.CmdChans {
+		close(ctl.CmdChans[k])
+		delete(ctl.CmdChans, k)
+	}
+	ctl.CmdChansLock.Unlock()
+
+	ctl.EventChansLock.Lock()
+	for k := range ctl.EventChans {
+		close(ctl.EventChans[k])
+		delete(ctl.EventChans, k)
+	}
+	ctl.EventChansLock.Unlock()
+
+	ctl.ErrorChansLock.Lock()
+	for k := range ctl.ErrorChans {
+		close(ctl.ErrorChans[k])
+		delete(ctl.ErrorChans, k)
+	}
+	ctl.ErrorChansLock.Unlock()
 }
 
 // ConnectNotify implements the SSNTP client ConnectNotify callback for SsntpTestController

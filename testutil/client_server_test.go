@@ -451,7 +451,7 @@ func stopServer() error {
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeDisconnected)
 	agentCh := agent.AddEventChan(ssntp.NodeDisconnected)
 
-	server.Ssntp.Stop()
+	server.Shutdown()
 
 	_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeDisconnected)
 	if err != nil {
@@ -589,16 +589,16 @@ func TestMain(m *testing.M) {
 
 	// stop everybody
 	time.Sleep(1 * time.Second)
-	controller.Ssntp.Close()
+	controller.Shutdown()
 
 	time.Sleep(1 * time.Second)
-	netAgent.Ssntp.Close()
+	netAgent.Shutdown()
 
 	time.Sleep(1 * time.Second)
-	agent.Ssntp.Close()
+	agent.Shutdown()
 
 	time.Sleep(1 * time.Second)
-	server.Ssntp.Stop()
+	server.Shutdown()
 
 	os.Exit(status)
 }

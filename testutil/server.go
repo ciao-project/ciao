@@ -194,6 +194,50 @@ func (server *SsntpTestServer) SendResultAndDelStatusChan(error ssntp.Status, re
 	}
 }
 
+func openServerChans(server *SsntpTestServer) {
+	server.CmdChans = make(map[ssntp.Command]chan Result)
+	server.CmdChansLock = &sync.Mutex{}
+
+	server.EventChans = make(map[ssntp.Event]chan Result)
+	server.EventChansLock = &sync.Mutex{}
+
+	server.ErrorChans = make(map[ssntp.Error]chan Result)
+	server.ErrorChansLock = &sync.Mutex{}
+
+	server.StatusChans = make(map[ssntp.Status]chan Result)
+	server.StatusChansLock = &sync.Mutex{}
+}
+
+func closeServerChans(server *SsntpTestServer) {
+	server.CmdChansLock.Lock()
+	for k := range server.CmdChans {
+		close(server.CmdChans[k])
+		delete(server.CmdChans, k)
+	}
+	server.CmdChansLock.Unlock()
+
+	server.EventChansLock.Lock()
+	for k := range server.EventChans {
+		close(server.EventChans[k])
+		delete(server.EventChans, k)
+	}
+	server.EventChansLock.Unlock()
+
+	server.ErrorChansLock.Lock()
+	for k := range server.ErrorChans {
+		close(server.ErrorChans[k])
+		delete(server.ErrorChans, k)
+	}
+	server.ErrorChansLock.Unlock()
+
+	server.StatusChansLock.Lock()
+	for k := range server.StatusChans {
+		close(server.StatusChans[k])
+		delete(server.StatusChans, k)
+	}
+	server.StatusChansLock.Unlock()
+}
+
 // ConnectNotify implements an SSNTP ConnectNotify callback for SsntpTestServer
 func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 	var result Result
@@ -521,23 +565,19 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 	return dest
 }
 
+// Shutdown shuts down the testutil.SsntpTestServer and cleans up state
+func (server *SsntpTestServer) Shutdown() {
+	server.Ssntp.Stop()
+	closeServerChans(server)
+}
+
 // StartTestServer starts a go routine for based on a
 // testutil.SsntpTestServer configuration with standard ssntp.FrameRorwardRules
 func StartTestServer(server *SsntpTestServer) {
 	server.clientsLock = &sync.Mutex{}
 	server.netClientsLock = &sync.Mutex{}
 
-	server.CmdChans = make(map[ssntp.Command]chan Result)
-	server.CmdChansLock = &sync.Mutex{}
-
-	server.EventChans = make(map[ssntp.Event]chan Result)
-	server.EventChansLock = &sync.Mutex{}
-
-	server.ErrorChans = make(map[ssntp.Error]chan Result)
-	server.ErrorChansLock = &sync.Mutex{}
-
-	server.StatusChans = make(map[ssntp.Status]chan Result)
-	server.StatusChansLock = &sync.Mutex{}
+	openServerChans(server)
 
 	serverConfig := ssntp.Config{
 		CAcert: ssntp.DefaultCACert,
