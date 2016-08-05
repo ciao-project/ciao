@@ -198,20 +198,23 @@ func openControllerChans(ctl *SsntpTestController) {
 
 func closeControllerChans(ctl *SsntpTestController) {
 	ctl.CmdChansLock.Lock()
-	for _, ch := range ctl.CmdChans {
-		close(ch)
+	for k := range ctl.CmdChans {
+		close(ctl.CmdChans[k])
+		delete(ctl.CmdChans, k)
 	}
 	ctl.CmdChansLock.Unlock()
 
 	ctl.EventChansLock.Lock()
-	for _, ch := range ctl.EventChans {
-		close(ch)
+	for k := range ctl.EventChans {
+		close(ctl.EventChans[k])
+		delete(ctl.EventChans, k)
 	}
 	ctl.EventChansLock.Unlock()
 
 	ctl.ErrorChansLock.Lock()
-	for _, ch := range ctl.ErrorChans {
-		close(ch)
+	for k := range ctl.ErrorChans {
+		close(ctl.ErrorChans[k])
+		delete(ctl.ErrorChans, k)
 	}
 	ctl.ErrorChansLock.Unlock()
 }

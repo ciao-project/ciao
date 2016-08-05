@@ -210,26 +210,30 @@ func openServerChans(server *SsntpTestServer) {
 
 func closeServerChans(server *SsntpTestServer) {
 	server.CmdChansLock.Lock()
-	for _, ch := range server.CmdChans {
-		close(ch)
+	for k := range server.CmdChans {
+		close(server.CmdChans[k])
+		delete(server.CmdChans, k)
 	}
 	server.CmdChansLock.Unlock()
 
 	server.EventChansLock.Lock()
-	for _, ch := range server.EventChans {
-		close(ch)
+	for k := range server.EventChans {
+		close(server.EventChans[k])
+		delete(server.EventChans, k)
 	}
 	server.EventChansLock.Unlock()
 
 	server.ErrorChansLock.Lock()
-	for _, ch := range server.ErrorChans {
-		close(ch)
+	for k := range server.ErrorChans {
+		close(server.ErrorChans[k])
+		delete(server.ErrorChans, k)
 	}
 	server.ErrorChansLock.Unlock()
 
 	server.StatusChansLock.Lock()
-	for _, ch := range server.StatusChans {
-		close(ch)
+	for k := range server.StatusChans {
+		close(server.StatusChans[k])
+		delete(server.StatusChans, k)
 	}
 	server.StatusChansLock.Unlock()
 }

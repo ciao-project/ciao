@@ -258,26 +258,30 @@ func openClientChans(client *SsntpTestClient) {
 
 func closeClientChans(client *SsntpTestClient) {
 	client.CmdChansLock.Lock()
-	for _, ch := range client.CmdChans {
-		close(ch)
+	for k := range client.CmdChans {
+		close(client.CmdChans[k])
+		delete(client.CmdChans, k)
 	}
 	client.CmdChansLock.Unlock()
 
 	client.EventChansLock.Lock()
-	for _, ch := range client.EventChans {
-		close(ch)
+	for k := range client.EventChans {
+		close(client.EventChans[k])
+		delete(client.EventChans, k)
 	}
 	client.EventChansLock.Unlock()
 
 	client.ErrorChansLock.Lock()
-	for _, ch := range client.ErrorChans {
-		close(ch)
+	for k := range client.ErrorChans {
+		close(client.ErrorChans[k])
+		delete(client.ErrorChans, k)
 	}
 	client.ErrorChansLock.Unlock()
 
 	client.StatusChansLock.Lock()
-	for _, ch := range client.StatusChans {
-		close(ch)
+	for k := range client.StatusChans {
+		close(client.StatusChans[k])
+		delete(client.StatusChans, k)
 	}
 	client.StatusChansLock.Unlock()
 }
