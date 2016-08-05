@@ -194,8 +194,21 @@ func (server *SsntpTestServer) SendResultAndDelStatusChan(error ssntp.Status, re
 	}
 }
 
-// CloseChans closes all the test results channels for the test server
-func (server *SsntpTestServer) CloseChans() {
+func openServerChans(server *SsntpTestServer) {
+	server.CmdChans = make(map[ssntp.Command]chan Result)
+	server.CmdChansLock = &sync.Mutex{}
+
+	server.EventChans = make(map[ssntp.Event]chan Result)
+	server.EventChansLock = &sync.Mutex{}
+
+	server.ErrorChans = make(map[ssntp.Error]chan Result)
+	server.ErrorChansLock = &sync.Mutex{}
+
+	server.StatusChans = make(map[ssntp.Status]chan Result)
+	server.StatusChansLock = &sync.Mutex{}
+}
+
+func closeServerChans(server *SsntpTestServer) {
 	server.CmdChansLock.Lock()
 	for _, ch := range server.CmdChans {
 		close(ch)
@@ -551,7 +564,7 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 // Shutdown shuts down the testutil.SsntpTestServer and cleans up state
 func (server *SsntpTestServer) Shutdown() {
 	server.Ssntp.Stop()
-	server.CloseChans()
+	closeServerChans(server)
 }
 
 // StartTestServer starts a go routine for based on a
@@ -560,17 +573,7 @@ func StartTestServer(server *SsntpTestServer) {
 	server.clientsLock = &sync.Mutex{}
 	server.netClientsLock = &sync.Mutex{}
 
-	server.CmdChans = make(map[ssntp.Command]chan Result)
-	server.CmdChansLock = &sync.Mutex{}
-
-	server.EventChans = make(map[ssntp.Event]chan Result)
-	server.EventChansLock = &sync.Mutex{}
-
-	server.ErrorChans = make(map[ssntp.Error]chan Result)
-	server.ErrorChansLock = &sync.Mutex{}
-
-	server.StatusChans = make(map[ssntp.Status]chan Result)
-	server.StatusChansLock = &sync.Mutex{}
+	openServerChans(server)
 
 	serverConfig := ssntp.Config{
 		CAcert: ssntp.DefaultCACert,

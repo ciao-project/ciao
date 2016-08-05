@@ -139,3 +139,22 @@ func TestServerCmdChanTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestServerCloseChans(t *testing.T) {
+	var result Result
+
+	_ = server.AddCmdChan(ssntp.START)
+	go server.SendResultAndDelCmdChan(ssntp.START, result)
+
+	_ = server.AddEventChan(ssntp.TraceReport)
+	go server.SendResultAndDelEventChan(ssntp.TraceReport, result)
+
+	_ = server.AddErrorChan(ssntp.StopFailure)
+	go server.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+
+	_ = server.AddStatusChan(ssntp.READY)
+	go server.SendResultAndDelStatusChan(ssntp.READY, result)
+
+	CloseServerChans(&server)
+	OpenServerChans(&server)
+}

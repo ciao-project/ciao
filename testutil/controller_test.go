@@ -117,3 +117,19 @@ func TestControllerCmdChanTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestControllerCloseChans(t *testing.T) {
+	var result Result
+
+	_ = controller.AddCmdChan(ssntp.START)
+	go controller.SendResultAndDelCmdChan(ssntp.START, result)
+
+	_ = controller.AddEventChan(ssntp.TraceReport)
+	go controller.SendResultAndDelEventChan(ssntp.TraceReport, result)
+
+	_ = controller.AddErrorChan(ssntp.StopFailure)
+	go controller.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+
+	CloseControllerChans(controller)
+	OpenControllerChans(controller)
+}

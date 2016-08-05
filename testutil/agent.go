@@ -60,7 +60,7 @@ type SsntpTestClient struct {
 // Shutdown shuts down the testutil.SsntpTestClient and cleans up state
 func (client *SsntpTestClient) Shutdown() {
 	client.Ssntp.Close()
-	client.CloseChans()
+	closeClientChans(client)
 }
 
 // NewSsntpTestClientConnection creates an SsntpTestClient and dials the server.
@@ -80,14 +80,7 @@ func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*S
 	client.UUID = uuid
 	client.Role = role
 	client.StartFail = false
-	client.CmdChans = make(map[ssntp.Command]chan Result)
-	client.CmdChansLock = &sync.Mutex{}
-	client.EventChans = make(map[ssntp.Event]chan Result)
-	client.EventChansLock = &sync.Mutex{}
-	client.ErrorChans = make(map[ssntp.Error]chan Result)
-	client.ErrorChansLock = &sync.Mutex{}
-	client.StatusChans = make(map[ssntp.Status]chan Result)
-	client.StatusChansLock = &sync.Mutex{}
+	openClientChans(client)
 	client.instancesLock = &sync.Mutex{}
 	client.tracesLock = &sync.Mutex{}
 
@@ -252,8 +245,18 @@ func (client *SsntpTestClient) SendResultAndDelStatusChan(status ssntp.Status, r
 	}
 }
 
-// CloseChans closes all the test results channels for the test client
-func (client *SsntpTestClient) CloseChans() {
+func openClientChans(client *SsntpTestClient) {
+	client.CmdChans = make(map[ssntp.Command]chan Result)
+	client.CmdChansLock = &sync.Mutex{}
+	client.EventChans = make(map[ssntp.Event]chan Result)
+	client.EventChansLock = &sync.Mutex{}
+	client.ErrorChans = make(map[ssntp.Error]chan Result)
+	client.ErrorChansLock = &sync.Mutex{}
+	client.StatusChans = make(map[ssntp.Status]chan Result)
+	client.StatusChansLock = &sync.Mutex{}
+}
+
+func closeClientChans(client *SsntpTestClient) {
 	client.CmdChansLock.Lock()
 	for _, ch := range client.CmdChans {
 		close(ch)
