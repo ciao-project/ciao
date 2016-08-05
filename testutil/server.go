@@ -573,7 +573,8 @@ func (server *SsntpTestServer) Shutdown() {
 
 // StartTestServer starts a go routine for based on a
 // testutil.SsntpTestServer configuration with standard ssntp.FrameRorwardRules
-func StartTestServer(server *SsntpTestServer) {
+func StartTestServer() *SsntpTestServer {
+	server := new(SsntpTestServer)
 	server.clientsLock = &sync.Mutex{}
 	server.netClientsLock = &sync.Mutex{}
 
@@ -652,5 +653,5 @@ func StartTestServer(server *SsntpTestServer) {
 	}
 
 	go server.Ssntp.Serve(&serverConfig, server)
-	return
+	return server
 }

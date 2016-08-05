@@ -800,13 +800,13 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 
 var testClients []*testutil.SsntpTestClient
 var context *controller
-var server testutil.SsntpTestServer
+var server *testutil.SsntpTestServer
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 
 	// create fake ssntp server
-	testutil.StartTestServer(&server)
+	server = testutil.StartTestServer()
 
 	context = new(controller)
 	context.ds = new(datastore.Datastore)

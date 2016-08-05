@@ -29,7 +29,7 @@ import (
 	. "github.com/01org/ciao/testutil"
 )
 
-var server SsntpTestServer
+var server *SsntpTestServer
 var controller *SsntpTestController
 var agent *SsntpTestClient
 var netAgent *SsntpTestClient
@@ -474,7 +474,7 @@ func restartServer() error {
 	agentCh := agent.AddEventChan(ssntp.NodeConnected)
 	cnciAgentCh := cnciAgent.AddEventChan(ssntp.NodeConnected)
 
-	StartTestServer(&server)
+	server = StartTestServer()
 
 	//MUST be after StartTestServer becase the channels are initialized on start
 	serverCh := server.AddEventChan(ssntp.NodeConnected)
@@ -564,7 +564,7 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	// start server
-	StartTestServer(&server)
+	server = StartTestServer()
 
 	// start controller
 	controllerUUID := uuid.Generate().String()

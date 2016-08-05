@@ -155,6 +155,6 @@ func TestServerCloseChans(t *testing.T) {
 	_ = server.AddStatusChan(ssntp.READY)
 	go server.SendResultAndDelStatusChan(ssntp.READY, result)
 
-	CloseServerChans(&server)
-	OpenServerChans(&server)
+	CloseServerChans(server)
+	OpenServerChans(server)
 }
