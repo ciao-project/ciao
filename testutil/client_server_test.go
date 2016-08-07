@@ -29,7 +29,7 @@ import (
 	. "github.com/01org/ciao/testutil"
 )
 
-var server SsntpTestServer
+var server *SsntpTestServer
 var controller *SsntpTestController
 var agent *SsntpTestClient
 var netAgent *SsntpTestClient
@@ -451,7 +451,7 @@ func stopServer() error {
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeDisconnected)
 	agentCh := agent.AddEventChan(ssntp.NodeDisconnected)
 
-	server.Ssntp.Stop()
+	server.Shutdown()
 
 	_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeDisconnected)
 	if err != nil {
@@ -474,7 +474,7 @@ func restartServer() error {
 	agentCh := agent.AddEventChan(ssntp.NodeConnected)
 	cnciAgentCh := cnciAgent.AddEventChan(ssntp.NodeConnected)
 
-	StartTestServer(&server)
+	server = StartTestServer()
 
 	//MUST be after StartTestServer becase the channels are initialized on start
 	serverCh := server.AddEventChan(ssntp.NodeConnected)
@@ -511,6 +511,7 @@ func restartServer() error {
 }
 
 func TestReconnects(t *testing.T) {
+	fmt.Println("stopping server")
 	err := stopServer()
 	if err != nil {
 		t.Fatal(err)
@@ -518,6 +519,7 @@ func TestReconnects(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
+	fmt.Println("restarting server")
 	err = restartServer()
 	if err != nil {
 		t.Fatal(err)
@@ -564,7 +566,7 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	// start server
-	StartTestServer(&server)
+	server = StartTestServer()
 
 	// start controller
 	controllerUUID := uuid.Generate().String()
@@ -589,16 +591,16 @@ func TestMain(m *testing.M) {
 
 	// stop everybody
 	time.Sleep(1 * time.Second)
-	controller.Ssntp.Close()
+	controller.Shutdown()
 
 	time.Sleep(1 * time.Second)
-	netAgent.Ssntp.Close()
+	netAgent.Shutdown()
 
 	time.Sleep(1 * time.Second)
-	agent.Ssntp.Close()
+	agent.Shutdown()
 
 	time.Sleep(1 * time.Second)
-	server.Ssntp.Stop()
+	server.Shutdown()
 
 	os.Exit(status)
 }

@@ -74,13 +74,15 @@ func (server *SsntpTestServer) GetCmdChanResult(c *chan Result, cmd ssntp.Comman
 // SendResultAndDelCmdChan deletes an ssntp.Command from the SsntpTestServer command channel
 func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	server.CmdChansLock.Lock()
-	defer server.CmdChansLock.Unlock()
 	c, ok := server.CmdChans[cmd]
 	if ok {
 		delete(server.CmdChans, cmd)
+		server.CmdChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	server.CmdChansLock.Unlock()
 }
 
 // AddEventChan adds an ssntp.Event to the SsntpTestServer event channel
@@ -111,13 +113,15 @@ func (server *SsntpTestServer) GetEventChanResult(c *chan Result, evt ssntp.Even
 // SendResultAndDelEventChan deletes an ssntp.Event from the SsntpTestServer event channel
 func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	server.EventChansLock.Lock()
-	defer server.EventChansLock.Unlock()
 	c, ok := server.EventChans[evt]
 	if ok {
 		delete(server.EventChans, evt)
+		server.EventChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	server.EventChansLock.Unlock()
 }
 
 // AddErrorChan adds an ssntp.Error to the SsntpTestServer error channel
@@ -148,13 +152,15 @@ func (server *SsntpTestServer) GetErrorChanResult(c *chan Result, error ssntp.Er
 // SendResultAndDelErrorChan deletes an ssntp.Error from the SsntpTestServer error channel
 func (server *SsntpTestServer) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
 	server.ErrorChansLock.Lock()
-	defer server.ErrorChansLock.Unlock()
 	c, ok := server.ErrorChans[error]
 	if ok {
 		delete(server.ErrorChans, error)
+		server.ErrorChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	server.ErrorChansLock.Unlock()
 }
 
 // AddStatusChan adds an ssntp.Status to the SsntpTestServer status channel
@@ -185,13 +191,63 @@ func (server *SsntpTestServer) GetStatusChanResult(c *chan Result, status ssntp.
 // SendResultAndDelStatusChan deletes an ssntp.Status from the SsntpTestServer status channel
 func (server *SsntpTestServer) SendResultAndDelStatusChan(error ssntp.Status, result Result) {
 	server.StatusChansLock.Lock()
-	defer server.StatusChansLock.Unlock()
 	c, ok := server.StatusChans[error]
 	if ok {
 		delete(server.StatusChans, error)
+		server.StatusChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	server.StatusChansLock.Unlock()
+}
+
+func openServerChans(server *SsntpTestServer) {
+	server.CmdChansLock.Lock()
+	server.CmdChans = make(map[ssntp.Command]chan Result)
+	server.CmdChansLock.Unlock()
+
+	server.EventChansLock.Lock()
+	server.EventChans = make(map[ssntp.Event]chan Result)
+	server.EventChansLock.Unlock()
+
+	server.ErrorChansLock.Lock()
+	server.ErrorChans = make(map[ssntp.Error]chan Result)
+	server.ErrorChansLock.Unlock()
+
+	server.StatusChansLock.Lock()
+	server.StatusChans = make(map[ssntp.Status]chan Result)
+	server.StatusChansLock.Unlock()
+}
+
+func closeServerChans(server *SsntpTestServer) {
+	server.CmdChansLock.Lock()
+	for k := range server.CmdChans {
+		close(server.CmdChans[k])
+		delete(server.CmdChans, k)
+	}
+	server.CmdChansLock.Unlock()
+
+	server.EventChansLock.Lock()
+	for k := range server.EventChans {
+		close(server.EventChans[k])
+		delete(server.EventChans, k)
+	}
+	server.EventChansLock.Unlock()
+
+	server.ErrorChansLock.Lock()
+	for k := range server.ErrorChans {
+		close(server.ErrorChans[k])
+		delete(server.ErrorChans, k)
+	}
+	server.ErrorChansLock.Unlock()
+
+	server.StatusChansLock.Lock()
+	for k := range server.StatusChans {
+		close(server.StatusChans[k])
+		delete(server.StatusChans, k)
+	}
+	server.StatusChansLock.Unlock()
 }
 
 // ConnectNotify implements an SSNTP ConnectNotify callback for SsntpTestServer
@@ -521,23 +577,24 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 	return dest
 }
 
+// Shutdown shuts down the testutil.SsntpTestServer and cleans up state
+func (server *SsntpTestServer) Shutdown() {
+	server.Ssntp.Stop()
+	closeServerChans(server)
+}
+
 // StartTestServer starts a go routine for based on a
 // testutil.SsntpTestServer configuration with standard ssntp.FrameRorwardRules
-func StartTestServer(server *SsntpTestServer) {
+func StartTestServer() *SsntpTestServer {
+	server := new(SsntpTestServer)
 	server.clientsLock = &sync.Mutex{}
 	server.netClientsLock = &sync.Mutex{}
 
-	server.CmdChans = make(map[ssntp.Command]chan Result)
 	server.CmdChansLock = &sync.Mutex{}
-
-	server.EventChans = make(map[ssntp.Event]chan Result)
 	server.EventChansLock = &sync.Mutex{}
-
-	server.ErrorChans = make(map[ssntp.Error]chan Result)
 	server.ErrorChansLock = &sync.Mutex{}
-
-	server.StatusChans = make(map[ssntp.Status]chan Result)
 	server.StatusChansLock = &sync.Mutex{}
+	openServerChans(server)
 
 	serverConfig := ssntp.Config{
 		CAcert: ssntp.DefaultCACert,
@@ -612,5 +669,5 @@ func StartTestServer(server *SsntpTestServer) {
 	}
 
 	go server.Ssntp.Serve(&serverConfig, server)
-	return
+	return server
 }
