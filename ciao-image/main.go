@@ -27,7 +27,7 @@ var httpsCAcert = "/etc/pki/ciao/ciao-image-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-image-key.pem"
 var port = image.APIPort
 var logDir = "/var/lib/ciao/logs/ciao-image"
-var identity = "https://localhost:35357"
+var identity = "https://localhost:35357/"
 var userName = "ciao"
 var password = "hello"
 
