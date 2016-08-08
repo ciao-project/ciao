@@ -82,8 +82,8 @@ configure:
     identity_user: controller
     identity_password: ciao
   launcher:
-    compute_net: 192.168.1.110
-    mgmt_net: 192.168.1.111
+    compute_net: 192.168.0.0/16
+    mgmt_net: 192.168.0.0/16
   image_service:
     url: http://glance.example.com
   identity_service:
@@ -104,8 +104,8 @@ configure:
     identity_user: controller
     identity_password: ciao
   launcher:
-    compute_net: 192.168.1.110
-    mgmt_net: 192.168.1.111
+    compute_net: 192.168.0.0/16
+    mgmt_net: 192.168.0.0/16
     disk_limit: true
     mem_limit: true
   image_service:
