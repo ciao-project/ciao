@@ -85,9 +85,9 @@ configure:
     compute_net: 192.168.0.0/16
     mgmt_net: 192.168.0.0/16
   image_service:
-    url: http://glance.example.com
+    url: http://glance.example.com:9292
   identity_service:
-    url: http://keystone.example.com
+    url: http://keystone.example.com:35357
 ```
 
 ### Complete
@@ -110,8 +110,8 @@ configure:
     mem_limit: true
   image_service:
     type: glance
-    url: http://glance.example.com
+    url: http://glance.example.com:9292
   identity_service:
     type: keystone
-    url: http://keystone.example.com
+    url: http://keystone.example.com:35357
 ```
