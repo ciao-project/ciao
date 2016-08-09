@@ -252,6 +252,10 @@ func getTenant(username string, password string, tenantID string) (string, strin
 		return "", "", err
 	}
 
+	if len(projects) == 0 {
+		return "", tenantID, fmt.Errorf("No tenant name for %s", username)
+	}
+
 	if len(projects) > 1 {
 		if tenantID == "" {
 			fmt.Printf("Available projects for %s:\n", *identityUser)
