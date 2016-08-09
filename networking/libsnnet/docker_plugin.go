@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/libnetwork/drivers/remote/api"
 	ipamapi "github.com/docker/libnetwork/ipams/remote/api"
 	"github.com/golang/glog"
@@ -724,11 +725,13 @@ func createDockerPluginConfig(dir string) error {
 	pluginSpecFile := path.Join(dir, DockerPluginCfg.Name+".json")
 
 	var spec struct {
-		Name string
-		Addr string
+		Name      string
+		Addr      string
+		TLSConfig *tlsconfig.Options
 	}
 	spec.Name = DockerPluginCfg.Name
 	spec.Addr = "http://" + DockerPluginCfg.Addr
+	spec.TLSConfig = &tlsconfig.Options{}
 	b, err := json.Marshal(spec)
 	if err != nil {
 		return fmt.Errorf("Unable to create plugin spec (%v) %v", spec, err)
