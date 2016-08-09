@@ -43,8 +43,6 @@ before_script:
 script:
    - go env
    - docker --version
-   - sudo apt-get install -o Dpkg::Options::="--force-confold" --force-yes -y docker-engine=1.11.2-0~trusty
-   - docker --version
    - sudo docker pull debian
    - sudo ip link add testdummy type dummy
    - sudo ip addr add 198.51.100.1/24 dev testdummy
