@@ -207,6 +207,27 @@ sudo cp -f clear-"${LATEST}"-cloud.img /var/lib/ciao/images
 cd /var/lib/ciao/images
 sudo ln -sf clear-"${LATEST}"-cloud.img df3768da-31f5-4ba6-82f0-127a1a705169
 
+# Set macvlan interface
+if [ -x "$(command -v ip)" ]; then
+   sudo ip link add name eth10 type bridge
+   sudo ip link add link eth10 name macvlan0 type macvlan mode bridge
+   sudo ip addr add 198.51.100.1/24 brd 198.51.100.255 dev macvlan0
+   sudo ip link set dev macvlan0 up
+   sudo ip -d link show macvlan0
+   sudo ip link set dev eth10 up
+   sudo ip -d link show eth10
+else
+    echo 'ip command is not supported'
+fi
+
+# Set DHCP server with dnsmasq
+sudo mkdir -p /var/lib/misc
+if [ -x "$(command -v ip)" ]; then
+    dnsmasq -C $ciao_scripts/dnsmasq.conf.macvlan0
+else
+    echo 'dnsmasq command is not supported'
+fi
+
 #Kick off the agents
 cd "$ciao_bin"
 "$ciao_bin"/run_scheduler.sh  &> /dev/null
@@ -327,3 +348,6 @@ fi
 #Also kill the CNCI (as there is no other way to delete it today)
 sudo killall qemu-system-x86_64
 sudo rm -rf /var/lib/ciao/instances
+#Destroy all networking pieces
+sudo killall dnsmasq
+ip link del eth10
