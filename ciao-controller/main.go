@@ -13,6 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+// @APIVersion v2.1
+// @APITitle CIAO Controller API
+// @APIDescription Ciao controller is responsible for policy choices around tenant workloads. It provides compute API endpoints for access from ciao-cli and ciao-webui over HTTPS.
+// @Contact https://github.com/01org/ciao/wiki/Package-maintainers
+// @License Apache License, Version 2.0
+// @LicenseUrl http://www.apache.org/licenses/LICENSE-2.0
+// @BasePath http://<ciao-controller-server>:8774/v2.1/
 
 package main
 

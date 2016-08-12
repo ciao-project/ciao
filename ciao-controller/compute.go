@@ -13,6 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+// @SubApi Servers API [/v2.1/{tenant}/servers]
+// @SubApi Flavors API [/v2.1/{tenant}/flavors]
+// @SubApi Resources API [/v2.1/{tenant}/resources]
+// @SubApi Quotas API [/v2.1/{tenant}/quotas]
+// @SubApi Events API [/v2.1/{tenant}/events]
+// @SubApi Nodes API [/v2.1/nodes]
+// @SubApi Tenants API [/v2.1/tenants]
+// @SubApi CNCIs API [/v2.1/cncis]
+// @SubApi Traces API [/v2.1/traces]
 
 package main
 
@@ -469,6 +478,14 @@ func returnErrorCode(w http.ResponseWriter, httpError int, messageFormat string,
 	http.Error(w, string(b), httpError)
 }
 
+// @Title showServerDetails
+// @Description Shows details for a server.
+// @Accept  json
+// @Success 200 {object} payloads.ComputeServer "Returns details for a server."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/servers/{server} [get]
+// @Resource /v2.1/{tenant}/servers
 func showServerDetails(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -509,6 +526,14 @@ func showServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 	w.Write(b)
 }
 
+// @Title deleteServer
+// @Description Deletes a server.
+// @Accept  json
+// @Success 202 {object} string "This operation does not return a response body, returns the 202 StatusAccepted code."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/servers/{server} [delete]
+// @Resource /v2.1/{tenant}/servers
 func deleteServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -567,6 +592,14 @@ func buildFlavorDetails(workload *types.Workload) (payloads.FlavorDetails, error
 	return details, nil
 }
 
+// @Title listFlavors
+// @Description Lists flavors.
+// @Accept  json
+// @Success 200 {array} interface "Returns payloads.NewComputeFlavors() with the corresponding available flavors for the tenant."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/flavors [get]
+// @Resource /v2.1/{tenant}/flavors
 func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 	flavors := payloads.NewComputeFlavors()
 
@@ -606,6 +639,14 @@ func listFlavors(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+// @Title listFlavorsDetails
+// @Description Lists flavors with details.
+// @Accept  json
+// @Success 200 {array} interface "Returns payloads.NewComputeFlavorsDetails() of flavor details."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/flavors/detail [get]
+// @Resource /v2.1/{tenant}/flavors
 func listFlavorsDetails(w http.ResponseWriter, r *http.Request, context *controller) {
 	var details payloads.FlavorDetails
 	flavors := payloads.NewComputeFlavorsDetails()
@@ -642,6 +683,14 @@ func listFlavorsDetails(w http.ResponseWriter, r *http.Request, context *control
 	w.Write(b)
 }
 
+// @Title showFlavorDetails
+// @Description Shows details for a flavor.
+// @Accept  json
+// @Success 200 {object} payloads.ComputeFlavorDetails "Returns details for a flavor."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/flavors/{flavor} [get]
+// @Resource /v2.1/{tenant}/flavors
 func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	workloadID := vars["flavor"]
@@ -678,6 +727,20 @@ func showFlavorDetails(w http.ResponseWriter, r *http.Request, context *controll
 	w.Write(b)
 }
 
+// @Title listFlavorServerDetail
+// @Description Lists all servers with details.
+// @Accept  json
+// @Success 200 {array} types.Instance "Returns a list of all servers."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/flavors/{flavor}/servers/detail [get]
+// @Resource /v2.1/{tenant}/flavors
+// listFlavorServerDetail is created with the only purpose of API documentation for method
+// /v2.1/flavors/{flavor}/servers/detail [get]
+func listFlavorServerDetail(w http.ResponseWriter, r *http.Request, context *controller) {
+	listServerDetails(w, r, context)
+}
+
 const (
 	instances int = 1
 	vcpu          = 2
@@ -685,6 +748,14 @@ const (
 	disk          = 4
 )
 
+// @Title listTenantQuotas
+// @Description List the use of all resources used of a tenant from a start to end point of time.
+// @Accept  json
+// @Success 200 {object} payloads.CiaoTenantResources "Returns the limits and usage of resources of a tenant."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/quotas [get]
+// @Resource /v2.1/{tenant}/quotas
 func listTenantQuotas(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -780,6 +851,14 @@ func tenantQueryParse(r *http.Request) (time.Time, time.Time, error) {
 	return startTime, endTime, nil
 }
 
+// @Title listTenantResources
+// @Description List the use of all resources used of a tenant from a start to end point of time.
+// @Accept  json
+// @Success 200 {object} payloads.CiaoUsageHistory "Returns the usage of resouces."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/resources [get]
+// @Resource /v2.1/{tenant}/resources
 func listTenantResources(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -817,6 +896,14 @@ func listTenantResources(w http.ResponseWriter, r *http.Request, context *contro
 	w.Write(b)
 }
 
+// @Title listServerDetails
+// @Description Lists all servers with details.
+// @Accept  json
+// @Success 200 {array} types.Instance "Returns details of all servers."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/servers/detail [get]
+// @Resource /v2.1/{tenant}/servers
 func listServerDetails(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -866,6 +953,14 @@ func listServerDetails(w http.ResponseWriter, r *http.Request, context *controll
 	w.Write(b)
 }
 
+// @Title createServer
+// @Description Creates a server.
+// @Accept  json
+// @Success 202 {object} payloads.Server "Returns payloads.ComputeCreateServer and payloads.ComputeServer with data of the created server."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/servers [post]
+// @Resource /v2.1/{tenant}/servers
 func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -953,6 +1048,14 @@ func createServer(w http.ResponseWriter, r *http.Request, context *controller) {
 
 type instanceAction func(string) error
 
+// @Title tenantServersAction
+// @Description Runs the indicated action (os-start, os-stop, os-delete) in the servers.
+// @Accept  json
+// @Success 202 {object} string "This operation does not return a response body, returns the 202 StatusAccepted code."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/servers/action [post]
+// @Resource /v2.1/{tenant}/servers
 // tenantServersAction will apply the operation sent in POST (as os-start, os-stop, os-delete)
 // to all servers of a tenant or if ServersID size is greater than zero it will be applied
 // only to the subset provided that also belongs to the tenant
@@ -1037,6 +1140,14 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// @Title serverAction
+// @Description Runs the indicated action (os-start, os-stop, os-delete) in the a server.
+// @Accept  json
+// @Success 202 {object} string "This operation does not return a response body, returns the 202 StatusAccepted code."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/servers/{server}/action [post]
+// @Resource /v2.1/{tenant}/servers
 func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -1096,6 +1207,14 @@ func serverAction(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// @Title listTenants
+// @Description List all tenants.
+// @Accept  json
+// @Success 200 {array} interface "Marshalled format of payloads.CiaoComputeTenants representing the list of all tentants."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/tenants [get]
+// @Resource /v2.1/tenants
 func listTenants(w http.ResponseWriter, r *http.Request, context *controller) {
 	var computeTenants payloads.CiaoComputeTenants
 
@@ -1134,6 +1253,14 @@ func listTenants(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+// @Title listNodes
+// @Description Returns a list of all nodes.
+// @Accept  json
+// @Success 200 {array} interface "Returns ciao-controller.nodePager with TotalInstances, TotalRunningInstances, TotalPendingInstances, TotalPausedInstances."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/nodes [get]
+// @Resource /v2.1/nodes
 func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 	dumpRequest(r)
 
@@ -1180,6 +1307,14 @@ func listNodes(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+// @Title nodesSummary
+// @Description A summary of all node stats.
+// @Accept  json
+// @Success 200 {object} interface "Returns payloads.CiaoClusterStatus with TotalNodesReady, TotalNodesFull, TotalNodesOffline and TotalNodesMaintenance."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/nodes/summary [get]
+// @Resource /v2.1/nodes
 func nodesSummary(w http.ResponseWriter, r *http.Request, context *controller) {
 	var nodesStatus payloads.CiaoClusterStatus
 
@@ -1217,6 +1352,14 @@ func nodesSummary(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+// @Title serverAction
+// @Description Runs the indicated action (os-start, os-stop, os-delete) in a server.
+// @Accept  json
+// @Success 202 {object} string "This operation does not return a response body, returns the 202 StatusAccepted code."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/nodes/{node}/servers/detail [get]
+// @Resource /v2.1/nodes
 func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	nodeID := vars["node"]
@@ -1262,6 +1405,14 @@ func listNodeServers(w http.ResponseWriter, r *http.Request, context *controller
 	w.Write(b)
 }
 
+// @Title listCNCIs
+// @Description Lists all CNCI agents.
+// @Accept  json
+// @Success 200 {array} payloads.CiaoCNCIs "Returns all CNCI agents data as InstanceId, TenantID, IPv4 and subnets."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/cncis [get]
+// @Resource /v2.1/cncis
 func listCNCIs(w http.ResponseWriter, r *http.Request, context *controller) {
 	var ciaoCNCIs payloads.CiaoCNCIs
 
@@ -1313,6 +1464,14 @@ func listCNCIs(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+// @Title listCNCIDetails
+// @Description List details of a CNCI agent.
+// @Accept  json
+// @Success 200 {array} payloads.CiaoCNCIs "Returns details of a CNCI agent as InstanceId, TenantID, IPv4 and subnets."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/cncis/{cnci}/detail [get]
+// @Resource /v2.1/cncis
 func listCNCIDetails(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	cnciID := vars["cnci"]
@@ -1361,6 +1520,14 @@ func listCNCIDetails(w http.ResponseWriter, r *http.Request, context *controller
 	w.Write(b)
 }
 
+// @Title listTraces
+// @Description List all Traces.
+// @Accept  json
+// @Success 200 {array} payloads.CiaoTracesSummary "Returns a summary of each trace in the system."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/traces [get]
+// @Resource /v2.1/traces
 func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
 	var traces payloads.CiaoTracesSummary
 
@@ -1393,6 +1560,14 @@ func listTraces(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+// @Title listEvents
+// @Description List all Events.
+// @Accept  json
+// @Success 200 {array} payloads.CiaoEvent "Returns all events from the log system."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/events [get]
+// @Resource /v2.1/events
 func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -1434,6 +1609,28 @@ func listEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.Write(b)
 }
 
+// @Title listTenantEvents
+// @Description List Events.
+// @Accept  json
+// @Success 200 {array} payloads.CiaoEvent "Returns the events of a tenant from the log system."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/{tenant}/events [get]
+// @Resource /v2.1/events
+// listTenantEvents is created with the only purpose of API documentation for method
+// /v2.1/{tenant}/events
+func listTenantEvents(w http.ResponseWriter, r *http.Request, context *controller) {
+	listEvents(w, r, context)
+}
+
+// @Title clearEvents
+// @Description Clear Events Log.
+// @Accept  json
+// @Success 202 {object} string "This operation does not return a response body, returns the 202 StatusAccepted code."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/events [delete]
+// @Resource /v2.1/events
 func clearEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	if validateToken(context, r) == false {
 		returnErrorCode(w, http.StatusUnauthorized, "Invalid token")
@@ -1449,6 +1646,14 @@ func clearEvents(w http.ResponseWriter, r *http.Request, context *controller) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// @Title traceData
+// @Description Trace data of a indicated trace.
+// @Accept json
+// @Success 200 {array} payloads.CiaoBatchFrameStat "Returns a summary of a trace in the system."
+// @Failure 400 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} payloads.HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/traces/{label} [get]
+// @Resource /v2.1/traces
 func traceData(w http.ResponseWriter, r *http.Request, context *controller) {
 	vars := mux.Vars(r)
 	label := vars["label"]
@@ -1535,7 +1740,7 @@ func createComputeAPI(context *controller) {
 	}).Methods("GET")
 
 	r.HandleFunc("/v2.1/{tenant}/events", func(w http.ResponseWriter, r *http.Request) {
-		listEvents(w, r, context)
+		listTenantEvents(w, r, context)
 	}).Methods("GET")
 
 	/* Avoid conflict with {tenant}/servers/detail */
@@ -1544,7 +1749,7 @@ func createComputeAPI(context *controller) {
 	}).Methods("GET")
 
 	r.HandleFunc("/v2.1/flavors/{flavor}/servers/detail", func(w http.ResponseWriter, r *http.Request) {
-		listServerDetails(w, r, context)
+		listFlavorServerDetail(w, r, context)
 	}).Methods("GET")
 
 	r.HandleFunc("/v2.1/tenants", func(w http.ResponseWriter, r *http.Request) {
