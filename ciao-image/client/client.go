@@ -27,7 +27,7 @@ type Client struct {
 }
 
 // GetImagePath returns the file system location of the image
-func GetImagePath(c Client, ID string) (string, error) {
+func (c Client) GetImagePath(ID string) (string, error) {
 	path := fmt.Sprintf("%s/%s", c.MountPoint, ID)
 
 	_, err := os.Stat(path)
