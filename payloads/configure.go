@@ -82,10 +82,10 @@ type ConfigureController struct {
 // ConfigureLauncher contains the unmarshalled configurations for the
 // launcher service.
 type ConfigureLauncher struct {
-	ComputeNetwork    string `yaml:"compute_net"`
-	ManagementNetwork string `yaml:"mgmt_net"`
-	DiskLimit         bool   `yaml:"disk_limit"`
-	MemoryLimit       bool   `yaml:"mem_limit"`
+	ComputeNetwork    []string `yaml:"compute_net"`
+	ManagementNetwork []string `yaml:"mgmt_net"`
+	DiskLimit         bool     `yaml:"disk_limit"`
+	MemoryLimit       bool     `yaml:"mem_limit"`
 }
 
 // ConfigureService contains the unmarshalled configurations for the resources

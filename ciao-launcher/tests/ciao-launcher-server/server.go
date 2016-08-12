@@ -481,8 +481,8 @@ func createConfigFile(confPath string) error {
 
 	conf.Configure.Launcher.DiskLimit = diskLimit
 	conf.Configure.Launcher.MemoryLimit = memLimit
-	conf.Configure.Launcher.ComputeNetwork = computeNet
-	conf.Configure.Launcher.ManagementNetwork = mgmtNet
+	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
+	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
 
 	d, err := yaml.Marshal(&conf)
 	if err != nil {

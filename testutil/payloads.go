@@ -340,8 +340,10 @@ const ConfigureYaml = `configure:
     identity_user: ` + IdentityUser + `
     identity_password: ` + IdentityPassword + `
   launcher:
-    compute_net: ` + ComputeNet + `
-    mgmt_net: ` + MgmtNet + `
+    compute_net:
+    - ` + ComputeNet + `
+    mgmt_net:
+    - ` + MgmtNet + `
     disk_limit: false
     mem_limit: false
   image_service:
