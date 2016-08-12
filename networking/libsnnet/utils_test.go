@@ -17,7 +17,13 @@
 package libsnnet
 
 import (
+	"net"
 	"testing"
+)
+
+const (
+	testCIDRIPv4 = "198.51.100.0/24"
+	testCIDRIPv6 = "2001:db8::/32"
 )
 
 func TestEqualNetSlice(t *testing.T) {
@@ -27,5 +33,45 @@ func TestEqualNetSlice(t *testing.T) {
 	equalSlices := EqualNetSlice(netSlice1, netSlice2)
 	if equalSlices == false {
 		t.Fatalf("Expected true, got %v", equalSlices)
+	}
+}
+
+// TestIPNetDeepCopyIPv4 tests that given an *IPNet (ip1)
+// creates a full copy of that struct (ip2), so if we
+// modify the copy, original struct should not change
+// this test is expected to pass
+func TestIPNetDeepCopyIPv4(t *testing.T) {
+	_, ip1, _ := net.ParseCIDR(testCIDRIPv4)
+	ip2 := IPNetDeepCopy(*ip1)
+
+	// check address of structs are different
+	if ip1 == ip2 {
+		t.Fatalf("expected a copy of %v, got a reference", ip1)
+	}
+
+	// change values of copy to verify original is not changed
+	ip2.IP = []byte{42, 42, 42, 42}
+	if ip1.String() != testCIDRIPv4 {
+		t.Fatalf("expected %v, got %v", testCIDRIPv4, ip1.String())
+	}
+}
+
+// TestIPNetDeepCopyIPv6 perform a test similar to
+// TestIPNetDeepCopyIPv4 but using an IPv6 CIDR as input
+// this test is expected to pass
+func TestIPNetDeepCopyIPv6(t *testing.T) {
+	_, ip1, _ := net.ParseCIDR(testCIDRIPv6)
+	ip2 := IPNetDeepCopy(*ip1)
+
+	// check address of structs are different
+	if ip1 == ip2 {
+		t.Fatalf("expected a copy of %v, got a reference", ip1)
+	}
+
+	// change values of copy to verify original is not changed
+	// new value "2001:db8:2001:db8:2001:db8:2001:db8"
+	ip2.IP = []byte{32, 01, 13, 184, 32, 01, 13, 184, 32, 01, 13, 184, 32, 01, 13, 184}
+	if ip1.String() != testCIDRIPv6 {
+		t.Fatalf("expected %v, got %v", testCIDRIPv6, ip1.String())
 	}
 }

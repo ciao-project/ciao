@@ -68,6 +68,21 @@ func init() {
 	ifaceRsrc = rand.New(ifaceRseed)
 }
 
+// IPNetDeepCopy returns a full copy of a net.IPNet struct
+func IPNetDeepCopy(IPNetToCopy net.IPNet) *net.IPNet {
+	var newIPNet net.IPNet
+
+	// create a copy of the net.IP slice
+	newIPNet.IP = make(net.IP, len(IPNetToCopy.IP))
+	copy(newIPNet.IP, IPNetToCopy.IP)
+
+	// create a copy of the net.IPMask slice
+	newIPNet.Mask = make(net.IPMask, len(IPNetToCopy.Mask))
+	copy(newIPNet.Mask, IPNetToCopy.Mask)
+
+	return &newIPNet
+}
+
 func validSnPrefix(s string) bool {
 	switch {
 	case strings.HasPrefix(s, prefixBridge):
