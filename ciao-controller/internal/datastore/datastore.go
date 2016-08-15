@@ -269,6 +269,8 @@ func (ds *Datastore) Init(config Config) error {
 		glog.Warning(err)
 	}
 
+	ds.instanceVolumes = make(map[attachment]string)
+
 	for key, value := range ds.attachments {
 		link := attachment{
 			instanceID: value.InstanceID,

@@ -2203,7 +2203,7 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 
 	rows, err := datastore.Query(query)
 	if err != nil {
-		return nil, err
+		return attachments, err
 	}
 	defer rows.Close()
 
@@ -2217,7 +2217,7 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return attachments, err
 	}
 
 	return attachments, nil
