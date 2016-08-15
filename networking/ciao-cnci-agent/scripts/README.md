@@ -26,10 +26,12 @@ the certificates it needs to connect to the ciao-scheduler.
 ```
 	cd $GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent
    	go install
+3. Download the appropriate version image and run the modification script:
 ```
-3. Update the image
-```
-./generate_cnci_cloud_image.sh --image <cnci-image>
+	cd scripts
+	curl -O https://download.clearlinux.org/demos/ciao/clear-${VERSION}-ciao-networking.img.xz
+	xz --decompress clear-${VERSION}-ciao-networking.img.xz
+	./generate_cnci_cloud_image.sh --image clear-${VERSION}-ciao-networking.img
 ```
 
 This will yield a provisioned image. This can be used as a CNCI VM.

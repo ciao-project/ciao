@@ -59,6 +59,12 @@ type SsntpTestClient struct {
 	StatusChansLock *sync.Mutex
 }
 
+// Shutdown shuts down the testutil.SsntpTestClient and cleans up state
+func (client *SsntpTestClient) Shutdown() {
+	client.Ssntp.Close()
+	closeClientChans(client)
+}
+
 // NewSsntpTestClientConnection creates an SsntpTestClient and dials the server.
 // Calling with a unique name parameter string for inclusion in the SsntpTestClient.Name
 // field aides in debugging.  The role parameter is mandatory.  The uuid string
@@ -76,14 +82,11 @@ func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*S
 	client.UUID = uuid
 	client.Role = role
 	client.StartFail = false
-	client.CmdChans = make(map[ssntp.Command]chan Result)
 	client.CmdChansLock = &sync.Mutex{}
-	client.EventChans = make(map[ssntp.Event]chan Result)
 	client.EventChansLock = &sync.Mutex{}
-	client.ErrorChans = make(map[ssntp.Error]chan Result)
 	client.ErrorChansLock = &sync.Mutex{}
-	client.StatusChans = make(map[ssntp.Status]chan Result)
 	client.StatusChansLock = &sync.Mutex{}
+	openClientChans(client)
 	client.instancesLock = &sync.Mutex{}
 	client.tracesLock = &sync.Mutex{}
 
@@ -128,13 +131,15 @@ func (client *SsntpTestClient) GetCmdChanResult(c *chan Result, cmd ssntp.Comman
 // SendResultAndDelCmdChan deletes an ssntp.Command from the SsntpTestClient command channel
 func (client *SsntpTestClient) SendResultAndDelCmdChan(cmd ssntp.Command, result Result) {
 	client.CmdChansLock.Lock()
-	defer client.CmdChansLock.Unlock()
 	c, ok := client.CmdChans[cmd]
 	if ok {
 		delete(client.CmdChans, cmd)
+		client.CmdChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	client.CmdChansLock.Unlock()
 }
 
 // AddEventChan adds a ssntp.Event to the SsntpTestClient event channel
@@ -165,13 +170,15 @@ func (client *SsntpTestClient) GetEventChanResult(c *chan Result, evt ssntp.Even
 // SendResultAndDelEventChan deletes an ssntp.Event from the SsntpTestClient event channel
 func (client *SsntpTestClient) SendResultAndDelEventChan(evt ssntp.Event, result Result) {
 	client.EventChansLock.Lock()
-	defer client.EventChansLock.Unlock()
 	c, ok := client.EventChans[evt]
 	if ok {
 		delete(client.EventChans, evt)
+		client.EventChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	client.EventChansLock.Unlock()
 }
 
 // AddErrorChan adds a ssntp.Error to the SsntpTestClient error channel
@@ -202,13 +209,15 @@ func (client *SsntpTestClient) GetErrorChanResult(c *chan Result, error ssntp.Er
 // SendResultAndDelErrorChan deletes an ssntp.Error from the SsntpTestClient error channel
 func (client *SsntpTestClient) SendResultAndDelErrorChan(error ssntp.Error, result Result) {
 	client.ErrorChansLock.Lock()
-	defer client.ErrorChansLock.Unlock()
 	c, ok := client.ErrorChans[error]
 	if ok {
 		delete(client.ErrorChans, error)
+		client.ErrorChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	client.ErrorChansLock.Unlock()
 }
 
 // AddStatusChan adds an ssntp.Status to the SsntpTestClient status channel
@@ -239,13 +248,63 @@ func (client *SsntpTestClient) GetStatusChanResult(c *chan Result, status ssntp.
 // SendResultAndDelStatusChan deletes an ssntp.Status from the SsntpTestClient status channel
 func (client *SsntpTestClient) SendResultAndDelStatusChan(status ssntp.Status, result Result) {
 	client.StatusChansLock.Lock()
-	defer client.StatusChansLock.Unlock()
 	c, ok := client.StatusChans[status]
 	if ok {
 		delete(client.StatusChans, status)
+		client.StatusChansLock.Unlock()
 		c <- result
 		close(c)
+		return
 	}
+	client.StatusChansLock.Unlock()
+}
+
+func openClientChans(client *SsntpTestClient) {
+	client.CmdChansLock.Lock()
+	client.CmdChans = make(map[ssntp.Command]chan Result)
+	client.CmdChansLock.Unlock()
+
+	client.EventChansLock.Lock()
+	client.EventChans = make(map[ssntp.Event]chan Result)
+	client.EventChansLock.Unlock()
+
+	client.ErrorChansLock.Lock()
+	client.ErrorChans = make(map[ssntp.Error]chan Result)
+	client.ErrorChansLock.Unlock()
+
+	client.StatusChansLock.Lock()
+	client.StatusChans = make(map[ssntp.Status]chan Result)
+	client.StatusChansLock.Unlock()
+}
+
+func closeClientChans(client *SsntpTestClient) {
+	client.CmdChansLock.Lock()
+	for k := range client.CmdChans {
+		close(client.CmdChans[k])
+		delete(client.CmdChans, k)
+	}
+	client.CmdChansLock.Unlock()
+
+	client.EventChansLock.Lock()
+	for k := range client.EventChans {
+		close(client.EventChans[k])
+		delete(client.EventChans, k)
+	}
+	client.EventChansLock.Unlock()
+
+	client.ErrorChansLock.Lock()
+	for k := range client.ErrorChans {
+		close(client.ErrorChans[k])
+		delete(client.ErrorChans, k)
+	}
+	client.ErrorChansLock.Unlock()
+
+	client.StatusChansLock.Lock()
+	for k := range client.StatusChans {
+		close(client.StatusChans[k])
+		delete(client.StatusChans, k)
+	}
+	client.StatusChansLock.Unlock()
 }
 
 // ConnectNotify implements the SSNTP client ConnectNotify callback for SsntpTestClient

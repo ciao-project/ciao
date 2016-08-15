@@ -58,8 +58,8 @@ func (f *uiFlag) Enabled() bool {
 
 var serverCertPath string
 var clientCertPath string
-var computeNet string
-var mgmtNet string
+var computeNet []string
+var mgmtNet []string
 var networking bool
 var hardReset bool
 var diskLimit bool

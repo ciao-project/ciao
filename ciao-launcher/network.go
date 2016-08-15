@@ -37,23 +37,23 @@ var dockerNet *libsnnet.DockerPlugin
 func initNetworkPhase1() error {
 
 	cn := &libsnnet.ComputeNode{}
-	var mnetList []net.IPNet
-	var cnetList []net.IPNet
 
-	if computeNet != "" {
-		_, cnet, _ := net.ParseCIDR(computeNet)
+	cnetList := make([]net.IPNet, len(computeNet))
+	for i, netStr := range computeNet {
+		_, cnet, _ := net.ParseCIDR(netStr)
 		if cnet == nil {
-			return fmt.Errorf("Unable to Parse CIDR :" + computeNet)
+			return fmt.Errorf("Unable to Parse CIDR :" + netStr)
 		}
-		cnetList = []net.IPNet{*cnet}
+		cnetList[i] = *cnet
 	}
 
-	if mgmtNet != "" {
-		_, mnet, _ := net.ParseCIDR(mgmtNet)
+	mnetList := make([]net.IPNet, len(mgmtNet))
+	for i, netStr := range mgmtNet {
+		_, mnet, _ := net.ParseCIDR(netStr)
 		if mnet == nil {
-			return fmt.Errorf("Unable to Parse CIDR :" + mgmtNet)
+			return fmt.Errorf("Unable to Parse CIDR :" + netStr)
 		}
-		mnetList = []net.IPNet{*mnet}
+		mnetList[i] = *mnet
 	}
 
 	cn.NetworkConfig = &libsnnet.NetworkConfig{

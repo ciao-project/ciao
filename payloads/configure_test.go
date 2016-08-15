@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/01org/ciao/networking/libsnnet"
 	. "github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
@@ -41,12 +42,12 @@ func TestConfigureUnmarshal(t *testing.T) {
 		t.Errorf("Wrong identity service type [%s]", cfg.Configure.IdentityService.Type)
 	}
 
-	if cfg.Configure.Launcher.ManagementNetwork != testutil.MgmtNet {
-		t.Errorf("Wrong launcher management network [%s]", cfg.Configure.Launcher.ManagementNetwork)
+	if libsnnet.EqualNetSlice(cfg.Configure.Launcher.ManagementNetwork, []string{testutil.MgmtNet}) == false {
+		t.Errorf("Wrong launcher management network %v", cfg.Configure.Launcher.ManagementNetwork)
 	}
 
-	if cfg.Configure.Launcher.ComputeNetwork != testutil.ComputeNet {
-		t.Errorf("Wrong launcher compute network [%s]", cfg.Configure.Launcher.ComputeNetwork)
+	if libsnnet.EqualNetSlice(cfg.Configure.Launcher.ComputeNetwork, []string{testutil.ComputeNet}) == false {
+		t.Errorf("Wrong launcher compute network %v", cfg.Configure.Launcher.ComputeNetwork)
 	}
 
 	if cfg.Configure.Scheduler.ConfigStorageType != Filesystem {
@@ -68,8 +69,8 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.IdentityService.Type = Keystone
 	cfg.Configure.IdentityService.URL = testutil.KeystoneURL
 
-	cfg.Configure.Launcher.ComputeNetwork = testutil.ComputeNet
-	cfg.Configure.Launcher.ManagementNetwork = testutil.MgmtNet
+	cfg.Configure.Launcher.ComputeNetwork = []string{testutil.ComputeNet}
+	cfg.Configure.Launcher.ManagementNetwork = []string{testutil.MgmtNet}
 	cfg.Configure.Launcher.DiskLimit = false
 	cfg.Configure.Launcher.MemoryLimit = false
 

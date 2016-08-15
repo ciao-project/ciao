@@ -22,6 +22,7 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
 	"github.com/google/gofuzz"
 )
@@ -32,8 +33,8 @@ const emptyPathURI = "file://"
 
 const keystoneURL = "http://keystone.example.com"
 const glanceURL = "http://glance.example.com"
-const computeNet = "192.168.1.110"
-const mgmtNet = "192.168.1.111"
+const computeNet = "192.168.1.0/24"
+const mgmtNet = "192.168.1.0/24"
 const storageURI = "/etc/ciao/configuration.yaml"
 const identityUser = "controller"
 const identityPassword = "ciao"
@@ -49,8 +50,10 @@ const minValidConf = `configure:
     identity_user: controller
     identity_password: ciao
   launcher:
-    compute_net: 192.168.1.110
-    mgmt_net: 192.168.1.111
+    compute_net:
+    - 192.168.1.0/24
+    mgmt_net:
+    - 192.168.1.0/24
   identity_service:
     url: http://keystone.example.com
 `
@@ -65,8 +68,10 @@ const fullValidConf = `configure:
     identity_user: controller
     identity_password: ciao
   launcher:
-    compute_net: 192.168.1.110
-    mgmt_net: 192.168.1.111
+    compute_net:
+    - 192.168.1.0/24
+    mgmt_net:
+    - 192.168.1.0/24
     disk_limit: true
     mem_limit: true
   image_service:
@@ -112,8 +117,8 @@ func equalPayload(p1, p2 payloads.Configure) bool {
 		p1.Configure.Controller.IdentityUser == p2.Configure.Controller.IdentityUser &&
 		p1.Configure.Controller.IdentityPassword == p2.Configure.Controller.IdentityPassword &&
 
-		p1.Configure.Launcher.ComputeNetwork == p2.Configure.Launcher.ComputeNetwork &&
-		p1.Configure.Launcher.ManagementNetwork == p2.Configure.Launcher.ManagementNetwork &&
+		libsnnet.EqualNetSlice(p1.Configure.Launcher.ComputeNetwork, p2.Configure.Launcher.ComputeNetwork) &&
+		libsnnet.EqualNetSlice(p1.Configure.Launcher.ManagementNetwork, p2.Configure.Launcher.ManagementNetwork) &&
 		p1.Configure.Launcher.DiskLimit == p2.Configure.Launcher.DiskLimit &&
 		p1.Configure.Launcher.MemoryLimit == p2.Configure.Launcher.MemoryLimit &&
 
@@ -134,8 +139,8 @@ func emptyPayload(p payloads.Configure) bool {
 		p.Configure.Controller.IdentityUser != "" &&
 		p.Configure.Controller.IdentityPassword != "" &&
 
-		p.Configure.Launcher.ComputeNetwork != "" &&
-		p.Configure.Launcher.ManagementNetwork != "" &&
+		len(p.Configure.Launcher.ComputeNetwork) > 0 &&
+		len(p.Configure.Launcher.ManagementNetwork) > 0 &&
 		p.Configure.Launcher.DiskLimit != false &&
 		p.Configure.Launcher.MemoryLimit != false &&
 
@@ -153,8 +158,8 @@ func fillPayload(conf *payloads.Configure) {
 	conf.Configure.Controller.HTTPSKey = httpsKey
 	conf.Configure.Controller.IdentityUser = identityUser
 	conf.Configure.Controller.IdentityPassword = identityPassword
-	conf.Configure.Launcher.ComputeNetwork = computeNet
-	conf.Configure.Launcher.ManagementNetwork = mgmtNet
+	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
+	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
 	conf.Configure.ImageService.URL = glanceURL
 	conf.Configure.IdentityService.URL = keystoneURL
 }
@@ -226,8 +231,8 @@ func TestValidMinConf(t *testing.T) {
 	conf.Configure.Controller.HTTPSKey = httpsKey
 	conf.Configure.Controller.IdentityUser = identityUser
 	conf.Configure.Controller.IdentityPassword = identityPassword
-	conf.Configure.Launcher.ComputeNetwork = computeNet
-	conf.Configure.Launcher.ManagementNetwork = mgmtNet
+	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
+	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
 
 	valid := validMinConf(&conf)
 	if valid != false {

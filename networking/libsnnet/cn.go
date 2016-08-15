@@ -191,7 +191,7 @@ func (cn *ComputeNode) addPhyLinkToConfig(link netlink.Link, ipv4Addrs []netlink
 
 	for _, addr := range ipv4Addrs {
 
-		if cn.ManagementNet == nil {
+		if cn.ManagementNet == nil || len(cn.ManagementNet) == 0 {
 			cn.MgtAddr = append(cn.MgtAddr, addr)
 			cn.MgtLink = append(cn.MgtLink, link)
 		} else {
@@ -203,7 +203,7 @@ func (cn *ComputeNode) addPhyLinkToConfig(link netlink.Link, ipv4Addrs []netlink
 			}
 		}
 
-		if cn.ComputeNet == nil {
+		if cn.ComputeNet == nil || len(cn.ComputeNet) == 0 {
 			cn.ComputeAddr = append(cn.ComputeAddr, addr)
 			cn.ComputeLink = append(cn.ComputeLink, link)
 		} else {
@@ -259,7 +259,9 @@ func (cn *ComputeNode) findPhyNwInterface() error {
 
 	//Allow auto configuration only in the case where there is a single physical
 	//interface with an IP address
-	if (cn.ManagementNet == nil || cn.ComputeNet == nil) && phyInterfaces > 1 {
+	if (cn.ManagementNet == nil || cn.ComputeNet == nil) ||
+		(len(cn.ManagementNet) == 0 || len(cn.ComputeNet) == 0) &&
+			phyInterfaces > 1 {
 		return fmt.Errorf("unable to autoconfigure network")
 	}
 

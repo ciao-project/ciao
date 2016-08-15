@@ -16,25 +16,27 @@
 
 package payloads
 
-// ServiceType is reserved for future use.
+// ServiceType is used to define OpenStack service types, like e.g. the image
+// or identity ones.
 type ServiceType string
 
-// StorageType is reserved for future use.
+// StorageType is used to define the configuration backend storage type.
 type StorageType string
 
 const (
-	// Glance is reserved for future use.
+	// Glance is used to define the imaging service.
 	Glance ServiceType = "glance"
 
-	// Keystone is reserved for future use.
+	// Keystone is used to define the identity service.
 	Keystone ServiceType = "keystone"
 )
 
 const (
-	// Filesystem is reserved for future use.
+	// Filesystem defines the local filesystem backend storage type for the
+	// configuration data.
 	Filesystem StorageType = "file"
 
-	// Etcd is reserved for future use.
+	// Etcd defines the etcd backend storage type for the configuration data.
 	Etcd StorageType = "etcd"
 )
 
@@ -60,13 +62,15 @@ func (s StorageType) String() string {
 	return ""
 }
 
-// ConfigureScheduler is reserved for future use.
+// ConfigureScheduler contains the unmarshalled configurations for the
+// scheduler service.
 type ConfigureScheduler struct {
 	ConfigStorageType StorageType `yaml:"storage_type"`
 	ConfigStorageURI  string      `yaml:"storage_uri"`
 }
 
-// ConfigureController is reserved for future use.
+// ConfigureController contains the unmarshalled configurations for the
+// controller service.
 type ConfigureController struct {
 	ComputePort      int    `yaml:"compute_port"`
 	HTTPSCACert      string `yaml:"compute_ca"`
@@ -75,21 +79,25 @@ type ConfigureController struct {
 	IdentityPassword string `yaml:"identity_password"`
 }
 
-// ConfigureLauncher is reserved for future use.
+// ConfigureLauncher contains the unmarshalled configurations for the
+// launcher service.
 type ConfigureLauncher struct {
-	ComputeNetwork    string `yaml:"compute_net"`
-	ManagementNetwork string `yaml:"mgmt_net"`
-	DiskLimit         bool   `yaml:"disk_limit"`
-	MemoryLimit       bool   `yaml:"mem_limit"`
+	ComputeNetwork    []string `yaml:"compute_net"`
+	ManagementNetwork []string `yaml:"mgmt_net"`
+	DiskLimit         bool     `yaml:"disk_limit"`
+	MemoryLimit       bool     `yaml:"mem_limit"`
 }
 
-// ConfigureService is reserved for future use.
+// ConfigureService contains the unmarshalled configurations for the resources
+// of the configurations.
 type ConfigureService struct {
 	Type ServiceType `yaml:"type"`
 	URL  string      `yaml:"url"`
 }
 
-// ConfigurePayload is reserved for future use.
+// ConfigurePayload is a wrapper to read and unmarshall all posible
+// configurations for the following services: scheduler, controller, launcher,
+//  imaging and identity.
 type ConfigurePayload struct {
 	Scheduler       ConfigureScheduler  `yaml:"scheduler"`
 	Controller      ConfigureController `yaml:"controller"`
@@ -98,7 +106,7 @@ type ConfigurePayload struct {
 	IdentityService ConfigureService    `yaml:"identity_service"`
 }
 
-// Configure is reserved for future use.
+// Configure represents the SSNTP CONFIGURE command payload.
 type Configure struct {
 	Configure ConfigurePayload `yaml:"configure"`
 }

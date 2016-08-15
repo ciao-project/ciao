@@ -237,17 +237,17 @@ func TestStartWorkload(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, _ := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 }
 
 func TestStartTracedWorkload(t *testing.T) {
 	client := testStartTracedWorkload(t)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 }
 
 func TestStartWorkloadLaunchCNCI(t *testing.T) {
 	netClient, instances := testStartWorkloadLaunchCNCI(t, 1)
-	defer netClient.Ssntp.Close()
+	defer netClient.Shutdown()
 
 	id := instances[0].TenantID
 
@@ -297,7 +297,7 @@ func TestDeleteInstance(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	sendStatsCmd(client, t)
 
@@ -323,7 +323,7 @@ func TestStopInstance(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	sendStatsCmd(client, t)
 
@@ -349,7 +349,7 @@ func TestRestartInstance(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	time.Sleep(1 * time.Second)
 
@@ -404,7 +404,7 @@ func TestEvacuateNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	serverCh := server.AddCmdChan(ssntp.EVACUATE)
 
@@ -567,7 +567,7 @@ func TestInstanceDeletedEvent(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	sendStatsCmd(client, t)
 
@@ -610,7 +610,7 @@ func TestStartFailure(t *testing.T) {
 	reason := payloads.FullCloud
 
 	client, _ := testStartWorkload(t, 1, true, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	// since we had a start failure, we should confirm that the
 	// instance is no longer pending in the database
@@ -622,7 +622,7 @@ func TestStopFailure(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	client.StopFail = true
 	client.StopFailReason = payloads.StopNoInstance
@@ -670,7 +670,7 @@ func TestRestartFailure(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 
 	client.RestartFail = true
 	client.RestartFailReason = payloads.RestartLaunchFailure
@@ -744,10 +744,10 @@ func TestNoNetwork(t *testing.T) {
 	var reason payloads.StartFailureReason
 
 	client, _ := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
+	defer client.Shutdown()
 }
 
-// NOTE: the caller is responsible for calling Ssntp.Close() on the *SsntpTestClient
+// NOTE: the caller is responsible for calling Shutdown() on the *SsntpTestClient
 func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	tenant, err := addTestTenant()
 	if err != nil {
@@ -759,7 +759,7 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 		t.Fatal(err)
 	}
 	// caller of TestStartTracedWorkload() owns doing the close
-	//defer client.Ssntp.Close()
+	//defer client.Shutdown()
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {
@@ -795,7 +795,7 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	return client
 }
 
-// NOTE: the caller is responsible for calling Ssntp.Close() on the *SsntpTestClient
+// NOTE: the caller is responsible for calling Shutdown() on the *SsntpTestClient
 func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFailureReason) (*testutil.SsntpTestClient, []*types.Instance) {
 	tenant, err := addTestTenant()
 	if err != nil {
@@ -807,7 +807,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 		t.Fatal(err)
 	}
 	// caller of TestStartWorkload() owns doing the close
-	//defer client.Ssntp.Close()
+	//defer client.Shutdown()
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {
@@ -851,14 +851,14 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	return client, instances
 }
 
-// NOTE: the caller is responsible for calling Ssntp.Close() on the *SsntpTestClient
+// NOTE: the caller is responsible for calling Shutdown() on the *SsntpTestClient
 func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClient, []*types.Instance) {
 	netClient, err := testutil.NewSsntpTestClientConnection("StartWorkloadLaunchCNCI", ssntp.NETAGENT, testutil.NetAgentUUID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// caller of testStartWorkloadLaunchCNCI() owns doing the close
-	//defer netClient.Ssntp.Close()
+	//defer netClient.Shutdown()
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil {
@@ -927,7 +927,7 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	}
 
 	// shutdown the test CNCI client
-	cnciClient.Ssntp.Close()
+	cnciClient.Shutdown()
 
 	if result.InstanceUUID != tenantCNCI[0].InstanceID {
 		t.Fatalf("Did not get correct Instance ID, got %s, expected %s", result.InstanceUUID, tenantCNCI[0].InstanceID)
@@ -985,13 +985,13 @@ func TestGetStorage(t *testing.T) {
 
 var testClients []*testutil.SsntpTestClient
 var context *controller
-var server testutil.SsntpTestServer
+var server *testutil.SsntpTestServer
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 
 	// create fake ssntp server
-	testutil.StartTestServer(&server)
+	server = testutil.StartTestServer()
 
 	context = new(controller)
 	context.ds = new(datastore.Datastore)
@@ -1060,7 +1060,7 @@ func TestMain(m *testing.M) {
 	context.client.Disconnect()
 	context.ds.Exit()
 	id.Close()
-	server.Ssntp.Stop()
+	server.Shutdown()
 
 	os.Exit(code)
 }

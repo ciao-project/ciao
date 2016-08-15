@@ -141,6 +141,7 @@ var coverageRegexp *regexp.Regexp
 var cssPath string
 var textOutput bool
 var short bool
+var race bool
 var tags string
 var colour bool
 var coverProfile string
@@ -153,6 +154,7 @@ func init() {
 	flag.StringVar(&cssPath, "css", "", "Full path to CSS file")
 	flag.BoolVar(&textOutput, "text", false, "Output text instead of HTML")
 	flag.BoolVar(&short, "short", false, "If true -short is passed to go test")
+	flag.BoolVar(&race, "race", false, "If true -race is passed to go test")
 	flag.StringVar(&tags, "tags", "", "Build tags to pass to go test")
 	flag.StringVar(&coverProfile, "coverprofile", "", "Path of coverage profile to be generated")
 	flag.BoolVar(&appendProfile, "append-profile", false, "Append generated coverage profiles an existing file")
@@ -381,6 +383,9 @@ func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffe
 	args := []string{"test", p.Name, "-v", "-cover"}
 	if short {
 		args = append(args, "-short")
+	}
+	if race {
+		args = append(args, "-race")
 	}
 	if tags != "" {
 		args = append(args, "-tags", tags)

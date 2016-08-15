@@ -151,3 +151,22 @@ func TestAgentCmdChanTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAgentCloseChans(t *testing.T) {
+	var result Result
+
+	_ = agent.AddCmdChan(ssntp.START)
+	go agent.SendResultAndDelCmdChan(ssntp.START, result)
+
+	_ = agent.AddEventChan(ssntp.TraceReport)
+	go agent.SendResultAndDelEventChan(ssntp.TraceReport, result)
+
+	_ = agent.AddErrorChan(ssntp.StopFailure)
+	go agent.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+
+	_ = agent.AddStatusChan(ssntp.READY)
+	go agent.SendResultAndDelStatusChan(ssntp.READY, result)
+
+	CloseClientChans(agent)
+	OpenClientChans(agent)
+}

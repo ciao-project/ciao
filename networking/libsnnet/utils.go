@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -41,6 +43,25 @@ var (
 	ifaceRseed rand.Source
 	ifaceRsrc  *rand.Rand
 )
+
+// EqualNetSlice compare 2 network slices
+func EqualNetSlice(slice1, slice2 []string) bool {
+	// if a slice is nil and other isn't then are not equal
+	// if length of slices are not the same, are not equal
+	if (slice1 == nil && slice2 != nil) ||
+		(slice2 == nil && slice1 != nil) ||
+		(len(slice1) != len(slice2)) {
+		return false
+	}
+	sortedSlice1 := make(sort.StringSlice, len(slice1))
+	sortedSlice2 := make(sort.StringSlice, len(slice2))
+	copy(sortedSlice1, slice1)
+	copy(sortedSlice2, slice2)
+	sortedSlice1.Sort()
+	sortedSlice2.Sort()
+	return reflect.DeepEqual(sortedSlice1, sortedSlice2)
+
+}
 
 func init() {
 	ifaceRseed = rand.NewSource(time.Now().UnixNano())

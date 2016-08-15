@@ -32,13 +32,16 @@ type Resource string
 type Hypervisor string
 
 const (
-	// All is reserved for future usage.
+	// All used to indicate all persistent scenario, in this case it
+	// indicates to act in all instances.
 	All Persistence = "all"
 
-	// VM is reserved for future usage.
+	// VM used to indicate in a instance persistent scenario, in this case it
+	// indicates to act in only one instance.
 	VM = "vm"
 
-	// Host is reserved for future usage.
+	// Host used to indicate in a Host persistent scenario, in this case it
+	// indicates to act in only in the instances of a host.
 	Host = "host"
 )
 
@@ -106,22 +109,22 @@ type RequestedResource struct {
 	Mandatory bool `yaml:"mandatory"`
 }
 
-// EstimatedResource is reserved for future usage.
+// EstimatedResource contains the definition of estimated value of a resource.
 type EstimatedResource struct {
-	// Type is reserved for future usage.
+	// Type is the resource type.
 	Type Resource `yaml:"type"`
 
-	// Value is reserved for future usage.
+	// value is the value of the resource.
 	Value int `yaml:"value"`
 }
 
-// NetworkResources contains all the networking information for an instance
+// NetworkResources contains all the networking information for an instance.
 type NetworkResources struct {
 
-	// VnicMAC contains the MAC address of an instance's VNIC
+	// VnicMAC contains the MAC address of an instance's VNIC.
 	VnicMAC string `yaml:"vnic_mac"`
 
-	// VnicUUID is a cluster unique UUID assigned to an instance's VNIC
+	// VnicUUID is a cluster unique UUID assigned to an instance's VNIC.
 	VnicUUID string `yaml:"vnic_uuid"`
 
 	// ConcentratorUUID is the UUID of the CNCI instance.  Only specified
@@ -136,17 +139,20 @@ type NetworkResources struct {
 	// specified when creating CN instances.
 	Subnet string `yaml:"subnet"`
 
-	// SubnetKey is reserved for future usage.
+	// SubnetKey is the subnet identifier to which the instance
+	// is assigned.
 	SubnetKey string `yaml:"subnet_key"`
 
-	// SubnetUUID is reserved for future usage.
+	// SubnetUUID is the subnet ID of the subnet to which the instance is
+	//  assinged.
 	SubnetUUID string `yaml:"subnet_uuid"`
 
 	// PrivateIP represents the private IP address of an instance.  Only
 	// specified when creating CN instances.
 	PrivateIP string `yaml:"private_ip"`
 
-	// PublicIP is  reserved for future usage.
+	// PublicIP represents the current statu of the assignation of a Public
+	// IP.
 	PublicIP bool `yaml:"public_ip"`
 }
 
@@ -173,7 +179,7 @@ type StartCmd struct {
 	// Only used for qemu instances.
 	FWType Firmware `yaml:"fw_type"`
 
-	// InstancePersistence is reserved for future use.
+	// InstancePersistence is the persistence type for the instance.
 	InstancePersistence Persistence `yaml:"persistence"`
 
 	// VMType indicates whether we are creating a qemu or docker instance.
@@ -183,7 +189,7 @@ type StartCmd struct {
 	// assigned to the new instance.
 	RequestedResources []RequestedResource `yaml:"requested_resources"`
 
-	// EstimatedResources is reserved for future usage.
+	// EstimatedResources represents the estimated value of the instance resource.
 	EstimatedResources []EstimatedResource `yaml:"estimated_resources"`
 
 	// Networking contains all the information required to set up networking
@@ -205,13 +211,13 @@ type Start struct {
 
 // RestartCmd contains information needed to restart an instance.
 type RestartCmd struct {
-	// TenantUUID is reserved for future usage.
+	// TenantUUID is the tenant ID of the instance to restart.
 	TenantUUID string `yaml:"tenant_uuid"`
 
-	// InstanceUUID is the UUID of the instance to restart
+	// InstanceUUID is the UUID of the instance to restart.
 	InstanceUUID string `yaml:"instance_uuid"`
 
-	// ImageUUID  is reserved for future usage.
+	// ImageUUID  is the image ID fo the instance to restart.
 	ImageUUID string `yaml:"image_uuid"`
 
 	// WorkloadAgentUUID identifies the node on which the instance is
@@ -219,19 +225,21 @@ type RestartCmd struct {
 	// the command to the correct CN/NN.
 	WorkloadAgentUUID string `yaml:"workload_agent_uuid"`
 
-	// FWType is reserved for future usage.
+	// FWType indicates the type of firmware needed to boot the instance.
 	FWType Firmware `yaml:"fw_type"`
 
-	// InstancePersistence is reserved for future usage.
+	// InstancePersistence is the persistence type for the instance.
 	InstancePersistence Persistence `yaml:"persistence"`
 
-	// RequestedResources is reserved for future usage.
+	// RequestedResources contains a list of the resources that are to be
+	// assigned to the new instance.
 	RequestedResources []RequestedResource `yaml:"requested_resources"`
 
-	// EstimatedResourcse is reserved for future usage.
+	// EstimatedResources represents the estimated value of the instance resource.
 	EstimatedResources []EstimatedResource `yaml:"estimated_resources"`
 
-	// Networking is reserved for future usage.
+	// Networking contains all the information required to set up networking
+	// for the new instance.
 	Networking NetworkResources `yaml:"networking"`
 }
 

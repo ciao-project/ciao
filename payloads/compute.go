@@ -34,7 +34,8 @@ type Addresses struct {
 	Private []PrivateAddresses `json:"private"`
 }
 
-// Link is reserved for future use.
+// Link contains the address to a compute resource, like e.g. a Flavor or an
+// Image.
 type Link struct {
 	Href string `json:"href"`
 	Rel  string `json:"rel"`
@@ -372,7 +373,7 @@ type CiaoClusterStatus struct {
 	} `json:"cluster"`
 }
 
-// CNCIDetail is reserved for future use.
+// CNCIDetail stores the IPv4 for a CNCI Agent.
 type CNCIDetail struct {
 	IPv4 string `json:"IPv4"`
 }
@@ -398,7 +399,7 @@ type CiaoTracesSummary struct {
 	Summaries []CiaoTraceSummary `json:"summaries"`
 }
 
-// CiaoFrameStat is reserved for future use
+// CiaoFrameStat contains the elapsed time statistics for a frame.
 type CiaoFrameStat struct {
 	ID               string  `json:"node_id"`
 	TotalElapsedTime float64 `json:"total_elapsed_time"`
