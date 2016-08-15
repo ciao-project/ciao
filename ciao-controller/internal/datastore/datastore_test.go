@@ -1892,6 +1892,101 @@ func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 	ds.updateStorageAttachments(instance.ID, attachments)
 }
 
+func TestGetStorageAttachment(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a, err := ds.getStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if a.InstanceID != instance.ID || a.BlockID != data.ID {
+		t.Fatal(err)
+	}
+}
+
+func TestGetStorageAttachmentError(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.getStorageAttachment(instance.ID, data.ID)
+	if err != ErrNoStorageAttachment {
+		t.Fatal(err)
+	}
+}
+
 var ds *Datastore
 
 var tablesInitPath = flag.String("tables_init_path", "../../tables", "path to csv files")
