@@ -1451,6 +1451,7 @@ func (ds *Datastore) createStorageAttachment(instanceID string, blockID string) 
 	return a, err
 }
 
+// GetStorageAttachments returns a list of volumes associated with this instance.
 func (ds *Datastore) GetStorageAttachments(instanceID string) ([]types.StorageAttachment, error) {
 	var links []types.StorageAttachment
 
