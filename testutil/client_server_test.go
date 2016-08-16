@@ -116,7 +116,7 @@ func TestStartFailure(t *testing.T) {
 
 	serverErrorCh := server.AddErrorChan(ssntp.StartFailure)
 	controllerErrorCh := controller.AddErrorChan(ssntp.StartFailure)
-	fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.StartFailure)
+	fmt.Fprintf(os.Stderr, "Expecting server and controller to note: \"%s\"\n", ssntp.StartFailure)
 
 	agent.StartFail = true
 	agent.StartFailReason = payloads.FullCloud
@@ -252,7 +252,7 @@ func TestStopFailure(t *testing.T) {
 
 	serverErrorCh := server.AddErrorChan(ssntp.StopFailure)
 	controllerErrorCh := controller.AddErrorChan(ssntp.StopFailure)
-	fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.StopFailure)
+	fmt.Fprintf(os.Stderr, "Expecting server and controller to note: \"%s\"\n", ssntp.StopFailure)
 
 	agent.StopFail = true
 	agent.StopFailReason = payloads.StopNoInstance
@@ -307,7 +307,7 @@ func TestRestartFailure(t *testing.T) {
 
 	serverErrorCh := server.AddErrorChan(ssntp.RestartFailure)
 	controllerErrorCh := controller.AddErrorChan(ssntp.RestartFailure)
-	fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.RestartFailure)
+	fmt.Fprintf(os.Stderr, "Expecting server and controller to note: \"%s\"\n", ssntp.RestartFailure)
 
 	agent.RestartFail = true
 	agent.RestartFailReason = payloads.RestartNoInstance
@@ -347,7 +347,7 @@ func doDelete(fail bool) error {
 	if fail == true {
 		serverErrorCh = server.AddErrorChan(ssntp.DeleteFailure)
 		controllerErrorCh = controller.AddErrorChan(ssntp.DeleteFailure)
-		fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.DeleteFailure)
+		fmt.Fprintf(os.Stderr, "Expecting server and controller to note: \"%s\"\n", ssntp.DeleteFailure)
 
 		agent.DeleteFail = true
 		agent.DeleteFailReason = payloads.DeleteNoInstance
@@ -441,7 +441,7 @@ func doAttachVolume(fail bool) error {
 	if fail == true {
 		serverErrorCh = server.AddErrorChan(ssntp.AttachVolumeFailure)
 		controllerErrorCh = controller.AddErrorChan(ssntp.AttachVolumeFailure)
-		fmt.Printf("Expecting server and controller to note: \"%s\"\n", ssntp.AttachVolumeFailure)
+		fmt.Fprintf(os.Stderr, "Expecting server and controller to note: \"%s\"\n", ssntp.AttachVolumeFailure)
 
 		agent.AttachFail = true
 		agent.AttachVolumeFailReason = payloads.AttachVolumeAlreadyAttached
@@ -579,7 +579,7 @@ func restartServer() error {
 }
 
 func TestReconnects(t *testing.T) {
-	fmt.Println("stopping server")
+	fmt.Fprintln(os.Stderr, "stopping server")
 	err := stopServer()
 	if err != nil {
 		t.Fatal(err)
@@ -587,7 +587,7 @@ func TestReconnects(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	fmt.Println("restarting server")
+	fmt.Fprintln(os.Stderr, "restarting server")
 	err = restartServer()
 	if err != nil {
 		t.Fatal(err)
