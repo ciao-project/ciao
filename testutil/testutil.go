@@ -25,4 +25,5 @@ type Result struct {
 	NodeUUID     string
 	TenantUUID   string
 	CNCI         bool
+	VolumeUUID   string
 }

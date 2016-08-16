@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 )
@@ -1442,6 +1443,63 @@ func TestStartFailureFullCloud(t *testing.T) {
 	}
 }
 
+func TestAttachVolumeFailure(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// add test instances
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	instance, err := addTestInstance(newTenant, wls[0])
+	if err != nil {
+		t.Error(err)
+	}
+
+	// add test block data
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// update block data to indicate it is attaching
+	data.State = types.Attaching
+
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// pretend we got a failure to attach.
+	ds.AttachVolumeFailure(instance.ID, data.ID, payloads.AttachVolumeAlreadyAttached)
+
+	// make sure state has been switched to Available again.
+	bd, err := ds.GetBlockDevice(data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if bd.State != types.Available {
+		t.Fatalf("expected state: %s, got %s\n", types.Available, bd.State)
+	}
+}
+
 func testAllocateTenantIPs(t *testing.T, nIPs int) {
 	nIPsPerSubnet := 253
 
@@ -1489,6 +1547,575 @@ func TestAllocate1024IPs(t *testing.T) {
 	testAllocateTenantIPs(t, 1024)
 }
 
+func TestAddBlockDevice(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we can retrieve the block data.
+	_, err = ds.GetBlockDevice("validID")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that this is associate with our tenant.
+	devices, err := ds.GetBlockDevices(newTenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, d := range devices {
+		if d.ID != "validID" {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestUpdateBlockDevice(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we can retrieve the block data.
+	_, err = ds.GetBlockDevice(blockDevice.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// update the state of the block device.
+	data.State = types.Attaching
+
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we can retrieve the block data.
+	d, err := ds.GetBlockDevice(blockDevice.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if d.State != types.Attaching {
+		t.Fatalf("expected State == %s, got %s\n", types.Attaching, d.State)
+	}
+}
+
+func TestGetBlockDevicesErr(t *testing.T) {
+	// confirm that sending a bad tenant id results in error
+	_, err := ds.GetBlockDevices("badID")
+	if err != ErrNoTenant {
+		t.Fatal(err)
+	}
+}
+
+func TestGetBlockDeviceErr(t *testing.T) {
+	// confirm that we get the correct error for missing id
+	_, err := ds.GetBlockDevice("badID")
+	if err != ErrNoBlockData {
+		t.Fatal(err)
+	}
+}
+
+func TestUpdateBlockDeviceErr(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	// confirm that we get the correct error for missing id
+	err = ds.UpdateBlockDevice(data)
+	if err != ErrNoBlockData {
+		t.Fatal(err)
+	}
+}
+
+func TestCreateStorageAttachment(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get the attachments associated with this instance
+	a1, err := ds.GetStorageAttachments(instance.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(a1) != 1 {
+		t.Fatal(err)
+	}
+
+	if a1[0].InstanceID != instance.ID {
+		t.Fatal(err)
+	}
+}
+
+func TestUpdateStorageAttachmentExisting(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get the attachments associated with this instance
+	a1, err := ds.GetStorageAttachments(instance.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(a1) != 1 {
+		t.Fatal(err)
+	}
+
+	if a1[0].InstanceID != instance.ID {
+		t.Fatal(err)
+	}
+
+	attachments := []string{data.ID}
+
+	// this doesn't return an error, but we can still exercise
+	// the code to see if anything panics.
+	ds.updateStorageAttachments(instance.ID, attachments)
+}
+
+func TestUpdateStorageAttachmentNotExisting(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachments := []string{data.ID}
+
+	// this doesn't return an error, but we can still exercise
+	// the code to see if anything panics.
+	ds.updateStorageAttachments(instance.ID, attachments)
+}
+
+func TestUpdateStorageAttachmentDeleted(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachments := []string{}
+
+	// this doesn't return an error, but we can still exercise
+	// the code to see if anything panics.
+	// send in an empty list.
+	ds.updateStorageAttachments(instance.ID, attachments)
+}
+
+func TestGetStorageAttachment(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a, err := ds.getStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if a.InstanceID != instance.ID || a.BlockID != data.ID {
+		t.Fatal(err)
+	}
+}
+
+func TestGetStorageAttachmentError(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.getStorageAttachment(instance.ID, data.ID)
+	if err != ErrNoStorageAttachment {
+		t.Fatal(err)
+	}
+}
+
+func TestDeleteStorageAttachment(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a, err := ds.getStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if a.InstanceID != instance.ID || a.BlockID != data.ID {
+		t.Fatal(err)
+	}
+
+	err = ds.deleteStorageAttachment(a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.getStorageAttachment(instance.ID, data.ID)
+	if err != ErrNoStorageAttachment {
+		t.Fatal(err)
+	}
+}
+
+func TestDeleteStorageAttachmentError(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a, err := ds.getStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if a.InstanceID != instance.ID || a.BlockID != data.ID {
+		t.Fatal(err)
+	}
+
+	err = ds.deleteStorageAttachment(a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.getStorageAttachment(instance.ID, data.ID)
+	if err != ErrNoStorageAttachment {
+		t.Fatal(err)
+	}
+
+	err = ds.deleteStorageAttachment(a.ID)
+	if err != ErrNoStorageAttachment {
+		t.Fatal(err)
+	}
+}
+
 var ds *Datastore
 
 var tablesInitPath = flag.String("tables_init_path", "../../tables", "path to csv files")
@@ -1500,8 +2127,8 @@ func TestMain(m *testing.M) {
 	ds = new(Datastore)
 
 	dsConfig := Config{
-		PersistentURI:     "ciao-controller-test.db",
-		TransientURI:      "ciao-controller-test-tdb.db",
+		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
+		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitTablesPath:    *tablesInitPath,
 		InitWorkloadsPath: *workloadsPath,
 	}
@@ -1514,12 +2141,6 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	ds.Exit()
-	os.Remove("./ciao-controller-test.db")
-	os.Remove("./ciao-controller-test.db-wal")
-	os.Remove("./ciao-controller-test.db-shm")
-	os.Remove("./ciao-controller-test-tdb.db")
-	os.Remove("./ciao-controller-test-tdb.db-wal")
-	os.Remove("./ciao-controller-test-tdb.db-shm")
 
 	os.Exit(code)
 }

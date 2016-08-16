@@ -102,6 +102,9 @@ const NetAgentUUID = "6be56328-92e2-4ecd-b426-8fe529c04e0c"
 // AgentUUID is a node UUID for coordinated stop/restart/delete tests
 const AgentUUID = "4cb19522-1e18-439a-883a-f9b2a3a95f5e"
 
+// VolumeUUID is a node UUID for storage tests
+const VolumeUUID = "67d86208-b46c-4465-9018-e14187d4010"
+
 //////////////////////////////////////////////////////////////////////////////
 
 // StartYaml is a sample workload START ssntp.Command payload for test usage
@@ -429,6 +432,7 @@ var InstanceStat003 = payloads.InstanceStat{
 	MemoryUsageMB: -1,
 	DiskUsageMB:   2,
 	CPUUsage:      -1,
+	Volumes:       []string{VolumeUUID},
 }
 
 // NetworkStat001 is a sample payloads.NetworkStat
@@ -489,6 +493,7 @@ instances:
   memory_usage_mb: 40
   disk_usage_mb: 2
   cpu_usage: 90
+  volumes: []
 - instance_uuid: cbda5bd8-33bd-4d39-9f52-ace8c9f0b99c
   state: active
   ssh_ip: 172.168.2.2
@@ -496,6 +501,7 @@ instances:
   memory_usage_mb: 50
   disk_usage_mb: 10
   cpu_usage: 0
+  volumes: []
 - instance_uuid: 1f5b2fe6-4493-4561-904a-8f4e956218d9
   state: exited
   ssh_ip: ""
@@ -503,6 +509,8 @@ instances:
   memory_usage_mb: -1
   disk_usage_mb: 2
   cpu_usage: -1
+  volumes:
+  - 67d86208-b46c-4465-9018-e14187d4010
 `
 
 // NodeOnlyStatsYaml is a sample minimal node STATS ssntp.Command payload for test cases
@@ -524,4 +532,40 @@ networks:
 // with limited node statistics and no per-instance statistics
 const PartialStatsYaml = `node_uuid: ` + AgentUUID + `
 load: 1
+`
+
+// AttachVolumeYaml is a sample yaml payload for the ssntp Attach Volume command.
+const AttachVolumeYaml = `attach_volume:
+  instance_uuid: ` + InstanceUUID + `
+  volume_uuid: ` + VolumeUUID + `
+  workload_agent_uuid: ` + AgentUUID + `
+`
+
+// BadAttachVolumeYaml is a corrupt yaml payload for the ssntp Attach Volume command.
+const BadAttachVolumeYaml = `attach_volume:
+  volume_uuid: ` + VolumeUUID + `
+`
+
+// DetachVolumeYaml is a sample yaml payload for the ssntp Detach Volume command.
+const DetachVolumeYaml = `detach_volume:
+  instance_uuid: ` + InstanceUUID + `
+  volume_uuid: ` + VolumeUUID + `
+  workload_agent_uuid: ` + AgentUUID + `
+`
+
+// BadDetachVolumeYaml is a corrupt yaml payload for the ssntp Detach Volume command.
+const BadDetachVolumeYaml = `detach_volume:
+  instance_uuid: ` + InstanceUUID + `
+`
+
+// AttachVolumeFailureYaml is a sample AttachVolumeFailure ssntp.Error payload for test cases
+const AttachVolumeFailureYaml = `instance_uuid: ` + InstanceUUID + `
+volume_uuid: ` + VolumeUUID + `
+reason: attach_failure
+`
+
+// DetachVolumeFailureYaml is a sample DetachVolumeFailure ssntp.Error payload for test cases
+const DetachVolumeFailureYaml = `instance_uuid: ` + InstanceUUID + `
+volume_uuid: ` + VolumeUUID + `
+reason: detach_failure
 `

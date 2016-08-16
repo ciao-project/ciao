@@ -145,6 +145,15 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			return
 		}
 		client.context.ds.RestartFailure(failure.InstanceUUID, failure.Reason)
+	case ssntp.AttachVolumeFailure:
+		var failure payloads.ErrorAttachVolumeFailure
+		err := yaml.Unmarshal(payload, &failure)
+		if err != nil {
+			glog.Warning("Error unmarshalling AttachVolumeFailure")
+			return
+		}
+		client.context.ds.AttachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
+
 	}
 	glog.V(1).Info(string(payload))
 }
@@ -267,6 +276,28 @@ func (client *ssntpClient) EvacuateNode(nodeID string) error {
 	glog.V(1).Info(string(y))
 
 	_, err = client.ssntp.SendCommand(ssntp.EVACUATE, y)
+
+	return err
+}
+
+func (client *ssntpClient) attachVolume(volID string, instanceID string, nodeID string) error {
+	payload := payloads.AttachVolume{
+		Attach: payloads.VolumeCmd{
+			InstanceUUID:      instanceID,
+			VolumeUUID:        volID,
+			WorkloadAgentUUID: nodeID,
+		},
+	}
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	glog.Infof("AttachVolume %s to %s\n", volID, instanceID)
+	glog.V(1).Info(string(y))
+
+	_, err = client.ssntp.SendCommand(ssntp.AttachVolume, y)
 
 	return err
 }

@@ -72,6 +72,7 @@ type ovsStatsUpdateCmd struct {
 	memoryUsageMB int
 	diskUsageMB   int
 	CPUUsage      int
+	volumes       []string
 }
 
 type ovsTraceFrame struct {
@@ -107,6 +108,7 @@ type ovsInstanceState struct {
 	maxMemoryMB    int
 	sshIP          string
 	sshPort        int
+	volumes        []string
 }
 
 type overseer struct {
@@ -416,6 +418,7 @@ func (ovs *overseer) sendStats(cns *cnStats, status ssntp.Status) {
 		s.Instances[i].CPUUsage = state.CPUUsage
 		s.Instances[i].SSHIP = state.sshIP
 		s.Instances[i].SSHPort = state.sshPort
+		s.Instances[i].Volumes = state.volumes
 		i++
 	}
 
@@ -608,6 +611,7 @@ func (ovs *overseer) processStatusUpdateCommand(cmd *ovsStatsUpdateCmd) {
 		target.memoryUsageMB = cmd.memoryUsageMB
 		target.diskUsageMB = cmd.diskUsageMB
 		target.CPUUsage = cmd.CPUUsage
+		target.volumes = cmd.volumes
 	}
 }
 
