@@ -17,6 +17,7 @@ package image
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -180,6 +181,12 @@ type ListImagesResponse struct {
 	First  string                `json:"first"`
 }
 
+// UploadImageResponse contains the UUID of the image which content got uploaded
+// http://developer.openstack.org/api-ref-image-v2.html#storeImageFile-v2
+type UploadImageResponse struct {
+	ImageID string `json:"image_id"`
+}
+
 // TBD - can we pull these structs out into some sort of common
 // api service file?
 // ----------
@@ -194,6 +201,7 @@ type APIConfig struct {
 // information needed to implement the image endpoints.
 type Service interface {
 	CreateImage(CreateImageRequest) (CreateImageResponse, error)
+	UploadImage(imageID string, body io.Reader) error
 	ListImages() ([]CreateImageResponse, error)
 }
 
@@ -325,6 +333,24 @@ func listImages(context *Context, w http.ResponseWriter, r *http.Request) (APIRe
 	return APIResponse{http.StatusOK, resp}, nil
 }
 
+func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	vars := mux.Vars(r)
+	imageID := vars["volume_id"]
+
+	defer r.Body.Close()
+
+	err := context.UploadImage(imageID, r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	resp := UploadImageResponse{
+		ImageID: imageID,
+	}
+
+	return APIResponse{http.StatusOK, resp}, nil
+}
+
 // Routes provides gorilla mux routes for the supported endpoints.
 func Routes(config APIConfig) *mux.Router {
 	// make new Context
@@ -335,6 +361,7 @@ func Routes(config APIConfig) *mux.Router {
 	// API versions
 	r.Handle("/", APIHandler{context, listAPIVersions}).Methods("GET")
 	r.Handle("/v2/images", APIHandler{context, createImage}).Methods("POST")
+	r.Handle("/v2/images/{image_id}/file", APIHandler{context, uploadImage}).Methods("PUT")
 	r.Handle("/v2/images", APIHandler{context, listImages}).Methods("GET")
 
 	return r

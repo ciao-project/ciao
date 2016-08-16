@@ -15,6 +15,7 @@
 package datastore
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -102,6 +103,28 @@ func testDelete(t *testing.T, d DataStore, m MetaDataStore) {
 	}
 }
 
+func testUpload(t *testing.T, d DataStore, m MetaDataStore) {
+	i := Image{
+		ID:    "validID",
+		State: Created,
+	}
+
+	cache := ImageCache{}
+	cache.Init(d, m)
+
+	// create the entry
+	err := cache.CreateImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Upload a string
+	err = cache.UploadImage(i.ID, strings.NewReader("Upload file"))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNilNoopCreateAndGet(t *testing.T) {
 	testCreateAndGet(t, nil, &Noop{})
 }
@@ -112,4 +135,8 @@ func TestNilNoopGetAll(t *testing.T) {
 
 func TestNilNoopDelete(t *testing.T) {
 	testDelete(t, nil, &Noop{})
+}
+
+func TestNilNoopUpload(t *testing.T) {
+	testUpload(t, nil, &Noop{})
 }

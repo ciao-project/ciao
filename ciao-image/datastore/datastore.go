@@ -28,6 +28,12 @@ type State string
 const (
 	// Created means that an empty image has been created
 	Created State = "created"
+
+	// Saving means the image is being saved
+	Saving State = "saving"
+
+	// Active means that the image is created, uploaded and ready to use.
+	Active State = "active"
 )
 
 // Status translate an image state to an openstack image status.
@@ -35,6 +41,10 @@ func (state State) Status() image.Status {
 	switch state {
 	case Created:
 		return image.Queued
+	case Saving:
+		return image.Saving
+	case Active:
+		return image.Active
 	}
 
 	return image.Active
@@ -75,6 +85,9 @@ type Image struct {
 var (
 	// ErrNoImage is returned when an image is not found.
 	ErrNoImage = errors.New("Image not found")
+
+	// ErrImageSaving is returned when an image is being uploaded.
+	ErrImageSaving = errors.New("Image being uploaded")
 )
 
 // MetaDataStore is the metadata storing interface that's used by
@@ -86,6 +99,6 @@ type MetaDataStore interface {
 }
 
 type DataStore interface {
-	Write(Image, io.Reader) error
+	Write(ID string, body io.Reader) error
 	Delete(ID string)
 }

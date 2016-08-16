@@ -15,6 +15,7 @@
 package datastore
 
 import (
+	"io"
 	"sync"
 )
 
@@ -104,6 +105,41 @@ func (c *ImageCache) DeleteImage(ID string) error {
 	if !ok {
 		return ErrNoImage
 	}
+
+	return nil
+}
+
+// UploadImage will read an image, save it and update the image cache.
+func (c *ImageCache) UploadImage(ID string, body io.Reader) error {
+	c.lock.Lock()
+
+	image, ok := c.images[ID]
+	if !ok {
+		c.lock.Unlock()
+		return ErrNoImage
+	}
+
+	if image.State == Saving {
+		c.lock.Unlock()
+		return ErrImageSaving
+	}
+
+	image.State = Saving
+
+	c.lock.Unlock()
+
+	if c.ds != nil {
+		err := c.ds.Write(ID, body)
+		if err != nil {
+			return err
+		}
+	}
+
+	c.lock.Lock()
+
+	image.State = Active
+
+	c.lock.Unlock()
 
 	return nil
 }

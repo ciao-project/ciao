@@ -17,6 +17,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -98,6 +99,11 @@ func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
 	}
 
 	return response, nil
+}
+
+// UploadImage will upload a raw image data and update its status.
+func (is ImageService) UploadImage(imageID string, body io.Reader) error {
+	return nil
 }
 
 // Config is required to setup the API context for the image service.
