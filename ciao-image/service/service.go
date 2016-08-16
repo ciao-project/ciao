@@ -118,6 +118,23 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 	}, nil
 }
 
+func createImageResponse(img Image) (image.CreateImageResponse, error) {
+	return image.CreateImageResponse{
+		Status:     stateToStatus(img.State),
+		CreatedAt:  img.CreateTime,
+		Tags:       make([]string, 0),
+		Locations:  make([]string, 0),
+		DiskFormat: image.DiskFormat(img.Type),
+		Visibility: visibility(img),
+		Self:       fmt.Sprintf("/v2/images/%s", img.ID),
+		Protected:  false,
+		ID:         img.ID,
+		File:       fmt.Sprintf("/v2/images/%s/file", img.ID),
+		Schema:     "/v2/schemas/image",
+		Name:       &img.Name,
+	}, nil
+}
+
 // ListImages will return a list of all the images in the datastore.
 func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
 	var response []image.CreateImageResponse
@@ -128,21 +145,7 @@ func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
 	}
 
 	for _, img := range images {
-		i := image.CreateImageResponse{
-			Status:     stateToStatus(img.State),
-			CreatedAt:  img.CreateTime,
-			Tags:       make([]string, 0),
-			Locations:  make([]string, 0),
-			DiskFormat: image.DiskFormat(img.Type),
-			Visibility: visibility(img),
-			Self:       fmt.Sprintf("/v2/images/%s", img.ID),
-			Protected:  false,
-			ID:         img.ID,
-			File:       fmt.Sprintf("/v2/images/%s/file", img.ID),
-			Schema:     "/v2/schemas/image",
-			Name:       &img.Name,
-		}
-
+		i, _ := createImageResponse(img)
 		response = append(response, i)
 	}
 
