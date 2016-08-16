@@ -76,16 +76,6 @@ type Image struct {
 	Type       Type
 }
 
-// Datastore is the datastore interface that the service implementation
-// requires.
-type Datastore interface {
-	Create(Image) error
-	RetrieveAll() ([]Image, error)
-	Retrieve(ID string) (Image, error)
-	Update(Image) error
-	Delete(ID string) error
-}
-
 var (
 	// ErrNoImage is returned when an image is not found.
 	ErrNoImage = errors.New("Image not found")
@@ -93,7 +83,7 @@ var (
 
 // ImageService is the context for the image service implementation.
 type ImageService struct {
-	ds Datastore
+	cache imageCache
 }
 
 // CreateImage will create an empty image in the image datastore.
@@ -107,7 +97,7 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 		CreateTime: time.Now(),
 	}
 
-	err := is.ds.Create(i)
+	err := is.cache.createImage(i)
 	if err != nil {
 		return image.CreateImageResponse{}, err
 	}
@@ -132,7 +122,7 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
 	var response []image.CreateImageResponse
 
-	images, err := is.ds.RetrieveAll()
+	images, err := is.cache.getAllImages()
 	if err != nil {
 		return response, err
 	}
@@ -209,7 +199,11 @@ func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
 // then wrap them in keystone validation. It will then start the https
 // service.
 func Start(config Config) error {
-	is := ImageService{config.Datastore}
+	is := ImageService{}
+	err := is.cache.init(config.Datastore)
+	if err != nil {
+		return err
+	}
 
 	apiConfig := image.APIConfig{
 		Port:         config.Port,

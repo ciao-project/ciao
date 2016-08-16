@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
-	image "github.com/01org/ciao/ciao-image/client"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
@@ -156,7 +155,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 		// assume always persistent for now.
 		// assume we have already checked quotas.
 		// ID of source is the image id.
-		path, err := image.GetImagePath(c.image, wl.ImageID)
+		path, err := c.image.GetImagePath(wl.ImageID)
 		if err != nil {
 			// this image doesn't exist
 			return payloads.StorageResources{}, err

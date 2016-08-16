@@ -12,28 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package service
 
-import (
-	"fmt"
-	"os"
-)
-
-// Client maintains context for ciao clients of the image service
-type Client struct {
-	// MountPoint specifies where the images are located
-	// in the filesystem.
-	MountPoint string
-}
-
-// GetImagePath returns the file system location of the image
-func (c Client) GetImagePath(ID string) (string, error) {
-	path := fmt.Sprintf("%s/%s", c.MountPoint, ID)
-
-	_, err := os.Stat(path)
-	if err != nil {
-		return "", err
-	}
-
-	return path, nil
+// Datastore is the data storing interface that the service implementation
+// requires.
+type Datastore interface {
+	Write(Image) error
+	Delete(ID string) error
+	GetAll() ([]Image, error)
 }

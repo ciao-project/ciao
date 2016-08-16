@@ -12,31 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package datastore
+package service
 
 import (
 	"testing"
-
-	"github.com/01org/ciao/ciao-image/service"
 )
 
-func TestCreateAndRetrieve(t *testing.T) {
-	i := service.Image{
+func testCreateAndGet(t *testing.T, d Datastore) {
+	i := Image{
 		ID:    "validID",
-		State: service.Created,
+		State: Created,
 	}
 
-	d := Datastore{}
-	d.Init()
+	cache := imageCache{}
+	cache.init(d)
 
 	// create the entry
-	err := d.Create(i)
+	err := cache.createImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// retrieve the entry
-	image, err := d.Retrieve(i.ID)
+	image, err := cache.getImage(i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,23 +44,23 @@ func TestCreateAndRetrieve(t *testing.T) {
 	}
 }
 
-func TestRetrieveAll(t *testing.T) {
-	i := service.Image{
+func testGetAll(t *testing.T, d Datastore) {
+	i := Image{
 		ID:    "validID",
-		State: service.Created,
+		State: Created,
 	}
 
-	d := Datastore{}
-	d.Init()
+	cache := imageCache{}
+	cache.init(d)
 
 	// create the entry
-	err := d.Create(i)
+	err := cache.createImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// retrieve the entry
-	images, err := d.RetrieveAll()
+	images, err := cache.getAllImages()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,30 +74,42 @@ func TestRetrieveAll(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
-	i := service.Image{
+func testDelete(t *testing.T, d Datastore) {
+	i := Image{
 		ID:    "validID",
-		State: service.Created,
+		State: Created,
 	}
 
-	d := Datastore{}
-	d.Init()
+	cache := imageCache{}
+	cache.init(d)
 
 	// create the entry
-	err := d.Create(i)
+	err := cache.createImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// delete the entry
-	err = d.Delete(i.ID)
+	err = cache.deleteImage(i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// now attempt to retrive the entry
-	_, err = d.Retrieve(i.ID)
+	_, err = cache.getImage(i.ID)
 	if err == nil {
 		t.Fatal(err)
 	}
+}
+
+func TestNoopCreateAndGet(t *testing.T) {
+	testCreateAndGet(t, &Noop{})
+}
+
+func TestNoopGetAll(t *testing.T) {
+	testGetAll(t, &Noop{})
+}
+
+func TestNoopDelete(t *testing.T) {
+	testDelete(t, &Noop{})
 }
