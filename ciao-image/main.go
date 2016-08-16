@@ -30,6 +30,7 @@ var logDir = "/var/lib/ciao/logs/ciao-image"
 var identity = "https://localhost:35357/"
 var userName = "ciao"
 var password = "hello"
+var mountPoint = "/var/lib/ciao/images"
 
 var identityURL = flag.String("identity", identity, "URL of keystone service")
 
@@ -44,12 +45,15 @@ func init() {
 func main() {
 	// TBD Select the right datastore interface
 	metaDs := &datastore.Noop{}
+	ds := &datastore.Posix{
+		MountPoint: mountPoint,
+	}
 
 	config := service.Config{
 		Port:             port,
 		HTTPSCACert:      httpsCAcert,
 		HTTPSKey:         httpsKey,
-		DataStore:        nil,
+		DataStore:        ds,
 		MetaDataStore:    metaDs,
 		IdentityEndpoint: identity,
 		Username:         userName,

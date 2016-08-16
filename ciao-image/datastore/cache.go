@@ -129,7 +129,7 @@ func (c *ImageCache) UploadImage(ID string, body io.Reader) error {
 	c.lock.Unlock()
 
 	if c.ds != nil {
-		err := c.ds.Write(ID, body)
+		_, err := c.ds.Write(ID, body)
 		if err != nil {
 			return err
 		}

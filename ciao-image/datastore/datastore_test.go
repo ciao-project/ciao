@@ -125,18 +125,20 @@ func testUpload(t *testing.T, d DataStore, m MetaDataStore) {
 	}
 }
 
-func TestNilNoopCreateAndGet(t *testing.T) {
-	testCreateAndGet(t, nil, &Noop{})
+var mountPoint = "/var/lib/ciao/images"
+
+func TestPosixNoopCreateAndGet(t *testing.T) {
+	testCreateAndGet(t, &Posix{MountPoint: mountPoint}, &Noop{})
 }
 
-func TestNilNoopGetAll(t *testing.T) {
-	testGetAll(t, nil, &Noop{})
+func TestPosixNoopGetAll(t *testing.T) {
+	testGetAll(t, &Posix{MountPoint: mountPoint}, &Noop{})
 }
 
-func TestNilNoopDelete(t *testing.T) {
-	testDelete(t, nil, &Noop{})
+func TestPosixNoopDelete(t *testing.T) {
+	testDelete(t, &Posix{MountPoint: mountPoint}, &Noop{})
 }
 
-func TestNilNoopUpload(t *testing.T) {
-	testUpload(t, nil, &Noop{})
+func TestPosixNoopUpload(t *testing.T) {
+	testUpload(t, &Posix{MountPoint: mountPoint}, &Noop{})
 }
