@@ -90,6 +90,17 @@ var (
 	ErrImageSaving = errors.New("Image being uploaded")
 )
 
+// DataStore is the image data storage interface.
+type DataStore interface {
+	Init(RawDataStore, MetaDataStore) error
+	CreateImage(Image) error
+	GetAllImages() ([]Image, error)
+	GetImage(string) (Image, error)
+	UpdateImage(Image) error
+	DeleteImage(string) error
+	UploadImage(string, io.Reader) error
+}
+
 // MetaDataStore is the metadata storing interface that's used by
 // image cache implementation.
 type MetaDataStore interface {
