@@ -2088,6 +2088,8 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 
 	datastore := ds.getTableDB("block_data")
 
+	ds.dbLock.Lock()
+
 	query := `SELECT	block_data.id,
 				block_data.tenant_id,
 				block_data.size,
@@ -2098,6 +2100,7 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 
 	rows, err := datastore.Query(query, tenantID)
 	if err != nil {
+		ds.dbLock.Unlock()
 		return nil, err
 	}
 	defer rows.Close()
@@ -2111,8 +2114,11 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 		}
 	}
 	if err = rows.Err(); err != nil {
+		ds.dbLock.Unlock()
 		return nil, err
 	}
+
+	ds.dbLock.Unlock()
 
 	return devices, nil
 }
