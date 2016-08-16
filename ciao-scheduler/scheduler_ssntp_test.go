@@ -580,17 +580,17 @@ func ssntpTestsTeardown() {
 	wg.Add(3)
 
 	go func() {
-		controller.Ssntp.Close()
+		controller.Shutdown()
 		wg.Done()
 	}()
 
 	go func() {
-		netAgent.Ssntp.Close()
+		netAgent.Shutdown()
 		wg.Done()
 	}()
 
 	go func() {
-		agent.Ssntp.Close()
+		agent.Shutdown()
 		wg.Done()
 	}()
 
