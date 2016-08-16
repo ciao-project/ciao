@@ -53,7 +53,7 @@ const attachVolumeDriveTemplateString = `
                 "driver": "file",
                 "filename": "{{.Device}}"
             },
-            "id": "{{.VolumeUUID}}_drive"
+            "id": "drive_{{.VolumeUUID}}"
         }
     }
 }
@@ -63,9 +63,9 @@ const attachVolumeDeviceTemplateString = `
 {
     "execute": "device_add",
     "arguments": {
-        "drive": "{{.VolumeUUID}}_drive",
+        "drive": "drive_{{.VolumeUUID}}",
         "driver": "virtio-blk-pci",
-        "id": "{{.VolumeUUID}}_device"
+        "id": "device_{{.VolumeUUID}}"
     }
 }
 `
@@ -74,7 +74,7 @@ const detachVolumeDriveTemplateString = `
 {
     "execute": "x-blockdev-del",
     "arguments": {
-        "id": "{{.VolumeUUID}}_drive"
+        "id": "drive_{{.VolumeUUID}}"
     }
 }
 `
@@ -83,7 +83,7 @@ const detachVolumeDeviceTemplateString = `
 {
     "execute": "device_del",
     "arguments": {
-        "id": "{{.VolumeUUID}}_device"
+        "id": "device_{{.VolumeUUID}}"
     }
 }
 `
