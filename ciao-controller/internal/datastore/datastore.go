@@ -31,13 +31,15 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 )
 
 // custom errors
 var (
-	ErrNoTenant    = errors.New("Tenant not found")
-	ErrNoBlockData = errors.New("Block Device not found")
+	ErrNoTenant            = errors.New("Tenant not found")
+	ErrNoBlockData         = errors.New("Block Device not found")
+	ErrNoStorageAttachment = errors.New("No Volume Attached")
 )
 
 // Config contains configuration information for the datastore.
@@ -72,6 +74,11 @@ type tenant struct {
 type node struct {
 	types.Node
 	instances map[string]*types.Instance
+}
+
+type attachment struct {
+	instanceID string
+	volumeID   string
 }
 
 type persistentStore interface {
@@ -115,6 +122,9 @@ type persistentStore interface {
 	createBlockData(data types.BlockData) error
 	updateBlockData(data types.BlockData) error
 	getTenantDevices(tenantID string) (map[string]types.BlockData, error)
+	createStorageAttachment(a types.StorageAttachment) error
+	getAllStorageAttachments() (map[string]types.StorageAttachment, error)
+	deleteStorageAttachment(ID string) error
 }
 
 // Datastore provides context for the datastore package.
@@ -149,6 +159,12 @@ type Datastore struct {
 
 	blockDevices map[string]types.BlockData
 	bdLock       *sync.RWMutex
+
+	attachments     map[string]types.StorageAttachment
+	instanceVolumes map[attachment]string
+	attachLock      *sync.RWMutex
+	// maybe add a map[instanceid][]types.StorageAttachment
+	// to make retrieval of volumes faster.
 }
 
 // Init initializes the private data for the Datastore object.
@@ -247,6 +263,24 @@ func (ds *Datastore) Init(config Config) error {
 	}
 
 	ds.bdLock = &sync.RWMutex{}
+
+	ds.attachments, err = ds.db.getAllStorageAttachments()
+	if err != nil {
+		glog.Warning(err)
+	}
+
+	ds.instanceVolumes = make(map[attachment]string)
+
+	for key, value := range ds.attachments {
+		link := attachment{
+			instanceID: value.InstanceID,
+			volumeID:   value.BlockID,
+		}
+
+		ds.instanceVolumes[link] = key
+	}
+
+	ds.attachLock = &sync.RWMutex{}
 
 	return err
 }
@@ -1231,6 +1265,8 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 			ds.nodesLock.Unlock()
 		}
 		ds.instancesLock.Unlock()
+
+		ds.updateStorageAttachments(stat.InstanceUUID, stat.Volumes)
 	}
 
 	return ds.db.addInstanceStatsDB(stats, nodeID)
@@ -1390,4 +1426,170 @@ func (ds *Datastore) UpdateBlockDevice(data types.BlockData) error {
 	}
 
 	return ds.AddBlockDevice(data)
+}
+
+func (ds *Datastore) createStorageAttachment(instanceID string, blockID string) (types.StorageAttachment, error) {
+	link := attachment{
+		instanceID: instanceID,
+		volumeID:   blockID,
+	}
+
+	a := types.StorageAttachment{
+		InstanceID: instanceID,
+		ID:         uuid.Generate().String(),
+		BlockID:    blockID,
+	}
+
+	// add it to our links map
+	ds.attachLock.Lock()
+	ds.attachments[a.ID] = a
+	ds.instanceVolumes[link] = a.ID
+	ds.attachLock.Unlock()
+
+	err := ds.db.createStorageAttachment(a)
+
+	return a, err
+}
+
+// GetStorageAttachments returns a list of volumes associated with this instance.
+func (ds *Datastore) GetStorageAttachments(instanceID string) ([]types.StorageAttachment, error) {
+	var links []types.StorageAttachment
+
+	ds.attachLock.RLock()
+	for _, a := range ds.attachments {
+		if a.InstanceID == instanceID {
+			links = append(links, a)
+		}
+	}
+	ds.attachLock.RUnlock()
+
+	return links, nil
+}
+
+func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []string) {
+
+	m := make(map[string]bool)
+
+	// this for handy searching.
+	for _, v := range volumes {
+		m[v] = true
+	}
+
+	// see if we already know about each attachment.
+	ds.attachLock.Lock()
+
+	for _, v := range volumes {
+		key := attachment{
+			instanceID: instanceID,
+			volumeID:   v,
+		}
+
+		_, ok := ds.instanceVolumes[key]
+		if !ok {
+			// add the attachment
+			a := types.StorageAttachment{
+				InstanceID: instanceID,
+				ID:         uuid.Generate().String(),
+				BlockID:    v,
+			}
+			ds.attachments[a.ID] = a
+			ds.instanceVolumes[key] = a.ID
+
+			// not sure what to do with an error here.
+			err := ds.db.createStorageAttachment(a)
+			if err != nil {
+				glog.Warning(err)
+				continue
+			}
+
+			// update the state of the volume.
+			bd, err := ds.GetBlockDevice(v)
+			if err != nil {
+				glog.Warning(err)
+				// well, maybe we should add it, it obviously
+				// exists.
+				continue
+			}
+
+			bd.State = types.InUse
+			err = ds.UpdateBlockDevice(bd)
+			if err != nil {
+				glog.Warning(err)
+			}
+		}
+	}
+
+	// finally, check to see if all the attachments we already
+	// know about are in the list.
+	for _, ID := range ds.instanceVolumes {
+		a := ds.attachments[ID]
+
+		if !m[a.BlockID] {
+			bd, err := ds.GetBlockDevice(a.BlockID)
+			if err != nil {
+				glog.Warning(err)
+				continue
+			}
+
+			// update the state of the volume.
+			bd.State = types.Available
+			err = ds.UpdateBlockDevice(bd)
+			if err != nil {
+				glog.Warning(err)
+			}
+
+			// delete the attachment.
+			key := attachment{
+				instanceID: a.InstanceID,
+				volumeID:   a.BlockID,
+			}
+
+			delete(ds.attachments, ID)
+			delete(ds.instanceVolumes, key)
+		}
+	}
+	ds.attachLock.Unlock()
+}
+
+func (ds *Datastore) getStorageAttachment(instanceID string, volumeID string) (types.StorageAttachment, error) {
+	var a types.StorageAttachment
+
+	key := attachment{
+		instanceID: instanceID,
+		volumeID:   volumeID,
+	}
+
+	ds.attachLock.RLock()
+	id, ok := ds.instanceVolumes[key]
+	if ok {
+		a = ds.attachments[id]
+	}
+	ds.attachLock.RUnlock()
+
+	if !ok {
+		return a, ErrNoStorageAttachment
+	}
+
+	return a, nil
+}
+
+func (ds *Datastore) deleteStorageAttachment(ID string) error {
+	ds.attachLock.Lock()
+	a, ok := ds.attachments[ID]
+	if ok {
+		key := attachment{
+			instanceID: a.InstanceID,
+			volumeID:   a.BlockID,
+		}
+
+		delete(ds.attachments, ID)
+		delete(ds.instanceVolumes, key)
+	}
+	ds.attachLock.Unlock()
+
+	if !ok {
+		return ErrNoStorageAttachment
+	}
+
+	return ds.db.deleteStorageAttachment(ID)
 }
