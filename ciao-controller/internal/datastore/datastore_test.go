@@ -1801,7 +1801,7 @@ func TestUpdateStorageAttachmentExisting(t *testing.T) {
 func TestUpdateStorageAttachmentNotExisting(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	blockDevice := storage.BlockDevice{
@@ -1845,7 +1845,7 @@ func TestUpdateStorageAttachmentNotExisting(t *testing.T) {
 func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	blockDevice := storage.BlockDevice{
@@ -1867,7 +1867,7 @@ func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 
 	wls, err := ds.GetWorkloads()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if len(wls) == 0 {
@@ -1895,7 +1895,7 @@ func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 func TestGetStorageAttachment(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	blockDevice := storage.BlockDevice{
@@ -1917,7 +1917,7 @@ func TestGetStorageAttachment(t *testing.T) {
 
 	wls, err := ds.GetWorkloads()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if len(wls) == 0 {
@@ -1947,7 +1947,7 @@ func TestGetStorageAttachment(t *testing.T) {
 func TestGetStorageAttachmentError(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	blockDevice := storage.BlockDevice{
@@ -1969,7 +1969,7 @@ func TestGetStorageAttachmentError(t *testing.T) {
 
 	wls, err := ds.GetWorkloads()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if len(wls) == 0 {
@@ -1990,7 +1990,7 @@ func TestGetStorageAttachmentError(t *testing.T) {
 func TestDeleteStorageAttachment(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	blockDevice := storage.BlockDevice{
@@ -2012,7 +2012,7 @@ func TestDeleteStorageAttachment(t *testing.T) {
 
 	wls, err := ds.GetWorkloads()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if len(wls) == 0 {
@@ -2052,7 +2052,7 @@ func TestDeleteStorageAttachment(t *testing.T) {
 func TestDeleteStorageAttachmentError(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	blockDevice := storage.BlockDevice{
@@ -2074,7 +2074,7 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 
 	wls, err := ds.GetWorkloads()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if len(wls) == 0 {
