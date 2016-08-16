@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 
+	"github.com/01org/ciao/ciao-image/datastore"
 	"github.com/01org/ciao/ciao-image/service"
 	"github.com/01org/ciao/openstack/image"
 	"github.com/golang/glog"
@@ -42,7 +43,7 @@ func init() {
 
 func main() {
 	// TBD Select the right datastore interface
-	ds := &service.Noop{}
+	ds := &datastore.Noop{}
 
 	config := service.Config{
 		Port:             port,

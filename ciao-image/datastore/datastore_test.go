@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package service
+package datastore
 
 import (
 	"testing"
@@ -24,17 +24,17 @@ func testCreateAndGet(t *testing.T, d Datastore) {
 		State: Created,
 	}
 
-	cache := imageCache{}
-	cache.init(d)
+	cache := ImageCache{}
+	cache.Init(d)
 
 	// create the entry
-	err := cache.createImage(i)
+	err := cache.CreateImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// retrieve the entry
-	image, err := cache.getImage(i.ID)
+	image, err := cache.GetImage(i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,17 +50,17 @@ func testGetAll(t *testing.T, d Datastore) {
 		State: Created,
 	}
 
-	cache := imageCache{}
-	cache.init(d)
+	cache := ImageCache{}
+	cache.Init(d)
 
 	// create the entry
-	err := cache.createImage(i)
+	err := cache.CreateImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// retrieve the entry
-	images, err := cache.getAllImages()
+	images, err := cache.GetAllImages()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,23 +80,23 @@ func testDelete(t *testing.T, d Datastore) {
 		State: Created,
 	}
 
-	cache := imageCache{}
-	cache.init(d)
+	cache := ImageCache{}
+	cache.Init(d)
 
 	// create the entry
-	err := cache.createImage(i)
+	err := cache.CreateImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// delete the entry
-	err = cache.deleteImage(i.ID)
+	err = cache.DeleteImage(i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// now attempt to retrive the entry
-	_, err = cache.getImage(i.ID)
+	_, err = cache.GetImage(i.ID)
 	if err == nil {
 		t.Fatal(err)
 	}

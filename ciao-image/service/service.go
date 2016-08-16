@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/01org/ciao/ciao-image/datastore"
 	"github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/openstack/image"
 	"github.com/01org/ciao/ssntp/uuid"
@@ -28,76 +29,23 @@ import (
 	"github.com/rackspace/gophercloud/openstack"
 )
 
-// State represents the state of the image.
-type State string
-
-const (
-	// Created means that an empty image has been created
-	Created State = "created"
-)
-
-func stateToStatus(state State) image.Status {
-	switch state {
-	case Created:
-		return image.Queued
-	}
-
-	return image.Active
-}
-
-func visibility(i Image) image.Visibility {
-	if i.TenantID == "" {
-		return image.Public
-	}
-	return image.Private
-}
-
-// Type represents the valid image types.
-type Type string
-
-const (
-	// Raw is the raw image format.
-	Raw Type = "raw"
-
-	// QCow is the qcow2 format.
-	QCow Type = "qcow2"
-
-	// ISO is the iso format.
-	ISO Type = "iso"
-)
-
-// Image contains the information that ciao will store about the image
-type Image struct {
-	ID         string
-	State      State
-	TenantID   string
-	Name       string
-	CreateTime time.Time
-	Type       Type
-}
-
-var (
-	// ErrNoImage is returned when an image is not found.
-	ErrNoImage = errors.New("Image not found")
-)
-
 // ImageService is the context for the image service implementation.
 type ImageService struct {
-	cache imageCache
+	cache datastore.ImageCache
 }
 
 // CreateImage will create an empty image in the image datastore.
 func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateImageResponse, error) {
 	// create an ImageInfo struct and store it in our image
 	// datastore.
-	i := Image{
+	i := datastore.Image{
 		ID:         uuid.Generate().String(),
-		State:      Created,
+		State:      datastore.Created,
 		Name:       req.Name,
 		CreateTime: time.Now(),
 	}
 
-	err := is.cache.createImage(i)
+	err := is.cache.CreateImage(i)
 	if err != nil {
 		return image.CreateImageResponse{}, err
 	}
@@ -108,7 +56,7 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 		Tags:       make([]string, 0),
 		Locations:  make([]string, 0),
 		DiskFormat: image.Raw,
-		Visibility: visibility(i),
+		Visibility: i.Visibility(),
 		Self:       fmt.Sprintf("/v2/images/%s", i.ID),
 		Protected:  false,
 		ID:         i.ID,
@@ -118,14 +66,14 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 	}, nil
 }
 
-func createImageResponse(img Image) (image.CreateImageResponse, error) {
+func createImageResponse(img datastore.Image) (image.CreateImageResponse, error) {
 	return image.CreateImageResponse{
-		Status:     stateToStatus(img.State),
+		Status:     img.State.Status(),
 		CreatedAt:  img.CreateTime,
 		Tags:       make([]string, 0),
 		Locations:  make([]string, 0),
 		DiskFormat: image.DiskFormat(img.Type),
-		Visibility: visibility(img),
+		Visibility: img.Visibility(),
 		Self:       fmt.Sprintf("/v2/images/%s", img.ID),
 		Protected:  false,
 		ID:         img.ID,
@@ -139,7 +87,7 @@ func createImageResponse(img Image) (image.CreateImageResponse, error) {
 func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
 	var response []image.CreateImageResponse
 
-	images, err := is.cache.getAllImages()
+	images, err := is.cache.GetAllImages()
 	if err != nil {
 		return response, err
 	}
@@ -164,7 +112,7 @@ type Config struct {
 	HTTPSKey string
 
 	// Datastore is an interface to a persistent datastore.
-	Datastore Datastore
+	Datastore datastore.Datastore
 
 	// IdentityEndpoint is the location of the keystone service.
 	IdentityEndpoint string
@@ -203,7 +151,7 @@ func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
 // service.
 func Start(config Config) error {
 	is := ImageService{}
-	err := is.cache.init(config.Datastore)
+	err := is.cache.Init(config.Datastore)
 	if err != nil {
 		return err
 	}
