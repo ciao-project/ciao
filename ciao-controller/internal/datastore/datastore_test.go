@@ -1738,7 +1738,7 @@ func TestCreateStorageAttachment(t *testing.T) {
 func TestUpdateStorageAttachmentExisting(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	blockDevice := storage.BlockDevice{
@@ -1760,7 +1760,7 @@ func TestUpdateStorageAttachmentExisting(t *testing.T) {
 
 	wls, err := ds.GetWorkloads()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if len(wls) == 0 {
