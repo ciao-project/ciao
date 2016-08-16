@@ -32,7 +32,7 @@ import (
 
 // ImageService is the context for the image service implementation.
 type ImageService struct {
-	cache datastore.ImageCache
+	ds datastore.DataStore
 }
 
 // CreateImage will create an empty image in the image datastore.
@@ -46,7 +46,7 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 		CreateTime: time.Now(),
 	}
 
-	err := is.cache.CreateImage(i)
+	err := is.ds.CreateImage(i)
 	if err != nil {
 		return image.CreateImageResponse{}, err
 	}
@@ -88,7 +88,7 @@ func createImageResponse(img datastore.Image) (image.CreateImageResponse, error)
 func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
 	var response []image.CreateImageResponse
 
-	images, err := is.cache.GetAllImages()
+	images, err := is.ds.GetAllImages()
 	if err != nil {
 		return response, err
 	}
@@ -159,8 +159,8 @@ func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
 // then wrap them in keystone validation. It will then start the https
 // service.
 func Start(config Config) error {
-	is := ImageService{}
-	err := is.cache.Init(config.RawDataStore, config.MetaDataStore)
+	is := ImageService{ds: &datastore.ImageCache{}}
+	err := is.ds.Init(config.RawDataStore, config.MetaDataStore)
 	if err != nil {
 		return err
 	}
