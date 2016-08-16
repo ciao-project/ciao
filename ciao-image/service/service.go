@@ -102,8 +102,16 @@ func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
 }
 
 // UploadImage will upload a raw image data and update its status.
-func (is ImageService) UploadImage(imageID string, body io.Reader) error {
-	return nil
+func (is ImageService) UploadImage(imageID string, body io.Reader) (image.UploadImageResponse, error) {
+	var response image.UploadImageResponse
+
+	err := is.ds.UploadImage(imageID, body)
+	if err != nil {
+		return response, err
+	}
+
+	response.ImageID = imageID
+	return response, nil
 }
 
 // Config is required to setup the API context for the image service.

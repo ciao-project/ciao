@@ -201,7 +201,7 @@ type APIConfig struct {
 // information needed to implement the image endpoints.
 type Service interface {
 	CreateImage(CreateImageRequest) (CreateImageResponse, error)
-	UploadImage(imageID string, body io.Reader) error
+	UploadImage(string, io.Reader) (UploadImageResponse, error)
 	ListImages() ([]CreateImageResponse, error)
 }
 
@@ -339,13 +339,9 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 
 	defer r.Body.Close()
 
-	err := context.UploadImage(imageID, r.Body)
+	resp, err := context.UploadImage(imageID, r.Body)
 	if err != nil {
 		return errorResponse(err), err
-	}
-
-	resp := UploadImageResponse{
-		ImageID: imageID,
 	}
 
 	return APIResponse{http.StatusOK, resp}, nil
