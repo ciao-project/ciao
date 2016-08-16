@@ -63,6 +63,8 @@ func TestSendAgentStatus(t *testing.T) {
 
 	server.cnMutex.Lock()
 	cn = server.cnMap[testutil.AgentUUID]
+	cn.mutex.Lock()
+	defer cn.mutex.Unlock()
 	if cn != nil && cn.status != tgtStatus {
 		t.Fatalf("agent node incorrect status: expected %s, got %s", tgtStatus.String(), cn.status.String())
 	}
@@ -90,6 +92,8 @@ func TestSendNetAgentStatus(t *testing.T) {
 
 	server.nnMutex.Lock()
 	nn = server.nnMap[testutil.NetAgentUUID]
+	nn.mutex.Lock()
+	defer nn.mutex.Unlock()
 	if nn != nil && nn.status != tgtStatus {
 		t.Fatalf("netagent node incorrect status: expected %s, got %s", tgtStatus.String(), nn.status.String())
 	}
@@ -505,6 +509,7 @@ func waitForAgent(uuid string, status *ssntp.Status) {
 	for {
 		server.cnMutex.Lock()
 		cn := server.cnMap[uuid]
+		cn.mutex.Lock()
 		server.cnMutex.Unlock()
 
 		if cn == nil {
@@ -514,14 +519,17 @@ func waitForAgent(uuid string, status *ssntp.Status) {
 			fmt.Printf("awaiting agent %s in state %s\n", uuid, status.String())
 			time.Sleep(50 * time.Millisecond)
 		} else {
+			cn.mutex.Unlock()
 			return
 		}
+		cn.mutex.Unlock()
 	}
 }
 func waitForNetAgent(uuid string, status *ssntp.Status) {
 	for {
 		server.nnMutex.Lock()
 		nn := server.nnMap[uuid]
+		nn.mutex.Lock()
 		server.nnMutex.Unlock()
 
 		if nn == nil {
@@ -531,8 +539,10 @@ func waitForNetAgent(uuid string, status *ssntp.Status) {
 			fmt.Printf("awaiting netagent %s in state %s\n", uuid, status.String())
 			time.Sleep(50 * time.Millisecond)
 		} else {
+			nn.mutex.Unlock()
 			return
 		}
+		nn.mutex.Unlock()
 	}
 }
 
