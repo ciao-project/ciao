@@ -99,6 +99,6 @@ type MetaDataStore interface {
 }
 
 type DataStore interface {
-	Write(ID string, body io.Reader) error
-	Delete(ID string)
+	Write(ID string, body io.Reader) (int64, error)
+	Delete(ID string) error
 }
