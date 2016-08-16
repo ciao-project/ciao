@@ -19,7 +19,7 @@ import (
 	"testing"
 )
 
-func testCreateAndGet(t *testing.T, d DataStore, m MetaDataStore) {
+func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:    "validID",
 		State: Created,
@@ -45,7 +45,7 @@ func testCreateAndGet(t *testing.T, d DataStore, m MetaDataStore) {
 	}
 }
 
-func testGetAll(t *testing.T, d DataStore, m MetaDataStore) {
+func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:    "validID",
 		State: Created,
@@ -75,7 +75,7 @@ func testGetAll(t *testing.T, d DataStore, m MetaDataStore) {
 	}
 }
 
-func testDelete(t *testing.T, d DataStore, m MetaDataStore) {
+func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:    "validID",
 		State: Created,
@@ -103,7 +103,7 @@ func testDelete(t *testing.T, d DataStore, m MetaDataStore) {
 	}
 }
 
-func testUpload(t *testing.T, d DataStore, m MetaDataStore) {
+func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:    "validID",
 		State: Created,

@@ -45,7 +45,7 @@ func init() {
 func main() {
 	// TBD Select the right datastore interface
 	metaDs := &datastore.Noop{}
-	ds := &datastore.Posix{
+	rawDs := &datastore.Posix{
 		MountPoint: mountPoint,
 	}
 
@@ -53,7 +53,7 @@ func main() {
 		Port:             port,
 		HTTPSCACert:      httpsCAcert,
 		HTTPSKey:         httpsKey,
-		DataStore:        ds,
+		RawDataStore:     rawDs,
 		MetaDataStore:    metaDs,
 		IdentityEndpoint: identity,
 		Username:         userName,

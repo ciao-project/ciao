@@ -98,7 +98,9 @@ type MetaDataStore interface {
 	GetAll() ([]Image, error)
 }
 
-type DataStore interface {
+// RawDataStore is the raw data storage interface that's used by the
+// image cache implementation.
+type RawDataStore interface {
 	Write(ID string, body io.Reader) (int64, error)
 	Delete(ID string) error
 }
