@@ -12,29 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package service
+package datastore
 
 import (
+	"io"
 	"sync"
 )
 
-type imageCache struct {
+// ImageCache is an image metadata cache.
+type ImageCache struct {
 	images map[string]Image
 	lock   *sync.RWMutex
-	ds     Datastore
+	metaDs MetaDataStore
+	rawDs  RawDataStore
 }
 
 // Init initializes the datastore struct and must be called before anything.
-func (c *imageCache) init(ds Datastore) error {
+func (c *ImageCache) Init(rawDs RawDataStore, metaDs MetaDataStore) error {
 	c.images = make(map[string]Image)
 	c.lock = &sync.RWMutex{}
-	c.ds = ds
+	c.metaDs = metaDs
+	c.rawDs = rawDs
 
 	return nil
 }
 
-// Create will add an image to the datastore.
-func (c *imageCache) createImage(i Image) error {
+// CreateImage will add an image to the datastore.
+func (c *ImageCache) CreateImage(i Image) error {
 	defer c.lock.Unlock()
 	c.lock.Lock()
 
@@ -43,8 +47,8 @@ func (c *imageCache) createImage(i Image) error {
 	return nil
 }
 
-// RetrieveAll gets returns all the known images.
-func (c *imageCache) getAllImages() ([]Image, error) {
+// GetAllImages gets returns all the known images.
+func (c *ImageCache) GetAllImages() ([]Image, error) {
 	var images []Image
 
 	defer c.lock.RUnlock()
@@ -57,8 +61,8 @@ func (c *imageCache) getAllImages() ([]Image, error) {
 	return images, nil
 }
 
-// Retrieve returns the image specified by the ID string.
-func (c *imageCache) getImage(ID string) (Image, error) {
+// GetImage returns the image specified by the ID string.
+func (c *ImageCache) GetImage(ID string) (Image, error) {
 	defer c.lock.RUnlock()
 	c.lock.RLock()
 
@@ -71,8 +75,8 @@ func (c *imageCache) getImage(ID string) (Image, error) {
 	return i, nil
 }
 
-// Update will modify an existing image.
-func (c *imageCache) updateImage(i Image) error {
+// UpdateImage will modify an existing image.
+func (c *ImageCache) UpdateImage(i Image) error {
 	defer c.lock.Unlock()
 	c.lock.Lock()
 
@@ -88,8 +92,8 @@ func (c *imageCache) updateImage(i Image) error {
 	return nil
 }
 
-// Delete will delete an existing image.
-func (c *imageCache) deleteImage(ID string) error {
+// DeleteImage will delete an existing image.
+func (c *ImageCache) DeleteImage(ID string) error {
 	defer c.lock.Unlock()
 	c.lock.Lock()
 
@@ -101,6 +105,41 @@ func (c *imageCache) deleteImage(ID string) error {
 	if !ok {
 		return ErrNoImage
 	}
+
+	return nil
+}
+
+// UploadImage will read an image, save it and update the image cache.
+func (c *ImageCache) UploadImage(ID string, body io.Reader) error {
+	c.lock.Lock()
+
+	image, ok := c.images[ID]
+	if !ok {
+		c.lock.Unlock()
+		return ErrNoImage
+	}
+
+	if image.State == Saving {
+		c.lock.Unlock()
+		return ErrImageSaving
+	}
+
+	image.State = Saving
+
+	c.lock.Unlock()
+
+	if c.rawDs != nil {
+		_, err := c.rawDs.Write(ID, body)
+		if err != nil {
+			return err
+		}
+	}
+
+	c.lock.Lock()
+
+	image.State = Active
+
+	c.lock.Unlock()
 
 	return nil
 }

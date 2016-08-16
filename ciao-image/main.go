@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 
+	"github.com/01org/ciao/ciao-image/datastore"
 	"github.com/01org/ciao/ciao-image/service"
 	"github.com/01org/ciao/openstack/image"
 	"github.com/golang/glog"
@@ -29,6 +30,7 @@ var logDir = "/var/lib/ciao/logs/ciao-image"
 var identity = "https://localhost:35357/"
 var userName = "ciao"
 var password = "hello"
+var mountPoint = "/var/lib/ciao/images"
 
 var identityURL = flag.String("identity", identity, "URL of keystone service")
 
@@ -42,13 +44,17 @@ func init() {
 
 func main() {
 	// TBD Select the right datastore interface
-	ds := &service.Noop{}
+	metaDs := &datastore.Noop{}
+	rawDs := &datastore.Posix{
+		MountPoint: mountPoint,
+	}
 
 	config := service.Config{
 		Port:             port,
 		HTTPSCACert:      httpsCAcert,
 		HTTPSKey:         httpsKey,
-		Datastore:        ds,
+		RawDataStore:     rawDs,
+		MetaDataStore:    metaDs,
 		IdentityEndpoint: identity,
 		Username:         userName,
 		Password:         password,
