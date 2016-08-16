@@ -16,6 +16,7 @@ package datastore
 
 import (
 	"errors"
+	"io"
 	"time"
 
 	"github.com/01org/ciao/openstack/image"
@@ -76,10 +77,15 @@ var (
 	ErrNoImage = errors.New("Image not found")
 )
 
-// Datastore is the metadata storing interface that's used by
+// MetaDataStore is the metadata storing interface that's used by
 // image cache implementation.
-type Datastore interface {
+type MetaDataStore interface {
 	Write(Image) error
 	Delete(ID string) error
 	GetAll() ([]Image, error)
+}
+
+type DataStore interface {
+	Write(Image, io.Reader) error
+	Delete(ID string)
 }

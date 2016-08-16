@@ -22,13 +22,15 @@ import (
 type ImageCache struct {
 	images map[string]Image
 	lock   *sync.RWMutex
-	ds     Datastore
+	metaDs MetaDataStore
+	ds     DataStore
 }
 
 // Init initializes the datastore struct and must be called before anything.
-func (c *ImageCache) Init(ds Datastore) error {
+func (c *ImageCache) Init(ds DataStore, metaDs MetaDataStore) error {
 	c.images = make(map[string]Image)
 	c.lock = &sync.RWMutex{}
+	c.metaDs = metaDs
 	c.ds = ds
 
 	return nil

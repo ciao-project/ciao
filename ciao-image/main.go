@@ -43,13 +43,14 @@ func init() {
 
 func main() {
 	// TBD Select the right datastore interface
-	ds := &datastore.Noop{}
+	metaDs := &datastore.Noop{}
 
 	config := service.Config{
 		Port:             port,
 		HTTPSCACert:      httpsCAcert,
 		HTTPSKey:         httpsKey,
-		Datastore:        ds,
+		DataStore:        nil,
+		MetaDataStore:    metaDs,
 		IdentityEndpoint: identity,
 		Username:         userName,
 		Password:         password,

@@ -18,14 +18,14 @@ import (
 	"testing"
 )
 
-func testCreateAndGet(t *testing.T, d Datastore) {
+func testCreateAndGet(t *testing.T, d DataStore, m MetaDataStore) {
 	i := Image{
 		ID:    "validID",
 		State: Created,
 	}
 
 	cache := ImageCache{}
-	cache.Init(d)
+	cache.Init(d, m)
 
 	// create the entry
 	err := cache.CreateImage(i)
@@ -44,14 +44,14 @@ func testCreateAndGet(t *testing.T, d Datastore) {
 	}
 }
 
-func testGetAll(t *testing.T, d Datastore) {
+func testGetAll(t *testing.T, d DataStore, m MetaDataStore) {
 	i := Image{
 		ID:    "validID",
 		State: Created,
 	}
 
 	cache := ImageCache{}
-	cache.Init(d)
+	cache.Init(d, m)
 
 	// create the entry
 	err := cache.CreateImage(i)
@@ -74,14 +74,14 @@ func testGetAll(t *testing.T, d Datastore) {
 	}
 }
 
-func testDelete(t *testing.T, d Datastore) {
+func testDelete(t *testing.T, d DataStore, m MetaDataStore) {
 	i := Image{
 		ID:    "validID",
 		State: Created,
 	}
 
 	cache := ImageCache{}
-	cache.Init(d)
+	cache.Init(d, m)
 
 	// create the entry
 	err := cache.CreateImage(i)
@@ -102,14 +102,14 @@ func testDelete(t *testing.T, d Datastore) {
 	}
 }
 
-func TestNoopCreateAndGet(t *testing.T) {
-	testCreateAndGet(t, &Noop{})
+func TestNilNoopCreateAndGet(t *testing.T) {
+	testCreateAndGet(t, nil, &Noop{})
 }
 
-func TestNoopGetAll(t *testing.T) {
-	testGetAll(t, &Noop{})
+func TestNilNoopGetAll(t *testing.T) {
+	testGetAll(t, nil, &Noop{})
 }
 
-func TestNoopDelete(t *testing.T) {
-	testDelete(t, &Noop{})
+func TestNilNoopDelete(t *testing.T) {
+	testDelete(t, nil, &Noop{})
 }

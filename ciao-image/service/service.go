@@ -111,8 +111,11 @@ type Config struct {
 	// HTTPSKey is the path to the https cert key.
 	HTTPSKey string
 
-	// Datastore is an interface to a persistent datastore.
-	Datastore datastore.Datastore
+	// DataStore is an interface to a persistent datastore for the image raw data.
+	DataStore datastore.DataStore
+
+	// MetaDataStore is an interface to a persistent datastore for the image meta data.
+	MetaDataStore datastore.MetaDataStore
 
 	// IdentityEndpoint is the location of the keystone service.
 	IdentityEndpoint string
@@ -151,7 +154,7 @@ func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
 // service.
 func Start(config Config) error {
 	is := ImageService{}
-	err := is.cache.Init(config.Datastore)
+	err := is.cache.Init(config.DataStore, config.MetaDataStore)
 	if err != nil {
 		return err
 	}
