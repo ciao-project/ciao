@@ -24,15 +24,15 @@ type ImageCache struct {
 	images map[string]Image
 	lock   *sync.RWMutex
 	metaDs MetaDataStore
-	ds     DataStore
+	rawDs  RawDataStore
 }
 
 // Init initializes the datastore struct and must be called before anything.
-func (c *ImageCache) Init(ds DataStore, metaDs MetaDataStore) error {
+func (c *ImageCache) Init(rawDs RawDataStore, metaDs MetaDataStore) error {
 	c.images = make(map[string]Image)
 	c.lock = &sync.RWMutex{}
 	c.metaDs = metaDs
-	c.ds = ds
+	c.rawDs = rawDs
 
 	return nil
 }
@@ -128,8 +128,8 @@ func (c *ImageCache) UploadImage(ID string, body io.Reader) error {
 
 	c.lock.Unlock()
 
-	if c.ds != nil {
-		_, err := c.ds.Write(ID, body)
+	if c.rawDs != nil {
+		_, err := c.rawDs.Write(ID, body)
 		if err != nil {
 			return err
 		}
