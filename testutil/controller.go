@@ -18,6 +18,7 @@ package testutil
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -41,8 +42,8 @@ type SsntpTestController struct {
 
 // Shutdown shuts down the testutil.SsntpTestClient and cleans up state
 func (ctl *SsntpTestController) Shutdown() {
-	ctl.Ssntp.Close()
 	closeControllerChans(ctl)
+	ctl.Ssntp.Close()
 }
 
 // NewSsntpTestControllerConnection creates an SsntpTestController and dials the server.
@@ -275,7 +276,7 @@ func (ctl *SsntpTestController) CommandNotify(command ssntp.Command, frame *ssnt
 		}
 
 	default:
-		fmt.Printf("controller unhandled command: %s\n", command.String())
+		fmt.Fprintf(os.Stderr, "controller unhandled command: %s\n", command.String())
 	}
 
 	ctl.SendResultAndDelCmdChan(command, result)
@@ -319,7 +320,7 @@ func (ctl *SsntpTestController) EventNotify(event ssntp.Event, frame *ssntp.Fram
 			result.Err = err
 		}
 	default:
-		fmt.Printf("controller unhandled event: %s\n", event.String())
+		fmt.Fprintf(os.Stderr, "controller unhandled event: %s\n", event.String())
 	}
 
 	ctl.SendResultAndDelEventChan(event, result)
@@ -343,7 +344,7 @@ func (ctl *SsntpTestController) ErrorNotify(error ssntp.Error, frame *ssntp.Fram
 	case ssntp.InvalidConfiguration:
 	*/
 	default:
-		fmt.Printf("controller unhandled error %s\n", error.String())
+		fmt.Fprintf(os.Stderr, "controller unhandled error %s\n", error.String())
 	}
 
 	ctl.SendResultAndDelErrorChan(error, result)
