@@ -166,7 +166,7 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.Volu
 // then wrap them in keystone validation. It will then start the https
 // service.
 func (c *controller) startVolumeService() error {
-	config := block.APIConfig{block.APIPort, c}
+	config := block.APIConfig{Port: block.APIPort, VolService: c}
 
 	r := block.Routes(config)
 	if r == nil {
