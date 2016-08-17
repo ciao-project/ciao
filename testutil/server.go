@@ -424,8 +424,12 @@ func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 	payload := frame.Payload
 
 	switch event {
-	// case ssntp.NodeConnected:	handled by ConnectNotify()
-	// case ssntp.NodeDisconnected:	handled by DisconnectNotify()
+	case ssntp.NodeConnected:
+		//handled by ConnectNotify()
+		return
+	case ssntp.NodeDisconnected:
+		//handled by DisconnectNotify()
+		return
 	case ssntp.TraceReport:
 		var traceEvent payloads.Trace
 
