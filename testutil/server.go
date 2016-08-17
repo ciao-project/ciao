@@ -19,6 +19,7 @@ package testutil
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 
@@ -304,9 +305,9 @@ func (server *SsntpTestServer) StatusNotify(uuid string, status ssntp.Status, fr
 
 	switch status {
 	case ssntp.READY:
-		fmt.Printf("server received READY from node %s\n", uuid)
+		fmt.Fprintf(os.Stderr, "server received READY from node %s\n", uuid)
 	default:
-		fmt.Printf("server unhandled status frame from node %s\n", uuid)
+		fmt.Fprintf(os.Stderr, "server unhandled status frame from node %s\n", uuid)
 	}
 
 	server.SendResultAndDelStatusChan(status, result)
@@ -391,7 +392,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 		result.Err = err
 
 	default:
-		fmt.Printf("server unhandled command %s\n", command.String())
+		fmt.Fprintf(os.Stderr, "server unhandled command %s\n", command.String())
 	}
 
 	server.SendResultAndDelCmdChan(command, result)
@@ -427,7 +428,7 @@ func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 	case ssntp.PublicIPAssigned:
 		// forwards from CNCI Controller(s) via server.EventForward()
 	default:
-		fmt.Printf("server unhandled event %s\n", event.String())
+		fmt.Fprintf(os.Stderr, "server unhandled event %s\n", event.String())
 	}
 
 	server.SendResultAndDelEventChan(event, result)
@@ -474,7 +475,7 @@ func (server *SsntpTestServer) EventForward(uuid string, event ssntp.Event, fram
 	}
 
 	if err != nil {
-		fmt.Println("server error parsing event yaml for forwarding")
+		fmt.Fprintf(os.Stderr, "server error parsing event yaml for forwarding")
 		result.Err = err
 	}
 
@@ -515,7 +516,7 @@ func (server *SsntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame
 		fallthrough
 
 	default:
-		fmt.Printf("server unhandled error %s\n", error.String())
+		fmt.Fprintf(os.Stderr, "server unhandled error %s\n", error.String())
 	}
 
 	server.SendResultAndDelErrorChan(error, result)

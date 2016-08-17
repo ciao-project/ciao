@@ -19,6 +19,7 @@ package testutil
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -485,7 +486,7 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 		result = client.handleDelete(payload)
 
 	default:
-		fmt.Printf("client %s unhandled command %s\n", client.Role.String(), command.String())
+		fmt.Fprintf(os.Stderr, "client %s unhandled command %s\n", client.Role.String(), command.String())
 	}
 
 	client.SendResultAndDelCmdChan(command, result)
@@ -511,7 +512,7 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 			result.Err = err
 		}
 	default:
-		fmt.Printf("client %s unhandled event: %s\n", client.Role.String(), event.String())
+		fmt.Fprintf(os.Stderr, "client %s unhandled event: %s\n", client.Role.String(), event.String())
 	}
 
 	client.SendResultAndDelEventChan(event, result)
@@ -695,7 +696,7 @@ func (client *SsntpTestClient) sendStartFailure(instanceUUID string, reason payl
 
 	_, err = client.Ssntp.SendError(ssntp.StartFailure, y)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
 
@@ -712,7 +713,7 @@ func (client *SsntpTestClient) sendStopFailure(instanceUUID string, reason paylo
 
 	_, err = client.Ssntp.SendError(ssntp.StopFailure, y)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
 
@@ -729,7 +730,7 @@ func (client *SsntpTestClient) sendRestartFailure(instanceUUID string, reason pa
 
 	_, err = client.Ssntp.SendError(ssntp.RestartFailure, y)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
 
@@ -746,6 +747,6 @@ func (client *SsntpTestClient) sendDeleteFailure(instanceUUID string, reason pay
 
 	_, err = client.Ssntp.SendError(ssntp.DeleteFailure, y)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }

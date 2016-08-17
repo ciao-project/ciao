@@ -387,7 +387,7 @@ func stopServer() error {
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeDisconnected)
 	agentCh := agent.AddEventChan(ssntp.NodeDisconnected)
 
-	server.ssntp.Stop()
+	go server.ssntp.Stop()
 
 	_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeDisconnected)
 	if err != nil {
