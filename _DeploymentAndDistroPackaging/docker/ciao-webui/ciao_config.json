@@ -1,0 +1,24 @@
+{
+    "##MODE##": {
+        "controller": {
+            "host": "##CONTROLLER_HOST##",
+            "port": "8774",
+            "protocol": "https"
+        },
+        "keystone": {
+            "host": "##KEYSTONE_HOST##",
+            "port": "35357",
+            "protocol": "https",
+            "uri": "/v3/auth/tokens"
+        },
+        "ui": {
+            "protocol": "https",
+            "certificates": {
+                "key": "/etc/pki/ciao-webui-key.pem",
+                "cert": "/etc/pki/ciao-webui-cert.pem",
+                "passphrase": "##CERT_PASS##",
+                "trusted": []
+            }
+        }
+    }
+}
