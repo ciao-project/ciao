@@ -41,8 +41,8 @@ type SsntpTestController struct {
 
 // Shutdown shuts down the testutil.SsntpTestClient and cleans up state
 func (ctl *SsntpTestController) Shutdown() {
-	ctl.Ssntp.Close()
 	closeControllerChans(ctl)
+	ctl.Ssntp.Close()
 }
 
 // NewSsntpTestControllerConnection creates an SsntpTestController and dials the server.

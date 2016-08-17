@@ -59,8 +59,8 @@ type SsntpTestClient struct {
 
 // Shutdown shuts down the testutil.SsntpTestClient and cleans up state
 func (client *SsntpTestClient) Shutdown() {
-	client.Ssntp.Close()
 	closeClientChans(client)
+	client.Ssntp.Close()
 }
 
 // NewSsntpTestClientConnection creates an SsntpTestClient and dials the server.
