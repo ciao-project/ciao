@@ -622,8 +622,8 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 
 // Shutdown shuts down the testutil.SsntpTestServer and cleans up state
 func (server *SsntpTestServer) Shutdown() {
-	server.Ssntp.Stop()
 	closeServerChans(server)
+	server.Ssntp.Stop()
 }
 
 // StartTestServer starts a go routine for based on a
