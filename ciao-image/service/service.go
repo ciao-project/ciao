@@ -143,10 +143,9 @@ type Config struct {
 
 func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
 	opt := gophercloud.AuthOptions{
-		IdentityEndpoint: config.IdentityEndpoint + "v3/",
+		IdentityEndpoint: config.IdentityEndpoint + "/v3/",
 		Username:         config.Username,
 		Password:         config.Password,
-		TenantName:       "service",
 		DomainID:         "default",
 		AllowReauth:      true,
 	}

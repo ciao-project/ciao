@@ -28,7 +28,7 @@ var httpsKey = "/etc/pki/ciao/ciao-image-key.pem"
 var port = image.APIPort
 var logDir = "/var/lib/ciao/logs/ciao-image"
 var identity = "https://localhost:35357/"
-var userName = "ciao"
+var userName = "csr"
 var password = "hello"
 var mountPoint = "/var/lib/ciao/images"
 
