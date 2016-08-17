@@ -267,9 +267,10 @@ func (v *instanceTestState) ClusterConfiguration() (payloads.Configure, error) {
 	return payloads.Configure{}, nil
 }
 
-func cleanupShutdownFail(t *testing.T, instance string, doneCh chan struct{}, ovsCh chan interface{}) {
+func cleanupShutdownFail(t *testing.T, instance string, doneCh chan struct{}, ovsCh chan interface{}, wg *sync.WaitGroup) {
 	_ = os.RemoveAll(path.Join(instancesDir, instance))
-	shutdownInstanceLoop(doneCh, ovsCh)
+
+	shutdownInstanceLoop(doneCh, ovsCh, wg, t)
 	t.FailNow()
 }
 
@@ -383,16 +384,26 @@ func (v *instanceTestState) restartInstance(t *testing.T, ovsCh chan interface{}
 	}
 }
 
-func shutdownInstanceLoop(doneCh chan struct{}, ovsCh chan interface{}) {
+func shutdownInstanceLoop(doneCh chan struct{}, ovsCh chan interface{}, wg *sync.WaitGroup,
+	t *testing.T) {
 	close(doneCh)
+
+	timeout := time.After(time.Second * 5)
 DONE:
 	for {
 		select {
-		case _, ok := <-ovsCh:
-			if !ok {
-				break DONE
-			}
-		default:
+		case <-ovsCh:
+		case <-timeout:
+			t.Error("Timedout waiting for instance loop to exit")
+			break DONE
+		case <-func() chan struct{} {
+			ch := make(chan struct{})
+			go func() {
+				wg.Wait()
+				close(ch)
+			}()
+			return ch
+		}():
 			break DONE
 		}
 	}
@@ -418,11 +429,10 @@ func TestStartInstanceLoop(t *testing.T) {
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
 	_ = startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
-	shutdownInstanceLoop(doneCh, ovsCh)
+	shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 	if !ok {
 		t.FailNow()
 	}
-	wg.Wait()
 }
 
 // Checks an instance loop can be deleted before an instance is launched.
@@ -449,12 +459,12 @@ func TestDeleteInstanceLoop(t *testing.T) {
 
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.FailNow()
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.FailNow()
 	}
 	wg.Wait()
@@ -483,14 +493,14 @@ func TestStopNotRunning(t *testing.T) {
 
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.FailNow()
 	}
 
 	select {
 	case cmdCh <- &insStopCmd{}:
 	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.Fatal("Timed out sending Stop command")
 	}
 
@@ -498,7 +508,7 @@ func TestStopNotRunning(t *testing.T) {
 	case <-state.errorCh:
 		state.errorCh = nil
 	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.Fatal("Timed out waiting for error channel")
 	}
 
@@ -508,7 +518,7 @@ func TestStopNotRunning(t *testing.T) {
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.FailNow()
 	}
 	wg.Wait()
@@ -527,12 +537,12 @@ func startVMWithCFG(t *testing.T, wg *sync.WaitGroup, cfg *vmConfig, connect boo
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 	cmdCh := startInstanceWithVM(state.instance, cfg, wg, doneCh, state.ac, ovsCh, state, &storage.NoopDriver{})
 	if !state.expectStatsUpdate(t, ovsCh) {
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, wg, t)
 		t.FailNow()
 	}
 
 	if !state.startInstance(t, ovsCh, cmdCh, cfg, errorOk) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, wg)
 	}
 	return state, ovsCh, cmdCh, doneCh
 }
@@ -552,7 +562,7 @@ func TestStartNotRunning(t *testing.T) {
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	wg.Wait()
@@ -593,14 +603,12 @@ func TestLoopShutdownWithRunningInstance(t *testing.T) {
 	cfg := standardCfg
 	_, ovsCh, _, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
 
-	shutdownInstanceLoop(doneCh, ovsCh)
+	shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 
 	// We need to remove the instance manually to have a clean setup for the
 	// subsequent tests.
 
 	_ = os.RemoveAll(path.Join(instancesDir, cfg.Instance))
-
-	wg.Wait()
 }
 
 // Check we can restart an instance
@@ -628,17 +636,16 @@ func TestRestart(t *testing.T) {
 	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.FailNow()
 	}
 
 	if !state.restartInstance(t, ovsCh, cmdCh, false) {
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.FailNow()
 	}
 
-	shutdownInstanceLoop(doneCh, ovsCh)
-	wg.Wait()
+	shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 }
 
 // Check we can handle a restart error
@@ -666,7 +673,7 @@ func TestRestartFail(t *testing.T) {
 	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.FailNow()
 	}
 
@@ -679,8 +686,7 @@ func TestRestartFail(t *testing.T) {
 			state.rf.Reason, payloads.RestartLaunchFailure)
 	}
 
-	shutdownInstanceLoop(doneCh, ovsCh)
-	wg.Wait()
+	shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 }
 
 // Check we get an error when starting an instance with an invalid image
@@ -710,11 +716,11 @@ func TestStartBadImage(t *testing.T) {
 		select {
 		case cmdCh <- acCmd.cmd:
 		case <-time.After(time.Second):
-			shutdownInstanceLoop(doneCh, ovsCh)
+			shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 			t.Fatal("Timed out sending suicide command")
 		}
 	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.Fatal("Timedout waiting from suicide command")
 	}
 	wg.Wait()
@@ -742,7 +748,7 @@ func sendCommandDuringSuicide(t *testing.T, testCmd interface{}) *instanceTestSt
 	select {
 	case acCmd = <-state.ac.cmdCh:
 	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.Fatal("Timedout waiting from suicide command")
 	}
 
@@ -750,7 +756,7 @@ func sendCommandDuringSuicide(t *testing.T, testCmd interface{}) *instanceTestSt
 	select {
 	case cmdCh <- testCmd:
 	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.Fatal("Timed out sending command during suicide")
 	}
 
@@ -758,14 +764,14 @@ func sendCommandDuringSuicide(t *testing.T, testCmd interface{}) *instanceTestSt
 	case <-state.errorCh:
 		state.errorCh = nil
 	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.Fatal("Timed out waiting on error channel")
 	}
 
 	select {
 	case cmdCh <- acCmd.cmd:
 	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh)
+		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.Fatal("Timed out sending suicide command")
 	}
 
@@ -855,7 +861,7 @@ func TestLostInstance(t *testing.T) {
 	close(state.monitorClosedCh)
 
 	if !waitForStateChange(t, ovsStopped, ovsCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	// This gets closed by the instanceLoop and so will become available
@@ -863,7 +869,7 @@ func TestLostInstance(t *testing.T) {
 	state.monitorCh = nil
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	wg.Wait()
@@ -884,7 +890,7 @@ func TestStartRunningInstance(t *testing.T) {
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
 
 	if !state.startInstance(t, ovsCh, cmdCh, &cfg, true) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	if state.stf.Reason != payloads.AlreadyRunning {
@@ -893,7 +899,7 @@ func TestStartRunningInstance(t *testing.T) {
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	wg.Wait()
@@ -927,7 +933,7 @@ func TestAttachVolumeToInstance(t *testing.T) {
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	wg.Wait()
@@ -979,7 +985,7 @@ func TestAttachExistingVolumeToInstance(t *testing.T) {
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	wg.Wait()
@@ -1027,7 +1033,7 @@ func TestDetachVolumeFromInstance(t *testing.T) {
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	wg.Wait()
@@ -1063,7 +1069,7 @@ func TestDetachNonexistingVolumeFromInstance(t *testing.T) {
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh)
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 
 	wg.Wait()
