@@ -1,11 +1,17 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/openstack/block"
+	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/golang/glog"
+	"github.com/gorilla/mux"
 )
 
 // Implement the Block Service interface
@@ -13,7 +19,30 @@ func (c *controller) GetAbsoluteLimits(tenant string) (block.AbsoluteLimits, err
 	return block.AbsoluteLimits{}, nil
 }
 
+// CreateVolume will create a new block device and store it in the datastore.
+// TBD: we need a better way to do bootable.
 func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (block.Volume, error) {
+
+	t, err := c.ds.GetTenant(tenant)
+	if err != nil {
+		return block.Volume{}, err
+	}
+
+	if t == nil {
+		// go ahead and add this tenant
+		if *noNetwork {
+			_, err := c.ds.AddTenant(tenant)
+			if err != nil {
+				return block.Volume{}, err
+			}
+		} else {
+			err = c.addTenant(tenant)
+			if err != nil {
+				return block.Volume{}, err
+			}
+		}
+	}
+
 	// no limits checking for now.
 	bd, err := c.CreateBlockDevice(req.ImageRef, req.Size)
 	if err != nil {
@@ -45,6 +74,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 		CreatedAt:   &data.CreateTime,
 		ID:          bd.ID,
 		Size:        data.Size,
+		Bootable:    strconv.FormatBool(req.ImageRef != nil),
 	}, nil
 }
 
@@ -128,6 +158,53 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 	return make([]block.VolumeDetail, 0), nil
 }
 
-func (c *controller) ShowVolumeDetails(tenant string) (block.VolumeDetail, error) {
+func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.VolumeDetail, error) {
 	return block.VolumeDetail{}, nil
+}
+
+// Start will get the Volume API endpoints from the OpenStack block api,
+// then wrap them in keystone validation. It will then start the https
+// service.
+func (c *controller) startVolumeService() error {
+	config := block.APIConfig{block.APIPort, c}
+
+	r := block.Routes(config)
+	if r == nil {
+		return errors.New("Unable to start Volume Service")
+	}
+
+	// setup identity for these routes.
+	validServices := []osIdentity.ValidService{
+		{ServiceType: "volume", ServiceName: "ciao"},
+		{ServiceType: "volumev2", ServiceName: "ciao"},
+		{ServiceType: "volume", ServiceName: "cinder"},
+		{ServiceType: "volumev2", ServiceName: "cinderv2"},
+	}
+
+	validAdmins := []osIdentity.ValidAdmin{
+		{Project: "service", Role: "admin"},
+		{Project: "admin", Role: "admin"},
+	}
+
+	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		h := osIdentity.Handler{
+			Client:        c.id.scV3,
+			Next:          route.GetHandler(),
+			ValidServices: validServices,
+			ValidAdmins:   validAdmins,
+		}
+
+		route.Handler(h)
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// start service.
+	service := fmt.Sprintf(":%d", block.APIPort)
+
+	return http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
 }

@@ -171,6 +171,9 @@ func main() {
 	wg.Add(1)
 	go createComputeAPI(context)
 
+	wg.Add(1)
+	go context.startVolumeService()
+
 	wg.Wait()
 	context.ds.Exit()
 	context.client.Disconnect()

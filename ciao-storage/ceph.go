@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 
 	"github.com/01org/ciao/ssntp/uuid"
 )
@@ -35,19 +36,20 @@ type CephDriver struct {
 
 // CreateBlockDevice will create a rbd image in the ceph cluster.
 func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice, error) {
-	if imagePath == nil {
-		// we'd need to have more details about what kind
-		// of device to create. So, we need to change
-		// the API to support this - with some opts.
-		return BlockDevice{}, ErrNoDevice
-	}
-
 	// generate a UUID to use for this image.
 	ID := uuid.Generate().String()
 
-	cmd := exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, "--image-format", "2", "import", *imagePath, ID)
+	var cmd *exec.Cmd
+
+	if imagePath != nil {
+		cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, "--image-format", "2", "import", *imagePath, ID)
+	} else {
+		// create an empty volume
+		cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, "create", "--size", strconv.Itoa(size), ID)
+	}
 
 	_, err := cmd.CombinedOutput()
+
 	if err != nil {
 		return BlockDevice{}, err
 	}
@@ -77,7 +79,6 @@ func (d CephDriver) getCredentials() []string {
 // path to the new device is returned if the mapping succeeds.
 func (d CephDriver) MapVolumeToNode(volumeUUID string) (string, error) {
 	args := append(d.getCredentials(), "map", volumeUUID)
-	fmt.Println(args)
 	cmd := exec.Command("rbd", args...)
 	data, err := cmd.Output()
 	if err != nil {

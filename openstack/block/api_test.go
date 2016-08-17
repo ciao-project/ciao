@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 )
 
@@ -54,7 +55,7 @@ var tests = []test{
 		createVolume,
 		`{"volume":{"size": 10,"availability_zone": null,"source_volid": null,"description":null,"multiattach ":false,"snapshot_id":null,"name":null,"imageRef":null,"volume_type":null,"metadata":{},"source_replica":null,"consistencygroup_id":null}}`,
 		http.StatusAccepted,
-		`{"volume":{"status":"creating","migration_status":null,"user_id":"validuserid","attachments":[],"links":[],"availability_zone":null,"bootable":false,"encrypted":false,"created_at":null,"description":null,"updated_at":null,"volume_type":null,"name":null,"replication_status":"disabled","consistencygroup_id":null,"source_volid":null,"snapshot_id":null,"multiattach":false,"metadata":{},"id":"validvolumeid","size":10}}`,
+		`{"volume":{"status":"creating","migration_status":null,"user_id":"validuserid","attachments":[],"links":[],"availability_zone":null,"bootable":"false","encrypted":false,"created_at":null,"description":null,"updated_at":null,"volume_type":null,"name":null,"replication_status":"disabled","consistencygroup_id":null,"source_volid":null,"snapshot_id":null,"multiattach":false,"metadata":{},"id":"validvolumeid","size":10}}`,
 	},
 	{
 		"GET",
@@ -70,7 +71,7 @@ var tests = []test{
 		listVolumesDetail,
 		"",
 		http.StatusOK,
-		`{"volumes":[{"migration_status":null,"attachments":[{"server_id":"f4fda93b-06e0-4743-8117-bc8bcecd651b","attachment_id":"3b4db356-253d-4fab-bfa0-e3626c0b8405","host_name":null,"volume_id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38","device":"/dev/vdb","id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38"}],"links":[{"href":"http://23.253.248.171:8776/v2/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38","rel":"self"},{"href":"http://23.253.248.171:8776/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38","rel":"bookmark"}],"availability_zone":"nova","os-vol-host-attr:host":"cephcluster","encrypted":false,"updated_at":null,"replication_status":"disabled","snapshot_id":null,"id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38","size":2,"user_id":"32779452fcd34ae1a53a797ac8a1e064","os-vol-tenant-attr:tenant_id":"bab7d5c60cd041a0a36f7c4b6e1dd978","os-vol-mig-status-attr:migstat":null,"metadata":{"attached_mode":"rw","readonly":false},"status":"in-use","description":null,"multiattach":true,"source_volid":null,"consistencygroup_id":null,"os-vol-mig-status-attr:name_id":null,"name":"vol-001","bootable":false,"created_at":null,"volume_type":null}]}`,
+		`{"volumes":[{"migration_status":null,"attachments":[{"server_id":"f4fda93b-06e0-4743-8117-bc8bcecd651b","attachment_id":"3b4db356-253d-4fab-bfa0-e3626c0b8405","host_name":null,"volume_id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38","device":"/dev/vdb","id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38"}],"links":[{"href":"http://23.253.248.171:8776/v2/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38","rel":"self"},{"href":"http://23.253.248.171:8776/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38","rel":"bookmark"}],"availability_zone":"nova","os-vol-host-attr:host":"cephcluster","encrypted":false,"updated_at":null,"replication_status":"disabled","snapshot_id":null,"id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38","size":2,"user_id":"32779452fcd34ae1a53a797ac8a1e064","os-vol-tenant-attr:tenant_id":"bab7d5c60cd041a0a36f7c4b6e1dd978","os-vol-mig-status-attr:migstat":null,"metadata":{"attached_mode":"rw","readonly":false},"status":"in-use","description":null,"multiattach":true,"source_volid":null,"consistencygroup_id":null,"os-vol-mig-status-attr:name_id":null,"name":"vol-001","bootable":"false","created_at":null,"volume_type":null}]}`,
 	},
 	{
 		"GET",
@@ -78,7 +79,7 @@ var tests = []test{
 		showVolumeDetails,
 		"",
 		http.StatusOK,
-		`{"volume":{"migration_status":null,"attachments":[],"links":[{"href":"http://localhost:8776/v2/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635","rel":"self"},{"href":"http://localhost:8776/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635","rel":"bookmark"}],"availability_zone":"nova","os-vol-host-attr:host":"ip-10-168-107-25","encrypted":false,"updated_at":null,"replication_status":"disabled","snapshot_id":null,"id":"5aa119a8-d25b-45a7-8d1b-88e127885635","size":1,"user_id":"32779452fcd34ae1a53a797ac8a1e064","os-vol-tenant-attr:tenant_id":"0c2eba2c5af04d3f9e9d0d410b371fde","os-vol-mig-status-attr:migstat":null,"metadata":{"contents":"not junk"},"status":"available","description":"Super volume.","multiattach":false,"source_volid":null,"consistencygroup_id":null,"os-vol-mig-status-attr:name_id":null,"name":"vol-002","bootable":false,"created_at":null,"volume_type":"None"}}`,
+		`{"volume":{"migration_status":null,"attachments":[],"links":[{"href":"http://localhost:8776/v2/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635","rel":"self"},{"href":"http://localhost:8776/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635","rel":"bookmark"}],"availability_zone":"nova","os-vol-host-attr:host":"ip-10-168-107-25","encrypted":false,"updated_at":null,"replication_status":"disabled","snapshot_id":null,"id":"5aa119a8-d25b-45a7-8d1b-88e127885635","size":1,"user_id":"32779452fcd34ae1a53a797ac8a1e064","os-vol-tenant-attr:tenant_id":"0c2eba2c5af04d3f9e9d0d410b371fde","os-vol-mig-status-attr:migstat":null,"metadata":{"contents":"not junk"},"status":"available","description":"Super volume.","multiattach":false,"source_volid":null,"consistencygroup_id":null,"os-vol-mig-status-attr:name_id":null,"name":"vol-002","bootable":"false","created_at":null,"volume_type":"None"}}`,
 	},
 	{
 		"DELETE",
@@ -147,6 +148,7 @@ func (vs testVolumeService) ShowVolumeDetails(tenant string, volume string) (Vol
 		MultiAttach:       false,
 		VolumeType:        &volType,
 		Description:       &description,
+		Bootable:          strconv.FormatBool(false),
 	}, nil
 }
 
@@ -156,7 +158,7 @@ func (vs testVolumeService) CreateVolume(tenant string, req RequestedVolume) (Vo
 		UserID:            "validuserid",
 		Attachments:       make([]Attachment, 0),
 		Links:             make([]Link, 0),
-		Bootable:          (req.ImageRef != nil),
+		Bootable:          strconv.FormatBool(req.ImageRef != nil),
 		Description:       req.Description,
 		VolumeType:        req.VolumeType,
 		Name:              req.Name,
@@ -229,6 +231,7 @@ func (vs testVolumeService) ListVolumesDetail(tenant string) ([]VolumeDetail, er
 			OSVolTenantAttr:   "bab7d5c60cd041a0a36f7c4b6e1dd978",
 			MetaData:          meta,
 			MultiAttach:       true,
+			Bootable:          strconv.FormatBool(false),
 		},
 	}, nil
 }

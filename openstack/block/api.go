@@ -26,6 +26,9 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// APIPort is the standard OpenStack Volume port
+const APIPort = 8776
+
 // VersionStatus defines whether a reported version is supported or not.
 type VersionStatus string
 
@@ -206,7 +209,7 @@ type Volume struct {
 	Attachments        []Attachment `json:"attachments"`
 	Links              []Link       `json:"links"`
 	AvailabilityZone   *string      `json:"availability_zone"`
-	Bootable           bool         `json:"bootable"`
+	Bootable           string       `json:"bootable"`
 	Encrypted          bool         `json:"encrypted"`
 	CreatedAt          *time.Time   `json:"created_at"`
 	Description        *string      `json:"description"`
@@ -271,7 +274,7 @@ type VolumeDetail struct {
 	ConsistencyGroupID       *string      `json:"consistencygroup_id"`
 	OSVolMigStatusAttrNameID *string      `json:"os-vol-mig-status-attr:name_id"`
 	Name                     *string      `json:"name"`
-	Bootable                 bool         `json:"bootable"`
+	Bootable                 string       `json:"bootable"`
 	CreatedAt                *time.Time   `json:"created_at"`
 	VolumeType               *string      `json:"volume_type"`
 }
@@ -477,6 +480,7 @@ func showAbsoluteLimits(bc *Context, w http.ResponseWriter, r *http.Request) (AP
 }
 
 func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	fmt.Println("create volume request!")
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
 
