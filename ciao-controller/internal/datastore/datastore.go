@@ -1593,3 +1593,21 @@ func (ds *Datastore) deleteStorageAttachment(ID string) error {
 
 	return ds.db.deleteStorageAttachment(ID)
 }
+
+// GetVolumeAttachments will return a list of attachments associated with
+// this volume ID.
+func (ds *Datastore) GetVolumeAttachments(volume string) ([]types.StorageAttachment, error) {
+	var attachments []types.StorageAttachment
+
+	ds.attachLock.RLock()
+
+	for _, a := range ds.attachments {
+		if a.BlockID == volume {
+			attachments = append(attachments, a)
+		}
+	}
+
+	ds.attachLock.RUnlock()
+
+	return attachments, nil
+}

@@ -302,6 +302,28 @@ func (client *ssntpClient) attachVolume(volID string, instanceID string, nodeID 
 	return err
 }
 
+func (client *ssntpClient) detachVolume(volID string, instanceID string, nodeID string) error {
+	payload := payloads.DetachVolume{
+		Detach: payloads.VolumeCmd{
+			InstanceUUID:      instanceID,
+			VolumeUUID:        volID,
+			WorkloadAgentUUID: nodeID,
+		},
+	}
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	glog.Infof("DetachVolume %s to %s\n", volID, instanceID)
+	glog.V(1).Info(string(y))
+
+	_, err = client.ssntp.SendCommand(ssntp.DetachVolume, y)
+
+	return err
+}
+
 func (client *ssntpClient) Disconnect() {
 	client.ssntp.Close()
 }

@@ -301,6 +301,7 @@ var (
 	ErrVolumeOwner          = errors.New("You are not volume owner")
 	ErrInstanceOwner        = errors.New("You are not instance owner")
 	ErrInstanceNotAvailable = errors.New("Instance not available")
+	ErrVolumeNotAttached    = errors.New("Volume not attached")
 )
 
 // errorResponse maps service error responses to http responses.
@@ -316,15 +317,12 @@ func errorResponse(err error) APIResponse {
 		return APIResponse{http.StatusNotFound, nil}
 	case ErrInstanceNotFound:
 		return APIResponse{http.StatusNotFound, nil}
-	case ErrVolumeNotAvailable:
-		return APIResponse{http.StatusForbidden, nil}
-	case ErrVolumeNotAvailable:
-		return APIResponse{http.StatusForbidden, nil}
-	case ErrVolumeOwner:
-		return APIResponse{http.StatusForbidden, nil}
-	case ErrInstanceOwner:
-		return APIResponse{http.StatusForbidden, nil}
-	case ErrInstanceNotAvailable:
+	case ErrVolumeNotAvailable,
+		ErrVolumeNotAvailable,
+		ErrVolumeOwner,
+		ErrInstanceOwner,
+		ErrInstanceNotAvailable,
+		ErrVolumeNotAttached:
 		return APIResponse{http.StatusForbidden, nil}
 	default:
 		return APIResponse{http.StatusInternalServerError, nil}
