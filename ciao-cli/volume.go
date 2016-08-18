@@ -280,7 +280,7 @@ func (cmd *volumeAttachCommand) usage(...string) {
 
 Attachs a volume to an instance
 
-The delete flags are:
+The attach flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	os.Exit(2)
