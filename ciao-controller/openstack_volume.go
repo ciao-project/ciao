@@ -135,6 +135,70 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 	return nil
 }
 
+func (c *controller) DetachVolume(tenant string, volume string, attachment string) error {
+	// we don't support detaching by attachment ID yet.
+	if attachment != "" {
+		return errors.New("Detaching by attachment ID not implemented")
+	}
+
+	// get attachment info
+	attachments, err := c.ds.GetVolumeAttachments(volume)
+	if err != nil {
+		return err
+	}
+
+	if len(attachments) == 0 {
+		return block.ErrVolumeNotAttached
+	}
+
+	// get the block device information
+	info, err := c.ds.GetBlockDevice(volume)
+	if err != nil {
+		return err
+	}
+
+	// check that the block device is owned by the tenant.
+	if info.TenantID != tenant {
+		return block.ErrVolumeOwner
+	}
+
+	// check that the block device is in use
+	if info.State != types.InUse {
+		return block.ErrVolumeNotAttached
+	}
+
+	// update volume state to detaching
+	info.State = types.Detaching
+
+	err = c.ds.UpdateBlockDevice(info)
+	if err != nil {
+		return err
+	}
+
+	var retval error
+
+	// detach everything for this volume
+	for _, a := range attachments {
+		// get instance info
+		i, err := c.ds.GetInstance(a.InstanceID)
+		if err != nil {
+			glog.Error(block.ErrInstanceNotFound)
+			// keep going
+			retval = err
+			continue
+		}
+
+		// send command to attach volume.
+		err = c.client.detachVolume(a.BlockID, a.InstanceID, i.NodeID)
+		if err != nil {
+			retval = err
+			glog.Errorf("Can't detach volume %s from instance %s\n", a.BlockID, a.InstanceID)
+		}
+	}
+
+	return retval
+}
+
 func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
 	var vols []block.ListVolume
 

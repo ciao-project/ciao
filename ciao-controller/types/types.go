@@ -217,6 +217,10 @@ const (
 	// InUse means that the volume has been successfully
 	// attached to an instance.
 	InUse BlockState = BlockState(block.InUse)
+
+	// Detaching means that the volume is in process
+	// of detaching.
+	Detaching BlockState = "detaching"
 )
 
 // BlockData respresents the attributes of this block device.
