@@ -343,6 +343,7 @@ type Service interface {
 	CreateVolume(tenant string, req RequestedVolume) (Volume, error)
 	DeleteVolume(tenant string, volume string) error
 	AttachVolume(tenant string, volume string, instance string, mountpoint string) error
+	DetachVolume(tenant string, volume string, attachment string) error
 	ListVolumes(tenant string) ([]ListVolume, error)
 	ListVolumesDetail(tenant string) ([]VolumeDetail, error)
 	ShowVolumeDetails(tenant string, volume string) (VolumeDetail, error)
@@ -568,6 +569,50 @@ func deleteVolume(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 	return APIResponse{http.StatusAccepted, nil}, nil
 }
 
+func volumeActionAttach(bc *Context, m map[string]interface{}, tenant string, volume string) (APIResponse, error) {
+	val := m["os-attach"]
+
+	m = val.(map[string]interface{})
+
+	val, ok := m["instance_uuid"]
+	if !ok {
+		// we have to have the instance uuid
+		return APIResponse{http.StatusBadRequest, nil}, nil
+	}
+	instance := val.(string)
+
+	val, ok = m["mountpoint"]
+	if !ok {
+		// we have to have the mountpoint ?
+		return APIResponse{http.StatusBadRequest, nil}, nil
+	}
+	mountPoint := val.(string)
+
+	err := bc.AttachVolume(tenant, volume, instance, mountPoint)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return APIResponse{http.StatusAccepted, nil}, nil
+}
+
+func volumeActionDetach(bc *Context, m map[string]interface{}, tenant string, volume string) (APIResponse, error) {
+	val := m["os-detach"]
+
+	m = val.(map[string]interface{})
+
+	// attachment-id is optional
+	val = m["attachment-id"]
+	attachment := val.(string)
+
+	err := bc.DetachVolume(tenant, volume, attachment)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return APIResponse{http.StatusAccepted, nil}, nil
+}
+
 func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -589,34 +634,17 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 
 	m := req.(map[string]interface{})
 
-	// for now, we will support only attach
-	val, ok := m["os-attach"]
-	if !ok {
-		return APIResponse{http.StatusBadRequest, nil}, err
+	// for now, we will support only attach and detach
+
+	if m["os-attach"] != nil {
+		return volumeActionAttach(bc, m, tenant, volume)
 	}
 
-	m = val.(map[string]interface{})
-
-	val, ok = m["instance_uuid"]
-	if !ok {
-		// we have to have the instance uuid
-		return APIResponse{http.StatusBadRequest, nil}, err
-	}
-	instance := val.(string)
-
-	val, ok = m["mountpoint"]
-	if !ok {
-		// we have to have the mountpoint ?
-		return APIResponse{http.StatusBadRequest, nil}, err
-	}
-	mountPoint := val.(string)
-
-	err = bc.AttachVolume(tenant, volume, instance, mountPoint)
-	if err != nil {
-		return errorResponse(err), err
+	if m["os-detach"] != nil {
+		return volumeActionDetach(bc, m, tenant, volume)
 	}
 
-	return APIResponse{http.StatusAccepted, nil}, nil
+	return APIResponse{http.StatusBadRequest, nil}, err
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.

@@ -180,6 +180,10 @@ func (vs testVolumeService) AttachVolume(tenant string, volume string, instance 
 	return nil
 }
 
+func (vs testVolumeService) DetachVolume(tenant string, volume string, attachment string) error {
+	return nil
+}
+
 func (vs testVolumeService) ListVolumes(tenant string) ([]ListVolume, error) {
 	return []ListVolume{
 		{"validvolumeid1", make([]Link, 0), "vol-001"},
