@@ -36,6 +36,7 @@ var volumeCommand = &command{
 		"update": new(volumeUpdateCommand),
 		"delete": new(volumeDeleteCommand),
 		"attach": new(volumeAttachCommand),
+		"detach": new(volumeDetachCommand),
 	},
 }
 
@@ -322,6 +323,49 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 	err = volumeactions.Attach(client, cmd.volume, options).ExtractErr()
 	if err == nil {
 		fmt.Printf("Attached volume: %s\n", cmd.volume)
+	}
+	return err
+}
+
+type volumeDetachCommand struct {
+	Flag   flag.FlagSet
+	volume string
+}
+
+func (cmd *volumeDetachCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] volume detach [flags]
+
+Detaches a volume from an instance
+
+The detach flags are:
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *volumeDetachCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.volume, "volume", "", "Volume UUID")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *volumeDetachCommand) run(args []string) error {
+	if cmd.volume == "" {
+		errorf("missing required -volume parameter")
+		cmd.usage()
+	}
+
+	// mountpoint or mode isn't required
+
+	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
+	if err != nil {
+		fatalf("Could not get volume service client [%s]\n", err)
+	}
+
+	err = volumeactions.Detach(client, cmd.volume).ExtractErr()
+	if err == nil {
+		fmt.Printf("Detached volume: %s\n", cmd.volume)
 	}
 	return err
 }
