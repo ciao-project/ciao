@@ -525,6 +525,10 @@ func getWorkloadAgentUUID(sched *ssntpSchedulerServer, command ssntp.Command, pa
 		var cmd payloads.AttachVolume
 		err := yaml.Unmarshal(payload, &cmd)
 		return cmd.Attach.InstanceUUID, cmd.Attach.WorkloadAgentUUID, err
+	case ssntp.DetachVolume:
+		var cmd payloads.DetachVolume
+		err := yaml.Unmarshal(payload, &cmd)
+		return cmd.Detach.InstanceUUID, cmd.Detach.WorkloadAgentUUID, err
 	}
 }
 
@@ -698,6 +702,8 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 	case ssntp.DELETE:
 		fallthrough
 	case ssntp.AttachVolume:
+		fallthrough
+	case ssntp.DetachVolume:
 		fallthrough
 	case ssntp.EVACUATE:
 		dest, instanceUUID = sched.fwdCmdToComputeNode(command, payload)
@@ -993,6 +999,10 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 		},
 		{ // all AttachVolume command are processed by the Command forwarder
 			Operand:        ssntp.AttachVolume,
+			CommandForward: sched,
+		},
+		{ // all DetachVolume command are processed by the Command forwarder
+			Operand:        ssntp.DetachVolume,
 			CommandForward: sched,
 		},
 	}
