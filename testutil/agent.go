@@ -497,6 +497,12 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 	var result Result
 
 	switch event {
+	case ssntp.NodeConnected:
+		//handled by ConnectNotify()
+		return
+	case ssntp.NodeDisconnected:
+		//handled by DisconnectNotify()
+		return
 	case ssntp.TenantAdded:
 		var tenantAddedEvent payloads.EventTenantAdded
 

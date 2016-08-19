@@ -287,10 +287,14 @@ func (ctl *SsntpTestController) EventNotify(event ssntp.Event, frame *ssntp.Fram
 	var result Result
 
 	switch event {
-	// case ssntp.NodeConnected:	handled by ConnectNotify()
-	// case ssntp.NodeDisconnected:	handled by DisconnectNotify()
 	// case ssntp.TenantAdded: does not reach controller
 	// case ssntp.TenantRemoved: does not reach controller
+	case ssntp.NodeConnected:
+		//handled by ConnectNotify()
+		return
+	case ssntp.NodeDisconnected:
+		//handled by DisconnectNotify()
+		return
 	case ssntp.PublicIPAssigned:
 		var publicIPAssignedEvent payloads.EventPublicIPAssigned
 
