@@ -602,8 +602,11 @@ func volumeActionDetach(bc *Context, m map[string]interface{}, tenant string, vo
 	m = val.(map[string]interface{})
 
 	// attachment-id is optional
+	var attachment string
 	val = m["attachment-id"]
-	attachment := val.(string)
+	if val != nil {
+		attachment = val.(string)
+	}
 
 	err := bc.DetachVolume(tenant, volume, attachment)
 	if err != nil {
