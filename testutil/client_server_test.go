@@ -519,7 +519,7 @@ func stopServer() error {
 	netAgentCh := netAgent.AddEventChan(ssntp.NodeDisconnected)
 	agentCh := agent.AddEventChan(ssntp.NodeDisconnected)
 
-	server.Shutdown()
+	go server.Shutdown()
 
 	_, err := controller.GetEventChanResult(controllerCh, ssntp.NodeDisconnected)
 	if err != nil {

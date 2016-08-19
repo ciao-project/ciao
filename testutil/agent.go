@@ -122,7 +122,7 @@ func (client *SsntpTestClient) GetCmdChanResult(c *chan Result, cmd ssntp.Comman
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s command: %s\n", cmd, result.Err)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(25 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s command result\n", cmd)
 	}
 
@@ -161,7 +161,7 @@ func (client *SsntpTestClient) GetEventChanResult(c *chan Result, evt ssntp.Even
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s event: %s\n", evt, result.Err)
 		}
-	case <-time.After(20 * time.Second):
+	case <-time.After(25 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s event result\n", evt)
 	}
 
@@ -200,7 +200,7 @@ func (client *SsntpTestClient) GetErrorChanResult(c *chan Result, error ssntp.Er
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s error: %s\n", error, result.Err)
 		}
-	case <-time.After(20 * time.Second):
+	case <-time.After(25 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s error result\n", error)
 	}
 
@@ -239,7 +239,7 @@ func (client *SsntpTestClient) GetStatusChanResult(c *chan Result, status ssntp.
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s status: %s\n", status, result.Err)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(25 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s status result\n", status)
 	}
 
@@ -312,14 +312,14 @@ func closeClientChans(client *SsntpTestClient) {
 func (client *SsntpTestClient) ConnectNotify() {
 	var result Result
 
-	client.SendResultAndDelEventChan(ssntp.NodeConnected, result)
+	go client.SendResultAndDelEventChan(ssntp.NodeConnected, result)
 }
 
 // DisconnectNotify implements the SSNTP client ConnectNotify callback for SsntpTestClient
 func (client *SsntpTestClient) DisconnectNotify() {
 	var result Result
 
-	client.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
+	go client.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
 }
 
 // StatusNotify implements the SSNTP client StatusNotify callback for SsntpTestClient
@@ -347,7 +347,7 @@ func (client *SsntpTestClient) handleStart(payload []byte) Result {
 	if client.StartFail == true {
 		result.Err = errors.New(client.StartFailReason.String())
 		client.sendStartFailure(cmd.Start.InstanceUUID, client.StartFailReason)
-		client.SendResultAndDelErrorChan(ssntp.StartFailure, result)
+		go client.SendResultAndDelErrorChan(ssntp.StartFailure, result)
 		return result
 	}
 
@@ -378,7 +378,7 @@ func (client *SsntpTestClient) handleStop(payload []byte) Result {
 	if client.StopFail == true {
 		result.Err = errors.New(client.StopFailReason.String())
 		client.sendStopFailure(cmd.Stop.InstanceUUID, client.StopFailReason)
-		client.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+		go client.SendResultAndDelErrorChan(ssntp.StopFailure, result)
 		return result
 	}
 
@@ -407,7 +407,7 @@ func (client *SsntpTestClient) handleRestart(payload []byte) Result {
 	if client.RestartFail == true {
 		result.Err = errors.New(client.RestartFailReason.String())
 		client.sendRestartFailure(cmd.Restart.InstanceUUID, client.RestartFailReason)
-		client.SendResultAndDelErrorChan(ssntp.RestartFailure, result)
+		go client.SendResultAndDelErrorChan(ssntp.RestartFailure, result)
 		return result
 	}
 
@@ -436,7 +436,7 @@ func (client *SsntpTestClient) handleDelete(payload []byte) Result {
 	if client.DeleteFail == true {
 		result.Err = errors.New(client.DeleteFailReason.String())
 		client.sendDeleteFailure(cmd.Delete.InstanceUUID, client.DeleteFailReason)
-		client.SendResultAndDelErrorChan(ssntp.DeleteFailure, result)
+		go client.SendResultAndDelErrorChan(ssntp.DeleteFailure, result)
 		return result
 	}
 
@@ -514,7 +514,7 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 		fmt.Fprintf(os.Stderr, "client %s unhandled command %s\n", client.Role.String(), command.String())
 	}
 
-	client.SendResultAndDelCmdChan(command, result)
+	go client.SendResultAndDelCmdChan(command, result)
 }
 
 // EventNotify is an SSNTP callback stub for SsntpTestClient
@@ -522,6 +522,12 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 	var result Result
 
 	switch event {
+	case ssntp.NodeConnected:
+		//handled by ConnectNotify()
+		return
+	case ssntp.NodeDisconnected:
+		//handled by DisconnectNotify()
+		return
 	case ssntp.TenantAdded:
 		var tenantAddedEvent payloads.EventTenantAdded
 
@@ -540,7 +546,7 @@ func (client *SsntpTestClient) EventNotify(event ssntp.Event, frame *ssntp.Frame
 		fmt.Fprintf(os.Stderr, "client %s unhandled event: %s\n", client.Role.String(), event.String())
 	}
 
-	client.SendResultAndDelEventChan(event, result)
+	go client.SendResultAndDelEventChan(event, result)
 }
 
 // ErrorNotify is an SSNTP callback stub for SsntpTestClient
@@ -563,7 +569,7 @@ func (client *SsntpTestClient) SendStatsCmd() {
 		}
 	}
 
-	client.SendResultAndDelCmdChan(ssntp.STATS, result)
+	go client.SendResultAndDelCmdChan(ssntp.STATS, result)
 }
 
 // SendStatus pushes an ssntp status frame from the SsntpTestClient with
@@ -583,7 +589,7 @@ func (client *SsntpTestClient) SendStatus(memTotal int, memAvail int) {
 		}
 	}
 
-	client.SendResultAndDelCmdChan(ssntp.STATS, result)
+	go client.SendResultAndDelCmdChan(ssntp.STATS, result)
 }
 
 // SendTrace allows an SsntpTestClient to push an ssntp.TraceReport event frame
@@ -615,7 +621,7 @@ func (client *SsntpTestClient) SendTrace() {
 		}
 	}
 
-	client.SendResultAndDelEventChan(ssntp.TraceReport, result)
+	go client.SendResultAndDelEventChan(ssntp.TraceReport, result)
 }
 
 // SendDeleteEvent allows an SsntpTestClient to push an ssntp.InstanceDeleted event frame
@@ -640,7 +646,7 @@ func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
 		}
 	}
 
-	client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
+	go client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
 }
 
 // SendTenantAddedEvent allows an SsntpTestClient to push an ssntp.TenantAdded event frame
@@ -652,7 +658,7 @@ func (client *SsntpTestClient) SendTenantAddedEvent() {
 		result.Err = err
 	}
 
-	client.SendResultAndDelEventChan(ssntp.TenantAdded, result)
+	go client.SendResultAndDelEventChan(ssntp.TenantAdded, result)
 }
 
 // SendTenantRemovedEvent allows an SsntpTestClient to push an ssntp.TenantRemoved event frame
@@ -664,7 +670,7 @@ func (client *SsntpTestClient) SendTenantRemovedEvent() {
 		result.Err = err
 	}
 
-	client.SendResultAndDelEventChan(ssntp.TenantRemoved, result)
+	go client.SendResultAndDelEventChan(ssntp.TenantRemoved, result)
 }
 
 // SendPublicIPAssignedEvent allows an SsntpTestClient to push an ssntp.PublicIPAssigned event frame
@@ -676,7 +682,7 @@ func (client *SsntpTestClient) SendPublicIPAssignedEvent() {
 		result.Err = err
 	}
 
-	client.SendResultAndDelEventChan(ssntp.PublicIPAssigned, result)
+	go client.SendResultAndDelEventChan(ssntp.PublicIPAssigned, result)
 }
 
 // SendConcentratorAddedEvent allows an SsntpTestClient to push an ssntp.ConcentratorInstanceAdded event frame
@@ -705,7 +711,7 @@ func (client *SsntpTestClient) SendConcentratorAddedEvent(instanceUUID string, t
 		}
 	}
 
-	client.SendResultAndDelEventChan(ssntp.ConcentratorInstanceAdded, result)
+	go client.SendResultAndDelEventChan(ssntp.ConcentratorInstanceAdded, result)
 }
 
 func (client *SsntpTestClient) sendStartFailure(instanceUUID string, reason payloads.StartFailureReason) {
