@@ -1,5 +1,8 @@
 MariaDB
 =======
+[![](https://images.microbadger.com/badges/image/clearlinux/mariadb.svg)](http://microbadger.com/images/clearlinux/mariadb "Get your own image badge on microbadger.com")
+[![](https://images.microbadger.com/badges/version/clearlinux/mariadb.svg)](http://microbadger.com/images/clearlinux/mariadb "Get your own version badge on microbadger.com")
+
 This provides a Clear Linux* MariaDB
 
 Build

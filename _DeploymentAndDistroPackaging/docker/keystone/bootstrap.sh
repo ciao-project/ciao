@@ -1,6 +1,5 @@
 #!/bin/bash
 
-MARIADB_HOST=$MARIADB_HOST
 IDENTITY_HOST=$IDENTITY_HOST
 KEYSTONE_DB_USER=$KEYSTONE_DB_USER
 KEYSTONE_DB_PASSWORD=$KEYSTONE_DB_PASSWORD
@@ -14,6 +13,28 @@ sed -i.bak s/KEYSTONE_DB_USER/$KEYSTONE_DB_USER/g /etc/keystone/keystone.conf
 sed -i.bak s/KEYSTONE_DB_PASSWORD/$KEYSTONE_DB_PASSWORD/g /etc/keystone/keystone.conf
 sed -i.bak s/KEYSTONE_DB_NAME/$KEYSTONE_DB_NAME/g /etc/keystone/keystone.conf
 sed -i.bak s/IDENTITY_HOST/$IDENTITY_HOST/g /etc/nginx/keystone.wsgi.conf
+
+# MariaDB
+# Bootstrap mariadb if it hasn't been started
+if [[ ! -d /var/lib/mysql/mysql ]]; then
+    /usr/bin/mysql-systemd-start pre
+    mysqld_safe &
+    mysqladmin --silent --wait=30 ping || exit 1
+
+    # Set root user password
+    mysql -e "GRANT ALL PRIVILEGES ON *.* TO \"root\"@\"%\" IDENTIFIED by \"secret\" WITH GRANT OPTION;"
+
+    # Remove anonymous user access
+    mysql -e "DELETE FROM mysql.user WHERE User=\"\";"
+
+    # Remove test database
+    mysql -e "DROP DATABASE test;"
+
+    # Keystone Database and user
+    mysql -e "create database keystone;"
+    mysql -e "grant all on keystone.* to 'keystone'@'%' identified by 'secret';"
+    mysql -e "grant all on keystone.* to 'keystone'@'localhost' identified by 'secret';"
+fi
 
 # Populate keystone database
 keystone-manage db_sync

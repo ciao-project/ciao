@@ -1,12 +1,12 @@
-FROM clearlinux
+FROM clearlinux/mariadb
 MAINTAINER obed.n.munoz@intel.com
 
 ARG swupd_args=""
 
-RUN swupd bundle-add openstack-identity $swupd_args
-RUN swupd bundle-add openstack-python-clients $swupd_args
+RUN swupd bundle-add openstack-identity openstack-python-clients  $swupd_args
 RUN rm -rf /var/lib/swupd/*
 
+# Keystone
 RUN mkdir /etc/keystone
 COPY keystone.conf /etc/keystone
 

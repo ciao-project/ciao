@@ -14,20 +14,6 @@ Or just pull it from Dockerhub
     docker pull clearlinux/keystone
 ```
 
-Start MariaDB Container (in case you don't have one)
-----------------------------------------------------
-```
-    docker run --name mariadb -p 3306:3306 -e MYSQL_ROOT_PASSWORD=secret -d clearlinux/mariadb
-```
-
-Create Keystone database and user
----------------------------------
-```
-    YOUR_HOST=`hostname -f`
-    mysql -uroot -h $YOUR_HOST -psecret -e "create database keystone;"
-    mysql -uroot -h $YOUR_HOST -psecret -e "grant all on keystone.* to 'keystone'@'%' identified by 'secret';"
-```
-
 Create Keystone SSL certificates
 --------------------------------
 ```
@@ -41,7 +27,6 @@ Start Keystone container
 ```
     YOUR_HOST=`hostname -f`
     docker run -d -it --name keystone -p 5000:5000 -p 35357:35357 \
-                   -e MARIADB_HOST="$YOUR_HOST" \
 		   -e IDENTITY_HOST="$YOUR_HOST" \
 		   -e COMPUTE_HOST="$YOUR_HOST" \
 		   -e KEYSTONE_DB_USER="keystone" \
@@ -69,8 +54,6 @@ Login into Keystone container
 
 Environment Variables
 ---------------------
-- ``MARIADB_HOST``
-  MariaDB Hostname
 - ``IDENTITY_HOST``
   Identity (Keystone) host
 - ``COMPUTE_HOST``
