@@ -98,7 +98,7 @@ func (ctl *SsntpTestController) GetCmdChanResult(c *chan Result, cmd ssntp.Comma
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s command: %s\n", cmd, result.Err)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(25 * time.Second):
 		err = fmt.Errorf("Timeout waiting for controller %s command result\n", cmd)
 	}
 
@@ -137,7 +137,7 @@ func (ctl *SsntpTestController) GetEventChanResult(c *chan Result, evt ssntp.Eve
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s event: %s\n", evt, result.Err)
 		}
-	case <-time.After(20 * time.Second):
+	case <-time.After(25 * time.Second):
 		err = fmt.Errorf("Timeout waiting for controller %s event result\n", evt)
 	}
 
@@ -176,7 +176,7 @@ func (ctl *SsntpTestController) GetErrorChanResult(c *chan Result, error ssntp.E
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s error: %s\n", error, result.Err)
 		}
-	case <-time.After(20 * time.Second):
+	case <-time.After(25 * time.Second):
 		err = fmt.Errorf("Timeout waiting for controller %s error result\n", error)
 	}
 
@@ -238,14 +238,14 @@ func closeControllerChans(ctl *SsntpTestController) {
 func (ctl *SsntpTestController) ConnectNotify() {
 	var result Result
 
-	ctl.SendResultAndDelEventChan(ssntp.NodeConnected, result)
+	go ctl.SendResultAndDelEventChan(ssntp.NodeConnected, result)
 }
 
 // DisconnectNotify implements the SSNTP client DisconnectNotify callback for SsntpTestController
 func (ctl *SsntpTestController) DisconnectNotify() {
 	var result Result
 
-	ctl.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
+	go ctl.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
 }
 
 // StatusNotify implements the SSNTP client StatusNotify callback for SsntpTestController
@@ -279,7 +279,7 @@ func (ctl *SsntpTestController) CommandNotify(command ssntp.Command, frame *ssnt
 		fmt.Fprintf(os.Stderr, "controller unhandled command: %s\n", command.String())
 	}
 
-	ctl.SendResultAndDelCmdChan(command, result)
+	go ctl.SendResultAndDelCmdChan(command, result)
 }
 
 // EventNotify implements the SSNTP client EventNotify callback for SsntpTestController
@@ -287,10 +287,14 @@ func (ctl *SsntpTestController) EventNotify(event ssntp.Event, frame *ssntp.Fram
 	var result Result
 
 	switch event {
-	// case ssntp.NodeConnected:	handled by ConnectNotify()
-	// case ssntp.NodeDisconnected:	handled by DisconnectNotify()
 	// case ssntp.TenantAdded: does not reach controller
 	// case ssntp.TenantRemoved: does not reach controller
+	case ssntp.NodeConnected:
+		//handled by ConnectNotify()
+		return
+	case ssntp.NodeDisconnected:
+		//handled by DisconnectNotify()
+		return
 	case ssntp.PublicIPAssigned:
 		var publicIPAssignedEvent payloads.EventPublicIPAssigned
 
@@ -323,7 +327,7 @@ func (ctl *SsntpTestController) EventNotify(event ssntp.Event, frame *ssntp.Fram
 		fmt.Fprintf(os.Stderr, "controller unhandled event: %s\n", event.String())
 	}
 
-	ctl.SendResultAndDelEventChan(event, result)
+	go ctl.SendResultAndDelEventChan(event, result)
 }
 
 // ErrorNotify implements the SSNTP client ErrorNotify callback for SsntpTestController
@@ -347,5 +351,5 @@ func (ctl *SsntpTestController) ErrorNotify(error ssntp.Error, frame *ssntp.Fram
 		fmt.Fprintf(os.Stderr, "controller unhandled error %s\n", error.String())
 	}
 
-	ctl.SendResultAndDelErrorChan(error, result)
+	go ctl.SendResultAndDelErrorChan(error, result)
 }
