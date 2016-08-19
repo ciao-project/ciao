@@ -78,7 +78,7 @@ func TestGetTenantDevices(t *testing.T) {
 
 	_, ok := devices[data.ID]
 	if !ok {
-		t.Fatal(err)
+		t.Fatal("device not in map")
 	}
 
 	db.disconnect()
@@ -155,4 +155,6 @@ func TestGetAllStorageAttachments(t *testing.T) {
 	if len(attachments) != 1 {
 		t.Fatal(err)
 	}
+
+	db.disconnect()
 }

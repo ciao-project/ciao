@@ -2106,12 +2106,16 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 	defer rows.Close()
 
 	for rows.Next() {
+		var state string
 		var data types.BlockData
 
-		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &data.State, &data.CreateTime)
+		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime)
 		if err != nil {
-			devices[data.ID] = data
+			continue
 		}
+
+		data.State = types.BlockState(state)
+		devices[data.ID] = data
 	}
 	if err = rows.Err(); err != nil {
 		ds.dbLock.Unlock()
@@ -2143,11 +2147,15 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 
 	for rows.Next() {
 		var data types.BlockData
+		var state string
 
-		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &data.State, &data.CreateTime)
+		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime)
 		if err != nil {
-			devices[data.ID] = data
+			continue
 		}
+
+		data.State = types.BlockState(state)
+		devices[data.ID] = data
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
