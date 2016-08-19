@@ -84,6 +84,61 @@ func TestGetTenantDevices(t *testing.T) {
 	db.disconnect()
 }
 
+func TestGetTenantWithStorage(t *testing.T) {
+	config := Config{
+		PersistentURI: "file:memdb11?mode=memory&cache=shared",
+		TransientURI:  "file:memdb12?mode=memory&cache=shared",
+	}
+
+	db, err := getPersistentStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// add a tenant.
+	tenantID := uuid.Generate().String()
+	mac := "validmac"
+
+	err = db.addTenant(tenantID, mac)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenantID,
+		CreateTime:  time.Now(),
+	}
+
+	err = db.createBlockData(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// make sure our query works.
+	tenant, err := db.getTenantNoCache(data.TenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tenant.devices == nil {
+		t.Fatal("devices is nil")
+	}
+
+	d := tenant.devices[data.ID]
+	if d.ID != data.ID {
+		t.Fatal("device not correct")
+	}
+
+	db.disconnect()
+}
+
 func TestGetAllBlockData(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:memdb7?mode=memory&cache=shared",
