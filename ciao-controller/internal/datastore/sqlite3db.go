@@ -2101,7 +2101,7 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 	rows, err := datastore.Query(query, tenantID)
 	if err != nil {
 		ds.dbLock.Unlock()
-		return nil, err
+		return devices, err
 	}
 	defer rows.Close()
 
@@ -2119,7 +2119,7 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 	}
 	if err = rows.Err(); err != nil {
 		ds.dbLock.Unlock()
-		return nil, err
+		return devices, err
 	}
 
 	ds.dbLock.Unlock()
