@@ -124,3 +124,35 @@ func TestGetAllBlockData(t *testing.T) {
 
 	db.disconnect()
 }
+
+func TestGetAllStorageAttachments(t *testing.T) {
+	config := Config{
+		PersistentURI: "file:memdb9?mode=memory&cache=shared",
+		TransientURI:  "file:memdb10?mode=memory&cache=shared",
+	}
+
+	db, err := getPersistentStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := types.StorageAttachment{
+		ID:         uuid.Generate().String(),
+		InstanceID: uuid.Generate().String(),
+		BlockID:    uuid.Generate().String(),
+	}
+
+	err = db.createStorageAttachment(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachments, err := db.getAllStorageAttachments()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(attachments) != 1 {
+		t.Fatal(err)
+	}
+}

@@ -2218,8 +2218,9 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 
 		err = rows.Scan(&a.ID, &a.InstanceID, &a.BlockID)
 		if err != nil {
-			attachments[a.ID] = a
+			continue
 		}
+		attachments[a.ID] = a
 	}
 
 	if err = rows.Err(); err != nil {
