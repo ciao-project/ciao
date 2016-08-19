@@ -267,7 +267,7 @@ func (server *SsntpTestServer) ConnectNotify(uuid string, role ssntp.Role) {
 		server.netClients = append(server.netClients, uuid)
 	}
 
-	server.SendResultAndDelEventChan(ssntp.NodeConnected, result)
+	go server.SendResultAndDelEventChan(ssntp.NodeConnected, result)
 }
 
 // DisconnectNotify implements an SSNTP DisconnectNotify callback for SsntpTestServer
@@ -296,7 +296,7 @@ func (server *SsntpTestServer) DisconnectNotify(uuid string, role ssntp.Role) {
 		server.netClientsLock.Unlock()
 	}
 
-	server.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
+	go server.SendResultAndDelEventChan(ssntp.NodeDisconnected, result)
 }
 
 // StatusNotify is an SSNTP callback stub for SsntpTestServer
@@ -310,7 +310,7 @@ func (server *SsntpTestServer) StatusNotify(uuid string, status ssntp.Status, fr
 		fmt.Fprintf(os.Stderr, "server unhandled status frame from node %s\n", uuid)
 	}
 
-	server.SendResultAndDelStatusChan(status, result)
+	go server.SendResultAndDelStatusChan(status, result)
 }
 
 func getAttachVolumeResult(payload []byte, result *Result) {
@@ -414,7 +414,7 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 		fmt.Fprintf(os.Stderr, "server unhandled command %s\n", command.String())
 	}
 
-	server.SendResultAndDelCmdChan(command, result)
+	go server.SendResultAndDelCmdChan(command, result)
 }
 
 // EventNotify implements an SSNTP EventNotify callback for SsntpTestServer
@@ -450,7 +450,7 @@ func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 		fmt.Fprintf(os.Stderr, "server unhandled event %s\n", event.String())
 	}
 
-	server.SendResultAndDelEventChan(event, result)
+	go server.SendResultAndDelEventChan(event, result)
 }
 
 func getConcentratorUUID(event ssntp.Event, payload []byte) (string, error) {
@@ -498,7 +498,7 @@ func (server *SsntpTestServer) EventForward(uuid string, event ssntp.Event, fram
 		result.Err = err
 	}
 
-	server.SendResultAndDelEventChan(event, result)
+	go server.SendResultAndDelEventChan(event, result)
 
 	return dest
 }
@@ -538,7 +538,7 @@ func (server *SsntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame
 		fmt.Fprintf(os.Stderr, "server unhandled error %s\n", error.String())
 	}
 
-	server.SendResultAndDelErrorChan(error, result)
+	go server.SendResultAndDelErrorChan(error, result)
 }
 
 func (server *SsntpTestServer) handleStart(payload []byte) (dest ssntp.ForwardDestination) {
