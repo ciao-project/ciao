@@ -30,6 +30,7 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	image "github.com/01org/ciao/ciao-image/client"
 	"github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/uuid"
@@ -1110,6 +1111,62 @@ func TestGetStorage(t *testing.T) {
 	}
 }
 
+func createTestVolume(tenantID string, size int, t *testing.T) string {
+	req := block.RequestedVolume{
+		Size: size,
+	}
+
+	vol, err := context.CreateVolume(tenantID, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if vol.UserID != tenantID || vol.Status != block.Available ||
+		vol.Size != size || vol.Bootable != "false" {
+		t.Fatalf("incorrect volume returned\n")
+	}
+
+	return vol.ID
+}
+
+func TestCreateVolume(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	volID := createTestVolume(tenant.ID, 20, t)
+
+	// confirm that we can retrieve the volume from
+	// the datastore.
+	bd, err := context.ds.GetBlockDevice(volID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if bd.State != types.Available || bd.TenantID != tenant.ID {
+		t.Fatalf("incorrect volume information stored\n")
+	}
+}
+
+func TestListVolumes(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_ = createTestVolume(tenant.ID, 20, t)
+
+	vols, err := context.ListVolumes(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(vols) != 1 {
+		t.Fatal("Incorrect number of volumes returned")
+	}
+}
+
 var testClients []*testutil.SsntpTestClient
 var context *controller
 var server *testutil.SsntpTestServer
@@ -1180,6 +1237,9 @@ func TestMain(m *testing.M) {
 	_, _ = addComputeTestTenant()
 	go createComputeAPI(context)
 
+	time.Sleep(1 * time.Second)
+
+	go context.startVolumeService()
 	time.Sleep(1 * time.Second)
 
 	code := m.Run()
