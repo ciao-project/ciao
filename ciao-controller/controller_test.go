@@ -458,6 +458,40 @@ func TestAttachVolume(t *testing.T) {
 	}
 }
 
+func TestDetachVolume(t *testing.T) {
+	client, err := testutil.NewSsntpTestClientConnection("DetachVolume", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Ssntp.Close()
+
+	serverCh := server.AddCmdChan(ssntp.DetachVolume)
+
+	// ok to not send workload first?
+
+	err = context.client.detachVolume("volID", "instanceID", client.UUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := server.GetCmdChanResult(serverCh, ssntp.DetachVolume)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.NodeUUID != client.UUID {
+		t.Fatal("Did not get node ID")
+	}
+
+	if result.VolumeUUID != "volID" {
+		t.Fatal("Did not get volume ID")
+	}
+
+	if result.InstanceUUID != "instanceID" {
+		t.Fatal("Did not get instance ID")
+	}
+}
+
 func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
 	bd, err := context.CreateBlockDevice(nil, 0)
 	if err != nil {
@@ -480,11 +514,11 @@ func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
 	return data
 }
 
-func doAttachVolumeCommand(t *testing.T, fail bool) {
+// Note: caller should close ssntp client
+func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestClient, tenant string, volume string) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
-	defer client.Ssntp.Close()
 
 	tenantID := instances[0].TenantID
 
@@ -553,14 +587,107 @@ func doAttachVolumeCommand(t *testing.T, fail bool) {
 			t.Fatalf("block device state not updated")
 		}
 	}
+
+	return client, tenantID, data.ID
 }
 
 func TestAttachVolumeCommand(t *testing.T) {
-	doAttachVolumeCommand(t, false)
+	client, _, _ := doAttachVolumeCommand(t, false)
+	client.Ssntp.Close()
 }
 
 func TestAttachVolumeFailure(t *testing.T) {
-	doAttachVolumeCommand(t, true)
+	client, _, _ := doAttachVolumeCommand(t, true)
+	client.Ssntp.Close()
+}
+
+func doDetachVolumeCommand(t *testing.T, fail bool) {
+	// attach volume should succeed for this test
+	client, tenantID, volume := doAttachVolumeCommand(t, false)
+	defer client.Ssntp.Close()
+
+	sendStatsCmd(client, t)
+
+	time.Sleep(1 * time.Second)
+
+	serverCh := server.AddCmdChan(ssntp.DetachVolume)
+	agentCh := client.AddCmdChan(ssntp.DetachVolume)
+	var serverErrorCh *chan testutil.Result
+
+	if fail == true {
+		serverErrorCh = server.AddErrorChan(ssntp.DetachVolumeFailure)
+		client.DetachFail = true
+		client.DetachVolumeFailReason = payloads.DetachVolumeNotAttached
+
+		defer func() {
+			client.DetachFail = false
+			client.DetachVolumeFailReason = ""
+		}()
+	}
+
+	err := context.DetachVolume(tenantID, volume, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := server.GetCmdChanResult(serverCh, ssntp.DetachVolume)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.NodeUUID != client.UUID ||
+		result.VolumeUUID != volume {
+		t.Fatalf("expected %s %s , got %s %s ", client.UUID, volume, result.NodeUUID, result.VolumeUUID)
+	}
+
+	// at this point, the state of the volume should be "detaching"
+	data, err := context.ds.GetBlockDevice(volume)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if data.State != types.Detaching {
+		t.Fatalf("expected state %s, got %s\n", types.Detaching, data.State)
+	}
+
+	_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
+	if fail == false && err != nil {
+		t.Fatal(err)
+	}
+
+	if fail == true {
+		if err == nil {
+			t.Fatal("Success when Failure expected")
+		}
+
+		_, err = server.GetErrorChanResult(serverErrorCh, ssntp.DetachVolumeFailure)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// at this point, the state of the block device should
+		// be set back to InUse
+		time.Sleep(time.Second)
+
+		data2, err := context.ds.GetBlockDevice(volume)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if data2.State != types.InUse {
+			t.Fatalf("expected state %s, got %s\n", types.InUse, data2.State)
+		}
+	}
+
+	return
+}
+
+func TestDetachVolumeCommand(t *testing.T) {
+	doDetachVolumeCommand(t, false)
+}
+
+func TestDetachVolumeFailure(t *testing.T) {
+	doDetachVolumeCommand(t, true)
 }
 
 func TestInstanceDeletedEvent(t *testing.T) {

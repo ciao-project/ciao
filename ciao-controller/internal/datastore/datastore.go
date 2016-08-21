@@ -962,6 +962,32 @@ func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, rea
 	ds.db.logEvent(i.TenantID, string(userError), msg)
 }
 
+// DetachVolumeFailure will clean up after a failure to detach a volume.
+// The volume state will be changed back to available, and an error message
+// will be logged.
+func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, reason payloads.DetachVolumeFailureReason) {
+	// update the block data to reflect correct state
+	data, err := ds.GetBlockDevice(volumeID)
+
+	// because controller wouldn't allow a detach if state
+	// wasn't initially InUse, we can blindly set this back
+	// to InUse.
+	if err == nil {
+		data.State = types.InUse
+		_ = ds.UpdateBlockDevice(data)
+	}
+
+	// get owner of this instance
+	i, err := ds.GetInstance(instanceID)
+	if err != nil {
+		return
+	}
+
+	msg := fmt.Sprintf("Detach Volume Failure %s from %s: %s", volumeID, instanceID, reason.String())
+
+	ds.db.logEvent(i.TenantID, string(userError), msg)
+}
+
 func (ds *Datastore) deleteInstance(instanceID string) error {
 	ds.instanceLastStatLock.Lock()
 	delete(ds.instanceLastStat, instanceID)
