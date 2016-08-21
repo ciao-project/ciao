@@ -325,6 +325,18 @@ func getAttachVolumeResult(payload []byte, result *Result) {
 	}
 }
 
+func getDetachVolumeResult(payload []byte, result *Result) {
+	var volCmd payloads.DetachVolume
+
+	err := yaml.Unmarshal(payload, &volCmd)
+	result.Err = err
+	if err == nil {
+		result.NodeUUID = volCmd.Detach.WorkloadAgentUUID
+		result.InstanceUUID = volCmd.Detach.InstanceUUID
+		result.VolumeUUID = volCmd.Detach.VolumeUUID
+	}
+}
+
 func getStartResults(payload []byte, result *Result) {
 	var startCmd payloads.Start
 	var nn bool
@@ -409,6 +421,9 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 
 	case ssntp.AttachVolume:
 		getAttachVolumeResult(payload, &result)
+
+	case ssntp.DetachVolume:
+		getDetachVolumeResult(payload, &result)
 
 	default:
 		fmt.Fprintf(os.Stderr, "server unhandled command %s\n", command.String())
@@ -600,6 +615,27 @@ func (server *SsntpTestServer) handleAttachVolume(payload []byte) ssntp.ForwardD
 	return dest
 }
 
+func (server *SsntpTestServer) handleDetachVolume(payload []byte) ssntp.ForwardDestination {
+	var cmd payloads.DetachVolume
+	var dest ssntp.ForwardDestination
+
+	err := yaml.Unmarshal(payload, &cmd)
+	if err != nil {
+		return dest
+	}
+
+	server.clientsLock.Lock()
+	defer server.clientsLock.Unlock()
+
+	for _, c := range server.clients {
+		if c == cmd.Detach.WorkloadAgentUUID {
+			dest.AddRecipient(c)
+		}
+	}
+
+	return dest
+}
+
 // CommandForward implements an SSNTP CommandForward callback for SsntpTestServer
 func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command, frame *ssntp.Frame) (dest ssntp.ForwardDestination) {
 	payload := frame.Payload
@@ -609,6 +645,8 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 		dest = server.handleStart(payload)
 	case ssntp.AttachVolume:
 		dest = server.handleAttachVolume(payload)
+	case ssntp.DetachVolume:
+		dest = server.handleDetachVolume(payload)
 	case ssntp.EVACUATE:
 		fallthrough
 	case ssntp.STOP:
@@ -684,6 +722,10 @@ func StartTestServer() *SsntpTestServer {
 				Operand: ssntp.AttachVolumeFailure,
 				Dest:    ssntp.Controller,
 			},
+			{ // all VolumeDetachFailure events go to all Controllers
+				Operand: ssntp.DetachVolumeFailure,
+				Dest:    ssntp.Controller,
+			},
 			{ // all PublicIPAssigned events go to all Controllers
 				Operand: ssntp.PublicIPAssigned,
 				Dest:    ssntp.Controller,
@@ -718,6 +760,10 @@ func StartTestServer() *SsntpTestServer {
 			},
 			{ // all AttachVolume commands are processed by the Command forwarder
 				Operand:        ssntp.AttachVolume,
+				CommandForward: server,
+			},
+			{ // all DetachVolume commands are processed by the Command forwarder
+				Operand:        ssntp.DetachVolume,
 				CommandForward: server,
 			},
 		},
