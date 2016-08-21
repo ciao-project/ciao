@@ -2173,6 +2173,64 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 	}
 }
 
+func TestGetVolumeAttachments(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachments, err := ds.GetVolumeAttachments(data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(attachments) != 1 {
+		t.Fatalf("expected 1 attachment, found %d", len(attachments))
+	}
+
+	for _, a := range attachments {
+		if a.InstanceID != instance.ID || a.BlockID != data.ID {
+			t.Fatal("Returned incorrect attachment")
+		}
+	}
+}
+
 var ds *Datastore
 
 var tablesInitPath = flag.String("tables_init_path", "../../tables", "path to csv files")
