@@ -1,0 +1,49 @@
+---
+# Copyright (c) 2016 Intel Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+  - name: Create images directory
+    file: path=images state=directory
+    connection: local
+
+  - name: Download OVMF.fd
+    get_url:
+      url: "{{ ovmf_url }}"
+      dest: images/OVMF.fd
+      validate_certs: no
+      use_proxy: "{{ use_proxy | default('yes') }}"
+    connection: local
+
+  - name: Download Fedora Image
+    get_url:
+      url: "{{ fedora_cloud_image_url }}"
+      dest: images/{{ fedora_cloud_image }}
+      force: no
+      use_proxy: "{{ use_proxy | default('yes') }}"
+    connection: local
+
+  - name: Download ClearLinux Image
+    get_url:
+      url: "{{ clear_cloud_image_url }}"
+      dest: images/{{ clear_cloud_image }}.xz
+      force: no
+      use_proxy: "{{ use_proxy | default('yes') }}"
+    connection: local
+
+  - name: Uncompress ClearLinux Image
+    command: unxz -k {{ clear_cloud_image }}.xz
+    args:
+      chdir: images
+      creates: "{{ clear_cloud_image }}"
+    connection: local

@@ -1,0 +1,24 @@
+galaxy_info:
+  author: Alberto Murillo
+  description: Role to install docker on ubuntu
+  company: Intel
+
+  issue_tracker_url: https://github.com/clearlinux/clear-config-management/issues
+
+  license: Apache
+
+  min_ansible_version: 2.1
+
+  platforms:
+  - name: Ubuntu
+    versions:
+      - xenial
+  - name: ClearLinux
+
+  galaxy_tags:
+    - ubuntu
+    - xenial
+    - clearlinux
+    - docker
+
+dependencies: []

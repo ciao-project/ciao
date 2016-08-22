@@ -1,0 +1,12 @@
+---
+- hosts: controllers
+  tasks:
+
+    - name: Stop keystone docker container
+      docker_container: name=ciao-keystone state=absent
+
+    - name: Remove Keystone files
+      file: name={{ item }} state=absent
+      with_items:
+        - /etc/keystone/ssl
+        - /etc/keystone/keystone.conf

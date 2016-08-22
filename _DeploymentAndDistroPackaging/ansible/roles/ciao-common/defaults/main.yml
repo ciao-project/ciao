@@ -1,0 +1,38 @@
+---
+# Copyright (c) 2016 Intel Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Fully Qualified Domain Name for CIAO controller node
+ciao_controller_fqdn: "{{ hostvars[groups['controllers'][0]]['ansible_fqdn'] }}"
+
+# URL for the latest ciao networking image
+cnci_image_url: https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz
+
+# Ciao networking image file name
+cnci_image: "{{ cnci_image_url[0:-3].split('/') | last }}"
+
+# URL for EFI Firmware required by CNCI Image
+ovmf_url: https://download.clearlinux.org/image/OVMF.fd
+
+# URL for the latest fedora cloud image
+fedora_cloud_image_url: https://dl.fedoraproject.org/pub/fedora/linux/releases/23/Cloud/x86_64/Images/Fedora-Cloud-Base-23-20151030.x86_64.qcow2
+
+# Fedora cloud image file name
+fedora_cloud_image: "{{ fedora_cloud_image_url.split('/') | last }}"
+
+# URL for the latest clearlinux cloud image
+clear_cloud_image_url: https://download.clearlinux.org/image/clear-8970-cloud.img.xz
+
+# Clearlinux cloud image file name
+clear_cloud_image: "{{ clear_cloud_image_url.split('/') | last | regex_replace('(.*).xz', '\\1') }}"
