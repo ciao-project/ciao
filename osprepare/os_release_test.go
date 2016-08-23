@@ -45,6 +45,6 @@ func TestGetOsRelease(t *testing.T) {
 
 func TestParseReleaseFileNonExistent(t *testing.T) {
 	if res := ParseReleaseFile(NON_EXISTENT_FILE); res != nil {
-		t.Fatal("Expected nil, got %v\n", res)
+		t.Fatalf("Expected nil, got %v\n", res)
 	}
 }

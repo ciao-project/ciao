@@ -43,7 +43,7 @@ func TestGetQemu(t *testing.T) {
 // this tests is expected to pass
 func TestVersionLessThanEqualVersion(t *testing.T) {
 	if res := VersionLessThan(MinQemuVersion, MinQemuVersion); res != false {
-		t.Fatal("expected false, got %v\n", res)
+		t.Fatalf("expected false, got %v\n", res)
 	}
 }
 
@@ -52,7 +52,7 @@ func TestVersionLessThanEqualVersion(t *testing.T) {
 // this tests is expected to pass
 func TestVersionLessThanGreaterVersion(t *testing.T) {
 	if res := VersionLessThan(MinQemuVersion, "0.0.1"); res != false {
-		t.Fatal("expected false, got %v\n", res)
+		t.Fatalf("expected false, got %v\n", res)
 	}
 }
 
@@ -61,6 +61,6 @@ func TestVersionLessThanGreaterVersion(t *testing.T) {
 // this tests is expected to pass
 func TestVersionLessThanLowerVersion(t *testing.T) {
 	if res := VersionLessThan("0.0.1", MinQemuVersion); res != true {
-		t.Fatal("expected true, got %v\n", res)
+		t.Fatalf("expected true, got %v\n", res)
 	}
 }
