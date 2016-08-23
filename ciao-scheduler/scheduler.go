@@ -26,6 +26,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
@@ -1041,6 +1042,7 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 
 func main() {
 	flag.Parse()
+	osprepare.PrepareOsDeps(nil)
 
 	sched := configSchedulerServer()
 	if sched == nil {
