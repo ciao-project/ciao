@@ -50,6 +50,17 @@ type PackageRequirement struct {
 // )
 type PackageRequirements map[string][]*PackageRequirement
 
+// Required for absolutely core functionality across all Ciao components
+var BootstrapRequirements = PackageRequirements{
+	"ubuntu": {
+		{"/usr/bin/cephfs", "ceph-fs-common"},
+		{"/usr/bin/ceph", "ceph-common"},
+	},
+	"clearlinux": {
+		{"/usr/bin/ceph", "storage-cluster"},
+	},
+}
+
 // CollectPackages returns a list of non-installed packages from
 // the PackageRequirements received
 func collectPackages(dist distro, reqs *PackageRequirements) []string {
@@ -97,4 +108,10 @@ func PrepareOsDeps(reqs *PackageRequirements) {
 			fmt.Fprintf(os.Stderr, "Failed to install: %s\n", strings.Join(reqPkgs, ", "))
 		}
 	}
+}
+
+// Bootstrap installs all the core dependencies required to bootstrap the core
+// configuration of all Ciao components
+func Bootstrap() {
+	PrepareOsDeps(&BootstrapRequirements)
 }
