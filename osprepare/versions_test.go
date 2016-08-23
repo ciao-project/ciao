@@ -24,7 +24,7 @@ func TestGetDocker(t *testing.T) {
 	if pathExists("/usr/bin/docker") == false {
 		t.Skip("Docker not installed, cannot validate version get")
 	}
-	if vers := GetDockerVersion(); vers == "" {
+	if vers := getDockerVersion(); vers == "" {
 		t.Fatal("Cannot determine docker version")
 	}
 }
@@ -33,7 +33,7 @@ func TestGetQemu(t *testing.T) {
 	if pathExists("/usr/bin/qemu-system-x86_64") == false {
 		t.Skip("Qemu not installed, cannot validate version get")
 	}
-	if vers := GetQemuVersion(); vers == "" {
+	if vers := getQemuVersion(); vers == "" {
 		t.Fatal("Cannot determine qemu version")
 	}
 }
@@ -42,7 +42,7 @@ func TestGetQemu(t *testing.T) {
 // false when given same version to tests. e.g: VersionLessThan("1.11.0", "1.11.0")
 // this tests is expected to pass
 func TestVersionLessThanEqualVersion(t *testing.T) {
-	if res := VersionLessThan(MinQemuVersion, MinQemuVersion); res != false {
+	if res := versionLessThan(MinQemuVersion, MinQemuVersion); res != false {
 		t.Fatalf("expected false, got %v\n", res)
 	}
 }
@@ -51,7 +51,7 @@ func TestVersionLessThanEqualVersion(t *testing.T) {
 // false when given greater version. e.g: VersionLessThan("1.11.0", "0.0.1")
 // this tests is expected to pass
 func TestVersionLessThanGreaterVersion(t *testing.T) {
-	if res := VersionLessThan(MinQemuVersion, "0.0.1"); res != false {
+	if res := versionLessThan(MinQemuVersion, "0.0.1"); res != false {
 		t.Fatalf("expected false, got %v\n", res)
 	}
 }
@@ -60,7 +60,7 @@ func TestVersionLessThanGreaterVersion(t *testing.T) {
 // true when given lower version. e.g: VersionLessThan("0.0.1", "99.9.9")
 // this tests is expected to pass
 func TestVersionLessThanLowerVersion(t *testing.T) {
-	if res := VersionLessThan("0.0.1", MinQemuVersion); res != true {
+	if res := versionLessThan("0.0.1", MinQemuVersion); res != true {
 		t.Fatalf("expected true, got %v\n", res)
 	}
 }

@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	NON_EXISTENT_FILE = "/nonexistentpath/this/file/doesnt/exists"
+	nonExistentFile = "/nonexistentpath/this/file/doesnt/exists"
 )
 
 func TestGetOsRelease(t *testing.T) {
@@ -30,21 +30,21 @@ func TestGetOsRelease(t *testing.T) {
 	if d == nil {
 		t.Skip("Unknown distro, cannot test")
 	}
-	os_rel := GetOsRelease()
-	if os_rel == nil {
+	r := getOSRelease()
+	if r == nil {
 		t.Fatal("Could not get os-release file for known distro")
 	}
-	if d.getID() == "clearlinux" && !strings.Contains(os_rel.ID, "clear") {
+	if d.getID() == "clearlinux" && !strings.Contains(r.ID, "clear") {
 		t.Fatal("Invalid os-release for clearlinux")
-	} else if d.getID() == "ubuntu" && !strings.Contains(os_rel.ID, "ubuntu") {
+	} else if d.getID() == "ubuntu" && !strings.Contains(r.ID, "ubuntu") {
 		t.Fatal("Invalid os-release for Ubuntu")
-	} else if d.getID() == "fedora" && !strings.Contains(os_rel.ID, "fedora") {
+	} else if d.getID() == "fedora" && !strings.Contains(r.ID, "fedora") {
 		t.Fatal("Invalid os-release for Fedora")
 	}
 }
 
 func TestParseReleaseFileNonExistent(t *testing.T) {
-	if res := ParseReleaseFile(NON_EXISTENT_FILE); res != nil {
+	if res := parseReleaseFile(nonExistentFile); res != nil {
 		t.Fatalf("Expected nil, got %v\n", res)
 	}
 }

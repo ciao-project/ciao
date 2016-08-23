@@ -50,7 +50,8 @@ type PackageRequirement struct {
 // )
 type PackageRequirements map[string][]*PackageRequirement
 
-// Required for absolutely core functionality across all Ciao components
+// BootstrapRequirements lists required dependencies for absolutely core
+// functionality across all Ciao components
 var BootstrapRequirements = PackageRequirements{
 	"ubuntu": {
 		{"/usr/bin/cephfs", "ceph-fs-common"},
@@ -92,7 +93,7 @@ func PrepareOsDeps(reqs PackageRequirements) {
 
 	if distro == nil {
 		fmt.Fprintf(os.Stderr, "Running on an unsupported distro\n")
-		if rel := GetOsRelease(); rel != nil {
+		if rel := getOSRelease(); rel != nil {
 			fmt.Fprintf(os.Stderr, "Unsupported distro: %s %s\n", rel.Name, rel.Version)
 		} else {
 			fmt.Fprintln(os.Stderr, "No os-release found on this host")

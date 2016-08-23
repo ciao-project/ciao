@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-type OsRelease struct {
+type osRelease struct {
 	Name       string
 	ID         string
 	PrettyName string
@@ -33,10 +33,10 @@ type OsRelease struct {
 
 // Parse the given path and attempt to return a valid
 // OsRelease for it
-func ParseReleaseFile(path string) *OsRelease {
+func parseReleaseFile(path string) *osRelease {
 	fi, err := os.Open(path)
-	var os_rel OsRelease
-	os_rel.mapping = make(map[string]string)
+	var r osRelease
+	r.mapping = make(map[string]string)
 
 	if err != nil {
 		return nil
@@ -57,25 +57,25 @@ func ParseReleaseFile(path string) *OsRelease {
 		value = strings.Replace(value, "'", "", -1)
 
 		if key == "name" {
-			os_rel.Name = value
+			r.Name = value
 		} else if key == "id" {
-			os_rel.ID = value
+			r.ID = value
 		} else if key == "pretty_name" {
-			os_rel.PrettyName = value
+			r.PrettyName = value
 		} else if key == "version" {
-			os_rel.Version = value
+			r.Version = value
 		} else if key == "version_id" {
-			os_rel.VersionID = value
+			r.VersionID = value
 		}
 
 		// Store it for use by Distro
-		os_rel.mapping[key] = value
+		r.mapping[key] = value
 	}
-	return &os_rel
+	return &r
 }
 
 // Try all known paths to get the right OsRelease instance
-func GetOsRelease() *OsRelease {
+func getOSRelease() *osRelease {
 	paths := []string{
 		"/etc/os-release",
 		"/usr/lib/os-release",
@@ -83,14 +83,14 @@ func GetOsRelease() *OsRelease {
 	}
 
 	for _, item := range paths {
-		if os_rel := ParseReleaseFile(item); os_rel != nil {
-			return os_rel
+		if r := parseReleaseFile(item); r != nil {
+			return r
 		}
 	}
 	return nil
 }
 
-func (o *OsRelease) GetValue(key string) string {
+func (o *osRelease) GetValue(key string) string {
 	if val, succ := o.mapping[strings.ToLower(key)]; succ {
 		return val
 	}

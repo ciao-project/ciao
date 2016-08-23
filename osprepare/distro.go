@@ -184,7 +184,7 @@ type distro interface {
 // getDistro will return a distro based on what
 // is read from GetOsRelease
 func getDistro() distro {
-	osRelease := GetOsRelease()
+	osRelease := getOSRelease()
 
 	if osRelease == nil {
 		return nil

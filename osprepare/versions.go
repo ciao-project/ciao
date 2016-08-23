@@ -24,7 +24,7 @@ import (
 	"strings"
 )
 
-func get_command_output(command string) string {
+func getCommandOutput(command string) string {
 	splits := strings.Split(command, " ")
 	c := exec.Command(splits[0], splits[1:]...)
 	c.Env = os.Environ()
@@ -33,73 +33,77 @@ func get_command_output(command string) string {
 	c.Env = append(c.Env, "LANG=C")
 	c.Stderr = os.Stderr
 
-	if out, err := c.Output(); err != nil {
+	out, err := c.Output()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to run %s: %s\n", splits[0], err)
 		return ""
-	} else {
-		return string(out)
 	}
+
+	return string(out)
 }
 
-func GetDockerVersion() string {
-	ret := get_command_output("docker --version")
+func getDockerVersion() string {
+	ret := getCommandOutput("docker --version")
 	var version string
+
 	if n, _ := fmt.Sscanf(ret, "Docker version %s, build", &version); n != 1 {
 		return ""
-	} else {
-		if strings.HasSuffix(version, ",") {
-			return string(version[0 : len(version)-1])
-		}
-		return version
 	}
+
+	if strings.HasSuffix(version, ",") {
+		return string(version[0 : len(version)-1])
+	}
+	return version
 }
 
-func GetQemuVersion() string {
-	ret := get_command_output("qemu-system-x86_64 --version")
+func getQemuVersion() string {
+	ret := getCommandOutput("qemu-system-x86_64 --version")
 	var version string
+
 	if n, _ := fmt.Sscanf(ret, "QEMU emulator version %s, Copyright (c)", &version); n != 1 {
 		return ""
-	} else {
-		if strings.HasSuffix(version, ",") {
-			return string(version[0 : len(version)-1])
-		}
-		return version
 	}
+
+	if strings.HasSuffix(version, ",") {
+		return string(version[0 : len(version)-1])
+	}
+	return version
 }
 
 // Determine if the given current version is less than the test version
 // Note: Can only compare equal version schemas (i.e. same level of dots)
-func VersionLessThan(current_version string, test_version string) bool {
-	cur_splits := strings.Split(current_version, ".")
-	test_splits := strings.Split(test_version, ".")
+func versionLessThan(currentVer string, testVer string) bool {
+	curSplits := strings.Split(currentVer, ".")
+	testSplits := strings.Split(testVer, ".")
 
-	max_range := len(cur_splits)
-	if l2 := len(test_splits); l2 < max_range {
-		max_range = l2
+	max := len(curSplits)
+
+	if l2 := len(testSplits); l2 < max {
+		max = l2
 	}
 
-	cur_isplits := make([]int, max_range)
-	cur_tsplits := make([]int, max_range)
+	iSplits := make([]int, max)
+	tSplits := make([]int, max)
 
-	for i := 0; i < max_range; i++ {
-		cur_isplits[i], _ = strconv.Atoi(cur_splits[i])
-		cur_tsplits[i], _ = strconv.Atoi(test_splits[i])
+	for i := 0; i < max; i++ {
+		iSplits[i], _ = strconv.Atoi(curSplits[i])
+		tSplits[i], _ = strconv.Atoi(testSplits[i])
 	}
 
-	for i := 0; i < max_range; i++ {
+	for i := 0; i < max; i++ {
 		if i == 0 {
-			if cur_isplits[i] < cur_tsplits[i] {
+			if iSplits[i] < tSplits[i] {
 				return true
 			}
 		} else {
 			match := true
 			for j := 0; j < i; j++ {
-				if cur_isplits[j] != cur_tsplits[j] {
+				if iSplits[j] != tSplits[j] {
 					match = false
 					break
 				}
 			}
-			if match && cur_isplits[i] < cur_tsplits[i] {
+			if match && iSplits[i] < tSplits[i] {
 				return true
 			}
 		}
