@@ -86,9 +86,9 @@ func collectPackages(dist distro, reqs PackageRequirements) []string {
 	return nil
 }
 
-// PrepareOsDeps installs all the dependencies defined in a component
+// InstallDeps installs all the dependencies defined in a component
 // specific PackageRequirements in order to enable running the component
-func PrepareOsDeps(reqs PackageRequirements) {
+func InstallDeps(reqs PackageRequirements) {
 	distro := getDistro()
 
 	if distro == nil {
@@ -114,5 +114,5 @@ func PrepareOsDeps(reqs PackageRequirements) {
 // Bootstrap installs all the core dependencies required to bootstrap the core
 // configuration of all Ciao components
 func Bootstrap() {
-	PrepareOsDeps(BootstrapRequirements)
+	InstallDeps(BootstrapRequirements)
 }

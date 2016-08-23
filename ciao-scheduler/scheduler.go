@@ -1042,7 +1042,7 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 
 func main() {
 	flag.Parse()
-	osprepare.PrepareOsDeps(schedDeps)
+	osprepare.InstallDeps(schedDeps)
 
 	sched := configSchedulerServer()
 	if sched == nil {
