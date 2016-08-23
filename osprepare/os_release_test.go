@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	nonExistentFile = "/nonexistentpath/this/file/doesnt/exists"
+	nonExistentFile = "/nonexistentpath/this/file/doesnot/exists"
 )
 
 func TestGetOsRelease(t *testing.T) {
