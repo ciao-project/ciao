@@ -62,6 +62,12 @@ script:
    - test-cases -v -timeout 9 -text -coverprofile /tmp/cover.out -append-profile -short github.com/01org/ciao/ciao-launcher github.com/01org/ciao/ciao-scheduler github.com/01org/ciao/payloads github.com/01org/ciao/configuration github.com/01org/ciao/testutil github.com/01org/ciao/ssntp/uuid
    - export GOROOT=`go env GOROOT` && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -v -timeout 9 -text -coverprofile /tmp/cover.out -append-profile github.com/01org/ciao/ssntp
    - export GOROOT=`go env GOROOT` && export SNNET_ENV=198.51.100.0/24 && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -v -timeout 9 -text -short -tags travis -coverprofile /tmp/cover.out -append-profile github.com/01org/ciao/networking/libsnnet
+   # API Documentation is automated by swagger, every PR will verify the documentation can be generated
+   # swagger requires all dependencies of the package to be docummented to obtain models (structs, our case the payloads)
+   - go list ./... | sed -e "s/github\.com\/01org\/ciao\/vendor\///" | xargs go get
+   # verify ciao-controller api documentation can be generated with swagger
+   - go get github.com/yvasiyarov/swagger
+   - $GOPATH/bin/swagger  -apiPackage=github.com/01org/ciao/ciao-controller -mainApiFile=github.com/01org/ciao/ciao-controller/main.go -format=markdown -contentsTable=false -models=false -ignore "golang_org|context"
 
 after_success:
    - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=/tmp/cover.out
