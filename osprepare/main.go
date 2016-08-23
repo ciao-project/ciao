@@ -74,9 +74,9 @@ func collectPackages(dist distro, reqs *PackageRequirements) []string {
 	return nil
 }
 
-// PrepareCIAO installs all the dependencies defined in
+// PrepareOsDeps installs all the dependencies defined in
 // PackageRequirements in order to run the ciao component
-func PrepareCIAO(reqs *PackageRequirements) bool {
+func PrepareOsDeps(reqs *PackageRequirements) {
 	distro := getDistro()
 
 	if distro == nil {
@@ -86,14 +86,15 @@ func PrepareCIAO(reqs *PackageRequirements) bool {
 		} else {
 			fmt.Fprintln(os.Stderr, "No os-release found on this host")
 		}
-		return false
+		return
 	}
-	fmt.Println(distro.getID())
+	// Nothing requested to install
+	if reqs == nil {
+		return
+	}
 	if reqPkgs := collectPackages(distro, reqs); reqPkgs != nil {
 		if distro.InstallPackages(reqPkgs) == false {
 			fmt.Fprintf(os.Stderr, "Failed to install: %s\n", strings.Join(reqPkgs, ", "))
-			return false
 		}
 	}
-	return true
 }
