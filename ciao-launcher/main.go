@@ -75,8 +75,8 @@ func init() {
 	flag.BoolVar(&networking, "network", true, "Enable networking")
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
-	flag.StringVar(&secretPath, "secret-path", "/etc/ceph/ceph.client.ciao.keyring", "path to ceph client keyring")
-	flag.StringVar(&cephID, "ceph-id", "ciao", "ceph client id")
+	flag.StringVar(&secretPath, "ceph_keyring", "", "path to ceph client keyring")
+	flag.StringVar(&cephID, "ceph_id", "", "ceph client id")
 }
 
 const (
@@ -393,6 +393,12 @@ DONE:
 			mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
 			diskLimit = clusterConfig.Configure.Launcher.DiskLimit
 			memLimit = clusterConfig.Configure.Launcher.MemoryLimit
+			if secretPath == "" {
+				secretPath = clusterConfig.Configure.Storage.SecretPath
+			}
+			if cephID == "" {
+				cephID = clusterConfig.Configure.Storage.CephID
+			}
 			printClusterConfig()
 
 			err = startNetwork(doneCh)
