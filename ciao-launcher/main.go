@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
@@ -400,6 +401,8 @@ DONE:
 				cephID = clusterConfig.Configure.Storage.CephID
 			}
 			printClusterConfig()
+
+			osprepare.InstallDeps(launcherDeps)
 
 			err = startNetwork(doneCh)
 			if err != nil {
