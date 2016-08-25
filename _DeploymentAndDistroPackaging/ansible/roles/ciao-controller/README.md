@@ -17,11 +17,10 @@ Note: Mandatory variables are shown in **bold**
 Variable  | Default Value | Description
 --------  | ------------- | -----------
 ciao_controller_ip | `{{ ansible_default_ipv4['address'] }}` | IP Address for CIAO controller node
-ciao_controller_fqdn | `{{ ansible_fqdn }}` | # FQDN for CIAO controller node
 ciao_mgmt_subnets | `{{ ansible_default_ipv4['network'] }}` | CIAO management subnets
 ciao_compute_subnets | `{{ ciao_mgmt_subnet }}` | CIAO compute subnets
-ciao_service_user | csr | OpenStack user for CIAO services
-ciao_service_password | secret | Password for `ciao_service_user`
+ciao_service_user | ciao | OpenStack user for CIAO services
+ciao_service_password | ciaoUserPassword | Password for `ciao_service_user`
 ciao_admin_email | admin@example.com | CIAO administrator email address
 ciao_cert_organization | Example Inc. | Name of the organization running the CIAO cluster
 ciao_guest_user | demouser | CIAO virtual machines can be accessed with this username and it's public key

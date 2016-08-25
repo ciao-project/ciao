@@ -16,9 +16,6 @@
 # IP Address for CIAO controller node
 ciao_controller_ip: "{{ ansible_default_ipv4['address'] }}"
 
-# FQDN for CIAO controller node
-ciao_controller_fqdn: "{{ ansible_fqdn }}"
-
 # CIAO management subnets
 ciao_mgmt_subnets: "{{ [(ansible_default_ipv4.network + '/' + ansible_default_ipv4.netmask) | ipaddr] }}"
 
@@ -26,10 +23,10 @@ ciao_mgmt_subnets: "{{ [(ansible_default_ipv4.network + '/' + ansible_default_ip
 ciao_compute_subnets: "{{ ciao_mgmt_subnets }}"
 
 # OpenStack user for CIAO services
-ciao_service_user: csr
+ciao_service_user: ciao
 
 # Password for 'ciao_service_user'
-ciao_service_password: secret
+ciao_service_password: ciaoUserPassword
 
 # CIAO administrator email address
 # this address is embedded in ciao certificates
