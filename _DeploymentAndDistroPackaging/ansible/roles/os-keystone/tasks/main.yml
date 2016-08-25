@@ -30,10 +30,6 @@
         - 5000:5000
       env:
         IDENTITY_HOST: "{{ keystone_fqdn }}"
-        COMPUTE_HOST: "{{ keystone_fqdn }}"
-        KEYSTONE_DB_USER: keystone
-        KEYSTONE_DB_PASSWORD: "{{ keystone_db_password }}"
-        KEYSTONE_DB_NAME: keystone
         KEYSTONE_ADMIN_PASSWORD: "{{ keystone_admin_password }}"
       volumes:
         - "{{ mysql_data }}:/var/lib/mysql:rw"

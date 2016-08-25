@@ -8,8 +8,9 @@ This role installs clearlinux/keystone docker container
 
 Variable | Default Value | Description
 -------- | ------------- | -----------
-mysql_root_password | secret | Password for the `root` user in the database
-keystone_fqdn(optional) | `{{ ansible_fqdn }}` | Fully Qualified Domain Name for Keystone server
+keystone_fqdn | `{{ ansible_fqdn }}` | Fully Qualified Domain Name for Keystone server
+keystone_admin_password | adminUserPassword | Password for the admin user in keystone
+mysql_data | /var/lib/mysql | Path to hold mysql database file
 
 #### The following variables can be used to specify custom services, projects, users and roles
 
@@ -24,8 +25,8 @@ keystone_fqdn(optional) | `{{ ansible_fqdn }}` | Fully Qualified Domain Name for
   <td>keystone_services</td>
   <td><pre><code>
     keystone_services:
-      - service_name: nova
-        service_type: compute
+      - service: nova
+        type: compute
         description: OpenStack Compute Service
   </code></pre></td>
   <td>A list of services to be created</td>
@@ -35,7 +36,7 @@ keystone_fqdn(optional) | `{{ ansible_fqdn }}` | Fully Qualified Domain Name for
   <td>keystone_projects</td>
   <td><pre><code>
     keystone_projects:
-      - project_name: demo
+      - project: demo
         description: Demo Project
   </code></pre></td>
   <td>A list of projects to be created</td>
@@ -45,9 +46,9 @@ keystone_fqdn(optional) | `{{ ansible_fqdn }}` | Fully Qualified Domain Name for
   <td>keystone_users</td>
   <td><pre><code>
     keystone_users:
-      - user_name: demo
+      - user: demo
         password: secret
-        project_name: demo
+        project: demo
         email: demo@example.com
   </code></pre></td>
   <td>A list of users to be created</td>
@@ -67,9 +68,9 @@ keystone_fqdn(optional) | `{{ ansible_fqdn }}` | Fully Qualified Domain Name for
   <td>keystone_user_roles</td>
   <td><pre><code>
     keystone_user_roles:
-      - user_name: demo
-        project_name: demo
-        role_name: demo
+      - user: demo
+        project: demo
+        role: demo
   </code></pre></td>
   <td>A list of user, role mappings</td>
 </tr>
@@ -82,31 +83,33 @@ None
 ## Example playbook
 file *keystone.yml*
 ```
-- hosts: openstack_identity
+- hosts: controllers
   roles:
     - os-keystone
 ```
 
 file *group_vars/all*
 ```
-mysql_root_password: secret
 keystone_fqdn: identity.example.com
+keystone_admin_password: adminUserPassword
+mysql_data: /var/lib/mysql
 
 keystone_projects:
-  - project_name: demo
+  - project: demo
+    description: Demo Project
 
 keystone_users:
-  - user_name: demo
-    password: secret
-    project_name: demo
+  - user: demo
+    password: demoUserPassword
+    project: demo
 
 keystone_roles:
   - demo
 
 keystone_user_roles:
-  - user_name: demo
-    project_name: demo
-    role_name: demo
+  - user: demo
+    project: demo
+    role: demo
 ```
 
 ## License
