@@ -17,6 +17,8 @@ ciao_guest_key: ~/.ssh/id_rsa.pub
 keystone_projects:
   - project: demo
     description: Demo Project
+  - project: service
+    description: Service Project
 keystone_users:
   - user: demo
     password: demoUserPassword
