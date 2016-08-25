@@ -16,9 +16,9 @@
 
 /*
 
-osprepare is the Operating System Preparation facility of Ciao, enabling very
-simple automated configuration of dependencies between various Linux distributions
-in a sane fashion.
+Package osprepare is the Operating System Preparation facility of Ciao,
+enabling very simple automated configuration of dependencies between
+various Linux distributions in a sane fashion.
 
 
 Expressing Dependencies
@@ -51,7 +51,7 @@ files be missing. That is to say, if /usr/bin/docker is missing, on a system tha
 has been identified as Ubuntu, then the 'docker' package would be installed.
 
 The dependencies for each component should be placed into a `deps.go` file, which
-then facilitates easier maintainence and discoverability of the dependencies for
+then facilitates easier maintenance and discoverability of the dependencies for
 every component.
 
 Verified lack of dependencies
@@ -81,7 +81,7 @@ which are:
 
  * clearlinux
  * ubuntu
- * fedora 
+ * fedora
 
 */
 package osprepare
