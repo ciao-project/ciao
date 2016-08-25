@@ -10,3 +10,4 @@
       with_items:
         - /etc/keystone/ssl
         - /etc/keystone/keystone.conf
+        - /var/lib/mysql/

@@ -1,4 +1,3 @@
 ---
   - include: ./cleanup/ciao.yml
   - include: ./cleanup/keystone.yml
-  - include: ./cleanup/mariadb.yml

@@ -1,9 +1,0 @@
----
-- hosts: controllers
-  tasks:
-
-    - name: Stop mariadb docker container
-      docker_container: name=ciao-mariadb state=absent
-
-    - name: Remove MariaDB files
-      file: path=/var/lib/mysql state=absent
