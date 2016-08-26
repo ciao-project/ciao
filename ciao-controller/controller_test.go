@@ -691,6 +691,13 @@ func TestDetachVolumeFailure(t *testing.T) {
 	doDetachVolumeCommand(t, true)
 }
 
+func TestDetachVolumeByAttachment(t *testing.T) {
+	err := context.DetachVolume("invalidTenant", "invalidVolume", "attachmentID")
+	if err == nil {
+		t.Fatal("Detach by attachment ID not supported yet")
+	}
+}
+
 func TestInstanceDeletedEvent(t *testing.T) {
 	var reason payloads.StartFailureReason
 
