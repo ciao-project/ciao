@@ -121,6 +121,7 @@ type persistentStore interface {
 	getAllBlockData() (map[string]types.BlockData, error)
 	createBlockData(data types.BlockData) error
 	updateBlockData(data types.BlockData) error
+	deleteBlockData(string) error
 	getTenantDevices(tenantID string) (map[string]types.BlockData, error)
 	createStorageAttachment(a types.StorageAttachment) error
 	getAllStorageAttachments() (map[string]types.StorageAttachment, error)
