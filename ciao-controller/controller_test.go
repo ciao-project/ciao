@@ -1174,6 +1174,24 @@ func TestListVolumes(t *testing.T) {
 	}
 }
 
+func TestShowVolumeDetails(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	volID := createTestVolume(tenant.ID, 20, t)
+
+	vol, err := context.ShowVolumeDetails(tenant.ID, volID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if vol.ID != volID {
+		t.Fatal("wrong volume retrieved")
+	}
+}
+
 var testClients []*testutil.SsntpTestClient
 var context *controller
 var server *testutil.SsntpTestServer
