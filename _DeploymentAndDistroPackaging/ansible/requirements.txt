@@ -1,0 +1,7 @@
+clearlinux.docker
+clearlinux.keystone
+clearlinux.ciao-common
+clearlinux.ciao-controller
+clearlinux.ciao-compute
+clearlinux.ciao-network
+clearlinux.ciao-webui
