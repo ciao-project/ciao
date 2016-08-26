@@ -498,6 +498,73 @@ func TestAttachVolumeFailure(t *testing.T) {
 	}
 }
 
+func doDetachVolume(fail bool) error {
+	agentCh := agent.AddCmdChan(ssntp.DetachVolume)
+	serverCh := server.AddCmdChan(ssntp.DetachVolume)
+
+	var serverErrorCh *chan Result
+	var controllerErrorCh *chan Result
+
+	if fail == true {
+		serverErrorCh = server.AddErrorChan(ssntp.DetachVolumeFailure)
+		controllerErrorCh = controller.AddErrorChan(ssntp.DetachVolumeFailure)
+		fmt.Fprintf(os.Stderr, "Expecting server and controller to note: \"%s\"\n", ssntp.DetachVolumeFailure)
+
+		agent.DetachFail = true
+		agent.DetachVolumeFailReason = payloads.DetachVolumeNotAttached
+
+		defer func() {
+			agent.DetachFail = false
+			agent.DetachVolumeFailReason = ""
+		}()
+	}
+
+	go controller.Ssntp.SendCommand(ssntp.DetachVolume, []byte(DetachVolumeYaml))
+	_, err := server.GetCmdChanResult(serverCh, ssntp.DetachVolume)
+	if err != nil { // server sees the DetachVolume on its way down to agent
+		return err
+	}
+
+	_, err = agent.GetCmdChanResult(agentCh, ssntp.DetachVolume)
+	if fail == false && err != nil { // agent unexpected fail
+		return err
+	}
+
+	if fail == true {
+		if err == nil { // agent unexpected success
+			return errors.New("Success when Failure expected")
+		}
+		_, err = server.GetErrorChanResult(serverErrorCh, ssntp.DetachVolumeFailure)
+		if err != nil {
+			return err
+		}
+		_, err = controller.GetErrorChanResult(controllerErrorCh, ssntp.DetachVolumeFailure)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+func TestDetachVolume(t *testing.T) {
+	fail := false
+
+	err := doDetachVolume(fail)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDetachVolumeFailure(t *testing.T) {
+	fail := true
+
+	err := doDetachVolume(fail)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestTenantAdded(t *testing.T) {
 	serverCh := server.AddEventChan(ssntp.TenantAdded)
 	cnciAgentCh := cnciAgent.AddEventChan(ssntp.TenantAdded)

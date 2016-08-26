@@ -1500,6 +1500,63 @@ func TestAttachVolumeFailure(t *testing.T) {
 	}
 }
 
+func TestDetachVolumeFailure(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// add test instances
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Error(err)
+	}
+
+	instance, err := addTestInstance(newTenant, wls[0])
+	if err != nil {
+		t.Error(err)
+	}
+
+	// add test block data
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// update block data to indicate it is detaching
+	data.State = types.Detaching
+
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// pretend we got a failure to attach.
+	ds.DetachVolumeFailure(instance.ID, data.ID, payloads.DetachVolumeNotAttached)
+
+	// make sure state has been switched to InUse again.
+	bd, err := ds.GetBlockDevice(data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if bd.State != types.InUse {
+		t.Fatalf("expected state: %s, got %s\n", types.InUse, bd.State)
+	}
+}
+
 func testAllocateTenantIPs(t *testing.T, nIPs int) {
 	nIPsPerSubnet := 253
 
@@ -2113,6 +2170,64 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 	err = ds.deleteStorageAttachment(a.ID)
 	if err != ErrNoStorageAttachment {
 		t.Fatal(err)
+	}
+}
+
+func TestGetVolumeAttachments(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    tenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachments, err := ds.GetVolumeAttachments(data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(attachments) != 1 {
+		t.Fatalf("expected 1 attachment, found %d", len(attachments))
+	}
+
+	for _, a := range attachments {
+		if a.InstanceID != instance.ID || a.BlockID != data.ID {
+			t.Fatal("Returned incorrect attachment")
+		}
 	}
 }
 
