@@ -25,21 +25,21 @@ import "github.com/01org/ciao/osprepare"
 // fuser for qemu instance pid
 
 var launcherClearLinuxCommonDeps = []osprepare.PackageRequirement{
-	{"/usr/bin/qemu-system-x86_64", "cloud-control"},
-	{"/usr/bin/xorriso", "cloud-control"},
-	{"/usr/sbin/fuser", "cloud-control"},
+	{BinaryName: "/usr/bin/qemu-system-x86_64", PackageName: "cloud-control"},
+	{BinaryName: "/usr/bin/xorriso", PackageName: "cloud-control"},
+	{BinaryName: "/usr/sbin/fuser", PackageName: "cloud-control"},
 }
 
 var launcherFedoraCommonDeps = []osprepare.PackageRequirement{
-	{"/usr/bin/qemu-system-x86_64", "qemu-system-x86"},
-	{"/usr/bin/xorriso", "xorriso"},
-	{"/usr/sbin/fuser", "psmisc"},
+	{BinaryName: "/usr/bin/qemu-system-x86_64", PackageName: "qemu-system-x86"},
+	{BinaryName: "/usr/bin/xorriso", PackageName: "xorriso"},
+	{BinaryName: "/usr/sbin/fuser", PackageName: "psmisc"},
 }
 
 var launcherUbuntuCommonDeps = []osprepare.PackageRequirement{
-	{"/usr/bin/qemu-system-x86_64", "qemu-system-x86"},
-	{"/usr/bin/xorriso", "xorriso"},
-	{"/bin/fuser", "psmisc"},
+	{BinaryName: "/usr/bin/qemu-system-x86_64", PackageName: "qemu-system-x86"},
+	{BinaryName: "/usr/bin/xorriso", PackageName: "xorriso"},
+	{BinaryName: "/bin/fuser", PackageName: "psmisc"},
 }
 
 var launcherNetNodeDeps = map[string][]osprepare.PackageRequirement{

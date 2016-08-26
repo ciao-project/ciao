@@ -19,13 +19,14 @@ package main
 import "github.com/01org/ciao/osprepare"
 
 var schedDeps = osprepare.PackageRequirements{
+	// no known dependencies
 	"clearlinux": {
-		{"", ""},
+		{BinaryName: "", PackageName: ""},
 	},
 	"fedora": {
-		{"", ""},
+		{BinaryName: "", PackageName: ""},
 	},
 	"ubuntu": {
-		{"", ""},
+		{BinaryName: "", PackageName: ""},
 	},
 }

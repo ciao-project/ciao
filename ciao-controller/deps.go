@@ -21,12 +21,12 @@ import "github.com/01org/ciao/osprepare"
 var controllerDeps = osprepare.PackageRequirements{
 	/* sqlite3 is not strictly required, but useful for debug */
 	"clearlinux": {
-		{"/usr/bin/sqlite3", "cloud-control"},
+		{BinaryName: "/usr/bin/sqlite3", PackageName: "cloud-control"},
 	},
 	"fedora": {
-		{"/usr/bin/sqlite3", "sqlite"},
+		{BinaryName: "/usr/bin/sqlite3", PackageName: "sqlite"},
 	},
 	"ubuntu": {
-		{"/usr/bin/sqlite3", "sqlite3"},
+		{BinaryName: "/usr/bin/sqlite3", PackageName: "sqlite3"},
 	},
 }
