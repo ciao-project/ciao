@@ -253,13 +253,20 @@ func setupQmpSocket(t *testing.T, runTest func(net.Conn, *bufio.Scanner, chan in
 	}
 
 	fd.SetDeadline(time.Now().Add(5. * time.Second))
+	const qmpHello = `{ "QMP": { "version": { "qemu": { "micro": 0, "minor": 5, "major": 2}, "package": ""}, "capabilities": []}}`
+	_, err = fmt.Fprintln(fd, qmpHello)
+	if err != nil {
+		fd.Close()
+		t.Fatalf("Unable to write to qmpChannel %v", err)
+	}
+
 	sc := bufio.NewScanner(fd)
 	if !sc.Scan() {
 		fd.Close()
 		t.Fatalf("query capabilities not received")
 	}
 
-	_, err = fmt.Fprintln(fd, "{}")
+	_, err = fmt.Fprintln(fd, `{ "return": {}}`)
 	if err != nil {
 		fd.Close()
 		t.Fatalf("Unable to write to qmpChannel %v", err)
