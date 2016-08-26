@@ -1,17 +1,17 @@
 ---
 - hosts: controllers
   roles:
-    - docker
-    - os-keystone
-    - ciao-controller
-    - ciao-webui
+    - clearlinux.docker
+    - clearlinux.keystone
+    - clearlinux.ciao-controller
+    - clearlinux.ciao-webui
 
 - hosts: networks
   strategy: free
   roles:
-    - ciao-network
+    - clearlinux.ciao-network
 
 - hosts: computes
   strategy: free
   roles:
-    - ciao-compute
+    - clearlinux.ciao-compute

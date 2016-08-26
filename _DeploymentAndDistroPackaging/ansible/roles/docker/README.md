@@ -1,4 +1,4 @@
-docker
+clearlinux.docker
 =========
 
 This role installs docker 1.12 on Ubuntu and ClearLinux
@@ -25,7 +25,7 @@ Example Playbook
 
     - hosts: servers
       roles:
-         - docker
+         - clearlinux.docker
 
 License
 -------

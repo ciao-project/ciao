@@ -1,15 +1,15 @@
 ---
 controller_fqdn: "{{ hostvars[groups['controllers'][0]]['ansible_fqdn'] }}"
 
-# keystone: https://github.com/clearlinux/clear-config-management/tree/master/roles/os-keystone
+# keystone: https://github.com/clearlinux/ansible-role-keystone
 keystone_fqdn: "{{ controller_fqdn }}"
 keystone_admin_password: adminUserPassword
 mysql_data: /var/lib/mysql
 
-# ciao-common: https://github.com/clearlinux/clear-config-management/tree/master/roles/ciao-common
+# ciao-common: https://github.com/clearlinux/ansible-role-ciao-common
 ciao_controller_fqdn: "{{ controller_fqdn }}"
 
-# ciao-controller: https://github.com/clearlinux/clear-config-management/tree/master/roles/ciao-controller
+# ciao-controller: https://github.com/clearlinux/ansible-role-ciao-controller
 ciao_service_user: ciao
 ciao_service_password: ciaoUserPassword
 ciao_guest_user: demouser

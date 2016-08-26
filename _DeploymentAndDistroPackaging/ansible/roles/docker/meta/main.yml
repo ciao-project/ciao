@@ -1,6 +1,6 @@
 galaxy_info:
   author: Alberto Murillo
-  description: Role to install docker on ubuntu
+  description: Role to install docker on ubuntu and clearlinux
   company: Intel
 
   issue_tracker_url: https://github.com/clearlinux/clear-config-management/issues

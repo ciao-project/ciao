@@ -1,5 +1,5 @@
-# ciao-common
-This role is a requirement for other ciao roles
+# clearlinux.ciao-common
+This role is a requirement for other clearlinux.ciao-* roles
 
 ## Requirements
 None

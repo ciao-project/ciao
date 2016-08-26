@@ -1,9 +1,9 @@
 galaxy_info:
   author: Alberto Murillo
-  description: This role installs clearlinux/ciao-webui docker container
+  description: This role installs clearlinux/keystone docker container
   company: Intel
 
-  issue_tracker_url: https://github.com/01org/ciao
+  issue_tracker_url: https://github.com/clearlinux/ansible-role-keystone
 
   license: Apache
 
@@ -19,7 +19,7 @@ galaxy_info:
     - ubuntu
     - xenial
     - clearlinux
-    - ciao
+    - docker
+    - keystone
 
-dependencies:
-  - clearlinux.ciao-common
+dependencies: []

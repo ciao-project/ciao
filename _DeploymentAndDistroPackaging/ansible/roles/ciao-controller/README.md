@@ -1,4 +1,4 @@
-# ciao-controller
+# clearlinux.ciao-controller
 Ansible role to install the controller node for a CIAO cluster
 
 This role configures the following components
@@ -10,7 +10,7 @@ This role configures the following components
 None
 
 ## Role Variables
-The available variables for this roles are the variables from [ciao-common](https://github.com/clearlinux/clear-config-management/tree/master/roles/ciao-common) plus the following:
+The available variables for this roles are the variables from [clearlinux.ciao-common](https://github.com/clearlinux/ansible-role-ciao-common) plus the following:
 
 Note: Mandatory variables are shown in **bold**
 
@@ -29,14 +29,14 @@ ciao_guest_key | ~/.ssh/id_rsa.pub | A path to an SSH public authentication key 
 **WARNING**: `ciao_guest_user` and `ciao_guest_key` are a temporary development feature. They give the developer running a dev/test ciao cluster superuser ssh access to all compute workload instances and also all cnci instances. In the future this will be removed when cloud-init and user specified workloads are enabled in the webui and cli.
 
 ## Dependencies
-* [ciao-common](https://github.com/clearlinux/clear-config-management/tree/master/roles/ciao-common)
+* [clearlinux.ciao-common](https://github.com/clearlinux/ansible-role-ciao-common)
 
 ## Example Playbook
-file *ciao_controller.yml*
+file *ciao.yml*
 ```
 - hosts: controllers
   roles:
-    - ciao-controller
+    - clearlinux.ciao-controller
 ```
 
 file *group_vars/all*

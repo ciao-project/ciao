@@ -1,20 +1,21 @@
-# ciao-network
+# clearlinux.ciao-network
 Ansible role to install the network node for a CIAO cluster
 
 ## Requirements
 * qemu-kvm
 
 ## Role Variables
-The available variables for this roles are the variables from [ciao-common](https://github.com/clearlinux/clear-config-management/tree/master/roles/ciao-common)
+The available variables for this roles are the variables from [clearlinux.ciao-common](https://github.com/clearlinux/ansible-role-ciao-common)
 
 ## Dependencies
-* [ciao-common](https://github.com/clearlinux/clear-config-management/tree/master/roles/ciao-common)
+* [clearlinux.ciao-common](https://github.com/clearlinux/ansible-role-ciao-common)
 
 ## Example Playbook
+file *ciao.yml*
 ```
-- hosts: ciao_network
+- hosts: networks
   roles:
-    - ciao-network
+    - clearlinux.ciao-network
 ```
 
 file *group_vars/all*

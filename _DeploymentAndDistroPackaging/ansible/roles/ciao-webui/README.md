@@ -1,4 +1,4 @@
-# ciao-webui
+# clearlinux.ciao-webui
 This role installs clearlinux/ciao-webui docker container
 
 ## Requirements
@@ -15,11 +15,11 @@ ciao_webui_fqdn | `{{ ansible_fqdn }}` | Hostname of the webui host
 None
 
 ## Example playbook
-file dashboard*.yml*
+file *ciao.yml*
 ```
-- hosts: dashboard
+- hosts: controllers
   roles:
-    - ciao-webui
+    - clearlinux.ciao-webui
 ```
 
 ## License

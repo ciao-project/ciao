@@ -1,4 +1,4 @@
-# ciao-compute
+# clearlinux.ciao-compute
 Ansible role to install the compute node for a CIAO cluster
 
 ## Requirements
@@ -7,17 +7,17 @@ Ansible role to install the compute node for a CIAO cluster
 * xorriso
 
 ## Role Variables
-The available variables for this roles are the variables from [ciao-common](https://github.com/clearlinux/clear-config-management/tree/master/roles/ciao-common)
+The available variables for this roles are the variables from [clearlinux.ciao-common](https://github.com/clearlinux/ansible-role-ciao-common)
 
 ## Dependencies
-* [ciao-common](https://github.com/clearlinux/clear-config-management/tree/master/roles/ciao-common)
+* [clearlinux.ciao-common](https://github.com/clearlinux/ansible-role-ciao-common)
 
 ## Example Playbook
-file *ciao_compute.yml*
+file *ciao.yml*
 ```
-- hosts: ciao_compute
+- hosts: computes
   roles:
-    - ciao-compute
+    - clearlinux.ciao-compute
 ```
 
 file *group_vars/all*

@@ -1,6 +1,6 @@
 galaxy_info:
   author: Alberto Murillo
-  description: This role installs clearlinux/ciao-webui docker container
+  description: This role is a requirement for other clearlinux.ciao-* roles
   company: Intel
 
   issue_tracker_url: https://github.com/01org/ciao
@@ -21,5 +21,4 @@ galaxy_info:
     - clearlinux
     - ciao
 
-dependencies:
-  - clearlinux.ciao-common
+dependencies: []

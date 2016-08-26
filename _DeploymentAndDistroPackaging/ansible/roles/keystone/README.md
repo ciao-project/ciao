@@ -1,4 +1,4 @@
-# os-keystone
+# clearlinux.keystone
 This role installs clearlinux/keystone docker container
 
 ## Requirements
@@ -81,11 +81,11 @@ mysql_data | /var/lib/mysql | Path to hold mysql database file
 None
 
 ## Example playbook
-file *keystone.yml*
+file *ciao.yml*
 ```
 - hosts: controllers
   roles:
-    - os-keystone
+    - clearlinux.keystone
 ```
 
 file *group_vars/all*
