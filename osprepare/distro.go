@@ -212,7 +212,7 @@ func (d *clearLinuxDistro) getID() string {
 // Correctly split and format the command, using sudo if appropriate, as a
 // common mechanism for the various package install functions.
 func sudoFormatCommand(command string, packages []string) bool {
-	toInstall := strings.Join(packages[0:], " ")
+	toInstall := strings.Join(packages, " ")
 
 	var executable string
 	var args string
