@@ -1156,6 +1156,47 @@ func TestCreateVolume(t *testing.T) {
 	}
 }
 
+func TestDeleteVolume(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	volID := createTestVolume(tenant.ID, 20, t)
+
+	// confirm that we can retrieve the volume from
+	// the datastore.
+	_, err = context.ds.GetBlockDevice(volID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// attempt to delete invalid volume
+	err = context.DeleteVolume(tenant.ID, "badID")
+	if err != datastore.ErrNoBlockData {
+		t.Fatal("Incorrect error")
+	}
+
+	// attempt to delete with bad tenant ID
+	err = context.DeleteVolume("badID", volID)
+	if err != block.ErrVolumeOwner {
+		t.Fatal("Incorrect error")
+	}
+
+	// this should work
+	err = context.DeleteVolume(tenant.ID, volID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we cannot retrieve the volume from
+	// the datastore.
+	_, err = context.ds.GetBlockDevice(volID)
+	if err != datastore.ErrNoBlockData {
+		t.Fatal(err)
+	}
+}
+
 func TestListVolumes(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {

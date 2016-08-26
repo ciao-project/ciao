@@ -93,6 +93,34 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 }
 
 func (c *controller) DeleteVolume(tenant string, volume string) error {
+	// get the block device information
+	info, err := c.ds.GetBlockDevice(volume)
+	if err != nil {
+		return err
+	}
+
+	// check that the block device is owned by the tenant.
+	if info.TenantID != tenant {
+		return block.ErrVolumeOwner
+	}
+
+	// check that the block device is available.
+	if info.State != types.Available {
+		return block.ErrVolumeNotAvailable
+	}
+
+	// remove the block data from our datastore.
+	err = c.ds.DeleteBlockDevice(volume)
+	if err != nil {
+		return err
+	}
+
+	// tell the underlying storage media to remove.
+	err = c.DeleteBlockDevice(volume)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
