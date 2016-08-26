@@ -64,6 +64,8 @@ var networking bool
 var hardReset bool
 var diskLimit bool
 var memLimit bool
+var secretPath string
+var cephID string
 var simulate bool
 var maxInstances = int(math.MaxInt32)
 
@@ -73,6 +75,8 @@ func init() {
 	flag.BoolVar(&networking, "network", true, "Enable networking")
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
+	flag.StringVar(&secretPath, "ceph_keyring", "", "path to ceph client keyring")
+	flag.StringVar(&cephID, "ceph_id", "", "ceph client id")
 }
 
 const (
@@ -195,6 +199,30 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 			return
 		}
 		client.cmdCh <- &cmdWrapper{instance, &insDeleteCmd{}}
+	case ssntp.AttachVolume:
+		instance, volume, payloadErr := parseAttachVolumePayload(payload)
+		if payloadErr != nil {
+			attachVolumeError := &attachVolumeError{
+				payloadErr.err,
+				payloads.AttachVolumeFailureReason(payloadErr.code),
+			}
+			attachVolumeError.send(client.conn, "", "")
+			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
+			return
+		}
+		client.cmdCh <- &cmdWrapper{instance, &insAttachVolumeCmd{volume}}
+	case ssntp.DetachVolume:
+		instance, volume, payloadErr := parseDetachVolumePayload(payload)
+		if payloadErr != nil {
+			detachVolumeError := &detachVolumeError{
+				payloadErr.err,
+				payloads.DetachVolumeFailureReason(payloadErr.code),
+			}
+			detachVolumeError.send(client.conn, "", "")
+			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
+			return
+		}
+		client.cmdCh <- &cmdWrapper{instance, &insDetachVolumeCmd{volume}}
 	}
 }
 
@@ -313,6 +341,8 @@ func printClusterConfig() {
 	glog.Infof("Management Network:   %v", mgmtNet)
 	glog.Infof("Disk Limit:           %v", diskLimit)
 	glog.Infof("Memory Limit:         %v", memLimit)
+	glog.Infof("Secret Path:          %v", secretPath)
+	glog.Infof("Ceph ID:              %v", cephID)
 }
 
 func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
@@ -363,6 +393,12 @@ DONE:
 			mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
 			diskLimit = clusterConfig.Configure.Launcher.DiskLimit
 			memLimit = clusterConfig.Configure.Launcher.MemoryLimit
+			if secretPath == "" {
+				secretPath = clusterConfig.Configure.Storage.SecretPath
+			}
+			if cephID == "" {
+				cephID = clusterConfig.Configure.Storage.CephID
+			}
 			printClusterConfig()
 
 			err = startNetwork(doneCh)

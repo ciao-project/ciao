@@ -42,7 +42,7 @@ type Type uint8
 
 // Command is the SSNTP Command operand.
 // It can be CONNECT, START, STOP, STATS, EVACUATE, DELETE, RESTART,
-// AssignPublicIP, ReleasePublicIP or CONFIGURE.
+// AssignPublicIP, ReleasePublicIP, CONFIGURE, AttachVolume or DetachVolume.
 type Command uint8
 
 // Status is the SSNTP Status operand.
@@ -229,6 +229,30 @@ const (
 	//	|       |       | (0x0) |  (0x9)  |                 |                         |
 	//	+-----------------------------------------------------------------------------+
 	CONFIGURE
+
+	// AttachVolume is a command sent to ciao-launcher for attaching a storage volume
+	// to a specific running or paused instance.
+	//
+	// The AttachVolume command payload includes a volume UUID and an instance UUID.
+	//
+	//                                       SSNTP AttachVolume Command frame
+	//	+-----------------------------------------------------------------------------+
+	//	| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload  |
+	//	|       |       | (0x0) |  (0xa)  |                 |                         |
+	//	+-----------------------------------------------------------------------------+
+	AttachVolume
+
+	// DetachVolume is a command sent to ciao-launcher for detaching a storage volume
+	// from a specific running or paused instance.
+	//
+	// The DetachVolume command payload includes a volume UUID and an instance UUID.
+	//
+	//                                       SSNTP DetachVolume Command frame
+	//	+-----------------------------------------------------------------------------+
+	//	| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload  |
+	//	|       |       | (0x0) |  (0xb)  |                 |                         |
+	//	+-----------------------------------------------------------------------------+
+	DetachVolume
 )
 
 const (
@@ -493,6 +517,14 @@ const (
 	// When the scheduler receives such error back from any client it should revert
 	// back to the previous valid configuration.
 	InvalidConfiguration
+
+	// AttachVolumeFailure is sent by launcher agents to report a failure to attach
+	// a volume to an instance.
+	AttachVolumeFailure
+
+	// DetachVolumeFailure is sent by launcher agents to report a failure to detach
+	// a volume from an instance.
+	DetachVolumeFailure
 )
 
 // Major is the SSNTP protocol major version
@@ -544,6 +576,10 @@ func (command Command) String() string {
 		return "Release public IP"
 	case CONFIGURE:
 		return "CONFIGURE"
+	case AttachVolume:
+		return "Attach storage volume"
+	case DetachVolume:
+		return "Detach storage volume"
 	}
 
 	return ""

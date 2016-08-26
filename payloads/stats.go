@@ -49,6 +49,9 @@ type InstanceStat struct {
 	// between 0 and 100% regardless of the number of VPCUs.
 	// 100% means all your VCPUs are maxed out.
 	CPUUsage int `yaml:"cpu_usage"`
+
+	// List of volumes attached to the instance.
+	Volumes []string `yaml:"volumes"`
 }
 
 // NetworkStat contains information about a single network interface present on

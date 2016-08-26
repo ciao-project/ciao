@@ -43,6 +43,8 @@ var computeNet string
 var mgmtNet string
 var diskLimit bool
 var memLimit bool
+var secretPath string
+var cephID string
 
 var ssntpServer = &ssntp.Server{}
 
@@ -55,6 +57,8 @@ func init() {
 	flag.StringVar(&mgmtNet, "mgmt-net", "", "Management Subnet")
 	flag.BoolVar(&diskLimit, "disk-limit", true, "Use disk usage limits")
 	flag.BoolVar(&memLimit, "mem-limit", true, "Use memory usage limits")
+	flag.StringVar(&secretPath, "secret-path", "/etc/ceph/ceph.client.ciao.keyring", "path to ceph client keyring")
+	flag.StringVar(&cephID, "ceph-id", "ciao", "ceph client id")
 }
 
 type client struct {
@@ -454,6 +458,14 @@ func serve(done chan os.Signal) {
 			func(w http.ResponseWriter, r *http.Request) {
 				yamlCommand(w, r, ssntp.DELETE)
 			})
+		http.HandleFunc("/attach",
+			func(w http.ResponseWriter, r *http.Request) {
+				yamlCommand(w, r, ssntp.AttachVolume)
+			})
+		http.HandleFunc("/detach",
+			func(w http.ResponseWriter, r *http.Request) {
+				yamlCommand(w, r, ssntp.DetachVolume)
+			})
 		http.HandleFunc("/stats", stats)
 		http.HandleFunc("/status", status)
 		http.HandleFunc("/drain", drain)
@@ -483,6 +495,8 @@ func createConfigFile(confPath string) error {
 	conf.Configure.Launcher.MemoryLimit = memLimit
 	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
 	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
+	conf.Configure.Storage.SecretPath = secretPath
+	conf.Configure.Storage.CephID = cephID
 
 	d, err := yaml.Marshal(&conf)
 	if err != nil {

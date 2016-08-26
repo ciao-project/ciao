@@ -44,7 +44,7 @@ func init() {
 // qemu parameter.  In the future we might add imageInfo back to the virtualiser
 // interface.
 
-func getMinImageSize(vm *qemu, imagePath string) (minSizeMB int, err error) {
+func getMinImageSize(vm *qemuV, imagePath string) (minSizeMB int, err error) {
 	imagesMap.Lock()
 	info := imagesMap.images[imagePath]
 	if info == nil {

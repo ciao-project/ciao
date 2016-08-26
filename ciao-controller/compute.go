@@ -1022,14 +1022,11 @@ func tenantServersAction(w http.ResponseWriter, r *http.Request, context *contro
 			return
 		}
 
-		fmt.Printf("Tenant %s has %d instances\n", tenant, len(instances))
-
 		for _, instance := range instances {
 			if statusFilter != "" && instance.State != statusFilter {
 				continue
 			}
 
-			fmt.Printf("Action on %s\n", instance.ID)
 			actionFunc(instance.ID)
 		}
 	}

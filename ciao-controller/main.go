@@ -23,15 +23,20 @@ import (
 	"sync"
 
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
+	image "github.com/01org/ciao/ciao-image/client"
+	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
 	"github.com/golang/glog"
 )
 
 type controller struct {
+	storage.BlockDriver
+
 	client *ssntpClient
 	ds     *datastore.Datastore
 	id     *identity
+	image  image.Client
 }
 
 var singleMachine = flag.Bool("single", false, "Enable single machine test")
@@ -50,6 +55,11 @@ var noNetwork = flag.Bool("nonetwork", false, "Debug with no networking")
 var persistentDatastoreLocation = flag.String("database_path", "./ciao-controller.db", "path to persistent database")
 var transientDatastoreLocation = flag.String("stats_path", "/tmp/ciao-controller-stats.db", "path to stats database")
 var logDir = "/var/lib/ciao/logs/controller"
+
+var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
+
+var keyringPath = flag.String("ceph_keyring", "", "path to ceph client keyring")
+var cephID = flag.String("ceph_id", "", "ceph client id")
 
 func init() {
 	flag.Parse()
@@ -76,6 +86,8 @@ func main() {
 
 	context := new(controller)
 	context.ds = new(datastore.Datastore)
+
+	context.image = image.Client{MountPoint: *imagesPath}
 
 	dsConfig := datastore.Config{
 		PersistentURI:     *persistentDatastoreLocation,
@@ -116,6 +128,12 @@ func main() {
 	identityURL = clusterConfig.Configure.IdentityService.URL
 	serviceUser = clusterConfig.Configure.Controller.IdentityUser
 	servicePassword = clusterConfig.Configure.Controller.IdentityPassword
+	if *keyringPath == "" {
+		*keyringPath = clusterConfig.Configure.Storage.SecretPath
+	}
+	if *cephID == "" {
+		*cephID = clusterConfig.Configure.Storage.CephID
+	}
 
 	if *singleMachine {
 		hostname, _ := os.Hostname()
@@ -142,6 +160,14 @@ func main() {
 		servicePassword: servicePassword,
 	}
 
+	context.BlockDriver = func() storage.BlockDriver {
+		driver := storage.CephDriver{
+			SecretPath: *keyringPath,
+			ID:         *cephID,
+		}
+		return driver
+	}()
+
 	context.id, err = newIdentityClient(idConfig)
 	if err != nil {
 		glog.Fatal("Unable to authenticate to Keystone: ", err)
@@ -150,6 +176,9 @@ func main() {
 
 	wg.Add(1)
 	go createComputeAPI(context)
+
+	wg.Add(1)
+	go context.startVolumeService()
 
 	wg.Wait()
 	context.ds.Exit()

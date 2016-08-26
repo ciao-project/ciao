@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -32,6 +31,9 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/net/context"
+
+	"github.com/01org/ciao/qemu"
 	"github.com/golang/glog"
 )
 
@@ -42,6 +44,24 @@ const (
 	vcTries    = 10
 )
 
+type qmpGlogLogger struct{}
+
+func (l qmpGlogLogger) V(level int32) bool {
+	return bool(glog.V(glog.Level(level)))
+}
+
+func (l qmpGlogLogger) Infof(format string, v ...interface{}) {
+	glog.InfoDepth(2, fmt.Sprintf(format, v...))
+}
+
+func (l qmpGlogLogger) Warningf(format string, v ...interface{}) {
+	glog.WarningDepth(2, fmt.Sprintf(format, v...))
+}
+
+func (l qmpGlogLogger) Errorf(format string, v ...interface{}) {
+	glog.ErrorDepth(2, fmt.Sprintf(format, v...))
+}
+
 var virtualSizeRegexp *regexp.Regexp
 var pssRegexp *regexp.Regexp
 
@@ -50,7 +70,7 @@ func init() {
 	pssRegexp = regexp.MustCompile(`^Pss:\s*([0-9]+)`)
 }
 
-type qemu struct {
+type qemuV struct {
 	cfg            *vmConfig
 	instanceDir    string
 	vcPort         int
@@ -60,7 +80,7 @@ type qemu struct {
 	isoPath        string
 }
 
-func (q *qemu) init(cfg *vmConfig, instanceDir string) {
+func (q *qemuV) init(cfg *vmConfig, instanceDir string) {
 	q.cfg = cfg
 	q.instanceDir = instanceDir
 	q.isoPath = path.Join(instanceDir, seedImage)
@@ -105,7 +125,7 @@ func extractImageInfo(r io.Reader) int {
 	return imageSizeMB
 }
 
-func (q *qemu) imageInfo(imagePath string) (int, error) {
+func (q *qemuV) imageInfo(imagePath string) (int, error) {
 	params := make([]string, 0, 8)
 	params = append(params, "info")
 	params = append(params, imagePath)
@@ -185,7 +205,7 @@ func createCloudInitISO(instanceDir, isoPath string, cfg *vmConfig, userData, me
 	return nil
 }
 
-func (q *qemu) createRootfs() error {
+func (q *qemuV) createRootfs() error {
 	vmImage := path.Join(q.instanceDir, "image.qcow2")
 	backingImage := path.Join(imagesPath, q.cfg.Image)
 	glog.Infof("Creating qcow image from %s backing %s", vmImage, backingImage)
@@ -202,7 +222,7 @@ func (q *qemu) createRootfs() error {
 	return cmd.Run()
 }
 
-func (q *qemu) checkBackingImage() error {
+func (q *qemuV) checkBackingImage() error {
 	backingImage := path.Join(imagesPath, q.cfg.Image)
 	_, err := os.Stat(backingImage)
 	if err != nil {
@@ -224,11 +244,11 @@ func (q *qemu) checkBackingImage() error {
 	return nil
 }
 
-func (q *qemu) downloadBackingImage() error {
+func (q *qemuV) downloadBackingImage() error {
 	return fmt.Errorf("Not supported yet!")
 }
 
-func (q *qemu) createImage(bridge string, userData, metaData []byte) error {
+func (q *qemuV) createImage(bridge string, userData, metaData []byte) error {
 	err := createCloudInitISO(q.instanceDir, q.isoPath, q.cfg, userData, metaData)
 	if err != nil {
 		glog.Errorf("Unable to create iso image %v", err)
@@ -238,7 +258,7 @@ func (q *qemu) createImage(bridge string, userData, metaData []byte) error {
 	return q.createRootfs()
 }
 
-func (q *qemu) deleteImage() error {
+func (q *qemuV) deleteImage() error {
 	return nil
 }
 
@@ -322,27 +342,6 @@ func computeTapParam(vnicName string, mac string) ([]string, error) {
 	return params, nil
 }
 
-func launchQemu(params []string, fds []*os.File) (string, error) {
-	errStr := ""
-	cmd := exec.Command("qemu-system-x86_64", params...)
-	if fds != nil {
-		glog.Infof("Adding extra file %v", fds)
-		cmd.ExtraFiles = fds
-	}
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	glog.Infof("launching qemu with: %v", params)
-
-	err := cmd.Run()
-	if err != nil {
-		glog.Errorf("Unable to launch qemu: %v", err)
-		errStr = stderr.String()
-		glog.Error(errStr)
-	}
-	return errStr, err
-}
-
 func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, error) {
 	var err error
 
@@ -358,7 +357,7 @@ func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, e
 		ncString := "socket,port=%d,host=%s,server,id=gnc0,server,nowait"
 		params[len(params)-1] = fmt.Sprintf(ncString, port, ipAddress)
 		var errStr string
-		errStr, err = launchQemu(params, fds)
+		errStr, err = qemu.LaunchQemu(context.Background(), params, fds, qmpGlogLogger{})
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with netcat %s %d", ipAddress, port)
@@ -375,7 +374,7 @@ func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, e
 
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to chardev error.  Relaunching without virtual console")
-		_, err = launchQemu(params[:len(params)-4], fds)
+		_, err = qemu.LaunchQemu(context.Background(), params[:len(params)-4], fds, qmpGlogLogger{})
 	}
 
 	return port, err
@@ -394,7 +393,7 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 		}
 		params[len(params)-1] = fmt.Sprintf("port=%d,addr=%s,disable-ticketing", port, ipAddress)
 		var errStr string
-		errStr, err = launchQemu(params, fds)
+		errStr, err = qemu.LaunchQemu(context.Background(), params, fds, qmpGlogLogger{})
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with spicec -h %s -p %d", ipAddress, port)
@@ -413,7 +412,7 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to spice error.  Relaunching without virtual console")
 		params = append(params[:len(params)-2], "-display", "none", "-vga", "none")
-		_, err = launchQemu(params, fds)
+		_, err = qemu.LaunchQemu(context.Background(), params, fds, qmpGlogLogger{})
 	}
 
 	return port, err
@@ -451,7 +450,7 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string, networ
 	return params
 }
 
-func (q *qemu) startVM(vnicName, ipAddress string) error {
+func (q *qemuV) startVM(vnicName, ipAddress string) error {
 
 	var fds []*os.File
 
@@ -489,7 +488,7 @@ func (q *qemu) startVM(vnicName, ipAddress string) error {
 
 	if !launchWithUI.Enabled() {
 		params = append(params, "-display", "none", "-vga", "none")
-		_, err = launchQemu(params, fds)
+		_, err = qemu.LaunchQemu(context.Background(), params, fds, qmpGlogLogger{})
 	} else if launchWithUI.String() == "spice" {
 		var port int
 		port, err = launchQemuWithSpice(params, fds, ipAddress)
@@ -513,7 +512,7 @@ func (q *qemu) startVM(vnicName, ipAddress string) error {
 	return nil
 }
 
-func (q *qemu) lostVM() {
+func (q *qemuV) lostVM() {
 	if launchWithUI.Enabled() {
 		glog.Infof("Releasing VC Port %d", q.vcPort)
 		uiPortGrabber.releasePort(q.vcPort)
@@ -523,137 +522,89 @@ func (q *qemu) lostVM() {
 	q.prevCPUTime = -1
 }
 
-func readLoop(instance string, eventCh chan string, scanner *bufio.Scanner) {
-	for scanner.Scan() {
-		text := scanner.Text()
-		if glog.V(1) {
-			glog.Info(text)
-		}
-		eventCh <- scanner.Text()
-	}
-	glog.Infof("Quitting %s read Loop", instance)
-	close(eventCh)
-}
-
-func connectToVM(instance, instanceDir string, eventCh chan string, connectedCh chan struct{}) (net.Conn, error) {
-	qmpSocket := path.Join(instanceDir, "socket")
-	conn, err := net.DialTimeout("unix", qmpSocket, time.Second*30)
+func qmpAttach(cmd virtualizerAttachCmd, q *qemu.QMP) {
+	glog.Info("Attach command received")
+	blockdevID := fmt.Sprintf("drive_%s", cmd.volumeUUID)
+	err := q.ExecuteBlockdevAdd(context.Background(), cmd.device, blockdevID)
 	if err != nil {
-		glog.Errorf("Unable to open qmp socket for instance %s: %v", instance, err)
-		return nil, err
-	}
-
-	defer func() {
-		if conn != nil {
-			_ = conn.Close()
+		glog.Errorf("Failed to execute blockdev-add: %v", err)
+	} else {
+		devID := fmt.Sprintf("device_%s", cmd.volumeUUID)
+		err := q.ExecuteDeviceAdd(context.Background(), blockdevID,
+			devID, "virtio-blk-pci", "")
+		if err != nil {
+			glog.Errorf("Failed to execute device_add: %v", err)
 		}
-	}()
+	}
+	cmd.responseCh <- err
+}
 
-	scanner := bufio.NewScanner(conn)
-	_, err = fmt.Fprintln(conn, "{ \"execute\": \"qmp_capabilities\" }")
+func qmpDetach(cmd virtualizerDetachCmd, q *qemu.QMP) {
+	glog.Info("Detach command received")
+	devID := fmt.Sprintf("device_%s", cmd.volumeUUID)
+	err := q.ExecuteDeviceDel(context.Background(), devID)
 	if err != nil {
-		glog.Errorf("Unable to send qmp_capabilities to instance %s: %v", instance, err)
-		return nil, err
-	}
-
-	/* TODO check return value and implement timeout */
-
-	if !scanner.Scan() {
-		err := fmt.Errorf("qmp_capabilities failed on instance %s", instance)
-		glog.Errorf("%v", err)
-		return nil, err
-	}
-
-	close(connectedCh)
-
-	go readLoop(instance, eventCh, scanner)
-	retval := conn
-	conn = nil
-	return retval, nil
-}
-
-func qmpLoop(instance string, conn net.Conn, qmpChannel chan string, eventCh chan string, closedCh chan struct{}) (chan string, chan struct{}) {
-	waitForShutdown := false
-	quitting := false
-
-DONE:
-	for {
-		select {
-		case cmd, ok := <-qmpChannel:
-			if !ok {
-				qmpChannel = nil
-				if !waitForShutdown {
-					break DONE
-				} else {
-					quitting = true
-				}
-			}
-			if cmd == virtualizerStopCmd {
-				glog.Info("Sending STOP")
-				_, err := fmt.Fprintln(conn, "{ \"execute\": \"quit\" }")
-				if err != nil {
-					glog.Errorf("Unable to send power down command to %s: %v\n", instance, err)
-				} else {
-					waitForShutdown = true
-				}
-			}
-		case event, ok := <-eventCh:
-			if !ok {
-				close(closedCh)
-				closedCh = nil
-				eventCh = nil
-				waitForShutdown = false
-				if quitting {
-					glog.Info("Lost connection to qemu domain socket")
-					break DONE
-				} else {
-					glog.Warning("Lost connection to qemu domain socket")
-				}
-				continue
-			}
-			if waitForShutdown == true && strings.Contains(event, "return") {
-				waitForShutdown = false
-				if quitting {
-					break DONE
-				}
-			}
+		glog.Errorf("Failed to execute device_del: %v", err)
+	} else {
+		blockdevID := fmt.Sprintf("drive_%s", cmd.volumeUUID)
+		err := q.ExecuteXBlockdevDel(context.Background(), blockdevID)
+		if err != nil {
+			glog.Errorf("Failed to execute x-blockdev-del: %v", err)
 		}
 	}
-
-	return eventCh, closedCh
+	cmd.responseCh <- err
 }
 
-func qmpConnect(qmpChannel chan string, instance, instanceDir string, closedCh chan struct{},
+func qmpConnect(qmpChannel chan interface{}, instance, instanceDir string, closedCh chan struct{},
 	connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) {
-	var conn net.Conn
 
+	var q *qemu.QMP
 	defer func() {
-		if closedCh != nil {
-			close(closedCh)
+		if q != nil {
+			q.Shutdown()
 		}
 		glog.Infof("Monitor function for %s exitting", instance)
 		wg.Done()
 	}()
 
-	eventCh := make(chan string)
-	conn, err := connectToVM(instance, instanceDir, eventCh, connectedCh)
+	socket := path.Join(instanceDir, "socket")
+	cfg := qemu.QMPConfig{Logger: qmpGlogLogger{}}
+	q, ver, err := qemu.QMPStart(context.Background(), socket, cfg, closedCh)
 	if err != nil {
-		glog.Infof("Monitor function for %s exitting with err: %v", instance, err)
+		glog.Warningf("Failed to connect to QEMU instance %s: %v", instance, err)
 		return
 	}
 
-	eventCh, closedCh = qmpLoop(instance, conn, qmpChannel, eventCh, closedCh)
+	glog.Infof("Connected to %s.", instance)
+	glog.Infof("QMP version %d.%d.%d", ver.Major, ver.Minor, ver.Micro)
+	glog.Infof("QMP capabilities %s", ver.Capabilities)
 
-	_ = conn.Close()
-
-	/* Readloop could be blocking on a send */
-
-	if eventCh != nil {
-		for range eventCh {
-		}
+	err = q.ExecuteQMPCapabilities(context.Background())
+	if err != nil {
+		glog.Errorf("Unable to send qmp_capabilities command: %v", err)
+		return
 	}
 
-	glog.Infof("Quitting Monitor Loop for %s\n", instance)
+	close(connectedCh)
+
+DONE:
+	for {
+		cmd, ok := <-qmpChannel
+		if !ok {
+			break DONE
+		}
+		switch cmd := cmd.(type) {
+		case virtualizerStopCmd:
+			err = q.ExecuteQuit(context.Background())
+			if err != nil {
+				glog.Warningf("Failed to execute stop command: %v", err)
+			}
+		case virtualizerAttachCmd:
+			qmpAttach(cmd, q)
+		case virtualizerDetachCmd:
+			qmpDetach(cmd, q)
+		}
+	}
 }
 
 /* closedCh is closed by the monitor go routine when it loses connection to the domain socket, basically,
@@ -664,9 +615,9 @@ func qmpConnect(qmpChannel chan string, instance, instanceDir string, closedCh c
    VM instance is running.
 */
 
-func (q *qemu) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
-	wg *sync.WaitGroup, boot bool) chan string {
-	qmpChannel := make(chan string)
+func (q *qemuV) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
+	wg *sync.WaitGroup, boot bool) chan interface{} {
+	qmpChannel := make(chan interface{})
 	wg.Add(1)
 	go qmpConnect(qmpChannel, q.cfg.Instance, q.instanceDir, closedCh, connectedCh, wg, boot)
 	return qmpChannel
@@ -681,7 +632,7 @@ func computeInstanceDiskspace(instanceDir string) int {
 	return int(fi.Size() / 1000000)
 }
 
-func (q *qemu) stats() (disk, memory, cpu int) {
+func (q *qemuV) stats() (disk, memory, cpu int) {
 	disk = computeInstanceDiskspace(q.instanceDir)
 	memory = -1
 	cpu = -1
@@ -713,7 +664,7 @@ func (q *qemu) stats() (disk, memory, cpu int) {
 	return
 }
 
-func (q *qemu) connected() {
+func (q *qemuV) connected() {
 	qmpSocket := path.Join(q.instanceDir, "socket")
 	var buf bytes.Buffer
 	cmd := exec.Command("fuser", qmpSocket)

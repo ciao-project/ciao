@@ -23,6 +23,7 @@ import (
 
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
+	"github.com/rackspace/gophercloud/openstack/blockstorage/v2/extensions/volumeactions"
 	"github.com/rackspace/gophercloud/openstack/blockstorage/v2/volumes"
 	"github.com/rackspace/gophercloud/pagination"
 )
@@ -34,6 +35,8 @@ var volumeCommand = &command{
 		"show":   new(volumeShowCommand),
 		"update": new(volumeUpdateCommand),
 		"delete": new(volumeDeleteCommand),
+		"attach": new(volumeAttachCommand),
+		"detach": new(volumeDetachCommand),
 	},
 }
 
@@ -260,6 +263,109 @@ func (cmd *volumeDeleteCommand) run(args []string) error {
 	err = volumes.Delete(client, cmd.volume).ExtractErr()
 	if err == nil {
 		fmt.Printf("Deleted volume: %s\n", cmd.volume)
+	}
+	return err
+}
+
+type volumeAttachCommand struct {
+	Flag       flag.FlagSet
+	volume     string
+	instance   string
+	mountpoint string
+	mode       string
+}
+
+func (cmd *volumeAttachCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] volume attach [flags]
+
+Attachs a volume to an instance
+
+The attach flags are:
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *volumeAttachCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.volume, "volume", "", "Volume UUID")
+	cmd.Flag.StringVar(&cmd.instance, "instance", "", "Instance UUID")
+	cmd.Flag.StringVar(&cmd.mountpoint, "mountpoint", "/mnt", "Mount point")
+	cmd.Flag.StringVar(&cmd.mountpoint, "mode", "rw", "Access mode")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *volumeAttachCommand) run(args []string) error {
+	if cmd.volume == "" {
+		errorf("missing required -volume parameter")
+		cmd.usage()
+	}
+
+	if cmd.instance == "" {
+		errorf("missing required -volume parameter")
+		cmd.usage()
+	}
+
+	// mountpoint or mode isn't required
+
+	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
+	if err != nil {
+		fatalf("Could not get volume service client [%s]\n", err)
+	}
+
+	options := &volumeactions.AttachOpts{
+		MountPoint:   cmd.mountpoint,
+		Mode:         volumeactions.AttachMode(cmd.mode),
+		InstanceUUID: cmd.instance,
+	}
+
+	err = volumeactions.Attach(client, cmd.volume, options).ExtractErr()
+	if err == nil {
+		fmt.Printf("Attached volume: %s\n", cmd.volume)
+	}
+	return err
+}
+
+type volumeDetachCommand struct {
+	Flag   flag.FlagSet
+	volume string
+}
+
+func (cmd *volumeDetachCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] volume detach [flags]
+
+Detaches a volume from an instance
+
+The detach flags are:
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *volumeDetachCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.volume, "volume", "", "Volume UUID")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *volumeDetachCommand) run(args []string) error {
+	if cmd.volume == "" {
+		errorf("missing required -volume parameter")
+		cmd.usage()
+	}
+
+	// mountpoint or mode isn't required
+
+	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
+	if err != nil {
+		fatalf("Could not get volume service client [%s]\n", err)
+	}
+
+	err = volumeactions.Detach(client, cmd.volume).ExtractErr()
+	if err == nil {
+		fmt.Printf("Detached volume: %s\n", cmd.volume)
 	}
 	return err
 }
