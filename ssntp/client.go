@@ -482,6 +482,11 @@ func (client *Client) SendTracedError(error Error, payload []byte, trace *TraceC
 	return client.sendError(error, payload, trace)
 }
 
+// Role exports the SSNTP client role.
+func (client *Client) Role() Role {
+	return client.role
+}
+
 // UUID exports the SSNTP client Universally Unique ID.
 func (client *Client) UUID() string {
 	return client.uuid.String()
