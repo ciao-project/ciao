@@ -57,6 +57,10 @@ var BootstrapRequirements = PackageRequirements{
 		{"/usr/bin/cephfs", "ceph-fs-common"},
 		{"/usr/bin/ceph", "ceph-common"},
 	},
+	"fedora": {
+		{"/usr/bin/cephfs", "ceph"},
+		{"/usr/bin/ceph", "ceph-common"},
+	},
 	"clearlinux": {
 		{"/usr/bin/ceph", "storage-cluster"},
 	},
