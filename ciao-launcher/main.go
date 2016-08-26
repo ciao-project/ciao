@@ -236,6 +236,16 @@ func (client *agentClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 	glog.Infof("ERROR %d", err)
 }
 
+func (client *agentClient) installLauncherDeps() {
+	role := client.conn.Role()
+	if role.IsNetAgent() {
+		osprepare.InstallDeps(launcherNetNodeDeps)
+	}
+	if role.IsAgent() {
+		osprepare.InstallDeps(launcherComputeNodeDeps)
+	}
+}
+
 func insCmdChannel(instance string, ovsCh chan<- interface{}) chan<- interface{} {
 	targetCh := make(chan ovsGetResult)
 	ovsCh <- &ovsGetCmd{instance, targetCh}
@@ -403,13 +413,7 @@ DONE:
 			}
 			printClusterConfig()
 
-			role := client.conn.Role()
-			if role.IsNetAgent() {
-				osprepare.InstallDeps(launcherNetNodeDeps)
-			}
-			if role.IsAgent() {
-				osprepare.InstallDeps(launcherComputeNodeDeps)
-			}
+			client.installLauncherDeps()
 
 			err = startNetwork(doneCh)
 			if err != nil {
