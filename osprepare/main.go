@@ -74,6 +74,11 @@ func collectPackages(dist distro, reqs PackageRequirements) []string {
 	id := dist.getID()
 	if pkgs, success := reqs[id]; success {
 		for _, pkg := range pkgs {
+			// skip empties
+			if pkg.BinaryName == "" || pkg.PackageName == "" {
+				continue
+			}
+
 			// Have the path existing, skip.
 			if pathExists(pkg.BinaryName) {
 				continue
