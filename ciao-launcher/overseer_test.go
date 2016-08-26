@@ -149,6 +149,10 @@ func (v *overseerTestState) SendCommand(cmd ssntp.Command, payload []byte) (int,
 	return 0, nil
 }
 
+func (v *overseerTestState) Role() ssntp.Role {
+	return ssntp.AGENT | ssntp.NETAGENT
+}
+
 func (v *overseerTestState) UUID() string {
 	return "test-uuid"
 }

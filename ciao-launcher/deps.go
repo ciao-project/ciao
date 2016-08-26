@@ -18,24 +18,49 @@ package main
 
 import "github.com/01org/ciao/osprepare"
 
-var launcherDeps = osprepare.PackageRequirements{
-	// docker for containers
-	// qemu/kvm for VM's
-	// xorriso for cloud init config drive
+// common launcher node needs are:
+//
+// qemu/kvm for VM's
+// xorriso for cloud init config drive
+// fuser for qemu instance pid
 
-	"clearlinux": {
-		{"/usr/bin/docker", "cloud-control"},
-		{"/usr/bin/qemu-system-x86_64", "cloud-control"},
-		{"/usr/bin/xorriso", "cloud-control"},
-	},
-	"fedora": {
-		{"/usr/bin/docker", "docker-engine"},
-		{"/usr/bin/qemu-system-x86_64", "qemu-system-x86"},
-		{"/usr/bin/xorriso", "xorriso"},
-	},
-	"ubuntu": {
-		{"/usr/bin/docker", "docker"},
-		{"/usr/bin/qemu-system-x86_64", "qemu-system-x86"},
-		{"/usr/bin/xorriso", "xorriso"},
-	},
+var launcherClearLinuxCommonDeps = []osprepare.PackageRequirement{
+	{"/usr/bin/qemu-system-x86_64", "cloud-control"},
+	{"/usr/bin/xorriso", "cloud-control"},
+	{"/usr/sbin/fuser", "cloud-control"},
+}
+
+var launcherFedoraCommonDeps = []osprepare.PackageRequirement{
+	{"/usr/bin/qemu-system-x86_64", "qemu-system-x86"},
+	{"/usr/bin/xorriso", "xorriso"},
+	{"/usr/sbin/fuser", "psmisc"},
+}
+
+var launcherUbuntuCommonDeps = []osprepare.PackageRequirement{
+	{"/usr/bin/qemu-system-x86_64", "qemu-system-x86"},
+	{"/usr/bin/xorriso", "xorriso"},
+	{"/bin/fuser", "psmisc"},
+}
+
+var launcherNetNodeDeps = map[string][]osprepare.PackageRequirement{
+	// network nodes have a unique additional need for:
+	//
+	// 	none currently
+
+	"clearlinux": launcherClearLinuxCommonDeps,
+	"fedora":     launcherFedoraCommonDeps,
+	"ubuntu":     launcherUbuntuCommonDeps,
+}
+
+var launcherComputeNodeDeps = map[string][]osprepare.PackageRequirement{
+	// compute nodes have a unique additional need for:
+	//
+	// docker for containers
+
+	"clearlinux": append(launcherClearLinuxCommonDeps,
+		osprepare.PackageRequirement{BinaryName: "/usr/bin/docker", PackageName: "cloud-control"}),
+	"fedora": append(launcherFedoraCommonDeps,
+		osprepare.PackageRequirement{BinaryName: "/usr/bin/docker", PackageName: "docker-engine"}),
+	"ubuntu": append(launcherUbuntuCommonDeps,
+		osprepare.PackageRequirement{BinaryName: "/usr/bin/docker", PackageName: "docker"}),
 }

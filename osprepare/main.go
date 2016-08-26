@@ -48,7 +48,7 @@ type PackageRequirement struct {
 //		{"/usr/bin/docker", "containers-basic"},
 //	},
 // )
-type PackageRequirements map[string][]*PackageRequirement
+type PackageRequirements map[string][]PackageRequirement
 
 // BootstrapRequirements lists required dependencies for absolutely core
 // functionality across all Ciao components

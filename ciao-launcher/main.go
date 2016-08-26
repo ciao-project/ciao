@@ -102,6 +102,7 @@ type serverConn interface {
 	Dial(config *ssntp.Config, ntf ssntp.ClientNotifier) error
 	SendStatus(status ssntp.Status, payload []byte) (int, error)
 	SendCommand(cmd ssntp.Command, payload []byte) (int, error)
+	Role() ssntp.Role
 	UUID() string
 	Close()
 	isConnected() bool
@@ -402,7 +403,13 @@ DONE:
 			}
 			printClusterConfig()
 
-			osprepare.InstallDeps(launcherDeps)
+			role := client.conn.Role()
+			if role.IsNetAgent() {
+				osprepare.InstallDeps(launcherNetNodeDeps)
+			}
+			if role.IsAgent() {
+				osprepare.InstallDeps(launcherComputeNodeDeps)
+			}
 
 			err = startNetwork(doneCh)
 			if err != nil {
