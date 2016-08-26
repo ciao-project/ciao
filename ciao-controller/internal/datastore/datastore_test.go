@@ -1646,6 +1646,54 @@ func TestAddBlockDevice(t *testing.T) {
 	}
 }
 
+func TestDeleteBlockDevice(t *testing.T) {
+	newTenant, err := addTestTenant()
+	if err != nil {
+		t.Error(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: "validID",
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    newTenant.ID,
+		CreateTime:  time.Now(),
+	}
+
+	err = ds.AddBlockDevice(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we can retrieve the block data.
+	_, err = ds.GetBlockDevice("validID")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// remove the block device
+	err = ds.DeleteBlockDevice(data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that it is no longer there.
+	_, err = ds.GetBlockDevice(data.ID)
+	if err == nil {
+		t.Fatal("Did not delete block device")
+	}
+
+	// attempt to delete a non-existing block device
+	err = ds.DeleteBlockDevice("unknownID")
+	if err != ErrNoBlockData {
+		t.Fatalf("expecting %s error, received %s\n", ErrNoBlockData, err)
+	}
+}
+
 func TestUpdateBlockDevice(t *testing.T) {
 	newTenant, err := addTestTenant()
 	if err != nil {

@@ -1406,6 +1406,29 @@ func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	return nil
 }
 
+func (ds *Datastore) DeleteBlockDevice(ID string) error {
+	// lock both tenants and devices maps
+	var err error
+
+	ds.bdLock.Lock()
+	ds.tenantsLock.Lock()
+
+	dev, ok := ds.blockDevices[ID]
+	if ok {
+		delete(ds.blockDevices, ID)
+		delete(ds.tenants[dev.TenantID].devices, ID)
+
+		go ds.db.deleteBlockData(ID)
+	} else {
+		err = ErrNoBlockData
+	}
+
+	ds.tenantsLock.Unlock()
+	ds.bdLock.Unlock()
+
+	return err
+}
+
 // GetBlockDevices will return all the BlockDevices associated with a tenant.
 func (ds *Datastore) GetBlockDevices(tenant string) ([]types.BlockData, error) {
 	var devices []types.BlockData
