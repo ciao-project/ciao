@@ -9,6 +9,7 @@ The following variables are available for all ciao roles
 
 Variable  | Default Value | Description
 --------  | ------------- | -----------
+ciao_dev | False | Set to True to install from source, otherwise install form OS packages
 ciao_controller_fqdn | `{{ ansible_fqdn }}` | FQDN for CIAO controller node
 cnci_image_url | [clear-8260-ciao-networking.img.xz](https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz) | URL for the latest ciao networking image
 ovmf_url | [OVMF.fd](https://download.clearlinux.org/image/OVMF.fd) | EFI firmware required for CNCI Image.

@@ -14,10 +14,11 @@
 # limitations under the License.
 
   - name: Copy CIAO Binaries
-    copy: src=~/go/bin/{{ item }} dest=/usr/bin/{{ item }} mode=755
+    copy: src=~/go/bin/{{ item }} dest={{ bindir }}/{{ item }} mode=755
     with_items:
       - ciao-cli
       - ciao-launcher
+    when: ciao_dev
 
   - name: Copy Network Node Agent Key
     copy: src=certificates/ciao/{{ item }} dest=/etc/pki/ciao/{{ item }}

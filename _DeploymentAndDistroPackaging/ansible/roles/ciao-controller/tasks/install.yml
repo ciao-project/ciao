@@ -14,8 +14,9 @@
 # limitations under the License.
 
   - name: Install CIAO binaries
-    copy: src=~/go/bin/{{ item }} dest=/usr/bin/{{ item }} mode=755
+    copy: src=~/go/bin/{{ item }} dest={{ bindir }}/{{ item }} mode=755
     with_items:
       - ciao-controller
       - ciao-scheduler
       - ciao-cli
+    when: ciao_dev

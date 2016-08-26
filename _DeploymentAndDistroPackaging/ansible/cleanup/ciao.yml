@@ -52,12 +52,12 @@
     - name: Remove CIAO files from github
       file: path={{ item }} state=absent
       with_items:
-        - /usr/bin/ciao-controller
-        - /usr/bin/ciao-scheduler
-        - /usr/bin/ciao-launcher
-        - /usr/bin/ciao-cli
-        - /usr/bin/ciao-cert
-        - /usr/bin/ciao-cnci-agent
+        - /usr/local/bin/ciao-controller
+        - /usr/local/bin/ciao-scheduler
+        - /usr/local/bin/ciao-launcher
+        - /usr/local/bin/ciao-cli
+        - /usr/local/bin/ciao-cert
+        - /usr/local/bin/ciao-cnci-agent
 
     - name: Remove CIAO user
       user:

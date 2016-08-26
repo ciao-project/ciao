@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Set to true to install ciao from the master branch.
+# otherwise it will be installed from the OS packages
+ciao_dev: False
+
 # Fully Qualified Domain Name for CIAO controller node
 ciao_controller_fqdn: "{{ hostvars[groups['controllers'][0]]['ansible_fqdn'] }}"
 

@@ -32,3 +32,17 @@
       - /etc/pki
       - /etc/pki/ciao
       - /etc/pki/keystone
+
+  - name: Set bindir location
+    set_fact: bindir={{ '/usr/local/bin' if ciao_dev else '/usr/bin' }}
+
+  - name: Ensure {{ bindir }} exists
+    file: path={{ bindir }} state=directory
+
+  - block:
+      - include: install_clearlinux.yml
+        when: ansible_os_family == "Clear linux software for intel architecture"
+
+      - include: install_ubuntu.yml
+        when: ansible_os_family == "Debian"
+    when: not ciao_dev
