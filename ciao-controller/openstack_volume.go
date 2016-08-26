@@ -233,7 +233,36 @@ func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
 }
 
 func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, error) {
-	return make([]block.VolumeDetail, 0), nil
+	var vols []block.VolumeDetail
+
+	devs, err := c.ds.GetBlockDevices(tenant)
+	if err != nil {
+		return vols, err
+	}
+
+	for _, data := range devs {
+		var vol block.VolumeDetail
+
+		vol.ID = data.ID
+		vol.Size = data.Size
+		vol.OSVolTenantAttr = data.TenantID
+		vol.CreatedAt = &data.CreateTime
+
+		switch data.State {
+		case types.Attaching:
+			vol.Status = block.Attaching
+		case types.InUse:
+			vol.Status = block.InUse
+		case types.Available:
+			vol.Status = block.Available
+		default:
+			vol.Status = block.VolumeStatus(data.State)
+		}
+
+		vols = append(vols, vol)
+	}
+
+	return vols, nil
 }
 
 func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.VolumeDetail, error) {
