@@ -400,7 +400,7 @@ func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh ch
 	}
 	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm,
 		storage.CephDriver{
-			SecretPath: "/etc/ceph/ceph.client.ciao.keyring",
-			ID:         "ciao",
+			SecretPath: secretPath,
+			ID:         cephID,
 		})
 }

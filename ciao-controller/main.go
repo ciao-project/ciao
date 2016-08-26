@@ -58,8 +58,8 @@ var logDir = "/var/lib/ciao/logs/controller"
 
 var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
 
-var keyringPath = flag.String("ceph_keyring", "/etc/ceph/ceph.client.ciao.keyring", "path to ceph client keyring")
-var cephID = flag.String("ceph_id", "ciao", "ceph client id")
+var keyringPath = flag.String("ceph_keyring", "", "path to ceph client keyring")
+var cephID = flag.String("ceph_id", "", "ceph client id")
 
 func init() {
 	flag.Parse()
@@ -86,14 +86,6 @@ func main() {
 
 	context := new(controller)
 	context.ds = new(datastore.Datastore)
-
-	context.BlockDriver = func() storage.BlockDriver {
-		driver := storage.CephDriver{
-			SecretPath: *keyringPath,
-			ID:         *cephID,
-		}
-		return driver
-	}()
 
 	context.image = image.Client{MountPoint: *imagesPath}
 
@@ -136,6 +128,12 @@ func main() {
 	identityURL = clusterConfig.Configure.IdentityService.URL
 	serviceUser = clusterConfig.Configure.Controller.IdentityUser
 	servicePassword = clusterConfig.Configure.Controller.IdentityPassword
+	if *keyringPath == "" {
+		*keyringPath = clusterConfig.Configure.Storage.SecretPath
+	}
+	if *cephID == "" {
+		*cephID = clusterConfig.Configure.Storage.CephID
+	}
 
 	if *singleMachine {
 		hostname, _ := os.Hostname()
@@ -161,6 +159,14 @@ func main() {
 		serviceUserName: serviceUser,
 		servicePassword: servicePassword,
 	}
+
+	context.BlockDriver = func() storage.BlockDriver {
+		driver := storage.CephDriver{
+			SecretPath: *keyringPath,
+			ID:         *cephID,
+		}
+		return driver
+	}()
 
 	context.id, err = newIdentityClient(idConfig)
 	if err != nil {

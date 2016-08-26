@@ -88,6 +88,13 @@ type ConfigureLauncher struct {
 	MemoryLimit       bool     `yaml:"mem_limit"`
 }
 
+// ConfigureStorage contains the unmarshalled configurations for the
+// Ceph storage driver.
+type ConfigureStorage struct {
+	SecretPath string `yaml:"secret_path"`
+	CephID     string `yaml:"ceph_id"`
+}
+
 // ConfigureService contains the unmarshalled configurations for the resources
 // of the configurations.
 type ConfigureService struct {
@@ -100,6 +107,7 @@ type ConfigureService struct {
 //  imaging and identity.
 type ConfigurePayload struct {
 	Scheduler       ConfigureScheduler  `yaml:"scheduler"`
+	Storage         ConfigureStorage    `yaml:"storage"`
 	Controller      ConfigureController `yaml:"controller"`
 	Launcher        ConfigureLauncher   `yaml:"launcher"`
 	ImageService    ConfigureService    `yaml:"image_service"`

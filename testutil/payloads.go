@@ -66,6 +66,12 @@ const ComputeNet = "192.168.1.110"
 // MgmtNet is a test management network
 const MgmtNet = "192.168.1.111"
 
+// KeyPath is a test path to a keyring
+const KeyPath = "/etc/ceph/ceph.client.ciao.keyring"
+
+// ManagementID is a test identifier for a Ceph ID
+const ManagementID = "ciao"
+
 // StorageURI is a test storage URI
 const StorageURI = "/etc/ciao/ciao.json"
 
@@ -336,6 +342,9 @@ const ConfigureYaml = `configure:
   scheduler:
     storage_type: file
     storage_uri: ` + StorageURI + `
+  storage:
+    secret_path: ` + KeyPath + `
+    ceph_id: ` + ManagementID + `
   controller:
     compute_port: ` + ComputePort + `
     compute_ca: ` + HTTPSCACert + `
