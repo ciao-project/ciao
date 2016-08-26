@@ -342,27 +342,6 @@ func computeTapParam(vnicName string, mac string) ([]string, error) {
 	return params, nil
 }
 
-func launchQemu(params []string, fds []*os.File) (string, error) {
-	errStr := ""
-	cmd := exec.Command("qemu-system-x86_64", params...)
-	if fds != nil {
-		glog.Infof("Adding extra file %v", fds)
-		cmd.ExtraFiles = fds
-	}
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	glog.Infof("launching qemu with: %v", params)
-
-	err := cmd.Run()
-	if err != nil {
-		glog.Errorf("Unable to launch qemu: %v", err)
-		errStr = stderr.String()
-		glog.Error(errStr)
-	}
-	return errStr, err
-}
-
 func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, error) {
 	var err error
 
@@ -378,7 +357,7 @@ func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, e
 		ncString := "socket,port=%d,host=%s,server,id=gnc0,server,nowait"
 		params[len(params)-1] = fmt.Sprintf(ncString, port, ipAddress)
 		var errStr string
-		errStr, err = launchQemu(params, fds)
+		errStr, err = qemu.LaunchQemu(context.Background(), params, fds, qmpGlogLogger{})
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with netcat %s %d", ipAddress, port)
@@ -395,7 +374,7 @@ func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, e
 
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to chardev error.  Relaunching without virtual console")
-		_, err = launchQemu(params[:len(params)-4], fds)
+		_, err = qemu.LaunchQemu(context.Background(), params[:len(params)-4], fds, qmpGlogLogger{})
 	}
 
 	return port, err
@@ -414,7 +393,7 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 		}
 		params[len(params)-1] = fmt.Sprintf("port=%d,addr=%s,disable-ticketing", port, ipAddress)
 		var errStr string
-		errStr, err = launchQemu(params, fds)
+		errStr, err = qemu.LaunchQemu(context.Background(), params, fds, qmpGlogLogger{})
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with spicec -h %s -p %d", ipAddress, port)
@@ -433,7 +412,7 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to spice error.  Relaunching without virtual console")
 		params = append(params[:len(params)-2], "-display", "none", "-vga", "none")
-		_, err = launchQemu(params, fds)
+		_, err = qemu.LaunchQemu(context.Background(), params, fds, qmpGlogLogger{})
 	}
 
 	return port, err
@@ -509,7 +488,7 @@ func (q *qemuV) startVM(vnicName, ipAddress string) error {
 
 	if !launchWithUI.Enabled() {
 		params = append(params, "-display", "none", "-vga", "none")
-		_, err = launchQemu(params, fds)
+		_, err = qemu.LaunchQemu(context.Background(), params, fds, qmpGlogLogger{})
 	} else if launchWithUI.String() == "spice" {
 		var port int
 		port, err = launchQemuWithSpice(params, fds, ipAddress)
