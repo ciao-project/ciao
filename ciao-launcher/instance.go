@@ -396,7 +396,7 @@ func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh ch
 	} else if cfg.Container {
 		vm = &docker{}
 	} else {
-		vm = &qemu{}
+		vm = &qemuV{}
 	}
 	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm,
 		storage.CephDriver{
