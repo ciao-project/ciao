@@ -270,8 +270,8 @@ func (d *Dnsmasq) getSubnetConfiguration() error {
 		return fmt.Errorf("invalid subnet")
 	}
 
-	d.gateway.IP = d.TenantNet.IP.To4().Mask(d.TenantNet.Mask)
-	d.gateway.Mask = d.TenantNet.Mask
+	tenantNetCopy := IPNetDeepCopy(d.TenantNet)
+	d.gateway = *tenantNetCopy
 	d.startIP = d.TenantNet.IP.To4().Mask(d.TenantNet.Mask)
 	d.endIP = d.TenantNet.IP.To4().Mask(d.TenantNet.Mask)
 	//End Hack
