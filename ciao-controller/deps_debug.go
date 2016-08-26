@@ -13,21 +13,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// +build !debug
+// +build debug
 
 package main
 
 import "github.com/01org/ciao/osprepare"
 
 var controllerDeps = osprepare.PackageRequirements{
-	// no known dependencies
+	/* sqlite3 is not strictly required, but useful for debug */
 	"clearlinux": {
-		{BinaryName: "", PackageName: ""},
+		{BinaryName: "/usr/bin/sqlite3", PackageName: "cloud-control"},
 	},
 	"fedora": {
-		{BinaryName: "", PackageName: ""},
+		{BinaryName: "/usr/bin/sqlite3", PackageName: "sqlite"},
 	},
 	"ubuntu": {
-		{BinaryName: "", PackageName: ""},
+		{BinaryName: "/usr/bin/sqlite3", PackageName: "sqlite3"},
 	},
 }
