@@ -42,7 +42,7 @@ There are 2 configurable parameters that may be set:
 import subprocess32
 import os
 import unittest
-import taprunner
+import tap
 import time
 import sys
 import random
@@ -469,7 +469,7 @@ def main():
     retry_count = args.retry_count
 
     outfile = open("./report.tap", "w")
-    unittest.main(testRunner=taprunner.TAPTestRunner(stream=outfile))
+    unittest.main(testRunner=tap.TAPTestRunner(stream=outfile))
 
 if __name__ == '__main__':
     main()
