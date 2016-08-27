@@ -1406,6 +1406,8 @@ func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	return nil
 }
 
+// DeleteBlockDevice will delete a volume from the datastore.
+// It also deletes it from the tenant's list of devices.
 func (ds *Datastore) DeleteBlockDevice(ID string) error {
 	// lock both tenants and devices maps
 	var err error
