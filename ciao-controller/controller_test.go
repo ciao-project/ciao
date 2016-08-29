@@ -208,7 +208,10 @@ func TestTenantOutOfBounds(t *testing.T) {
 	}
 
 	/* put tenant limit of 1 instance */
-	_ = context.ds.AddLimit(tenant.ID, 1, 1)
+	err = context.ds.AddLimit(tenant.ID, 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	wls, err := context.ds.GetWorkloads()
 	if err != nil || len(wls) == 0 {
