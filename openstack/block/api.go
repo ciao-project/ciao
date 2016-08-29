@@ -479,7 +479,6 @@ func showAbsoluteLimits(bc *Context, w http.ResponseWriter, r *http.Request) (AP
 }
 
 func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	fmt.Println("create volume request!")
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
 
