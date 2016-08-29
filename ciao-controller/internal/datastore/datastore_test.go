@@ -762,7 +762,7 @@ func TestGetBatchFrameStatistics(t *testing.T) {
 
 	_, err = ds.db.getBatchFrameStatistics("batch_frame_test")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 }
 
@@ -802,40 +802,40 @@ func TestGetBatchFrameSummary(t *testing.T) {
 
 	_, err = ds.db.getBatchFrameSummary()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 }
 
 func TestGetNodeSummary(t *testing.T) {
 	_, err := ds.db.getNodeSummary()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 }
 
 func TestGetEventLog(t *testing.T) {
 	err := ds.db.logEvent("test-tenantID", "info", "this is a test")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	_, err = ds.db.getEventLog()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 }
 
 func TestLogEvent(t *testing.T) {
 	err := ds.db.logEvent("test-tenantID", "info", "this is a test")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 }
 
 func TestClearLog(t *testing.T) {
 	err := ds.db.clearLog()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 }
 
