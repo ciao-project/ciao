@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
@@ -101,6 +102,7 @@ type serverConn interface {
 	Dial(config *ssntp.Config, ntf ssntp.ClientNotifier) error
 	SendStatus(status ssntp.Status, payload []byte) (int, error)
 	SendCommand(cmd ssntp.Command, payload []byte) (int, error)
+	Role() ssntp.Role
 	UUID() string
 	Close()
 	isConnected() bool
@@ -232,6 +234,16 @@ func (client *agentClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 
 func (client *agentClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 	glog.Infof("ERROR %d", err)
+}
+
+func (client *agentClient) installLauncherDeps() {
+	role := client.conn.Role()
+	if role.IsNetAgent() {
+		osprepare.InstallDeps(launcherNetNodeDeps)
+	}
+	if role.IsAgent() {
+		osprepare.InstallDeps(launcherComputeNodeDeps)
+	}
 }
 
 func insCmdChannel(instance string, ovsCh chan<- interface{}) chan<- interface{} {
@@ -400,6 +412,8 @@ DONE:
 				cephID = clusterConfig.Configure.Storage.CephID
 			}
 			printClusterConfig()
+
+			client.installLauncherDeps()
 
 			err = startNetwork(doneCh)
 			if err != nil {

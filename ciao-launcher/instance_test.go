@@ -177,6 +177,10 @@ func (v *instanceTestState) SendCommand(cmd ssntp.Command, payload []byte) (int,
 	return 0, nil
 }
 
+func (v *instanceTestState) Role() ssntp.Role {
+	return ssntp.AGENT | ssntp.NETAGENT
+}
+
 func (v *instanceTestState) UUID() string {
 	return ""
 }

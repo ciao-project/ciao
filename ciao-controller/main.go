@@ -25,6 +25,7 @@ import (
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	image "github.com/01org/ciao/ciao-image/client"
 	storage "github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
 	"github.com/golang/glog"
@@ -134,6 +135,8 @@ func main() {
 	if *cephID == "" {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
+
+	osprepare.InstallDeps(controllerDeps)
 
 	if *singleMachine {
 		hostname, _ := os.Hostname()
