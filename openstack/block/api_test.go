@@ -111,6 +111,14 @@ var tests = []test{
 		http.StatusAccepted,
 		"null",
 	},
+	{
+		"POST",
+		"/v2/validtenantid/volumes/validvolumeid/action",
+		volumeAction,
+		`{"os-detach":{}}`,
+		http.StatusAccepted,
+		"null",
+	},
 }
 
 type testVolumeService struct{}
