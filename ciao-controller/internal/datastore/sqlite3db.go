@@ -200,6 +200,8 @@ func (d blockData) Init() error {
 		size integer,
 		state string,
 		create_time DATETIME,
+		name string,
+		description string,
 		foreign key(tenant_id) references tenants(id)
 		);`
 
@@ -2094,7 +2096,9 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 				block_data.tenant_id,
 				block_data.size,
 				block_data.state,
-				block_data.create_time
+				block_data.create_time,
+				block_data.name,
+				block_data.description
 		  FROM	block_data
 		  WHERE block_data.tenant_id = ?`
 
@@ -2109,7 +2113,7 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 		var state string
 		var data types.BlockData
 
-		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime)
+		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime, &data.Name, &data.Description)
 		if err != nil {
 			continue
 		}
@@ -2136,7 +2140,9 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 				block_data.tenant_id,
 				block_data.size,
 				block_data.state,
-				block_data.create_time
+				block_data.create_time,
+				block_data.name,
+				block_data.description
 		  FROM	block_data `
 
 	rows, err := datastore.Query(query)
@@ -2149,7 +2155,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 		var data types.BlockData
 		var state string
 
-		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime)
+		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime, &data.Name, &data.Description)
 		if err != nil {
 			continue
 		}
@@ -2166,7 +2172,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 
 func (ds *sqliteDB) createBlockData(data types.BlockData) error {
 	ds.dbLock.Lock()
-	err := ds.create("block_data", data.ID, data.TenantID, data.Size, string(data.State), data.CreateTime.Format(time.RFC3339Nano))
+	err := ds.create("block_data", data.ID, data.TenantID, data.Size, string(data.State), data.CreateTime.Format(time.RFC3339Nano), data.Name, data.Description)
 	ds.dbLock.Unlock()
 
 	return err

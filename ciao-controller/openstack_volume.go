@@ -36,7 +36,6 @@ func (c *controller) GetAbsoluteLimits(tenant string) (block.AbsoluteLimits, err
 // CreateVolume will create a new block device and store it in the datastore.
 // TBD: we need a better way to do bootable.
 func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (block.Volume, error) {
-
 	t, err := c.ds.GetTenant(tenant)
 	if err != nil {
 		return block.Volume{}, err
@@ -73,6 +72,15 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 		TenantID:    tenant,
 		State:       types.Available,
 	}
+
+	if req.Name != nil {
+		data.Name = *req.Name
+	}
+
+	if req.Description != nil {
+		data.Description = *req.Description
+	}
+
 	err = c.ds.AddBlockDevice(data)
 	if err != nil {
 		c.DeleteBlockDevice(bd.ID)
@@ -276,6 +284,14 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 		vol.OSVolTenantAttr = data.TenantID
 		vol.CreatedAt = &data.CreateTime
 
+		if data.Name != "" {
+			vol.Name = &data.Name
+		}
+
+		if data.Description != "" {
+			vol.Description = &data.Description
+		}
+
 		switch data.State {
 		case types.Attaching:
 			vol.Status = block.Attaching
@@ -309,6 +325,14 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.Volu
 	vol.Size = data.Size
 	vol.OSVolTenantAttr = data.TenantID
 	vol.CreatedAt = &data.CreateTime
+
+	if data.Name != "" {
+		vol.Name = &data.Name
+	}
+
+	if data.Description != "" {
+		vol.Description = &data.Description
+	}
 
 	switch data.State {
 	case types.Attaching:

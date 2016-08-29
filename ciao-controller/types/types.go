@@ -228,10 +228,12 @@ const (
 // or can we use a set of interfaces to get the info?
 type BlockData struct {
 	storage.BlockDevice
-	TenantID   string     // the tenant who owns this volume
-	Size       int        // size in GB
-	State      BlockState // status of
-	CreateTime time.Time  // when we created the volume
+	TenantID    string     // the tenant who owns this volume
+	Size        int        // size in GB
+	State       BlockState // status of
+	CreateTime  time.Time  // when we created the volume
+	Name        string     // a human readable name for this volume
+	Description string     // some text to describe this volume.
 }
 
 // StorageAttachment represents a link between a block device and
