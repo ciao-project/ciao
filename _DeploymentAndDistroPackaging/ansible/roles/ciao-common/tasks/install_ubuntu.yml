@@ -13,5 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  # - name: Install CIAO from ubuntu repo
-  # WIP
+    - name: Install OBS CIAO repository
+      apt_repository:
+        repo: deb http://download.opensuse.org/repositories/home:/clearlinux:/preview:/ciao/xUbuntu_16.04/ /
+        state: present
+        update_cache: yes
+        validate_certs: no
+
+    - name: Install CIAO from OBS repository
+      apt:
+        name: ciao
+        state: present
+        update_cache: yes
+        force: yes
