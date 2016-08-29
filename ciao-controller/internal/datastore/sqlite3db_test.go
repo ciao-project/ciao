@@ -180,6 +180,52 @@ func TestGetAllBlockData(t *testing.T) {
 	db.disconnect()
 }
 
+func TestDeleteBlockData(t *testing.T) {
+	config := Config{
+		PersistentURI: "file:DeleteBlockData1?mode=memory&cache=shared",
+		TransientURI:  "file:DeleteBlockData2?mode=memory&cache=shared",
+	}
+
+	db, err := getPersistentStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockDevice := storage.BlockDevice{
+		ID: uuid.Generate().String(),
+	}
+
+	data := types.BlockData{
+		BlockDevice: blockDevice,
+		Size:        0,
+		State:       types.Available,
+		TenantID:    uuid.Generate().String(),
+		CreateTime:  time.Now(),
+	}
+
+	err = db.createBlockData(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.deleteBlockData(data.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	devices, err := db.getAllBlockData()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := devices[data.ID]
+	if ok {
+		t.Fatal("block devices not deleted")
+	}
+
+	db.disconnect()
+}
+
 func TestGetAllStorageAttachments(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:memdb9?mode=memory&cache=shared",

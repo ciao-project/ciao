@@ -93,6 +93,34 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 }
 
 func (c *controller) DeleteVolume(tenant string, volume string) error {
+	// get the block device information
+	info, err := c.ds.GetBlockDevice(volume)
+	if err != nil {
+		return err
+	}
+
+	// check that the block device is owned by the tenant.
+	if info.TenantID != tenant {
+		return block.ErrVolumeOwner
+	}
+
+	// check that the block device is available.
+	if info.State != types.Available {
+		return block.ErrVolumeNotAvailable
+	}
+
+	// remove the block data from our datastore.
+	err = c.ds.DeleteBlockDevice(volume)
+	if err != nil {
+		return err
+	}
+
+	// tell the underlying storage media to remove.
+	err = c.DeleteBlockDevice(volume)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -233,11 +261,67 @@ func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
 }
 
 func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, error) {
-	return make([]block.VolumeDetail, 0), nil
+	var vols []block.VolumeDetail
+
+	devs, err := c.ds.GetBlockDevices(tenant)
+	if err != nil {
+		return vols, err
+	}
+
+	for _, data := range devs {
+		var vol block.VolumeDetail
+
+		vol.ID = data.ID
+		vol.Size = data.Size
+		vol.OSVolTenantAttr = data.TenantID
+		vol.CreatedAt = &data.CreateTime
+
+		switch data.State {
+		case types.Attaching:
+			vol.Status = block.Attaching
+		case types.InUse:
+			vol.Status = block.InUse
+		case types.Available:
+			vol.Status = block.Available
+		default:
+			vol.Status = block.VolumeStatus(data.State)
+		}
+
+		vols = append(vols, vol)
+	}
+
+	return vols, nil
 }
 
 func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.VolumeDetail, error) {
-	return block.VolumeDetail{}, nil
+	var vol block.VolumeDetail
+
+	data, err := c.ds.GetBlockDevice(volume)
+	if err != nil {
+		return vol, err
+	}
+
+	if data.TenantID != tenant {
+		return vol, block.ErrVolumeOwner
+	}
+
+	vol.ID = data.ID
+	vol.Size = data.Size
+	vol.OSVolTenantAttr = data.TenantID
+	vol.CreatedAt = &data.CreateTime
+
+	switch data.State {
+	case types.Attaching:
+		vol.Status = block.Attaching
+	case types.InUse:
+		vol.Status = block.InUse
+	case types.Available:
+		vol.Status = block.Available
+	default:
+		vol.Status = block.VolumeStatus(data.State)
+	}
+
+	return vol, nil
 }
 
 // Start will get the Volume API endpoints from the OpenStack block api,

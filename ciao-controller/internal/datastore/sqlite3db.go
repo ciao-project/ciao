@@ -2198,6 +2198,29 @@ func (ds *sqliteDB) updateBlockData(data types.BlockData) error {
 	return err
 }
 
+func (ds *sqliteDB) deleteBlockData(ID string) error {
+	datastore := ds.getTableDB("block_data")
+
+	ds.dbLock.Lock()
+	tx, err := datastore.Begin()
+	if err != nil {
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM block_data WHERE id = ?", ID)
+	if err != nil {
+		tx.Rollback()
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
+	ds.dbLock.Unlock()
+
+	return err
+}
+
 func (ds *sqliteDB) createStorageAttachment(a types.StorageAttachment) error {
 	ds.dbLock.Lock()
 	err := ds.create("attachments", a.ID, a.InstanceID, a.BlockID)
