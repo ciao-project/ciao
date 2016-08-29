@@ -1419,14 +1419,16 @@ func (ds *Datastore) DeleteBlockDevice(ID string) error {
 	if ok {
 		delete(ds.blockDevices, ID)
 		delete(ds.tenants[dev.TenantID].devices, ID)
-
-		go ds.db.deleteBlockData(ID)
-	} else {
-		err = ErrNoBlockData
 	}
 
 	ds.tenantsLock.Unlock()
 	ds.bdLock.Unlock()
+
+	if ok {
+		go ds.db.deleteBlockData(ID)
+	} else {
+		err = ErrNoBlockData
+	}
 
 	return err
 }
