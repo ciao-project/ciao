@@ -16,6 +16,7 @@
   tasks:
     - name: Stop ciao-webui docker container
       docker_container: name=ciao-webui state=absent
+      ignore_errors: yes
 
 - hosts: controllers:computes:networks
   tasks:
@@ -28,6 +29,8 @@
         - ciao-compute.service
         - ciao-controller.service
         - ciao-scheduler.service
+        - docker.service
+        - docker-cor.service
       ignore_errors: yes
 
     - name: Remove CIAO Service files
@@ -75,12 +78,3 @@
     - name: Remove OBS repository (Fedora)
       yum_repository: name=ciao state=absent
       when: ansible_os_family == 'RedHat'
-
-    - name: Remove broken symlinks in /etc/ssl/certs
-      command: find -L /etc/ssl/certs -type l -delete
-      ignore_errors: yes
-
-    - name: Update certificates (Ubuntu)
-      command: update-ca-certificates
-      when: ansible_os_family == "Debian"
-      ignore_errors: yes

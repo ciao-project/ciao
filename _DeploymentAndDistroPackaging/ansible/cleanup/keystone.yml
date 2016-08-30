@@ -1,9 +1,9 @@
 ---
 - hosts: controllers
   tasks:
-
     - name: Stop keystone docker container
       docker_container: name=ciao-keystone state=absent
+      ignore_errors: yes
 
     - name: Remove Keystone files
       file: name={{ item }} state=absent
