@@ -43,7 +43,7 @@ func (d *NoopDriver) MapVolumeToNode(volumeUUID string) (string, error) {
 }
 
 // UnmapVolumeFromNode pretends to unmap a volume from a local device on a node.
-func (d *NoopDriver) UnmapVolumeFromNode(devNmae string) error {
+func (d *NoopDriver) UnmapVolumeFromNode(volumeUUID string) error {
 	return nil
 }
 

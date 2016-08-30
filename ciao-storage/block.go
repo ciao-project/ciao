@@ -28,7 +28,7 @@ type BlockDriver interface {
 	CreateBlockDevice(image *string, sizeGB int) (BlockDevice, error)
 	DeleteBlockDevice(string) error
 	MapVolumeToNode(volumeUUID string) (string, error)
-	UnmapVolumeFromNode(devName string) error
+	UnmapVolumeFromNode(volumeUUID string) error
 	GetVolumeMapping() (map[string][]string, error)
 }
 
