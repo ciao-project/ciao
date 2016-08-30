@@ -16,8 +16,8 @@
   - include: build.yml
   - include: install.yml
   - include: certificates.yml
-  - include: startservices.yml
   - include: endpoints.yml
+  - include: startservices.yml
   - include: images.yml
   - include: create_cnci_image.yml
 
