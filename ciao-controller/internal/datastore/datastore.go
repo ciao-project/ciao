@@ -1600,6 +1600,12 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 
 			delete(ds.attachments, ID)
 			delete(ds.instanceVolumes, key)
+
+			// update persistent store asynch.
+			// ok for lock to be held here, but
+			// not needed as the db keeps it's
+			// own locks.
+			go ds.db.deleteStorageAttachment(ID)
 		}
 	}
 	ds.attachLock.Unlock()
