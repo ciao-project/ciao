@@ -493,8 +493,12 @@ func createConfigFile(confPath string) error {
 
 	conf.Configure.Launcher.DiskLimit = diskLimit
 	conf.Configure.Launcher.MemoryLimit = memLimit
-	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
-	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
+	if computeNet != "" {
+		conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
+	}
+	if mgmtNet != "" {
+		conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
+	}
 	conf.Configure.Storage.SecretPath = secretPath
 	conf.Configure.Storage.CephID = cephID
 
