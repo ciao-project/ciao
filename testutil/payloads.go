@@ -340,7 +340,6 @@ const CNCIInstanceData = `scheduler_addr: 192.168.42.5
 // ConfigureYaml is a sample CONFIGURE ssntp.Command payload for test cases
 const ConfigureYaml = `configure:
   scheduler:
-    storage_type: file
     storage_uri: ` + StorageURI + `
   storage:
     secret_path: ` + KeyPath + `

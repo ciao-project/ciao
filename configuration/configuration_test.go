@@ -61,7 +61,6 @@ const minValidConf = `configure:
 `
 const fullValidConf = `configure:
   scheduler:
-    storage_type: file
     storage_uri: /etc/ciao/configuration.yaml
   storage:
     secret_path: /etc/ceph/ceph.client.ciao.keyring
@@ -113,8 +112,7 @@ func TestBlobCorrectPayload(t *testing.T) {
 }
 
 func equalPayload(p1, p2 payloads.Configure) bool {
-	return (p1.Configure.Scheduler.ConfigStorageType == p2.Configure.Scheduler.ConfigStorageType &&
-		p1.Configure.Scheduler.ConfigStorageURI == p2.Configure.Scheduler.ConfigStorageURI &&
+	return (p1.Configure.Scheduler.ConfigStorageURI == p2.Configure.Scheduler.ConfigStorageURI &&
 
 		p1.Configure.Controller.ComputePort == p2.Configure.Controller.ComputePort &&
 		p1.Configure.Controller.HTTPSCACert == p2.Configure.Controller.HTTPSCACert &&
@@ -135,8 +133,7 @@ func equalPayload(p1, p2 payloads.Configure) bool {
 }
 
 func emptyPayload(p payloads.Configure) bool {
-	return (p.Configure.Scheduler.ConfigStorageType != "" &&
-		p.Configure.Scheduler.ConfigStorageURI != "" &&
+	return (p.Configure.Scheduler.ConfigStorageURI != "" &&
 
 		p.Configure.Controller.ComputePort != 0 &&
 		p.Configure.Controller.HTTPSCACert != "" &&
@@ -213,8 +210,7 @@ func TestPayloadCorrectBlob(t *testing.T) {
 }
 
 func saneDefaults(conf *payloads.Configure) bool {
-	return (conf.Configure.Scheduler.ConfigStorageType == payloads.Filesystem &&
-		conf.Configure.Controller.ComputePort == 8774 &&
+	return (conf.Configure.Controller.ComputePort == 8774 &&
 		conf.Configure.ImageService.Type == payloads.Glance &&
 		conf.Configure.IdentityService.Type == payloads.Keystone &&
 		conf.Configure.Launcher.DiskLimit == true &&

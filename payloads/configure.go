@@ -65,8 +65,7 @@ func (s StorageType) String() string {
 // ConfigureScheduler contains the unmarshalled configurations for the
 // scheduler service.
 type ConfigureScheduler struct {
-	ConfigStorageType StorageType `yaml:"storage_type"`
-	ConfigStorageURI  string      `yaml:"storage_uri"`
+	ConfigStorageURI string `yaml:"storage_uri"`
 }
 
 // ConfigureController contains the unmarshalled configurations for the
@@ -121,7 +120,6 @@ type Configure struct {
 
 // InitDefaults initializes default vaulues for Configure structure.
 func (conf *Configure) InitDefaults() {
-	conf.Configure.Scheduler.ConfigStorageType = Filesystem
 	conf.Configure.Controller.ComputePort = 8774
 	conf.Configure.ImageService.Type = Glance
 	conf.Configure.IdentityService.Type = Keystone
