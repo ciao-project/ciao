@@ -695,7 +695,12 @@ func TestDetachVolumeFailure(t *testing.T) {
 }
 
 func TestDetachVolumeByAttachment(t *testing.T) {
-	err := context.DetachVolume("invalidTenant", "invalidVolume", "attachmentID")
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = context.DetachVolume(tenant.ID, "invalidVolume", "attachmentID")
 	if err == nil {
 		t.Fatal("Detach by attachment ID not supported yet")
 	}

@@ -30,30 +30,20 @@ import (
 
 // Implement the Block Service interface
 func (c *controller) GetAbsoluteLimits(tenant string) (block.AbsoluteLimits, error) {
+	err := c.confirmTenant(tenant)
+	if err != nil {
+		return block.AbsoluteLimits{}, err
+	}
+
 	return block.AbsoluteLimits{}, nil
 }
 
 // CreateVolume will create a new block device and store it in the datastore.
 // TBD: we need a better way to do bootable.
 func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (block.Volume, error) {
-	t, err := c.ds.GetTenant(tenant)
+	err := c.confirmTenant(tenant)
 	if err != nil {
 		return block.Volume{}, err
-	}
-
-	if t == nil {
-		// go ahead and add this tenant
-		if *noNetwork {
-			_, err := c.ds.AddTenant(tenant)
-			if err != nil {
-				return block.Volume{}, err
-			}
-		} else {
-			err = c.addTenant(tenant)
-			if err != nil {
-				return block.Volume{}, err
-			}
-		}
 	}
 
 	// no limits checking for now.
@@ -101,6 +91,11 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 }
 
 func (c *controller) DeleteVolume(tenant string, volume string) error {
+	err := c.confirmTenant(tenant)
+	if err != nil {
+		return err
+	}
+
 	// get the block device information
 	info, err := c.ds.GetBlockDevice(volume)
 	if err != nil {
@@ -133,6 +128,11 @@ func (c *controller) DeleteVolume(tenant string, volume string) error {
 }
 
 func (c *controller) AttachVolume(tenant string, volume string, instance string, mountpoint string) error {
+	err := c.confirmTenant(tenant)
+	if err != nil {
+		return err
+	}
+
 	// get the block device information
 	info, err := c.ds.GetBlockDevice(volume)
 	if err != nil {
@@ -186,6 +186,11 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 }
 
 func (c *controller) DetachVolume(tenant string, volume string, attachment string) error {
+	err := c.confirmTenant(tenant)
+	if err != nil {
+		return err
+	}
+
 	// we don't support detaching by attachment ID yet.
 	if attachment != "" {
 		return errors.New("Detaching by attachment ID not implemented")
@@ -252,6 +257,11 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
 	var vols []block.ListVolume
 
+	err := c.confirmTenant(tenant)
+	if err != nil {
+		return vols, err
+	}
+
 	data, err := c.ds.GetBlockDevices(tenant)
 	if err != nil {
 		return vols, err
@@ -270,6 +280,11 @@ func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
 
 func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, error) {
 	var vols []block.VolumeDetail
+
+	err := c.confirmTenant(tenant)
+	if err != nil {
+		return vols, err
+	}
 
 	devs, err := c.ds.GetBlockDevices(tenant)
 	if err != nil {
@@ -311,6 +326,11 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 
 func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.VolumeDetail, error) {
 	var vol block.VolumeDetail
+
+	err := c.confirmTenant(tenant)
+	if err != nil {
+		return vol, err
+	}
 
 	data, err := c.ds.GetBlockDevice(volume)
 	if err != nil {
