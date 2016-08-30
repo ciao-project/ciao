@@ -35,9 +35,6 @@ const (
 	// Filesystem defines the local filesystem backend storage type for the
 	// configuration data.
 	Filesystem StorageType = "file"
-
-	// Etcd defines the etcd backend storage type for the configuration data.
-	Etcd StorageType = "etcd"
 )
 
 func (s ServiceType) String() string {
@@ -55,8 +52,6 @@ func (s StorageType) String() string {
 	switch s {
 	case Filesystem:
 		return "file"
-	case Etcd:
-		return "etcd"
 	}
 
 	return ""

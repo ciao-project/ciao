@@ -106,7 +106,6 @@ func TestConfigureStorageTypeString(t *testing.T) {
 		expected string
 	}{
 		{Filesystem, Filesystem.String()},
-		{Etcd, Etcd.String()},
 	}
 	for _, test := range stringTests {
 		obj := test.s

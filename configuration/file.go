@@ -30,8 +30,6 @@ type file struct {
 
 // handle the yaml configuration file read
 // only 'file' URI Scheme is supported at the moment
-// TODO: rework this more to check what's missing to
-// support etcd backend as well
 func loadFile(path string) (yamlConf []byte, err error) {
 	yamlConf, err = ioutil.ReadFile(path)
 	if err != nil {
