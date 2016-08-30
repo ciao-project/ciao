@@ -1,7 +1,7 @@
 clearlinux.docker
 =========
 
-This role installs docker 1.12 on Ubuntu and ClearLinux
+This role installs docker 1.12 on Ubuntu, Fedora and ClearLinux
 
 Requirements
 ------------

@@ -13,11 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- include: install_ubuntu.yml
-  when: ansible_os_family == "Debian"
+  - name: Install docker repository
+    yum_repository:
+      name: docker
+      description: Docker Repository
+      baseurl: https://yum.dockerproject.org/repo/main/fedora/24/
+      state: present
+      enabled: yes
+      gpgkey: https://yum.dockerproject.org/gpg
+      gpgcheck: yes
 
-- include: install_fedora.yml
-  when: ansible_os_family == "RedHat"
+  - name: Install docker
+    dnf: name=docker-engine state=present
 
-- include: install_clearlinux.yml
-  when: ansible_os_family == "Clear linux software for intel architecture"
+  - name: Start docker daemon
+    service: name=docker enabled=yes state=started

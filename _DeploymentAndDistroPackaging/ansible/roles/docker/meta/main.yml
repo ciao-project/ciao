@@ -13,12 +13,18 @@ galaxy_info:
   - name: Ubuntu
     versions:
       - xenial
+  - name: Fedora
+    versions:
+      - 24
   - name: ClearLinux
+    versions:
+      - all
 
   galaxy_tags:
     - ubuntu
     - xenial
     - clearlinux
+    - fedora
     - docker
 
 dependencies: []
