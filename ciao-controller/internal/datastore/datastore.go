@@ -1578,7 +1578,7 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 	for _, ID := range ds.instanceVolumes {
 		a := ds.attachments[ID]
 
-		if !m[a.BlockID] {
+		if a.InstanceID == instanceID && !m[a.BlockID] {
 			bd, err := ds.GetBlockDevice(a.BlockID)
 			if err != nil {
 				glog.Warning(err)
