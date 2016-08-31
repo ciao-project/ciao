@@ -18,5 +18,6 @@
 
   - name: Build CIAO from sources
     shell: GOPATH=~/go go get -v -u github.com/01org/ciao/...
-    register: result
-    changed_when: "'github.com/01org/ciao/' in result.stderr"
+    register: ciao_build
+    async: 1800
+    poll: 0
