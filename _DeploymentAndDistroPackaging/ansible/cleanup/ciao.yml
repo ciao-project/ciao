@@ -50,9 +50,14 @@
         - /etc/pki/ciao
         - /etc/pki/keystone
         - /var/lib/ciao
+        # ClearLinux cers
         - /etc/ssl/certs/keystone_cert.pem
+        # Ubuntu certs
         - /etc/ca-certificates/keystone_cert.pem
         - /usr/local/share/ca-certificates/keystone_cert.crt
+        # Fedora certs
+        - /etc/pki/ca-trust/source/keystone_cert.crt
+        - /etc/pki/tls/certs/keystone_cert.pem
 
     - name: Remove CIAO files from github
       file: path={{ item }} state=absent

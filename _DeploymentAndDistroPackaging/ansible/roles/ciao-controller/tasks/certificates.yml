@@ -63,18 +63,31 @@
     args:
       creates: /etc/ssl/certs
 
-  - name: Enable certificate (ClearLinux)
+  - name: Install certificate (ClearLinux)
     copy: src=certificates/keystone/keystone_cert.pem dest=/etc/ssl/certs
 
-  - name: Enable certificate (Ubuntu)
+  - name: Install certificate (Ubuntu)
     command: >
       cp /etc/pki/keystone/keystone_cert.pem
       /usr/local/share/ca-certificates/keystone_cert.crt
       creates=/usr/local/share/ca-certificates/keystone_cert.crt
     when: ansible_os_family == "Debian"
 
-  - name: Enable CA certificate (Ubuntu)
+  - name: Update CA certificates (Ubuntu)
     command: update-ca-certificates
     args:
       creates: /etc/ssl/certs/keystone_cert.pem
     when: ansible_distribution == 'Ubuntu'
+
+  - name: Install certificate (Fedora)
+    command: >
+      cp /etc/pki/keystone/keystone_cert.pem
+      /etc/pki/ca-trust/source/anchors/
+      creates=/etc/pki/ca-trust/source/keystone_cert.crt
+    when: ansible_os_family == "RedHat"
+
+  - name: Update CA trust (Fedora)
+    command: update-ca-trust
+    args:
+      creates: /etc/pki/tls/certs/keystone_cert.pem
+    when: ansible_distribution == 'RedHat'
