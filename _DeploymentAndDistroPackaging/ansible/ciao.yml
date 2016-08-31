@@ -1,20 +1,5 @@
 ---
-- hosts: controllers
-  become: yes
-  roles:
-    - clearlinux.docker
-    - clearlinux.keystone
-    - clearlinux.ciao-controller
-    - clearlinux.ciao-webui
-
-- hosts: networks
-  become: yes
-  strategy: free
-  roles:
-    - clearlinux.ciao-network
-
-- hosts: computes
-  become: yes
-  strategy: free
-  roles:
-    - clearlinux.ciao-compute
+- include: ciao_prepare.yml
+- include: ciao_controllers.yml
+- include: ciao_networks.yml
+- include: ciao_computes.yml

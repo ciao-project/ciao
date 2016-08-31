@@ -1,0 +1,7 @@
+---
+  - hosts: computes
+    become: yes
+    strategy: free
+    roles:
+      - clearlinux.docker
+      - clearlinux.ciao-compute
