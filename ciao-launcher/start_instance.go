@@ -141,7 +141,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 
 	st.creationStamp = time.Now()
 
-	err = vm.startVM(vnicName, getNodeIPAddress())
+	err = vm.startVM(vnicName, getNodeIPAddress(), cephID)
 	if err != nil {
 		return nil, &startError{err, payloads.LaunchFailure}
 	}

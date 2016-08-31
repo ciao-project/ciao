@@ -155,7 +155,7 @@ func TestGenerateQEMULaunchParams(t *testing.T) {
 	params := genQEMUParams(nil)
 	cfg.Legacy = true
 	genParams := generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
-		"/var/lib/ciao/instance/1", nil)
+		"/var/lib/ciao/instance/1", nil, "ciao")
 	if !reflect.DeepEqual(params, genParams) {
 		t.Fatalf("%s and %s do not match", params, genParams)
 	}
@@ -166,7 +166,7 @@ func TestGenerateQEMULaunchParams(t *testing.T) {
 	cfg.Cpus = 0
 	params = append(params, "-bios", qemuEfiFw)
 	genParams = generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
-		"/var/lib/ciao/instance/1", nil)
+		"/var/lib/ciao/instance/1", nil, "ciao")
 	if !reflect.DeepEqual(params, genParams) {
 		t.Fatalf("%s and %s do not match", params, genParams)
 	}
@@ -177,7 +177,7 @@ func TestGenerateQEMULaunchParams(t *testing.T) {
 	cfg.Legacy = true
 	params = append(params, "-m", "100")
 	genParams = generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
-		"/var/lib/ciao/instance/1", nil)
+		"/var/lib/ciao/instance/1", nil, "ciao")
 	if !reflect.DeepEqual(params, genParams) {
 		t.Fatalf("%s and %s do not match", params, genParams)
 	}
@@ -188,7 +188,7 @@ func TestGenerateQEMULaunchParams(t *testing.T) {
 	cfg.Legacy = true
 	params = append(params, "-smp", "cpus=4")
 	genParams = generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
-		"/var/lib/ciao/instance/1", nil)
+		"/var/lib/ciao/instance/1", nil, "ciao")
 	if !reflect.DeepEqual(params, genParams) {
 		t.Fatalf("%s and %s do not match", params, genParams)
 	}
@@ -199,7 +199,7 @@ func TestGenerateQEMULaunchParams(t *testing.T) {
 	cfg.Cpus = 0
 	cfg.Legacy = true
 	genParams = generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
-		"/var/lib/ciao/instance/1", netParams)
+		"/var/lib/ciao/instance/1", netParams, "ciao")
 	if !reflect.DeepEqual(params, genParams) {
 		t.Fatalf("%s and %s do not match", params, genParams)
 	}

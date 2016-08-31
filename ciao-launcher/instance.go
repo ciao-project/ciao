@@ -208,6 +208,8 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 
 	_ = processDelete(id.vm, id.instanceDir, id.ac.conn, cmd.running)
 
+	id.unmapVolumes()
+
 	if !cmd.suicide {
 		id.ovsCh <- &ovsStatusCmd{}
 	}
@@ -312,6 +314,21 @@ func (id *instanceData) getVolumes() []string {
 	return volumes
 }
 
+func (id *instanceData) unmapVolumes() {
+	glog.Infof("Unmapping volumes for %s", id.instance)
+
+	for k := range id.cfg.Volumes {
+
+		// UnmapVolumeFromNode might fail if it's mapped to multiple
+		// instances on the same node.  We don't treat this as an
+		// error for now.
+
+		if err := id.storageDriver.UnmapVolumeFromNode(k); err == nil {
+			glog.Infof("Unmapping volume %s", k)
+		}
+	}
+}
+
 func (id *instanceData) instanceLoop() {
 
 	id.vm.init(id.cfg, id.instanceDir)
@@ -346,6 +363,7 @@ DONE:
 			id.statsTimer = nil
 			id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
 			id.st = nil
+			id.unmapVolumes()
 		case <-id.connectedCh:
 			id.logStartTrace()
 			id.connectedCh = nil

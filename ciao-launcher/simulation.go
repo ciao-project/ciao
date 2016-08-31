@@ -98,7 +98,7 @@ VM:
 
 }
 
-func (s *simulation) startVM(vnicName, ipAddress string) error {
+func (s *simulation) startVM(vnicName, ipAddress, cephID string) error {
 	glog.Infof("startVM\n")
 
 	s.killCh = make(chan struct{})

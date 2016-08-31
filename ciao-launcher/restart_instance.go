@@ -39,7 +39,7 @@ func processRestart(instanceDir string, vm virtualizer, conn serverConn, cfg *vm
 		}
 	}
 
-	err = vm.startVM(vnicName, getNodeIPAddress())
+	err = vm.startVM(vnicName, getNodeIPAddress(), cephID)
 	if err != nil {
 		return &restartError{err, payloads.RestartLaunchFailure}
 	}
