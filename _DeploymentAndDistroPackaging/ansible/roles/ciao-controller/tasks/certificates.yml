@@ -14,11 +14,14 @@
 # limitations under the License.
 
   - name: Create a local certificates directory if it does not exist
-    local_action: file path=certificates/ciao state=directory
+    become: no
+    connection: local
+    file: path=certificates/ciao state=directory
 
   - name: Create Scheduler key and CA certificate
-    local_action: >
-      command
+    become: no
+    connection: local
+    command: >
       ~/go/bin/ciao-cert -server -role scheduler
       -email={{ ciao_admin_email }} -organization="{{ ciao_cert_organization }}"
       -ip={{ ciao_controller_ip }} -host={{ ciao_controller_fqdn }} -verify
@@ -27,8 +30,9 @@
       creates: CAcert-{{ ciao_controller_fqdn }}.pem
 
   - name: Create agent keys
-    local_action: >
-      command
+    become: no
+    connection: local
+    command: >
       ~/go/bin/ciao-cert -role {{ item.role }} --server-cert
       cert-Scheduler-{{ ciao_controller_fqdn }}.pem -email={{ ciao_admin_email }}
       --organization="{{ ciao_cert_organization }}" -host=localhost -verify

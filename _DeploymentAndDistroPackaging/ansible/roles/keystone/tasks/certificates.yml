@@ -14,9 +14,11 @@
 # limitations under the License.
 
   - name: Create a local certificates directory if it does not exist
+    become: no
     local_action: file path=certificates/keystone state=directory
 
   - name: Create self-signed SSL cert
+    become: no
     local_action: >
       command
       openssl req -new -nodes -x509 -subj "/CN={{ keystone_fqdn }}" -days 365

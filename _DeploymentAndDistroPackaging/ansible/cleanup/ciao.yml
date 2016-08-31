@@ -13,12 +13,14 @@
         - ~/go
 
 - hosts: controllers
+  become: yes
   tasks:
     - name: Stop ciao-webui docker container
       docker_container: name=ciao-webui state=absent
       ignore_errors: yes
 
 - hosts: controllers:computes:networks
+  become: yes
   tasks:
     # In ansible 2.2.0 we can drop ignore errors since it will not fail
     # when the services does not exist.

@@ -24,7 +24,6 @@
     description: "CIAO Compute Service"
     endpoint: "https://{{ keystone_fqdn }}:35357/v3"
     insecure: yes
-  connection: local
 
 - name: Create Compute Service Endpoint in OpenStack
   keystone:
@@ -44,7 +43,6 @@
         interface: "admin"
     endpoint: "https://{{ keystone_fqdn }}:35357/v3"
     insecure: yes
-  connection: local
 
 - name: Create CIAO service user for OpenStack
   keystone:
@@ -59,7 +57,6 @@
     email: "{{ ciao_admin_email }}"
     endpoint: "https://{{ keystone_fqdn }}:35357/v3"
     insecure: yes
-  connection: local
 
 - name: Add CIAO service user to admin role
   keystone:
@@ -72,4 +69,3 @@
     role_name: "admin"
     endpoint: "https://{{ keystone_fqdn }}:35357/v3"
     insecure: yes
-  connection: local

@@ -14,12 +14,28 @@
 # limitations under the License.
 
   - include: build.yml
+    become: no
+    connection: local
+
   - include: install.yml
+
   - include: certificates.yml
+
   - include: endpoints.yml
+    become: no
+    connection: local
+
   - include: startservices.yml
+
   - include: images.yml
+    become: no
+    connection: local
+
   - include: create_cnci_image.yml
+    become: no
+    connection: local
 
   - name: Create ciaorc file
-    local_action: template src=ciaorc.j2 dest=./ciaorc mode=0400
+    become: no
+    connection: local
+    template: src=ciaorc.j2 dest=./ciaorc mode=0400

@@ -1,5 +1,6 @@
 ---
 - hosts: controllers
+  become: yes
   tasks:
     - name: Stop keystone docker container
       docker_container: name=ciao-keystone state=absent

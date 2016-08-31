@@ -14,9 +14,9 @@
 # limitations under the License.
 
   - name: Setup GOROOT directory
-    local_action: file path=~/go state=directory
+    file: path=~/go state=directory
 
   - name: Build CIAO from sources
-    local_action: shell GOPATH=~/go go get -v -u github.com/01org/ciao/...
+    shell: GOPATH=~/go go get -v -u github.com/01org/ciao/...
     register: result
     changed_when: "'github.com/01org/ciao/' in result.stderr"

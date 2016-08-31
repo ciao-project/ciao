@@ -15,35 +15,27 @@
 
   - name: Create images directory
     file: path=images state=directory
-    connection: local
 
   - name: Download OVMF.fd
     get_url:
       url: "{{ ovmf_url }}"
       dest: images/OVMF.fd
       validate_certs: no
-      use_proxy: "{{ use_proxy | default('yes') }}"
-    connection: local
 
   - name: Download Fedora Image
     get_url:
       url: "{{ fedora_cloud_image_url }}"
       dest: images/{{ fedora_cloud_image }}
       force: no
-      use_proxy: "{{ use_proxy | default('yes') }}"
-    connection: local
 
   - name: Download ClearLinux Image
     get_url:
       url: "{{ clear_cloud_image_url }}"
       dest: images/{{ clear_cloud_image }}.xz
       force: no
-      use_proxy: "{{ use_proxy | default('yes') }}"
-    connection: local
 
   - name: Uncompress ClearLinux Image
     command: unxz -k {{ clear_cloud_image }}.xz
     args:
       chdir: images
       creates: "{{ clear_cloud_image }}"
-    connection: local
