@@ -20,7 +20,7 @@
       createhome: no
       shell: /usr/sbin/nologin
       system: yes
-    when: ansible_os_family == "Debian"
+    when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
 
   - name: Create /var/lib/ciao tree
     file: path={{ item }} state=directory owner=ciao group=ciao

@@ -67,7 +67,7 @@
         name: ciao
         state: absent
         remove: yes
-      when: ansible_distribution == 'Ubuntu'
+      when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
 
     - name: Remove OBS repository (Ubuntu)
       apt_repository:
