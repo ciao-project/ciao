@@ -290,7 +290,7 @@ do
 
 	echo "Attempting to ssh to: $ssh_ip"
 
-	if [[ "$ssh_check" == *SSH-2.0-OpenSSH_7.2* ]]
+	if [[ "$ssh_check" == *SSH-2.0-OpenSSH_* ]]
 	then
 		echo "SSH connectivity verified"
 		break
