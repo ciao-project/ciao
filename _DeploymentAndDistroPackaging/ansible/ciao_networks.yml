@@ -1,0 +1,6 @@
+---
+  - hosts: networks
+    become: yes
+    strategy: free
+    roles:
+      - clearlinux.ciao-network

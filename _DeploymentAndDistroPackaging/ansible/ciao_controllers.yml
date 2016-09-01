@@ -1,0 +1,8 @@
+---
+  - hosts: controllers
+    become: yes
+    roles:
+      - clearlinux.docker
+      - clearlinux.keystone
+      - clearlinux.ciao-controller
+      - clearlinux.ciao-webui

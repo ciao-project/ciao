@@ -1,0 +1,24 @@
+galaxy_info:
+  author: Alberto Murillo
+  description: This role is a requirement for other clearlinux.ciao-* roles
+  company: Intel
+
+  issue_tracker_url: https://github.com/01org/ciao
+
+  license: Apache
+
+  min_ansible_version: 2.1
+
+  platforms:
+  - name: Ubuntu
+    versions:
+      - xenial
+  - name: ClearLinux
+
+  galaxy_tags:
+    - ubuntu
+    - xenial
+    - clearlinux
+    - ciao
+
+dependencies: []
