@@ -1578,7 +1578,7 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 	for _, ID := range ds.instanceVolumes {
 		a := ds.attachments[ID]
 
-		if !m[a.BlockID] {
+		if a.InstanceID == instanceID && !m[a.BlockID] {
 			bd, err := ds.GetBlockDevice(a.BlockID)
 			if err != nil {
 				glog.Warning(err)
@@ -1600,6 +1600,12 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 
 			delete(ds.attachments, ID)
 			delete(ds.instanceVolumes, key)
+
+			// update persistent store asynch.
+			// ok for lock to be held here, but
+			// not needed as the db keeps it's
+			// own locks.
+			go ds.db.deleteStorageAttachment(ID)
 		}
 	}
 	ds.attachLock.Unlock()
