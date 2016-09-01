@@ -105,6 +105,20 @@ type Stat struct {
 }
 
 const (
+	// ComputeStatusPending is a filter that used to select pending
+	// instances in requests to the controller.
+	ComputeStatusPending = "pending"
+
+	// ComputeStatusRunning is a filter that used to select running
+	// instances in requests to the controller.
+	ComputeStatusRunning = "active"
+
+	// ComputeStatusStopped is a filter that used to select exited
+	// instances in requests to the controller.
+	ComputeStatusStopped = "exited"
+)
+
+const (
 	// Pending indicates that ciao-launcher has not yet ascertained the
 	// state of a given instance.  This can happen, either because the
 	// instance is in the process of being created, or ciao-launcher itself

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ciao-controller/types"
 )
 
 var nodeCommand = &command{
@@ -70,7 +70,7 @@ func (cmd *nodeListCommand) run(args []string) error {
 }
 
 func listComputeNodes() error {
-	var nodes payloads.CiaoComputeNodes
+	var nodes types.CiaoComputeNodes
 
 	url := buildComputeURL("nodes")
 
@@ -100,7 +100,7 @@ func listComputeNodes() error {
 }
 
 func listCNCINodes() error {
-	var cncis payloads.CiaoCNCIs
+	var cncis types.CiaoCNCIs
 
 	url := buildComputeURL("cncis")
 
@@ -146,7 +146,7 @@ func (cmd *nodeStatusCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeStatusCommand) run(args []string) error {
-	var status payloads.CiaoClusterStatus
+	var status types.CiaoClusterStatus
 	url := buildComputeURL("nodes/summary")
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
@@ -207,7 +207,7 @@ func showCNCINode(cnciID string) error {
 		fatalf("Missing required -cnci-id parameter")
 	}
 
-	var cnci payloads.CiaoCNCI
+	var cnci types.CiaoCNCI
 
 	url := buildComputeURL("cncis/%s/detail", cnciID)
 

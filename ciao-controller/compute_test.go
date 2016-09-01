@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/openstack/compute"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
@@ -70,7 +71,7 @@ func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse i
 	return body
 }
 
-func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
+func testCreateServer(t *testing.T, n int) compute.Servers {
 	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -88,9 +89,9 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers"
 
-	var server payloads.ComputeCreateServer
+	var server compute.CreateServerRequest
 	server.Server.MaxInstances = n
-	server.Server.Workload = wls[0].ID
+	server.Server.Flavor = wls[0].ID
 
 	b, err := json.Marshal(server)
 	if err != nil {
@@ -99,7 +100,7 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 
 	body := testHTTPRequest(t, "POST", url, http.StatusAccepted, b, true)
 
-	servers := payloads.NewComputeServers()
+	servers := compute.NewServers()
 
 	err = json.Unmarshal(body, &servers)
 	if err != nil {
@@ -113,12 +114,12 @@ func testCreateServer(t *testing.T, n int) payloads.ComputeServers {
 	return servers
 }
 
-func testListServerDetailsTenant(t *testing.T, tenantID string) payloads.ComputeServers {
+func testListServerDetailsTenant(t *testing.T, tenantID string) compute.Servers {
 	url := testutil.ComputeURL + "/v2.1/" + tenantID + "/servers/detail"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
-	s := payloads.NewComputeServers()
+	s := compute.NewServers()
 	err := json.Unmarshal(body, &s)
 	if err != nil {
 		t.Fatal(err)
@@ -149,9 +150,9 @@ func TestCreateSingleServerInvalidToken(t *testing.T) {
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers"
 
-	var server payloads.ComputeCreateServer
+	var server compute.CreateServerRequest
 	server.Server.MaxInstances = 1
-	server.Server.Workload = wls[0].ID
+	server.Server.Flavor = wls[0].ID
 
 	b, err := json.Marshal(server)
 	if err != nil {
@@ -214,7 +215,7 @@ func testListServerDetailsWorkload(t *testing.T, httpExpectedStatus int, validTo
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
-	var s payloads.ComputeServers
+	var s compute.Servers
 	err = json.Unmarshal(body, &s)
 	if err != nil {
 		t.Fatal(err)
@@ -257,7 +258,7 @@ func testShowServerDetails(t *testing.T, httpExpectedStatus int, validToken bool
 			return
 		}
 
-		var s2 payloads.ComputeServer
+		var s2 compute.Server
 		err = json.Unmarshal(body, &s2)
 		if err != nil {
 			t.Fatal(err)
@@ -321,7 +322,7 @@ func testDeleteServer(t *testing.T, httpExpectedStatus int, httpExpectedErrorSta
 }
 
 func TestDeleteServer(t *testing.T) {
-	testDeleteServer(t, http.StatusAccepted, http.StatusInternalServerError, true)
+	testDeleteServer(t, http.StatusNoContent, http.StatusInternalServerError, true)
 }
 
 func TestDeleteServerInvalidToken(t *testing.T) {
@@ -367,7 +368,7 @@ func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken boo
 	var ids []string
 	ids = append(ids, servers.Servers[0].ID)
 
-	cmd := payloads.CiaoServersAction{
+	cmd := types.CiaoServersAction{
 		Action:    "os-start",
 		ServerIDs: ids,
 	}
@@ -416,7 +417,7 @@ func testServersActionStop(t *testing.T, httpExpectedStatus int, action string) 
 	var ids []string
 	ids = append(ids, servers.Servers[0].ID)
 
-	cmd := payloads.CiaoServersAction{
+	cmd := types.CiaoServersAction{
 		Action:    action,
 		ServerIDs: ids,
 	}
@@ -540,7 +541,7 @@ func testListFlavors(t *testing.T, httpExpectedStatus int, data []byte, validTok
 		return
 	}
 
-	var flavors payloads.ComputeFlavors
+	var flavors compute.Flavors
 	err = json.Unmarshal(body, &flavors)
 	if err != nil {
 		t.Fatal(err)
@@ -587,7 +588,7 @@ func testShowFlavorDetails(t *testing.T, httpExpectedStatus int, validToken bool
 	}
 
 	for _, w := range wls {
-		details := payloads.FlavorDetails{
+		details := compute.FlavorDetails{
 			OsFlavorAccessIsPublic: true,
 			ID:   w.ID,
 			Disk: w.ImageID,
@@ -611,7 +612,7 @@ func testShowFlavorDetails(t *testing.T, httpExpectedStatus int, validToken bool
 			return
 		}
 
-		var f payloads.ComputeFlavorDetails
+		var f compute.Flavor
 
 		err = json.Unmarshal(body, &f)
 		if err != nil {
@@ -651,7 +652,7 @@ func TestListFlavorsDetailsInvalidToken(t *testing.T) {
 }
 
 func testListTenantResources(t *testing.T, httpExpectedStatus int, validToken bool) {
-	var usage payloads.CiaoUsageHistory
+	var usage types.CiaoUsageHistory
 
 	endTime := time.Now()
 	startTime := endTime.Add(-15 * time.Minute)
@@ -680,7 +681,7 @@ func testListTenantResources(t *testing.T, httpExpectedStatus int, validToken bo
 		return
 	}
 
-	var result payloads.CiaoUsageHistory
+	var result types.CiaoUsageHistory
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -708,7 +709,7 @@ func testListTenantQuotas(t *testing.T, httpExpectedStatus int, validToken bool)
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/quotas"
 
-	var expected payloads.CiaoTenantResources
+	var expected types.CiaoTenantResources
 
 	for _, resource := range tenant.Resources {
 		switch resource.Rtype {
@@ -738,7 +739,7 @@ func testListTenantQuotas(t *testing.T, httpExpectedStatus int, validToken bool)
 		return
 	}
 
-	var result payloads.CiaoTenantResources
+	var result types.CiaoTenantResources
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -768,7 +769,7 @@ func testListEventsTenant(t *testing.T, httpExpectedStatus int, validToken bool)
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/events"
 
-	expected := payloads.NewCiaoEvents()
+	expected := types.NewCiaoEvents()
 
 	logs, err := context.ds.GetEventLog()
 	if err != nil {
@@ -780,7 +781,7 @@ func testListEventsTenant(t *testing.T, httpExpectedStatus int, validToken bool)
 			continue
 		}
 
-		event := payloads.CiaoEvent{
+		event := types.CiaoEvent{
 			Timestamp: l.Timestamp,
 			TenantID:  l.TenantID,
 			EventType: l.EventType,
@@ -791,7 +792,7 @@ func testListEventsTenant(t *testing.T, httpExpectedStatus int, validToken bool)
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
 
-	var result payloads.CiaoEvents
+	var result types.CiaoEvents
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -824,7 +825,7 @@ func testListNodeServers(t *testing.T, httpExpectedStatus int, validToken bool) 
 			return
 		}
 
-		var result payloads.CiaoServersStats
+		var result types.CiaoServersStats
 
 		err = json.Unmarshal(body, &result)
 		if err != nil {
@@ -855,7 +856,7 @@ func testListTenants(t *testing.T, httpExpectedStatus int, validToken bool) {
 		t.Fatal(err)
 	}
 
-	expected := payloads.NewCiaoComputeTenants()
+	expected := types.NewCiaoComputeTenants()
 
 	for _, tenant := range tenants {
 		expected.Tenants = append(expected.Tenants,
@@ -877,7 +878,7 @@ func testListTenants(t *testing.T, httpExpectedStatus int, validToken bool) {
 		return
 	}
 
-	var result payloads.CiaoComputeTenants
+	var result types.CiaoComputeTenants
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -929,7 +930,7 @@ func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
 		return
 	}
 
-	var result payloads.CiaoComputeNodes
+	var result types.CiaoComputeNodes
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -954,7 +955,7 @@ func TestListNodesInvalidToken(t *testing.T) {
 }
 
 func testNodeSummary(t *testing.T, httpExpectedStatus int, validToken bool) {
-	var expected payloads.CiaoClusterStatus
+	var expected types.CiaoClusterStatus
 
 	computeNodes := context.ds.GetNodeLastStats()
 
@@ -979,7 +980,7 @@ func testNodeSummary(t *testing.T, httpExpectedStatus int, validToken bool) {
 		return
 	}
 
-	var result payloads.CiaoClusterStatus
+	var result types.CiaoClusterStatus
 
 	err := json.Unmarshal(body, &result)
 	if err != nil {
@@ -1000,14 +1001,14 @@ func TestNodeSummaryInvalidToken(t *testing.T) {
 }
 
 func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
-	var expected payloads.CiaoCNCIs
+	var expected types.CiaoCNCIs
 
 	cncis, err := context.ds.GetTenantCNCISummary("")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var subnets []payloads.CiaoCNCISubnet
+	var subnets []types.CiaoCNCISubnet
 
 	for _, cnci := range cncis {
 		if cnci.InstanceID == "" {
@@ -1016,14 +1017,14 @@ func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 		for _, subnet := range cnci.Subnets {
 			subnets = append(subnets,
-				payloads.CiaoCNCISubnet{
+				types.CiaoCNCISubnet{
 					Subnet: subnet,
 				},
 			)
 		}
 
 		expected.CNCIs = append(expected.CNCIs,
-			payloads.CiaoCNCI{
+			types.CiaoCNCI{
 				ID:       cnci.InstanceID,
 				TenantID: cnci.TenantID,
 				IPv4:     cnci.IPAddress,
@@ -1040,7 +1041,7 @@ func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 		return
 	}
 
-	var result payloads.CiaoCNCIs
+	var result types.CiaoCNCIs
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -1067,7 +1068,7 @@ func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) 
 	}
 
 	for _, cnci := range cncis {
-		var expected payloads.CiaoCNCI
+		var expected types.CiaoCNCI
 
 		cncis, err := context.ds.GetTenantCNCISummary(cnci.InstanceID)
 		if err != nil {
@@ -1075,18 +1076,18 @@ func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) 
 		}
 
 		if len(cncis) > 0 {
-			var subnets []payloads.CiaoCNCISubnet
+			var subnets []types.CiaoCNCISubnet
 			cnci := cncis[0]
 
 			for _, subnet := range cnci.Subnets {
 				subnets = append(subnets,
-					payloads.CiaoCNCISubnet{
+					types.CiaoCNCISubnet{
 						Subnet: subnet,
 					},
 				)
 			}
 
-			expected = payloads.CiaoCNCI{
+			expected = types.CiaoCNCI{
 				ID:       cnci.InstanceID,
 				TenantID: cnci.TenantID,
 				IPv4:     cnci.IPAddress,
@@ -1102,7 +1103,7 @@ func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) 
 			return
 		}
 
-		var result payloads.CiaoCNCI
+		var result types.CiaoCNCI
 
 		err = json.Unmarshal(body, &result)
 		if err != nil {
@@ -1124,7 +1125,7 @@ func TestListCNCIDetailsInvalidToken(t *testing.T) {
 }
 
 func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
-	var expected payloads.CiaoTracesSummary
+	var expected types.CiaoTracesSummary
 
 	client := testStartTracedWorkload(t)
 	defer client.Shutdown()
@@ -1139,7 +1140,7 @@ func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
 	}
 
 	for _, s := range summaries {
-		summary := payloads.CiaoTraceSummary{
+		summary := types.CiaoTraceSummary{
 			Label:     s.BatchID,
 			Instances: s.NumInstances,
 		}
@@ -1154,7 +1155,7 @@ func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
 		return
 	}
 
-	var result payloads.CiaoTracesSummary
+	var result types.CiaoTracesSummary
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -1177,7 +1178,7 @@ func TestListTracesInvalidToken(t *testing.T) {
 func testListEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 	url := testutil.ComputeURL + "/v2.1/events"
 
-	expected := payloads.NewCiaoEvents()
+	expected := types.NewCiaoEvents()
 
 	logs, err := context.ds.GetEventLog()
 	if err != nil {
@@ -1185,7 +1186,7 @@ func testListEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 	}
 
 	for _, l := range logs {
-		event := payloads.CiaoEvent{
+		event := types.CiaoEvent{
 			Timestamp: l.Timestamp,
 			TenantID:  l.TenantID,
 			EventType: l.EventType,
@@ -1200,7 +1201,7 @@ func testListEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 		return
 	}
 
-	var result payloads.CiaoEvents
+	var result types.CiaoEvents
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -1261,14 +1262,14 @@ func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
 	}
 
 	for _, s := range summaries {
-		var expected payloads.CiaoTraceData
+		var expected types.CiaoTraceData
 
 		batchStats, err := context.ds.GetBatchFrameStatistics(s.BatchID)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		expected.Summary = payloads.CiaoBatchFrameStat{
+		expected.Summary = types.CiaoBatchFrameStat{
 			NumInstances:             batchStats[0].NumInstances,
 			TotalElapsed:             batchStats[0].TotalElapsed,
 			AverageElapsed:           batchStats[0].AverageElapsed,
@@ -1288,7 +1289,7 @@ func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
 			return
 		}
 
-		var result payloads.CiaoTraceData
+		var result types.CiaoTraceData
 
 		err = json.Unmarshal(body, &result)
 		if err != nil {

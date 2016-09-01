@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ciao-controller/types"
 )
 
 var traceCommand = &command{
@@ -51,7 +51,7 @@ func (cmd *traceListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *traceListCommand) run(args []string) error {
-	var traces payloads.CiaoTracesSummary
+	var traces types.CiaoTracesSummary
 
 	url := buildComputeURL("traces")
 
@@ -102,7 +102,7 @@ func (cmd *traceShowCommand) run(args []string) error {
 		return errors.New("Missing required -label parameter")
 	}
 
-	var traceData payloads.CiaoTraceData
+	var traceData types.CiaoTraceData
 
 	url := buildComputeURL("traces/%s", cmd.label)
 

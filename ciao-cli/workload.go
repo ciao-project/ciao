@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/openstack/compute"
 )
 
 var workloadCommand = &command{
@@ -53,7 +53,7 @@ func (cmd *workloadListCommand) run(args []string) error {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var flavors payloads.ComputeFlavorsDetails
+	var flavors compute.FlavorsDetails
 	if *tenantID == "" {
 		*tenantID = "faketenant"
 	}
