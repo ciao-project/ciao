@@ -1,0 +1,19 @@
+---
+  - hosts: all
+    become: True
+    tasks:
+      - name: Clean dnf cache
+        command: dnf clean all -y
+        when: ansible_os_family == "RedHat"
+
+      - name: Clean apt cache (Ubuntu)
+        command: apt-get clean
+        when: ansible_os_family == "Debian"
+
+      - name: Clean swupd cache (ClearLinux)
+        file: path=/var/lib/swupd state=absent
+        when: ansible_os_family == "Clear linux software for intel architecture"
+
+      - name: Remove docker data
+        file: path=/var/lib/docker state=absent
+        ignore_errors: yes

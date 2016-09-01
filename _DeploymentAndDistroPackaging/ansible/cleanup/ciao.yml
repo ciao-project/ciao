@@ -9,7 +9,7 @@
         - ./ciaorc
         - ./clouds.yaml
         - ./certificates
-        - ./images
+        - ./images/.cnci_ready
         - ~/go
 
 - hosts: controllers
@@ -18,6 +18,17 @@
     - name: Stop ciao-webui docker container
       docker_container: name=ciao-webui state=absent
       ignore_errors: yes
+
+    - name: Stop keystone docker container
+      docker_container: name=ciao-keystone state=absent
+      ignore_errors: yes
+
+    - name: Remove Keystone files
+      file: name={{ item }} state=absent
+      with_items:
+        - /etc/keystone/ssl
+        - /etc/keystone/keystone.conf
+        - /var/lib/mysql/
 
 - hosts: controllers:computes:networks
   become: yes
@@ -85,3 +96,44 @@
     - name: Remove OBS repository (Fedora)
       yum_repository: name=ciao state=absent
       when: ansible_os_family == 'RedHat'
+
+    - block:
+        - name: Uninstall packages (Fedora)
+          dnf: name={{ item }} state=absent
+          with_items:
+            - xorriso
+            - qemu-system-x86
+            - psmisc
+            - docker-engine
+
+        - name: Uninstall dependencies (Fedora)
+          command: dnf autoremove -y
+      when: ansible_os_family == "RedHat"
+
+    - name: Uninstall packages (Ubuntu)
+      apt: name={{ item }} state=absent autoremove=yes purge=yes
+      with_items:
+        - xorriso
+        - qemu-system-x86
+        - psmisc
+        - docker-engine
+      when: ansible_os_family == "Debian"
+
+    - block:
+        - name: Uninstall bundles (ClearLinux)
+          command: swupd bundle-remove {{ item }} {{ swupd_args | default('') }}
+          with_items:
+            - cloud-control
+            - containers-basic
+            - database-mariadb
+            - kernel-container
+            - os-clr-on-clr
+            # - os-core-dev
+            - storage-cluster
+            - network-advanced
+            - mail-utils
+            - perl-basic
+            - os-dev-extras
+          args:
+            removes: /usr/share/clear/bundles/{{ item }}
+      when: ansible_os_family == "Clear linux software for intel architecture"
