@@ -1,0 +1,20 @@
+---
+  # wait for services to stop installing dependencies
+  - hosts: computes
+    become: yes
+    tasks:
+      - name: Wait for dependencies to be installed
+        wait_for: path={{ item }} state=present
+        with_items:
+          - /usr/bin/qemu-system-x86_64
+          - /usr/bin/xorriso
+          - /usr/bin/docker
+
+  - hosts: networks
+    become: yes
+    tasks:
+      - name: Wait for dependencies to be installed
+        wait_for: path={{ item }} state=present
+        with_items:
+          - /usr/bin/qemu-system-x86_64
+          - /usr/bin/xorriso

@@ -3,3 +3,4 @@
 - include: ciao_controllers.yml
 - include: ciao_networks.yml
 - include: ciao_computes.yml
+- include: ciao_wait.yml
