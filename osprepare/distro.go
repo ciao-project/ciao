@@ -174,7 +174,7 @@ type distro interface {
 	// InstallPackages should implement the installation
 	// of packages using distro specific methods for
 	// the given target list of items to install
-	InstallPackages(packages []string) bool
+	InstallPackages(packages []string, logger OSPLog) bool
 
 	// getID should return a string specifying
 	// the distribution ID (e.g: "clearlinux")
@@ -211,11 +211,11 @@ func (d *clearLinuxDistro) getID() string {
 
 // Correctly split and format the command, using sudo if appropriate, as a
 // common mechanism for the various package install functions.
-func sudoFormatCommand(command string, packages []string) bool {
-	toInstall := strings.Join(packages, " ")
-
+func sudoFormatCommand(command string, packages []string, logger OSPLog) bool {
 	var executable string
 	var args string
+
+	toInstall := strings.Join(packages, " ")
 	splits := strings.Split(command, " ")
 
 	if syscall.Geteuid() == 0 {
@@ -227,18 +227,31 @@ func sudoFormatCommand(command string, packages []string) bool {
 	}
 
 	c := exec.Command(executable, strings.Split(args, " ")...)
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-
-	if err := c.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to run command: %s", err)
+	read, err := c.StdoutPipe()
+	if err != nil {
+		logger.Warningf("Unable to create command output pipe: %s", err)
+	}
+	c.Stderr = c.Stdout
+	err = c.Start()
+	if err != nil {
+		logger.Errorf("Unable to run command: %s", err)
 		return false
 	}
+	scanner := bufio.NewScanner(read)
+	for scanner.Scan() {
+		logger.Infof(scanner.Text())
+	}
+	err = c.Wait()
+	if err != nil {
+		logger.Errorf("Error running command: %s", err)
+		return false
+	}
+
 	return true
 }
 
-func (d *clearLinuxDistro) InstallPackages(packages []string) bool {
-	return sudoFormatCommand("swupd bundle-add %s", packages)
+func (d *clearLinuxDistro) InstallPackages(packages []string, logger OSPLog) bool {
+	return sudoFormatCommand("swupd bundle-add %s", packages, logger)
 }
 
 // os-release *ubuntu*
@@ -250,8 +263,8 @@ func (d *ubuntuDistro) getID() string {
 	return "ubuntu"
 }
 
-func (d *ubuntuDistro) InstallPackages(packages []string) bool {
-	return sudoFormatCommand("apt-get --yes --force-yes install %s", packages)
+func (d *ubuntuDistro) InstallPackages(packages []string, logger OSPLog) bool {
+	return sudoFormatCommand("apt-get --yes --force-yes install %s", packages, logger)
 }
 
 // Fedora
@@ -263,6 +276,6 @@ func (d *fedoraDistro) getID() string {
 }
 
 // Use dnf to install on Fedora
-func (d *fedoraDistro) InstallPackages(packages []string) bool {
-	return sudoFormatCommand("dnf install -y %s", packages)
+func (d *fedoraDistro) InstallPackages(packages []string, logger OSPLog) bool {
+	return sudoFormatCommand("dnf install -y %s", packages, logger)
 }

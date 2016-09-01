@@ -32,3 +32,54 @@ func TestGetDistro(t *testing.T) {
 		t.Fatal("Invalid ID for distro")
 	}
 }
+
+type ospTestLogger struct{}
+
+func (l ospTestLogger) V(level int32) bool {
+	return true
+}
+
+var info []string
+var warning []string
+var error []string
+
+func (l ospTestLogger) Infof(format string, v ...interface{}) {
+	info = append(info, format)
+}
+
+func (l ospTestLogger) Warningf(format string, v ...interface{}) {
+	warning = append(warning, format)
+}
+
+func (l ospTestLogger) Errorf(format string, v ...interface{}) {
+	error = append(error, format)
+}
+
+func TestSudoFormatCommandLogging(t *testing.T) {
+	info = []string{}
+	if getDistro() == nil {
+		t.Skip("Unsupported test distro")
+	}
+	l := ospTestLogger{}
+
+	sudoFormatCommand("echo -n foo\nbar", []string{}, l)
+
+	if info[0] != "foo" && info[1] != "bar%!(EXTRA string=)" {
+		t.Fatal("Incorrect log message received")
+	}
+}
+
+func TestSudoFormatCommandBadCommandReturn(t *testing.T) {
+	error = []string{}
+	if getDistro() == nil {
+		t.Skip("Unsupported test distro")
+	}
+	l := ospTestLogger{}
+
+	if sudoFormatCommand("false", []string{}, l) {
+		t.Fatal("Error return code not detected")
+	}
+	if len(error) != 1 && error[0] != "Error running command: %s" {
+		t.Fatal("Incorrect log message received")
+	}
+}
