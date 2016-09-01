@@ -207,15 +207,13 @@ func BenchmarkGetAllInstances(b *testing.B) {
 }
 
 func TestTenantCreate(t *testing.T) {
-	var err error
-
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err := ds.AddTenant(tuuid.String())
+	_, err := ds.AddTenant(tuuid.String())
 	if err != nil {
 		t.Fatal(err)
 	}
-	tenant, err = ds.GetTenant(tuuid.String())
+	tenant, err := ds.GetTenant(tuuid.String())
 	if err != nil {
 		t.Fatal(err)
 	}
