@@ -241,12 +241,12 @@ func (ds *Datastore) Init(config Config) error {
 	ds.nodes = make(map[string]*node)
 
 	for key, i := range ds.instances {
-		n, ok := ds.nodes[i.NodeID]
+		_, ok := ds.nodes[i.NodeID]
 		if !ok {
 			newNode := types.Node{
 				ID: i.NodeID,
 			}
-			n = &node{
+			n := &node{
 				Node:      newNode,
 				instances: make(map[string]*types.Instance),
 			}
@@ -361,6 +361,10 @@ func (ds *Datastore) AddTenant(id string) (*types.Tenant, error) {
 	}
 
 	err = ds.db.addTenant(id, hw.String())
+	if err != nil {
+		glog.V(2).Info("error adding tenant", err)
+		return nil, err
+	}
 
 	t, err := ds.getTenant(id)
 	if err != nil || t == nil {

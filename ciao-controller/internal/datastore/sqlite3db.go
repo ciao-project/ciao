@@ -913,7 +913,13 @@ func (ds *sqliteDB) getTenantNoCache(ID string) (*tenant, error) {
 		return nil, err
 	}
 
+	// for these items below, its ok to get err returned
+	// because a tenant could simply not have used any
+	// resources or networks yet.
 	t.Resources, err = ds.getTenantResources(ID)
+	if err != nil {
+		glog.V(2).Info(err)
+	}
 
 	err = ds.getTenantNetwork(t)
 	if err != nil {
@@ -1215,9 +1221,9 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
 			return err
 		}
 
-		sub, ok := tenant.network[int(subnetInt)]
+		_, ok := tenant.network[int(subnetInt)]
 		if !ok {
-			sub = make(map[int]bool)
+			sub := make(map[int]bool)
 			tenant.network[int(subnetInt)] = sub
 		}
 
