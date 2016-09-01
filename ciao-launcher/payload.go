@@ -98,6 +98,23 @@ func computeSSHPort(networkNode bool, vnicIP string) int {
 	return port
 }
 
+func parseVMTtype(start *payloads.StartCmd) (container bool, image string, err error) {
+	vmType := start.VMType
+	if vmType != "" && vmType != payloads.QEMU && vmType != payloads.Docker {
+		err = fmt.Errorf("Invalid vmtype received: %s", vmType)
+		return
+	}
+
+	container = vmType == payloads.Docker
+	if container {
+		image = start.DockerImage
+	} else {
+		image = start.ImageUUID
+	}
+
+	return
+}
+
 func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	var clouddata payloads.Start
 
@@ -122,21 +139,11 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	}
 	legacy := fwType == payloads.Legacy
 
-	vmType := start.VMType
-	if vmType != "" && vmType != payloads.QEMU && vmType != payloads.Docker {
-		err = fmt.Errorf("Invalid vmtype received: %s", vmType)
-		return nil, &payloadError{err, payloads.InvalidData}
-	}
-
 	var disk, cpus, mem int
 	var networkNode bool
-	var image string
-
-	container := vmType == payloads.Docker
-	if container {
-		image = start.DockerImage
-	} else {
-		image = start.ImageUUID
+	container, image, err := parseVMTtype(start)
+	if err != nil {
+		return nil, &payloadError{err, payloads.InvalidData}
 	}
 
 	for i := range start.RequestedResources {
