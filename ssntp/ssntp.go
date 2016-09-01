@@ -1250,6 +1250,10 @@ certsLoop:
 	}
 
 	certPEM, err := ioutil.ReadFile(cacert)
+	if err != nil {
+		return "", "", err
+	}
+
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(certPEM)
 	vOpts := x509.VerifyOptions{Roots: certPool}
