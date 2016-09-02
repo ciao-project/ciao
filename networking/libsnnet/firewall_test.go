@@ -148,6 +148,8 @@ func TestFw_All(t *testing.T) {
 
 	fwinit()
 	fw, err := InitFirewall(fwIf)
+	require.Nil(t, err)
+
 	err = fw.ExtFwding(FwEnable, fwIf, fwIfInt)
 	require.Nil(t, err)
 

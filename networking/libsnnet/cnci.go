@@ -178,7 +178,7 @@ func (cnci *Cnci) Init() error {
 	cnci.APITimeout = time.Second * 6
 
 	if cnci.NetworkConfig == nil {
-		return fmt.Errorf("CNCI uninitalized")
+		return fmt.Errorf("CNCI uninitialized")
 	}
 
 	err := cnci.findPhyNwInterface()

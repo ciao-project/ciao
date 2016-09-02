@@ -33,6 +33,9 @@ import (
 
 func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse int, data []byte, validToken bool) []byte {
 	req, err := http.NewRequest(method, URL, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if validToken {
 		req.Header.Set("X-Auth-Token", "imavalidtoken")
