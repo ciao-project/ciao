@@ -278,7 +278,7 @@ func (cn *ComputeNode) Init() error {
 	cn.apiThrottleSem = make(chan int, CnMaxAPIConcurrency)
 
 	if cn.NetworkConfig == nil {
-		return fmt.Errorf("CN uninitalized")
+		return fmt.Errorf("CN uninitialized")
 	}
 
 	if err := cn.findPhyNwInterface(); err != nil {
