@@ -472,11 +472,11 @@ func (cn *ComputeNode) dbUpdate(bridge string, vnic string, op dbOp) (int, error
 	switch {
 
 	case (op & dbInsBr) == dbInsBr:
-		vnicMap, present := cn.bridgeMap[bridge]
+		_, present := cn.bridgeMap[bridge]
 		if present {
 			return -1, fmt.Errorf("db duplicate bridge %v %v", op, bridge)
 		}
-		vnicMap = make(map[string]bool)
+		vnicMap := make(map[string]bool)
 		cn.bridgeMap[bridge] = vnicMap
 		return len(cn.bridgeMap), nil
 
