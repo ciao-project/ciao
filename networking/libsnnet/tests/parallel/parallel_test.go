@@ -247,9 +247,9 @@ func TestCNVMContainer_Cancel(t *testing.T) {
 //Docker Testing
 //TODO: Place all docker utility functions in a single file
 func dockerRestart(t *testing.T) error {
-	out, err := exec.Command("service", "docker", "restart").CombinedOutput()
+	_, err := exec.Command("service", "docker", "restart").CombinedOutput()
 	if err != nil {
-		out, err = exec.Command("systemctl", "restart", "docker").CombinedOutput()
+		out, err := exec.Command("systemctl", "restart", "docker").CombinedOutput()
 		if err != nil {
 			t.Error("docker restart", string(out), err)
 		}
@@ -322,9 +322,8 @@ func dockerRunVerify(t *testing.T, name string, ip net.IP, mac net.HardwareAddr,
 func dockerContainerDelete(t *testing.T, name string) error {
 	assert := assert.New(t)
 	defer logTime(t, time.Now(), "dockerContainerDelete")
-	out, err := exec.Command("docker", "stop", name).CombinedOutput()
-
-	out, err = exec.Command("docker", "rm", name).CombinedOutput()
+	_, _ := exec.Command("docker", "stop", name).CombinedOutput()
+	out, err := exec.Command("docker", "rm", name).CombinedOutput()
 	assert.Nil(err, string(out))
 	return err
 }
@@ -332,7 +331,7 @@ func dockerContainerDelete(t *testing.T, name string) error {
 func dockerContainerInfo(t *testing.T, name string) error {
 	assert := assert.New(t)
 	defer logTime(t, time.Now(), "dockerContainerInfo")
-	out, err := exec.Command("docker", "ps", "-a").CombinedOutput()
+	_, err := exec.Command("docker", "ps", "-a").CombinedOutput()
 	assert.Nil(err)
 
 	out, err = exec.Command("docker", "inspect", name).CombinedOutput()

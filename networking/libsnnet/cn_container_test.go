@@ -171,7 +171,6 @@ func startDockerPlugin(t *testing.T) (*DockerPlugin, error) {
 		t.Error(err)
 		return nil, err
 	}
-
 	return dockerPlugin, nil
 }
 

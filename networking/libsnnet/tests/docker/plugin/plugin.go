@@ -764,6 +764,10 @@ func initDb() error {
 		return err
 	})
 
+	if err != nil {
+		return err
+	}
+
 	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("epMap"))
 
