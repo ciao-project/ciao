@@ -28,6 +28,14 @@ cleanup()
 	sudo mv $hosts_file_backup /etc/hosts
 }
 
+# Ctrl-C Trapper
+trap ctrl_c INT
+
+function ctrl_c() {
+    echo "Trapped CTRL-C, performing cleanup"
+    cleanup
+}
+
 usage="$(basename "$0") [--download] The script will download dependencies if needed. Specifing --download will force download the dependencies even if they are cached locally"
 
 while :
