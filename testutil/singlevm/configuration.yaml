@@ -9,6 +9,9 @@ configure:
   image_service:
     url: http://glance.example.com
   launcher:
+    compute_net: [198.51.100.1/24]
+    mgmt_net: [198.51.100.1/24]
     disk_limit: false
+    mem_limit: false
   identity_service:
     url: http://keystone.example.com

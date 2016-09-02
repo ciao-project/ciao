@@ -1,7 +1,9 @@
 #!/bin/bash
 ciao_host=$(hostname)
+ciao_ip=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
+export no_proxy=$no_proxy,$ciao_host
 
 ciao_email="ciao-devel@lists.clearlinux.org"
 ciao_org="Intel"
@@ -12,7 +14,27 @@ ciao_env="$ciao_bin/demo.sh"
 ciao_ctl_log="/var/lib/ciao/logs/controller/ciao-controller.ERROR"
 ciao_cnci_image="clear-8260-ciao-networking.img"
 download=0
+hosts_file_backup="/etc/hosts.orig.$RANDOM"
 
+cleanup()
+{
+	echo "Performing cleanup"
+	"$ciao_gobin"/ciao-cli instance delete --all
+	#Also kill the CNCI (as there is no other way to delete it today)
+	sudo killall qemu-system-x86_64
+	sudo rm -rf /var/lib/ciao/instances
+	sudo ip link del eth10
+	sudo pkill -F /tmp/dnsmasq.macvlan0.pid
+	sudo mv $hosts_file_backup /etc/hosts
+}
+
+# Ctrl-C Trapper
+trap ctrl_c INT
+
+function ctrl_c() {
+    echo "Trapped CTRL-C, performing cleanup"
+    cleanup
+}
 
 usage="$(basename "$0") [--download] The script will download dependencies if needed. Specifing --download will force download the dependencies even if they are cached locally"
 
@@ -63,6 +85,10 @@ sudo killall ciao-scheduler
 sudo killall ciao-controller
 sudo killall ciao-launcher
 sudo killall qemu-system-x86_64
+echo "Original /etc/hosts is temporarily move to $hosts_file_backup"
+sudo mv /etc/hosts $hosts_file_backup
+echo "$ciao_ip $ciao_host" > hosts
+sudo mv hosts /etc/hosts
 sudo rm -rf /var/lib/ciao/instances
 echo "Deleting docker containers. This may take time"
 sudo docker rm -f $(sudo docker ps -a -q)
@@ -81,8 +107,8 @@ cd "$ciao_bin"
 
 #Cleanup any old artifcats
 rm -f "$ciao_bin"/*.pem
-sudo rm -f "$ciao_bin"/ciao-controller.db-shm 
-sudo rm -f "$ciao_bin"/ciao-controller.db-wal 
+sudo rm -f "$ciao_bin"/ciao-controller.db-shm
+sudo rm -f "$ciao_bin"/ciao-controller.db-wal
 sudo rm -f "$ciao_bin"/ciao-controller.db
 sudo rm -f /tmp/ciao-controller-stats.db
 rm -rf "$ciao_bin"/tables
@@ -119,9 +145,9 @@ fi
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=ciao.example.com"
 
-#Copy the certs 
+#Copy the certs
 sudo cp -f controller_key.pem /etc/pki/ciao
-sudo cp -f controller_cert.pem /etc/pki/ciao 
+sudo cp -f controller_cert.pem /etc/pki/ciao
 
 
 #Copy the configuration
@@ -141,7 +167,7 @@ cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
 
 #Download the firmware
 cd "$ciao_bin"
-if [ $download -eq 1 ] || [ ! -f OVMF.fd ] 
+if [ $download -eq 1 ] || [ ! -f OVMF.fd ]
 then
 	rm -f OVMF.fd
 	curl -O https://download.clearlinux.org/image/OVMF.fd
@@ -207,6 +233,29 @@ sudo cp -f clear-"${LATEST}"-cloud.img /var/lib/ciao/images
 cd /var/lib/ciao/images
 sudo ln -sf clear-"${LATEST}"-cloud.img df3768da-31f5-4ba6-82f0-127a1a705169
 
+# Set macvlan interface
+if [ -x "$(command -v ip)" ]; then
+    sudo ip link del eth10
+    sudo ip link add name eth10 type bridge
+    sudo ip link add link eth10 name macvlan0 type macvlan mode bridge
+    sudo ip addr add 198.51.100.1/24 brd 198.51.100.255 dev macvlan0
+    sudo ip link set dev macvlan0 up
+    sudo ip -d link show macvlan0
+    sudo ip link set dev eth10 up
+    sudo ip -d link show eth10
+else
+    echo 'ip command is not supported'
+fi
+
+# Set DHCP server with dnsmasq
+sudo mkdir -p /var/lib/misc
+if [ -x "$(command -v ip)" ]; then
+    sudo dnsmasq -C $ciao_scripts/dnsmasq.conf.macvlan0 \
+	 --pid-file=/tmp/dnsmasq.macvlan0.pid
+else
+    echo 'dnsmasq command is not supported'
+fi
+
 #Kick off the agents
 cd "$ciao_bin"
 "$ciao_bin"/run_scheduler.sh  &> /dev/null
@@ -230,6 +279,7 @@ eval "$identity"
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to list workloads"
+	cleanup
 	exit 1
 fi
 
@@ -238,6 +288,7 @@ fi
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to launch VMs"
+	cleanup
 	exit 1
 fi
 
@@ -246,6 +297,7 @@ fi
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to list instances"
+	cleanup
 	exit 1
 fi
 
@@ -254,6 +306,7 @@ fi
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to launch containers"
+	cleanup
 	exit 1
 fi
 
@@ -263,6 +316,7 @@ sleep 5
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to list instances"
+	cleanup
 	exit 1
 fi
 
@@ -284,13 +338,13 @@ do
 		sleep 30
 		continue
 	fi
-	
+
 	ssh_check=$(head -1 < /dev/tcp/"$ssh_ip"/33002)
 	echo "$ssh_check"
 
 	echo "Attempting to ssh to: $ssh_ip"
 
-	if [[ "$ssh_check" == *SSH-2.0-OpenSSH_* ]]
+	if [[ "$ssh_check" == *SSH-2.0-OpenSSH* ]]
 	then
 		echo "SSH connectivity verified"
 		break
@@ -304,7 +358,7 @@ done
 if [ $retry -ge 6 ]
 then
 	echo "Unable check ssh connectivity into VM"
-	exit 1
+	cleanup
 fi
 
 #Check docker networking
@@ -324,6 +378,4 @@ then
 fi
 
 "$ciao_gobin"/ciao-cli instance list
-#Also kill the CNCI (as there is no other way to delete it today)
-sudo killall qemu-system-x86_64
-sudo rm -rf /var/lib/ciao/instances
+cleanup
