@@ -47,6 +47,8 @@ subdirectories.  A comprehensive [ciao cluster setup
 document](https://clearlinux.org/documentation/ciao-cluster-setup.html)
 is also available.
 
+[A simple development setup and test setup using a single machine is also available](https://github.com/01org/ciao/wiki/Single-Machine-Development-Environment)
+
 The ciao development team can be reached via our [mailing
 list](https://lists.clearlinux.org/mailman/listinfo/ciao-devel) and on IRC
 in channel #ciao-project on [Freenode](https://freenode.net/kb/answer/chat).
