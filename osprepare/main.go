@@ -174,15 +174,19 @@ func InstallDeps(reqs PackageRequirements, logger OSPLog) {
 		}
 		return
 	}
+	logger.Infof("OS Detected: %s", distro.getID())
+
 	// Nothing requested to install
 	if reqs == nil {
 		return
 	}
 	if reqPkgs := collectPackages(distro, reqs); reqPkgs != nil {
+		logger.Infof("Missing packages detected: %v", reqPkgs)
 		if distro.InstallPackages(reqPkgs, logger) == false {
 			logger.Errorf("Failed to install: %s", strings.Join(reqPkgs, ", "))
 			return
 		}
+		logger.Infof("Missing packages installed.")
 	}
 }
 
