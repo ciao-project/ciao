@@ -47,6 +47,16 @@ subdirectories.  A comprehensive [ciao cluster setup
 document](https://clearlinux.org/documentation/ciao-cluster-setup.html)
 is also available.
 
+If you would like to contribute to ciao, check our [Contributing
+guide](https://github.com/01org/ciao/blob/master/CONTRIBUTING.md).
+The [wiki](https://github.com/01org/ciao/wiki/Single-Machine-Development-Environment)
+page ilustrates how to easily setup a development environment without
+needing a cluster. We also recommend taking a look at the ['janitorial'
+bugs](https://github.com/01org/ciao/issues?q=is%3Aopen+is%3Aissue+label%3AJanitorial)
+in our list of open issues as these bugs can be solved without an
+extensive knowledge of ciao.
+We would love to help you start contributing!
+
 The ciao development team can be reached via our [mailing
 list](https://lists.clearlinux.org/mailman/listinfo/ciao-devel) and on IRC
 in channel #ciao-project on [Freenode](https://freenode.net/kb/answer/chat).
