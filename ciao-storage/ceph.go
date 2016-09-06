@@ -58,9 +58,10 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 }
 
 // DeleteBlockDevice will remove a rbd image from the ceph cluster.
-// Not implemented yet.
-func (d CephDriver) DeleteBlockDevice(string) error {
-	return nil
+func (d CephDriver) DeleteBlockDevice(volumeUUID string) error {
+	cmd := exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, "rm", volumeUUID)
+	_, err := cmd.CombinedOutput()
+	return err
 }
 
 func (d CephDriver) getCredentials() []string {
