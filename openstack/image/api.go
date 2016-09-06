@@ -203,6 +203,7 @@ type Service interface {
 	CreateImage(CreateImageRequest) (CreateImageResponse, error)
 	UploadImage(string, io.Reader) (UploadImageResponse, error)
 	ListImages() ([]CreateImageResponse, error)
+	GetImage(string) (CreateImageResponse, error)
 }
 
 // Context contains data and interfaces that the image api will need.
@@ -333,9 +334,24 @@ func listImages(context *Context, w http.ResponseWriter, r *http.Request) (APIRe
 	return APIResponse{http.StatusOK, resp}, nil
 }
 
+// getImage get information about an image by image_id field
+//
+func getImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	vars := mux.Vars(r)
+	imageID := vars["image_id"]
+
+	defer r.Body.Close()
+
+	resp, err := context.GetImage(imageID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+	return APIResponse{http.StatusOK, resp}, nil
+}
+
 func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
-	imageID := vars["volume_id"]
+	imageID := vars["image_id"]
 
 	defer r.Body.Close()
 
@@ -343,8 +359,7 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 	if err != nil {
 		return errorResponse(err), err
 	}
-
-	return APIResponse{http.StatusOK, resp}, nil
+	return APIResponse{http.StatusNoContent, resp}, nil
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.
@@ -359,6 +374,7 @@ func Routes(config APIConfig) *mux.Router {
 	r.Handle("/v2/images", APIHandler{context, createImage}).Methods("POST")
 	r.Handle("/v2/images/{image_id}/file", APIHandler{context, uploadImage}).Methods("PUT")
 	r.Handle("/v2/images", APIHandler{context, listImages}).Methods("GET")
+	r.Handle("/v2/images/{image_id}", APIHandler{context, getImage}).Methods("GET")
 
 	return r
 }

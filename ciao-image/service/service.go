@@ -114,6 +114,19 @@ func (is ImageService) UploadImage(imageID string, body io.Reader) (image.Upload
 	return response, nil
 }
 
+// GetImage will get the raw image data
+func (is ImageService) GetImage(imageID string) (image.CreateImageResponse, error) {
+	var response image.CreateImageResponse
+
+	image, err := is.ds.GetImage(imageID)
+	if err != nil {
+		return response, err
+	}
+
+	response, _ = createImageResponse(image)
+	return response, nil
+}
+
 // Config is required to setup the API context for the image service.
 type Config struct {
 	// Port represents the http port that should be used for the service.
