@@ -279,7 +279,7 @@ func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
 }
 
 func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, error) {
-	var vols []block.VolumeDetail
+	vols := []block.VolumeDetail{}
 
 	err := c.confirmTenant(tenant)
 	if err != nil {
