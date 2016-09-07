@@ -147,9 +147,9 @@ type CreateImageRequest struct {
 	Properties      interface{}     `json:"properties,omitempty"`
 }
 
-// CreateImageResponse contains information about a created image
+// DefaultResponse contains information about an image
 // http://developer.openstack.org/api-ref-image-v2.html#createImage-v2
-type CreateImageResponse struct {
+type DefaultResponse struct {
 	Status          Status           `json:"status"`
 	ContainerFormat *ContainerFormat `json:"container_format"`
 	MinRAM          *int             `json:"min_ram"`
@@ -176,9 +176,9 @@ type CreateImageResponse struct {
 // ListImagesResponse contains the list of all images that have been created.
 // http://developer.openstack.org/api-ref-image-v2.html#listImages-v2
 type ListImagesResponse struct {
-	Images []CreateImageResponse `json:"images"`
-	Schema string                `json:"schema"`
-	First  string                `json:"first"`
+	Images []DefaultResponse `json:"images"`
+	Schema string            `json:"schema"`
+	First  string            `json:"first"`
 }
 
 // UploadImageResponse contains the UUID of the image which content got uploaded
@@ -200,10 +200,10 @@ type APIConfig struct {
 // Service is the interface that the api requires in order to get
 // information needed to implement the image endpoints.
 type Service interface {
-	CreateImage(CreateImageRequest) (CreateImageResponse, error)
+	CreateImage(CreateImageRequest) (DefaultResponse, error)
 	UploadImage(string, io.Reader) (UploadImageResponse, error)
-	ListImages() ([]CreateImageResponse, error)
-	GetImage(string) (CreateImageResponse, error)
+	ListImages() ([]DefaultResponse, error)
+	GetImage(string) (DefaultResponse, error)
 }
 
 // Context contains data and interfaces that the image api will need.

@@ -36,7 +36,7 @@ type ImageService struct {
 }
 
 // CreateImage will create an empty image in the image datastore.
-func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateImageResponse, error) {
+func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultResponse, error) {
 	// create an ImageInfo struct and store it in our image
 	// datastore.
 	i := datastore.Image{
@@ -48,10 +48,10 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 
 	err := is.ds.CreateImage(i)
 	if err != nil {
-		return image.CreateImageResponse{}, err
+		return image.DefaultResponse{}, err
 	}
 
-	return image.CreateImageResponse{
+	return image.DefaultResponse{
 		Status:     image.Queued,
 		CreatedAt:  i.CreateTime,
 		Tags:       make([]string, 0),
@@ -67,8 +67,8 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.CreateIm
 	}, nil
 }
 
-func createImageResponse(img datastore.Image) (image.CreateImageResponse, error) {
-	return image.CreateImageResponse{
+func createImageResponse(img datastore.Image) (image.DefaultResponse, error) {
+	return image.DefaultResponse{
 		Status:     img.State.Status(),
 		CreatedAt:  img.CreateTime,
 		Tags:       make([]string, 0),
@@ -85,8 +85,8 @@ func createImageResponse(img datastore.Image) (image.CreateImageResponse, error)
 }
 
 // ListImages will return a list of all the images in the datastore.
-func (is ImageService) ListImages() ([]image.CreateImageResponse, error) {
-	var response []image.CreateImageResponse
+func (is ImageService) ListImages() ([]image.DefaultResponse, error) {
+	var response []image.DefaultResponse
 
 	images, err := is.ds.GetAllImages()
 	if err != nil {
@@ -115,8 +115,8 @@ func (is ImageService) UploadImage(imageID string, body io.Reader) (image.Upload
 }
 
 // GetImage will get the raw image data
-func (is ImageService) GetImage(imageID string) (image.CreateImageResponse, error) {
-	var response image.CreateImageResponse
+func (is ImageService) GetImage(imageID string) (image.DefaultResponse, error) {
+	var response image.DefaultResponse
 
 	image, err := is.ds.GetImage(imageID)
 	if err != nil {
