@@ -150,8 +150,8 @@ func pagerQueryParse(r *http.Request) (int, int, string) {
 }
 
 type nodePager struct {
-	context *controller
-	nodes   []types.CiaoComputeNode
+	ctl   *controller
+	nodes []types.CiaoComputeNode
 }
 
 func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, nodes []types.CiaoComputeNode, limit int, offset int) (types.CiaoComputeNodes, error) {
@@ -210,7 +210,7 @@ func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *h
 }
 
 type nodeServerPager struct {
-	context   *controller
+	ctl       *controller
 	instances []types.CiaoServerStats
 }
 
@@ -484,8 +484,8 @@ func listNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIRespon
 	sort.Sort(types.SortedComputeNodesByID(computeNodes.Nodes))
 
 	pager := nodePager{
-		context: c,
-		nodes:   computeNodes.Nodes,
+		ctl:   c,
+		nodes: computeNodes.Nodes,
 	}
 
 	resp, err := pager.nextPage(none, "", r)
@@ -542,7 +542,7 @@ func listNodeServers(c *controller, w http.ResponseWriter, r *http.Request) (API
 	}
 
 	pager := nodeServerPager{
-		context:   c,
+		ctl:       c,
 		instances: serversStats.Servers,
 	}
 

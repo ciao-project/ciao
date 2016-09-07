@@ -92,10 +92,10 @@ func main() {
 	var wg sync.WaitGroup
 	var err error
 
-	context := new(controller)
-	context.ds = new(datastore.Datastore)
+	ctl := new(controller)
+	ctl.ds = new(datastore.Datastore)
 
-	context.image = image.Client{MountPoint: *imagesPath}
+	ctl.image = image.Client{MountPoint: *imagesPath}
 
 	dsConfig := datastore.Config{
 		PersistentURI:     *persistentDatastoreLocation,
@@ -104,7 +104,7 @@ func main() {
 		InitWorkloadsPath: *workloadsPath,
 	}
 
-	err = context.ds.Init(dsConfig)
+	err = ctl.ds.Init(dsConfig)
 	if err != nil {
 		glog.Fatalf("unable to Init datastore: %s", err)
 		return
@@ -117,14 +117,14 @@ func main() {
 		Log:    ssntp.Log,
 	}
 
-	context.client, err = newSSNTPClient(context, config)
+	ctl.client, err = newSSNTPClient(ctl, config)
 	if err != nil {
 		// spawn some retry routine?
 		glog.Fatalf("unable to connect to SSNTP server")
 		return
 	}
 
-	clusterConfig, err := context.client.ssntp.ClusterConfiguration()
+	clusterConfig, err := ctl.client.ssntp.ClusterConfiguration()
 	if err != nil {
 		glog.Fatalf("Unable to retrieve Cluster Configuration: %v", err)
 		return
@@ -172,7 +172,7 @@ func main() {
 		servicePassword: servicePassword,
 	}
 
-	context.BlockDriver = func() storage.BlockDriver {
+	ctl.BlockDriver = func() storage.BlockDriver {
 		driver := storage.CephDriver{
 			SecretPath: *keyringPath,
 			ID:         *cephID,
@@ -180,19 +180,19 @@ func main() {
 		return driver
 	}()
 
-	context.id, err = newIdentityClient(idConfig)
+	ctl.id, err = newIdentityClient(idConfig)
 	if err != nil {
 		glog.Fatal("Unable to authenticate to Keystone: ", err)
 		return
 	}
 
 	wg.Add(1)
-	go context.startComputeService()
+	go ctl.startComputeService()
 
 	wg.Add(1)
-	go context.startVolumeService()
+	go ctl.startVolumeService()
 
 	wg.Wait()
-	context.ds.Exit()
-	context.client.Disconnect()
+	ctl.ds.Exit()
+	ctl.client.Disconnect()
 }

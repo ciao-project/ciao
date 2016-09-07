@@ -268,45 +268,45 @@ func listServerDetailsFlavors(c *controller, w http.ResponseWriter, r *http.Requ
 	return resp, err
 }
 
-func legacyComputeRoutes(context *controller, r *mux.Router) *mux.Router {
+func legacyComputeRoutes(ctl *controller, r *mux.Router) *mux.Router {
 	r.Handle("/v2.1/{tenant}/servers/action",
-		legacyAPIHandler{context, tenantServersAction}).Methods("POST")
+		legacyAPIHandler{ctl, tenantServersAction}).Methods("POST")
 
 	r.Handle("/v2.1/flavors/{flavor}/servers/detail",
-		legacyAPIHandler{context, listServerDetailsFlavors}).Methods("GET")
+		legacyAPIHandler{ctl, listServerDetailsFlavors}).Methods("GET")
 
 	r.Handle("/v2.1/{tenant}/resources",
-		legacyAPIHandler{context, listTenantResources}).Methods("GET")
+		legacyAPIHandler{ctl, listTenantResources}).Methods("GET")
 
 	r.Handle("/v2.1/{tenant}/quotas",
-		legacyAPIHandler{context, listTenantQuotas}).Methods("GET")
+		legacyAPIHandler{ctl, listTenantQuotas}).Methods("GET")
 
 	r.Handle("/v2.1/tenants",
-		legacyAPIHandler{context, legacyListTenants}).Methods("GET")
+		legacyAPIHandler{ctl, legacyListTenants}).Methods("GET")
 
 	r.Handle("/v2.1/nodes",
-		legacyAPIHandler{context, legacyListNodes}).Methods("GET")
+		legacyAPIHandler{ctl, legacyListNodes}).Methods("GET")
 	r.Handle("/v2.1/nodes/summary",
-		legacyAPIHandler{context, legacyNodesSummary}).Methods("GET")
+		legacyAPIHandler{ctl, legacyNodesSummary}).Methods("GET")
 	r.Handle("/v2.1/nodes/{node}/servers/detail",
-		legacyAPIHandler{context, legacyListNodeServers}).Methods("GET")
+		legacyAPIHandler{ctl, legacyListNodeServers}).Methods("GET")
 
 	r.Handle("/v2.1/cncis",
-		legacyAPIHandler{context, legacyListCNCIs}).Methods("GET")
+		legacyAPIHandler{ctl, legacyListCNCIs}).Methods("GET")
 	r.Handle("/v2.1/cncis/{cnci}/detail",
-		legacyAPIHandler{context, legacyListCNCIDetails}).Methods("GET")
+		legacyAPIHandler{ctl, legacyListCNCIDetails}).Methods("GET")
 
 	r.Handle("/v2.1/events",
-		legacyAPIHandler{context, legacyListEvents}).Methods("GET")
+		legacyAPIHandler{ctl, legacyListEvents}).Methods("GET")
 	r.Handle("/v2.1/events",
-		legacyAPIHandler{context, legacyClearEvents}).Methods("DELETE")
+		legacyAPIHandler{ctl, legacyClearEvents}).Methods("DELETE")
 	r.Handle("/v2.1/{tenant}/events",
-		legacyAPIHandler{context, legacyListTenantEvents}).Methods("GET")
+		legacyAPIHandler{ctl, legacyListTenantEvents}).Methods("GET")
 
 	r.Handle("/v2.1/traces",
-		legacyAPIHandler{context, legacyListTraces}).Methods("GET")
+		legacyAPIHandler{ctl, legacyListTraces}).Methods("GET")
 	r.Handle("/v2.1/traces/{label}",
-		legacyAPIHandler{context, legacyTraceData}).Methods("GET")
+		legacyAPIHandler{ctl, legacyTraceData}).Methods("GET")
 
 	return r
 }

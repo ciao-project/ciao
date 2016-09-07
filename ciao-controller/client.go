@@ -26,9 +26,9 @@ import (
 )
 
 type ssntpClient struct {
-	context *controller
-	ssntp   ssntp.Client
-	name    string
+	ctl   *controller
+	ssntp ssntp.Client
+	name  string
 }
 
 func (client *ssntpClient) ConnectNotify() {
@@ -56,7 +56,7 @@ func (client *ssntpClient) CommandNotify(command ssntp.Command, frame *ssntp.Fra
 			glog.Warning("error unmarshalling temp stat")
 			return
 		}
-		client.context.ds.HandleStats(stats)
+		client.ctl.ds.HandleStats(stats)
 	}
 	glog.V(1).Info(string(payload))
 }
@@ -73,7 +73,7 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 			glog.Warning("Error unmarshalling InstanceDeleted")
 			return
 		}
-		client.context.ds.DeleteInstance(event.InstanceDeleted.InstanceUUID)
+		client.ctl.ds.DeleteInstance(event.InstanceDeleted.InstanceUUID)
 	case ssntp.ConcentratorInstanceAdded:
 		var event payloads.EventConcentratorInstanceAdded
 		err := yaml.Unmarshal(payload, &event)
@@ -82,7 +82,7 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 			return
 		}
 		newCNCI := event.CNCIAdded
-		client.context.ds.AddCNCIIP(newCNCI.ConcentratorMAC, newCNCI.ConcentratorIP)
+		client.ctl.ds.AddCNCIIP(newCNCI.ConcentratorMAC, newCNCI.ConcentratorIP)
 	case ssntp.TraceReport:
 		var trace payloads.Trace
 		err := yaml.Unmarshal(payload, &trace)
@@ -90,7 +90,7 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 			glog.Warning("error unmarshalling TraceReport")
 			return
 		}
-		client.context.ds.HandleTraceReport(trace)
+		client.ctl.ds.HandleTraceReport(trace)
 
 	case ssntp.NodeConnected:
 		var nodeConnected payloads.NodeConnected
@@ -110,7 +110,7 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 		}
 
 		glog.Infof("Node %s disconnected", nodeDisconnected.Disconnected.NodeUUID)
-		client.context.ds.DeleteNode(nodeDisconnected.Disconnected.NodeUUID)
+		client.ctl.ds.DeleteNode(nodeDisconnected.Disconnected.NodeUUID)
 
 	}
 	glog.V(1).Info(string(payload))
@@ -128,7 +128,7 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			glog.Warning("Error unmarshalling StartFailure")
 			return
 		}
-		client.context.ds.StartFailure(failure.InstanceUUID, failure.Reason)
+		client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason)
 	case ssntp.StopFailure:
 		var failure payloads.ErrorStopFailure
 		err := yaml.Unmarshal(payload, &failure)
@@ -136,7 +136,7 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			glog.Warning("Error unmarshalling StopFailure")
 			return
 		}
-		client.context.ds.StopFailure(failure.InstanceUUID, failure.Reason)
+		client.ctl.ds.StopFailure(failure.InstanceUUID, failure.Reason)
 	case ssntp.RestartFailure:
 		var failure payloads.ErrorRestartFailure
 		err := yaml.Unmarshal(payload, &failure)
@@ -144,7 +144,7 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			glog.Warning("Error unmarshalling RestartFailure")
 			return
 		}
-		client.context.ds.RestartFailure(failure.InstanceUUID, failure.Reason)
+		client.ctl.ds.RestartFailure(failure.InstanceUUID, failure.Reason)
 	case ssntp.AttachVolumeFailure:
 		var failure payloads.ErrorAttachVolumeFailure
 		err := yaml.Unmarshal(payload, &failure)
@@ -152,7 +152,7 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			glog.Warning("Error unmarshalling AttachVolumeFailure")
 			return
 		}
-		client.context.ds.AttachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
+		client.ctl.ds.AttachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
 
 	case ssntp.DetachVolumeFailure:
 		var failure payloads.ErrorDetachVolumeFailure
@@ -161,14 +161,14 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			glog.Warning("Error unmarshalling DetachVolumeFailure")
 			return
 		}
-		client.context.ds.DetachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
+		client.ctl.ds.DetachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
 
 	}
 	glog.V(1).Info(string(payload))
 }
 
-func newSSNTPClient(context *controller, config *ssntp.Config) (*ssntpClient, error) {
-	client := &ssntpClient{name: "ciao Controller", context: context}
+func newSSNTPClient(ctl *controller, config *ssntp.Config) (*ssntpClient, error) {
+	client := &ssntpClient{name: "ciao Controller", ctl: ctl}
 
 	err := client.ssntp.Dial(config, client)
 	return client, err

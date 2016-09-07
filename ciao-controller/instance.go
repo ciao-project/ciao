@@ -41,7 +41,7 @@ type config struct {
 type instance struct {
 	types.Instance
 	newConfig config
-	context   *controller
+	ctl       *controller
 	startTime time.Time
 }
 
@@ -55,10 +55,10 @@ func isCNCIWorkload(workload *types.Workload) bool {
 	return false
 }
 
-func newInstance(context *controller, tenantID string, workload *types.Workload) (*instance, error) {
+func newInstance(ctl *controller, tenantID string, workload *types.Workload) (*instance, error) {
 	id := uuid.Generate()
 
-	config, err := newConfig(context, workload, id.String(), tenantID)
+	config, err := newConfig(ctl, workload, id.String(), tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func newInstance(context *controller, tenantID string, workload *types.Workload)
 	}
 
 	i := &instance{
-		context:   context,
+		ctl:       ctl,
 		newConfig: config,
 		Instance:  newInstance,
 	}
@@ -87,10 +87,10 @@ func newInstance(context *controller, tenantID string, workload *types.Workload)
 
 func (i *instance) Add() error {
 	if i.CNCI == false {
-		ds := i.context.ds
+		ds := i.ctl.ds
 		ds.AddInstance(&i.Instance)
 	} else {
-		i.context.ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
+		i.ctl.ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}
 
 	return nil
@@ -98,7 +98,7 @@ func (i *instance) Add() error {
 
 func (i *instance) Clean() error {
 	if i.CNCI == false {
-		i.context.ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
+		i.ctl.ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
 	}
 
 	return nil
@@ -110,7 +110,7 @@ func (i *instance) Allowed() (bool, error) {
 		return true, nil
 	}
 
-	ds := i.context.ds
+	ds := i.ctl.ds
 
 	tenant, err := ds.GetTenant(i.TenantID)
 	if err != nil {
@@ -185,7 +185,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 	return payloads.StorageResources{ID: bd.ID, Bootable: s.Bootable}, nil
 }
 
-func newConfig(context *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {
+func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {
 	type UserData struct {
 		UUID     string `json:"uuid"`
 		Hostname string `json:"hostname"`
@@ -199,7 +199,7 @@ func newConfig(context *controller, wl *types.Workload, instanceID string, tenan
 	imageID := wl.ImageID
 	fwType := wl.FWType
 
-	tenant, err := context.ds.GetTenant(tenantID)
+	tenant, err := ctl.ds.GetTenant(tenantID)
 	if err != nil {
 		fmt.Println("unable to get tenant")
 	}
@@ -213,7 +213,7 @@ func newConfig(context *controller, wl *types.Workload, instanceID string, tenan
 	networking.VnicUUID = uuid.Generate().String()
 
 	if config.cnci == false {
-		ipAddress, err := context.ds.AllocateTenantIP(tenantID)
+		ipAddress, err := ctl.ds.AllocateTenantIP(tenantID)
 		if err != nil {
 			fmt.Println("Unable to allocate IP address: ", err)
 			return config, err
@@ -242,7 +242,7 @@ func newConfig(context *controller, wl *types.Workload, instanceID string, tenan
 
 		// handle storage resources
 		if wl.Storage != nil {
-			storage, err = getStorage(context, wl, tenantID)
+			storage, err = getStorage(ctl, wl, tenantID)
 			if err != nil {
 				glog.Warning(err)
 				// we should really clean up and return here,
