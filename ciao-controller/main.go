@@ -143,6 +143,7 @@ func main() {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
 
+	osprepare.Bootstrap()
 	osprepare.InstallDeps(controllerDeps)
 
 	if *singleMachine {
