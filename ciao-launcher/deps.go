@@ -62,5 +62,5 @@ var launcherComputeNodeDeps = map[string][]osprepare.PackageRequirement{
 	"fedora": append(launcherFedoraCommonDeps,
 		osprepare.PackageRequirement{BinaryName: "/usr/bin/docker", PackageName: "docker-engine"}),
 	"ubuntu": append(launcherUbuntuCommonDeps,
-		osprepare.PackageRequirement{BinaryName: "/usr/bin/docker", PackageName: "docker"}),
+		osprepare.PackageRequirement{BinaryName: "/usr/bin/docker", PackageName: "docker-engine"}),
 }
