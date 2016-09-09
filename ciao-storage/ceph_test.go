@@ -19,18 +19,25 @@ import (
 	"testing"
 )
 
+var driver = CephDriver{
+	SecretPath: "/etc/ceph/ceph.client.kristen.keyring",
+	ID:         "kristen",
+}
+
+var imagePath = "/var/lib/ciao/images/73a86d7e-93c0-480e-9c41-ab42f69b7799"
+
 func TestCreateBlockDevice(t *testing.T) {
-	driver := cephDriver{
-		SecretPath: "/etc/ceph/ceph.client.kristen.keyring",
-		ID:         "kristen",
-	}
-
-	imagePath := "/var/lib/ciao/images/73a86d7e-93c0-480e-9c41-ab42f69b7799"
-
 	device, err := driver.CreateBlockDevice(&imagePath, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	fmt.Println(device.ID)
+}
+
+func TestDeleteBlockDevice(t *testing.T) {
+	err := driver.DeleteBlockDevice(imagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
