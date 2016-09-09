@@ -19,6 +19,8 @@ The options are:
 
   -alsologtostderr
         log to standard error as well as files
+  -ca-file string
+        CA Certificate
   -computeport int
         Openstack Compute API port (default 8774)
   -controller string
@@ -61,7 +63,7 @@ Use "ciao-cli command -help" for more information about that command.
 
 ## Ciao environment variables
 
-ciao-cli first look for Ciao specific environment variables to retrieve
+ciao-cli first looks for Ciao specific environment variables to retrieve
 credentials and networking information:
 
 * `CIAO_CONTROLLER` exports the Ciao controller URL
@@ -70,6 +72,7 @@ credentials and networking information:
 * `CIAO_USERNAME` exports the Ciao username
 * `CIAO_PASSWORD` export the Ciao password for `CIAO_USERNAME`
 * `CIAO_TENANT_NAME` export the Ciao tenant name for `CIAO_USERNAME`
+* `CIAO_CA_CERT_FILE` (optional) use the supplied certificate as the CA
 
 All those environment variables can be set through an rc file.
 For example:
@@ -89,11 +92,9 @@ or overridden from the `ciao-cli` command line.
 
 ## Keystone certificates
 
-ciao-cli interact with the CIAO keystone instance over HTTPS.
-As such you will have to install the keystone CA certificate locally
-in order for ciao-cli to verify the keystone identity.
-
-CA certificate installation is a distribution specific process. For example:
+ciao-cli interacts with the CIAO keystone instance over HTTPS.  As such you
+will need to have the keystone CA certificate available in order to make
+requests. You can either install the CA certificate system-wide:
 
 * On Fedora:
 ```shell
@@ -106,6 +107,9 @@ sudo update-ca-trust
 sudo cp keystone_ca_cert.pem /usr/local/share/ca-certificates/keystone.crt
 sudo update-ca-certificates
 ```
+
+Or, alternatively the CA certificate may be specified with the `-ca-file`
+command line or with the `CIAO_CA_CERT_FILE` environment variable.
 
 ## Priviledged versus non priviledged CIAO users
 
