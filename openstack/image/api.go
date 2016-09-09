@@ -147,9 +147,9 @@ type CreateImageRequest struct {
 	Properties      interface{}     `json:"properties,omitempty"`
 }
 
-// CreateImageResponse contains information about a created image
+// DefaultResponse contains information about an image
 // http://developer.openstack.org/api-ref-image-v2.html#createImage-v2
-type CreateImageResponse struct {
+type DefaultResponse struct {
 	Status          Status           `json:"status"`
 	ContainerFormat *ContainerFormat `json:"container_format"`
 	MinRAM          *int             `json:"min_ram"`
@@ -176,9 +176,9 @@ type CreateImageResponse struct {
 // ListImagesResponse contains the list of all images that have been created.
 // http://developer.openstack.org/api-ref-image-v2.html#listImages-v2
 type ListImagesResponse struct {
-	Images []CreateImageResponse `json:"images"`
-	Schema string                `json:"schema"`
-	First  string                `json:"first"`
+	Images []DefaultResponse `json:"images"`
+	Schema string            `json:"schema"`
+	First  string            `json:"first"`
 }
 
 // UploadImageResponse contains the UUID of the image which content got uploaded
@@ -200,9 +200,10 @@ type APIConfig struct {
 // Service is the interface that the api requires in order to get
 // information needed to implement the image endpoints.
 type Service interface {
-	CreateImage(CreateImageRequest) (CreateImageResponse, error)
+	CreateImage(CreateImageRequest) (DefaultResponse, error)
 	UploadImage(string, io.Reader) (UploadImageResponse, error)
-	ListImages() ([]CreateImageResponse, error)
+	ListImages() ([]DefaultResponse, error)
+	GetImage(string) (DefaultResponse, error)
 }
 
 // Context contains data and interfaces that the image api will need.
@@ -333,9 +334,24 @@ func listImages(context *Context, w http.ResponseWriter, r *http.Request) (APIRe
 	return APIResponse{http.StatusOK, resp}, nil
 }
 
+// getImage get information about an image by image_id field
+//
+func getImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	vars := mux.Vars(r)
+	imageID := vars["image_id"]
+
+	defer r.Body.Close()
+
+	resp, err := context.GetImage(imageID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+	return APIResponse{http.StatusOK, resp}, nil
+}
+
 func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
-	imageID := vars["volume_id"]
+	imageID := vars["image_id"]
 
 	defer r.Body.Close()
 
@@ -343,8 +359,7 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 	if err != nil {
 		return errorResponse(err), err
 	}
-
-	return APIResponse{http.StatusOK, resp}, nil
+	return APIResponse{http.StatusNoContent, resp}, nil
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.
@@ -359,6 +374,7 @@ func Routes(config APIConfig) *mux.Router {
 	r.Handle("/v2/images", APIHandler{context, createImage}).Methods("POST")
 	r.Handle("/v2/images/{image_id}/file", APIHandler{context, uploadImage}).Methods("PUT")
 	r.Handle("/v2/images", APIHandler{context, listImages}).Methods("GET")
+	r.Handle("/v2/images/{image_id}", APIHandler{context, getImage}).Methods("GET")
 
 	return r
 }

@@ -155,7 +155,10 @@ func (cmd *imageAddCommand) run(args []string) error {
 
 	if cmd.file != "" {
 		uploadTenantImage(*identityUser, *identityPassword, *tenantID, image.ID, cmd.file)
-		image, _ = images.Get(client, image.ID).Extract()
+		image, err = images.Get(client, image.ID).Extract()
+		if err != nil {
+			fatalf("Could not retrieve new created image [%s]\n", err)
+		}
 	}
 
 	fmt.Printf("Created image:\n")
