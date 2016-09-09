@@ -418,7 +418,8 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 	return port, err
 }
 
-func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string, networkParams []string) []string {
+func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
+	networkParams []string, cephID string) []string {
 	vmImage := path.Join(instanceDir, "image.qcow2")
 	qmpSocket := path.Join(instanceDir, "socket")
 	fileParam := fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage)
@@ -428,6 +429,27 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string, networ
 	params := make([]string, 0, 32)
 	params = append(params, "-drive", fileParam)
 	params = append(params, "-drive", isoParam)
+
+	// I know this is nasty but we have to specify a bus and address otherwise qemu
+	// hangs on startup.  I can't find a way to get qemu to pre-allocate the address.
+	// It will do this when using the legacy method of adding volumes but we can't do
+	// this if we want to be able to live detach these volumes.  The first drive qemu
+	// adds, i.e., the root address is assigned a slot of 3, with the current qemu
+	// parameters.
+
+	addr := 5
+	for v := range cfg.Volumes {
+		blockdevID := fmt.Sprintf("drive_%s", v)
+		volDriveStr := fmt.Sprintf("file=rbd:rbd/%s:id=%s,if=none,id=%s,format=raw",
+			v, cephID, blockdevID)
+		params = append(params, "-drive", volDriveStr)
+		volDeviceStr :=
+			fmt.Sprintf("virtio-blk-pci,scsi=off,bus=pci.0,addr=0x%x,id=device_%s,drive=%s",
+				addr, v, blockdevID)
+		params = append(params, "-device", volDeviceStr)
+		addr++
+	}
+
 	params = append(params, networkParams...)
 
 	params = append(params, "-enable-kvm")
@@ -450,7 +472,7 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string, networ
 	return params
 }
 
-func (q *qemuV) startVM(vnicName, ipAddress string) error {
+func (q *qemuV) startVM(vnicName, ipAddress, cephID string) error {
 
 	var fds []*os.File
 
@@ -482,7 +504,7 @@ func (q *qemuV) startVM(vnicName, ipAddress string) error {
 		networkParams = append(networkParams, "-net", "user")
 	}
 
-	params := generateQEMULaunchParams(q.cfg, q.isoPath, q.instanceDir, networkParams)
+	params := generateQEMULaunchParams(q.cfg, q.isoPath, q.instanceDir, networkParams, cephID)
 
 	var err error
 

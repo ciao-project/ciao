@@ -86,7 +86,7 @@ func (v *instanceTestState) deleteImage() error {
 	return nil
 }
 
-func (v *instanceTestState) startVM(vnicName, ipAddress string) error {
+func (v *instanceTestState) startVM(vnicName, ipAddress, cephID string) error {
 	if v.failStartVM {
 		return fmt.Errorf("Failed to start VM")
 	}

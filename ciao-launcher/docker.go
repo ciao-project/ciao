@@ -243,7 +243,7 @@ func (d *docker) deleteImage() error {
 	return err
 }
 
-func (d *docker) startVM(vnicName, ipAddress string) error {
+func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
 	cli, err := getDockerClient()
 	if err != nil {
 		return err
