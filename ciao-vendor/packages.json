@@ -86,7 +86,7 @@
 	},
 	"golang.org/x/net": {
 		"url": "https://go.googlesource.com/net",
-		"version": "origin/release-branch.go1.6",
+		"version": "198e27a",
 		"license": "BSD (3 clause)"
 	},
 	"gopkg.in/yaml.v2": {
