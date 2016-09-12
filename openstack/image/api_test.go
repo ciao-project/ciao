@@ -68,6 +68,14 @@ var tests = []test{
 		http.StatusOK,
 		`{"status":"active","container_format":"bare","min_ram":0,"updated_at":"2014-05-05T17:15:11Z","owner":"5ef70662f8b34079a6eddb8da9d75fe8","min_disk":0,"tags":[],"locations":[],"visibility":"public","id":"1bea47ed-f6a9-463b-b423-14b9cca9ad27","size":13167616,"virtual_size":null,"name":"cirros-0.3.2-x86_64-disk","checksum":"64d7c1cd2b6f60c92c14662941cb7913","created_at":"2014-05-05T17:15:10Z","disk_format":"qcow2","properties":null,"protected":false,"self":"/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27","file":"/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27/file","schema":"/v2/schemas/image"}`,
 	},
+	{
+		"DELETE",
+		"/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		deleteImage,
+		"",
+		http.StatusNoContent,
+		`null`,
+	},
 }
 
 func myHostname() string {
@@ -177,8 +185,12 @@ func (is testImageService) GetImage(ID string) (DefaultResponse, error) {
 	}, nil
 }
 
-func (is testImageService) UploadImage(string, io.Reader) (UploadImageResponse, error) {
-	return UploadImageResponse{}, nil
+func (is testImageService) UploadImage(string, io.Reader) (NoContentImageResponse, error) {
+	return NoContentImageResponse{}, nil
+}
+
+func (is testImageService) DeleteImage(string) (NoContentImageResponse, error) {
+	return NoContentImageResponse{}, nil
 }
 
 func TestRoutes(t *testing.T) {

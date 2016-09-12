@@ -17,6 +17,8 @@ package datastore
 import (
 	"io"
 	"sync"
+
+	"github.com/01org/ciao/openstack/image"
 )
 
 // ImageCache is an image metadata cache.
@@ -69,7 +71,7 @@ func (c *ImageCache) GetImage(ID string) (Image, error) {
 	i, ok := c.images[ID]
 
 	if !ok {
-		return Image{}, ErrNoImage
+		return Image{}, image.ErrNoImage
 	}
 
 	return i, nil
@@ -86,7 +88,7 @@ func (c *ImageCache) UpdateImage(i Image) error {
 	}
 
 	if !ok {
-		return ErrNoImage
+		return image.ErrNoImage
 	}
 
 	return nil
@@ -100,10 +102,14 @@ func (c *ImageCache) DeleteImage(ID string) error {
 	_, ok := c.images[ID]
 	if ok {
 		delete(c.images, ID)
+		err := c.rawDs.Delete(ID)
+		if err != nil {
+			return err
+		}
 	}
 
 	if !ok {
-		return ErrNoImage
+		return image.ErrNoImage
 	}
 
 	return nil
@@ -113,18 +119,18 @@ func (c *ImageCache) DeleteImage(ID string) error {
 func (c *ImageCache) UploadImage(ID string, body io.Reader) error {
 	c.lock.Lock()
 
-	image, ok := c.images[ID]
+	img, ok := c.images[ID]
 	if !ok {
 		c.lock.Unlock()
-		return ErrNoImage
+		return image.ErrNoImage
 	}
 
-	if image.State == Saving {
+	if img.State == Saving {
 		c.lock.Unlock()
-		return ErrImageSaving
+		return image.ErrImageSaving
 	}
 
-	image.State = Saving
+	img.State = Saving
 
 	c.lock.Unlock()
 
@@ -137,7 +143,7 @@ func (c *ImageCache) UploadImage(ID string, body io.Reader) error {
 
 	c.lock.Lock()
 
-	image.State = Active
+	img.State = Active
 
 	c.lock.Unlock()
 

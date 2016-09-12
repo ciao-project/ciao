@@ -15,7 +15,6 @@
 package datastore
 
 import (
-	"errors"
 	"io"
 	"time"
 
@@ -81,14 +80,6 @@ type Image struct {
 	CreateTime time.Time
 	Type       Type
 }
-
-var (
-	// ErrNoImage is returned when an image is not found.
-	ErrNoImage = errors.New("Image not found")
-
-	// ErrImageSaving is returned when an image is being uploaded.
-	ErrImageSaving = errors.New("Image being uploaded")
-)
 
 // DataStore is the image data storage interface.
 type DataStore interface {

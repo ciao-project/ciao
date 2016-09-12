@@ -102,10 +102,23 @@ func (is ImageService) ListImages() ([]image.DefaultResponse, error) {
 }
 
 // UploadImage will upload a raw image data and update its status.
-func (is ImageService) UploadImage(imageID string, body io.Reader) (image.UploadImageResponse, error) {
-	var response image.UploadImageResponse
+func (is ImageService) UploadImage(imageID string, body io.Reader) (image.NoContentImageResponse, error) {
+	var response image.NoContentImageResponse
 
 	err := is.ds.UploadImage(imageID, body)
+	if err != nil {
+		return response, err
+	}
+
+	response.ImageID = imageID
+	return response, nil
+}
+
+// DeleteImage will delete a raw image and its metadata
+func (is ImageService) DeleteImage(imageID string) (image.NoContentImageResponse, error) {
+	var response image.NoContentImageResponse
+
+	err := is.ds.DeleteImage(imageID)
 	if err != nil {
 		return response, err
 	}

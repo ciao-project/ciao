@@ -16,6 +16,7 @@ package image
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -132,6 +133,17 @@ const (
 	ISO DiskFormat = "iso"
 )
 
+// ErrorImage defines all possible image handling errors
+type ErrorImage error
+
+var (
+	// ErrNoImage is returned when an image is not found.
+	ErrNoImage = errors.New("Image not found")
+
+	// ErrImageSaving is returned when an image is being uploaded.
+	ErrImageSaving = errors.New("Image being uploaded")
+)
+
 // CreateImageRequest contains information for a create image request.
 // http://developer.openstack.org/api-ref-image-v2.html#createImage-v2
 type CreateImageRequest struct {
@@ -181,9 +193,10 @@ type ListImagesResponse struct {
 	First  string            `json:"first"`
 }
 
-// UploadImageResponse contains the UUID of the image which content got uploaded
+// NoContentImageResponse contains the UUID of the image which content
+// got uploaded or deleted
 // http://developer.openstack.org/api-ref-image-v2.html#storeImageFile-v2
-type UploadImageResponse struct {
+type NoContentImageResponse struct {
 	ImageID string `json:"image_id"`
 }
 
@@ -201,9 +214,10 @@ type APIConfig struct {
 // information needed to implement the image endpoints.
 type Service interface {
 	CreateImage(CreateImageRequest) (DefaultResponse, error)
-	UploadImage(string, io.Reader) (UploadImageResponse, error)
+	UploadImage(string, io.Reader) (NoContentImageResponse, error)
 	ListImages() ([]DefaultResponse, error)
 	GetImage(string) (DefaultResponse, error)
+	DeleteImage(string) (NoContentImageResponse, error)
 }
 
 // Context contains data and interfaces that the image api will need.
@@ -253,6 +267,8 @@ func (h APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // on return values all the time.
 func errorResponse(err error) APIResponse {
 	switch err {
+	case ErrNoImage:
+		return APIResponse{http.StatusNotFound, nil}
 	default:
 		return APIResponse{http.StatusInternalServerError, nil}
 	}
@@ -355,11 +371,24 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 
 	defer r.Body.Close()
 
-	resp, err := context.UploadImage(imageID, r.Body)
+	_, err := context.UploadImage(imageID, r.Body)
 	if err != nil {
 		return errorResponse(err), err
 	}
-	return APIResponse{http.StatusNoContent, resp}, nil
+	return APIResponse{http.StatusNoContent, nil}, nil
+}
+
+func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	vars := mux.Vars(r)
+	imageID := vars["image_id"]
+
+	defer r.Body.Close()
+
+	_, err := context.DeleteImage(imageID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+	return APIResponse{http.StatusNoContent, nil}, nil
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.
@@ -375,6 +404,7 @@ func Routes(config APIConfig) *mux.Router {
 	r.Handle("/v2/images/{image_id}/file", APIHandler{context, uploadImage}).Methods("PUT")
 	r.Handle("/v2/images", APIHandler{context, listImages}).Methods("GET")
 	r.Handle("/v2/images/{image_id}", APIHandler{context, getImage}).Methods("GET")
+	r.Handle("/v2/images/{image_id}", APIHandler{context, deleteImage}).Methods("DELETE")
 
 	return r
 }
