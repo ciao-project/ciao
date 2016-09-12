@@ -24,6 +24,8 @@ import (
 	"sync"
 	"time"
 
+	"context"
+
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/engine-api/client"
 	"github.com/docker/engine-api/types"
@@ -31,7 +33,6 @@ import (
 	"github.com/docker/engine-api/types/filters"
 	"github.com/docker/engine-api/types/network"
 	"github.com/golang/glog"
-	"golang.org/x/net/context"
 	"gopkg.in/yaml.v2"
 )
 
@@ -319,6 +320,7 @@ DONE:
 			}
 		}
 	}
+	cancelFunc()
 
 	glog.Infof("Docker Instance %s:%s shut down", instance, dockerID)
 }

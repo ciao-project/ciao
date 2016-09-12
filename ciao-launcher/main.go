@@ -28,11 +28,12 @@ import (
 	"syscall"
 	"time"
 
+	"context"
+
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
-	"golang.org/x/net/context"
 )
 
 var profileFN func() func()
@@ -337,6 +338,7 @@ func startNetwork(doneCh chan struct{}) error {
 			cancelFunc()
 			return fmt.Errorf("Init network cancelled.")
 		case err := <-ch:
+			cancelFunc()
 			if err != nil {
 				glog.Errorf("Failed to init network: %v\n", err)
 				return err
