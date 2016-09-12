@@ -26,9 +26,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"context"
+
 	"github.com/docker/engine-api/types"
 	"github.com/golang/glog"
-	"golang.org/x/net/context"
 )
 
 func dockerKillInstance(instanceDir string) {

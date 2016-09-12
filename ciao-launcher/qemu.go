@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/01org/ciao/qemu"
 	"github.com/golang/glog"

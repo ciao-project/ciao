@@ -19,11 +19,12 @@ package main
 import (
 	"sync"
 
+	"context"
+
 	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/network"
 	"github.com/golang/glog"
-	"golang.org/x/net/context"
 )
 
 type dockerNetworkState struct {

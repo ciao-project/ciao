@@ -28,11 +28,12 @@ import (
 	"syscall"
 	"time"
 
+	"context"
+
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
-	"golang.org/x/net/context"
 )
 
 var profileFN func() func()
