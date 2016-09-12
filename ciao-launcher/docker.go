@@ -320,6 +320,7 @@ DONE:
 			}
 		}
 	}
+	cancelFunc()
 
 	glog.Infof("Docker Instance %s:%s shut down", instance, dockerID)
 }
