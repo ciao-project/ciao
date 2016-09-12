@@ -37,10 +37,15 @@ func Example() {
 	// resources
 	params = append(params, "-m", "370", "-smp", "cpus=2")
 
+	config := qemu.Config{
+		Ctx:         context.Background(),
+		ExtraParams: params,
+	}
+
 	// LaunchQemu should return as soon as the instance has launched as we
 	// are using the --daemonize flag.  It will set up a unix domain socket
 	// called /tmp/qmp-socket that we can use to manage the instance.
-	_, err := qemu.LaunchQemu(context.Background(), params, nil, nil)
+	_, err := qemu.LaunchQemu(config, nil)
 	if err != nil {
 		panic(err)
 	}
