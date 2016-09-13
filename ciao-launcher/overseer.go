@@ -362,7 +362,7 @@ func (ovs *overseer) computeStatus() ssntp.Status {
 	return ssntp.READY
 }
 
-func (ovs *overseer) sendStatusCommand(cns *cnStats, status ssntp.Status) {
+func (ovs *overseer) sendReadyStatusCommand(cns *cnStats) {
 	var s payloads.Ready
 
 	s.Init()
@@ -375,14 +375,29 @@ func (ovs *overseer) sendStatusCommand(cns *cnStats, status ssntp.Status) {
 
 	payload, err := yaml.Marshal(&s)
 	if err != nil {
-		glog.Errorf("Unable to Marshall Status %v", err)
+		glog.Errorf("Unable to Marshall status payload %v", err)
 		return
 	}
 
-	_, err = ovs.ac.conn.SendStatus(status, payload)
+	_, err = ovs.ac.conn.SendStatus(ssntp.READY, payload)
 	if err != nil {
-		glog.Errorf("Failed to send status command %v", err)
-		return
+		glog.Errorf("Failed to send READY status command %v", err)
+	}
+}
+
+func (ovs *overseer) sendStatusCommand(cns *cnStats, status ssntp.Status) {
+	switch status {
+	case ssntp.READY:
+		ovs.sendReadyStatusCommand(cns)
+	case ssntp.FULL:
+		fallthrough
+	case ssntp.OFFLINE:
+		_, err := ovs.ac.conn.SendStatus(status, nil)
+		if err != nil {
+			glog.Errorf("Failed to send %s status command %v", status, err)
+		}
+	default:
+		glog.Errorf("Unsupported status command: %s", status)
 	}
 }
 

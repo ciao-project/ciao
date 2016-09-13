@@ -126,6 +126,8 @@ func (v *overseerTestState) SendStatus(status ssntp.Status, payload []byte) (int
 			v.t.Errorf("Failed to unmarshall READY status %v", err)
 		}
 		v.statusCh <- ready
+	case ssntp.FULL:
+		v.statusCh <- nil
 	}
 
 	return 0, nil
@@ -532,6 +534,66 @@ DONE:
 	if ready.NodeUUID != state.UUID() {
 		t.Errorf("Unexpected UUID received for READY event, expected %s got %s",
 			state.UUID(), ready.NodeUUID)
+	}
+
+	shutdownOverseer(ovsCh, state)
+	wg.Wait()
+}
+
+// Check the overseer sends a FULL status command when no instances are
+// available
+//
+// Start the overseer with a high stats interval and maxInstances set to zero
+// and send an ovsStatusCmd.  Shutdown the overseer.
+//
+// A ssntp.FULL status command should be received.  The overseer should shut
+// down cleanly.
+func TestFullStatus(t *testing.T) {
+	defer func(instances int) { maxInstances = instances }(maxInstances)
+	maxInstances = 0
+
+	instancesDir, err := ioutil.TempDir("", "overseer-tests")
+	if err != nil {
+		t.Fatalf("Unable to create temporary directory")
+	}
+	defer func() { _ = os.RemoveAll(instancesDir) }()
+
+	pp, err := createGoodProcFiles()
+	if err != nil {
+		t.Fatalf("Unable to create proc files")
+	}
+	defer func() { _ = os.RemoveAll(pp.procDir) }()
+
+	var wg sync.WaitGroup
+	state := &overseerTestState{
+		t:        t,
+		statusCh: make(chan *payloads.Ready),
+	}
+	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
+
+	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
+		pp.memInfo, pp.stat, pp.loadavg)
+	select {
+	case ovsCh <- &ovsStatusCmd{}:
+	case <-time.After(time.Second):
+		t.Fatal("Unable to send ovsStatusCmd")
+	}
+
+	var ready *payloads.Ready
+	timer := time.After(time.Second)
+DONE:
+	for {
+		select {
+		case ready = <-state.statusCh:
+			break DONE
+		case <-timer:
+			t.Fatal("Timed out waiting for Status or Stats")
+			break DONE
+		}
+	}
+
+	if ready != nil {
+		t.Errorf("Expected a FULL status message")
 	}
 
 	shutdownOverseer(ovsCh, state)
