@@ -162,9 +162,12 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	net := &start.Networking
 	vnicIP := strings.TrimSpace(net.PrivateIP)
 	sshPort := computeSSHPort(networkNode, vnicIP)
-	volumes := make(map[string]struct{})
+	var volumes []volumeConfig
 	if start.Storage.ID != "" {
-		volumes[start.Storage.ID] = struct{}{}
+		volumes = append(volumes, volumeConfig{
+			UUID:     start.Storage.ID,
+			Bootable: start.Storage.Bootable,
+		})
 	}
 
 	return &vmConfig{Cpus: cpus,

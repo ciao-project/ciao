@@ -106,8 +106,10 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	}
 
 	if cfg.Image == "" {
-		err = fmt.Errorf("No backing image specified")
-		return nil, &startError{err, payloads.InvalidData}
+		if len(cfg.Volumes) == 0 || !cfg.Volumes[0].Bootable {
+			err = fmt.Errorf("No backing image specified")
+			return nil, &startError{err, payloads.InvalidData}
+		}
 	}
 
 	if networking {
@@ -118,9 +120,11 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 		}
 	}
 
-	err = ensureBackingImage(vm)
-	if err != nil {
-		return nil, &startError{err, payloads.ImageFailure}
+	if cfg.Image != "" {
+		err = ensureBackingImage(vm)
+		if err != nil {
+			return nil, &startError{err, payloads.ImageFailure}
+		}
 	}
 
 	st.backingImageCheck = time.Now()

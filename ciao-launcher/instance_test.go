@@ -920,7 +920,6 @@ func TestStartRunningInstance(t *testing.T) {
 func TestAttachVolumeToInstance(t *testing.T) {
 	var wg sync.WaitGroup
 	cfg := standardCfg
-	cfg.Volumes = make(map[string]struct{})
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
 
 	select {
@@ -954,7 +953,6 @@ func TestAttachVolumeToInstance(t *testing.T) {
 func TestAttachExistingVolumeToInstance(t *testing.T) {
 	var wg sync.WaitGroup
 	cfg := standardCfg
-	cfg.Volumes = make(map[string]struct{})
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
 
 	select {
@@ -1007,7 +1005,6 @@ func TestAttachExistingVolumeToInstance(t *testing.T) {
 func TestDetachVolumeFromInstance(t *testing.T) {
 	var wg sync.WaitGroup
 	cfg := standardCfg
-	cfg.Volumes = make(map[string]struct{})
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
 
 	select {
@@ -1053,7 +1050,6 @@ func TestDetachVolumeFromInstance(t *testing.T) {
 func TestDetachNonexistingVolumeFromInstance(t *testing.T) {
 	var wg sync.WaitGroup
 	cfg := standardCfg
-	cfg.Volumes = make(map[string]struct{})
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
 
 	select {
