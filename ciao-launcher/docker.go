@@ -47,7 +47,6 @@ type docker struct {
 	dockerID       string
 	prevCPUTime    int64
 	prevSampleTime time.Time
-	pid            int
 }
 
 // It's not entirely clear that it's safe to call a client.Client object from
@@ -374,7 +373,7 @@ func (d *docker) stats() (disk, memory, cpu int) {
 	memory = -1
 	cpu = -1
 
-	if d.pid == 0 || d.cfg == nil {
+	if d.cfg == nil {
 		return
 	}
 
@@ -421,26 +420,8 @@ func (d *docker) stats() (disk, memory, cpu int) {
 
 func (d *docker) connected() {
 	d.prevCPUTime = -1
-	if d.pid == 0 {
-		cli, err := getDockerClient()
-		if err != nil {
-			return
-		}
-
-		con, err := cli.ContainerInspect(context.Background(), d.dockerID)
-		if err != nil {
-			glog.Errorf("Unable to determine status of instance %s:%s: %v", d.cfg.Instance,
-				d.dockerID, err)
-			return
-		}
-		if con.State.Pid <= 0 {
-			return
-		}
-		d.pid = con.State.Pid
-	}
 }
 
 func (d *docker) lostVM() {
-	d.pid = 0
 	d.prevCPUTime = -1
 }
