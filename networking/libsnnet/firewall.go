@@ -105,6 +105,37 @@ func InitFirewall(devices ...string) (*Firewall, error) {
 		IPTables: ipt,
 	}
 
+	// create CIAO Floating IPs user defined chains
+	floatingIPsChains := []string{"ciao-floating-ip-pre", "ciao-floating-ip-post"}
+	for _, chain := range floatingIPsChains {
+		// verify it exists if not create it
+		_ = ipt.NewChain("nat", chain)
+	}
+
+	// insert ciao-floating-ip-pre into PREROUTING Chain
+	ok, err := ipt.Exists("nat", "PREROUTING", "-j", "ciao-floating-ip-pre")
+	if err != nil {
+		return nil, fmt.Errorf("Error: InitFirewall could not verify existence of chain ciao-floating-ip-pre, %v", err)
+	}
+	if !ok {
+		err := ipt.Insert("nat", "PREROUTING", 1, "-j", "ciao-floating-ip-pre")
+		if err != nil {
+			return nil, fmt.Errorf("Error: InitFirewall could not create ciao-floating-ip-pre chain")
+		}
+	}
+
+	// insert ciao-floating-ip-post into POSTROUTING Chain
+	ok, err = ipt.Exists("nat", "POSTROUTING", "-j", "ciao-floating-ip-post")
+	if err != nil {
+		return nil, fmt.Errorf("Error: InitFirewall could not verify existence of chain ciao-floating-ip-post, %v", err)
+	}
+	if !ok {
+		err := ipt.Insert("nat", "POSTROUTING", 1, "-j", "ciao-floating-ip-post")
+		if err != nil {
+			return nil, fmt.Errorf("Error: InitFirewall could not create ciao-floating-ip-post chain")
+		}
+	}
+
 	for _, device := range devices {
 
 		//iptables -t nat -A POSTROUTING -o $device -j MASQUERADE
