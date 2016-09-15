@@ -73,6 +73,11 @@ func printCloudinit(data *payloads.Start) {
 		glog.Infof("%8s:     %v", start.RequestedResources[i].Type,
 			start.RequestedResources[i].Value)
 	}
+
+	if start.Storage.ID != "" {
+		glog.Info("Volumes:")
+		glog.Infof("  %s Bootable=%t", start.Storage.ID, start.Storage.Bootable)
+	}
 }
 
 func computeSSHPort(networkNode bool, vnicIP string) int {
