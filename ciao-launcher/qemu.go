@@ -335,10 +335,11 @@ func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*
 
 func computeTapParam(vnicName string, mac string) ([]string, error) {
 	params := make([]string, 0, 8)
-	net1Param := fmt.Sprintf("nic,model=virtio,macaddr=%s", mac)
-	net2Param := fmt.Sprintf("tap,ifname=%s,script=no,downscript=no", vnicName)
-	params = append(params, "-net", net1Param)
-	params = append(params, "-net", net2Param)
+	netdev := fmt.Sprintf("type=tap,ifname=%s,script=no,downscript=no,id=%s,vhost=on", vnicName, vnicName)
+	device := fmt.Sprintf("driver=virtio-net-pci,netdev=%s,mac=%s", vnicName, mac)
+
+	params = append(params, "-netdev", netdev)
+	params = append(params, "-device", device)
 	return params, nil
 }
 
