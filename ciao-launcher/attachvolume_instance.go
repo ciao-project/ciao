@@ -24,7 +24,7 @@ import (
 
 func processAttachVolume(storageDriver storage.BlockDriver, monitorCh chan interface{}, cfg *vmConfig,
 	instance, instanceDir, volumeUUID string, conn serverConn) *attachVolumeError {
-	if _, found := cfg.Volumes[volumeUUID]; found {
+	if cfg.findVolume(volumeUUID) != nil {
 		attachErr := &attachVolumeError{nil, payloads.AttachVolumeAlreadyAttached}
 		glog.Errorf("%s is already attached to attach instance %s [%s]",
 			volumeUUID, instance, string(attachErr.code))
@@ -73,12 +73,12 @@ func processAttachVolume(storageDriver storage.BlockDriver, monitorCh chan inter
 		}
 	}
 
-	cfg.Volumes[volumeUUID] = struct{}{}
+	cfg.Volumes = append(cfg.Volumes, volumeConfig{UUID: volumeUUID})
 
 	err := cfg.save(instanceDir)
 	if err != nil {
 		// TODO: should we detach and unmap here?
-		delete(cfg.Volumes, volumeUUID)
+		cfg.removeVolume(volumeUUID)
 		attachErr := &attachVolumeError{err, payloads.AttachVolumeStateFailure}
 		glog.Errorf("Unable to persist instance %s state [%s]: %v",
 			instance, string(attachErr.code), err)

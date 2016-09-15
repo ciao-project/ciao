@@ -24,6 +24,11 @@ import (
 	"github.com/golang/glog"
 )
 
+type volumeConfig struct {
+	UUID     string
+	Bootable bool
+}
+
 type vmConfig struct {
 	Cpus        int
 	Mem         int
@@ -41,7 +46,7 @@ type vmConfig struct {
 	ConcUUID    string
 	VnicUUID    string
 	SSHPort     int
-	Volumes     map[string]struct{}
+	Volumes     []volumeConfig
 }
 
 func loadVMConfig(instanceDir string) (*vmConfig, error) {
@@ -60,10 +65,6 @@ func loadVMConfig(instanceDir string) (*vmConfig, error) {
 	if err != nil {
 		glog.Error("Unable to retrieve state info")
 		return nil, err
-	}
-
-	if cfg.Volumes == nil {
-		cfg.Volumes = make(map[string]struct{})
 	}
 
 	return cfg, nil
@@ -85,4 +86,26 @@ func (cfg *vmConfig) save(instanceDir string) error {
 	}
 
 	return cfgFile.Close()
+}
+
+func (cfg *vmConfig) findVolume(UUID string) *volumeConfig {
+	for i := range cfg.Volumes {
+		if cfg.Volumes[i].UUID == UUID {
+			return &cfg.Volumes[i]
+		}
+	}
+	return nil
+}
+
+func (cfg *vmConfig) removeVolume(UUID string) {
+	for i := range cfg.Volumes {
+		if cfg.Volumes[i].UUID == UUID {
+			vols := cfg.Volumes
+			cfg.Volumes = vols[:i]
+			if i+1 < len(vols) {
+				cfg.Volumes = append(cfg.Volumes, vols[i+1:]...)
+			}
+			break
+		}
+	}
 }

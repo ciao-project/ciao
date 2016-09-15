@@ -23,11 +23,18 @@ import (
 )
 
 func processDetachVolume(storageDriver storage.BlockDriver, monitorCh chan interface{}, cfg *vmConfig, instance, instanceDir, volumeUUID string, conn serverConn) *detachVolumeError {
-	if _, found := cfg.Volumes[volumeUUID]; !found {
+	vol := cfg.findVolume(volumeUUID)
+	if vol == nil {
 		detachErr := &detachVolumeError{nil, payloads.DetachVolumeNotAttached}
 		glog.Errorf("%s not attached to attach instance %s [%s]",
 			volumeUUID, instance, string(detachErr.code))
 		return detachErr
+	}
+
+	if cfg.Image == "" && vol.Bootable {
+		glog.Errorf("Unable to detach volume %s from instance %s. Volume is bootable!", volumeUUID, instance)
+		attachErr := &detachVolumeError{nil, payloads.DetachVolumeDetachFailure}
+		return attachErr
 	}
 
 	if monitorCh != nil {
@@ -51,12 +58,13 @@ func processDetachVolume(storageDriver storage.BlockDriver, monitorCh chan inter
 	// but we might be able to get good error info out of rbd.
 	_ = storageDriver.UnmapVolumeFromNode(volumeUUID)
 
-	delete(cfg.Volumes, volumeUUID)
+	oldVols := cfg.Volumes
+	cfg.removeVolume(volumeUUID)
 
 	err := cfg.save(instanceDir)
 	if err != nil {
 		// TODO: What should I do here.  Try to re-attach?
-		cfg.Volumes[volumeUUID] = struct{}{}
+		cfg.Volumes = oldVols
 		detachErr := &detachVolumeError{err, payloads.DetachVolumeDetachFailure}
 		glog.Errorf("Unable to persist instance %s state [%s]: %v",
 			instance, string(detachErr.code), err)

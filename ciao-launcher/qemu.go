@@ -206,6 +206,9 @@ func createCloudInitISO(instanceDir, isoPath string, cfg *vmConfig, userData, me
 }
 
 func (q *qemuV) createRootfs() error {
+	if q.cfg.Image == "" {
+		return nil
+	}
 	vmImage := path.Join(q.instanceDir, "image.qcow2")
 	backingImage := path.Join(imagesPath, q.cfg.Image)
 	glog.Infof("Creating qcow image from %s backing %s", vmImage, backingImage)
@@ -421,15 +424,15 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 
 func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
 	networkParams []string, cephID string) []string {
-	vmImage := path.Join(instanceDir, "image.qcow2")
-	qmpSocket := path.Join(instanceDir, "socket")
-	fileParam := fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage)
-	isoParam := fmt.Sprintf("file=%s,if=virtio,media=cdrom", isoPath)
-	qmpParam := fmt.Sprintf("unix:%s,server,nowait", qmpSocket)
-
 	params := make([]string, 0, 32)
-	params = append(params, "-drive", fileParam)
-	params = append(params, "-drive", isoParam)
+
+	addr := 4
+	if cfg.Image != "" {
+		vmImage := path.Join(instanceDir, "image.qcow2")
+		fileParam := fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage)
+		params = append(params, "-drive", fileParam)
+		addr++
+	}
 
 	// I know this is nasty but we have to specify a bus and address otherwise qemu
 	// hangs on startup.  I can't find a way to get qemu to pre-allocate the address.
@@ -438,24 +441,29 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
 	// adds, i.e., the root address is assigned a slot of 3, with the current qemu
 	// parameters.
 
-	addr := 5
-	for v := range cfg.Volumes {
-		blockdevID := fmt.Sprintf("drive_%s", v)
+	for _, v := range cfg.Volumes {
+		blockdevID := fmt.Sprintf("drive_%s", v.UUID)
 		volDriveStr := fmt.Sprintf("file=rbd:rbd/%s:id=%s,if=none,id=%s,format=raw",
-			v, cephID, blockdevID)
+			v.UUID, cephID, blockdevID)
 		params = append(params, "-drive", volDriveStr)
 		volDeviceStr :=
 			fmt.Sprintf("virtio-blk-pci,scsi=off,bus=pci.0,addr=0x%x,id=device_%s,drive=%s",
-				addr, v, blockdevID)
+				addr, v.UUID, blockdevID)
 		params = append(params, "-device", volDeviceStr)
 		addr++
 	}
+
+	isoParam := fmt.Sprintf("file=%s,if=virtio,media=cdrom", isoPath)
+	params = append(params, "-drive", isoParam)
 
 	params = append(params, networkParams...)
 
 	params = append(params, "-enable-kvm")
 	params = append(params, "-cpu", "host")
 	params = append(params, "-daemonize")
+
+	qmpSocket := path.Join(instanceDir, "socket")
+	qmpParam := fmt.Sprintf("unix:%s,server,nowait", qmpSocket)
 	params = append(params, "-qmp", qmpParam)
 
 	if cfg.Mem > 0 {
@@ -646,7 +654,10 @@ func (q *qemuV) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
 	return qmpChannel
 }
 
-func computeInstanceDiskspace(instanceDir string) int {
+func (q *qemuV) computeInstanceDiskspace(instanceDir string) int {
+	if q.cfg.Image == "" {
+		return 0
+	}
 	vmImage := path.Join(instanceDir, "image.qcow2")
 	fi, err := os.Stat(vmImage)
 	if err != nil {
@@ -656,7 +667,7 @@ func computeInstanceDiskspace(instanceDir string) int {
 }
 
 func (q *qemuV) stats() (disk, memory, cpu int) {
-	disk = computeInstanceDiskspace(q.instanceDir)
+	disk = q.computeInstanceDiskspace(q.instanceDir)
 	memory = -1
 	cpu = -1
 

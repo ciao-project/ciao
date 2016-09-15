@@ -168,6 +168,18 @@ func (ts *testServer) ErrorNotify(uuid string, err ssntp.Error, frame *ssntp.Fra
 		if err == nil {
 			e = &payload
 		}
+	case ssntp.AttachVolumeFailure:
+		payload := payloads.ErrorAttachVolumeFailure{}
+		err := yaml.Unmarshal(frame.Payload, &payload)
+		if err == nil {
+			e = &payload
+		}
+	case ssntp.DetachVolumeFailure:
+		payload := payloads.ErrorDetachVolumeFailure{}
+		err := yaml.Unmarshal(frame.Payload, &payload)
+		if err == nil {
+			e = &payload
+		}
 	}
 
 	c.events = append(c.events, e)

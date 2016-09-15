@@ -308,8 +308,8 @@ func (id *instanceData) instanceCommand(cmd interface{}) bool {
 
 func (id *instanceData) getVolumes() []string {
 	volumes := make([]string, 0, len(id.cfg.Volumes))
-	for k := range id.cfg.Volumes {
-		volumes = append(volumes, k)
+	for _, v := range id.cfg.Volumes {
+		volumes = append(volumes, v.UUID)
 	}
 	return volumes
 }
@@ -317,14 +317,14 @@ func (id *instanceData) getVolumes() []string {
 func (id *instanceData) unmapVolumes() {
 	glog.Infof("Unmapping volumes for %s", id.instance)
 
-	for k := range id.cfg.Volumes {
+	for _, v := range id.cfg.Volumes {
 
 		// UnmapVolumeFromNode might fail if it's mapped to multiple
 		// instances on the same node.  We don't treat this as an
 		// error for now.
 
-		if err := id.storageDriver.UnmapVolumeFromNode(k); err == nil {
-			glog.Infof("Unmapping volume %s", k)
+		if err := id.storageDriver.UnmapVolumeFromNode(v.UUID); err == nil {
+			glog.Infof("Unmapping volume %s", v.UUID)
 		}
 	}
 }

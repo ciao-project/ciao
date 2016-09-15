@@ -73,6 +73,11 @@ func printCloudinit(data *payloads.Start) {
 		glog.Infof("%8s:     %v", start.RequestedResources[i].Type,
 			start.RequestedResources[i].Value)
 	}
+
+	if start.Storage.ID != "" {
+		glog.Info("Volumes:")
+		glog.Infof("  %s Bootable=%t", start.Storage.ID, start.Storage.Bootable)
+	}
 }
 
 func computeSSHPort(networkNode bool, vnicIP string) int {
@@ -162,9 +167,12 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	net := &start.Networking
 	vnicIP := strings.TrimSpace(net.PrivateIP)
 	sshPort := computeSSHPort(networkNode, vnicIP)
-	volumes := make(map[string]struct{})
+	var volumes []volumeConfig
 	if start.Storage.ID != "" {
-		volumes[start.Storage.ID] = struct{}{}
+		volumes = append(volumes, volumeConfig{
+			UUID:     start.Storage.ID,
+			Bootable: start.Storage.Bootable,
+		})
 	}
 
 	return &vmConfig{Cpus: cpus,

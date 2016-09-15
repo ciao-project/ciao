@@ -154,6 +154,7 @@ func TestGenerateQEMULaunchParams(t *testing.T) {
 
 	params := genQEMUParams(nil)
 	cfg.Legacy = true
+	cfg.Image = "some_image"
 	genParams := generateQEMULaunchParams(&cfg, "/var/lib/ciao/instance/1/seed.iso",
 		"/var/lib/ciao/instance/1", nil, "ciao")
 	if !reflect.DeepEqual(params, genParams) {
