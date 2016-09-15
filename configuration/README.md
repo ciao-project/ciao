@@ -7,9 +7,8 @@ cluster configuration data and use it to configure themselves.
 ## Overview
 
 Ciao's cluster configuration is stored and fetched from a cluster specific storage backend.
-Supported backends are plain local file, `etcd[WIP]` and `ZooKeeper[WIP]`.
 The `ciao-scheduler` is the only component in a ciao cluster that interacts with the configuration
-backend. As a consequence it needs to be given a configuration backend URI through its
+backend. As a consequence it needs to be given a configuration URI through its
 `-configuration-uri` command line option. The default value for it is `file:///etc/ciao/configuration.yaml`
 
 The scheduler initially fetches the configuration data by calling `configuration.ExtractBlob()` but
@@ -32,13 +31,11 @@ to all ciao SSNTP clients by multicasting a CONFIGURE command to all of them.
 
 The ciao configuration package only implements the logic for fetching, storing, validating
 and manipulating configuration data. It does not implement configuration physical storage but
-instead relies on configuration storage backend drivers.
+instead relies on the configuration storage backend.
 
-Currently supported configuration storage backends are:
+Currently supported configuration storage backends is:
 
 * Local file: The local file storage URI should follow the `file://[absolute path to the configuration file]` scheme.
-* Etcd [WIP]
-* ZooKeeper [WIP]
 
 ## Configuration data
 
@@ -47,7 +44,6 @@ The ciao configuration data follows a [YAML scheme] (https://github.com/01org/ci
 ```
 configure:
   scheduler:
-    storage_type: string [file, etcd, zookeeper]
     storage_uri: string [The storage URI path]
   storage:
     secret_path: string [Path to the keyring file]
@@ -100,7 +96,6 @@ configure:
 ```
 configure:
   scheduler:
-    storage_type: file
     storage_uri: /etc/ciao/configuration.yaml
   storage:
     secret_path: /etc/ceph/ceph.client.ciao.keyring

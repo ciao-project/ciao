@@ -58,10 +58,6 @@ func TestConfigureUnmarshal(t *testing.T) {
 		t.Errorf("Wrong launcher ceph id %v", cfg.Configure.Storage.CephID)
 	}
 
-	if cfg.Configure.Scheduler.ConfigStorageType != Filesystem {
-		t.Errorf("Wrong scheduler storage type [%s]", cfg.Configure.Scheduler.ConfigStorageType)
-	}
-
 	p, _ := strconv.Atoi(testutil.ComputePort)
 	if cfg.Configure.Controller.ComputePort != p {
 		t.Errorf("Wrong controller compute port [%d]", cfg.Configure.Controller.ComputePort)
@@ -92,7 +88,6 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Storage.SecretPath = testutil.KeyPath
 	cfg.Configure.Storage.CephID = testutil.ManagementID
 
-	cfg.Configure.Scheduler.ConfigStorageType = Filesystem
 	cfg.Configure.Scheduler.ConfigStorageURI = testutil.StorageURI
 
 	y, err := yaml.Marshal(&cfg)
@@ -111,7 +106,6 @@ func TestConfigureStorageTypeString(t *testing.T) {
 		expected string
 	}{
 		{Filesystem, Filesystem.String()},
-		{Etcd, Etcd.String()},
 	}
 	for _, test := range stringTests {
 		obj := test.s

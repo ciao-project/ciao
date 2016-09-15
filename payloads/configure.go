@@ -35,9 +35,6 @@ const (
 	// Filesystem defines the local filesystem backend storage type for the
 	// configuration data.
 	Filesystem StorageType = "file"
-
-	// Etcd defines the etcd backend storage type for the configuration data.
-	Etcd StorageType = "etcd"
 )
 
 func (s ServiceType) String() string {
@@ -55,8 +52,6 @@ func (s StorageType) String() string {
 	switch s {
 	case Filesystem:
 		return "file"
-	case Etcd:
-		return "etcd"
 	}
 
 	return ""
@@ -65,8 +60,7 @@ func (s StorageType) String() string {
 // ConfigureScheduler contains the unmarshalled configurations for the
 // scheduler service.
 type ConfigureScheduler struct {
-	ConfigStorageType StorageType `yaml:"storage_type"`
-	ConfigStorageURI  string      `yaml:"storage_uri"`
+	ConfigStorageURI string `yaml:"storage_uri"`
 }
 
 // ConfigureController contains the unmarshalled configurations for the
@@ -121,7 +115,6 @@ type Configure struct {
 
 // InitDefaults initializes default vaulues for Configure structure.
 func (conf *Configure) InitDefaults() {
-	conf.Configure.Scheduler.ConfigStorageType = Filesystem
 	conf.Configure.Controller.ComputePort = 8774
 	conf.Configure.ImageService.Type = Glance
 	conf.Configure.IdentityService.Type = Keystone

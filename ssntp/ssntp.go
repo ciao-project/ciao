@@ -855,8 +855,6 @@ type Config struct {
 
 	// ConfigURI contains the location of the configuration that the
 	// SSNTP server will fetch to setup the cluster.
-	// Configuration driver (e.g: 'file' or 'etcd') will be determinated
-	// from the URI scheme.
 	ConfigURI string
 }
 

@@ -50,7 +50,6 @@ func validMinConf(conf *payloads.Configure) bool {
 		conf.Configure.IdentityService.URL != "")
 }
 
-// TODO: add etcd support related scheme(s)
 func discoverDriver(uriStr string) (storageType payloads.StorageType, err error) {
 	uri, err := url.Parse(uriStr)
 	if err != nil {
@@ -102,8 +101,6 @@ func ExtractBlob(uri string) (blob []byte, err error) {
 	switch driverType {
 	case payloads.Filesystem:
 		d = &file{}
-	case payloads.Etcd:
-		d = &etcd{}
 	}
 	conf, err := d.fetchConfiguration(uri)
 	if err != nil {
