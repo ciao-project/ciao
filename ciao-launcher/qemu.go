@@ -654,7 +654,10 @@ func (q *qemuV) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
 	return qmpChannel
 }
 
-func computeInstanceDiskspace(instanceDir string) int {
+func (q *qemuV) computeInstanceDiskspace(instanceDir string) int {
+	if q.cfg.Image == "" {
+		return 0
+	}
 	vmImage := path.Join(instanceDir, "image.qcow2")
 	fi, err := os.Stat(vmImage)
 	if err != nil {
@@ -664,7 +667,7 @@ func computeInstanceDiskspace(instanceDir string) int {
 }
 
 func (q *qemuV) stats() (disk, memory, cpu int) {
-	disk = computeInstanceDiskspace(q.instanceDir)
+	disk = q.computeInstanceDiskspace(q.instanceDir)
 	memory = -1
 	cpu = -1
 
