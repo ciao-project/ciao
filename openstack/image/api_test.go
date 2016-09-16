@@ -17,6 +17,7 @@ package image
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -68,7 +69,7 @@ func myHostname() string {
 
 type testImageService struct{}
 
-func (is testImageService) CreateImage(req CreateImageRequest) (CreateImageResponse, error) {
+func (is testImageService) CreateImage(req CreateImageRequest) (DefaultResponse, error) {
 	format := Bare
 	name := "Ubuntu"
 	createdAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
@@ -77,7 +78,7 @@ func (is testImageService) CreateImage(req CreateImageRequest) (CreateImageRespo
 	minRAM := 0
 	owner := "bab7d5c60cd041a0a36f7c4b6e1dd978"
 
-	return CreateImageResponse{
+	return DefaultResponse{
 		Status:          Queued,
 		ContainerFormat: &format,
 		CreatedAt:       createdAt,
@@ -98,7 +99,7 @@ func (is testImageService) CreateImage(req CreateImageRequest) (CreateImageRespo
 	}, nil
 }
 
-func (is testImageService) ListImages() ([]CreateImageResponse, error) {
+func (is testImageService) ListImages() ([]DefaultResponse, error) {
 	format := Bare
 	name := "Ubuntu"
 	createdAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
@@ -107,7 +108,7 @@ func (is testImageService) ListImages() ([]CreateImageResponse, error) {
 	minRAM := 0
 	owner := "bab7d5c60cd041a0a36f7c4b6e1dd978"
 
-	image := CreateImageResponse{
+	image := DefaultResponse{
 		Status:          Queued,
 		ContainerFormat: &format,
 		CreatedAt:       createdAt,
@@ -127,10 +128,18 @@ func (is testImageService) ListImages() ([]CreateImageResponse, error) {
 		Name:            &name,
 	}
 
-	var images []CreateImageResponse
+	var images []DefaultResponse
 	images = append(images, image)
 
 	return images, nil
+}
+
+func (is testImageService) GetImage(string) (DefaultResponse, error) {
+	return DefaultResponse{}, nil
+}
+
+func (is testImageService) UploadImage(string, io.Reader) (UploadImageResponse, error) {
+	return UploadImageResponse{}, nil
 }
 
 func TestRoutes(t *testing.T) {
