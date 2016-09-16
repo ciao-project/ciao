@@ -49,12 +49,12 @@ func (l logger) Warningf(format string, args ...interface{}) {
 	fmt.Printf("WARNING: Server example: "+format, args...)
 }
 
-func (server *ssntpEchoServer) ConnectNotify(uuid string, role Role) {
+func (server *ssntpEchoServer) ConnectNotify(uuid string, role ssntp.Role) {
 	server.nConnections++
 	fmt.Printf("%s: %s connected (role 0x%x, current connections %d)\n", server.name, uuid, role, server.nConnections)
 }
 
-func (server *ssntpEchoServer) DisconnectNotify(uuid string, role Role) {
+func (server *ssntpEchoServer) DisconnectNotify(uuid string, role ssntp.Role) {
 	server.nConnections--
 	fmt.Printf("%s: %s disconnected (role 0x%x, current connections %d)\n", server.name, uuid, role, server.nConnections)
 }
@@ -82,7 +82,7 @@ func (server *ssntpEchoServer) ErrorNotify(uuid string, error ssntp.Error, frame
 
 func main() {
 	var cert = flag.String("cert", "/etc/pki/ciao/client.pem", "Client certificate")
-	var CAcert = flag.String("cacert", "/etc/pki/ciao/ciao_ca_cert.crt", "CA certificate")
+	var CAcert = flag.String("cacert", "/etc/pki/ciao/ca_cert.crt", "CA certificate")
 	var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
 	var config ssntp.Config
 
