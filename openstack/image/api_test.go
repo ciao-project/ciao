@@ -60,6 +60,14 @@ var tests = []test{
 		http.StatusOK,
 		`{"images":[{"status":"queued","container_format":"bare","min_ram":0,"updated_at":"2015-11-29T22:21:42Z","owner":"bab7d5c60cd041a0a36f7c4b6e1dd978","min_disk":0,"tags":[],"locations":[],"visibility":"private","id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","size":null,"virtual_size":null,"name":"Ubuntu","checksum":null,"created_at":"2015-11-29T22:21:42Z","disk_format":"raw","properties":null,"protected":false,"self":"/v2/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb","file":"/v2/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb/file","schema":"/v2/schemas/image"}],"schema":"/v2/schemas/images","first":"/v2/images"}`,
 	},
+	{
+		"GET",
+		"/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		getImage,
+		"",
+		http.StatusOK,
+		`{"status":"active","container_format":"bare","min_ram":0,"updated_at":"2014-05-05T17:15:11Z","owner":"5ef70662f8b34079a6eddb8da9d75fe8","min_disk":0,"tags":[],"locations":[],"visibility":"public","id":"1bea47ed-f6a9-463b-b423-14b9cca9ad27","size":13167616,"virtual_size":null,"name":"cirros-0.3.2-x86_64-disk","checksum":"64d7c1cd2b6f60c92c14662941cb7913","created_at":"2014-05-05T17:15:10Z","disk_format":"qcow2","properties":null,"protected":false,"self":"/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27","file":"/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27/file","schema":"/v2/schemas/image"}`,
+	},
 }
 
 func myHostname() string {
@@ -134,8 +142,39 @@ func (is testImageService) ListImages() ([]DefaultResponse, error) {
 	return images, nil
 }
 
-func (is testImageService) GetImage(string) (DefaultResponse, error) {
-	return DefaultResponse{}, nil
+func (is testImageService) GetImage(ID string) (DefaultResponse, error) {
+	imageID := "1bea47ed-f6a9-463b-b423-14b9cca9ad27"
+	format := Bare
+	name := "cirros-0.3.2-x86_64-disk"
+	createdAt, _ := time.Parse(time.RFC3339, "2014-05-05T17:15:10Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2014-05-05T17:15:11Z")
+	minDisk := 0
+	minRAM := 0
+	owner := "5ef70662f8b34079a6eddb8da9d75fe8"
+	checksum := "64d7c1cd2b6f60c92c14662941cb7913"
+	size := 13167616
+
+	return DefaultResponse{
+		Status:          Active,
+		ContainerFormat: &format,
+		CreatedAt:       createdAt,
+		Tags:            make([]string, 0),
+		DiskFormat:      QCow,
+		Visibility:      Public,
+		UpdatedAt:       &updatedAt,
+		Locations:       make([]string, 0),
+		Self:            fmt.Sprintf("/v2/images/%s", imageID),
+		MinDisk:         &minDisk,
+		Protected:       false,
+		CheckSum:        &checksum,
+		ID:              imageID,
+		File:            fmt.Sprintf("/v2/images/%s/file", imageID),
+		Owner:           &owner,
+		MinRAM:          &minRAM,
+		Schema:          "/v2/schemas/image",
+		Name:            &name,
+		Size:            &size,
+	}, nil
 }
 
 func (is testImageService) UploadImage(string, io.Reader) (UploadImageResponse, error) {
