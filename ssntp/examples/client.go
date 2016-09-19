@@ -119,7 +119,7 @@ func clientThread(config *ssntp.Config, n int, threads int, nFrames int, delay i
 func main() {
 	var serverURL = flag.String("url", "localhost", "Server URL")
 	var cert = flag.String("cert", "/etc/pki/ciao/client.pem", "Client certificate")
-	var CAcert = flag.String("cacert", "/etc/pki/ciao/ciao_ca_cert.crt", "CA certificate")
+	var CAcert = flag.String("cacert", "/etc/pki/ciao/ca_cert.crt", "CA certificate")
 	var nFrames = flag.Int("frames", 10, "Number of frames to send")
 	var delay = flag.Int("delay", 500, "Delay(ms) between frames")
 	var threads = flag.Int("threads", 1, "Number of client threads")
