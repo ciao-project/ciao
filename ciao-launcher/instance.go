@@ -409,8 +409,7 @@ func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh ch
 	ac *agentClient, ovsCh chan<- interface{}) chan<- interface{} {
 
 	storageDriver := storage.CephDriver{
-		SecretPath: secretPath,
-		ID:         cephID,
+		ID: cephID,
 	}
 
 	var vm virtualizer

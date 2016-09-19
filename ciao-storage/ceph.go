@@ -27,9 +27,6 @@ import (
 
 // CephDriver maintains context for the ceph driver interface.
 type CephDriver struct {
-	// SecretPath is the full path to the cephx keyring file.
-	SecretPath string
-
 	// ID is the cephx user ID to use
 	ID string
 }
@@ -47,10 +44,10 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 	imageFeatures := "--image-feature layering"
 
 	if imagePath != nil {
-		cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, imageFeatures, "import", *imagePath, ID)
+		cmd = exec.Command("rbd", "--id", d.ID, imageFeatures, "import", *imagePath, ID)
 	} else {
 		// create an empty volume
-		cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, imageFeatures, "create", "--size", strconv.Itoa(size)+"G", ID)
+		cmd = exec.Command("rbd", "--id", d.ID, imageFeatures, "create", "--size", strconv.Itoa(size)+"G", ID)
 	}
 
 	err := cmd.Run()
@@ -63,16 +60,12 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 
 // DeleteBlockDevice will remove a rbd image from the ceph cluster.
 func (d CephDriver) DeleteBlockDevice(volumeUUID string) error {
-	cmd := exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, "rm", volumeUUID)
+	cmd := exec.Command("rbd", "--id", d.ID, "rm", volumeUUID)
 	return cmd.Run()
 }
 
 func (d CephDriver) getCredentials() []string {
 	args := make([]string, 0, 8)
-	if d.SecretPath != "" {
-		args = append(args, "--keyring", d.SecretPath)
-	}
-
 	if d.ID != "" {
 		args = append(args, "--id", d.ID)
 	}

@@ -46,7 +46,6 @@ configure:
   scheduler:
     storage_uri: string [The storage URI path]
   storage:
-    secret_path: string [Path to the keyring file]
     ceph_id: string [Name used for the Ceph identifier]
   controller:
     compute_port: int
@@ -98,7 +97,6 @@ configure:
   scheduler:
     storage_uri: /etc/ciao/configuration.yaml
   storage:
-    secret_path: /etc/ceph/ceph.client.ciao.keyring
     ceph_id: ciao
   controller:
     compute_port: 8774

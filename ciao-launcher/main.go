@@ -66,7 +66,6 @@ var networking bool
 var hardReset bool
 var diskLimit bool
 var memLimit bool
-var secretPath string
 var cephID string
 var simulate bool
 var maxInstances = int(math.MaxInt32)
@@ -77,7 +76,6 @@ func init() {
 	flag.BoolVar(&networking, "network", true, "Enable networking")
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
-	flag.StringVar(&secretPath, "ceph_keyring", "", "path to ceph client keyring")
 	flag.StringVar(&cephID, "ceph_id", "", "ceph client id")
 }
 
@@ -384,9 +382,6 @@ func loadClusterConfig(conn serverConn) error {
 	mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
 	diskLimit = clusterConfig.Configure.Launcher.DiskLimit
 	memLimit = clusterConfig.Configure.Launcher.MemoryLimit
-	if secretPath == "" {
-		secretPath = clusterConfig.Configure.Storage.SecretPath
-	}
 	if cephID == "" {
 		cephID = clusterConfig.Configure.Storage.CephID
 	}
@@ -400,7 +395,6 @@ func printClusterConfig() {
 	glog.Infof("Management Network:   %v", mgmtNet)
 	glog.Infof("Disk Limit:           %v", diskLimit)
 	glog.Infof("Memory Limit:         %v", memLimit)
-	glog.Infof("Secret Path:          %v", secretPath)
 	glog.Infof("Ceph ID:              %v", cephID)
 }
 

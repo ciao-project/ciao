@@ -67,7 +67,6 @@ var logDir = "/var/lib/ciao/logs/controller"
 
 var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
 
-var keyringPath = flag.String("ceph_keyring", "", "path to ceph client keyring")
 var cephID = flag.String("ceph_id", "", "ceph client id")
 
 func init() {
@@ -137,9 +136,6 @@ func main() {
 	identityURL = clusterConfig.Configure.IdentityService.URL
 	serviceUser = clusterConfig.Configure.Controller.IdentityUser
 	servicePassword = clusterConfig.Configure.Controller.IdentityPassword
-	if *keyringPath == "" {
-		*keyringPath = clusterConfig.Configure.Storage.SecretPath
-	}
 	if *cephID == "" {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
@@ -175,8 +171,7 @@ func main() {
 
 	ctl.BlockDriver = func() storage.BlockDriver {
 		driver := storage.CephDriver{
-			SecretPath: *keyringPath,
-			ID:         *cephID,
+			ID: *cephID,
 		}
 		return driver
 	}()
