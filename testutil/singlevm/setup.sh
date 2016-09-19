@@ -378,4 +378,12 @@ then
 fi
 
 "$ciao_gobin"/ciao-cli instance list
-cleanup
+"$ciao_gobin"/ciao-cli instance delete --all
+echo "Your ciao development environment has been initialised."
+echo "To get started run:"
+echo ""
+echo ". ~/local/demo.sh"
+echo ""
+echo "When you're finished run the following command to cleanup"
+echo ""
+echo "./cleanup.sh"
