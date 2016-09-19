@@ -97,6 +97,11 @@ UUIDs.
 3. Connection is successfully established. Both ends of the connection
    can now asynchronously send SSNTP frames.
 
+## SSNTP certificates ##
+
+SSNTP uses ciao-cert to generate the certificates it needs to communicate. They
+can be generated with instructions found in [ciao-cert] (https://github.com/01org/ciao/tree/master/ciao-cert).
+
 ## SSNTP frames ##
 
 Each SSNTP frame is composed of a fixed length, 8 bytes long header and
