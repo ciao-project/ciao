@@ -22,7 +22,6 @@ cleanup()
 	"$ciao_gobin"/ciao-cli instance delete --all
 	#Also kill the CNCI (as there is no other way to delete it today)
 	sudo killall qemu-system-x86_64
-	sudo rm -rf /var/lib/ciao/instances
 	sudo ip link del eth10
 	sudo pkill -F /tmp/dnsmasq.macvlan0.pid
 	sudo mv $hosts_file_backup /etc/hosts
@@ -262,7 +261,8 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-echo "export CIAO_CONTROLLER=""$ciao_host" > "$ciao_env"
+echo "export HOSTS_FILE_BACKUP=""$hosts_file_backup" > "$ciao_env"
+echo "export CIAO_CONTROLLER=""$ciao_host" >> "$ciao_env"
 echo "export CIAO_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
 sleep 5
@@ -378,4 +378,12 @@ then
 fi
 
 "$ciao_gobin"/ciao-cli instance list
-cleanup
+"$ciao_gobin"/ciao-cli instance delete --all
+echo "Your ciao development environment has been initialised."
+echo "To get started run:"
+echo ""
+echo ". ~/local/demo.sh"
+echo ""
+echo "When you're finished run the following command to cleanup"
+echo ""
+echo "./cleanup.sh"
