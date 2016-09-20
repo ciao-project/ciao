@@ -200,8 +200,7 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.Header.Set("Accept", "application/json")
 	}
 
-	warningf("Skipping TLS verification\n")
-	tlsConfig := &tls.Config{InsecureSkipVerify: true}
+	tlsConfig := &tls.Config{}
 
 	if caCertPool != nil {
 		tlsConfig.RootCAs = caCertPool
