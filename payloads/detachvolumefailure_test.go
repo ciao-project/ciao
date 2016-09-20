@@ -74,6 +74,7 @@ func TestDetachVolmeFailureString(t *testing.T) {
 		{DetachVolumeNotAttached, "Volume not attached"},
 		{DetachVolumeStateFailure, "State failure"},
 		{DetachVolumeInstanceFailure, "Instance failure"},
+		{DetachVolumeNotSupported, "Not Supported"},
 	}
 	error := ErrorDetachVolumeFailure{
 		InstanceUUID: testutil.InstanceUUID,

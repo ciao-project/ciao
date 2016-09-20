@@ -24,6 +24,13 @@ import (
 
 func processAttachVolume(storageDriver storage.BlockDriver, monitorCh chan interface{}, cfg *vmConfig,
 	instance, instanceDir, volumeUUID string, conn serverConn) *attachVolumeError {
+
+	if cfg.Container {
+		attachErr := &attachVolumeError{nil, payloads.AttachVolumeNotSupported}
+		glog.Errorf("Cannot attach a volume to a container [%s]", string(attachErr.code))
+		return attachErr
+	}
+
 	if cfg.findVolume(volumeUUID) != nil {
 		attachErr := &attachVolumeError{nil, payloads.AttachVolumeAlreadyAttached}
 		glog.Errorf("%s is already attached to attach instance %s [%s]",

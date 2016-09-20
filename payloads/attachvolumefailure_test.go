@@ -74,6 +74,7 @@ func TestAttachVolmeFailureString(t *testing.T) {
 		{AttachVolumeAlreadyAttached, "Volume already attached"},
 		{AttachVolumeStateFailure, "State failure"},
 		{AttachVolumeInstanceFailure, "Instance failure"},
+		{AttachVolumeNotSupported, "Not Supported"},
 	}
 	error := ErrorAttachVolumeFailure{
 		InstanceUUID: testutil.InstanceUUID,

@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"path"
@@ -269,6 +270,48 @@ func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
 	return nil
 }
 
+func dockerCommandLoop(cli *client.Client, dockerChannel chan interface{}, instance, dockerID string) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	lostContainerCh := make(chan struct{})
+	go func() {
+		defer close(lostContainerCh)
+		ret, err := cli.ContainerWait(ctx, dockerID)
+		glog.Infof("Instance %s:%s exitted with code %d err %v",
+			instance, dockerID, ret, err)
+	}()
+
+DONE:
+	for {
+		select {
+		case _, _ = <-lostContainerCh:
+			break DONE
+		case cmd, ok := <-dockerChannel:
+			if !ok {
+				glog.Info("Cancelling Wait")
+				cancelFunc()
+				_ = <-lostContainerCh
+				break DONE
+			}
+			switch cmd := cmd.(type) {
+			case virtualizerStopCmd:
+				err := cli.ContainerKill(context.Background(), dockerID, "KILL")
+				if err != nil {
+					glog.Errorf("Unable to stop instance %s:%s", instance, dockerID)
+				}
+			case virtualizerAttachCmd:
+				err := fmt.Errorf("Live Attach of volumes not supported for containers")
+				cmd.responseCh <- err
+			case virtualizerDetachCmd:
+				err := fmt.Errorf("Live Detach of volumes not supported for containers")
+				cmd.responseCh <- err
+			}
+		}
+	}
+	cancelFunc()
+
+	glog.Infof("Docker Instance %s:%s shut down", instance, dockerID)
+}
+
 func dockerConnect(dockerChannel chan interface{}, instance, dockerID string, closedCh chan struct{},
 	connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) {
 
@@ -300,40 +343,7 @@ func dockerConnect(dockerChannel chan interface{}, instance, dockerID string, cl
 
 	close(connectedCh)
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	lostContainerCh := make(chan struct{})
-	go func() {
-		defer close(lostContainerCh)
-		if err != nil {
-			return
-		}
-		ret, err := cli.ContainerWait(ctx, dockerID)
-		glog.Infof("Instance %s:%s exitted with code %d err %v",
-			instance, dockerID, ret, err)
-	}()
-
-DONE:
-	for {
-		select {
-		case _, _ = <-lostContainerCh:
-			break DONE
-		case cmd, ok := <-dockerChannel:
-			if !ok {
-				glog.Info("Cancelling Wait")
-				cancelFunc()
-				_ = <-lostContainerCh
-				break DONE
-			} else if _, isStop := cmd.(virtualizerStopCmd); isStop {
-				err := cli.ContainerKill(context.Background(), dockerID, "KILL")
-				if err != nil {
-					glog.Errorf("Unable to stop instance %s:%s", instance, dockerID)
-				}
-			}
-		}
-	}
-	cancelFunc()
-
-	glog.Infof("Docker Instance %s:%s shut down", instance, dockerID)
+	dockerCommandLoop(cli, dockerChannel, instance, dockerID)
 }
 
 func (d *docker) monitorVM(closedCh chan struct{}, connectedCh chan struct{},

@@ -51,6 +51,10 @@ const (
 	// be detached as the instance has failed to start and is being
 	// deleted
 	DetachVolumeInstanceFailure = "instance_failure"
+
+	// DetachVolumeNotSupported indicates that the detach volume command
+	// is not supported for the given workload type, e.g., a container.
+	DetachVolumeNotSupported = "not_supported"
 )
 
 // ErrorDetachVolumeFailure represents the unmarshalled version of the contents of a
@@ -84,6 +88,8 @@ func (r DetachVolumeFailureReason) String() string {
 		return "State failure"
 	case DetachVolumeInstanceFailure:
 		return "Instance failure"
+	case DetachVolumeNotSupported:
+		return "Not Supported"
 	}
 
 	return ""
