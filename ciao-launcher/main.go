@@ -246,26 +246,32 @@ func (client *agentClient) installLauncherDeps(doneCh chan struct{}) {
 		ospLogger := osprepare.OSPGlogLogger{}
 		osprepare.Bootstrap(ctx, ospLogger)
 
+		launcherDeps := osprepare.NewPackageRequirements()
+
 		role := client.conn.Role()
 		if role.IsNetAgent() {
-			osprepare.InstallDeps(ctx, launcherNetNodeDeps, ospLogger)
+			launcherDeps.Append(launcherNetNodeDeps)
 		}
 		if role.IsAgent() {
-			osprepare.InstallDeps(ctx, launcherComputeNodeDeps, ospLogger)
+			launcherDeps.Append(launcherComputeNodeDeps)
 		}
+
+		osprepare.InstallDeps(ctx, launcherDeps, ospLogger)
 
 		ch <- nil
 	}()
 
 	select {
 	case <-doneCh:
-		glog.Info("Received terminating signal.  Installation of launcher dependencies cancelled.")
+		glog.Info("Received terminating signal.  Cancelling installation of launcher dependencies.")
+		cancelFunc()
+		<-ch
 	case err := <-ch:
 		if err != nil {
 			glog.Errorf("Failed to install launcher dependencies: %v\n", err)
 		}
+		cancelFunc()
 	}
-	cancelFunc()
 }
 
 func insCmdChannel(instance string, ovsCh chan<- interface{}) chan<- interface{} {
