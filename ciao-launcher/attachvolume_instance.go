@@ -73,7 +73,8 @@ func processAttachVolume(storageDriver storage.BlockDriver, monitorCh chan inter
 
 		err = <-responseCh
 		if err != nil {
-			glog.Errorf("Unable to attach volume %s to instance %s", volumeUUID, instance)
+			glog.Errorf("Unable to attach volume %s to instance %s: %v",
+				volumeUUID, instance, err)
 			_ = storageDriver.UnmapVolumeFromNode(devName)
 			attachErr := &attachVolumeError{err, payloads.AttachVolumeAttachFailure}
 			return attachErr
