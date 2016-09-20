@@ -162,6 +162,15 @@ func init() {
 	flag.BoolVar(&verbose, "v", false, "Output package names under test if true")
 	flag.IntVar(&timeout, "timeout", 0, "Time in minutes after which a package's unit tests should time out.  0 = no timeout")
 
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "usage: %s [flags] [packages]\n", os.Args[0])
+		fmt.Fprintln(os.Stderr, "[packages] is a list of go packages.  The list can include the ./... wildcard.")
+		fmt.Fprintln(os.Stderr, "If no packages are specified the unit tests will be run for the go package")
+		fmt.Fprintln(os.Stderr, "located in the current directory.")
+		fmt.Fprintln(os.Stderr, "\nSupported flags:")
+		flag.PrintDefaults()
+	}
+
 	resultRegexp = regexp.MustCompile(`--- (FAIL|PASS|SKIP): ([^\s]+) \(([^\)]+)\)`)
 	coverageRegexp = regexp.MustCompile(`^coverage: ([^\s]+)`)
 }
@@ -432,20 +441,6 @@ func runPackageTests(p *PackageTests, coverFile string, errorOutput *bytes.Buffe
 	return exitCode, err
 }
 
-func identifyPackages(packs []string) []string {
-	if len(packs) == 0 {
-		packs = []string{"."}
-	} else if len(packs) > 1 {
-		for _, p := range packs {
-			if p == "./..." {
-				packs = []string{p}
-				break
-			}
-		}
-	}
-	return packs
-}
-
 func generateHTMLReport(tests []*PackageTests) error {
 	var css string
 	if cssPath != "" {
@@ -681,9 +676,7 @@ func main() {
 
 	flag.Parse()
 
-	packs := identifyPackages(flag.Args())
-
-	packages, err := findTestFiles(packs)
+	packages, err := findTestFiles(flag.Args())
 	if err != nil {
 		log.Fatalf("Unable to discover test files: %s", err)
 	}
