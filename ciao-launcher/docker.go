@@ -143,19 +143,15 @@ func (d *docker) downloadBackingImage() error {
 	return nil
 }
 
-func (d *docker) createImage(bridge string, userData, metaData []byte) error {
+func (d *docker) createConfigs(bridge string, userData, metaData []byte) (config *container.Config, hostConfig *container.HostConfig,
+	networkConfig *network.NetworkingConfig) {
+
 	var hostname string
 	var cmd []string
-
-	cli, err := getDockerClient()
-	if err != nil {
-		return err
-	}
-
 	md := &struct {
 		Hostname string `json:"hostname"`
 	}{}
-	err = json.Unmarshal(metaData, md)
+	err := json.Unmarshal(metaData, md)
 	if err != nil {
 		glog.Info("Start command does not contain hostname. Setting to instance UUID")
 		hostname = d.cfg.Instance
@@ -179,13 +175,13 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 		}
 	}
 
-	config := &container.Config{
+	config = &container.Config{
 		Hostname: hostname,
 		Image:    d.cfg.Image,
 		Cmd:      cmd,
 	}
 
-	hostConfig := &container.HostConfig{}
+	hostConfig = &container.HostConfig{}
 
 	if d.cfg.Mem > 0 {
 		// Docker memory limit is in bytes.
@@ -198,7 +194,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 		hostConfig.CPUQuota = hostConfig.CPUPeriod * int64(d.cfg.Cpus)
 	}
 
-	networkConfig := &network.NetworkingConfig{}
+	networkConfig = &network.NetworkingConfig{}
 	if bridge != "" {
 		config.MacAddress = d.cfg.VnicMAC
 		hostConfig.NetworkMode = container.NetworkMode(bridge)
@@ -210,6 +206,15 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 			},
 		}
 	}
+}
+
+func (d *docker) createImage(bridge string, userData, metaData []byte) error {
+	cli, err := getDockerClient()
+	if err != nil {
+		return err
+	}
+
+	config, hostConfig, networkConfig := d.createConfigs(bridge, userData, metaData)
 
 	resp, err := cli.ContainerCreate(context.Background(), config, hostConfig, networkConfig,
 		d.cfg.Instance)
