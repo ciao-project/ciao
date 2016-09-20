@@ -24,7 +24,7 @@ import (
 	"strings"
 )
 
-func getCommandOutput(command string) string {
+func getCommandOutput(command string, logger OSPLog) string {
 	splits := strings.Split(command, " ")
 	c := exec.Command(splits[0], splits[1:]...)
 	c.Env = os.Environ()
@@ -35,15 +35,15 @@ func getCommandOutput(command string) string {
 
 	out, err := c.Output()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to run %s: %s\n", splits[0], err)
+		logger.Warningf("Failed to run %s: %s", splits[0], err)
 		return ""
 	}
 
 	return string(out)
 }
 
-func getDockerVersion() string {
-	ret := getCommandOutput("docker --version")
+func getDockerVersion(logger OSPLog) string {
+	ret := getCommandOutput("docker --version", logger)
 	var version string
 
 	if n, _ := fmt.Sscanf(ret, "Docker version %s, build", &version); n != 1 {
@@ -56,8 +56,8 @@ func getDockerVersion() string {
 	return version
 }
 
-func getQemuVersion() string {
-	ret := getCommandOutput("qemu-system-x86_64 --version")
+func getQemuVersion(logger OSPLog) string {
+	ret := getCommandOutput("qemu-system-x86_64 --version", logger)
 	var version string
 
 	if n, _ := fmt.Sscanf(ret, "QEMU emulator version %s, Copyright (c)", &version); n != 1 {

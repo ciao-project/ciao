@@ -239,12 +239,13 @@ func (client *agentClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 
 func (client *agentClient) installLauncherDeps() {
 	role := client.conn.Role()
-	osprepare.Bootstrap()
+	ospLogger := osprepare.OSPGlogLogger{}
+	osprepare.Bootstrap(ospLogger)
 	if role.IsNetAgent() {
-		osprepare.InstallDeps(launcherNetNodeDeps)
+		osprepare.InstallDeps(launcherNetNodeDeps, ospLogger)
 	}
 	if role.IsAgent() {
-		osprepare.InstallDeps(launcherComputeNodeDeps)
+		osprepare.InstallDeps(launcherComputeNodeDeps, ospLogger)
 	}
 }
 

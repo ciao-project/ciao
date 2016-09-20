@@ -143,8 +143,9 @@ func main() {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
 
-	osprepare.Bootstrap()
-	osprepare.InstallDeps(controllerDeps)
+	ospLogger := osprepare.OSPGlogLogger{}
+	osprepare.Bootstrap(ospLogger)
+	osprepare.InstallDeps(controllerDeps, ospLogger)
 
 	if *singleMachine {
 		hostname, _ := os.Hostname()

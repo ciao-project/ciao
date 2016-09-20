@@ -24,7 +24,7 @@ func TestGetDocker(t *testing.T) {
 	if pathExists("/usr/bin/docker") == false {
 		t.Skip("Docker not installed, cannot validate version get")
 	}
-	if vers := getDockerVersion(); vers == "" {
+	if vers := getDockerVersion(nil); vers == "" {
 		t.Fatal("Cannot determine docker version")
 	}
 }
@@ -33,7 +33,7 @@ func TestGetQemu(t *testing.T) {
 	if pathExists("/usr/bin/qemu-system-x86_64") == false {
 		t.Skip("Qemu not installed, cannot validate version get")
 	}
-	if vers := getQemuVersion(); vers == "" {
+	if vers := getQemuVersion(ospNullLogger{}); vers == "" {
 		t.Fatal("Cannot determine qemu version")
 	}
 }

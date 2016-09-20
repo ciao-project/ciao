@@ -1042,8 +1042,9 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 
 func main() {
 	flag.Parse()
-	osprepare.Bootstrap()
-	osprepare.InstallDeps(schedDeps)
+	ospLogger := osprepare.OSPGlogLogger{}
+	osprepare.Bootstrap(ospLogger)
+	osprepare.InstallDeps(schedDeps, ospLogger)
 
 	sched := configSchedulerServer()
 	if sched == nil {
