@@ -142,7 +142,7 @@ fi
 
 "$GOPATH"/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify
 
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=ciao.example.com"
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
 
 #Copy the certs
 sudo cp -f controller_key.pem /etc/pki/ciao
@@ -265,6 +265,7 @@ echo "export HOSTS_FILE_BACKUP=""$hosts_file_backup" > "$ciao_env"
 echo "export CIAO_CONTROLLER=""$ciao_host" >> "$ciao_env"
 echo "export CIAO_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
+echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
 cat "$ciao_ctl_log"
 identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
@@ -272,6 +273,8 @@ echo "$identity" >> "$ciao_env"
 export CIAO_CONTROLLER="$ciao_host"
 export CIAO_USERNAME=admin
 export CIAO_PASSWORD=giveciaoatry
+
+export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem
 
 eval "$identity"
 "$ciao_gobin"/ciao-cli workload list
