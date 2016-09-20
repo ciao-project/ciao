@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -1043,8 +1044,8 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 func main() {
 	flag.Parse()
 	ospLogger := osprepare.OSPGlogLogger{}
-	osprepare.Bootstrap(ospLogger)
-	osprepare.InstallDeps(schedDeps, ospLogger)
+	osprepare.Bootstrap(context.TODO(), ospLogger)
+	osprepare.InstallDeps(context.TODO(), schedDeps, ospLogger)
 
 	sched := configSchedulerServer()
 	if sched == nil {

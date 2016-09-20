@@ -24,6 +24,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"strconv"
@@ -144,8 +145,8 @@ func main() {
 	}
 
 	ospLogger := osprepare.OSPGlogLogger{}
-	osprepare.Bootstrap(ospLogger)
-	osprepare.InstallDeps(controllerDeps, ospLogger)
+	osprepare.Bootstrap(context.TODO(), ospLogger)
+	osprepare.InstallDeps(context.TODO(), controllerDeps, ospLogger)
 
 	if *singleMachine {
 		hostname, _ := os.Hostname()

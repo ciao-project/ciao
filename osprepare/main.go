@@ -17,6 +17,7 @@
 package osprepare
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -159,10 +160,11 @@ func collectPackages(dist distro, reqs PackageRequirements) []string {
 
 // InstallDeps installs all the dependencies defined in a component
 // specific PackageRequirements in order to enable running the component
-func InstallDeps(reqs PackageRequirements, logger OSPLog) {
+func InstallDeps(ctx context.Context, reqs PackageRequirements, logger OSPLog) {
 	if logger == nil {
 		logger = ospNullLogger{}
 	}
+
 	distro := getDistro()
 
 	if distro == nil {
@@ -182,7 +184,7 @@ func InstallDeps(reqs PackageRequirements, logger OSPLog) {
 	}
 	if reqPkgs := collectPackages(distro, reqs); reqPkgs != nil {
 		logger.Infof("Missing packages detected: %v", reqPkgs)
-		if distro.InstallPackages(reqPkgs, logger) == false {
+		if distro.InstallPackages(ctx, reqPkgs, logger) == false {
 			logger.Errorf("Failed to install: %s", strings.Join(reqPkgs, ", "))
 			return
 		}
@@ -192,6 +194,6 @@ func InstallDeps(reqs PackageRequirements, logger OSPLog) {
 
 // Bootstrap installs all the core dependencies required to bootstrap the core
 // configuration of all Ciao components
-func Bootstrap(logger OSPLog) {
-	InstallDeps(BootstrapRequirements, logger)
+func Bootstrap(ctx context.Context, logger OSPLog) {
+	InstallDeps(ctx, BootstrapRequirements, logger)
 }

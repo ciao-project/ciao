@@ -18,6 +18,7 @@ package osprepare
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -174,7 +175,7 @@ type distro interface {
 	// InstallPackages should implement the installation
 	// of packages using distro specific methods for
 	// the given target list of items to install
-	InstallPackages(packages []string, logger OSPLog) bool
+	InstallPackages(ctx context.Context, packages []string, logger OSPLog) bool
 
 	// getID should return a string specifying
 	// the distribution ID (e.g: "clearlinux")
@@ -211,7 +212,7 @@ func (d *clearLinuxDistro) getID() string {
 
 // Correctly split and format the command, using sudo if appropriate, as a
 // common mechanism for the various package install functions.
-func sudoFormatCommand(command string, packages []string, logger OSPLog) bool {
+func sudoFormatCommand(ctx context.Context, command string, packages []string, logger OSPLog) bool {
 	var executable string
 	var args string
 
@@ -226,7 +227,7 @@ func sudoFormatCommand(command string, packages []string, logger OSPLog) bool {
 		args = fmt.Sprintf(command, toInstall)
 	}
 
-	c := exec.Command(executable, strings.Split(args, " ")...)
+	c := exec.CommandContext(ctx, executable, strings.Split(args, " ")...)
 	read, err := c.StdoutPipe()
 	if err != nil {
 		logger.Warningf("Unable to create command output pipe: %s", err)
@@ -250,8 +251,8 @@ func sudoFormatCommand(command string, packages []string, logger OSPLog) bool {
 	return true
 }
 
-func (d *clearLinuxDistro) InstallPackages(packages []string, logger OSPLog) bool {
-	return sudoFormatCommand("swupd bundle-add %s", packages, logger)
+func (d *clearLinuxDistro) InstallPackages(ctx context.Context, packages []string, logger OSPLog) bool {
+	return sudoFormatCommand(ctx, "swupd bundle-add %s", packages, logger)
 }
 
 // os-release *ubuntu*
@@ -263,8 +264,8 @@ func (d *ubuntuDistro) getID() string {
 	return "ubuntu"
 }
 
-func (d *ubuntuDistro) InstallPackages(packages []string, logger OSPLog) bool {
-	return sudoFormatCommand("apt-get --yes --force-yes install %s", packages, logger)
+func (d *ubuntuDistro) InstallPackages(ctx context.Context, packages []string, logger OSPLog) bool {
+	return sudoFormatCommand(ctx, "apt-get --yes --force-yes install %s", packages, logger)
 }
 
 // Fedora
@@ -276,6 +277,6 @@ func (d *fedoraDistro) getID() string {
 }
 
 // Use dnf to install on Fedora
-func (d *fedoraDistro) InstallPackages(packages []string, logger OSPLog) bool {
-	return sudoFormatCommand("dnf install -y %s", packages, logger)
+func (d *fedoraDistro) InstallPackages(ctx context.Context, packages []string, logger OSPLog) bool {
+	return sudoFormatCommand(ctx, "dnf install -y %s", packages, logger)
 }
