@@ -41,11 +41,16 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 
 	var cmd *exec.Cmd
 
+	// imageFeatures holds the image features to use when creating a ceph rbd image format 2
+	// Currently the kernel rdb client only supports layering but in the future more feaures
+	// should be added as they are enabled in the kernel.
+	imageFeatures := "--image-feature layering"
+
 	if imagePath != nil {
-		cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, "--image-format", "1", "import", *imagePath, ID)
+		cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, imageFeatures, "import", *imagePath, ID)
 	} else {
 		// create an empty volume
-		cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, "--image-format", "1", "create", "--size", strconv.Itoa(size), ID)
+		cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, imageFeatures, "create", "--size", strconv.Itoa(size), ID)
 	}
 
 	err := cmd.Run()
