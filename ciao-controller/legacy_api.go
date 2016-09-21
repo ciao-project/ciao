@@ -245,6 +245,14 @@ func legacyTraceData(c *controller, w http.ResponseWriter, r *http.Request) (API
 	return traceData(c, w, r)
 }
 
+// @Title listServerDetailsFlavors
+// @Description Lists all servers with details for a particular flavor.
+// @Accept  json
+// @Success 200 {array} compute.ServerDetails "Returns a list of all servers."
+// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/flavors/{flavor}/servers/detail [get]
+// @Resource /v2.1/flavors/{flavor}/servers
 func listServerDetailsFlavors(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	cxt := &compute.Context{
 		Service: c,
