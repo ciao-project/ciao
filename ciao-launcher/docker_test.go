@@ -112,10 +112,15 @@ func TestDockerMountUnmount(t *testing.T) {
 		mount:         dockerTestMounter{mounts: mounts},
 	}
 
-	_, err = d.mountVolumes()
+	_, err = d.prepareVolumes()
 	if err != nil {
-		t.Fatalf("Unable to mount volumes: %v", err)
+		t.Fatalf("Unable to prepare volumes: %v", err)
 	}
+	err = d.mapAndMountVolumes()
+	if err != nil {
+		t.Fatalf("Unable to map and mount volumes: %v", err)
+	}
+
 	dirInfo, err := ioutil.ReadDir(instanceDir)
 	if err != nil {
 		t.Fatalf("Unable to readdir %s: %v", instanceDir, err)
@@ -146,7 +151,7 @@ func TestDockerMountUnmount(t *testing.T) {
 		}
 	}
 
-	d.dockerUmountVolumes(d.cfg.Volumes)
+	d.umountVolumes(d.cfg.Volumes)
 	if len(mounts) != 0 {
 		t.Fatalf("Not all volumes have been unmounted")
 	}
@@ -187,7 +192,12 @@ func TestDockerBadMount(t *testing.T) {
 		mount:         dockerTestMounter{mounts: mounts},
 	}
 
-	_, err = d.mountVolumes()
+	_, err = d.prepareVolumes()
+	if err != nil {
+		t.Fatalf("Unable to prepare volumes: %v", err)
+	}
+
+	err = d.mapAndMountVolumes()
 	if err == nil {
 		t.Fatal("d.mountVolumes was expected to fail")
 	}

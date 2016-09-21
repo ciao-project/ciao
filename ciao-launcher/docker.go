@@ -237,10 +237,7 @@ func (d *docker) createConfigs(bridge string, userData, metaData []byte, volumes
 	return
 }
 
-func (d *docker) dockerUmountVolumes(vols []volumeConfig) {
-	// These volumes will get unmapped in instance.go.  This nasty but
-	// will be fixed when https://github.com/01org/ciao/issues/549 is closed.
-
+func (d *docker) umountVolumes(vols []volumeConfig) {
 	for _, vol := range vols {
 		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
 		if err := d.mount.Unmount(vd, 0); err != nil {
@@ -251,7 +248,36 @@ func (d *docker) dockerUmountVolumes(vols []volumeConfig) {
 	}
 }
 
-func (d *docker) mountVolumes() ([]string, error) {
+func (d *docker) unmapVolumes() {
+	for _, vol := range d.cfg.Volumes {
+		if err := d.storageDriver.UnmapVolumeFromNode(vol.UUID); err != nil {
+			glog.Warningf("Unable to unmap %s", vol.UUID)
+			continue
+		}
+		glog.Infof("Unmapping volume %s", vol.UUID)
+	}
+}
+
+func (d *docker) mapAndMountVolumes() error {
+	for mapped, vol := range d.cfg.Volumes {
+		var devName string
+		var err error
+		if devName, err = d.storageDriver.MapVolumeToNode(vol.UUID); err != nil {
+			d.umountVolumes(d.cfg.Volumes[:mapped])
+			return fmt.Errorf("Unable to map (%s) %v", vol.UUID, err)
+		}
+
+		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
+		if err = d.mount.Mount(devName, vd); err != nil {
+			d.umountVolumes(d.cfg.Volumes[:mapped])
+			return fmt.Errorf("Unable to mount (%s) %v", vol.UUID, err)
+		}
+	}
+
+	return nil
+}
+
+func (d *docker) prepareVolumes() ([]string, error) {
 	var err error
 	volumes := make([]string, len(d.cfg.Volumes))
 
@@ -260,28 +286,14 @@ func (d *docker) mountVolumes() ([]string, error) {
 			return nil, fmt.Errorf("Cannot attach bootable volumes to containers")
 		}
 	}
-	mounted := 0
-	for _, vol := range d.cfg.Volumes {
+	for i, vol := range d.cfg.Volumes {
 		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
 		if err = os.MkdirAll(vd, 0777); err != nil {
-			d.dockerUmountVolumes(d.cfg.Volumes[:mounted])
 			return nil, fmt.Errorf("Unable to create instances directory (%s) %v",
 				instancesDir, err)
 		}
 
-		var devName string
-		if devName, err = d.storageDriver.MapVolumeToNode(vol.UUID); err != nil {
-			d.dockerUmountVolumes(d.cfg.Volumes[:mounted])
-			return nil, fmt.Errorf("Unable to map (%s) %v", vol.UUID, err)
-		}
-
-		if err = d.mount.Mount(devName, vd); err != nil {
-			d.dockerUmountVolumes(d.cfg.Volumes[:mounted+1])
-			return nil, fmt.Errorf("Unable to mount (%s) %v", vol.UUID, err)
-		}
-
-		volumes[mounted] = fmt.Sprintf("%s:/volumes/%s", vd, vol.UUID)
-		mounted++
+		volumes[i] = fmt.Sprintf("%s:/volumes/%s", vd, vol.UUID)
 	}
 
 	return volumes, nil
@@ -293,7 +305,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 		return err
 	}
 
-	volumes, err := d.mountVolumes()
+	volumes, err := d.prepareVolumes()
 	if err != nil {
 		glog.Errorf("Unable to mount container volumes %v", err)
 		return err
@@ -304,7 +316,6 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 	resp, err := cli.ContainerCreate(context.Background(), config, hostConfig, networkConfig,
 		d.cfg.Instance)
 	if err != nil {
-		d.dockerUmountVolumes(d.cfg.Volumes)
 		glog.Errorf("Unable to create container %v", err)
 		return err
 	}
@@ -312,7 +323,6 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 	idPath := path.Join(d.instanceDir, "docker-id")
 	err = ioutil.WriteFile(idPath, []byte(resp.ID), 0600)
 	if err != nil {
-		d.dockerUmountVolumes(d.cfg.Volumes)
 		glog.Errorf("Unable to store docker container ID %v", err)
 		return err
 	}
@@ -346,8 +356,6 @@ func (d *docker) deleteImage() error {
 		return err
 	}
 
-	d.dockerUmountVolumes(d.cfg.Volumes)
-
 	return nil
 }
 
@@ -357,8 +365,16 @@ func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
 		return err
 	}
 
+	err = d.mapAndMountVolumes()
+	if err != nil {
+		glog.Errorf("Unable to map container volumes: %v", err)
+		return err
+	}
+
 	err = cli.ContainerStart(context.Background(), d.dockerID)
 	if err != nil {
+		d.umountVolumes(d.cfg.Volumes)
+		d.unmapVolumes()
 		glog.Errorf("Unable to start container %v", err)
 		return err
 	}
@@ -541,4 +557,6 @@ func (d *docker) connected() {
 
 func (d *docker) lostVM() {
 	d.prevCPUTime = -1
+
+	d.umountVolumes(d.cfg.Volumes)
 }
