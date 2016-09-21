@@ -49,13 +49,29 @@ var dockerClient struct {
 	cli *client.Client
 }
 
+type dockerMounter struct{}
+
+func (m dockerMounter) Mount(source, destination string) error {
+	return exec.Command("mount", source, destination).Run()
+}
+
+func (m dockerMounter) Unmount(destination string, flags int) error {
+	return syscall.Unmount(destination, flags)
+}
+
 type docker struct {
 	cfg            *vmConfig
 	instanceDir    string
 	dockerID       string
 	prevCPUTime    int64
 	prevSampleTime time.Time
-	storageDriver  storage.CephDriver
+	storageDriver  storage.BlockDriver
+	mount          mounter
+}
+
+type mounter interface {
+	Mount(source, destination string) error
+	Unmount(path string, flags int) error
 }
 
 // It's not entirely clear that it's safe to call a client.Client object from
@@ -82,6 +98,9 @@ func getDockerClient() (cli *client.Client, err error) {
 func (d *docker) init(cfg *vmConfig, instanceDir string) {
 	d.cfg = cfg
 	d.instanceDir = instanceDir
+	if d.mount == nil {
+		d.mount = dockerMounter{}
+	}
 }
 
 func (d *docker) checkBackingImage() error {
@@ -218,13 +237,13 @@ func (d *docker) createConfigs(bridge string, userData, metaData []byte, volumes
 	return
 }
 
-func dockerUmountVolumes(instanceDir string, vols []volumeConfig) {
+func (d *docker) dockerUmountVolumes(vols []volumeConfig) {
 	// These volumes will get unmapped in instance.go.  This nasty but
 	// will be fixed when https://github.com/01org/ciao/issues/549 is closed.
 
 	for _, vol := range vols {
-		vd := path.Join(instanceDir, volumesDir, vol.UUID)
-		if err := syscall.Unmount(vd, 0); err != nil {
+		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
+		if err := d.mount.Unmount(vd, 0); err != nil {
 			glog.Warningf("Unable to unmount %s", vd)
 			continue
 		}
@@ -245,19 +264,19 @@ func (d *docker) mountVolumes() ([]string, error) {
 	for _, vol := range d.cfg.Volumes {
 		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
 		if err = os.MkdirAll(vd, 0777); err != nil {
-			dockerUmountVolumes(d.instanceDir, d.cfg.Volumes[:mounted])
+			d.dockerUmountVolumes(d.cfg.Volumes[:mounted])
 			return nil, fmt.Errorf("Unable to create instances directory (%s) %v",
 				instancesDir, err)
 		}
 
 		var devName string
 		if devName, err = d.storageDriver.MapVolumeToNode(vol.UUID); err != nil {
-			dockerUmountVolumes(d.instanceDir, d.cfg.Volumes[:mounted])
+			d.dockerUmountVolumes(d.cfg.Volumes[:mounted])
 			return nil, fmt.Errorf("Unable to map (%s) %v", vol.UUID, err)
 		}
 
-		if err = exec.Command("mount", devName, vd).Run(); err != nil {
-			dockerUmountVolumes(d.instanceDir, d.cfg.Volumes[:mounted+1])
+		if err = d.mount.Mount(devName, vd); err != nil {
+			d.dockerUmountVolumes(d.cfg.Volumes[:mounted+1])
 			return nil, fmt.Errorf("Unable to mount (%s) %v", vol.UUID, err)
 		}
 
@@ -285,7 +304,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 	resp, err := cli.ContainerCreate(context.Background(), config, hostConfig, networkConfig,
 		d.cfg.Instance)
 	if err != nil {
-		dockerUmountVolumes(d.instanceDir, d.cfg.Volumes)
+		d.dockerUmountVolumes(d.cfg.Volumes)
 		glog.Errorf("Unable to create container %v", err)
 		return err
 	}
@@ -293,7 +312,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 	idPath := path.Join(d.instanceDir, "docker-id")
 	err = ioutil.WriteFile(idPath, []byte(resp.ID), 0600)
 	if err != nil {
-		dockerUmountVolumes(d.instanceDir, d.cfg.Volumes)
+		d.dockerUmountVolumes(d.cfg.Volumes)
 		glog.Errorf("Unable to store docker container ID %v", err)
 		return err
 	}
@@ -327,7 +346,7 @@ func (d *docker) deleteImage() error {
 		return err
 	}
 
-	dockerUmountVolumes(d.instanceDir, d.cfg.Volumes)
+	d.dockerUmountVolumes(d.cfg.Volumes)
 
 	return nil
 }
