@@ -185,6 +185,18 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 	}
 
 	hostConfig := &container.HostConfig{}
+
+	if d.cfg.Mem > 0 {
+		// Docker memory limit is in bytes.
+		hostConfig.Memory = int64(1024 * 1024 * d.cfg.Mem)
+	}
+
+	if d.cfg.Cpus > 0 {
+		// CFS quota period - default to 100ms.
+		hostConfig.CPUPeriod = (time.Millisecond * 100).Nanoseconds()
+		hostConfig.CPUQuota = hostConfig.CPUPeriod * int64(d.cfg.Cpus)
+	}
+
 	networkConfig := &network.NetworkingConfig{}
 	if bridge != "" {
 		config.MacAddress = d.cfg.VnicMAC
