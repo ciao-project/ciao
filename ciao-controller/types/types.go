@@ -57,6 +57,10 @@ type StorageResource struct {
 	// based on an image or existing volume.
 	// Needed only for new storage.
 	SourceType SourceType
+
+	// SourceID represents the ID of either the image or the volume
+	// that the storage resource is based on.
+	SourceID string
 }
 
 // Workload contains resource and configuration information for a user
