@@ -225,6 +225,53 @@ func (d attachments) Init() error {
 	return d.ds.exec(d.db, cmd)
 }
 
+// workload storage resources
+
+type workloadStorage struct {
+	namedData
+}
+
+func (d workloadStorage) Init() error {
+	cmd := `CREATE TABLE IF NOT EXISTS workload_storage
+	        (
+		workload_id string,
+		volume_id string,
+		bootable int,
+		persistent int,
+		size integer,
+		source_type string,
+		source_id string,
+		foreign key(workload_id) references workloads(id),
+		foreign key(volume_id) references block_data(id)
+		);`
+
+	return d.ds.exec(d.db, cmd)
+}
+
+func (d workloadStorage) Populate() error {
+	lines, err := d.ReadCsv()
+	if err != nil {
+		return err
+	}
+
+	for _, line := range lines {
+		workload_id := line[0]
+		volume_id := line[1]
+		bootable := line[2]
+		persistent := line[3]
+		size := line[4]
+		source_type := line[5]
+		source_id := line[6]
+
+		err = d.ds.create(d.name, workload_id, volume_id, bootable, persistent, size, source_type, source_id)
+		if err != nil {
+			glog.V(2).Info("could not add workload storage", err)
+		}
+	}
+
+	return err
+}
+
 // Resources data
 type resourceData struct {
 	namedData
@@ -577,6 +624,7 @@ func getPersistentStore(config Config) (persistentStore, error) {
 		traceData{namedData{ds: ds, name: "trace_data", db: ds.tdb}},
 		blockData{namedData{ds: ds, name: "block_data", db: ds.db}},
 		attachments{namedData{ds: ds, name: "attachments", db: ds.db}},
+		workloadStorage{namedData{ds: ds, name: "workload_storage", db: ds.db}},
 	}
 
 	ds.tableInitPath = config.InitTablesPath
@@ -788,7 +836,26 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 }
 
 func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
-	return nil, nil
+	query := `SELECT volume_id, bootable, persistent, size,
+			 source_type, source_id
+		  FROM 	workload_resources
+		  WHERE workload_id = ?`
+
+	row := ds.db.QueryRow(query, ID)
+
+	var r types.StorageResource
+
+	err := row.Scan(&r.ID, &r.Bootable, &r.Persistent, &r.Size, &r.SourceType, &r.SourceID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// not an error, it's just not there.
+			err = nil
+		}
+
+		return nil, err
+	}
+
+	return &r, nil
 }
 
 func (ds *sqliteDB) addLimit(tenantID string, resourceID int, limit int) error {
