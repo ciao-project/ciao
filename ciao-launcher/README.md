@@ -415,3 +415,100 @@ container.
 5. sudo nsenter --target $PID --mount --uts --ipc --net --pid
 
 See [here](https://blog.docker.com/tag/nsenter/) for more information.
+
+# Storage
+
+Ciao-launcher allows you to attach ceph volumes to both containers and VMs.
+Volumes can be attached to an instance on creation and attached and detached at
+runtime (VMs only).  VMs can also be booted directly from ceph volumes.
+Ciao-launcher make some assumptions about storage.  These assumptions are
+documented in the sections that follow.
+
+## Attaching a volume to a VM at creation time
+
+The workload for the instance needs to contain a Storage section, e.g,
+
+```
+...
+start:
+  requested_resources:
+  ...
+  instance_uuid: d7d86208-b46c-4465-9018-fe14087d415f
+  ...
+  storage:
+    id: 67d86208-000-4465-9018-fe14087d415f  
+
+```
+
+For a full example see
+[here](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/start_legacy_volume.yaml).
+
+The id is the image-name of the RBD image to be mounted.  It does not include the
+pool name, which is assumed to be RBD for now.  The id must be a valid UUID.  The
+RBD image does not need to be formatted or to contain a file system.  It will appear
+as a block device in the booted VM.  The first volume will be /dev/vdc, the second
+/dev/vdd, and so on.
+
+## Booting a VM from a RBD image
+
+You first need to populate an image with a rootfs. An example of how to do this
+with Ubuntu Server 16.04 is given below.
+
+```
+sudo rbd create --keyring /etc/ceph/ceph.client.ciao.keyring  --id ciao --image-feature layering --size 10000 6664267-ed01-4738-b15f-b47de06b62e8
+sudo qemu-system-x86_64 -cdrom ~/Downloads/ubuntu-16.04.1-server-amd64.iso -drive format=rbd,file=rbd:rbd/6664267-ed01-4738-b15f-b47de06b62e8,id=ciao,cache=writeback --enable-kvm --cpu host -m 2048 -smp cpus=2 -boot order=d
+```
+
+The ubuntu-16.04.1-server-amd64.iso is assumed to be present in your ~/Downloads folder.
+The second command will start a VM that will invite you to install Ubuntu server
+into your newly created RBD image.  Follow the installation instructions.  Once the
+installation is complete you will be able to use the volume to boot an instance
+launched by launcher.
+
+In the case your workload would look something like this:
+
+```
+...
+start:
+  requested_resources:
+  ...
+  instance_uuid: d7d86208-b46c-4465-9018-fe14087d415f
+  ...
+  storage:
+    id: 67d86208-000-4465-9018-fe14087d415f
+    boot: true
+
+```
+
+For a full example see
+[here](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/start_legacy_volume_boot.yaml).
+
+There are two important things to note in this workload example.
+
+1. There is no image_uuid.  This field must be omitted.  If it's present
+   ciao-launcher will look in the /var/lib/ciao/images folder for a backing
+   image matching the specified UUID and will then create a local rootfs
+   based off this image.  Any RBD images in the storage section will just be
+   mounted as normal.
+2. There's a new field under storage, called boot.  This must be present and
+   set to true before ciao-launcher will boot the instance from this volume.
+
+# Attaching and Detaching RBD images
+
+Volumes can be attach and detached from VM instances after those instance have
+been created.  This can be done regardless of whether the instance is actually
+running or not.  It is possible to detach an instance that was attached in the
+original workload that created the instance, e.g., via the storage field in
+the YAML payload.  It is not possible to attach or detach RBD images from
+containers.
+
+## Attaching a volume to a container at creation time
+
+The only way to attach an RBD image to a container is at creation time. This
+is done in the same way as attaching an RBD image to VM instance, namely
+by specifying the volume UUID under the storage field in the START payload.
+The main difference between attaching an RBD image to a VM and a container
+is that the image attached to a container needs to be formatted with a file
+system that is auto detectable by mount.  Currently, RBD images are mounted
+under /volumes/<UUID>, where <UUID> is the UUID of the image.  They are also
+mounted RW.
