@@ -193,7 +193,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 
 	if d.cfg.Cpus > 0 {
 		// CFS quota period - default to 100ms.
-		hostConfig.CPUPeriod = (time.Millisecond * 100).Nanoseconds()
+		hostConfig.CPUPeriod = 100 * 1000
 		hostConfig.CPUQuota = hostConfig.CPUPeriod * int64(d.cfg.Cpus)
 	}
 
