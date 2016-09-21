@@ -241,7 +241,7 @@ func (d *docker) umountVolumes(vols []volumeConfig) {
 	for _, vol := range vols {
 		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
 		if err := d.mount.Unmount(vd, 0); err != nil {
-			glog.Warningf("Unable to unmount %s", vd)
+			glog.Warningf("Unable to unmount %s: %v", vd, err)
 			continue
 		}
 		glog.Infof("%s successfully unmounted", vol.UUID)
@@ -251,7 +251,7 @@ func (d *docker) umountVolumes(vols []volumeConfig) {
 func (d *docker) unmapVolumes() {
 	for _, vol := range d.cfg.Volumes {
 		if err := d.storageDriver.UnmapVolumeFromNode(vol.UUID); err != nil {
-			glog.Warningf("Unable to unmap %s", vol.UUID)
+			glog.Warningf("Unable to unmap %s: %v", vol.UUID, err)
 			continue
 		}
 		glog.Infof("Unmapping volume %s", vol.UUID)
@@ -407,7 +407,7 @@ DONE:
 			case virtualizerStopCmd:
 				err := cli.ContainerKill(context.Background(), dockerID, "KILL")
 				if err != nil {
-					glog.Errorf("Unable to stop instance %s:%s", instance, dockerID)
+					glog.Errorf("Unable to stop instance %s:%s: %v", instance, dockerID, err)
 				}
 			case virtualizerAttachCmd:
 				err := fmt.Errorf("Live Attach of volumes not supported for containers")
