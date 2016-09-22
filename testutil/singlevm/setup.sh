@@ -286,6 +286,8 @@ echo "export HOSTS_FILE_BACKUP=""$hosts_file_backup" > "$ciao_env"
 echo "export CIAO_CONTROLLER=""$ciao_host" >> "$ciao_env"
 echo "export CIAO_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
+echo "export CIAO_ADMIN_USERNAME=admin" >> "$ciao_env"
+echo "export CIAO_ADMIN_PASSWORD=giveciaoatry" >> "$ciao_env"
 echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
 cat "$ciao_ctl_log"
