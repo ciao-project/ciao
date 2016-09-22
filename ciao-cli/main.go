@@ -19,7 +19,6 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -131,7 +130,6 @@ var (
 	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	computePort      = flag.Int("computeport", openstackComputePort, "Openstack Compute API port")
-	caCertFile       = flag.String("ca-file", "", "CA Certificate")
 )
 
 const (
@@ -141,10 +139,7 @@ const (
 	ciaoPasswordEnv    = "CIAO_PASSWORD"
 	ciaoComputePortEnv = "CIAO_COMPUTEPORT"
 	ciaoTenantNameEnv  = "CIAO_TENANT_NAME"
-	ciaoCACertFileEnv  = "CIAO_CA_CERT_FILE"
 )
-
-var caCertPool *x509.CertPool
 
 type queryValue struct {
 	name, value string
@@ -200,11 +195,8 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.Header.Set("Accept", "application/json")
 	}
 
-	tlsConfig := &tls.Config{}
-
-	if caCertPool != nil {
-		tlsConfig.RootCAs = caCertPool
-	}
+	warningf("Skipping TLS verification\n")
+	tlsConfig := &tls.Config{InsecureSkipVerify: true}
 
 	transport := &http.Transport{
 		TLSClientConfig: tlsConfig,
@@ -274,7 +266,6 @@ func getCiaoEnvVariables() {
 	password := os.Getenv(ciaoPasswordEnv)
 	port := os.Getenv(ciaoComputePortEnv)
 	tenant := os.Getenv(ciaoTenantNameEnv)
-	ca := os.Getenv(ciaoCACertFileEnv)
 
 	infof("Ciao environment variables:\n")
 	infof("\t%s:%s\n", ciaoIdentityEnv, identity)
@@ -283,7 +274,6 @@ func getCiaoEnvVariables() {
 	infof("\t%s:%s\n", ciaoPasswordEnv, password)
 	infof("\t%s:%s\n", ciaoComputePortEnv, port)
 	infof("\t%s:%s\n", ciaoTenantNameEnv, tenantName)
-	infof("\t%s:%s\n", ciaoCACertFileEnv, ca)
 
 	if identity != "" && *identityURL == "" {
 		*identityURL = identity
@@ -307,10 +297,6 @@ func getCiaoEnvVariables() {
 
 	if tenant != "" && *tenantName == "" {
 		*tenantName = tenant
-	}
-
-	if ca != "" && *caCertFile == "" {
-		*caCertFile = ca
 	}
 }
 
@@ -351,16 +337,6 @@ func main() {
 	args := flag.Args()
 	if len(args) < 1 {
 		usage()
-	}
-
-	/* Load CA file if necessary */
-	if *caCertFile != "" {
-		caCert, err := ioutil.ReadFile(*caCertFile)
-		if err != nil {
-			fatalf("Unable to load requested CA certificate: %s\n", err)
-		}
-		caCertPool = x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
 	/* If we're missing the tenant name let's try to fetch one */
