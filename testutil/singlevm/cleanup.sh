@@ -12,7 +12,7 @@ sudo killall ciao-scheduler
 sudo killall ciao-controller
 sudo killall ciao-launcher
 sleep 2
-sudo "$ciao_gobin"/ciao-launcher --hard-reset
+sudo "$ciao_gobin"/ciao-launcher --alsologtostderr -v 3 --hard-reset
 sudo ip link del eth10
 sudo pkill -F /tmp/dnsmasq.macvlan0.pid
 sudo mv $HOSTS_FILE_BACKUP /etc/hosts
