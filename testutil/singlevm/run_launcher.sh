@@ -10,8 +10,6 @@ default_subnet=$(ip -o -f inet addr show $default_if | awk '{print $4}')
 sudo "$GOPATH"/bin/ciao-launcher --cacert=./CAcert-"$ciao_host".pem --cert=./cert-CNAgent-NetworkingAgent-"$ciao_host".pem --alsologtostderr -v 3 --hard-reset
 
 #Cleanup any prior docker instances and networks
-sudo docker rm $(sudo docker ps -qa)
-sudo docker network rm $(sudo docker network ls -q -f "type=custom")
 sudo rm -f /var/lib/ciao/networking/docker_plugin.db
 
 #Run launcher

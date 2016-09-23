@@ -91,8 +91,6 @@ sudo mv /etc/hosts $hosts_file_backup
 echo "$ciao_ip $ciao_host" > hosts
 sudo mv hosts /etc/hosts
 sudo rm -rf /var/lib/ciao/instances
-echo "Deleting docker containers. This may take time"
-sudo docker rm -f $(sudo docker ps -a -q)
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
