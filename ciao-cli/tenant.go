@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ciao-controller/types"
 )
 
 var tenantCommand = &command{
@@ -104,7 +104,7 @@ func listTenantQuotas() error {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var resources payloads.CiaoTenantResources
+	var resources types.CiaoTenantResources
 	url := buildComputeURL("%s/quotas", *tenantID)
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
@@ -131,7 +131,7 @@ func listTenantResources() error {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var usage payloads.CiaoUsageHistory
+	var usage types.CiaoUsageHistory
 	url := buildComputeURL("%s/resources", *tenantID)
 
 	now := time.Now()

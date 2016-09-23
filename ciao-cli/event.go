@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ciao-controller/types"
 )
 
 var eventCommand = &command{
@@ -68,7 +68,7 @@ func (cmd *eventListCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	var events payloads.CiaoEvents
+	var events types.CiaoEvents
 	var url string
 
 	if cmd.all == true {

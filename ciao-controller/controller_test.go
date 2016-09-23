@@ -1327,7 +1327,7 @@ func TestMain(m *testing.M) {
 	}
 
 	_, _ = addComputeTestTenant()
-	go createComputeAPI(context)
+	go context.startComputeService()
 
 	time.Sleep(1 * time.Second)
 

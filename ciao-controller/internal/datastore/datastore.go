@@ -135,10 +135,10 @@ type Datastore struct {
 	cnciAddedChans map[string]chan bool
 	cnciAddedLock  *sync.Mutex
 
-	nodeLastStat     map[string]payloads.CiaoComputeNode
+	nodeLastStat     map[string]types.CiaoComputeNode
 	nodeLastStatLock *sync.RWMutex
 
-	instanceLastStat     map[string]payloads.CiaoServerStats
+	instanceLastStat     map[string]types.CiaoServerStats
 	instanceLastStatLock *sync.RWMutex
 
 	tenants     map[string]*tenant
@@ -155,7 +155,7 @@ type Datastore struct {
 	instances     map[string]*types.Instance
 	instancesLock *sync.RWMutex
 
-	tenantUsage     map[string][]payloads.CiaoUsage
+	tenantUsage     map[string][]types.CiaoUsage
 	tenantUsageLock *sync.RWMutex
 
 	blockDevices map[string]types.BlockData
@@ -184,10 +184,10 @@ func (ds *Datastore) Init(config Config) error {
 	ds.cnciAddedChans = make(map[string]chan bool)
 	ds.cnciAddedLock = &sync.Mutex{}
 
-	ds.nodeLastStat = make(map[string]payloads.CiaoComputeNode)
+	ds.nodeLastStat = make(map[string]types.CiaoComputeNode)
 	ds.nodeLastStatLock = &sync.RWMutex{}
 
-	ds.instanceLastStat = make(map[string]payloads.CiaoServerStats)
+	ds.instanceLastStat = make(map[string]types.CiaoServerStats)
 	ds.instanceLastStatLock = &sync.RWMutex{}
 
 	// warning, do not use the tenant cache to get
@@ -255,7 +255,7 @@ func (ds *Datastore) Init(config Config) error {
 		ds.nodes[i.NodeID].instances[key] = i
 	}
 
-	ds.tenantUsage = make(map[string][]payloads.CiaoUsage)
+	ds.tenantUsage = make(map[string][]types.CiaoUsage)
 	ds.tenantUsageLock = &sync.RWMutex{}
 
 	ds.blockDevices, err = ds.db.getAllBlockData()
@@ -742,7 +742,7 @@ func (ds *Datastore) GetInstance(id string) (*types.Instance, error) {
 	ds.instancesLock.RUnlock()
 
 	if !ok {
-		return nil, errors.New("Instance Not Found")
+		return nil, types.ErrInstanceNotFound
 	}
 
 	return value, nil
@@ -796,7 +796,7 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 
 	ds.instances[instance.ID] = instance
 
-	instanceStat := payloads.CiaoServerStats{
+	instanceStat := types.CiaoServerStats{
 		ID:        instance.ID,
 		TenantID:  instance.TenantID,
 		NodeID:    instance.NodeID,
@@ -1096,8 +1096,8 @@ func (ds *Datastore) HandleTraceReport(trace payloads.Trace) error {
 
 // GetInstanceLastStats retrieves the last instances stats received for this node.
 // It returns it in a format suitable for the compute API.
-func (ds *Datastore) GetInstanceLastStats(nodeID string) payloads.CiaoServersStats {
-	var serversStats payloads.CiaoServersStats
+func (ds *Datastore) GetInstanceLastStats(nodeID string) types.CiaoServersStats {
+	var serversStats types.CiaoServersStats
 
 	ds.instanceLastStatLock.RLock()
 	for _, instance := range ds.instanceLastStat {
@@ -1113,8 +1113,8 @@ func (ds *Datastore) GetInstanceLastStats(nodeID string) payloads.CiaoServersSta
 
 // GetNodeLastStats retrieves the last nodes stats received for this node.
 // It returns it in a format suitable for the compute API.
-func (ds *Datastore) GetNodeLastStats() payloads.CiaoComputeNodes {
-	var computeNodes payloads.CiaoComputeNodes
+func (ds *Datastore) GetNodeLastStats() types.CiaoComputeNodes {
+	var computeNodes types.CiaoComputeNodes
 
 	ds.nodeLastStatLock.RLock()
 	for _, node := range ds.nodeLastStat {
@@ -1140,7 +1140,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 
 	ds.nodesLock.Unlock()
 
-	cnStat := payloads.CiaoComputeNode{
+	cnStat := types.CiaoComputeNode{
 		ID:            stat.NodeUUID,
 		Status:        stat.Status,
 		Load:          stat.Load,
@@ -1163,7 +1163,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 
 var tenantUsagePeriodMinutes float64 = 5
 
-func (ds *Datastore) updateTenantUsageNeeded(delta payloads.CiaoUsage, tenantID string) bool {
+func (ds *Datastore) updateTenantUsageNeeded(delta types.CiaoUsage, tenantID string) bool {
 	if delta.VCPU == 0 &&
 		delta.Memory == 0 &&
 		delta.Disk == 0 {
@@ -1173,13 +1173,13 @@ func (ds *Datastore) updateTenantUsageNeeded(delta payloads.CiaoUsage, tenantID 
 	return true
 }
 
-func (ds *Datastore) updateTenantUsage(delta payloads.CiaoUsage, tenantID string) {
+func (ds *Datastore) updateTenantUsage(delta types.CiaoUsage, tenantID string) {
 	if ds.updateTenantUsageNeeded(delta, tenantID) == false {
 		return
 	}
 
 	createNewUsage := true
-	lastUsage := payloads.CiaoUsage{}
+	lastUsage := types.CiaoUsage{}
 
 	ds.tenantUsageLock.Lock()
 
@@ -1192,7 +1192,7 @@ func (ds *Datastore) updateTenantUsage(delta payloads.CiaoUsage, tenantID string
 		}
 	}
 
-	newUsage := payloads.CiaoUsage{
+	newUsage := types.CiaoUsage{
 		VCPU:   lastUsage.VCPU + delta.VCPU,
 		Memory: lastUsage.Memory + delta.Memory,
 		Disk:   lastUsage.Disk + delta.Disk,
@@ -1213,7 +1213,7 @@ func (ds *Datastore) updateTenantUsage(delta payloads.CiaoUsage, tenantID string
 
 // GetTenantUsage provides statistics on actual resource usage.
 // Usage is provided between a specified time period.
-func (ds *Datastore) GetTenantUsage(tenantID string, start time.Time, end time.Time) ([]payloads.CiaoUsage, error) {
+func (ds *Datastore) GetTenantUsage(tenantID string, start time.Time, end time.Time) ([]types.CiaoUsage, error) {
 	ds.tenantUsageLock.RLock()
 	defer ds.tenantUsageLock.RUnlock()
 
@@ -1255,7 +1255,7 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 	for index := range stats {
 		stat := stats[index]
 
-		instanceStat := payloads.CiaoServerStats{
+		instanceStat := types.CiaoServerStats{
 			ID:        stat.InstanceUUID,
 			NodeID:    nodeID,
 			Timestamp: time.Now(),
@@ -1269,7 +1269,7 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 
 		lastInstanceStat := ds.instanceLastStat[stat.InstanceUUID]
 
-		deltaUsage := payloads.CiaoUsage{
+		deltaUsage := types.CiaoUsage{
 			VCPU:   instanceStat.VCPUUsage - lastInstanceStat.VCPUUsage,
 			Memory: instanceStat.MemUsage - lastInstanceStat.MemUsage,
 			Disk:   instanceStat.DiskUsage - lastInstanceStat.DiskUsage,

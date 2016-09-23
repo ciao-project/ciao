@@ -187,7 +187,7 @@ func main() {
 	}
 
 	wg.Add(1)
-	go createComputeAPI(context)
+	go context.startComputeService()
 
 	wg.Add(1)
 	go context.startVolumeService()

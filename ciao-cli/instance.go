@@ -26,7 +26,8 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/openstack/compute"
 )
 
 const (
@@ -85,11 +86,11 @@ func (cmd *instanceAddCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	var server payloads.ComputeCreateServer
-	var servers payloads.ComputeServers
+	var server compute.CreateServerRequest
+	var servers compute.Servers
 
 	server.Server.Name = cmd.label
-	server.Server.Workload = cmd.workload
+	server.Server.Flavor = cmd.workload
 	server.Server.MaxInstances = cmd.instances
 	server.Server.MinInstances = 1
 
@@ -318,7 +319,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 		return listNodeInstances(cmd.cn)
 	}
 
-	var servers payloads.ComputeServers
+	var servers compute.Servers
 	var url string
 
 	if cmd.workload != "" {
@@ -417,7 +418,7 @@ func (cmd *instanceShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	var server payloads.ComputeServer
+	var server compute.Server
 	url := buildComputeURL("%s/servers/%s", *tenantID, cmd.instance)
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
@@ -433,7 +434,7 @@ func (cmd *instanceShowCommand) run(args []string) error {
 	return nil
 }
 
-func dumpInstance(server *payloads.Server) {
+func dumpInstance(server *compute.ServerDetails) {
 	fmt.Printf("\tUUID: %s\n", server.ID)
 	fmt.Printf("\tStatus: %s\n", server.Status)
 	fmt.Printf("\tPrivate IP: %s\n", server.Addresses.Private[0].Addr)
@@ -452,7 +453,7 @@ func listNodeInstances(node string) error {
 		fatalf("Missing required -cn parameter")
 	}
 
-	var servers payloads.CiaoServersStats
+	var servers types.CiaoServersStats
 	url := buildComputeURL("nodes/%s/servers/detail", node)
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
@@ -480,7 +481,7 @@ func listNodeInstances(node string) error {
 }
 
 func actionAllTenantInstance(tenant string, osAction string) error {
-	var action payloads.CiaoServersAction
+	var action types.CiaoServersAction
 
 	url := buildComputeURL("%s/servers/action", tenant)
 
