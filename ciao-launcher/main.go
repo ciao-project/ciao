@@ -375,6 +375,24 @@ func startNetwork(doneCh chan struct{}) error {
 	return nil
 }
 
+func loadClusterConfig(conn serverConn) error {
+	clusterConfig, err := conn.ClusterConfiguration()
+	if err != nil {
+		return err
+	}
+	computeNet = clusterConfig.Configure.Launcher.ComputeNetwork
+	mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
+	diskLimit = clusterConfig.Configure.Launcher.DiskLimit
+	memLimit = clusterConfig.Configure.Launcher.MemoryLimit
+	if secretPath == "" {
+		secretPath = clusterConfig.Configure.Storage.SecretPath
+	}
+	if cephID == "" {
+		cephID = clusterConfig.Configure.Storage.CephID
+	}
+	return nil
+}
+
 func printClusterConfig() {
 	glog.Info("Cluster Configuration")
 	glog.Info("-----------------------")
@@ -419,21 +437,11 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		if err != nil {
 			break
 		}
-		clusterConfig, err := client.conn.ClusterConfiguration()
+		err = loadClusterConfig(client.conn)
 		if err != nil {
 			glog.Errorf("Unable to get Cluster Configuration %v", err)
 			client.conn.Close()
 			break
-		}
-		computeNet = clusterConfig.Configure.Launcher.ComputeNetwork
-		mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
-		diskLimit = clusterConfig.Configure.Launcher.DiskLimit
-		memLimit = clusterConfig.Configure.Launcher.MemoryLimit
-		if secretPath == "" {
-			secretPath = clusterConfig.Configure.Storage.SecretPath
-		}
-		if cephID == "" {
-			cephID = clusterConfig.Configure.Storage.CephID
 		}
 		printClusterConfig()
 
