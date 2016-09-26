@@ -437,6 +437,14 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		if err != nil {
 			break
 		}
+
+		role := client.conn.Role()
+		if !(role.IsNetAgent() || role.IsAgent()) {
+			glog.Errorf("Invalid certificate role: %s", role.String())
+			client.conn.Close()
+			break
+		}
+
 		err = loadClusterConfig(client.conn)
 		if err != nil {
 			glog.Errorf("Unable to get Cluster Configuration %v", err)
