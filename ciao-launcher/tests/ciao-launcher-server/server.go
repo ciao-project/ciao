@@ -81,6 +81,7 @@ func (ts *testServer) ConnectNotify(uuid string, role ssntp.Role) {
 	defer server.Unlock()
 
 	if !(role.IsAgent() || role.IsNetAgent()) {
+		fmt.Fprintf(os.Stderr, "Ignoring connection from unexpected role: %s.\n", role.String())
 		return
 	}
 
