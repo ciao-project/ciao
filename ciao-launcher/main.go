@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
@@ -563,7 +564,7 @@ DONE:
 			glog.Flush()
 
 			/* We panic here to see which naughty go routines are still running. */
-
+			debug.SetTraceback("all")
 			panic("Server Loop did not exit within 1 second quitting")
 		}
 	}
