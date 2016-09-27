@@ -888,17 +888,17 @@ type glogLog struct{}
 
 func (l glogLog) Infof(format string, args ...interface{}) {
 	if glog.V(2) {
-		glog.Infof("SSNTP Info: "+format, args...)
+		glog.InfoDepth(2, fmt.Sprintf("SSNTP Info: "+format, args...))
 	}
 }
 
 func (l glogLog) Errorf(format string, args ...interface{}) {
-	glog.Errorf("SSNTP Error: "+format, args...)
+	glog.ErrorDepth(2, fmt.Sprintf("SSNTP Error: "+format, args...))
 }
 
 func (l glogLog) Warningf(format string, args ...interface{}) {
 	if glog.V(1) {
-		glog.Warningf("SSNTP Warning: "+format, args...)
+		glog.WarningDepth(2, fmt.Sprintf("SSNTP Warning: "+format, args...))
 	}
 }
 
