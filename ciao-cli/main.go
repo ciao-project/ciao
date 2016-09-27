@@ -102,23 +102,27 @@ const (
 )
 
 func debugf(format string, args ...interface{}) {
-	glog.V(2).Infof("ciao-cli DEBUG: "+format, args...)
+	if glog.V(2) {
+		glog.InfoDepth(1, fmt.Sprintf("ciao-cli DEBUG: "+format, args...))
+	}
 }
 
 func infof(format string, args ...interface{}) {
-	glog.V(1).Infof("ciao-cli INFO: "+format, args...)
+	if glog.V(1) {
+		glog.InfoDepth(1, fmt.Sprintf("ciao-cli INFO: "+format, args...))
+	}
 }
 
 func warningf(format string, args ...interface{}) {
-	glog.Warningf("ciao-cli WARNING: "+format, args...)
+	glog.WarningDepth(1, fmt.Sprintf("ciao-cli WARNING: "+format, args...))
 }
 
 func errorf(format string, args ...interface{}) {
-	glog.Errorf("ciao-cli ERROR: "+format, args...)
+	glog.ErrorDepth(1, fmt.Sprintf("ciao-cli ERROR: "+format, args...))
 }
 
 func fatalf(format string, args ...interface{}) {
-	glog.Fatalf("ciao-cli FATAL: "+format, args...)
+	glog.FatalDepth(1, fmt.Sprintf("ciao-cli FATAL: "+format, args...))
 	os.Exit(1)
 }
 
