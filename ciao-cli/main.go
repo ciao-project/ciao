@@ -123,7 +123,6 @@ func errorf(format string, args ...interface{}) {
 
 func fatalf(format string, args ...interface{}) {
 	glog.FatalDepth(1, fmt.Sprintf("ciao-cli FATAL: "+format, args...))
-	os.Exit(1)
 }
 
 var (
