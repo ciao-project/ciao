@@ -42,10 +42,7 @@
 // it instructs all child go routines to quit and waits for their exit.  Note that
 // it only waits for 1 second.  If all child go routines have failed to exit in 1
 // second, ciao-launcher panics.  The panic is useful as it prints the stack trace of
-// all the running go routines, so you can see which ones are blocked.  At least
-// this was the intention.  The default behaviour of the go runtime has changed in
-// this regard in 1.6 so a small code change is required, but you get the idea, I
-// hope.
+// all the running go routines, so you can see which ones are blocked.
 //
 // The Server go routine
 //

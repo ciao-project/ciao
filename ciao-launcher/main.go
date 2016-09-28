@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -24,11 +25,10 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
-
-	"context"
 
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
@@ -389,50 +389,52 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		dialCh <- err
 	}()
 
-	dialing := true
+	select {
+	case err := <-dialCh:
+		if err != nil {
+			break
+		}
+		clusterConfig, err := client.conn.ClusterConfiguration()
+		if err != nil {
+			glog.Errorf("Unable to get Cluster Configuration %v", err)
+			client.conn.Close()
+			break
+		}
+		computeNet = clusterConfig.Configure.Launcher.ComputeNetwork
+		mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
+		diskLimit = clusterConfig.Configure.Launcher.DiskLimit
+		memLimit = clusterConfig.Configure.Launcher.MemoryLimit
+		if secretPath == "" {
+			secretPath = clusterConfig.Configure.Storage.SecretPath
+		}
+		if cephID == "" {
+			cephID = clusterConfig.Configure.Storage.CephID
+		}
+		printClusterConfig()
+
+		client.installLauncherDeps()
+
+		err = startNetwork(doneCh)
+		if err != nil {
+			glog.Errorf("Failed to start network: %v\n", err)
+			client.conn.Close()
+			break
+		}
+		defer shutdownNetwork()
+
+		ovsCh = startOverseer(&wg, client)
+	case <-doneCh:
+		client.conn.Close()
+		<-dialCh
+		return
+	}
 
 DONE:
 	for {
 		select {
-		case err := <-dialCh:
-			dialing = false
-			if err != nil {
-				break DONE
-			}
-			clusterConfig, err := client.conn.ClusterConfiguration()
-			if err != nil {
-				glog.Errorf("Unable to get Cluster Configuration %v", err)
-				client.conn.Close()
-				break DONE
-			}
-			computeNet = clusterConfig.Configure.Launcher.ComputeNetwork
-			mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
-			diskLimit = clusterConfig.Configure.Launcher.DiskLimit
-			memLimit = clusterConfig.Configure.Launcher.MemoryLimit
-			if secretPath == "" {
-				secretPath = clusterConfig.Configure.Storage.SecretPath
-			}
-			if cephID == "" {
-				cephID = clusterConfig.Configure.Storage.CephID
-			}
-			printClusterConfig()
-
-			client.installLauncherDeps()
-
-			err = startNetwork(doneCh)
-			if err != nil {
-				glog.Errorf("Failed to start network: %v\n", err)
-				client.conn.Close()
-				break DONE
-			}
-			defer shutdownNetwork()
-
-			ovsCh = startOverseer(&wg, client)
 		case <-doneCh:
 			client.conn.Close()
-			if !dialing {
-				break DONE
-			}
+			break DONE
 		case cmd := <-client.cmdCh:
 			/*
 				Double check we're not quitting here.  Otherwise a flood of commands
@@ -563,7 +565,7 @@ DONE:
 			glog.Flush()
 
 			/* We panic here to see which naughty go routines are still running. */
-
+			debug.SetTraceback("all")
 			panic("Server Loop did not exit within 1 second quitting")
 		}
 	}
