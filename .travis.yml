@@ -19,6 +19,9 @@ before_install:
   - go get github.com/pierrre/gotestcover
   - go get github.com/fzipp/gocyclo
   - go get github.com/gordonklaus/ineffassign
+  - sudo apt-get -qq update
+  - sudo apt-get install -y qemu
+  - sudo apt-get install -y dnsmasq
 
 # We need to create and install SSNTP certs for the SSNTP and controller tests
 before_script:
@@ -66,6 +69,10 @@ script:
    # verify ciao-controller api documentation can be generated with swagger
    - go get github.com/yvasiyarov/swagger
    - $GOPATH/bin/swagger  -apiPackage=github.com/01org/ciao/ciao-controller -mainApiFile=github.com/01org/ciao/ciao-controller/main.go -format=markdown -contentsTable=false -models=false -vendoringPath $HOME/gopath/src/github.com/01org/ciao/vendor
+
+   # Verify that you can create a virtual cluster
+   - sudo ip link del testdummy
+   - $GOPATH/src/github.com/01org/ciao/testutil/singlevm/setup.sh -t
 
 after_success:
    - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=/tmp/cover.out
