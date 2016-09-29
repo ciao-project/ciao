@@ -408,17 +408,18 @@ func startInstanceWithVM(instance string, cfg *vmConfig, wg *sync.WaitGroup, don
 func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
 	ac *agentClient, ovsCh chan<- interface{}) chan<- interface{} {
 
+	storageDriver := storage.CephDriver{
+		SecretPath: secretPath,
+		ID:         cephID,
+	}
+
 	var vm virtualizer
 	if simulate == true {
 		vm = &simulation{}
 	} else if cfg.Container {
-		vm = &docker{}
+		vm = &docker{storageDriver: storageDriver}
 	} else {
 		vm = &qemuV{}
 	}
-	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm,
-		storage.CephDriver{
-			SecretPath: secretPath,
-			ID:         cephID,
-		})
+	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm, storageDriver)
 }

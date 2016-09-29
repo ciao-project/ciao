@@ -51,6 +51,10 @@ const (
 	// be attached as the instance has failed to start and is being
 	// deleted
 	AttachVolumeInstanceFailure = "instance_failure"
+
+	// AttachVolumeNotSupported indicates that the attach volume command
+	// is not supported for the given workload type, e.g., a container.
+	AttachVolumeNotSupported = "not_supported"
 )
 
 // ErrorAttachVolumeFailure represents the unmarshalled version of the contents of a
@@ -84,6 +88,8 @@ func (r AttachVolumeFailureReason) String() string {
 		return "State failure"
 	case AttachVolumeInstanceFailure:
 		return "Instance failure"
+	case AttachVolumeNotSupported:
+		return "Not Supported"
 	}
 
 	return ""

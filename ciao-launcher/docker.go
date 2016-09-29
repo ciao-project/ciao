@@ -18,13 +18,19 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"path"
 	"sync"
+	"syscall"
 	"time"
 
 	"context"
+
+	storage "github.com/01org/ciao/ciao-storage"
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/engine-api/client"
@@ -36,9 +42,21 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const volumesDir = "volumes"
+
 var dockerClient struct {
 	sync.Mutex
 	cli *client.Client
+}
+
+type dockerMounter struct{}
+
+func (m dockerMounter) Mount(source, destination string) error {
+	return exec.Command("mount", source, destination).Run()
+}
+
+func (m dockerMounter) Unmount(destination string, flags int) error {
+	return syscall.Unmount(destination, flags)
 }
 
 type docker struct {
@@ -47,6 +65,13 @@ type docker struct {
 	dockerID       string
 	prevCPUTime    int64
 	prevSampleTime time.Time
+	storageDriver  storage.BlockDriver
+	mount          mounter
+}
+
+type mounter interface {
+	Mount(source, destination string) error
+	Unmount(path string, flags int) error
 }
 
 // It's not entirely clear that it's safe to call a client.Client object from
@@ -73,6 +98,9 @@ func getDockerClient() (cli *client.Client, err error) {
 func (d *docker) init(cfg *vmConfig, instanceDir string) {
 	d.cfg = cfg
 	d.instanceDir = instanceDir
+	if d.mount == nil {
+		d.mount = dockerMounter{}
+	}
 }
 
 func (d *docker) checkBackingImage() error {
@@ -142,19 +170,15 @@ func (d *docker) downloadBackingImage() error {
 	return nil
 }
 
-func (d *docker) createImage(bridge string, userData, metaData []byte) error {
+func (d *docker) createConfigs(bridge string, userData, metaData []byte, volumes []string) (config *container.Config,
+	hostConfig *container.HostConfig, networkConfig *network.NetworkingConfig) {
+
 	var hostname string
 	var cmd []string
-
-	cli, err := getDockerClient()
-	if err != nil {
-		return err
-	}
-
 	md := &struct {
 		Hostname string `json:"hostname"`
 	}{}
-	err = json.Unmarshal(metaData, md)
+	err := json.Unmarshal(metaData, md)
 	if err != nil {
 		glog.Info("Start command does not contain hostname. Setting to instance UUID")
 		hostname = d.cfg.Instance
@@ -178,13 +202,13 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 		}
 	}
 
-	config := &container.Config{
+	config = &container.Config{
 		Hostname: hostname,
 		Image:    d.cfg.Image,
 		Cmd:      cmd,
 	}
 
-	hostConfig := &container.HostConfig{}
+	hostConfig = &container.HostConfig{Binds: volumes}
 
 	if d.cfg.Mem > 0 {
 		// Docker memory limit is in bytes.
@@ -197,7 +221,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 		hostConfig.CPUQuota = hostConfig.CPUPeriod * int64(d.cfg.Cpus)
 	}
 
-	networkConfig := &network.NetworkingConfig{}
+	networkConfig = &network.NetworkingConfig{}
 	if bridge != "" {
 		config.MacAddress = d.cfg.VnicMAC
 		hostConfig.NetworkMode = container.NetworkMode(bridge)
@@ -209,6 +233,85 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 			},
 		}
 	}
+
+	return
+}
+
+func (d *docker) umountVolumes(vols []volumeConfig) {
+	for _, vol := range vols {
+		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
+		if err := d.mount.Unmount(vd, 0); err != nil {
+			glog.Warningf("Unable to unmount %s: %v", vd, err)
+			continue
+		}
+		glog.Infof("%s successfully unmounted", vol.UUID)
+	}
+}
+
+func (d *docker) unmapVolumes() {
+	for _, vol := range d.cfg.Volumes {
+		if err := d.storageDriver.UnmapVolumeFromNode(vol.UUID); err != nil {
+			glog.Warningf("Unable to unmap %s: %v", vol.UUID, err)
+			continue
+		}
+		glog.Infof("Unmapping volume %s", vol.UUID)
+	}
+}
+
+func (d *docker) mapAndMountVolumes() error {
+	for mapped, vol := range d.cfg.Volumes {
+		var devName string
+		var err error
+		if devName, err = d.storageDriver.MapVolumeToNode(vol.UUID); err != nil {
+			d.umountVolumes(d.cfg.Volumes[:mapped])
+			return fmt.Errorf("Unable to map (%s) %v", vol.UUID, err)
+		}
+
+		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
+		if err = d.mount.Mount(devName, vd); err != nil {
+			d.umountVolumes(d.cfg.Volumes[:mapped])
+			return fmt.Errorf("Unable to mount (%s) %v", vol.UUID, err)
+		}
+	}
+
+	return nil
+}
+
+func (d *docker) prepareVolumes() ([]string, error) {
+	var err error
+	volumes := make([]string, len(d.cfg.Volumes))
+
+	for _, vol := range d.cfg.Volumes {
+		if vol.Bootable {
+			return nil, fmt.Errorf("Cannot attach bootable volumes to containers")
+		}
+	}
+	for i, vol := range d.cfg.Volumes {
+		vd := path.Join(d.instanceDir, volumesDir, vol.UUID)
+		if err = os.MkdirAll(vd, 0777); err != nil {
+			return nil, fmt.Errorf("Unable to create instances directory (%s) %v",
+				instancesDir, err)
+		}
+
+		volumes[i] = fmt.Sprintf("%s:/volumes/%s", vd, vol.UUID)
+	}
+
+	return volumes, nil
+}
+
+func (d *docker) createImage(bridge string, userData, metaData []byte) error {
+	cli, err := getDockerClient()
+	if err != nil {
+		return err
+	}
+
+	volumes, err := d.prepareVolumes()
+	if err != nil {
+		glog.Errorf("Unable to mount container volumes %v", err)
+		return err
+	}
+
+	config, hostConfig, networkConfig := d.createConfigs(bridge, userData, metaData, volumes)
 
 	resp, err := cli.ContainerCreate(context.Background(), config, hostConfig, networkConfig,
 		d.cfg.Instance)
@@ -250,9 +353,10 @@ func (d *docker) deleteImage() error {
 	if err != nil {
 		glog.Warningf("Unable to delete docker instance %s:%s err %v",
 			d.cfg.Instance, d.dockerID, err)
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
@@ -261,12 +365,62 @@ func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
 		return err
 	}
 
+	err = d.mapAndMountVolumes()
+	if err != nil {
+		glog.Errorf("Unable to map container volumes: %v", err)
+		return err
+	}
+
 	err = cli.ContainerStart(context.Background(), d.dockerID)
 	if err != nil {
+		d.umountVolumes(d.cfg.Volumes)
+		d.unmapVolumes()
 		glog.Errorf("Unable to start container %v", err)
 		return err
 	}
 	return nil
+}
+
+func dockerCommandLoop(cli *client.Client, dockerChannel chan interface{}, instance, dockerID string) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	lostContainerCh := make(chan struct{})
+	go func() {
+		defer close(lostContainerCh)
+		ret, err := cli.ContainerWait(ctx, dockerID)
+		glog.Infof("Instance %s:%s exitted with code %d err %v",
+			instance, dockerID, ret, err)
+	}()
+
+DONE:
+	for {
+		select {
+		case _, _ = <-lostContainerCh:
+			break DONE
+		case cmd, ok := <-dockerChannel:
+			if !ok {
+				glog.Info("Cancelling Wait")
+				cancelFunc()
+				_ = <-lostContainerCh
+				break DONE
+			}
+			switch cmd := cmd.(type) {
+			case virtualizerStopCmd:
+				err := cli.ContainerKill(context.Background(), dockerID, "KILL")
+				if err != nil {
+					glog.Errorf("Unable to stop instance %s:%s: %v", instance, dockerID, err)
+				}
+			case virtualizerAttachCmd:
+				err := fmt.Errorf("Live Attach of volumes not supported for containers")
+				cmd.responseCh <- err
+			case virtualizerDetachCmd:
+				err := fmt.Errorf("Live Detach of volumes not supported for containers")
+				cmd.responseCh <- err
+			}
+		}
+	}
+	cancelFunc()
+
+	glog.Infof("Docker Instance %s:%s shut down", instance, dockerID)
 }
 
 func dockerConnect(dockerChannel chan interface{}, instance, dockerID string, closedCh chan struct{},
@@ -300,40 +454,7 @@ func dockerConnect(dockerChannel chan interface{}, instance, dockerID string, cl
 
 	close(connectedCh)
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	lostContainerCh := make(chan struct{})
-	go func() {
-		defer close(lostContainerCh)
-		if err != nil {
-			return
-		}
-		ret, err := cli.ContainerWait(ctx, dockerID)
-		glog.Infof("Instance %s:%s exitted with code %d err %v",
-			instance, dockerID, ret, err)
-	}()
-
-DONE:
-	for {
-		select {
-		case _, _ = <-lostContainerCh:
-			break DONE
-		case cmd, ok := <-dockerChannel:
-			if !ok {
-				glog.Info("Cancelling Wait")
-				cancelFunc()
-				_ = <-lostContainerCh
-				break DONE
-			} else if _, isStop := cmd.(virtualizerStopCmd); isStop {
-				err := cli.ContainerKill(context.Background(), dockerID, "KILL")
-				if err != nil {
-					glog.Errorf("Unable to stop instance %s:%s", instance, dockerID)
-				}
-			}
-		}
-	}
-	cancelFunc()
-
-	glog.Infof("Docker Instance %s:%s shut down", instance, dockerID)
+	dockerCommandLoop(cli, dockerChannel, instance, dockerID)
 }
 
 func (d *docker) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
@@ -436,4 +557,6 @@ func (d *docker) connected() {
 
 func (d *docker) lostVM() {
 	d.prevCPUTime = -1
+
+	d.umountVolumes(d.cfg.Volumes)
 }

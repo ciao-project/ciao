@@ -23,6 +23,13 @@ import (
 )
 
 func processDetachVolume(storageDriver storage.BlockDriver, monitorCh chan interface{}, cfg *vmConfig, instance, instanceDir, volumeUUID string, conn serverConn) *detachVolumeError {
+
+	if cfg.Container {
+		detachErr := &detachVolumeError{nil, payloads.DetachVolumeNotSupported}
+		glog.Errorf("Cannot detach a volume from a container [%s]", string(detachErr.code))
+		return detachErr
+	}
+
 	vol := cfg.findVolume(volumeUUID)
 	if vol == nil {
 		detachErr := &detachVolumeError{nil, payloads.DetachVolumeNotAttached}
