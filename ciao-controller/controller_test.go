@@ -40,17 +40,17 @@ import (
 func addTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err = context.ds.AddTenant(tuuid.String())
+	tenant, err = ctl.ds.AddTenant(tuuid.String())
 	if err != nil {
 		return
 	}
 
 	// Add fake CNCI
-	err = context.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
+	err = ctl.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
 	if err != nil {
 		return
 	}
-	err = context.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
 	if err != nil {
 		return
 	}
@@ -59,18 +59,18 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 
 func addComputeTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
-	tenant, err = context.ds.AddTenant(testutil.ComputeUser)
+	tenant, err = ctl.ds.AddTenant(testutil.ComputeUser)
 	if err != nil {
 		return
 	}
 
 	// Add fake CNCI
-	err = context.ds.AddTenantCNCI(testutil.ComputeUser, uuid.Generate().String(), tenant.CNCIMAC)
+	err = ctl.ds.AddTenantCNCI(testutil.ComputeUser, uuid.Generate().String(), tenant.CNCIMAC)
 	if err != nil {
 		return
 	}
 
-	err = context.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.2")
+	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.2")
 	if err != nil {
 		return
 	}
@@ -83,30 +83,30 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err := context.ds.AddTenant(tuuid.String())
+	tenant, err := ctl.ds.AddTenant(tuuid.String())
 	if err != nil {
 		b.Error(err)
 	}
 
 	// Add fake CNCI
-	err = context.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
+	err = ctl.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
 	if err != nil {
 		b.Error(err)
 	}
-	err = context.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
 	if err != nil {
 		b.Error(err)
 	}
 
 	// get workload ID
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil || len(wls) == 0 {
 		b.Fatal(err)
 	}
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = context.startWorkload(wls[0].ID, tuuid.String(), 1, false, "")
+		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1, false, "")
 		if err != nil {
 			b.Error(err)
 		}
@@ -118,30 +118,30 @@ func BenchmarkStart1000Workload(b *testing.B) {
 
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err := context.ds.AddTenant(tuuid.String())
+	tenant, err := ctl.ds.AddTenant(tuuid.String())
 	if err != nil {
 		b.Error(err)
 	}
 
 	// Add fake CNCI
-	err = context.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
+	err = ctl.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
 	if err != nil {
 		b.Error(err)
 	}
-	err = context.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
 	if err != nil {
 		b.Error(err)
 	}
 
 	// get workload ID
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil || len(wls) == 0 {
 		b.Fatal(err)
 	}
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = context.startWorkload(wls[0].ID, tuuid.String(), 1000, false, "")
+		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1000, false, "")
 		if err != nil {
 			b.Error(err)
 		}
@@ -157,7 +157,7 @@ func BenchmarkNewConfig(b *testing.B) {
 	}
 
 	// get workload ID
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil || len(wls) == 0 {
 		b.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func BenchmarkNewConfig(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err := newConfig(context, wls[0], id.String(), tenant.ID)
+		_, err := newConfig(ctl, wls[0], id.String(), tenant.ID)
 		if err != nil {
 			b.Error(err)
 		}
@@ -182,17 +182,17 @@ func TestTenantWithinBounds(t *testing.T) {
 	}
 
 	/* put tenant limit of 1 instance */
-	err = context.ds.AddLimit(tenant.ID, 1, 1)
+	err = ctl.ds.AddLimit(tenant.ID, 1, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil || len(wls) == 0 {
 		t.Fatal(err)
 	}
 
-	_, err = context.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
+	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,18 +208,18 @@ func TestTenantOutOfBounds(t *testing.T) {
 	}
 
 	/* put tenant limit of 1 instance */
-	err = context.ds.AddLimit(tenant.ID, 1, 1)
+	err = ctl.ds.AddLimit(tenant.ID, 1, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil || len(wls) == 0 {
 		t.Fatal(err)
 	}
 
 	/* try to send 2 workload start commands */
-	_, err = context.startWorkload(wls[0].ID, tenant.ID, 2, false, "")
+	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 2, false, "")
 	if err == nil {
 		t.Errorf("Not tracking limits correctly")
 	}
@@ -255,7 +255,7 @@ func TestStartWorkloadLaunchCNCI(t *testing.T) {
 
 	id := instances[0].TenantID
 
-	tenant, err := context.ds.GetTenant(id)
+	tenant, err := ctl.ds.GetTenant(id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func TestDeleteInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err := context.deleteInstance(instances[0].ID)
+	err := ctl.deleteInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +335,7 @@ func TestStopInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err := context.stopInstance(instances[0].ID)
+	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -364,7 +364,7 @@ func TestRestartInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err := context.stopInstance(instances[0].ID)
+	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,7 +389,7 @@ func TestRestartInstance(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err = context.restartInstance(instances[0].ID)
+	err = ctl.restartInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,7 +414,7 @@ func TestEvacuateNode(t *testing.T) {
 
 	// ok to not send workload first?
 
-	err = context.evacuateNode(client.UUID)
+	err = ctl.evacuateNode(client.UUID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -439,7 +439,7 @@ func TestAttachVolume(t *testing.T) {
 
 	// ok to not send workload first?
 
-	err = context.client.attachVolume("volID", "instanceID", client.UUID)
+	err = ctl.client.attachVolume("volID", "instanceID", client.UUID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -473,7 +473,7 @@ func TestDetachVolume(t *testing.T) {
 
 	// ok to not send workload first?
 
-	err = context.client.detachVolume("volID", "instanceID", client.UUID)
+	err = ctl.client.detachVolume("volID", "instanceID", client.UUID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -497,7 +497,7 @@ func TestDetachVolume(t *testing.T) {
 }
 
 func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
-	bd, err := context.CreateBlockDevice(nil, 0)
+	bd, err := ctl.CreateBlockDevice(nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,9 +509,9 @@ func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
 		State:       types.Available,
 	}
 
-	err = context.ds.AddBlockDevice(data)
+	err = ctl.ds.AddBlockDevice(data)
 	if err != nil {
-		context.DeleteBlockDevice(bd.ID)
+		ctl.DeleteBlockDevice(bd.ID)
 		t.Fatal(err)
 	}
 
@@ -547,7 +547,7 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 		}()
 	}
 
-	err := context.AttachVolume(tenantID, data.ID, instances[0].ID, "")
+	err := ctl.AttachVolume(tenantID, data.ID, instances[0].ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -582,7 +582,7 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 		// be set back to available.
 		time.Sleep(time.Second)
 
-		data2, err := context.ds.GetBlockDevice(data.ID)
+		data2, err := ctl.ds.GetBlockDevice(data.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -629,7 +629,7 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 		}()
 	}
 
-	err := context.DetachVolume(tenantID, volume, "")
+	err := ctl.DetachVolume(tenantID, volume, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -645,7 +645,7 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 	}
 
 	// at this point, the state of the volume should be "detaching"
-	data, err := context.ds.GetBlockDevice(volume)
+	data, err := ctl.ds.GetBlockDevice(volume)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -673,7 +673,7 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 		// be set back to InUse
 		time.Sleep(time.Second)
 
-		data2, err := context.ds.GetBlockDevice(volume)
+		data2, err := ctl.ds.GetBlockDevice(volume)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -700,7 +700,7 @@ func TestDetachVolumeByAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = context.DetachVolume(tenant.ID, "invalidVolume", "attachmentID")
+	err = ctl.DetachVolume(tenant.ID, "invalidVolume", "attachmentID")
 	if err == nil {
 		t.Fatal("Detach by attachment ID not supported yet")
 	}
@@ -718,7 +718,7 @@ func TestInstanceDeletedEvent(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err := context.deleteInstance(instances[0].ID)
+	err := ctl.deleteInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -743,7 +743,7 @@ func TestInstanceDeletedEvent(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// try to get instance info
-	_, err = context.ds.GetInstance(instances[0].ID)
+	_, err = ctl.ds.GetInstance(instances[0].ID)
 	if err == nil {
 		t.Error("Instance not deleted")
 	}
@@ -760,7 +760,7 @@ func TestStartFailure(t *testing.T) {
 }
 
 func TestStopFailure(t *testing.T) {
-	context.ds.ClearLog()
+	ctl.ds.ClearLog()
 
 	var reason payloads.StartFailureReason
 
@@ -776,7 +776,7 @@ func TestStopFailure(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err := context.stopInstance(instances[0].ID)
+	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -792,7 +792,7 @@ func TestStopFailure(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// the response to a stop failure is to log the failure
-	entries, err := context.ds.GetEventLog()
+	entries, err := ctl.ds.GetEventLog()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -808,7 +808,7 @@ func TestStopFailure(t *testing.T) {
 }
 
 func TestRestartFailure(t *testing.T) {
-	context.ds.ClearLog()
+	ctl.ds.ClearLog()
 
 	var reason payloads.StartFailureReason
 
@@ -825,7 +825,7 @@ func TestRestartFailure(t *testing.T) {
 	serverCh := server.AddCmdChan(ssntp.STOP)
 	clientCh := client.AddCmdChan(ssntp.STOP)
 
-	err := context.stopInstance(instances[0].ID)
+	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -848,7 +848,7 @@ func TestRestartFailure(t *testing.T) {
 
 	serverCh = server.AddCmdChan(ssntp.RESTART)
 
-	err = context.restartInstance(instances[0].ID)
+	err = ctl.restartInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -864,7 +864,7 @@ func TestRestartFailure(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// the response to a restart failure is to log the failure
-	entries, err := context.ds.GetEventLog()
+	entries, err := ctl.ds.GetEventLog()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -904,7 +904,7 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	// caller of TestStartTracedWorkload() owns doing the close
 	//defer client.Shutdown()
 
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -915,7 +915,7 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	clientCh := client.AddCmdChan(ssntp.START)
 	serverCh := server.AddCmdChan(ssntp.START)
 
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, 1, true, "testtrace1")
+	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, 1, true, "testtrace1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -952,7 +952,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	// caller of TestStartWorkload() owns doing the close
 	//defer client.Shutdown()
 
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -965,7 +965,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	client.StartFail = fail
 	client.StartFailReason = reason
 
-	instances, err := context.startWorkload(wls[0].ID, tenant.ID, num, false, "")
+	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, num, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1003,7 +1003,7 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	// caller of testStartWorkloadLaunchCNCI() owns doing the close
 	//defer netClient.Shutdown()
 
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1020,7 +1020,7 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	instanceCh := make(chan []*types.Instance)
 
 	go func() {
-		instances, err := context.startWorkload(wls[0].ID, newTenant, 1, false, "")
+		instances, err := ctl.startWorkload(wls[0].ID, newTenant, 1, false, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1058,7 +1058,7 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	// make CNCI send an ssntp.ConcentratorInstanceAdded event, and await results
 	cnciEventCh := cnciClient.AddEventChan(ssntp.ConcentratorInstanceAdded)
 	serverEventCh := server.AddEventChan(ssntp.ConcentratorInstanceAdded)
-	tenantCNCI, _ := context.ds.GetTenantCNCISummary(result.InstanceUUID)
+	tenantCNCI, _ := ctl.ds.GetTenantCNCISummary(result.InstanceUUID)
 	go cnciClient.SendConcentratorAddedEvent(result.InstanceUUID, newTenant, testutil.CNCIIP, tenantCNCI[0].MACAddress)
 	result, err = cnciClient.GetEventChanResult(cnciEventCh, ssntp.ConcentratorInstanceAdded)
 	if err != nil {
@@ -1092,7 +1092,7 @@ func TestGetStorage(t *testing.T) {
 
 	// add fake image to images store
 	//
-	tmpfile, err := ioutil.TempFile(context.image.MountPoint, "testImage")
+	tmpfile, err := ioutil.TempFile(ctl.image.MountPoint, "testImage")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1112,7 +1112,7 @@ func TestGetStorage(t *testing.T) {
 		Storage: s,
 	}
 
-	pl, err := getStorage(context, wl, tenant.ID)
+	pl, err := getStorage(ctl, wl, tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1131,7 +1131,7 @@ func createTestVolume(tenantID string, size int, t *testing.T) string {
 		Size: size,
 	}
 
-	vol, err := context.CreateVolume(tenantID, req)
+	vol, err := ctl.CreateVolume(tenantID, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1154,7 +1154,7 @@ func TestCreateVolume(t *testing.T) {
 
 	// confirm that we can retrieve the volume from
 	// the datastore.
-	bd, err := context.ds.GetBlockDevice(volID)
+	bd, err := ctl.ds.GetBlockDevice(volID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1174,32 +1174,32 @@ func TestDeleteVolume(t *testing.T) {
 
 	// confirm that we can retrieve the volume from
 	// the datastore.
-	_, err = context.ds.GetBlockDevice(volID)
+	_, err = ctl.ds.GetBlockDevice(volID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// attempt to delete invalid volume
-	err = context.DeleteVolume(tenant.ID, "badID")
+	err = ctl.DeleteVolume(tenant.ID, "badID")
 	if err != datastore.ErrNoBlockData {
 		t.Fatal("Incorrect error")
 	}
 
 	// attempt to delete with bad tenant ID
-	err = context.DeleteVolume("badID", volID)
+	err = ctl.DeleteVolume("badID", volID)
 	if err != block.ErrVolumeOwner {
 		t.Fatal("Incorrect error")
 	}
 
 	// this should work
-	err = context.DeleteVolume(tenant.ID, volID)
+	err = ctl.DeleteVolume(tenant.ID, volID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// confirm that we cannot retrieve the volume from
 	// the datastore.
-	_, err = context.ds.GetBlockDevice(volID)
+	_, err = ctl.ds.GetBlockDevice(volID)
 	if err != datastore.ErrNoBlockData {
 		t.Fatal(err)
 	}
@@ -1213,7 +1213,7 @@ func TestListVolumes(t *testing.T) {
 
 	_ = createTestVolume(tenant.ID, 20, t)
 
-	vols, err := context.ListVolumes(tenant.ID)
+	vols, err := ctl.ListVolumes(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1231,7 +1231,7 @@ func TestShowVolumeDetails(t *testing.T) {
 
 	volID := createTestVolume(tenant.ID, 20, t)
 
-	vol, err := context.ShowVolumeDetails(tenant.ID, volID)
+	vol, err := ctl.ShowVolumeDetails(tenant.ID, volID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1249,7 +1249,7 @@ func TestListVolumesDetail(t *testing.T) {
 
 	_ = createTestVolume(tenant.ID, 20, t)
 
-	vols, err := context.ListVolumesDetail(tenant.ID)
+	vols, err := ctl.ListVolumesDetail(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1260,7 +1260,7 @@ func TestListVolumesDetail(t *testing.T) {
 }
 
 var testClients []*testutil.SsntpTestClient
-var context *controller
+var ctl *controller
 var server *testutil.SsntpTestServer
 
 func TestMain(m *testing.M) {
@@ -1269,10 +1269,10 @@ func TestMain(m *testing.M) {
 	// create fake ssntp server
 	server = testutil.StartTestServer()
 
-	context = new(controller)
-	context.ds = new(datastore.Datastore)
+	ctl = new(controller)
+	ctl.ds = new(datastore.Datastore)
 
-	context.BlockDriver = func() storage.BlockDriver {
+	ctl.BlockDriver = func() storage.BlockDriver {
 		return &storage.NoopDriver{}
 	}()
 
@@ -1282,7 +1282,7 @@ func TestMain(m *testing.M) {
 	}
 	defer os.RemoveAll(dir)
 
-	context.image = image.Client{MountPoint: dir}
+	ctl.image = image.Client{MountPoint: dir}
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
@@ -1291,7 +1291,7 @@ func TestMain(m *testing.M) {
 		InitWorkloadsPath: *workloadsPath,
 	}
 
-	err = context.ds.Init(dsConfig)
+	err = ctl.ds.Init(dsConfig)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -1302,7 +1302,7 @@ func TestMain(m *testing.M) {
 		Cert:   ssntp.RoleToDefaultCertName(ssntp.Controller),
 	}
 
-	context.client, err = newSSNTPClient(context, config)
+	ctl.client, err = newSSNTPClient(ctl, config)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -1320,24 +1320,24 @@ func TestMain(m *testing.M) {
 		servicePassword: "iheartciao",
 	}
 
-	context.id, err = newIdentityClient(idConfig)
+	ctl.id, err = newIdentityClient(idConfig)
 	if err != nil {
 		fmt.Println(err)
 		// keep going anyway - any compute api tests will fail.
 	}
 
 	_, _ = addComputeTestTenant()
-	go context.startComputeService()
+	go ctl.startComputeService()
 
 	time.Sleep(1 * time.Second)
 
-	go context.startVolumeService()
+	go ctl.startVolumeService()
 	time.Sleep(1 * time.Second)
 
 	code := m.Run()
 
-	context.client.Disconnect()
-	context.ds.Exit()
+	ctl.client.Disconnect()
+	ctl.ds.Exit()
 	id.Close()
 	server.Shutdown()
 

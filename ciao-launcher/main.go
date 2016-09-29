@@ -237,15 +237,40 @@ func (client *agentClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 	glog.Infof("ERROR %d", err)
 }
 
-func (client *agentClient) installLauncherDeps() {
-	role := client.conn.Role()
-	ospLogger := osprepare.OSPGlogLogger{}
-	osprepare.Bootstrap(ospLogger)
-	if role.IsNetAgent() {
-		osprepare.InstallDeps(launcherNetNodeDeps, ospLogger)
-	}
-	if role.IsAgent() {
-		osprepare.InstallDeps(launcherComputeNodeDeps, ospLogger)
+func (client *agentClient) installLauncherDeps(doneCh chan struct{}) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	ch := make(chan error)
+	go func() {
+
+		ospLogger := osprepare.OSPGlogLogger{}
+		osprepare.Bootstrap(ctx, ospLogger)
+
+		launcherDeps := osprepare.NewPackageRequirements()
+
+		role := client.conn.Role()
+		if role.IsNetAgent() {
+			launcherDeps.Append(launcherNetNodeDeps)
+		}
+		if role.IsAgent() {
+			launcherDeps.Append(launcherComputeNodeDeps)
+		}
+
+		osprepare.InstallDeps(ctx, launcherDeps, ospLogger)
+
+		ch <- nil
+	}()
+
+	select {
+	case <-doneCh:
+		glog.Info("Received terminating signal.  Cancelling installation of launcher dependencies.")
+		cancelFunc()
+		<-ch
+	case err := <-ch:
+		if err != nil {
+			glog.Errorf("Failed to install launcher dependencies: %v\n", err)
+		}
+		cancelFunc()
 	}
 }
 
@@ -412,7 +437,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		}
 		printClusterConfig()
 
-		client.installLauncherDeps()
+		client.installLauncherDeps(doneCh)
 
 		err = startNetwork(doneCh)
 		if err != nil {

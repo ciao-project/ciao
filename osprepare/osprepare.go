@@ -17,6 +17,7 @@
 package osprepare
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -112,6 +113,34 @@ type PackageRequirement struct {
 // )
 type PackageRequirements map[string][]PackageRequirement
 
+// NewPackageRequirements is a PackageRequirements constructor
+func NewPackageRequirements() PackageRequirements {
+	return make(PackageRequirements)
+}
+
+//TODO: once minimum required package version is a part of type
+//      PackageRequirement, then keep the larger of two listed
+//      version numbers.  So rather than collectPackages()
+//      having a check for dup's and "continue", you'd end there
+//      with a call to:
+//
+//Deduplicate prunes duplicates in a PackageRequirements list,
+//keeping the one instance amount duplicate BinaryName/PackageName
+//with the highest version number.
+//func (cur *PackageRequirements) Deduplicate(reqs PackageRequirements)
+
+//Append a list of PackageRequirements to a PackageRequirements list
+func (cur *PackageRequirements) Append(newReqs PackageRequirements) {
+	curReqs := *cur
+
+	for distro, reqList := range newReqs {
+		// assume a deduplication happens once later on the
+		// instance of PackageRequirements and simply append
+		// here for efficiency
+		curReqs[distro] = append(curReqs[distro], reqList...)
+	}
+}
+
 // BootstrapRequirements lists required dependencies for absolutely core
 // functionality across all Ciao components
 var BootstrapRequirements = PackageRequirements{
@@ -159,10 +188,11 @@ func collectPackages(dist distro, reqs PackageRequirements) []string {
 
 // InstallDeps installs all the dependencies defined in a component
 // specific PackageRequirements in order to enable running the component
-func InstallDeps(reqs PackageRequirements, logger OSPLog) {
+func InstallDeps(ctx context.Context, reqs PackageRequirements, logger OSPLog) {
 	if logger == nil {
 		logger = ospNullLogger{}
 	}
+
 	distro := getDistro()
 
 	if distro == nil {
@@ -182,7 +212,7 @@ func InstallDeps(reqs PackageRequirements, logger OSPLog) {
 	}
 	if reqPkgs := collectPackages(distro, reqs); reqPkgs != nil {
 		logger.Infof("Missing packages detected: %v", reqPkgs)
-		if distro.InstallPackages(reqPkgs, logger) == false {
+		if distro.InstallPackages(ctx, reqPkgs, logger) == false {
 			logger.Errorf("Failed to install: %s", strings.Join(reqPkgs, ", "))
 			return
 		}
@@ -192,6 +222,6 @@ func InstallDeps(reqs PackageRequirements, logger OSPLog) {
 
 // Bootstrap installs all the core dependencies required to bootstrap the core
 // configuration of all Ciao components
-func Bootstrap(logger OSPLog) {
-	InstallDeps(BootstrapRequirements, logger)
+func Bootstrap(ctx context.Context, logger OSPLog) {
+	InstallDeps(ctx, BootstrapRequirements, logger)
 }

@@ -27,8 +27,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func instanceToServer(context *controller, instance *types.Instance) (compute.ServerDetails, error) {
-	workload, err := context.ds.GetWorkload(instance.WorkloadID)
+func instanceToServer(ctl *controller, instance *types.Instance) (compute.ServerDetails, error) {
+	workload, err := ctl.ds.GetWorkload(instance.WorkloadID)
 	if err != nil {
 		return compute.ServerDetails{}, err
 	}

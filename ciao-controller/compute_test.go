@@ -72,13 +72,13 @@ func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse i
 }
 
 func testCreateServer(t *testing.T, n int) compute.Servers {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// get a valid workload ID
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,13 +133,13 @@ func TestCreateSingleServer(t *testing.T) {
 }
 
 func TestCreateSingleServerInvalidToken(t *testing.T) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// get a valid workload ID
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestCreateSingleServerInvalidToken(t *testing.T) {
 }
 
 func TestListServerDetailsTenant(t *testing.T) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func TestListServerDetailsTenant(t *testing.T) {
 }
 
 func TestListServerDetailsTenantInvalidToken(t *testing.T) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestListServerDetailsTenantInvalidToken(t *testing.T) {
 
 func testListServerDetailsWorkload(t *testing.T, httpExpectedStatus int, validToken bool) {
 	// get a valid workload ID
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestListServerDetailsWorkload(t *testing.T) {
 }
 
 func testShowServerDetails(t *testing.T, httpExpectedStatus int, validToken bool) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestShowServerDetailsInvalidToken(t *testing.T) {
 }
 
 func testDeleteServer(t *testing.T, httpExpectedStatus int, httpExpectedErrorStatus int, validToken bool) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +330,7 @@ func TestDeleteServerInvalidToken(t *testing.T) {
 }
 
 func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken bool) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,7 +354,7 @@ func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken boo
 
 	time.Sleep(1 * time.Second)
 
-	err = context.stopInstance(servers.Servers[0].ID)
+	err = ctl.stopInstance(servers.Servers[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +390,7 @@ func TestServersActionStartInvalidToken(t *testing.T) {
 }
 
 func testServersActionStop(t *testing.T, httpExpectedStatus int, action string) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -441,7 +441,7 @@ func TestServersActionStopWrongAction(t *testing.T) {
 func testServerActionStop(t *testing.T, httpExpectedStatus int, validToken bool) {
 	action := "os-stop"
 
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -478,7 +478,7 @@ func TestServerActionStopInvalidToken(t *testing.T) {
 func TestServerActionStart(t *testing.T) {
 	action := "os-start"
 
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -502,7 +502,7 @@ func TestServerActionStart(t *testing.T) {
 
 	serverCh := server.AddCmdChan(ssntp.STOP)
 
-	err = context.stopInstance(servers.Servers[0].ID)
+	err = ctl.stopInstance(servers.Servers[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,14 +523,14 @@ func TestServerActionStart(t *testing.T) {
 }
 
 func testListFlavors(t *testing.T, httpExpectedStatus int, data []byte, validToken bool) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors"
 
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -575,14 +575,14 @@ func TestListFlavorsInvalidToken(t *testing.T) {
 }
 
 func testShowFlavorDetails(t *testing.T, httpExpectedStatus int, validToken bool) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors/"
 
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -634,7 +634,7 @@ func TestShowFlavorDetailsInvalidToken(t *testing.T) {
 }
 
 func testListFlavorsDetails(t *testing.T, httpExpectedStatus int, data []byte, validToken bool) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -657,14 +657,14 @@ func testListTenantResources(t *testing.T, httpExpectedStatus int, validToken bo
 	endTime := time.Now()
 	startTime := endTime.Add(-15 * time.Minute)
 
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/resources?"
 
-	usage.Usages, err = context.ds.GetTenantUsage(tenant.ID, startTime, endTime)
+	usage.Usages, err = ctl.ds.GetTenantUsage(tenant.ID, startTime, endTime)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -702,7 +702,7 @@ func TestListTenantResourcesInvalidToken(t *testing.T) {
 }
 
 func testListTenantQuotas(t *testing.T, httpExpectedStatus int, validToken bool) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -762,7 +762,7 @@ func TestListTenantQuotasInvalidToken(t *testing.T) {
 }
 
 func testListEventsTenant(t *testing.T, httpExpectedStatus int, validToken bool) {
-	tenant, err := context.ds.GetTenant(testutil.ComputeUser)
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -771,7 +771,7 @@ func testListEventsTenant(t *testing.T, httpExpectedStatus int, validToken bool)
 
 	expected := types.NewCiaoEvents()
 
-	logs, err := context.ds.GetEventLog()
+	logs, err := ctl.ds.GetEventLog()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -809,10 +809,10 @@ func TestListEventsTenant(t *testing.T) {
 }
 
 func testListNodeServers(t *testing.T, httpExpectedStatus int, validToken bool) {
-	computeNodes := context.ds.GetNodeLastStats()
+	computeNodes := ctl.ds.GetNodeLastStats()
 
 	for _, n := range computeNodes.Nodes {
-		instances, err := context.ds.GetAllInstancesByNode(n.ID)
+		instances, err := ctl.ds.GetAllInstancesByNode(n.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -851,7 +851,7 @@ func TestListNodeServersInvalidToken(t *testing.T) {
 }
 
 func testListTenants(t *testing.T, httpExpectedStatus int, validToken bool) {
-	tenants, err := context.ds.GetAllTenants()
+	tenants, err := ctl.ds.GetAllTenants()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -899,9 +899,9 @@ func TestListTenantsInvalidToken(t *testing.T) {
 }
 
 func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
-	expected := context.ds.GetNodeLastStats()
+	expected := ctl.ds.GetNodeLastStats()
 
-	summary, err := context.ds.GetNodeSummary()
+	summary, err := ctl.ds.GetNodeSummary()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -957,7 +957,7 @@ func TestListNodesInvalidToken(t *testing.T) {
 func testNodeSummary(t *testing.T, httpExpectedStatus int, validToken bool) {
 	var expected types.CiaoClusterStatus
 
-	computeNodes := context.ds.GetNodeLastStats()
+	computeNodes := ctl.ds.GetNodeLastStats()
 
 	expected.Status.TotalNodes = len(computeNodes.Nodes)
 	for _, node := range computeNodes.Nodes {
@@ -1003,7 +1003,7 @@ func TestNodeSummaryInvalidToken(t *testing.T) {
 func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 	var expected types.CiaoCNCIs
 
-	cncis, err := context.ds.GetTenantCNCISummary("")
+	cncis, err := ctl.ds.GetTenantCNCISummary("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1062,7 +1062,7 @@ func TestListCNCIsInvalidToken(t *testing.T) {
 }
 
 func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) {
-	cncis, err := context.ds.GetTenantCNCISummary("")
+	cncis, err := ctl.ds.GetTenantCNCISummary("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1070,7 +1070,7 @@ func testListCNCIDetails(t *testing.T, httpExpectedStatus int, validToken bool) 
 	for _, cnci := range cncis {
 		var expected types.CiaoCNCI
 
-		cncis, err := context.ds.GetTenantCNCISummary(cnci.InstanceID)
+		cncis, err := ctl.ds.GetTenantCNCISummary(cnci.InstanceID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1134,7 +1134,7 @@ func testListTraces(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 	time.Sleep(2 * time.Second)
 
-	summaries, err := context.ds.GetBatchFrameSummary()
+	summaries, err := ctl.ds.GetBatchFrameSummary()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1180,7 +1180,7 @@ func testListEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 	expected := types.NewCiaoEvents()
 
-	logs, err := context.ds.GetEventLog()
+	logs, err := ctl.ds.GetEventLog()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1230,7 +1230,7 @@ func testClearEvents(t *testing.T, httpExpectedStatus int, validToken bool) {
 		return
 	}
 
-	logs, err := context.ds.GetEventLog()
+	logs, err := ctl.ds.GetEventLog()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1256,7 +1256,7 @@ func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
 
 	time.Sleep(2 * time.Second)
 
-	summaries, err := context.ds.GetBatchFrameSummary()
+	summaries, err := ctl.ds.GetBatchFrameSummary()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1264,7 +1264,7 @@ func testTraceData(t *testing.T, httpExpectedStatus int, validToken bool) {
 	for _, s := range summaries {
 		var expected types.CiaoTraceData
 
-		batchStats, err := context.ds.GetBatchFrameStatistics(s.BatchID)
+		batchStats, err := ctl.ds.GetBatchFrameStatistics(s.BatchID)
 		if err != nil {
 			t.Fatal(err)
 		}
