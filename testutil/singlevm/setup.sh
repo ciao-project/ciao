@@ -13,6 +13,8 @@ ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
 ciao_env="$ciao_bin/demo.sh"
 ciao_ctl_log="/var/lib/ciao/logs/controller/ciao-controller.ERROR"
 ciao_cnci_image="clear-8260-ciao-networking.img"
+fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
+fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
 hosts_file_backup="/etc/hosts.orig.$RANDOM"
 
@@ -232,6 +234,25 @@ sudo cp -f clear-"${LATEST}"-cloud.img /var/lib/ciao/images
 cd /var/lib/ciao/images
 sudo ln -sf clear-"${LATEST}"-cloud.img df3768da-31f5-4ba6-82f0-127a1a705169
 
+#Fedora, needed for BAT tests
+cd "$ciao_bin"
+if [ $download -eq 1 ] || [ ! -f $fedora_cloud_image ]
+then
+    rm -f $fedora_cloud_image
+    curl -L -O $fedora_cloud_url
+fi
+
+if [ ! -f $fedora_cloud_image ]
+then
+	echo "FATAL ERROR: unable to download fedora cloud Image"
+	exit 1
+fi
+
+sudo cp -f $fedora_cloud_image /var/lib/ciao/images
+cd /var/lib/ciao/images
+sudo ln -sf $fedora_cloud_image 73a86d7e-93c0-480e-9c41-ab42f69b7799
+
+
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
     sudo ip link del eth10
@@ -265,6 +286,8 @@ echo "export HOSTS_FILE_BACKUP=""$hosts_file_backup" > "$ciao_env"
 echo "export CIAO_CONTROLLER=""$ciao_host" >> "$ciao_env"
 echo "export CIAO_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
+echo "export CIAO_ADMIN_USERNAME=admin" >> "$ciao_env"
+echo "export CIAO_ADMIN_PASSWORD=giveciaoatry" >> "$ciao_env"
 echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
 cat "$ciao_ctl_log"

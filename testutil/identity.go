@@ -254,6 +254,7 @@ func IdentityHandlers() *mux.Router {
 	r.HandleFunc("/v3/auth/tokens", authHandler).Methods("POST")
 	r.HandleFunc("/v3/auth/tokens", validateHandler).Methods("GET")
 	r.HandleFunc("/v3/users/10a2e6e717a245d9acad3e5f97aeca3d/projects", projectsHandler).Methods("GET")
+	r.HandleFunc("/v3/projects", projectsHandler).Methods("GET")
 
 	return r
 }
