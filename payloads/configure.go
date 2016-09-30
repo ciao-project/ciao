@@ -85,8 +85,7 @@ type ConfigureLauncher struct {
 // ConfigureStorage contains the unmarshalled configurations for the
 // Ceph storage driver.
 type ConfigureStorage struct {
-	SecretPath string `yaml:"secret_path"`
-	CephID     string `yaml:"ceph_id"`
+	CephID string `yaml:"ceph_id"`
 }
 
 // ConfigureService contains the unmarshalled configurations for the resources

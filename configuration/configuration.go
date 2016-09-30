@@ -36,9 +36,6 @@ import (
 //
 // TODO: proper validation of values set in yaml setup
 func validMinConf(conf *payloads.Configure) bool {
-	if conf.Configure.Storage.SecretPath == "" {
-		fmt.Printf("Warning, secret_path not set (will become an error soon)")
-	}
 	if conf.Configure.Storage.CephID == "" {
 		fmt.Printf("Warning, ceph_id not set (will become an error soon)")
 	}

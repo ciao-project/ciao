@@ -50,10 +50,6 @@ func TestConfigureUnmarshal(t *testing.T) {
 		t.Errorf("Wrong launcher compute network %v", cfg.Configure.Launcher.ComputeNetwork)
 	}
 
-	if cfg.Configure.Storage.SecretPath != testutil.KeyPath {
-		t.Errorf("Wrong launcher secret path %v", cfg.Configure.Storage.SecretPath)
-	}
-
 	if cfg.Configure.Storage.CephID != testutil.ManagementID {
 		t.Errorf("Wrong launcher ceph id %v", cfg.Configure.Storage.CephID)
 	}
@@ -85,7 +81,6 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Controller.IdentityUser = testutil.IdentityUser
 	cfg.Configure.Controller.IdentityPassword = testutil.IdentityPassword
 
-	cfg.Configure.Storage.SecretPath = testutil.KeyPath
 	cfg.Configure.Storage.CephID = testutil.ManagementID
 
 	cfg.Configure.Scheduler.ConfigStorageURI = testutil.StorageURI
