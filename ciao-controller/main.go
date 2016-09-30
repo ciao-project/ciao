@@ -33,6 +33,7 @@ import (
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	image "github.com/01org/ciao/ciao-image/client"
 	storage "github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/openstack/compute"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
@@ -55,7 +56,7 @@ var serverURL = flag.String("url", "", "Server URL")
 var identityURL = "identity:35357"
 var serviceUser = "csr"
 var servicePassword = ""
-var computeAPIPort = 8774
+var computeAPIPort = compute.APIPort
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
 var tablesInitPath = flag.String("tables_init_path", "./tables", "path to csv files")

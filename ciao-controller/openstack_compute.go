@@ -304,7 +304,7 @@ func (c *controller) ShowFlavorDetails(tenant string, flavorID string) (compute.
 // then wrap them in keystone validation. It will then start the https
 // service.
 func (c *controller) startComputeService() error {
-	config := compute.APIConfig{Port: compute.APIPort, ComputeService: c}
+	config := compute.APIConfig{Port: computeAPIPort, ComputeService: c}
 
 	r := compute.Routes(config)
 	if r == nil {
@@ -344,7 +344,7 @@ func (c *controller) startComputeService() error {
 	}
 
 	// start service.
-	service := fmt.Sprintf(":%d", compute.APIPort)
+	service := fmt.Sprintf(":%d", computeAPIPort)
 
 	return http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
 }
