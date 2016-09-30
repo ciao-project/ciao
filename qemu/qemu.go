@@ -276,23 +276,6 @@ func (cdev CharDevice) Valid() bool {
 	return true
 }
 
-func appendCharDevice(params []string, cdev CharDevice) ([]string, error) {
-	if cdev.Valid() == false {
-		return nil, fmt.Errorf("Invalid character device")
-	}
-
-	var cdevParams []string
-
-	cdevParams = append(cdevParams, string(cdev.Backend))
-	cdevParams = append(cdevParams, fmt.Sprintf(",id=%s", cdev.ID))
-	cdevParams = append(cdevParams, fmt.Sprintf(",path=%s", cdev.Path))
-
-	params = append(params, "-chardev")
-	params = append(params, strings.Join(cdevParams, ""))
-
-	return params, nil
-}
-
 // QemuParams returns the qemu parameters built out of this character device.
 func (cdev CharDevice) QemuParams(config *Config) []string {
 	var cdevParams []string
@@ -305,7 +288,11 @@ func (cdev CharDevice) QemuParams(config *Config) []string {
 
 	cdevParams = append(cdevParams, string(cdev.Backend))
 	cdevParams = append(cdevParams, fmt.Sprintf(",id=%s", cdev.ID))
-	cdevParams = append(cdevParams, fmt.Sprintf(",path=%s", cdev.Path))
+	if cdev.Backend == Socket {
+		cdevParams = append(cdevParams, fmt.Sprintf(",path=%s,server,nowait", cdev.Path))
+	} else {
+		cdevParams = append(cdevParams, fmt.Sprintf(",path=%s", cdev.Path))
+	}
 
 	qemuParams = append(qemuParams, "-device")
 	qemuParams = append(qemuParams, strings.Join(deviceParams, ""))
@@ -682,6 +669,9 @@ type Knobs struct {
 
 	// NoGraphic completely disables graphic output.
 	NoGraphic bool
+
+	// Daemonize will turn the qemu process into a daemon
+	Daemonize bool
 }
 
 // Config is the qemu configuration structure.
@@ -924,6 +914,10 @@ func (config *Config) appendKnobs() {
 
 	if config.Knobs.NoGraphic == true {
 		config.qemuParams = append(config.qemuParams, "-nographic")
+	}
+
+	if config.Knobs.Daemonize == true {
+		config.qemuParams = append(config.qemuParams, "-daemonize")
 	}
 }
 
