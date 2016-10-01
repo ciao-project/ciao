@@ -838,14 +838,16 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
 	query := `SELECT volume_id, bootable, persistent, size,
 			 source_type, source_id
-		  FROM 	workload_resources
+		  FROM 	workload_storage
 		  WHERE workload_id = ?`
 
 	row := ds.db.QueryRow(query, ID)
 
 	var r types.StorageResource
+	var sourceType string
 
-	err := row.Scan(&r.ID, &r.Bootable, &r.Persistent, &r.Size, &r.SourceType, &r.SourceID)
+	err := row.Scan(&r.ID, &r.Bootable, &r.Persistent, &r.Size, &sourceType, &r.SourceID)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// not an error, it's just not there.
@@ -854,6 +856,7 @@ func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error
 
 		return nil, err
 	}
+	r.SourceType = types.SourceType(sourceType)
 
 	return &r, nil
 }
