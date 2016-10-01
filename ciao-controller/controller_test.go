@@ -1104,6 +1104,7 @@ func TestGetStorage(t *testing.T) {
 		Bootable:   true,
 		Persistent: true,
 		SourceType: types.ImageService,
+		SourceID:   filepath.Base(tmpfile.Name()),
 	}
 
 	wl := &types.Workload{
@@ -1123,6 +1124,50 @@ func TestGetStorage(t *testing.T) {
 
 	if pl.Bootable != true {
 		t.Errorf("bootable flag not correct")
+	}
+}
+
+func TestStorageConfig(t *testing.T) {
+	var err error
+
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get workload ID
+	wls, err := context.ds.GetWorkloads()
+	if err != nil || len(wls) == 0 {
+		t.Fatal(err)
+	}
+
+	tmpfile, err := ioutil.TempFile(context.image.MountPoint, "test-image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	info, err := tmpfile.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// a temporary in memory filesystem?
+	s := &types.StorageResource{
+		ID:         "",
+		Bootable:   true,
+		Persistent: true,
+		SourceType: types.ImageService,
+		SourceID:   info.Name(),
+	}
+
+	wls[0].Storage = s
+
+	id := uuid.Generate()
+
+	_, err = newConfig(context, wls[0], id.String(), tenant.ID)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

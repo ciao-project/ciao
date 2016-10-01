@@ -34,6 +34,9 @@ const (
 
 	// VolumeService indicates the source comes from the volume service.
 	VolumeService SourceType = "volume"
+
+	// Empty indicates that there is no source for the storage source
+	Empty SourceType = "empty"
 )
 
 // StorageResource defines a storage resource for a workload.
@@ -57,6 +60,10 @@ type StorageResource struct {
 	// based on an image or existing volume.
 	// Needed only for new storage.
 	SourceType SourceType
+
+	// SourceID represents the ID of either the image or the volume
+	// that the storage resource is based on.
+	SourceID string
 }
 
 // Workload contains resource and configuration information for a user
