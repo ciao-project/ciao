@@ -838,24 +838,16 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
 	query := `SELECT volume_id, bootable, persistent, size,
 			 source_type, source_id
-		  FROM 	workload_resources
+		  FROM 	workload_storage
 		  WHERE workload_id = ?`
 
 	row := ds.db.QueryRow(query, ID)
 
-	// fake this for now. We are going to always request a
-	// new bootable image which will persist.
-	return &types.StorageResource{
-		ID:         "",
-		Bootable:   true,
-		Persistent: true,
-		SourceType: types.ImageService,
-		SourceID:   "73a86d7e-93c0-480e-9c41-ab42f69b7799",
-	}, nil
-
 	var r types.StorageResource
 
-	err := row.Scan(&r.ID, &r.Bootable, &r.Persistent, &r.Size, &r.SourceType, &r.SourceID)
+	var sourceType string
+
+	err := row.Scan(&r.ID, &r.Bootable, &r.Persistent, &r.Size, &sourceType, &r.SourceID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// not an error, it's just not there.
@@ -864,6 +856,7 @@ func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error
 
 		return nil, err
 	}
+	r.SourceType = types.SourceType(sourceType)
 
 	return &r, nil
 }
