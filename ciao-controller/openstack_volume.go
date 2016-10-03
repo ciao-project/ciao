@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
 	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/golang/glog"
@@ -39,15 +40,26 @@ func (c *controller) GetAbsoluteLimits(tenant string) (block.AbsoluteLimits, err
 }
 
 // CreateVolume will create a new block device and store it in the datastore.
-// TBD: we need a better way to do bootable.
 func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (block.Volume, error) {
 	err := c.confirmTenant(tenant)
 	if err != nil {
 		return block.Volume{}, err
 	}
 
+	var bd storage.BlockDevice
+
 	// no limits checking for now.
-	bd, err := c.CreateBlockDevice(req.ImageRef, req.Size)
+	if req.ImageRef != nil {
+		// create bootable volume
+		bd, err = c.CreateBlockDevice(req.ImageRef, req.Size)
+	} else if req.SourceVolID != nil {
+		// copy existing volume
+		bd, err = c.CopyBlockDevice(*req.SourceVolID)
+	} else {
+		// create empty volume
+		bd, err = c.CreateBlockDevice(nil, req.Size)
+	}
+
 	if err != nil {
 		return block.Volume{}, err
 	}
@@ -55,6 +67,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	// store block device data in datastore
 	// TBD - do we really need to do this, or can we associate
 	// the block device data with the device itself?
+	// you should modify BlockData to include a "bootable" flag.
 	data := types.BlockData{
 		BlockDevice: bd,
 		Size:        req.Size,
