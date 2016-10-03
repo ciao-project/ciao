@@ -1128,6 +1128,11 @@ func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
 			return nil, err
 		}
 
+		t.devices, err = ds.getTenantDevices(t.ID)
+		if err != nil {
+			return nil, err
+		}
+
 		tenants = append(tenants, t)
 	}
 	if err = rows.Err(); err != nil {
