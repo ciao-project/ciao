@@ -16,6 +16,7 @@ ciao_cnci_image="clear-8260-ciao-networking.img"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
+travis_test=0
 hosts_file_backup="/etc/hosts.orig.$RANDOM"
 
 cleanup()
@@ -42,6 +43,14 @@ usage="$(basename "$0") [--download] The script will download dependencies if ne
 while :
 do
     case "$1" in
+      -t | --travis)
+          travis_test=1
+          shift 1
+          ;;
+      -d | --download)
+          download=1
+          shift 1
+          ;;
       -d | --download)
           download=1
           shift 1
@@ -87,9 +96,21 @@ sudo killall ciao-controller
 sudo killall ciao-launcher
 sudo killall qemu-system-x86_64
 echo "Original /etc/hosts is temporarily move to $hosts_file_backup"
-sudo mv /etc/hosts $hosts_file_backup
+
+echo "Original hosts file"
+cat /etc/hosts
+
+sudo cp /etc/hosts $hosts_file_backup
+
+echo "Test machine network status"
+sudo ifconfig -a
+
 echo "$ciao_ip $ciao_host" > hosts
 sudo mv hosts /etc/hosts
+
+echo "Modified hosts file"
+cat /etc/hosts
+
 sudo rm -rf /var/lib/ciao/instances
 echo "Deleting docker containers. This may take time"
 sudo docker rm -f $(sudo docker ps -a -q)
@@ -289,8 +310,16 @@ echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
 echo "export CIAO_ADMIN_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_ADMIN_PASSWORD=giveciaoatry" >> "$ciao_env"
 echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
-sleep 5
+
+#Wait longer on travis for the Controller to startup
+if [ $travis_test -eq 0 ]
+then
+	sleep 5
+else
+	sleep 60
+fi
 cat "$ciao_ctl_log"
+
 identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
 echo "$identity" >> "$ciao_env"
 export CIAO_CONTROLLER="$ciao_host"
@@ -298,6 +327,9 @@ export CIAO_USERNAME=admin
 export CIAO_PASSWORD=giveciaoatry
 
 export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem
+
+echo "Dumping the environment"
+cat "$ciao_env"
 
 eval "$identity"
 "$ciao_gobin"/ciao-cli workload list
@@ -309,25 +341,30 @@ then
 	exit 1
 fi
 
-"$ciao_gobin"/ciao-cli instance add --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --instances=2
-
-if [ $? -ne 0 ]
+#Do not test VM's under travis for now till we support non kvm enabled qemu
+if [ $travis_test -eq 0 ]
 then
-	echo "FATAL ERROR: Unable to launch VMs"
-	cleanup
-	exit 1
+
+	"$ciao_gobin"/ciao-cli instance add --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --instances=2
+
+	if [ $? -ne 0 ]
+	then
+		echo "FATAL ERROR: Unable to launch VMs"
+		cleanup
+		exit 1
+	fi
+
+	"$ciao_gobin"/ciao-cli instance list
+
+	if [ $? -ne 0 ]
+	then
+		echo "FATAL ERROR: Unable to list instances"
+		cleanup
+		exit 1
+	fi
 fi
 
-"$ciao_gobin"/ciao-cli instance list
-
-if [ $? -ne 0 ]
-then
-	echo "FATAL ERROR: Unable to list instances"
-	cleanup
-	exit 1
-fi
-
-"$ciao_gobin"/ciao-cli instance add --workload=ab68111c-03a6-11e6-87de-001320fb6e31 --instances=2
+"$ciao_gobin"/ciao-cli instance add --workload=ca957444-fa46-11e5-94f9-38607786d9ec --instances=1
 
 if [ $? -ne 0 ]
 then
@@ -346,52 +383,85 @@ then
 	exit 1
 fi
 
+container_1=`sudo docker ps -q -l`
+container_1_ip=`sudo docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $container_1`
 
-#Check SSH connectivity
-"$ciao_gobin"/ciao-cli instance list
+"$ciao_gobin"/ciao-cli instance add --workload=ca957444-fa46-11e5-94f9-38607786d9ec --instances=1
 
-#The VM takes time to boot as you are running on two
-#layers of virtualization. Hence wait a bit
-retry=0
-until [ $retry -ge 6 ]
-do
-	ssh_ip=$("$ciao_gobin"/ciao-cli instance list --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --detail |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
-
-	if [ "$ssh_ip" == "" ] 
-	then
-		echo "Waiting for instance to boot"
-		let retry=retry+1
-		sleep 30
-		continue
-	fi
-
-	ssh_check=$(head -1 < /dev/tcp/"$ssh_ip"/33002)
-	echo "$ssh_check"
-
-	echo "Attempting to ssh to: $ssh_ip"
-
-	if [[ "$ssh_check" == *SSH-2.0-OpenSSH* ]]
-	then
-		echo "SSH connectivity verified"
-		break
-	else
-		let retry=retry+1
-		echo "Retrying ssh connection $retry"
-	fi
-	sleep 30
-done
-
-if [ $retry -ge 6 ]
+if [ $? -ne 0 ]
 then
-	echo "Unable check ssh connectivity into VM"
+	echo "FATAL ERROR: Unable to launch containers"
 	cleanup
+	exit 1
+fi
+
+sleep 5
+
+"$ciao_gobin"/ciao-cli instance list
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to list instances"
+	cleanup
+	exit 1
+fi
+
+container_2=`sudo docker ps -q -l`
+
+if [ $travis_test -eq 0 ]
+then
+	#Check SSH connectivity
+	"$ciao_gobin"/ciao-cli instance list
+
+	#The VM takes time to boot as you are running on two
+	#layers of virtualization. Hence wait a bit
+	retry=0
+	until [ $retry -ge 6 ]
+	do
+		ssh_ip=$("$ciao_gobin"/ciao-cli instance list --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --detail |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
+
+		if [ "$ssh_ip" == "" ] 
+		then
+			echo "Waiting for instance to boot"
+			let retry=retry+1
+			sleep 30
+			continue
+		fi
+
+		ssh_check=$(head -1 < /dev/tcp/"$ssh_ip"/33002)
+		echo "$ssh_check"
+
+		echo "Attempting to ssh to: $ssh_ip"
+
+		if [[ "$ssh_check" == *SSH-2.0-OpenSSH* ]]
+		then
+			echo "SSH connectivity verified"
+			break
+		else
+			let retry=retry+1
+			echo "Retrying ssh connection $retry"
+		fi
+		sleep 30
+	done
+
+
+	if [ $retry -ge 6 ]
+	then
+		echo "Unable check ssh connectivity into VM"
+		cleanup
+	fi
 fi
 
 #Check docker networking
 echo "Checking Docker Networking"
-sleep 30
-docker_id=$(sudo docker ps -q | head -1)
-sudo docker logs "$docker_id"
+sudo docker exec $container_2 /bin/ping -c 3 $container_1_ip
+
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to ping across containers"
+	cleanup
+else
+	echo "Container connectivity verified"
+fi
 
 
 #Now delete all instances
@@ -400,7 +470,7 @@ sudo docker logs "$docker_id"
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to delete instances"
-	exit 1
+	cleanup
 fi
 
 "$ciao_gobin"/ciao-cli instance list
