@@ -45,6 +45,7 @@ type volumeAddCommand struct {
 	size        int
 	description string
 	name        string
+	sourceType  string
 	source      string
 }
 
@@ -62,7 +63,8 @@ The add flags are:
 
 func (cmd *volumeAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.name, "name", "", "Volume name")
-	cmd.Flag.StringVar(&cmd.source, "source", "", "Volume ID to clone from")
+	cmd.Flag.StringVar(&cmd.sourceType, "source_type", "image", "The type of the source to clone from")
+	cmd.Flag.StringVar(&cmd.source, "source", "", "ID of image or volume to clone from")
 	cmd.Flag.IntVar(&cmd.size, "size", 1, "Size of the volume in GB")
 	cmd.Flag.StringVar(&cmd.description, "description", "", "Volume description")
 	cmd.Flag.Usage = func() { cmd.usage() }
@@ -80,7 +82,14 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		Description: cmd.description,
 		Name:        cmd.name,
 		Size:        cmd.size,
-		SourceVolID: cmd.source,
+	}
+
+	if cmd.sourceType == "image" {
+		opts.ImageID = cmd.source
+	} else if cmd.sourceType == "volume" {
+		opts.SourceVolID = cmd.source
+	} else {
+		fatalf("Unknown source type [%s]\n", cmd.sourceType)
 	}
 
 	vol, err := volumes.Create(client, opts).Extract()
