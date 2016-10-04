@@ -1,6 +1,7 @@
 #!/bin/bash
 ciao_host=$(hostname)
 ciao_ip=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+ciao_subnet=$(echo $ciao_ip | sed -e 's/\([0-9]\+\).\([0-9]\+\).\([0-9]\+\).\([0-9]\+\)/\1.\2\.\3.0\/24/')
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
 export no_proxy=$no_proxy,$ciao_host
@@ -249,6 +250,11 @@ fi
 sudo cp -f $fedora_cloud_image /var/lib/ciao/images
 cd /var/lib/ciao/images
 sudo ln -sf $fedora_cloud_image 73a86d7e-93c0-480e-9c41-ab42f69b7799
+
+# Install ceph
+
+sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
+sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
 
 
 # Set macvlan interface

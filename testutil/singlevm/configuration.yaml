@@ -1,6 +1,8 @@
 configure:
   scheduler:
     storage_uri: /etc/ciao/configuration.yaml
+  storage:
+    ceph_id: ciao
   controller:
     compute_ca: /etc/pki/ciao/controller_cert.pem
     compute_cert: /etc/pki/ciao/controller_key.pem
