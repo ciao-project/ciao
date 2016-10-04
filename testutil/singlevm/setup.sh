@@ -25,7 +25,7 @@ cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
 cleanup()
 {
     echo "Performing cleanup"
-    HOSTS_FILE_BACKUP=$hosts_file_backup "$ciao_bin"/cleanup.sh
+    "$ciao_bin"/cleanup.sh $hosts_file_backup
 }
 
 # Ctrl-C Trapper
