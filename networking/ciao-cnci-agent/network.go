@@ -325,7 +325,7 @@ func releasePubIP(cmd *payloads.PublicIPCommand) error {
 		return fmt.Errorf("cnci.releasePubIP invalid params %v %v", err, cmd)
 	}
 
-	err = gFw.PublicIPAccess(libsnnet.FwEnable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
+	err = gFw.PublicIPAccess(libsnnet.FwDisable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
