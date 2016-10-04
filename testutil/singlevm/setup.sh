@@ -293,13 +293,12 @@ echo "export CIAO_ADMIN_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_ADMIN_PASSWORD=giveciaoatry" >> "$ciao_env"
 echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
-cat "$ciao_ctl_log"
 identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
 echo "$identity" >> "$ciao_env"
 
-
-echo "Your ciao development environment has been initialised."
+echo "---------------------------------------------------------------------------------------"
 echo ""
+echo "Your ciao development environment has been initialised."
 echo "To get started run:"
 echo ""
 echo ". ~/local/demo.sh"
