@@ -58,6 +58,21 @@ func (f *uiFlag) Enabled() bool {
 	return string(*f) != "none"
 }
 
+type qemuVirtualisationFlag string
+
+func (f *qemuVirtualisationFlag) String() string {
+	return string(*f)
+}
+
+func (f *qemuVirtualisationFlag) Set(val string) error {
+	if val != "auto" && val != "kvm" && val != "software" {
+		return fmt.Errorf("auto, kvm, or software")
+	}
+	*f = qemuVirtualisationFlag(val)
+
+	return nil
+}
+
 var serverCertPath string
 var clientCertPath string
 var computeNet []string

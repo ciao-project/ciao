@@ -459,8 +459,25 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
 
 	params = append(params, networkParams...)
 
-	params = append(params, "-enable-kvm")
-	params = append(params, "-cpu", "host")
+	useKvm := true
+
+	switch qemuVirtualisation {
+	case "software":
+		useKvm = false
+	case "auto":
+		_, err := os.Stat("/dev/kvm")
+		if err != nil {
+			useKvm = false
+		}
+	}
+
+	if useKvm {
+		params = append(params, "-enable-kvm")
+		params = append(params, "-cpu", "host")
+	} else {
+		glog.Warning("Running qemu without kvm support")
+	}
+
 	params = append(params, "-daemonize")
 
 	qmpSocket := path.Join(instanceDir, "socket")

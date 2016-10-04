@@ -17,3 +17,4 @@
 package main
 
 var launchWithUI uiFlag = "none"
+var qemuVirtualisation qemuVirtualisationFlag = "kvm"
