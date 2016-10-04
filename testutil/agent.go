@@ -124,7 +124,7 @@ func (client *SsntpTestClient) GetCmdChanResult(c *chan Result, cmd ssntp.Comman
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s command: %s\n", cmd, result.Err)
 		}
-	case <-time.After(25 * time.Second):
+	case <-time.After(60 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s command result\n", cmd)
 	}
 
@@ -163,7 +163,7 @@ func (client *SsntpTestClient) GetEventChanResult(c *chan Result, evt ssntp.Even
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s event: %s\n", evt, result.Err)
 		}
-	case <-time.After(25 * time.Second):
+	case <-time.After(60 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s event result\n", evt)
 	}
 
@@ -202,7 +202,7 @@ func (client *SsntpTestClient) GetErrorChanResult(c *chan Result, error ssntp.Er
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s error: %s\n", error, result.Err)
 		}
-	case <-time.After(25 * time.Second):
+	case <-time.After(60 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s error result\n", error)
 	}
 
@@ -241,7 +241,7 @@ func (client *SsntpTestClient) GetStatusChanResult(c *chan Result, status ssntp.
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s status: %s\n", status, result.Err)
 		}
-	case <-time.After(25 * time.Second):
+	case <-time.After(60 * time.Second):
 		err = fmt.Errorf("Timeout waiting for client %s status result\n", status)
 	}
 

@@ -98,7 +98,7 @@ func (ctl *SsntpTestController) GetCmdChanResult(c *chan Result, cmd ssntp.Comma
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s command: %s\n", cmd, result.Err)
 		}
-	case <-time.After(25 * time.Second):
+	case <-time.After(60 * time.Second):
 		err = fmt.Errorf("Timeout waiting for controller %s command result\n", cmd)
 	}
 
@@ -137,7 +137,7 @@ func (ctl *SsntpTestController) GetEventChanResult(c *chan Result, evt ssntp.Eve
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s event: %s\n", evt, result.Err)
 		}
-	case <-time.After(25 * time.Second):
+	case <-time.After(60 * time.Second):
 		err = fmt.Errorf("Timeout waiting for controller %s event result\n", evt)
 	}
 
@@ -176,7 +176,7 @@ func (ctl *SsntpTestController) GetErrorChanResult(c *chan Result, error ssntp.E
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s error: %s\n", error, result.Err)
 		}
-	case <-time.After(25 * time.Second):
+	case <-time.After(60 * time.Second):
 		err = fmt.Errorf("Timeout waiting for controller %s error result\n", error)
 	}
 
