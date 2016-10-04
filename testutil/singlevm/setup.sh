@@ -19,15 +19,13 @@ fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/2
 download=0
 hosts_file_backup="/etc/hosts.orig.$RANDOM"
 
+# Copy the cleanup scripts
+cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
+
 cleanup()
 {
-	echo "Performing cleanup"
-	"$ciao_gobin"/ciao-cli instance delete --all
-	#Also kill the CNCI (as there is no other way to delete it today)
-	sudo killall qemu-system-x86_64
-	sudo ip link del eth10
-	sudo pkill -F /tmp/dnsmasq.macvlan0.pid
-	sudo mv $hosts_file_backup /etc/hosts
+    echo "Performing cleanup"
+    HOSTS_FILE_BACKUP=$hosts_file_backup "$ciao_bin"/cleanup.sh
 }
 
 # Ctrl-C Trapper
