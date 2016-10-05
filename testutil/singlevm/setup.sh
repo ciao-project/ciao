@@ -1,6 +1,7 @@
 #!/bin/bash
 ciao_host=$(hostname)
 ciao_ip=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+ciao_subnet=$(echo $ciao_ip | sed -e 's/\([0-9]\+\).\([0-9]\+\).\([0-9]\+\).\([0-9]\+\)/\1.\2\.\3.0\/24/')
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
 export no_proxy=$no_proxy,$ciao_host
@@ -18,15 +19,13 @@ fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/2
 download=0
 hosts_file_backup="/etc/hosts.orig.$RANDOM"
 
+# Copy the cleanup scripts
+cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
+
 cleanup()
 {
-	echo "Performing cleanup"
-	"$ciao_gobin"/ciao-cli instance delete --all
-	#Also kill the CNCI (as there is no other way to delete it today)
-	sudo killall qemu-system-x86_64
-	sudo ip link del eth10
-	sudo pkill -F /tmp/dnsmasq.macvlan0.pid
-	sudo mv $hosts_file_backup /etc/hosts
+    echo "Performing cleanup"
+    "$ciao_bin"/cleanup.sh $hosts_file_backup
 }
 
 # Ctrl-C Trapper
@@ -91,8 +90,6 @@ sudo mv /etc/hosts $hosts_file_backup
 echo "$ciao_ip $ciao_host" > hosts
 sudo mv hosts /etc/hosts
 sudo rm -rf /var/lib/ciao/instances
-echo "Deleting docker containers. This may take time"
-sudo docker rm -f $(sudo docker ps -a -q)
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -165,6 +162,7 @@ cp -f "$ciao_scripts"/tables/* "$ciao_bin"/tables
 cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
 cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
 cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
+cp "$ciao_scripts"/verify.sh "$ciao_bin"
 
 #Download the firmware
 cd "$ciao_bin"
@@ -252,6 +250,11 @@ sudo cp -f $fedora_cloud_image /var/lib/ciao/images
 cd /var/lib/ciao/images
 sudo ln -sf $fedora_cloud_image 73a86d7e-93c0-480e-9c41-ab42f69b7799
 
+# Install ceph
+
+sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
+sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
+
 
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
@@ -290,126 +293,24 @@ echo "export CIAO_ADMIN_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_ADMIN_PASSWORD=giveciaoatry" >> "$ciao_env"
 echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
-cat "$ciao_ctl_log"
 identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
 echo "$identity" >> "$ciao_env"
-export CIAO_CONTROLLER="$ciao_host"
-export CIAO_USERNAME=admin
-export CIAO_PASSWORD=giveciaoatry
 
-export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem
-
-eval "$identity"
-"$ciao_gobin"/ciao-cli workload list
-
-if [ $? -ne 0 ]
-then
-	echo "FATAL ERROR: Unable to list workloads"
-	cleanup
-	exit 1
-fi
-
-"$ciao_gobin"/ciao-cli instance add --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --instances=2
-
-if [ $? -ne 0 ]
-then
-	echo "FATAL ERROR: Unable to launch VMs"
-	cleanup
-	exit 1
-fi
-
-"$ciao_gobin"/ciao-cli instance list
-
-if [ $? -ne 0 ]
-then
-	echo "FATAL ERROR: Unable to list instances"
-	cleanup
-	exit 1
-fi
-
-"$ciao_gobin"/ciao-cli instance add --workload=ab68111c-03a6-11e6-87de-001320fb6e31 --instances=2
-
-if [ $? -ne 0 ]
-then
-	echo "FATAL ERROR: Unable to launch containers"
-	cleanup
-	exit 1
-fi
-
-sleep 5
-
-"$ciao_gobin"/ciao-cli instance list
-if [ $? -ne 0 ]
-then
-	echo "FATAL ERROR: Unable to list instances"
-	cleanup
-	exit 1
-fi
-
-
-#Check SSH connectivity
-"$ciao_gobin"/ciao-cli instance list
-
-#The VM takes time to boot as you are running on two
-#layers of virtualization. Hence wait a bit
-retry=0
-until [ $retry -ge 6 ]
-do
-	ssh_ip=$("$ciao_gobin"/ciao-cli instance list --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --detail |  grep "SSH IP:" | sed 's/^.*SSH IP: //' | head -1)
-
-	if [ "$ssh_ip" == "" ] 
-	then
-		echo "Waiting for instance to boot"
-		let retry=retry+1
-		sleep 30
-		continue
-	fi
-
-	ssh_check=$(head -1 < /dev/tcp/"$ssh_ip"/33002)
-	echo "$ssh_check"
-
-	echo "Attempting to ssh to: $ssh_ip"
-
-	if [[ "$ssh_check" == *SSH-2.0-OpenSSH* ]]
-	then
-		echo "SSH connectivity verified"
-		break
-	else
-		let retry=retry+1
-		echo "Retrying ssh connection $retry"
-	fi
-	sleep 30
-done
-
-if [ $retry -ge 6 ]
-then
-	echo "Unable check ssh connectivity into VM"
-	cleanup
-fi
-
-#Check docker networking
-echo "Checking Docker Networking"
-sleep 30
-docker_id=$(sudo docker ps -q | head -1)
-sudo docker logs "$docker_id"
-
-
-#Now delete all instances
-"$ciao_gobin"/ciao-cli instance delete --all
-
-if [ $? -ne 0 ]
-then
-	echo "FATAL ERROR: Unable to delete instances"
-	exit 1
-fi
-
-"$ciao_gobin"/ciao-cli instance list
-"$ciao_gobin"/ciao-cli instance delete --all
+echo "---------------------------------------------------------------------------------------"
+echo ""
 echo "Your ciao development environment has been initialised."
 echo "To get started run:"
 echo ""
 echo ". ~/local/demo.sh"
 echo ""
+echo "Verify the cluster is working correctly by running"
+echo ""
+echo "~/local/verify.sh"
+echo ""
+echo "Use ciao-cli to manipulate and inspect the cluster, e.g., "
+echo ""
+echo "ciao-cli instance add --workload=ab68111c-03a6-11e6-87de-001320fb6e31 --instances=1"
+echo ""
 echo "When you're finished run the following command to cleanup"
 echo ""
-echo "./cleanup.sh"
+echo "~/local/cleanup.sh"
