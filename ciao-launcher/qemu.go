@@ -562,7 +562,7 @@ func qmpAttach(cmd virtualizerAttachCmd, q *qemu.QMP) {
 		glog.Errorf("Failed to execute blockdev-add: %v", err)
 	} else {
 		devID := fmt.Sprintf("device_%s", cmd.volumeUUID)
-		err := q.ExecuteDeviceAdd(context.Background(), blockdevID,
+		err = q.ExecuteDeviceAdd(context.Background(), blockdevID,
 			devID, "virtio-blk-pci", "")
 		if err != nil {
 			glog.Errorf("Failed to execute device_add: %v", err)
@@ -579,7 +579,7 @@ func qmpDetach(cmd virtualizerDetachCmd, q *qemu.QMP) {
 		glog.Errorf("Failed to execute device_del: %v", err)
 	} else {
 		blockdevID := fmt.Sprintf("drive_%s", cmd.volumeUUID)
-		err := q.ExecuteXBlockdevDel(context.Background(), blockdevID)
+		err = q.ExecuteXBlockdevDel(context.Background(), blockdevID)
 		if err != nil {
 			glog.Errorf("Failed to execute x-blockdev-del: %v", err)
 		}
