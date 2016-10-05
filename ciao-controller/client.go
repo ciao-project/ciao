@@ -267,6 +267,31 @@ func (client *ssntpClient) RestartInstance(instanceID string, nodeID string) err
 	return err
 }
 
+func (client *ssntpClient) AssignFloatingIP(floatingIP payloads.FloatingIP) error {
+	floatingIPCmd := payloads.PublicIPCommand{
+		PublicIP:     floatingIP.AssignFloatingIP.Address,
+		PrivateIP:    floatingIP.AssignFloatingIP.InternalIP,
+		TenantUUID:   floatingIP.AssignFloatingIP.TenantUUID,
+		InstanceUUID: floatingIP.AssignFloatingIP.InstanceUUID,
+	}
+
+	payload := payloads.CommandAssignPublicIP{
+		AssignIP: floatingIPCmd,
+	}
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	glog.Info("Assing Floating IP %s to internal %s", floatingIP.AssignFloatingIP.Address, floatingIP.AssignFloatingIP.InternalIP)
+	glog.V(1).Info(string(y))
+
+	_, err = client.ssntp.SendCommand(ssntp.AssignPublicIP, y)
+
+	return err
+}
+
 func (client *ssntpClient) EvacuateNode(nodeID string) error {
 	evacuateCmd := payloads.EvacuateCmd{
 		WorkloadAgentUUID: nodeID,

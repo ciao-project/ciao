@@ -20,6 +20,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/01org/ciao/payloads"
 )
 
 type test struct {
@@ -182,6 +184,10 @@ func (cs testComputeService) StartServer(tenant string, server string) error {
 }
 
 func (cs testComputeService) StopServer(tenant string, server string) error {
+	return nil
+}
+
+func (cs testComputeService) AssignFloatingIP(floatingIP payloads.FloatingIP) error {
 	return nil
 }
 

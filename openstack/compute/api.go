@@ -27,6 +27,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+
+	"github.com/01org/ciao/payloads"
 )
 
 // APIPort is the OpenStack compute port
@@ -249,6 +251,7 @@ type Service interface {
 	DeleteServer(tenant string, server string) error
 	StartServer(tenant string, server string) error
 	StopServer(tenant string, server string) error
+	AssignFloatingIP(floatingIP payloads.FloatingIP) error
 
 	//flavor interfaces
 	ListFlavors(string) (Flavors, error)
@@ -619,22 +622,22 @@ func serverAction(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 
 	bodyString := string(body)
 
-	var action action
-
 	if strings.Contains(bodyString, "os-start") {
-		action = computeActionStart
+		err = c.StartServer(tenant, server)
 	} else if strings.Contains(bodyString, "os-stop") {
-		action = computeActionStop
+		err = c.StopServer(tenant, server)
+	} else if strings.Contains(bodyString, "addFloatingIp") {
+		var floatingIP payloads.FloatingIP
+		err = json.Unmarshal(body, &floatingIP)
+		if err != nil {
+			return errorResponse(err), err
+		}
+		floatingIP.AssignFloatingIP.InstanceUUID = server
+		floatingIP.AssignFloatingIP.TenantUUID = tenant
+		err = c.AssignFloatingIP(floatingIP)
 	} else {
 		return APIResponse{http.StatusServiceUnavailable, nil},
 			errors.New("Unsupported Action")
-	}
-
-	switch action {
-	case computeActionStart:
-		err = c.StartServer(tenant, server)
-	case computeActionStop:
-		err = c.StopServer(tenant, server)
 	}
 
 	if err != nil {

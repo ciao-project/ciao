@@ -212,6 +212,19 @@ func (c *controller) StopServer(tenant string, ID string) error {
 	return c.stopInstance(ID)
 }
 
+func (c *controller) AssignFloatingIP(floatingIP payloads.FloatingIP) error {
+	i, err := c.ds.GetInstance(floatingIP.AssignFloatingIP.InstanceUUID)
+	if err != nil {
+		return err
+	}
+
+	if i.TenantID != floatingIP.AssignFloatingIP.TenantUUID {
+		return compute.ErrServerOwner
+	}
+
+	return c.assignFloatingIP(floatingIP)
+}
+
 func (c *controller) ListFlavors(tenant string) (compute.Flavors, error) {
 	flavors := compute.NewComputeFlavors()
 
