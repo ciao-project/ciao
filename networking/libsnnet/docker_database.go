@@ -76,47 +76,27 @@ func (db *dbProvider) DbClose() error {
 	return db.DB.Close()
 }
 
-//TODO: There must be a better way to do this (besides reflection)
-func (db *dbProvider) DbMapRebuild(table string, dockerMap interface{}) error {
-	tables := []string{table}
+func (db *dbProvider) DbTableRebuild(table DbTable) error {
+	tables := []string{table.Name()}
 	if err := db.DbTableInit(tables); err != nil {
 		return fmt.Errorf("dbInit failed %v", err)
 	}
 
-	switch dmap := dockerMap.(type) {
-	case *DockerNwMap:
-		dmap.m = make(map[string]*DockerNwVal)
-	case *DockerEpMap:
-		dmap.m = make(map[string]*DockerEpVal)
-	default:
-		return fmt.Errorf("error: invalid map type %T", dmap)
-	}
+	table.NewTable()
 
 	err := db.DB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(table))
+		b := tx.Bucket([]byte(table.Name()))
 
 		err := b.ForEach(func(k, v []byte) error {
 			vr := bytes.NewReader(v)
 
-			switch dmap := dockerMap.(type) {
-			case *DockerNwMap:
-				val := &DockerNwVal{}
-				if err := gob.NewDecoder(vr).Decode(val); err != nil {
-					return fmt.Errorf("Decode Error: %v %v %v", string(k), string(v), err)
-				}
-				glog.Infof("%v key=%v, value=%v\n", table, string(k), val)
-
-				dmap.m[string(k)] = val
-			case *DockerEpMap:
-				val := &DockerEpVal{}
-				if err := gob.NewDecoder(vr).Decode(val); err != nil {
-					return fmt.Errorf("Decode Error: %v %v %v", string(k), string(v), err)
-				}
-				glog.Infof("%v key=%v, value=%v\n", table, string(k), val)
-				dmap.m[string(k)] = val
+			val := table.NewElement()
+			if err := gob.NewDecoder(vr).Decode(val); err != nil {
+				return fmt.Errorf("Decode Error: %v %v %v", string(k), string(v), err)
 			}
+			glog.Infof("%v key=%v, value=%v\n", table, string(k), val)
 
-			return nil
+			return table.Add(string(k), val)
 		})
 		return err
 	})
