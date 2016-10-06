@@ -122,6 +122,15 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 	}
 }
 
+func keyFromPemBlock(block *pem.Block) (serverPrivKey interface{}, err error) {
+	if block.Type == "EC PRIVATE KEY" {
+		serverPrivKey, err = x509.ParseECPrivateKey(block.Bytes)
+	} else {
+		serverPrivKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+	}
+	return
+}
+
 func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) []asn1.ObjectIdentifier {
 	if role.IsAgent() {
 		oids = append(oids, ssntp.RoleAgentOID)
@@ -302,11 +311,7 @@ func main() {
 		if privKeyBlock == nil {
 			log.Fatalf("Invalid server certificate %s", certName)
 		}
-		if *isElliptic == false {
-			serverPrivKey, err = x509.ParsePKCS1PrivateKey(privKeyBlock.Bytes)
-		} else {
-			serverPrivKey, err = x509.ParseECPrivateKey(privKeyBlock.Bytes)
-		}
+		serverPrivKey, err = keyFromPemBlock(privKeyBlock)
 		if err != nil {
 			log.Fatalf("Could not get server private key %s", err)
 		}
