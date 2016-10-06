@@ -19,7 +19,9 @@ package main
 import "flag"
 
 var launchWithUI uiFlag = "nc"
+var qemuVirtualisation qemuVirtualisationFlag = "kvm"
 
 func init() {
 	flag.Var(&launchWithUI, "with-ui", "Enables virtual consoles on VM instances.  Can be 'none', 'spice', 'nc'")
+	flag.Var(&qemuVirtualisation, "qemu-virtualisation", "QEMU virtualisation method. Can be 'kvm', 'auto' or 'software'")
 }
