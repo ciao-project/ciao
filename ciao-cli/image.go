@@ -465,9 +465,10 @@ func imageServiceClient(username, password, tenant string) (*gophercloud.Service
 		AllowReauth:      true,
 	}
 
-	provider, err := openstack.AuthenticatedClient(opt)
+	provider, err := newAuthenticatedClient(opt)
 	if err != nil {
 		errorf("Could not get AuthenticatedClient %s\n", err)
+		return nil, err
 	}
 
 	return openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{

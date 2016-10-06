@@ -17,9 +17,7 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
-	"net/http"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rackspace/gophercloud"
@@ -123,22 +121,9 @@ func getScopedToken(username string, password string, projectScope string) (stri
 		AllowReauth:      true,
 	}
 
-	provider, err := openstack.NewClient(opt.IdentityEndpoint)
+	provider, err := newAuthenticatedClient(opt)
 	if err != nil {
-		errorf("Could not get ProviderClient %s\n", err)
-		return "", "", "", nil
-	}
-
-	if caCertPool != nil {
-		transport := &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: caCertPool},
-		}
-		provider.HTTPClient.Transport = transport
-	}
-
-	err = openstack.Authenticate(provider, opt)
-	if err != nil {
-		errorf("Could not get AuthenticatedClient %s\n", err)
+		errorf("Failed to create an AuthenticatedClient")
 		return "", "", "", nil
 	}
 

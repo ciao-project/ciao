@@ -380,9 +380,10 @@ func storageServiceClient(username, password, tenant string) (*gophercloud.Servi
 		AllowReauth:      true,
 	}
 
-	provider, err := openstack.AuthenticatedClient(opt)
+	provider, err := newAuthenticatedClient(opt)
 	if err != nil {
 		errorf("Could not get AuthenticatedClient %s\n", err)
+		return nil, err
 	}
 
 	return openstack.NewBlockStorageV2(provider, gophercloud.EndpointOpts{
