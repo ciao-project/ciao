@@ -229,7 +229,6 @@ func addDNSNames(names []string) []string {
 func main() {
 	var serverPrivKey interface{}
 	var err error
-	var CAcertName, certName string
 	var parentCert x509.Certificate
 	var role ssntp.Role
 
@@ -263,19 +262,18 @@ func main() {
 		BasicConstraintsValid: true,
 	}
 
-	firstHost := getFirstHost()
 	template.DNSNames = addDNSNames(template.DNSNames)
 	template.IPAddresses = addMgmtIPs(template.IPAddresses)
 	template.UnknownExtKeyUsage = addOIDs(role, template.UnknownExtKeyUsage)
 
-	CAcertName = fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
+	firstHost := getFirstHost()
+	CAcertName := fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
+	certName := fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
 	if *isServer == true {
 		template.IsCA = true
-		certName = fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
 		parentCert = template
 		serverPrivKey = priv
 	} else {
-		certName = fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
 		// Need to fetch the public and private key from the signer
 		bytesCert, err := ioutil.ReadFile(*serverCert)
 		if err != nil {
