@@ -33,6 +33,7 @@ import (
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	image "github.com/01org/ciao/ciao-image/client"
 	storage "github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/openstack/compute"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
@@ -56,6 +57,7 @@ var serverURL = flag.String("url", "", "Server URL")
 var identityURL = "identity:35357"
 var serviceUser = "csr"
 var servicePassword = ""
+var volumeAPIPort = block.APIPort
 var computeAPIPort = compute.APIPort
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
@@ -131,6 +133,7 @@ func main() {
 		return
 	}
 
+	volumeAPIPort = clusterConfig.Configure.Controller.VolumePort
 	computeAPIPort = clusterConfig.Configure.Controller.ComputePort
 	httpsCAcert = clusterConfig.Configure.Controller.HTTPSCACert
 	httpsKey = clusterConfig.Configure.Controller.HTTPSKey
@@ -147,8 +150,10 @@ func main() {
 
 	if *singleMachine {
 		hostname, _ := os.Hostname()
+		volumeURL := "https://" + hostname + ":" + strconv.Itoa(volumeAPIPort)
 		computeURL := "https://" + hostname + ":" + strconv.Itoa(computeAPIPort)
 		testIdentityConfig := testutil.IdentityConfig{
+			VolumeURL:  volumeURL,
 			ComputeURL: computeURL,
 			ProjectID:  "f452bbc7-5076-44d5-922c-3b9d2ce1503f",
 		}

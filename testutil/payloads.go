@@ -78,6 +78,9 @@ const IdentityUser = "controller"
 // IdentityPassword is a test password for the test identity server
 const IdentityPassword = "ciao"
 
+// VolumePort is a test port for the compute service
+const VolumePort = "446"
+
 // ComputePort is a test port for the compute service
 const ComputePort = "443"
 
@@ -341,6 +344,7 @@ const ConfigureYaml = `configure:
   storage:
     ceph_id: ` + ManagementID + `
   controller:
+    volume_port: ` + VolumePort + `
     compute_port: ` + ComputePort + `
     compute_ca: ` + HTTPSCACert + `
     compute_cert: ` + HTTPSKey + `

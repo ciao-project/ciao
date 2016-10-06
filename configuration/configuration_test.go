@@ -64,6 +64,7 @@ const fullValidConf = `configure:
   storage:
     ceph_id: ciao
   controller:
+    volume_port: 8776
     compute_port: 8774
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
@@ -112,6 +113,7 @@ func TestBlobCorrectPayload(t *testing.T) {
 func equalPayload(p1, p2 payloads.Configure) bool {
 	return (p1.Configure.Scheduler.ConfigStorageURI == p2.Configure.Scheduler.ConfigStorageURI &&
 
+		p1.Configure.Controller.VolumePort == p2.Configure.Controller.VolumePort &&
 		p1.Configure.Controller.ComputePort == p2.Configure.Controller.ComputePort &&
 		p1.Configure.Controller.HTTPSCACert == p2.Configure.Controller.HTTPSCACert &&
 		p1.Configure.Controller.HTTPSKey == p2.Configure.Controller.HTTPSKey &&
@@ -133,6 +135,7 @@ func equalPayload(p1, p2 payloads.Configure) bool {
 func emptyPayload(p payloads.Configure) bool {
 	return (p.Configure.Scheduler.ConfigStorageURI != "" &&
 
+		p.Configure.Controller.VolumePort != 0 &&
 		p.Configure.Controller.ComputePort != 0 &&
 		p.Configure.Controller.HTTPSCACert != "" &&
 		p.Configure.Controller.HTTPSKey != "" &&
@@ -207,7 +210,8 @@ func TestPayloadCorrectBlob(t *testing.T) {
 }
 
 func saneDefaults(conf *payloads.Configure) bool {
-	return (conf.Configure.Controller.ComputePort == 8774 &&
+	return (conf.Configure.Controller.VolumePort == 8776 &&
+		conf.Configure.Controller.ComputePort == 8774 &&
 		conf.Configure.ImageService.Type == payloads.Glance &&
 		conf.Configure.IdentityService.Type == payloads.Keystone &&
 		conf.Configure.Launcher.DiskLimit == true &&

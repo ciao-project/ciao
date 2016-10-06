@@ -27,8 +27,14 @@ import (
 // ComputeAPIPort is the compute service port the testutil identity service will use by default
 const ComputeAPIPort = "8774"
 
+// VolumeAPIPort is the volume service port the testutil identity service will use by default
+const VolumeAPIPort = "8776"
+
 // ComputeURL is the compute service URL the testutil identity service will use by default
 var ComputeURL = "https://localhost:" + ComputeAPIPort
+
+// VolumeURL is the volume service URL the testutil identity service will use by default
+var VolumeURL = "https://localhost:" + VolumeAPIPort
 
 // IdentityURL is the URL for the testutil identity service
 var IdentityURL string
@@ -37,6 +43,7 @@ var IdentityURL string
 var ComputeUser = "f452bbc7-5076-44d5-922c-3b9d2ce1503f"
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
+	cinderv2URL := VolumeURL + "/v2/" + ComputeUser
 	token := `
 		{
 			"token": {
@@ -63,21 +70,21 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 						"endpoints": [
 							{
 								"region_id": "RegionOne",
-								"url": "%s/v3",
+								"url": "%[3]s/v3",
 								"region": "RegionOne",
 								"interface": "public",
 								"id": "068d1b359ee84b438266cb736d81de97"
 							},
 							{
 								"region_id": "RegionOne",
-								"url": "%s/v3",
+								"url": "%[3]s/v3",
 								"region": "RegionOne",
 								"interface": "admin",
 								"id": "8bfc846841ab441ca38471be6d164ced"
 							},
 							{
 								"region_id": "RegionOne",
-								"url": "%s/v3",
+								"url": "%[3]s/v3",
 								"region": "RegionOne",
 								"interface": "internal",
 								"id": "beb6d358c3654b4bada04d4663b640b9"
@@ -86,6 +93,34 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 						"type": "identity",
 						"id": "050726f278654128aba89757ae25950c",
 						"name": "keystone"
+					},
+					{
+						"endpoints": [
+							{
+								"region_id": "RegionOne",
+								"url": "%[4]s",
+								"region": "RegionOne",
+								"interface": "internal",
+								"id": "823c65e659d64733b86a609a96bcc48f"
+							},
+							{
+								"region_id": "RegionOne",
+								"url": "%[4]s",
+								"region": "RegionOne",
+								"id": "65796adae7b24663a2b9114fa34314c7",
+								"interface": "admin"
+							},
+							{
+								"region_id": "RegionOne",
+								"url": "%[4]s",
+								"region": "RegionOne",
+								"id": "0eddcb06eac24b9bae7d9db516a40fdb",
+								"interface": "public"
+							}
+						],
+						"id": "fbd0a99c-01c0-4fc2-96b9-c76e01def567",
+						"name": "cinderv2",
+						"type": "volumev2"
 					}
 				],
 			       "extras": {},
@@ -100,14 +135,13 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			        "audit_ids": [
 				        "3T2dc1CGQxyJsHdDu1xkcw"
 			        ],
-			        "issued_at": "%s"
+			        "issued_at": "%[5]s"
 			}
 		}`
 
 	t := []byte(fmt.Sprintf(token,
 		time.Now().Add(1*time.Hour).Format(gophercloud.RFC3339Milli),
-		ComputeUser, IdentityURL, IdentityURL,
-		IdentityURL, time.Now().Format(gophercloud.RFC3339Milli)))
+		ComputeUser, IdentityURL, cinderv2URL, time.Now().Format(gophercloud.RFC3339Milli)))
 	w.Header().Set("X-Subject-Token", "imavalidtoken")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(t)
@@ -150,21 +184,21 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 					"endpoints": [
 						{
 							"region_id": "RegionOne",
-							"url": "%s/v3",
+							"url": "%[3]s/v3",
 							"region": "RegionOne",
 							"interface": "public",
 							"id": "068d1b359ee84b438266cb736d81de97"
 						},
 						{
 							"region_id": "RegionOne",
-							"url": "%s/v3",
+							"url": "%[3]s/v3",
 							"region": "RegionOne",
 							"interface": "admin",
 							"id": "8bfc846841ab441ca38471be6d164ced"
 						},
 						{
 							"region_id": "RegionOne",
-							"url": "%s/v3",
+							"url": "%[3]s/v3",
 							"region": "RegionOne",
 							"interface": "internal",
 							"id": "beb6d358c3654b4bada04d4663b640b9"
@@ -178,21 +212,21 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 			                "endpoints": [
 					         {
 							"region_id": "RegionOne",
-							"url": "%s",
+							"url": "%[4]s",
 							"region": "RegionOne",
 							"interface": "admin",
 							"id": "2511589f262a407bb0071a814a480af4"
 						},
 						{
 							"region_id": "RegionOne",
-							"url": "%s",
+							"url": "%[4]s",
 							"region": "RegionOne",
 							"interface": "internal",
 							"id": "9cf9209ae4fc4673a7295611001cf0ae"
 						},
 						{
 							"region_id": "RegionOne",
-							"url": "%s",
+							"url": "%[4]s",
 							"region": "RegionOne",
 							"interface": "public",
 							"id": "d200b2509e1343e3887dcc465b4fa534"
@@ -206,15 +240,14 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 			"audit_ids": [
 			        "mAjXQhiYRyKwkB4qygdLVg"
 			],
-			"issued_at": "%s"
+			"issued_at": "%[5]s"
 		}
 	}`
 
 	t := []byte(fmt.Sprintf(token,
 		time.Now().Add(1*time.Hour).Format(gophercloud.RFC3339Milli),
-		ComputeUser, IdentityURL, IdentityURL,
-		IdentityURL, tenantURL, tenantURL,
-		tenantURL, time.Now().Format(gophercloud.RFC3339Milli)))
+		ComputeUser, IdentityURL, tenantURL,
+		time.Now().Format(gophercloud.RFC3339Milli)))
 	w.WriteHeader(http.StatusOK)
 	w.Write(t)
 }
@@ -259,10 +292,11 @@ func IdentityHandlers() *mux.Router {
 	return r
 }
 
-// IdentityConfig contains the URL of the ciao compute service, and the TenantID of
-// the tenant you want tokens to be sent for.  The test Identity service only supports
-// authentication of a single tenant, and gives the token an admin role.
+// IdentityConfig contains the URL of the ciao compute and volume services, and the
+// TenantID of the tenant you want tokens to be sent for.  The test Identity service
+// only supports authentication of a single tenant, and gives the token an admin role.
 type IdentityConfig struct {
+	VolumeURL  string
 	ComputeURL string
 	ProjectID  string
 }
@@ -275,6 +309,9 @@ func StartIdentityServer(config IdentityConfig) *httptest.Server {
 		return nil
 	}
 
+	if config.VolumeURL != "" {
+		VolumeURL = config.VolumeURL
+	}
 	if config.ComputeURL != "" {
 		ComputeURL = config.ComputeURL
 	}
