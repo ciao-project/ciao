@@ -56,6 +56,7 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 	return BlockDevice{ID: ID}, nil
 }
 
+// CopyBlockDevice will copy an existing volume
 func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 	ID := uuid.Generate().String()
 
