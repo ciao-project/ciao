@@ -255,15 +255,15 @@ func (d workloadStorage) Populate() error {
 	}
 
 	for _, line := range lines {
-		workload_id := line[0]
-		volume_id := line[1]
+		workloadID := line[0]
+		volumeID := line[1]
 		bootable := line[2]
 		persistent := line[3]
 		size := line[4]
-		source_type := line[5]
-		source_id := line[6]
+		sourceType := line[5]
+		sourceID := line[6]
 
-		err = d.ds.create(d.name, workload_id, volume_id, bootable, persistent, size, source_type, source_id)
+		err = d.ds.create(d.name, workloadID, volumeID, bootable, persistent, size, sourceType, sourceID)
 		if err != nil {
 			glog.V(2).Info("could not add workload storage", err)
 		}
