@@ -76,6 +76,14 @@ var tests = []test{
 		http.StatusNoContent,
 		`null`,
 	},
+	{
+		"PUT",
+		"/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		uploadImage,
+		"",
+		http.StatusNoContent,
+		`null`,
+	},
 }
 
 func myHostname() string {
