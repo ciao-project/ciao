@@ -202,8 +202,7 @@ func checkCompulsoryOptions() {
 	}
 }
 
-func addMgmtIPs(ips []net.IP) []net.IP {
-	mgmtIPs := strings.Split(*mgmtIP, ",")
+func addMgmtIPs(mgmtIPs []string, ips []net.IP) []net.IP {
 	for _, i := range mgmtIPs {
 		if ip := net.ParseIP(i); ip != nil {
 			ips = append(ips, ip)
@@ -213,8 +212,7 @@ func addMgmtIPs(ips []net.IP) []net.IP {
 	return ips
 }
 
-func addDNSNames(names []string) []string {
-	hosts := strings.Split(*host, ",")
+func addDNSNames(hosts []string, names []string) []string {
 	for _, h := range hosts {
 		if ip := net.ParseIP(h); ip != nil {
 			continue
@@ -226,45 +224,54 @@ func addDNSNames(names []string) []string {
 	return names
 }
 
-func main() {
-	var serverPrivKey interface{}
-	var err error
-	var parentCert x509.Certificate
-	var role ssntp.Role
-
-	flag.Var(&role, "role", "Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
-	flag.Parse()
-
-	checkCompulsoryOptions()
-
-	priv := generatePrivateKey(*isElliptic)
-
+func createCertTemplate(role ssntp.Role, organization string, email string, hosts []string, mgmtIPs []string) (*x509.Certificate, error) {
 	notBefore := time.Now()
 	notAfter := notBefore.Add(365 * 24 * time.Hour)
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		log.Fatalf("failed to generate serial number: %s", err)
+		return nil, fmt.Errorf("Gailed to generate certificate serial number: %v", err)
 	}
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{*organization},
+			Organization: []string{organization},
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-		EmailAddresses:        []string{*email},
+		EmailAddresses:        []string{email},
 		BasicConstraintsValid: true,
 	}
 
-	template.DNSNames = addDNSNames(template.DNSNames)
-	template.IPAddresses = addMgmtIPs(template.IPAddresses)
+	template.DNSNames = addDNSNames(hosts, template.DNSNames)
+	template.IPAddresses = addMgmtIPs(mgmtIPs, template.IPAddresses)
 	template.UnknownExtKeyUsage = addOIDs(role, template.UnknownExtKeyUsage)
+	return &template, nil
+}
+
+func main() {
+	var serverPrivKey interface{}
+	var err error
+	var parentCert *x509.Certificate
+	var role ssntp.Role
+
+	flag.Var(&role, "role", "Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
+	flag.Parse()
+
+	checkCompulsoryOptions()
+	priv := generatePrivateKey(*isElliptic)
+
+	mgmtIPs := strings.Split(*mgmtIP, ",")
+	hosts := strings.Split(*host, ",")
+	template, err := createCertTemplate(role, *organization, *email, hosts, mgmtIPs)
+	if err != nil {
+		log.Fatalf("Failed to create certificate template: %v", err)
+	}
 
 	firstHost := getFirstHost()
 	CAcertName := fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
@@ -288,7 +295,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not parse %s %s", *serverCert, err)
 		}
-		parentCert = *cert
+		parentCert = cert
 
 		// Parent private key
 		privKeyBlock, _ := pem.Decode(rest)
@@ -308,7 +315,7 @@ func main() {
 	// The certificate is created
 	// Self signed for the server case
 	// Signed by --server-cert for the client case
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &parentCert, publicKey(priv), serverPrivKey)
+	derBytes, err := x509.CreateCertificate(rand.Reader, template, parentCert, publicKey(priv), serverPrivKey)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
