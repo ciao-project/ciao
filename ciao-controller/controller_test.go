@@ -1136,12 +1136,12 @@ func TestStorageConfig(t *testing.T) {
 	}
 
 	// get workload ID
-	wls, err := context.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads()
 	if err != nil || len(wls) == 0 {
 		t.Fatal(err)
 	}
 
-	tmpfile, err := ioutil.TempFile(context.image.MountPoint, "test-image")
+	tmpfile, err := ioutil.TempFile(ctl.image.MountPoint, "test-image")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1165,7 +1165,7 @@ func TestStorageConfig(t *testing.T) {
 
 	id := uuid.Generate()
 
-	_, err = newConfig(context, wls[0], id.String(), tenant.ID)
+	_, err = newConfig(ctl, wls[0], id.String(), tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
