@@ -451,14 +451,14 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		if !(role.IsNetAgent() || role.IsAgent()) {
 			glog.Errorf("Invalid certificate role: %s", role.String())
 			client.conn.Close()
-			break
+			return
 		}
 
 		err = loadClusterConfig(client.conn)
 		if err != nil {
 			glog.Errorf("Unable to get Cluster Configuration %v", err)
 			client.conn.Close()
-			break
+			return
 		}
 		printClusterConfig()
 
@@ -468,7 +468,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		if err != nil {
 			glog.Errorf("Failed to start network: %v\n", err)
 			client.conn.Close()
-			break
+			return
 		}
 		defer shutdownNetwork()
 
