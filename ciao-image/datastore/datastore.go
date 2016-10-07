@@ -97,6 +97,7 @@ type DataStore interface {
 type MetaDataStore interface {
 	Write(Image) error
 	Delete(ID string) error
+	Get(ID string) (Image, error)
 	GetAll() ([]Image, error)
 }
 

@@ -45,6 +45,7 @@ func (c *ImageCache) CreateImage(i Image) error {
 	c.lock.Lock()
 
 	c.images[i.ID] = i
+	c.metaDs.Write(i)
 
 	return nil
 }
@@ -55,6 +56,14 @@ func (c *ImageCache) GetAllImages() ([]Image, error) {
 
 	defer c.lock.RUnlock()
 	c.lock.RLock()
+
+	metaDsImages, err := c.metaDs.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	for _, img := range metaDsImages {
+		c.images[img.ID] = img
+	}
 
 	for _, i := range c.images {
 		images = append(images, i)
@@ -71,7 +80,11 @@ func (c *ImageCache) GetImage(ID string) (Image, error) {
 	i, ok := c.images[ID]
 
 	if !ok {
-		return Image{}, image.ErrNoImage
+		img, err := c.metaDs.Get(ID)
+		if err != nil {
+			return Image{}, image.ErrNoImage
+		}
+		i = img
 	}
 
 	return i, nil
@@ -108,7 +121,8 @@ func (c *ImageCache) DeleteImage(ID string) error {
 		}
 	}
 
-	if !ok {
+	err := c.metaDs.Delete(ID)
+	if err != nil {
 		return image.ErrNoImage
 	}
 

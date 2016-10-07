@@ -19,6 +19,7 @@ import (
 
 	"github.com/01org/ciao/ciao-image/datastore"
 	"github.com/01org/ciao/ciao-image/service"
+	"github.com/01org/ciao/database"
 	"github.com/01org/ciao/openstack/image"
 	"github.com/golang/glog"
 )
@@ -31,6 +32,8 @@ var identity = "https://localhost:35357/"
 var userName = "csr"
 var password = "hello"
 var mountPoint = "/var/lib/ciao/images"
+var dbDir = "/var/lib/ciao/images"
+var dbFile = "ciao-image.db"
 
 var identityURL = flag.String("identity", identity, "URL of keystone service")
 
@@ -43,8 +46,16 @@ func init() {
 }
 
 func main() {
-	// TBD Select the right datastore interface
-	metaDs := &datastore.Noop{}
+	metaDs := &datastore.Boltdb{
+		DbProvider: database.NewBoltDBProvider(),
+		DbDir:      dbDir,
+		DbFile:     dbFile,
+	}
+	metaDsTables := []string{"images"}
+	metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
+	metaDs.DbTableInit(metaDsTables)
+	metaDs.DbClose()
+
 	rawDs := &datastore.Posix{
 		MountPoint: mountPoint,
 	}

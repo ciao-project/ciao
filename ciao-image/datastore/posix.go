@@ -45,7 +45,7 @@ func (p *Posix) Delete(ID string) error {
 	imageName := path.Join(p.MountPoint, ID)
 
 	_, err := os.Stat(imageName)
-	if !os.IsNotExist(err) {
+	if !os.IsNotExist(err) && err != nil {
 		return err
 	}
 
