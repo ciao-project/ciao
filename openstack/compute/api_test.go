@@ -88,6 +88,14 @@ var tests = []test{
 		"null",
 	},
 	{
+		"POST",
+		"/v2.1/{tenant}/servers/{server}/action",
+		serverAction,
+		`{"addFloatingIp":{"address":"172.16.0.7", "fixed_address": "172.16.0.8"}}`,
+		http.StatusAccepted,
+		"null",
+	},
+	{
 		"GET",
 		"/v2.1/{tenant}/flavors/",
 		listFlavors,
