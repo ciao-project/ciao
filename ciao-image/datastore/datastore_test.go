@@ -17,6 +17,8 @@ package datastore
 import (
 	"strings"
 	"testing"
+
+	"github.com/01org/ciao/database"
 )
 
 func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
@@ -125,7 +127,12 @@ func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 }
 
-var mountPoint = "/var/lib/ciao/images"
+var mountPoint = "/tmp"
+var metaDsTables = []string{"images"}
+var dbDir = "/tmp"
+var dbFile = "ciao-image.db"
+
+// Tests for Noop metaDs
 
 func TestPosixNoopCreateAndGet(t *testing.T) {
 	testCreateAndGet(t, &Posix{MountPoint: mountPoint}, &Noop{})
@@ -141,4 +148,40 @@ func TestPosixNoopDelete(t *testing.T) {
 
 func TestPosixNoopUpload(t *testing.T) {
 	testUpload(t, &Posix{MountPoint: mountPoint}, &Noop{})
+}
+
+// Tests for Boltdb metaDs
+
+func initBoltdb() *Boltdb {
+	metaDs := &Boltdb{
+		DbProvider: database.NewBoltDBProvider(),
+		DbDir:      dbDir,
+		DbFile:     dbFile,
+	}
+	metaDsTables := []string{"images"}
+	metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
+	metaDs.DbTableInit(metaDsTables)
+	metaDs.DbClose()
+
+	return metaDs
+}
+
+func TestPosixBoltdbCreateAndGet(t *testing.T) {
+	metaDs := initBoltdb()
+	testCreateAndGet(t, &Posix{MountPoint: mountPoint}, metaDs)
+}
+
+func TestPosixBoltdbGetAll(t *testing.T) {
+	metaDs := initBoltdb()
+	testGetAll(t, &Posix{MountPoint: mountPoint}, metaDs)
+}
+
+func TestPosixBoltdbDelete(t *testing.T) {
+	metaDs := initBoltdb()
+	testDelete(t, &Posix{MountPoint: mountPoint}, metaDs)
+}
+
+func TestPosixBoltdbUpload(t *testing.T) {
+	metaDs := initBoltdb()
+	testUpload(t, &Posix{MountPoint: mountPoint}, metaDs)
 }

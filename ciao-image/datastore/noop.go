@@ -14,6 +14,10 @@
 
 package datastore
 
+import (
+	"errors"
+)
+
 // Noop is a Datastore implementation that does nothing.
 // Use it only for development and testing purposes, data
 // will not be persistent with the Noop Datastore interface.
@@ -30,6 +34,12 @@ func (n *Noop) Write(i Image) error {
 // It drops data.
 func (n *Noop) Delete(id string) error {
 	return nil
+}
+
+// Get is the noop image metadata get an image implementation.
+// It drops data.
+func (n *Noop) Get(id string) (Image, error) {
+	return Image{}, errors.New("Image Not Found")
 }
 
 // GetAll is the noop image metadata get all images implementation.
