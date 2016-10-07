@@ -36,6 +36,7 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -106,29 +107,27 @@ func publicKey(priv interface{}) interface{} {
 	}
 }
 
-func pemBlockForKey(priv interface{}) *pem.Block {
+func pemBlockForKey(priv interface{}) (*pem.Block, error) {
 	switch k := priv.(type) {
 	case *rsa.PrivateKey:
-		return &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}
+		return &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}, nil
 	case *ecdsa.PrivateKey:
 		b, err := x509.MarshalECPrivateKey(k)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to marshal ECDSA private key: %v", err)
-			os.Exit(2)
+			return nil, fmt.Errorf("Unable to marshal ECDSA private key: %v", err)
 		}
-		return &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}
+		return &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}, nil
 	default:
-		return nil
+		return nil, fmt.Errorf("No private key found")
 	}
 }
 
-func keyFromPemBlock(block *pem.Block) (serverPrivKey interface{}, err error) {
+func keyFromPemBlock(block *pem.Block) (interface{}, error) {
 	if block.Type == "EC PRIVATE KEY" {
-		serverPrivKey, err = x509.ParseECPrivateKey(block.Bytes)
+		return x509.ParseECPrivateKey(block.Bytes)
 	} else {
-		serverPrivKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		return x509.ParsePKCS1PrivateKey(block.Bytes)
 	}
-	return
 }
 
 func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) []asn1.ObjectIdentifier {
@@ -184,21 +183,12 @@ func getFirstHost() string {
 	return hosts[0]
 }
 
-func generatePrivateKey(ell bool) interface{} {
-	var priv interface{}
-	var err error
-
+func generatePrivateKey(ell bool) (interface{}, error) {
 	if ell == false {
-		priv, err = rsa.GenerateKey(rand.Reader, 2048)
+		return rsa.GenerateKey(rand.Reader, 2048)
 	} else {
-		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		return ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	}
-
-	if err != nil {
-		log.Fatalf("failed to generate private key: %s", err)
-	}
-
-	return priv
 }
 
 func checkCompulsoryOptions() {
@@ -233,6 +223,7 @@ func addDNSNames(hosts []string, names []string) []string {
 	return names
 }
 
+// createCertTemplate provides the certificate template from which client or server certificated can be derived.
 func createCertTemplate(role ssntp.Role, organization string, email string, hosts []string, mgmtIPs []string) (*x509.Certificate, error) {
 	notBefore := time.Now()
 	notAfter := notBefore.Add(365 * 24 * time.Hour)
@@ -263,18 +254,100 @@ func createCertTemplate(role ssntp.Role, organization string, email string, host
 	return &template, nil
 }
 
+// createServerCert creates the server certificate and the CA certificate. Both are written out PEM encoded.
+func createServerCert(template *x509.Certificate, useElliptic bool, certOutput io.Writer, caCertOutput io.Writer) error {
+	priv, err := generatePrivateKey(useElliptic)
+	if err != nil {
+		return fmt.Errorf("Unable to create private key: %v", err)
+	}
+
+	template.IsCA = true
+
+	// Create self-signed certificate
+	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, publicKey(priv), priv)
+	if err != nil {
+		return fmt.Errorf("Unable to create server certificate: %v", err)
+	}
+
+	// Write out CA cert
+	err = pem.Encode(caCertOutput, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err != nil {
+		return fmt.Errorf("Unable to encode PEM block: %v", err)
+	}
+
+	// Write out certificate (including private key)
+	err = pem.Encode(certOutput, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err != nil {
+		return fmt.Errorf("Unable to encode PEM block: %v", err)
+	}
+	block, err := pemBlockForKey(priv)
+	if err != nil {
+		return fmt.Errorf("Unable to get PEM block from key: %v", err)
+	}
+	err = pem.Encode(certOutput, block)
+	if err != nil {
+		return fmt.Errorf("Unable to encode PEM block: %v", err)
+	}
+
+	return nil
+}
+
+// createClientCert creates the client certificate signed by the giver server certificate. It is written PEM encoded.
+func createClientCert(template *x509.Certificate, useElliptic bool, serverCert []byte, certOutput io.Writer) error {
+	priv, err := generatePrivateKey(useElliptic)
+	if err != nil {
+		return fmt.Errorf("Unable to create private key: %v", err)
+	}
+
+	// Parent public key first
+	certBlock, rest := pem.Decode(serverCert)
+	parentCert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return fmt.Errorf("Unable to parse server cert: %v", err)
+	}
+
+	// Parent private key
+	privKeyBlock, _ := pem.Decode(rest)
+	if privKeyBlock == nil {
+		return fmt.Errorf("Unable to extract private key from server cert: %v", err)
+	}
+
+	serverPrivKey, err := keyFromPemBlock(privKeyBlock)
+	if err != nil {
+		return fmt.Errorf("Unable to parse private key from server cert: %v", err)
+	}
+
+	// Create certificate signed by private key from serverCert
+	derBytes, err := x509.CreateCertificate(rand.Reader, template, parentCert, publicKey(priv), serverPrivKey)
+	if err != nil {
+		return fmt.Errorf("Unable to create client certificate: %v", err)
+	}
+
+	// Write out certificate (including private key)
+	err = pem.Encode(certOutput, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err != nil {
+		return fmt.Errorf("Unable to encode PEM block: %v", err)
+	}
+
+	block, err := pemBlockForKey(priv)
+	if err != nil {
+		return fmt.Errorf("Unable to get PEM block from key: %v", err)
+	}
+	err = pem.Encode(certOutput, block)
+	if err != nil {
+		return fmt.Errorf("Unable to encode PEM block: %v", err)
+	}
+
+	return nil
+}
+
 func main() {
-	var serverPrivKey interface{}
-	var err error
-	var parentCert *x509.Certificate
 	var role ssntp.Role
 
 	flag.Var(&role, "role", "Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
 	flag.Parse()
 
 	checkCompulsoryOptions()
-	priv := generatePrivateKey(*isElliptic)
-
 	mgmtIPs := strings.Split(*mgmtIP, ",")
 	hosts := strings.Split(*host, ",")
 	template, err := createCertTemplate(role, *organization, *email, hosts, mgmtIPs)
@@ -286,9 +359,26 @@ func main() {
 	CAcertName := fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
 	certName := fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
 	if *isServer == true {
-		template.IsCA = true
-		parentCert = template
-		serverPrivKey = priv
+		CAcertOut, err := os.Create(CAcertName)
+		if err != nil {
+			log.Fatalf("Failed to open %s for writing: %s", CAcertName, err)
+		}
+		certOut, err := os.Create(certName)
+		if err != nil {
+			log.Fatalf("Failed to open %s for writing: %s", certName, err)
+		}
+		err = createServerCert(template, *isElliptic, certOut, CAcertOut)
+		if err != nil {
+			log.Fatalf("Failed to create certificate: %v", err)
+		}
+		err = certOut.Close()
+		if err != nil {
+			log.Fatalf("Error closing file %s: %v", certName, err)
+		}
+		err = CAcertOut.Close()
+		if err != nil {
+			log.Fatalf("Error closing file %s: %v", CAcertName, err)
+		}
 	} else {
 		// Need to fetch the public and private key from the signer
 		bytesCert, err := ioutil.ReadFile(*serverCert)
@@ -296,53 +386,21 @@ func main() {
 			log.Fatalf("Could not load %s", *serverCert)
 		}
 
-		// Parent public key first
-		certBlock, rest := pem.Decode(bytesCert)
-		if certBlock == nil {
-		}
-		cert, err := x509.ParseCertificate(certBlock.Bytes)
+		// Create certificate: Concatenate public and private key
+		certOut, err := os.Create(certName)
 		if err != nil {
-			log.Fatalf("Could not parse %s %s", *serverCert, err)
+			log.Fatalf("Failed to open %s for writing: %s", certName, err)
 		}
-		parentCert = cert
 
-		// Parent private key
-		privKeyBlock, _ := pem.Decode(rest)
-		if privKeyBlock == nil {
-			log.Fatalf("Invalid server certificate %s", certName)
-		}
-		serverPrivKey, err = keyFromPemBlock(privKeyBlock)
+		err = createClientCert(template, *isElliptic, bytesCert, certOut)
 		if err != nil {
-			log.Fatalf("Could not get server private key %s", err)
+			log.Fatalf("Failed to create certificate: %v", err)
 		}
-	}
-
-	// The certificate is created
-	// Self signed for the server case
-	// Signed by --server-cert for the client case
-	derBytes, err := x509.CreateCertificate(rand.Reader, template, parentCert, publicKey(priv), serverPrivKey)
-	if err != nil {
-		log.Fatalf("Failed to create certificate: %s", err)
-	}
-
-	// Create CA certificate, i.e. the server public key
-	if *isServer == true {
-		CAcertOut, err := os.Create(CAcertName)
+		err = certOut.Close()
 		if err != nil {
-			log.Fatalf("failed to open %s for writing: %s", certName, err)
+			log.Fatalf("Error closing file %s: %v", certName, err)
 		}
-		pem.Encode(CAcertOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-		CAcertOut.Close()
 	}
-
-	// Create certificate: Concatenate public and private key
-	certOut, err := os.Create(certName)
-	if err != nil {
-		log.Fatalf("failed to open %s for writing: %s", certName, err)
-	}
-	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	pem.Encode(certOut, pemBlockForKey(priv))
-	certOut.Close()
 
 	verifyCert(*serverCert, certName)
 	instructionDisplay(*isServer, CAcertName, certName)
