@@ -43,7 +43,7 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 	// should be added as they are enabled in the kernel.
 	if imagePath != nil {
 		rbdStr := fmt.Sprintf("rbd:rbd/%s:id=%s", ID, d.ID)
-		cmd = exec.Command("qemu-img", "convert", "-f", "qcow2", "-O", "rbd", *imagePath, rbdStr)
+		cmd = exec.Command("qemu-img", "convert", "-O", "rbd", *imagePath, rbdStr)
 	} else {
 		// create an empty volume
 		cmd = exec.Command("rbd", "--id", d.ID, "--image-feature", "layering", "create", "--size", strconv.Itoa(size)+"G", ID)
