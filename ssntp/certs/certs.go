@@ -72,9 +72,8 @@ func pemBlockForKey(priv interface{}) (*pem.Block, error) {
 func keyFromPemBlock(block *pem.Block) (interface{}, error) {
 	if block.Type == "EC PRIVATE KEY" {
 		return x509.ParseECPrivateKey(block.Bytes)
-	} else {
-		return x509.ParsePKCS1PrivateKey(block.Bytes)
 	}
+	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }
 
 func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) []asn1.ObjectIdentifier {
@@ -108,9 +107,8 @@ func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) []asn1.ObjectIdentif
 func generatePrivateKey(ell bool) (interface{}, error) {
 	if ell == false {
 		return rsa.GenerateKey(rand.Reader, 2048)
-	} else {
-		return ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	}
+	return ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 }
 
 func addMgmtIPs(mgmtIPs []string, ips []net.IP) []net.IP {
