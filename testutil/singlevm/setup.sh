@@ -19,6 +19,9 @@ fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/2
 download=0
 hosts_file_backup="/etc/hosts.orig.$RANDOM"
 
+#Ensure that the local cache exists
+mkdir -p "$ciao_bin"
+
 # Copy the cleanup scripts
 cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
 
