@@ -16,5 +16,5 @@ sudo "$ciao_gobin"/ciao-launcher --alsologtostderr -v 3 --hard-reset
 sudo ip link del eth10
 sudo pkill -F /tmp/dnsmasq.macvlan0.pid
 sudo mv $hosts_file_backup /etc/hosts
-sudo docker rm -f ceph-demo
+sudo docker rm -v -f ceph-demo
 sudo rm /etc/ceph/*
