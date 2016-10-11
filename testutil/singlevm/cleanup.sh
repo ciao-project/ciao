@@ -10,6 +10,7 @@ fi
 ciao_gobin="$GOPATH"/bin
 sudo killall ciao-scheduler
 sudo killall ciao-controller
+sudo killall ciao-image
 sudo killall ciao-launcher
 sleep 2
 sudo "$ciao_gobin"/ciao-launcher --alsologtostderr -v 3 --hard-reset
@@ -18,3 +19,6 @@ sudo pkill -F /tmp/dnsmasq.macvlan0.pid
 sudo mv $hosts_file_backup /etc/hosts
 sudo docker rm -v -f ceph-demo
 sudo rm /etc/ceph/*
+sudo rm /etc/pki/ciao/controller_key.pem /etc/pki/ciao/ciao-image-key.pem
+sudo rm /etc/pki/ciao/controller_cert.pem /etc/pki/ciao/ciao-image-cacert.pem
+

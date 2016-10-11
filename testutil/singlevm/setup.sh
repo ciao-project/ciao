@@ -94,6 +94,7 @@ sudo cp -f "$ciao_scripts"/configuration.yaml /etc/ciao
 sudo killall ciao-scheduler
 sudo killall ciao-controller
 sudo killall ciao-launcher
+sudo killall ciao-image
 sudo killall qemu-system-x86_64
 echo "Original /etc/hosts is temporarily move to $hosts_file_backup"
 sudo mv /etc/hosts $hosts_file_backup
@@ -146,6 +147,8 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -
 #Copy the certs
 sudo cp -f controller_key.pem /etc/pki/ciao
 sudo cp -f controller_cert.pem /etc/pki/ciao
+sudo ln -s /etc/pki/ciao/controller_key.pem /etc/pki/ciao/ciao-image-key.pem
+sudo ln -s /etc/pki/ciao/controller_cert.pem /etc/pki/ciao/ciao-image-cacert.pem
 
 
 #Copy the configuration
@@ -162,6 +165,7 @@ cp -f "$ciao_scripts"/tables/* "$ciao_bin"/tables
 cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
 cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
 cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
+cp "$ciao_scripts"/run_image.sh "$ciao_bin"
 cp "$ciao_scripts"/verify.sh "$ciao_bin"
 
 #Download the firmware
@@ -295,6 +299,11 @@ echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
 identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
 echo "$identity" >> "$ciao_env"
+
+# Run the image service
+
+identity_url=$(echo $identity | sed 's/^.*=//')
+"$ciao_bin"/run_image.sh $identity_url &> /dev/null
 
 echo "---------------------------------------------------------------------------------------"
 echo ""
