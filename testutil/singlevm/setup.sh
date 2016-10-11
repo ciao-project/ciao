@@ -19,8 +19,15 @@ fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/2
 download=0
 hosts_file_backup="/etc/hosts.orig.$RANDOM"
 
-#Ensure that the local cache exists
+#Create a directory where all the certificates, binaries and other
+#dependencies are placed
 mkdir -p "$ciao_bin"
+
+if [ ! -d  "$ciao_bin" ]
+then
+	echo "FATAL ERROR: Unable to create $ciao_bin"
+	exit 1
+fi
 
 # Copy the cleanup scripts
 cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
@@ -93,16 +100,6 @@ sudo mv /etc/hosts $hosts_file_backup
 echo "$ciao_ip $ciao_host" > hosts
 sudo mv hosts /etc/hosts
 sudo rm -rf /var/lib/ciao/instances
-
-#Create a directory where all the certificates, binaries and other
-#dependencies are placed
-mkdir "$ciao_bin"
-
-if [ ! -d  "$ciao_bin" ]
-then
-	echo "FATAL ERROR: Unable to create $ciao_bin"
-	exit 1
-fi
 
 cd "$ciao_bin"
 
