@@ -788,14 +788,7 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 }
 
 func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
-	// fake this for now. We are going to always request a
-	// new bootable image which will persist.
-	return &types.StorageResource{
-		ID:         "",
-		Bootable:   true,
-		Persistent: true,
-		SourceType: types.ImageService,
-	}, nil
+	return nil, nil
 }
 
 func (ds *sqliteDB) addLimit(tenantID string, resourceID int, limit int) error {
