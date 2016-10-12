@@ -26,25 +26,17 @@
 package main
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/big"
-	"net"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/ssntp/certs"
 )
 
 var (
@@ -95,61 +87,6 @@ func verifyCert(CACert string, certName string) {
 	}
 }
 
-func publicKey(priv interface{}) interface{} {
-	switch k := priv.(type) {
-	case *rsa.PrivateKey:
-		return &k.PublicKey
-	case *ecdsa.PrivateKey:
-		return &k.PublicKey
-	default:
-		return nil
-	}
-}
-
-func pemBlockForKey(priv interface{}) *pem.Block {
-	switch k := priv.(type) {
-	case *rsa.PrivateKey:
-		return &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}
-	case *ecdsa.PrivateKey:
-		b, err := x509.MarshalECPrivateKey(k)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to marshal ECDSA private key: %v", err)
-			os.Exit(2)
-		}
-		return &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}
-	default:
-		return nil
-	}
-}
-
-func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) []asn1.ObjectIdentifier {
-	if role.IsAgent() {
-		oids = append(oids, ssntp.RoleAgentOID)
-	}
-
-	if role.IsScheduler() {
-		oids = append(oids, ssntp.RoleSchedulerOID)
-	}
-
-	if role.IsController() {
-		oids = append(oids, ssntp.RoleControllerOID)
-	}
-
-	if role.IsNetAgent() {
-		oids = append(oids, ssntp.RoleNetAgentOID)
-	}
-
-	if role.IsServer() {
-		oids = append(oids, ssntp.RoleServerOID)
-	}
-
-	if role.IsCNCIAgent() {
-		oids = append(oids, ssntp.RoleCNCIAgentOID)
-	}
-
-	return oids
-}
-
 func instructionDisplay(server bool, CAcert string, Cert string) {
 	if server {
 		fmt.Printf("--------------------------------------------------------\n")
@@ -175,23 +112,6 @@ func getFirstHost() string {
 	return hosts[0]
 }
 
-func generatePrivateKey(ell bool) interface{} {
-	var priv interface{}
-	var err error
-
-	if ell == false {
-		priv, err = rsa.GenerateKey(rand.Reader, 2048)
-	} else {
-		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
-	}
-
-	if err != nil {
-		log.Fatalf("failed to generate private key: %s", err)
-	}
-
-	return priv
-}
-
 func checkCompulsoryOptions() {
 	if *host == "" {
 		log.Fatalf("Missing required --host parameter")
@@ -202,137 +122,66 @@ func checkCompulsoryOptions() {
 	}
 }
 
-func addMgmtIPs(ips []net.IP) []net.IP {
-	mgmtIPs := strings.Split(*mgmtIP, ",")
-	for _, i := range mgmtIPs {
-		if ip := net.ParseIP(i); ip != nil {
-			ips = append(ips, ip)
-		}
-	}
-
-	return ips
-}
-
-func addDNSNames(names []string) []string {
-	hosts := strings.Split(*host, ",")
-	for _, h := range hosts {
-		if ip := net.ParseIP(h); ip != nil {
-			continue
-		} else {
-			names = append(names, h)
-		}
-	}
-
-	return names
-}
-
 func main() {
-	var serverPrivKey interface{}
-	var err error
-	var CAcertName, certName string
-	var parentCert x509.Certificate
 	var role ssntp.Role
 
 	flag.Var(&role, "role", "Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
 	flag.Parse()
 
 	checkCompulsoryOptions()
-
-	priv := generatePrivateKey(*isElliptic)
-
-	notBefore := time.Now()
-	notAfter := notBefore.Add(365 * 24 * time.Hour)
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	mgmtIPs := strings.Split(*mgmtIP, ",")
+	hosts := strings.Split(*host, ",")
+	template, err := certs.CreateCertTemplate(role, *organization, *email, hosts, mgmtIPs)
 	if err != nil {
-		log.Fatalf("failed to generate serial number: %s", err)
-	}
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{*organization},
-		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-		EmailAddresses:        []string{*email},
-		BasicConstraintsValid: true,
+		log.Fatalf("Failed to create certificate template: %v", err)
 	}
 
 	firstHost := getFirstHost()
-	template.DNSNames = addDNSNames(template.DNSNames)
-	template.IPAddresses = addMgmtIPs(template.IPAddresses)
-	template.UnknownExtKeyUsage = addOIDs(role, template.UnknownExtKeyUsage)
-
-	CAcertName = fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
+	CAcertName := fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
+	certName := fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
 	if *isServer == true {
-		template.IsCA = true
-		certName = fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
-		parentCert = template
-		serverPrivKey = priv
+		CAcertOut, err := os.Create(CAcertName)
+		if err != nil {
+			log.Fatalf("Failed to open %s for writing: %s", CAcertName, err)
+		}
+		certOut, err := os.Create(certName)
+		if err != nil {
+			log.Fatalf("Failed to open %s for writing: %s", certName, err)
+		}
+		err = certs.CreateServerCert(template, *isElliptic, certOut, CAcertOut)
+		if err != nil {
+			log.Fatalf("Failed to create certificate: %v", err)
+		}
+		err = certOut.Close()
+		if err != nil {
+			log.Fatalf("Error closing file %s: %v", certName, err)
+		}
+		err = CAcertOut.Close()
+		if err != nil {
+			log.Fatalf("Error closing file %s: %v", CAcertName, err)
+		}
 	} else {
-		certName = fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
 		// Need to fetch the public and private key from the signer
 		bytesCert, err := ioutil.ReadFile(*serverCert)
 		if err != nil {
 			log.Fatalf("Could not load %s", *serverCert)
 		}
 
-		// Parent public key first
-		certBlock, rest := pem.Decode(bytesCert)
-		if certBlock == nil {
-		}
-		cert, err := x509.ParseCertificate(certBlock.Bytes)
+		// Create certificate: Concatenate public and private key
+		certOut, err := os.Create(certName)
 		if err != nil {
-			log.Fatalf("Could not parse %s %s", *serverCert, err)
+			log.Fatalf("Failed to open %s for writing: %s", certName, err)
 		}
-		parentCert = *cert
 
-		// Parent private key
-		privKeyBlock, _ := pem.Decode(rest)
-		if privKeyBlock == nil {
-			log.Fatalf("Invalid server certificate %s", certName)
-		}
-		if *isElliptic == false {
-			serverPrivKey, err = x509.ParsePKCS1PrivateKey(privKeyBlock.Bytes)
-		} else {
-			serverPrivKey, err = x509.ParseECPrivateKey(privKeyBlock.Bytes)
-		}
+		err = certs.CreateClientCert(template, *isElliptic, bytesCert, certOut)
 		if err != nil {
-			log.Fatalf("Could not get server private key %s", err)
+			log.Fatalf("Failed to create certificate: %v", err)
 		}
-	}
-
-	// The certificate is created
-	// Self signed for the server case
-	// Signed by --server-cert for the client case
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &parentCert, publicKey(priv), serverPrivKey)
-	if err != nil {
-		log.Fatalf("Failed to create certificate: %s", err)
-	}
-
-	// Create CA certificate, i.e. the server public key
-	if *isServer == true {
-		CAcertOut, err := os.Create(CAcertName)
+		err = certOut.Close()
 		if err != nil {
-			log.Fatalf("failed to open %s for writing: %s", certName, err)
+			log.Fatalf("Error closing file %s: %v", certName, err)
 		}
-		pem.Encode(CAcertOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-		CAcertOut.Close()
 	}
-
-	// Create certificate: Concatenate public and private key
-	certOut, err := os.Create(certName)
-	if err != nil {
-		log.Fatalf("failed to open %s for writing: %s", certName, err)
-	}
-	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	pem.Encode(certOut, pemBlockForKey(priv))
-	certOut.Close()
 
 	verifyCert(*serverCert, certName)
 	instructionDisplay(*isServer, CAcertName, certName)
