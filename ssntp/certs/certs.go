@@ -209,6 +209,8 @@ func CreateClientCert(template *x509.Certificate, useElliptic bool, serverCert [
 		return fmt.Errorf("Unable to create private key: %v", err)
 	}
 
+	template.IsCA = false
+
 	// Parent public key first
 	certBlock, rest := pem.Decode(serverCert)
 	parentCert, err := x509.ParseCertificate(certBlock.Bytes)

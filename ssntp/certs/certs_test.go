@@ -268,6 +268,10 @@ func TestCreateClientCert(t *testing.T) {
 		t.Errorf("Failed to parse certificate: %v", err)
 	}
 
+	if cert.IsCA != false {
+		t.Errorf("Expected certificate not to be a CA")
+	}
+
 	roots := x509.NewCertPool()
 	ok = roots.AppendCertsFromPEM(caCertOutput.Bytes())
 	if !ok {
