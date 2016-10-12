@@ -39,8 +39,21 @@ type ImageService struct {
 func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultResponse, error) {
 	// create an ImageInfo struct and store it in our image
 	// datastore.
+	id := req.ID
+	if id == "" {
+		id = uuid.Generate().String()
+	} else {
+		if _, err := uuid.Parse(id); err != nil {
+			return image.DefaultResponse{}, image.ErrBadUUID
+		}
+
+		if _, err := is.ds.GetImage(id); err == nil {
+			return image.DefaultResponse{}, image.ErrAlreadyExists
+		}
+	}
+
 	i := datastore.Image{
-		ID:         uuid.Generate().String(),
+		ID:         id,
 		State:      datastore.Created,
 		Name:       req.Name,
 		CreateTime: time.Now(),

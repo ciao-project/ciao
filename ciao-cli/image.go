@@ -79,6 +79,7 @@ var imageCommand = &command{
 type imageAddCommand struct {
 	Flag            flag.FlagSet
 	name            string
+	id              string
 	containerFormat imageContainerFormat
 	diskFormat      imageDiskFormat
 	minDiskSize     int
@@ -105,6 +106,7 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	cmd.containerFormat = "bare"
 	cmd.diskFormat = "qcow2"
 	cmd.Flag.StringVar(&cmd.name, "name", "", "Image Name")
+	cmd.Flag.StringVar(&cmd.id, "id", "", "Image UUID")
 	cmd.Flag.Var(&cmd.containerFormat, "container-format", "Image Container Format (ami, ari, aki, bare, ovf, ova, docker")
 	cmd.Flag.Var(&cmd.diskFormat, "disk-format", "Image Disk Format (ami, ari, aki, vhd, vmdk, raw, qcow2, vdi, iso")
 	cmd.Flag.IntVar(&cmd.minDiskSize, "min-disk-size", 0, "Minimum disk size in GB")
@@ -139,6 +141,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 
 	opts := images.CreateOpts{
 		Name:             cmd.name,
+		ID:               cmd.id,
 		ContainerFormat:  cmd.containerFormat.String(),
 		DiskFormat:       cmd.diskFormat.String(),
 		MinDiskGigabytes: cmd.minDiskSize,

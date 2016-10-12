@@ -142,6 +142,13 @@ var (
 
 	// ErrImageSaving is returned when an image is being uploaded.
 	ErrImageSaving = errors.New("Image being uploaded")
+
+	// ErrBadUUID is returned when an invalid UUID is specified
+	ErrBadUUID = errors.New("Bad UUID")
+
+	// ErrAlreadyExists is returned when an attempt is made to add
+	// an image with a UUID that already exists.
+	ErrAlreadyExists = errors.New("Already Exists")
 )
 
 // CreateImageRequest contains information for a create image request.
@@ -269,6 +276,10 @@ func errorResponse(err error) APIResponse {
 	switch err {
 	case ErrNoImage:
 		return APIResponse{http.StatusNotFound, nil}
+	case ErrBadUUID:
+		return APIResponse{http.StatusBadRequest, nil}
+	case ErrAlreadyExists:
+		return APIResponse{http.StatusConflict, nil}
 	default:
 		return APIResponse{http.StatusInternalServerError, nil}
 	}
