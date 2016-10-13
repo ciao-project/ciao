@@ -144,7 +144,7 @@ type NodeStats struct {
 	Load            int       `json:"load"`
 	MemTotalMB      int       `json:"mem_total_mb"`
 	MemAvailableMB  int       `json:"mem_available_mb"`
-	DiskTotalMB     int       `json:"mem_total_mb"`
+	DiskTotalMB     int       `json:"disk_total_mb"`
 	DiskAvailableMB int       `json:"disk_available_mb"`
 	CpusOnline      int       `json:"cpus_online"`
 }
