@@ -34,6 +34,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/certs"
@@ -49,6 +50,7 @@ var (
 	email        = flag.String("email", "ciao-devel@lists.clearlinux.org", "Certificate email address")
 	organization = flag.String("organization", "", "Certificates organization")
 	installDir   = flag.String("directory", ".", "Installation directory")
+	dumpCert     = flag.String("dump", "", "Print details about provided certificate")
 )
 
 func verifyCert(CACert string, certName string) {
@@ -122,12 +124,7 @@ func checkCompulsoryOptions() {
 	}
 }
 
-func main() {
-	var role ssntp.Role
-
-	flag.Var(&role, "role", "Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
-	flag.Parse()
-
+func createCertificates(role ssntp.Role) {
 	checkCompulsoryOptions()
 	mgmtIPs := strings.Split(*mgmtIP, ",")
 	hosts := strings.Split(*host, ",")
@@ -185,4 +182,57 @@ func main() {
 
 	verifyCert(*serverCert, certName)
 	instructionDisplay(*isServer, CAcertName, certName)
+}
+
+func dumpCertificate(certName string) {
+	bytesCert, err := ioutil.ReadFile(certName)
+	if err != nil {
+		log.Fatalf("Could not read cert%s: %v", certName, err)
+	}
+
+	block, rest := pem.Decode(bytesCert)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		log.Fatalf("Could not parse certificate: %s: %v", certName, err)
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 2, 8, 2, '\t', 0)
+
+	fmt.Fprintf(w, "Certificate:\t%s\n", *dumpCert)
+	if len(cert.Subject.Organization) > 0 && cert.Subject.Organization[0] != "" {
+		fmt.Fprintf(w, "Organization:\t%s\n", cert.Subject.Organization[0])
+	}
+	fmt.Fprintf(w, "Is CA:\t%v\n", cert.IsCA)
+	fmt.Fprintf(w, "Validity:\t%v to %v\n", cert.NotBefore, cert.NotAfter)
+
+	role := ssntp.GetRoleFromOIDs(cert.UnknownExtKeyUsage)
+	fmt.Fprintf(w, "For role:\t%s\n", role.String())
+
+	for _, host := range cert.DNSNames {
+		fmt.Fprintf(w, "For host:\t%s\n", host)
+	}
+
+	for _, ip := range cert.IPAddresses {
+		fmt.Fprintf(w, "For IP:\t%v\n", ip)
+	}
+
+	if len(rest) > 0 {
+		privKeyBlock, _ := pem.Decode(rest)
+		fmt.Fprintf(w, "Private key:\t%v\n", privKeyBlock.Type)
+	}
+
+	w.Flush()
+}
+
+func main() {
+	var role ssntp.Role
+
+	flag.Var(&role, "role", "Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]")
+	flag.Parse()
+
+	if *dumpCert != "" {
+		dumpCertificate(*dumpCert)
+		return
+	}
+	createCertificates(role)
 }
