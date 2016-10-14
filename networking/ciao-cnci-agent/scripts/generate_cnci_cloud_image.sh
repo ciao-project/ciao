@@ -4,6 +4,7 @@ image="clear-8260-ciao-networking.img"
 certs_dir=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/certs
 cnci_agent=$GOPATH/bin/ciao-cnci-agent
 cnci_sysd=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service
+base_url="https://download.clearlinux.org/demos/ciao"
 partition="2"
 download=0
 
@@ -33,8 +34,16 @@ do
 	  image="$2"
 	  shift 2
 	  ;;
+      -p | --partition)
+	  partition="$2"
+	  shift 2
+	  ;;
       -s | --script)
 	  cnci_sysd="$2"
+	  shift 2
+	  ;;
+      -u | --url)
+	  base_url="$2"
 	  shift 2
 	  ;;
       *)
@@ -48,7 +57,7 @@ set -o nounset
 if [ $download -eq 1 ]
 then
 	rm -f "$image"
-	curl -O https://download.clearlinux.org/demos/ciao/"$image".xz
+	curl -O "$base_url"/"$image".xz
 	unxz "$image".xz
 fi
 
