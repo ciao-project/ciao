@@ -30,11 +30,17 @@ const ComputeAPIPort = "8774"
 // VolumeAPIPort is the volume service port the testutil identity service will use by default
 const VolumeAPIPort = "8776"
 
+// ImageAPIPort is the image service port the testutil identity service will use by default
+const ImageAPIPort = "9292"
+
 // ComputeURL is the compute service URL the testutil identity service will use by default
 var ComputeURL = "https://localhost:" + ComputeAPIPort
 
 // VolumeURL is the volume service URL the testutil identity service will use by default
 var VolumeURL = "https://localhost:" + VolumeAPIPort
+
+// ImageURL is the image service URL the testutil identity service will use by default
+var ImageURL = "https://localhost:" + ImageAPIPort
 
 // IdentityURL is the URL for the testutil identity service
 var IdentityURL string
@@ -121,6 +127,34 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 						"id": "fbd0a99c-01c0-4fc2-96b9-c76e01def567",
 						"name": "cinderv2",
 						"type": "volumev2"
+					},
+					{
+						"endpoints": [
+							{
+								"region_id": "RegionOne",
+								"url": "%[5]s",
+								"region": "RegionOne",
+								"id": "a4989bcbc54a4b4ca47f91ffb8adf5f7",
+								"interface": "internal"
+							},
+							{
+								"region_id": "RegionOne",
+								"url": "%[5]s",
+								"region": "RegionOne",
+								"id": "025515ea9f664368a26eeefd56f5cab5",
+								"interface": "admin"
+							},
+							{
+								"region_id": "RegionOne",
+								"url": "%[5]s",
+								"region": "RegionOne",
+								"id": "dd9cdb516d5745d9a8d7215bc712543a",
+								"interface": "public"
+							}
+						],
+						"id": "ecbff61f-92d9-48b6-bbb5-73153e7bfe26",
+						"name": "glance",
+						"type": "image"
 					}
 				],
 			       "extras": {},
@@ -135,13 +169,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			        "audit_ids": [
 				        "3T2dc1CGQxyJsHdDu1xkcw"
 			        ],
-			        "issued_at": "%[5]s"
+			        "issued_at": "%[6]s"
 			}
 		}`
 
 	t := []byte(fmt.Sprintf(token,
 		time.Now().Add(1*time.Hour).Format(gophercloud.RFC3339Milli),
-		ComputeUser, IdentityURL, cinderv2URL, time.Now().Format(gophercloud.RFC3339Milli)))
+		ComputeUser, IdentityURL, cinderv2URL, ImageURL,
+		time.Now().Format(gophercloud.RFC3339Milli)))
 	w.Header().Set("X-Subject-Token", "imavalidtoken")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(t)
@@ -297,6 +332,7 @@ func IdentityHandlers() *mux.Router {
 // only supports authentication of a single tenant, and gives the token an admin role.
 type IdentityConfig struct {
 	VolumeURL  string
+	ImageURL   string
 	ComputeURL string
 	ProjectID  string
 }
@@ -311,6 +347,9 @@ func StartIdentityServer(config IdentityConfig) *httptest.Server {
 
 	if config.VolumeURL != "" {
 		VolumeURL = config.VolumeURL
+	}
+	if config.ImageURL != "" {
+		ImageURL = config.ImageURL
 	}
 	if config.ComputeURL != "" {
 		ComputeURL = config.ComputeURL

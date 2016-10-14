@@ -35,6 +35,7 @@ import (
 	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/openstack/compute"
+	osimage "github.com/01org/ciao/openstack/image"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
@@ -59,6 +60,7 @@ var serviceUser = "csr"
 var servicePassword = ""
 var volumeAPIPort = block.APIPort
 var computeAPIPort = compute.APIPort
+var imageAPIPort = osimage.APIPort
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
 var tablesInitPath = flag.String("tables_init_path", "./tables", "path to csv files")
@@ -151,9 +153,11 @@ func main() {
 	if *singleMachine {
 		hostname, _ := os.Hostname()
 		volumeURL := "https://" + hostname + ":" + strconv.Itoa(volumeAPIPort)
+		imageURL := "https://" + hostname + ":" + strconv.Itoa(imageAPIPort)
 		computeURL := "https://" + hostname + ":" + strconv.Itoa(computeAPIPort)
 		testIdentityConfig := testutil.IdentityConfig{
 			VolumeURL:  volumeURL,
+			ImageURL:   imageURL,
 			ComputeURL: computeURL,
 			ProjectID:  "f452bbc7-5076-44d5-922c-3b9d2ce1503f",
 		}

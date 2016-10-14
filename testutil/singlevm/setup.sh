@@ -94,6 +94,7 @@ sudo cp -f "$ciao_scripts"/configuration.yaml /etc/ciao
 sudo killall ciao-scheduler
 sudo killall ciao-controller
 sudo killall ciao-launcher
+sudo killall ciao-image
 sudo killall qemu-system-x86_64
 echo "Original /etc/hosts is temporarily move to $hosts_file_backup"
 sudo mv /etc/hosts $hosts_file_backup
@@ -146,6 +147,8 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -
 #Copy the certs
 sudo cp -f controller_key.pem /etc/pki/ciao
 sudo cp -f controller_cert.pem /etc/pki/ciao
+sudo ln -s /etc/pki/ciao/controller_key.pem /etc/pki/ciao/ciao-image-key.pem
+sudo ln -s /etc/pki/ciao/controller_cert.pem /etc/pki/ciao/ciao-image-cacert.pem
 
 
 #Copy the configuration
@@ -162,6 +165,7 @@ cp -f "$ciao_scripts"/tables/* "$ciao_bin"/tables
 cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
 cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
 cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
+cp "$ciao_scripts"/run_image.sh "$ciao_bin"
 cp "$ciao_scripts"/verify.sh "$ciao_bin"
 
 #Download the firmware
@@ -205,9 +209,6 @@ then
 fi
 
 qemu-img convert -f raw -O qcow2 "$ciao_cnci_image" "$ciao_cnci_image".qcow
-sudo cp -f "$ciao_cnci_image".qcow /var/lib/ciao/images
-cd /var/lib/ciao/images
-sudo ln -sf "$ciao_cnci_image".qcow 4e16e743-265a-4bf2-9fd1-57ada0b28904
 
 #Clear
 cd "$ciao_bin"
@@ -228,10 +229,6 @@ then
 	exit 1
 fi
 
-sudo cp -f clear-"${LATEST}"-cloud.img /var/lib/ciao/images
-cd /var/lib/ciao/images
-sudo ln -sf clear-"${LATEST}"-cloud.img df3768da-31f5-4ba6-82f0-127a1a705169
-
 #Fedora, needed for BAT tests
 cd "$ciao_bin"
 if [ $download -eq 1 ] || [ ! -f $fedora_cloud_image ]
@@ -245,10 +242,6 @@ then
 	echo "FATAL ERROR: unable to download fedora cloud Image"
 	exit 1
 fi
-
-sudo cp -f $fedora_cloud_image /var/lib/ciao/images
-cd /var/lib/ciao/images
-sudo ln -sf $fedora_cloud_image 73a86d7e-93c0-480e-9c41-ab42f69b7799
 
 # Install ceph
 
@@ -295,6 +288,30 @@ echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
 identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
 echo "$identity" >> "$ciao_env"
+
+# Run the image service
+
+identity_url=$(echo $identity | sed 's/^.*=//')
+"$ciao_bin"/run_image.sh $identity_url &> /dev/null
+
+sleep 1
+
+. ~/local/demo.sh
+
+echo ""
+echo "Uploading test images to image service"
+echo "---------------------------------------------------------------------------------------"
+if [ -f "$ciao_cnci_image".qcow ]; then
+    ciao-cli image add --file "$ciao_cnci_image".qcow --name "ciao CNCI image" --id 4e16e743-265a-4bf2-9fd1-57ada0b28904
+fi
+
+if [ -f clear-"${LATEST}"-cloud.img ]; then
+    ciao-cli image add --file clear-"${LATEST}"-cloud.img --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169
+fi
+
+if [ -f $fedora_cloud_image ]; then
+    ciao-cli image add --file $fedora_cloud_image --name "Fedorda Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799
+fi
 
 echo "---------------------------------------------------------------------------------------"
 echo ""
