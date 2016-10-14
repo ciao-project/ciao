@@ -14,6 +14,7 @@ ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
 ciao_env="$ciao_bin/demo.sh"
 ciao_ctl_log="/var/lib/ciao/logs/controller/ciao-controller.ERROR"
 ciao_cnci_image="clear-8260-ciao-networking.img"
+ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
@@ -46,15 +47,23 @@ function ctrl_c() {
     cleanup
 }
 
-usage="$(basename "$0") [--download] The script will download dependencies if needed. Specifing --download will force download the dependencies even if they are cached locally"
+usage="$(basename "$0") [--download] The script will download dependencies if needed. Specifying --download will force download the dependencies even if they are cached locally"
 
 while :
 do
     case "$1" in
+      -c | --cnciurl)
+          ciao_cnci_url="$2"
+	  shift 2
+	  ;;
       -d | --download)
           download=1
           shift 1
           ;;
+      -i | --cnciimage)
+          ciao_cnci_image="$2"
+	  shift 2
+	  ;;
       -h | --help)
           echo -e "$usage" >&2
           exit 0
@@ -104,7 +113,7 @@ sudo rm -rf /var/lib/ciao/instances
 
 cd "$ciao_bin"
 
-#Cleanup any old artifcats
+#Cleanup any old artifacts
 rm -f "$ciao_bin"/*.pem
 sudo rm -f "$ciao_bin"/ciao-controller.db-shm
 sudo rm -f "$ciao_bin"/ciao-controller.db-wal
@@ -126,7 +135,7 @@ fi
 
 cd "$ciao_bin"
 
-#Check if the build was a sucess
+#Check if the build was a success
 if [ ! -f "$ciao_gobin"/ciao-cli ]
 then
 	echo "FATAL ERROR: build failed"
@@ -191,7 +200,7 @@ rm -f "$ciao_cnci_image".qcow
 if [ $download -eq 1 ] || [ ! -f "$ciao_cnci_image" ] 
 then
 	rm -f "$ciao_cnci_image"
-	"$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image" -d
+	"$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image" -d -u "$ciao_cnci_url"
 else
 	"$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image"
 fi
