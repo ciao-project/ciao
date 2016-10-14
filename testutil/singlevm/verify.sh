@@ -12,7 +12,6 @@ ciao_gobin="$GOPATH"/bin
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to list workloads"
-	cleanup
 	exit 1
 fi
 
@@ -21,7 +20,6 @@ fi
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to launch VMs"
-	cleanup
 	exit 1
 fi
 
@@ -30,16 +28,18 @@ fi
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to list instances"
-	cleanup
 	exit 1
 fi
 
-"$ciao_gobin"/ciao-cli instance add --workload=ab68111c-03a6-11e6-87de-001320fb6e31 --instances=2
+#Launch containers
+
+#Pre-cache the image to reduce the start latency
+sudo docker pull debian
+"$ciao_gobin"/ciao-cli instance add --workload=ca957444-fa46-11e5-94f9-38607786d9ec --instances=1
 
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to launch containers"
-	cleanup
 	exit 1
 fi
 
@@ -49,10 +49,30 @@ sleep 5
 if [ $? -ne 0 ]
 then
 	echo "FATAL ERROR: Unable to list instances"
-	cleanup
 	exit 1
 fi
 
+container_1=`sudo docker ps -q -l`
+container_1_ip=`sudo docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $container_1`
+
+"$ciao_gobin"/ciao-cli instance add --workload=ca957444-fa46-11e5-94f9-38607786d9ec --instances=1
+
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to launch containers"
+	exit 1
+fi
+
+sleep 5
+
+"$ciao_gobin"/ciao-cli instance list
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to list instances"
+	exit 1
+fi
+
+container_2=`sudo docker ps -q -l`
 
 #Check SSH connectivity
 "$ciao_gobin"/ciao-cli instance list
@@ -91,15 +111,20 @@ done
 if [ $retry -ge 6 ]
 then
 	echo "Unable check ssh connectivity into VM"
-	cleanup
+	exit 1
 fi
 
 #Check docker networking
 echo "Checking Docker Networking"
-sleep 30
-docker_id=$(sudo docker ps -q | head -1)
-sudo docker logs "$docker_id"
+sudo docker exec $container_2 /bin/ping -c 3 $container_1_ip
 
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to ping across containers"
+	exit 1
+else
+	echo "Container connectivity verified"
+fi
 
 #Now delete all instances
 "$ciao_gobin"/ciao-cli instance delete --all
