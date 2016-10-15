@@ -44,13 +44,13 @@ type DbTable interface {
 	Add(k string, v interface{}) error
 }
 
-// A TableDBProvider represents a persistent data base provider
+// A TableDBProvider represents a persistent database provider
 // that can be used to store map, arrays or any other type of
 // tables into a database
 type TableDBProvider interface {
 	//Initializes the Database
 	DbInit(dir string, file string) error
-	//Populates the DockerPlugin cache from the database
+	//Populates the in-memory table from the database
 	DbTableRebuild(table DbTable) error
 	//Closes the database
 	DbClose() error
