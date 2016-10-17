@@ -128,48 +128,15 @@ var DockerPluginCfg = struct {
 	Dir     string
 	Addr    string
 	DataDir string
+	DbFile  string
 	Timeout time.Duration
 }{
 	Name:    "ciao",
 	Dir:     "/etc/docker/plugins",
 	Addr:    "127.0.0.1:9999",
 	DataDir: "/var/lib/ciao/networking",
+	DbFile:  "docker_plugin.db",
 	Timeout: 1 * time.Second,
-}
-
-//DbTable interface that needs to be supported
-//for the table to be handled by the database
-type DbTable interface {
-	// Creates the backing map
-	NewTable()
-
-	// Name of the table as stored in the database
-	Name() string
-
-	// Allocates and returns a single value in the table
-	NewElement() interface{}
-
-	// Add an value to the in memory table
-	Add(k string, v interface{}) error
-}
-
-// A DockerDBProvider represents a persistent data base provider
-// that can be used by the DockerPlugin to store its internal state
-type DockerDBProvider interface {
-	//Initializes the Database
-	DbInit(dir string) error
-	//Populates the DockerPlugin cache from the database
-	DbTableRebuild(table DbTable) error
-	//Closes the database
-	DbClose() error
-	//Creates the tables if the tables do not already exist in the database
-	DbTableInit(tables []string) error
-	//Adds the key value pair to the table
-	DbAdd(table string, key string, value interface{}) error
-	//Adds the key value pair to the table
-	DbDelete(table string, key string) error
-	//Retrives the value corresponding to the key from the table
-	DbGet(table string, key string) (interface{}, error)
 }
 
 //DockerEpVal stores ciao VNIC info for a particular docker endpoint
@@ -256,7 +223,7 @@ func (d *DockerNwMap) Add(k string, v interface{}) error {
 // DockerPlugin describes a single instance of a docker plugin
 // In the current design the plugin acts as an IPAM and Network Plugin
 type DockerPlugin struct {
-	DockerDBProvider //Database used to persist the Docker to ciao Mapping
+	TableDBProvider //Database used to persist the Docker to ciao Mapping
 	//This is needed as the Docker Daemon and ciao have
 	//different life cycles and UUIDs
 	*mux.Router
@@ -779,7 +746,7 @@ func DockerHandler(d *DockerPlugin,
 //NewDockerPlugin instantiates a new Docker Plugin instance
 func NewDockerPlugin() *DockerPlugin {
 	return &DockerPlugin{
-		DockerDBProvider: NewDockerBoltDBProvider(),
+		TableDBProvider: NewTableBoltDBProvider(),
 	}
 }
 
@@ -819,7 +786,7 @@ func (d *DockerPlugin) Init() error {
 		return err
 	}
 
-	if err := d.DbInit(DockerPluginCfg.DataDir); err != nil {
+	if err := d.DbInit(DockerPluginCfg.DataDir, DockerPluginCfg.DbFile); err != nil {
 		return err
 	}
 	if err := d.DbTableRebuild(&d.DockerNwMap); err != nil {

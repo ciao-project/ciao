@@ -28,30 +28,62 @@ import (
 	"github.com/golang/glog"
 )
 
-const (
-	dbFile = "docker_plugin.db"
-)
+//DbTable interface that needs to be supported
+//for the table to be handled by the database
+type DbTable interface {
+	// Creates the backing map
+	NewTable()
 
-type dockerBoltDB struct {
+	// Name of the table as stored in the database
+	Name() string
+
+	// Allocates and returns a single value in the table
+	NewElement() interface{}
+
+	// Add an value to the in memory table
+	Add(k string, v interface{}) error
+}
+
+// A TableDBProvider represents a persistent database provider
+// that can be used to store map, arrays or any other type of
+// tables into a database
+type TableDBProvider interface {
+	//Initializes the Database
+	DbInit(dir string, file string) error
+	//Populates the in-memory table from the database
+	DbTableRebuild(table DbTable) error
+	//Closes the database
+	DbClose() error
+	//Creates the tables if the tables do not already exist in the database
+	DbTableInit(tables []string) error
+	//Adds the key value pair to the table
+	DbAdd(table string, key string, value interface{}) error
+	//Adds the key value pair to the table
+	DbDelete(table string, key string) error
+	//Retrives the value corresponding to the key from the table
+	DbGet(table string, key string) (interface{}, error)
+}
+
+type tableBoltDB struct {
 	Name string
 	DB   *bolt.DB
 }
 
-func newDockerBoltDb() *dockerBoltDB {
-	return &dockerBoltDB{
-		Name: "docker_bolt.DB",
+func newTableBoltDb() *tableBoltDB {
+	return &tableBoltDB{
+		Name: "tableBolt.DB",
 	}
 }
 
-type dbProvider dockerBoltDB
+type dbProvider tableBoltDB
 
-//NewDockerBoltDBProvider returns a bolt based database that conforms
-//to the DockerDBProvider interface
-func NewDockerBoltDBProvider() DockerDBProvider {
-	return (*dbProvider)(newDockerBoltDb())
+//NewTableBoltDBProvider returns a bolt based database that conforms
+//to the tableDBProvider interface
+func NewTableBoltDBProvider() TableDBProvider {
+	return (*dbProvider)(newTableBoltDb())
 }
 
-func (db *dbProvider) DbInit(dbDir string) error {
+func (db *dbProvider) DbInit(dbDir string, dbFile string) error {
 
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		return fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
