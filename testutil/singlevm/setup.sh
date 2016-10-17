@@ -1,6 +1,6 @@
 #!/bin/bash
 ciao_host=$(hostname)
-ciao_ip=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
+ciao_ip=$(hostname -i)
 ciao_subnet=$(echo $ciao_ip | sed -e 's/\([0-9]\+\).\([0-9]\+\).\([0-9]\+\).\([0-9]\+\)/\1.\2\.\3.0\/24/')
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
