@@ -4,7 +4,7 @@ ciao_ip=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
 ciao_subnet=$(echo $ciao_ip | sed -e 's/\([0-9]\+\).\([0-9]\+\).\([0-9]\+\).\([0-9]\+\)/\1.\2\.\3.0\/24/')
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
-export no_proxy=$no_proxy,$ciao_host
+export no_proxy=$no_proxy,$ciao_ip,$ciao_host
 
 ciao_email="ciao-devel@lists.clearlinux.org"
 ciao_org="Intel"
@@ -18,7 +18,6 @@ ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
-hosts_file_backup="/etc/hosts.orig.$RANDOM"
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -36,7 +35,7 @@ cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
 cleanup()
 {
     echo "Performing cleanup"
-    "$ciao_bin"/cleanup.sh $hosts_file_backup
+    "$ciao_bin"/cleanup.sh
 }
 
 # Ctrl-C Trapper
@@ -105,10 +104,6 @@ sudo killall ciao-controller
 sudo killall ciao-launcher
 sudo killall ciao-image
 sudo killall qemu-system-x86_64
-echo "Original /etc/hosts is temporarily move to $hosts_file_backup"
-sudo mv /etc/hosts $hosts_file_backup
-echo "$ciao_ip $ciao_host" > hosts
-sudo mv hosts /etc/hosts
 sudo rm -rf /var/lib/ciao/instances
 
 cd "$ciao_bin"
@@ -143,13 +138,13 @@ then
 fi
 
 #Generate Certificates
-"$GOPATH"/bin/ciao-cert -server -role scheduler -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
+"$GOPATH"/bin/ciao-cert -server -role scheduler -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role cnciagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
+"$GOPATH"/bin/ciao-cert -role cnciagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role controller -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
+"$GOPATH"/bin/ciao-cert -role controller -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify
+"$GOPATH"/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
 
@@ -287,7 +282,6 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-echo "export HOSTS_FILE_BACKUP=""$hosts_file_backup" > "$ciao_env"
 echo "export CIAO_CONTROLLER=""$ciao_host" >> "$ciao_env"
 echo "export CIAO_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
