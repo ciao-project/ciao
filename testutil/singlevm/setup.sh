@@ -268,8 +268,8 @@ fi
 # Set DHCP server with dnsmasq
 sudo mkdir -p /var/lib/misc
 if [ -x "$(command -v ip)" ]; then
-    sudo dnsmasq -C $ciao_scripts/dnsmasq.conf.macvlan0 \
-	 --pid-file=/tmp/dnsmasq.macvlan0.pid
+    sudo dnsmasq -C $ciao_scripts/dnsmasq.conf.ciaovlan \
+	 --pid-file=/tmp/dnsmasq.ciaovlan.pid
 else
     echo 'dnsmasq command is not supported'
 fi
