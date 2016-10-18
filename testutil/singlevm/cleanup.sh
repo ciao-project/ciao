@@ -9,7 +9,7 @@ sudo killall ciao-image
 sudo killall ciao-launcher
 sleep 2
 sudo "$ciao_gobin"/ciao-launcher --alsologtostderr -v 3 --hard-reset
-sudo ip link del eth10
+sudo ip link del ciao_eth
 sudo pkill -F /tmp/dnsmasq.macvlan0.pid
 sudo docker rm -v -f ceph-demo
 sudo rm /etc/ceph/*

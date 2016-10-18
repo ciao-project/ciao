@@ -1,7 +1,9 @@
 #!/bin/bash
 ciao_host=$(hostname)
-ciao_ip=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
-ciao_subnet=$(echo $ciao_ip | sed -e 's/\([0-9]\+\).\([0-9]\+\).\([0-9]\+\).\([0-9]\+\)/\1.\2\.\3.0\/24/')
+ciao_interface=ciao_eth
+ciao_ip=198.51.100.1
+ciao_subnet=198.51.100.1/24
+ciao_brdcast=198.51.100.255
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
 export no_proxy=$no_proxy,$ciao_ip,$ciao_host
@@ -18,6 +20,8 @@ ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
+
+echo "Subnet =" $ciao_subnet
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -247,22 +251,16 @@ then
 	exit 1
 fi
 
-# Install ceph
-
-sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
-sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
-
-
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
-    sudo ip link del eth10
-    sudo ip link add name eth10 type bridge
-    sudo ip link add link eth10 name macvlan0 type macvlan mode bridge
-    sudo ip addr add 198.51.100.1/24 brd 198.51.100.255 dev macvlan0
-    sudo ip link set dev macvlan0 up
-    sudo ip -d link show macvlan0
-    sudo ip link set dev eth10 up
-    sudo ip -d link show eth10
+    sudo ip link del "$ciao_interface"
+    sudo ip link add name "$ciao_interface" type bridge
+    sudo ip link add link "$ciao_interface" name ciaovlan type macvlan mode bridge
+    sudo ip addr add "$ciao_subnet" brd "$ciao_brdcast" dev ciaovlan
+    sudo ip link set dev ciaovlan up
+    sudo ip -d link show ciaovlan
+    sudo ip link set dev "$ciao_interface" up
+    sudo ip -d link show "$ciao_interface"
 else
     echo 'ip command is not supported'
 fi
@@ -275,6 +273,10 @@ if [ -x "$(command -v ip)" ]; then
 else
     echo 'dnsmasq command is not supported'
 fi
+
+# Install ceph
+sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
+sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
 
 #Kick off the agents
 cd "$ciao_bin"
