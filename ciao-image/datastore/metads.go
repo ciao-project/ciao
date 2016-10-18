@@ -22,20 +22,19 @@ import (
 	"github.com/01org/ciao/database"
 )
 
-// Boltdb implements the DataStore interface for persistent data
-// on a key/value database with BoltDB
-type Boltdb struct {
+// MetaDs implements the DataStore interface for persistent data
+type MetaDs struct {
 	database.DbProvider
 	DbDir  string
 	DbFile string
 }
 
-// Write is the boltdb image metadata write implementation.
-func (b *Boltdb) Write(i Image) error {
-	b.DbInit(b.DbDir, b.DbFile)
-	defer b.DbClose()
+// Write is the metadata write implementation.
+func (m *MetaDs) Write(i Image) error {
+	m.DbInit(m.DbDir, m.DbFile)
+	defer m.DbClose()
 
-	err := b.DbAdd("images", i.ID, i)
+	err := m.DbAdd("images", i.ID, i)
 
 	if err != nil {
 		return err
@@ -44,20 +43,20 @@ func (b *Boltdb) Write(i Image) error {
 	return nil
 }
 
-// Delete is the boltdb image metadata delete implementation.
-func (b *Boltdb) Delete(id string) error {
-	b.DbInit(b.DbDir, b.DbFile)
-	defer b.DbClose()
-	return b.DbDelete("images", id)
+// Delete is the metadata delete implementation.
+func (m *MetaDs) Delete(id string) error {
+	m.DbInit(m.DbDir, m.DbFile)
+	defer m.DbClose()
+	return m.DbDelete("images", id)
 }
 
-// Get is the boltdb image metadata get implementation.
-func (b *Boltdb) Get(ID string) (Image, error) {
-	b.DbInit(b.DbDir, b.DbFile)
-	defer b.DbClose()
+// Get is the metadata get implementation.
+func (m *MetaDs) Get(ID string) (Image, error) {
+	m.DbInit(m.DbDir, m.DbFile)
+	defer m.DbClose()
 
 	img := Image{}
-	data, err := b.DbGet("images", ID)
+	data, err := m.DbGet("images", ID)
 	if err != nil {
 		return img, fmt.Errorf("Error on image retrieve: %v ", err)
 	}
@@ -69,13 +68,13 @@ func (b *Boltdb) Get(ID string) (Image, error) {
 	return img, err
 }
 
-// GetAll is the boltdb image metadata get all images implementation.
-func (b *Boltdb) GetAll() (images []Image, err error) {
-	b.DbInit(b.DbDir, b.DbFile)
-	defer b.DbClose()
+// GetAll is the metadata get all images implementation.
+func (m *MetaDs) GetAll() (images []Image, err error) {
+	m.DbInit(m.DbDir, m.DbFile)
+	defer m.DbClose()
 	var elements []interface{}
 
-	elements, err = b.DbProvider.DbGetAll("images")
+	elements, err = m.DbProvider.DbGetAll("images")
 
 	for _, data := range elements {
 		if data != nil {

@@ -46,7 +46,7 @@ func init() {
 }
 
 func main() {
-	metaDs := &datastore.Boltdb{
+	metaDs := &datastore.MetaDs{
 		DbProvider: database.NewBoltDBProvider(),
 		DbDir:      dbDir,
 		DbFile:     dbFile,

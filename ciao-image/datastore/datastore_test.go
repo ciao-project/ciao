@@ -150,10 +150,10 @@ func TestPosixNoopUpload(t *testing.T) {
 	testUpload(t, &Posix{MountPoint: mountPoint}, &Noop{})
 }
 
-// Tests for Boltdb metaDs
+// Tests for MetaDs
 
-func initBoltdb() *Boltdb {
-	metaDs := &Boltdb{
+func initMetaDs() *MetaDs {
+	metaDs := &MetaDs{
 		DbProvider: database.NewBoltDBProvider(),
 		DbDir:      dbDir,
 		DbFile:     dbFile,
@@ -166,22 +166,22 @@ func initBoltdb() *Boltdb {
 	return metaDs
 }
 
-func TestPosixBoltdbCreateAndGet(t *testing.T) {
-	metaDs := initBoltdb()
+func TestPosixMetaDsCreateAndGet(t *testing.T) {
+	metaDs := initMetaDs()
 	testCreateAndGet(t, &Posix{MountPoint: mountPoint}, metaDs)
 }
 
-func TestPosixBoltdbGetAll(t *testing.T) {
-	metaDs := initBoltdb()
+func TestPosixMetaDsGetAll(t *testing.T) {
+	metaDs := initMetaDs()
 	testGetAll(t, &Posix{MountPoint: mountPoint}, metaDs)
 }
 
-func TestPosixBoltdbDelete(t *testing.T) {
-	metaDs := initBoltdb()
+func TestPosixMetaDsDelete(t *testing.T) {
+	metaDs := initMetaDs()
 	testDelete(t, &Posix{MountPoint: mountPoint}, metaDs)
 }
 
-func TestPosixBoltdbUpload(t *testing.T) {
-	metaDs := initBoltdb()
+func TestPosixMetaDsUpload(t *testing.T) {
+	metaDs := initMetaDs()
 	testUpload(t, &Posix{MountPoint: mountPoint}, metaDs)
 }
