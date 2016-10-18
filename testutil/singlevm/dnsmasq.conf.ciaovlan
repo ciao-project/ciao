@@ -1,6 +1,6 @@
 # Only listen to routers' LAN NIC.  Doing so opens up tcp/udp port 53 to
 # localhost and udp port 67 to world:
-interface=macvlan0
+interface=ciaovlan
 
 listen-address=198.51.100.1
 

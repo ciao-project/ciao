@@ -1,10 +1,12 @@
 #!/bin/bash
 ciao_host=$(hostname)
-ciao_ip=$(ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)
-ciao_subnet=$(echo $ciao_ip | sed -e 's/\([0-9]\+\).\([0-9]\+\).\([0-9]\+\).\([0-9]\+\)/\1.\2\.\3.0\/24/')
+ciao_interface=ciao_eth
+ciao_ip=198.51.100.1
+ciao_subnet=198.51.100.1/24
+ciao_brdcast=198.51.100.255
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
-export no_proxy=$no_proxy,$ciao_host
+export no_proxy=$no_proxy,$ciao_ip,$ciao_host
 
 ciao_email="ciao-devel@lists.clearlinux.org"
 ciao_org="Intel"
@@ -18,7 +20,8 @@ ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
-hosts_file_backup="/etc/hosts.orig.$RANDOM"
+
+echo "Subnet =" $ciao_subnet
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -36,7 +39,7 @@ cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
 cleanup()
 {
     echo "Performing cleanup"
-    "$ciao_bin"/cleanup.sh $hosts_file_backup
+    "$ciao_bin"/cleanup.sh
 }
 
 # Ctrl-C Trapper
@@ -105,10 +108,6 @@ sudo killall ciao-controller
 sudo killall ciao-launcher
 sudo killall ciao-image
 sudo killall qemu-system-x86_64
-echo "Original /etc/hosts is temporarily move to $hosts_file_backup"
-sudo mv /etc/hosts $hosts_file_backup
-echo "$ciao_ip $ciao_host" > hosts
-sudo mv hosts /etc/hosts
 sudo rm -rf /var/lib/ciao/instances
 
 cd "$ciao_bin"
@@ -143,13 +142,13 @@ then
 fi
 
 #Generate Certificates
-"$GOPATH"/bin/ciao-cert -server -role scheduler -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
+"$GOPATH"/bin/ciao-cert -server -role scheduler -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role cnciagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
+"$GOPATH"/bin/ciao-cert -role cnciagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role controller -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify 
+"$GOPATH"/bin/ciao-cert -role controller -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -verify
+"$GOPATH"/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
 
@@ -252,22 +251,16 @@ then
 	exit 1
 fi
 
-# Install ceph
-
-sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
-sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
-
-
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
-    sudo ip link del eth10
-    sudo ip link add name eth10 type bridge
-    sudo ip link add link eth10 name macvlan0 type macvlan mode bridge
-    sudo ip addr add 198.51.100.1/24 brd 198.51.100.255 dev macvlan0
-    sudo ip link set dev macvlan0 up
-    sudo ip -d link show macvlan0
-    sudo ip link set dev eth10 up
-    sudo ip -d link show eth10
+    sudo ip link del "$ciao_interface"
+    sudo ip link add name "$ciao_interface" type bridge
+    sudo ip link add link "$ciao_interface" name ciaovlan type macvlan mode bridge
+    sudo ip addr add "$ciao_subnet" brd "$ciao_brdcast" dev ciaovlan
+    sudo ip link set dev ciaovlan up
+    sudo ip -d link show ciaovlan
+    sudo ip link set dev "$ciao_interface" up
+    sudo ip -d link show "$ciao_interface"
 else
     echo 'ip command is not supported'
 fi
@@ -275,11 +268,15 @@ fi
 # Set DHCP server with dnsmasq
 sudo mkdir -p /var/lib/misc
 if [ -x "$(command -v ip)" ]; then
-    sudo dnsmasq -C $ciao_scripts/dnsmasq.conf.macvlan0 \
-	 --pid-file=/tmp/dnsmasq.macvlan0.pid
+    sudo dnsmasq -C $ciao_scripts/dnsmasq.conf.ciaovlan \
+	 --pid-file=/tmp/dnsmasq.ciaovlan.pid
 else
     echo 'dnsmasq command is not supported'
 fi
+
+# Install ceph
+sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
+sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
 
 #Kick off the agents
 cd "$ciao_bin"
@@ -287,7 +284,6 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-echo "export HOSTS_FILE_BACKUP=""$hosts_file_backup" > "$ciao_env"
 echo "export CIAO_CONTROLLER=""$ciao_host" >> "$ciao_env"
 echo "export CIAO_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
