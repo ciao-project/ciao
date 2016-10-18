@@ -288,12 +288,22 @@ func pagerQueryParse(r *http.Request) (int, int, string) {
 	// we only support marker and offset for now.
 	if values["marker"] != nil {
 		marker = values["marker"][0]
-	} else if values["offset"] != nil {
-		o, err := strconv.ParseInt(values["offset"][0], 10, 32)
-		if err != nil {
-			offset = 0
-		} else {
-			offset = (int)(o)
+	} else {
+		if values["offset"] != nil {
+			o, err := strconv.ParseInt(values["offset"][0], 10, 32)
+			if err != nil {
+				offset = 0
+			} else {
+				offset = (int)(o)
+			}
+		}
+		if values["limit"] != nil {
+			l, err := strconv.ParseInt(values["limit"][0], 10, 32)
+			if err != nil {
+				limit = 0
+			} else {
+				limit = (int)(l)
+			}
 		}
 	}
 
