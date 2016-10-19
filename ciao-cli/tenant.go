@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"text/template"
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
@@ -36,6 +37,7 @@ type tenantListCommand struct {
 	all       bool
 	quotas    bool
 	resources bool
+	template  string
 }
 
 func (cmd *tenantListCommand) usage(...string) {
@@ -47,6 +49,54 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on the following structs:
+
+no options:
+
+[]struct {
+	ID   string              // Tenant ID
+	Name string              // Tenant name
+}
+
+--all:
+
+[]struct {
+	Description string       // Tenant description
+	DomainID    string       // Tenant domain
+	Enabled     bool         // Indicates whether the tenant is enabled
+	ID          string       // Tenant ID
+	Links       struct { 
+		Self string      // Link to resource collection
+	}
+	Name        string       // Tenant name
+	ParentID    string       // ID or parent tenant
+}
+
+--quotas:
+
+struct {
+	ID            string    // Tenant ID
+	Timestamp     time.Time // Not currently used
+	InstanceLimit int       // Maximum number of instances allowed for tenant
+	InstanceUsage int       // Number of existing instances
+	VCPULimit     int       // Maximum number of CPUs that can be used by tenant
+	VCPUUsage     int       // Current number of CPUS used
+	MemLimit      int       // Maximum amount of RAM that can be used by tenant
+	MemUsage      int       // Current RAM consumed by tenant
+	DiskLimit     int       // Maximum amount of disk space that can be used by tenant
+	DiskUsage     int       // Current disk space consumed by tenant
+}
+
+--resources:
+
+[]struct {
+	VCPU      int        // Current number of CPUS used
+	Memory    int        // Current RAM consumed by tenant
+	Disk      int        // Current disk space consumed by tenant in MB
+	Timestamp time.Time  // Time resource snapshot was taken
+}
+`)
 	os.Exit(2)
 }
 
@@ -54,30 +104,41 @@ func (cmd *tenantListCommand) parseArgs(args []string) []string {
 	cmd.Flag.BoolVar(&cmd.all, "all", false, "List all tenants")
 	cmd.Flag.BoolVar(&cmd.quotas, "quotas", false, "List quotas status for a tenant")
 	cmd.Flag.BoolVar(&cmd.resources, "resources", false, "List consumed resources for a tenant for the past 15mn")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
 }
 
 func (cmd *tenantListCommand) run(args []string) error {
+	t := createTemplate("tenant-list", cmd.template)
+
 	if cmd.all {
-		return listAllTenants()
+		return listAllTenants(t)
 	}
 	if cmd.quotas {
-		return listTenantQuotas()
+		return listTenantQuotas(t)
 	}
 	if cmd.resources {
-		return listTenantResources()
+		return listTenantResources(t)
 	}
 
-	return listUserTenants()
+	return listUserTenants(t)
 }
 
-func listAllTenants() error {
+func listAllTenants(t *template.Template) error {
 	projects, err := getAllProjects(*identityUser, *identityPassword)
 	if err != nil {
 		fatalf(err.Error())
 	}
+
+	if t != nil {
+		if err := t.Execute(os.Stdout, &projects.Projects); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
+	}
+
 	for i, project := range projects.Projects {
 		fmt.Printf("Tenant [%d]\n", i+1)
 		fmt.Printf("\tUUID: %s\n", project.ID)
@@ -86,11 +147,19 @@ func listAllTenants() error {
 	return nil
 }
 
-func listUserTenants() error {
+func listUserTenants(t *template.Template) error {
 	projects, err := getUserProjects(*identityUser, *identityPassword)
 	if err != nil {
 		fatalf(err.Error())
 	}
+
+	if t != nil {
+		if err := t.Execute(os.Stdout, &projects); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
+	}
+
 	fmt.Printf("Projects for user %s\n", *identityUser)
 	for _, project := range projects {
 		fmt.Printf("\tUUID: %s\n", project.ID)
@@ -99,7 +168,7 @@ func listUserTenants() error {
 	return nil
 }
 
-func listTenantQuotas() error {
+func listTenantQuotas(t *template.Template) error {
 	if *tenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
@@ -117,6 +186,14 @@ func listTenantQuotas() error {
 		fatalf(err.Error())
 	}
 
+	if t != nil {
+		if err := t.Execute(os.Stdout, &resources); err != nil {
+			fatalf(err.Error())
+		}
+		fmt.Println("")
+		return nil
+	}
+
 	fmt.Printf("Quotas for tenant %s:\n", resources.ID)
 	fmt.Printf("\tInstances: %d | %s\n", resources.InstanceUsage, limitToString(resources.InstanceLimit))
 	fmt.Printf("\tCPUs:      %d | %s\n", resources.VCPUUsage, limitToString(resources.VCPULimit))
@@ -126,7 +203,7 @@ func listTenantQuotas() error {
 	return nil
 }
 
-func listTenantResources() error {
+func listTenantResources(t *template.Template) error {
 	if *tenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
@@ -154,6 +231,13 @@ func listTenantResources() error {
 	err = unmarshalHTTPResponse(resp, &usage)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if t != nil {
+		if err := t.Execute(os.Stdout, &usage.Usages); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
 	}
 
 	if len(usage.Usages) == 0 {

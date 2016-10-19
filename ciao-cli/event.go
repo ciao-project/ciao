@@ -33,9 +33,10 @@ var eventCommand = &command{
 }
 
 type eventListCommand struct {
-	Flag   flag.FlagSet
-	all    bool
-	tenant string
+	Flag     flag.FlagSet
+	all      bool
+	tenant   string
+	template string
 }
 
 func (cmd *eventListCommand) usage(...string) {
@@ -47,12 +48,23 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+[]struct {
+	Timestamp time.Time // Event timestamp
+	TenantID  string    // UUID of the tennant that generated this event
+	EventType string    // Type of event, e.g., info, warn, error.
+	Message   string    // Event message
+}
+`)
 	os.Exit(2)
 }
 
 func (cmd *eventListCommand) parseArgs(args []string) []string {
 	cmd.Flag.BoolVar(&cmd.all, "all", false, "List events for all tenants in a cluster")
 	cmd.Flag.StringVar(&cmd.tenant, "tenant-id", "", "Tenant ID")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -85,6 +97,11 @@ func (cmd *eventListCommand) run(args []string) error {
 	err = unmarshalHTTPResponse(resp, &events)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("event-list", cmd.template,
+			&events.Events)
 	}
 
 	fmt.Printf("%d Ciao event(s):\n", len(events.Events))

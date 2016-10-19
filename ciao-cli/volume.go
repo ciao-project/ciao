@@ -30,6 +30,17 @@ import (
 	"github.com/rackspace/gophercloud/pagination"
 )
 
+const volumeTemplateDesc = `struct {
+	ID          string // Volume UUID
+	Size        int    // Volume Size in GB
+	TenantID    string // Tenant to which volume belongs
+	CreatedAt   string // Volume creation time
+	Name        string // Volume name
+	Description string // Volume description
+	Status      string // Volume status
+}
+`
+
 var volumeCommand = &command{
 	SubCommands: map[string]subCommand{
 		"add":    new(volumeAddCommand),
@@ -93,7 +104,8 @@ func (cmd *volumeAddCommand) run(args []string) error {
 }
 
 type volumeListCommand struct {
-	Flag flag.FlagSet
+	Flag     flag.FlagSet
+	template string
 }
 
 func (cmd *volumeListCommand) usage(...string) {
@@ -101,10 +113,22 @@ func (cmd *volumeListCommand) usage(...string) {
 
 List all volumes
 `)
+	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+[]%s
+
+As volumes are retrieved in pages, the template may be applied multiple
+times.  You can not therefore rely on the length of the slice passed
+to the template to determine the total number of volumes.
+`, volumeTemplateDesc)
+
 	os.Exit(2)
 }
 
 func (cmd *volumeListCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -126,6 +150,8 @@ func (cmd *volumeListCommand) run(args []string) error {
 		fatalf("Could not get volume service client [%s]\n", err)
 	}
 
+	t := createTemplate("volume-list", cmd.template)
+
 	pager := volumes.List(client, volumes.ListOpts{})
 
 	sortedVolumes := []volumes.Volume{}
@@ -141,6 +167,13 @@ func (cmd *volumeListCommand) run(args []string) error {
 	})
 	sort.Sort(byCreatedAt(sortedVolumes))
 
+	if t != nil {
+		if err = t.Execute(os.Stdout, &sortedVolumes); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
+	}
+
 	for i, v := range sortedVolumes {
 		fmt.Printf("Volume #%d\n", i+1)
 		dumpVolume(&v)
@@ -151,8 +184,9 @@ func (cmd *volumeListCommand) run(args []string) error {
 }
 
 type volumeShowCommand struct {
-	Flag   flag.FlagSet
-	volume string
+	Flag     flag.FlagSet
+	volume   string
+	template string
 }
 
 func (cmd *volumeShowCommand) usage(...string) {
@@ -163,11 +197,17 @@ Show information about a volume
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+%s
+`, volumeTemplateDesc)
 	os.Exit(2)
 }
 
 func (cmd *volumeShowCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.volume, "volume", "", "Volume UUID")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -187,6 +227,11 @@ func (cmd *volumeShowCommand) run(args []string) error {
 	volume, err := volumes.Get(client, cmd.volume).Extract()
 	if err != nil {
 		return err
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("volume-show", cmd.template,
+			&volume)
 	}
 
 	dumpVolume(volume)

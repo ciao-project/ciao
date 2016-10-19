@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"text/template"
 
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
@@ -170,7 +171,8 @@ func (cmd *imageAddCommand) run(args []string) error {
 }
 
 type imageListCommand struct {
-	Flag flag.FlagSet
+	Flag     flag.FlagSet
+	template string
 }
 
 func (cmd *imageListCommand) usage(...string) {
@@ -178,10 +180,38 @@ func (cmd *imageListCommand) usage(...string) {
 
 List images
 `)
+	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+[]struct {
+	Name             string   // Image name
+	SizeBytes        int      // Size of image in bytes
+	ID               string   // Image UUID
+	Status           string   // Image status.  Can be queued or active
+	Owner            string   // Tenant that owns the image
+	ContainerFormat  string   // Format of the container, e.g., ovf
+	DiskFormat       string   // Format of the image, e.g., qcow2
+	MinDiskGigabytes int      // Minimum amount of disk space required to boot image
+	MinRAMMegabytes  int      // Minimum amount of RAM required to boot image
+	Checksum         string   // Checksum of image data
+	Protected        bool     // Indicates whether or not an image can be deleted
+	CreatedDate      string   // Image creation date
+	LastUpdate       string   // Timestamp of last update
+	Tags             []string // List of image tags
+	File             string   // Image path
+	Schema           string   // Path to json schema
+}
+
+As images are retrieved in pages, the template may be applied multiple
+times.  You can not therefore rely on the length of the slice passed
+to the template to determine the total number of images.
+`)
 	os.Exit(2)
 }
 
 func (cmd *imageListCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -193,6 +223,15 @@ func (cmd *imageListCommand) run(args []string) error {
 		fatalf("Could not get Image service client [%s]\n", err)
 	}
 
+	var t *template.Template
+	if cmd.template != "" {
+		var err error
+		t, err = template.New("image-list").Parse(cmd.template)
+		if err != nil {
+			fatalf(err.Error())
+		}
+	}
+
 	pager := images.List(client, images.ListOpts{})
 
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
@@ -200,6 +239,14 @@ func (cmd *imageListCommand) run(args []string) error {
 		if err != nil {
 			errorf("Could not extract image [%s]\n", err)
 		}
+
+		if t != nil {
+			if err = t.Execute(os.Stdout, &imageList); err != nil {
+				fatalf(err.Error())
+			}
+			return false, nil
+		}
+
 		for k, i := range imageList {
 			fmt.Printf("Image #%d\n", k+1)
 			dumpImage(&i)

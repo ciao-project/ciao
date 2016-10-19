@@ -31,9 +31,29 @@ import (
 )
 
 const (
-	osStart  = "os-start"
-	osStop   = "os-stop"
-	osDelete = "os-delete"
+	osStart              = "os-start"
+	osStop               = "os-stop"
+	osDelete             = "os-delete"
+	instanceTemplateDesc = `struct {
+	HostID   string                               // ID of the host node
+	ID       string                               // Instance UUID
+	TenantID string                               // Tenant UUID
+	Flavor   struct {
+		ID string                             // Workload UUID
+	}
+	Image struct {
+		ID string                             // Backing image UUID
+	}
+	Status    string                              // Instance status
+	Addresses struct {
+		Private []struct {
+			Addr               string     // Instance IP address
+			OSEXTIPSMACMacAddr string     // Instance MAC address
+		}
+	}
+	SSHIP   string                                // Instance SSH IP address
+	SSHPort int                                   // Instance SSH Port
+}`
 )
 
 var instanceCommand = &command{
@@ -283,6 +303,7 @@ type instanceListCommand struct {
 	cn       string
 	tenant   string
 	detail   bool
+	template string
 }
 
 func (cmd *instanceListCommand) usage(...string) {
@@ -294,6 +315,12 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+[]%s
+`, instanceTemplateDesc)
+
 	os.Exit(2)
 }
 
@@ -305,6 +332,7 @@ func (cmd *instanceListCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.tenant, "tenant", "", "Specify to list instances from a tenant other than -tenant-id")
 	cmd.Flag.IntVar(&cmd.offset, "offset", 0, "Show instance list starting from instance <offset>")
 	cmd.Flag.IntVar(&cmd.limit, "limit", 0, "Limit list to <limit> results")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -360,6 +388,11 @@ func (cmd *instanceListCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
+	if cmd.template != "" {
+		return outputToTemplate("instance-list", cmd.template,
+			&servers.Servers)
+	}
+
 	w := new(tabwriter.Writer)
 	if !cmd.detail {
 		w.Init(os.Stdout, 0, 1, 1, ' ', 0)
@@ -391,6 +424,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 type instanceShowCommand struct {
 	Flag     flag.FlagSet
 	instance string
+	template string
 }
 
 func (cmd *instanceShowCommand) usage(...string) {
@@ -402,11 +436,19 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
+
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+%s
+`, instanceTemplateDesc)
+
 	os.Exit(2)
 }
 
 func (cmd *instanceShowCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.instance, "instance", "", "Instance UUID")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -428,6 +470,11 @@ func (cmd *instanceShowCommand) run(args []string) error {
 	err = unmarshalHTTPResponse(resp, &server)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("instance-show", cmd.template,
+			&server.Server)
 	}
 
 	dumpInstance(&server.Server)
