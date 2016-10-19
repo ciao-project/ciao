@@ -454,7 +454,7 @@ def main():
     parser = argparse.ArgumentParser(description="ciao Basic Acceptance Tests")
     parser.add_argument("--command_timeout", action="store", dest="cli_timeout",
                         help="Seconds to wait for a command to complete",
-                        default=30)
+                        default=300)
     parser.add_argument("--cluster_timeout", action="store", dest="retry_count",
                         help="Seconds to wait for cluster to respond",
                         default=60)
