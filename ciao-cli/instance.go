@@ -446,6 +446,10 @@ func dumpInstance(server *compute.ServerDetails) {
 		fmt.Printf("\tSSH IP: %s\n", server.SSHIP)
 		fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
 	}
+
+	for _, vol := range server.OsExtendedVolumesVolumesAttached {
+		fmt.Printf("\tVolume: %s\n", vol)
+	}
 }
 
 func listNodeInstances(node string) error {
