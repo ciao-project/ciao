@@ -1042,6 +1042,8 @@ func (ds *Datastore) deleteInstance(instanceID string) error {
 		glog.V(2).Info("deleteInstance: ", err)
 	}
 
+	ds.updateStorageAttachments(instanceID, nil)
+
 	return err
 }
 
