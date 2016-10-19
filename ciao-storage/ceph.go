@@ -63,7 +63,7 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 
 	var cmd *exec.Cmd
 
-	cmd = exec.Command("rbd", "--keyring", d.SecretPath, "--id", d.ID, "cp", volumeUUID, ID)
+	cmd = exec.Command("rbd", "--id", d.ID, "cp", volumeUUID, ID)
 
 	err := cmd.Run()
 	if err != nil {
