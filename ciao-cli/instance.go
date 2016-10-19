@@ -54,6 +54,7 @@ const (
 	}
 	SSHIP   string                                // Instance SSH IP address
 	SSHPort int                                   // Instance SSH Port
+	OsExtendedVolumesVolumesAttached []string     // list of attached volumes
 }`
 )
 
@@ -505,6 +506,10 @@ func dumpInstance(server *compute.ServerDetails) {
 	if server.SSHIP != "" {
 		fmt.Printf("\tSSH IP: %s\n", server.SSHIP)
 		fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
+	}
+
+	for _, vol := range server.OsExtendedVolumesVolumesAttached {
+		fmt.Printf("\tVolume: %s\n", vol)
 	}
 }
 
