@@ -47,6 +47,14 @@ var tests = []test{
 	},
 	{
 		"GET",
+		"/v2.1/{tenant}/servers/detail?limit=1&offset=1",
+		ListServersDetails,
+		"",
+		http.StatusOK,
+		`{"total_servers":1,"servers":[]}`,
+	},
+	{
+		"GET",
 		"/v2.1/{tenant}/servers/detail",
 		ListServersDetails,
 		"",
@@ -272,5 +280,20 @@ func TestRoutes(t *testing.T) {
 	r := Routes(config)
 	if r == nil {
 		t.Fatalf("No routes returned")
+	}
+}
+
+func TestPager(t *testing.T) {
+	req, err := http.NewRequest("GET", "/v2.1/{tenant}/servers/detail?limit=2&offset=2", bytes.NewBuffer([]byte("")))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	limit, offset, _ := pagerQueryParse(req)
+	if limit != 2 {
+		t.Fatalf("Invalid limit registered")
+	}
+	if offset != 2 {
+		t.Fatalf("Invalid offset registered")
 	}
 }
