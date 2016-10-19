@@ -242,7 +242,8 @@ func (d workloadStorage) Init() error {
 		source_type string,
 		source_id string,
 		foreign key(workload_id) references workloads(id),
-		foreign key(volume_id) references block_data(id)
+		foreign key(volume_id) references block_data(id),
+		PRIMARY KEY(workload_id, volume_id)
 		);`
 
 	return d.ds.exec(d.db, cmd)
