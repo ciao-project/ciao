@@ -367,8 +367,6 @@ func getImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResp
 	vars := mux.Vars(r)
 	imageID := vars["image_id"]
 
-	defer r.Body.Close()
-
 	resp, err := context.GetImage(imageID)
 	if err != nil {
 		return errorResponse(err), err
@@ -380,8 +378,6 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 	vars := mux.Vars(r)
 	imageID := vars["image_id"]
 
-	defer r.Body.Close()
-
 	_, err := context.UploadImage(imageID, r.Body)
 	if err != nil {
 		return errorResponse(err), err
@@ -392,8 +388,6 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	imageID := vars["image_id"]
-
-	defer r.Body.Close()
 
 	_, err := context.DeleteImage(imageID)
 	if err != nil {

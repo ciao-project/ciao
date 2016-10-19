@@ -135,32 +135,55 @@ const htmlTemplate = `
 </html>
 `
 
+var newLineRegexp = regexp.MustCompile(`(\r\n)|[\n\r]`)
+
+type formatType string
+
+const (
+	formatText       formatType = "text"
+	formatColourText            = "colour-text"
+	formatHTML                  = "html"
+	formatTAP                   = "tap"
+)
+
+func (f *formatType) String() string {
+	return string(*f)
+}
+func (f *formatType) Set(val string) error {
+	v := formatType(val)
+	if v != formatText && v != formatColourText && v != formatHTML && v != formatTAP {
+		return fmt.Errorf("invalid format;  %s, %s, %s, %s expected",
+			formatText, formatColourText, formatHTML, formatTAP)
+	}
+	*f = formatType(val)
+	return nil
+}
+
 var resultRegexp *regexp.Regexp
 var coverageRegexp *regexp.Regexp
 
 var cssPath string
-var textOutput bool
 var short bool
 var race bool
 var tags string
-var colour bool
 var coverProfile string
 var appendProfile bool
+var format formatType = formatColourText
 
 var timeout int
 var verbose bool
 
 func init() {
 	flag.StringVar(&cssPath, "css", "", "Full path to CSS file")
-	flag.BoolVar(&textOutput, "text", false, "Output text instead of HTML")
 	flag.BoolVar(&short, "short", false, "If true -short is passed to go test")
 	flag.BoolVar(&race, "race", false, "If true -race is passed to go test")
 	flag.StringVar(&tags, "tags", "", "Build tags to pass to go test")
 	flag.StringVar(&coverProfile, "coverprofile", "", "Path of coverage profile to be generated")
 	flag.BoolVar(&appendProfile, "append-profile", false, "Append generated coverage profiles an existing file")
-	flag.BoolVar(&colour, "colour", true, "If true failed tests are coloured red in text mode")
 	flag.BoolVar(&verbose, "v", false, "Output package names under test if true")
 	flag.IntVar(&timeout, "timeout", 0, "Time in minutes after which a package's unit tests should time out.  0 = no timeout")
+	flag.Var(&format, "format", fmt.Sprintf("Specify output format. Can be '%s', '%s', '%s', or '%s'",
+		formatText, formatColourText, formatHTML, formatTAP))
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: %s [flags] [packages]\n", os.Args[0])
@@ -672,6 +695,33 @@ func runTests(tests []*PackageTests) (int, *bytes.Buffer, error) {
 	return exitCode, &errorOutput, nil
 }
 
+func generateTAPOutput(tests []*PackageTests) {
+	i := 0
+	prefix := findCommonPrefix(tests)
+	for _, p := range tests {
+		pkgName := p.Name[len(prefix):]
+		fmt.Printf("# Tests for %s\n", pkgName)
+		for _, t := range p.Tests {
+			if t.Result == "PASS" {
+				fmt.Printf("ok ")
+			} else {
+				fmt.Printf("not ok ")
+			}
+			testName := strings.TrimSpace(t.Summary)
+			if testName == "" {
+				testName = t.Name
+			} else {
+				testName = newLineRegexp.ReplaceAllString(testName, " ")
+			}
+			fmt.Printf("%d - %s\n", i+1, testName)
+			i++
+		}
+	}
+	if i > 0 {
+		fmt.Printf("1..%d\n", i)
+	}
+}
+
 func main() {
 
 	flag.Parse()
@@ -687,26 +737,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if textOutput {
-		if colour {
-			generateColourTextReport(tests, exitCode)
-		} else {
-			generateTextReport(tests, exitCode)
-		}
-	} else {
-		err = generateHTMLReport(tests)
-	}
-
-	if exitCode != 0 {
-		if colour {
-			dumpColourErrorOutput(errorOutput)
-		} else {
+	switch format {
+	case formatText:
+		generateTextReport(tests, exitCode)
+		if exitCode != 0 {
 			dumpErrorOutput(errorOutput)
 		}
-	}
-
-	if err != nil {
-		log.Fatalf("Unable to generate report: %s\n", err)
+	case formatColourText:
+		generateColourTextReport(tests, exitCode)
+		if exitCode != 0 {
+			dumpColourErrorOutput(errorOutput)
+		}
+	case formatTAP:
+		generateTAPOutput(tests)
+	case formatHTML:
+		err := generateHTMLReport(tests)
+		if err != nil {
+			log.Fatalf("Unable to generate report: %s\n", err)
+		}
 	}
 
 	os.Exit(exitCode)
