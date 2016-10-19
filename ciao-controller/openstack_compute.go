@@ -33,6 +33,17 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 		return compute.ServerDetails{}, err
 	}
 
+	var volumes []string
+
+	instance.Attachments, err = ctl.ds.GetStorageAttachments(instance.ID)
+	if err != nil {
+		return compute.ServerDetails{}, err
+	}
+
+	for _, vol := range instance.Attachments {
+		volumes = append(volumes, vol.BlockID)
+	}
+
 	imageID := workload.ImageID
 
 	server := compute.ServerDetails{
@@ -54,6 +65,7 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 				},
 			},
 		},
+		OsExtendedVolumesVolumesAttached: volumes,
 		SSHIP:   instance.SSHIP,
 		SSHPort: instance.SSHPort,
 	}
