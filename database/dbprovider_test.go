@@ -33,6 +33,11 @@ var dbTables = []string{"samples"}
 var dbDir = "/tmp"
 var dbFile = "database.db"
 
+//  closeDb is a generic function to close every Db transaction
+func closeDb(provider *Provider) {
+	_ = provider.Db.DbClose()
+}
+
 func initProvider(dbProvider DbProvider) Provider {
 	provider := Provider{
 		Db:       dbProvider,
@@ -48,7 +53,7 @@ func testDbInit(t *testing.T, provider Provider) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer provider.Db.DbClose()
+	defer closeDb(&provider)
 }
 
 func testDbClose(t *testing.T, provider Provider) {
@@ -63,7 +68,7 @@ func testDbClose(t *testing.T, provider Provider) {
 }
 
 func testDbTableInit(t *testing.T, provider Provider) {
-	defer provider.Db.DbClose()
+	defer closeDb(&provider)
 
 	err := provider.Db.DbInit(provider.DbDir, provider.DbFile)
 	if err != nil {
@@ -77,7 +82,7 @@ func testDbTableInit(t *testing.T, provider Provider) {
 }
 
 func testDbAdd(t *testing.T, provider Provider) {
-	defer provider.Db.DbClose()
+	defer closeDb(&provider)
 
 	err := provider.Db.DbInit(provider.DbDir, provider.DbFile)
 	if err != nil {
@@ -96,7 +101,7 @@ func testDbAdd(t *testing.T, provider Provider) {
 }
 
 func testDbDelete(t *testing.T, provider Provider) {
-	defer provider.Db.DbClose()
+	defer closeDb(&provider)
 
 	err := provider.Db.DbInit(provider.DbDir, provider.DbFile)
 	if err != nil {
@@ -120,7 +125,7 @@ func testDbDelete(t *testing.T, provider Provider) {
 }
 
 func testDbGet(t *testing.T, provider Provider) {
-	defer provider.Db.DbClose()
+	defer closeDb(&provider)
 
 	err := provider.Db.DbInit(provider.DbDir, provider.DbFile)
 	if err != nil {
@@ -149,7 +154,7 @@ func testDbGet(t *testing.T, provider Provider) {
 }
 
 func testDbGetAll(t *testing.T, provider Provider) {
-	defer provider.Db.DbClose()
+	defer closeDb(&provider)
 
 	err := provider.Db.DbInit(provider.DbDir, provider.DbFile)
 	if err != nil {

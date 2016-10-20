@@ -52,9 +52,17 @@ func main() {
 		DbFile:     dbFile,
 	}
 	metaDsTables := []string{"images"}
-	metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
-	metaDs.DbTableInit(metaDsTables)
-	metaDs.DbClose()
+
+	err := metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
+	if err != nil {
+		glog.Fatalf("Error on DB Initialization:%v ", err)
+	}
+	err = metaDs.DbTableInit(metaDsTables)
+	if err != nil {
+		glog.Fatalf("Error on DB Tables Initialization:%v ", err)
+	}
+
+	_ = metaDs.DbClose()
 
 	rawDs := &datastore.Posix{
 		MountPoint: mountPoint,

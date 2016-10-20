@@ -28,7 +28,7 @@ func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	cache := ImageCache{}
-	cache.Init(d, m)
+	_ = cache.Init(d, m)
 
 	// create the entry
 	err := cache.CreateImage(i)
@@ -54,7 +54,7 @@ func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	cache := ImageCache{}
-	cache.Init(d, m)
+	_ = cache.Init(d, m)
 
 	// create the entry
 	err := cache.CreateImage(i)
@@ -84,7 +84,7 @@ func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	cache := ImageCache{}
-	cache.Init(d, m)
+	_ = cache.Init(d, m)
 
 	// create the entry
 	err := cache.CreateImage(i)
@@ -112,7 +112,7 @@ func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	cache := ImageCache{}
-	cache.Init(d, m)
+	_ = cache.Init(d, m)
 
 	// create the entry
 	err := cache.CreateImage(i)
@@ -159,9 +159,9 @@ func initMetaDs() *MetaDs {
 		DbFile:     dbFile,
 	}
 	metaDsTables := []string{"images"}
-	metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
-	metaDs.DbTableInit(metaDsTables)
-	metaDs.DbClose()
+	_ = metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
+	_ = metaDs.DbTableInit(metaDsTables)
+	_ = metaDs.DbClose()
 
 	return metaDs
 }

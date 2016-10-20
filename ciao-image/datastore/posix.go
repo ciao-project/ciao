@@ -52,7 +52,7 @@ func (p *Posix) Delete(ID string) error {
 		return err
 	}
 
-	os.Remove(imageName)
+	err = os.Remove(imageName)
 
-	return nil
+	return err
 }

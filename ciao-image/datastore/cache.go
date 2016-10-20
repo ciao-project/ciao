@@ -45,7 +45,11 @@ func (c *ImageCache) CreateImage(i Image) error {
 	c.lock.Lock()
 
 	c.images[i.ID] = i
-	c.metaDs.Write(i)
+	err := c.metaDs.Write(i)
+	if err != nil {
+		delete(c.images, i.ID)
+		return err
+	}
 
 	return nil
 }
