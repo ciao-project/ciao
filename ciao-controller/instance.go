@@ -74,6 +74,7 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload) (*i
 		IPAddress:  config.ip,
 		MACAddress: config.mac,
 		Usage:      usage,
+		CreateTime: time.Now(),
 	}
 
 	i := &instance{

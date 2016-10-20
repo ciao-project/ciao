@@ -87,6 +87,7 @@ type Instance struct {
 	CNCI        bool                `json:"-"`
 	Usage       map[string]int      `json:"-"`
 	Attachments []StorageAttachment `json:"-"`
+	CreateTime  time.Time           `json:"-"`
 }
 
 // SortedInstancesByID implements sort.Interface for Instance by ID string
