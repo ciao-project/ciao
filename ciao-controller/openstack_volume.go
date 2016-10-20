@@ -291,7 +291,8 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 		return vols, err
 	}
 
-	for _, data := range devs {
+	for i := range devs {
+		data := &devs[i]
 		var vol block.VolumeDetail
 
 		vol.ID = data.ID
