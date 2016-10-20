@@ -405,10 +405,6 @@ class BATTests(unittest.TestCase):
         """Start one instance of all workloads"""
         self.failUnless(launch_all_workloads())
 
-    def test_start_all_workloads10(self):
-        """Start 10 instances of all workloads"""
-        self.failUnless(launch_all_workloads("10"))
-
     def test_get_cncis(self):
         """Start a random workload, then get CNCI information"""
         self.failUnless(start_random_workload())
