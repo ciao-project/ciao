@@ -20,6 +20,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
+	"time"
 
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
@@ -108,6 +110,16 @@ func (cmd *volumeListCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
+type byCreatedAt []volumes.Volume
+
+func (ss byCreatedAt) Len() int      { return len(ss) }
+func (ss byCreatedAt) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
+func (ss byCreatedAt) Less(i, j int) bool {
+	it, _ := time.Parse(time.RFC3339, ss[i].CreatedAt)
+	jt, _ := time.Parse(time.RFC3339, ss[j].CreatedAt)
+	return it.Before(jt)
+}
+
 func (cmd *volumeListCommand) run(args []string) error {
 	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
 	if err != nil {
@@ -116,19 +128,24 @@ func (cmd *volumeListCommand) run(args []string) error {
 
 	pager := volumes.List(client, volumes.ListOpts{})
 
+	sortedVolumes := []volumes.Volume{}
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
 		volumeList, err := volumes.ExtractVolumes(page)
 		if err != nil {
 			errorf("Could not extract volume [%s]\n", err)
 		}
-		for i, v := range volumeList {
-			fmt.Printf("Volume #%d\n", i+1)
-			dumpVolume(&v)
-			fmt.Printf("\n")
-		}
+
+		sortedVolumes = append(sortedVolumes, volumeList...)
 
 		return false, nil
 	})
+	sort.Sort(byCreatedAt(sortedVolumes))
+
+	for i, v := range sortedVolumes {
+		fmt.Printf("Volume #%d\n", i+1)
+		dumpVolume(&v)
+		fmt.Printf("\n")
+	}
 
 	return err
 }
