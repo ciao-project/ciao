@@ -31,18 +31,39 @@ var workloadCommand = &command{
 }
 
 type workloadListCommand struct {
-	Flag flag.FlagSet
+	Flag     flag.FlagSet
+	template string
 }
 
 func (cmd *workloadListCommand) usage(...string) {
 	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] workload list
 
 List all workloads
+
 `)
+	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+[]struct {
+	OSFLVDISABLEDDisabled  bool    // Not used
+	Disk                   string  // Backing images associated with workload
+	OSFLVEXTDATAEphemeral  int     // Not currently used
+	OsFlavorAccessIsPublic bool    // Indicates whether the workload is available to all tenants
+	ID                     string  // ID of the workload
+	Links                  []Link  // Not currently used
+	Name                   string  // Name of the workload
+	RAM                    int     // Amount of RAM allocated to instances of this workload 
+	Swap                   string  // Not currently used
+	Vcpus                  int     // Number of Vcpus allocated to instances of this workload 
+}
+`)
+
 	os.Exit(2)
 }
 
 func (cmd *workloadListCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -68,6 +89,11 @@ func (cmd *workloadListCommand) run(args []string) error {
 	err = unmarshalHTTPResponse(resp, &flavors)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("workload-list", cmd.template,
+			&flavors.Flavors)
 	}
 
 	for i, flavor := range flavors.Flavors {

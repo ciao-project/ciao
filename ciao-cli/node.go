@@ -20,9 +20,38 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"text/template"
 
 	"github.com/01org/ciao/ciao-controller/types"
 )
+
+const cnciTemplateDesc = `struct {
+	ID        string // UUID of network node
+	TenantID  string // UUID of tenant to which this CNCI pertains
+	IPv4      string // IP address of CNCI
+	Geography string // Physical location of the network node
+	Subnets   []struct {
+		Subnet string // Subnet used by the CNCI
+	}
+}
+`
+
+const computeTemplateDesc = `struct {
+	ID                    string // UUID of the compute node
+	Timestamp             time.Time
+	Status                string // Node status, e.g., READY, FULL
+	MemTotal              int    // Total amount of RAM on Compute Node in MB
+	MemAvailable          int    // Memory available on Compute Node in MB
+	DiskTotal             int    // Total amount of Disk Space on Compute Node in MB
+	DiskAvailable         int    // Disk Space available on Compute Node in MB
+	Load                  int    // Compute node load
+	OnlineCPUs            int    // Number of CPUs
+	TotalInstances        int    // Number of instances hosted by the Compute Node
+	TotalRunningInstances int    // Number of running instances
+	TotalPendingInstances int    // Number of pending instances
+	TotalPausedInstances  int    // Number of paused instances
+}
+`
 
 var nodeCommand = &command{
 	SubCommands: map[string]subCommand{
@@ -33,10 +62,11 @@ var nodeCommand = &command{
 }
 
 type nodeListCommand struct {
-	Flag    flag.FlagSet
-	compute bool
-	cnci    bool
-	nodeID  bool
+	Flag     flag.FlagSet
+	compute  bool
+	cnci     bool
+	nodeID   bool
+	template string
 }
 
 func (cmd *nodeListCommand) usage(...string) {
@@ -47,29 +77,43 @@ List nodes
 The list flags are:
 `)
 	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on one of the following types:
+
+--cnci
+
+[]%s
+
+--compute
+
+[]%s
+`, cnciTemplateDesc, computeTemplateDesc)
 	os.Exit(2)
 }
 
 func (cmd *nodeListCommand) parseArgs(args []string) []string {
 	cmd.Flag.BoolVar(&cmd.compute, "compute", false, "List all compute nodes")
 	cmd.Flag.BoolVar(&cmd.cnci, "cnci", false, "List all CNCIs")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
 }
 
 func (cmd *nodeListCommand) run(args []string) error {
+	t := createTemplate("node-list", cmd.template)
+
 	if cmd.compute {
-		return listComputeNodes()
+		return listComputeNodes(t)
 	}
 	if cmd.cnci {
-		return listCNCINodes()
+		return listCNCINodes(t)
 	}
 	cmd.usage()
 	return nil
 }
 
-func listComputeNodes() error {
+func listComputeNodes(t *template.Template) error {
 	var nodes types.CiaoComputeNodes
 
 	url := buildComputeURL("nodes")
@@ -82,6 +126,13 @@ func listComputeNodes() error {
 	err = unmarshalHTTPResponse(resp, &nodes)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if t != nil {
+		if err := t.Execute(os.Stdout, &nodes.Nodes); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
 	}
 
 	for i, node := range nodes.Nodes {
@@ -99,7 +150,7 @@ func listComputeNodes() error {
 	return nil
 }
 
-func listCNCINodes() error {
+func listCNCINodes(t *template.Template) error {
 	var cncis types.CiaoCNCIs
 
 	url := buildComputeURL("cncis")
@@ -112,6 +163,13 @@ func listCNCINodes() error {
 	err = unmarshalHTTPResponse(resp, &cncis)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if t != nil {
+		if err := t.Execute(os.Stdout, &cncis.CNCIs); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
 	}
 
 	for i, cnci := range cncis.CNCIs {
@@ -169,9 +227,10 @@ func (cmd *nodeStatusCommand) run(args []string) error {
 }
 
 type nodeShowCommand struct {
-	Flag   flag.FlagSet
-	cnci   bool
-	nodeID string
+	Flag     flag.FlagSet
+	cnci     bool
+	nodeID   string
+	template string
 }
 
 func (cmd *nodeShowCommand) usage(...string) {
@@ -182,12 +241,21 @@ Show info about a node
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on one of the following types:
+
+--cnci
+
+%s
+`, cnciTemplateDesc)
+
 	os.Exit(2)
 }
 
 func (cmd *nodeShowCommand) parseArgs(args []string) []string {
 	cmd.Flag.BoolVar(&cmd.cnci, "cnci", false, "Show info about a cnci node")
 	cmd.Flag.StringVar(&cmd.nodeID, "node-id", "", "Node ID")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -195,21 +263,21 @@ func (cmd *nodeShowCommand) parseArgs(args []string) []string {
 
 func (cmd *nodeShowCommand) run(args []string) error {
 	if cmd.cnci {
-		return showCNCINode(cmd.nodeID)
+		return showCNCINode(cmd)
 	}
 
 	cmd.usage()
 	return nil
 }
 
-func showCNCINode(cnciID string) error {
-	if cnciID == "" {
+func showCNCINode(cmd *nodeShowCommand) error {
+	if cmd.nodeID == "" {
 		fatalf("Missing required -cnci-id parameter")
 	}
 
 	var cnci types.CiaoCNCI
 
-	url := buildComputeURL("cncis/%s/detail", cnciID)
+	url := buildComputeURL("cncis/%s/detail", cmd.nodeID)
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
@@ -219,6 +287,11 @@ func showCNCINode(cnciID string) error {
 	err = unmarshalHTTPResponse(resp, &cnci)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("node-show", cmd.template,
+			&cnci)
 	}
 
 	fmt.Printf("\tCNCI UUID: %s\n", cnci.ID)

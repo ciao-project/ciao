@@ -33,7 +33,8 @@ var traceCommand = &command{
 }
 
 type traceListCommand struct {
-	Flag flag.FlagSet
+	Flag     flag.FlagSet
+	template string
 }
 
 func (cmd *traceListCommand) usage(...string) {
@@ -41,10 +42,20 @@ func (cmd *traceListCommand) usage(...string) {
 
 List all trace label
 `)
+	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on
+
+[]struct {
+	Label     string // Trace label
+	Instances int    // Number of instances created with this label
+}
+`)
 	os.Exit(2)
 }
 
 func (cmd *traceListCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -65,6 +76,11 @@ func (cmd *traceListCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
+	if cmd.template != "" {
+		return outputToTemplate("trace-list", cmd.template,
+			&traces.Summaries)
+	}
+
 	fmt.Printf("%d trace label(s) available\n", len(traces.Summaries))
 	for i, summary := range traces.Summaries {
 		fmt.Printf("\tLabel #%d: %s (%d instances running)\n", i+1, summary.Label, summary.Instances)
@@ -74,8 +90,9 @@ func (cmd *traceListCommand) run(args []string) error {
 }
 
 type traceShowCommand struct {
-	Flag  flag.FlagSet
-	label string
+	Flag     flag.FlagSet
+	label    string
+	template string
 }
 
 func (cmd *traceShowCommand) usage(...string) {
@@ -87,11 +104,27 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on
+
+struct {
+	NumInstances             int     // Number of instances started
+	TotalElapsed             float64 // Total time to start all instances
+	AverageElapsed           float64 // Average instance start time
+	AverageControllerElapsed float64 // Average time spent in controller starting an instance
+	AverageLauncherElapsed   float64 // Average time spent in launcher starting an instance
+	AverageSchedulerElapsed  float64 // Average time spent in scheduler starting an instance
+	VarianceController       float64 // Controller start time variance
+	VarianceLauncher         float64 // Launcher start time variance
+	VarianceScheduler        float64 // Scheduler start time variance
+}
+`)
 	os.Exit(2)
 }
 
 func (cmd *traceShowCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.label, "label", "", "Label name")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -114,6 +147,11 @@ func (cmd *traceShowCommand) run(args []string) error {
 	err = unmarshalHTTPResponse(resp, &traceData)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("trace-show", cmd.template,
+			&traceData.Summary)
 	}
 
 	fmt.Printf("Trace data for [%s]:\n", cmd.label)

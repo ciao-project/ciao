@@ -291,3 +291,89 @@ $GOBIN/ciao-cli -username admin -password ciao event list -all
 ```shell
 $GOBIN/ciao-cli event list
 ```
+
+## Scripting with ciao-cli
+
+Most of the ciao-cli commands contain a list or show subcommand, e.g., 
+
+```
+ciao-cli instance list
+```
+
+By default, these commands format their output in a style that is pleasing to
+the human eye.  For example,
+
+```
+# ciao-cli instance show --instance cef5b810-5ffb-4dee-ab95-29748869afb6
+
+    UUID: cef5b810-5ffb-4dee-ab95-29748869afb6
+    Status: active
+    Private IP: 172.16.0.3
+    MAC Address: 02:00:ac:10:00:03
+    CN UUID: fe4fa7da-0c46-46cf-9205-28c9d675aa5a
+    Image UUID: 73a86d7e-93c0-480e-9c41-ab42f69b7799
+    Tenant UUID: f452bbc7-5076-44d5-922c-3b9d2ce1503f
+    SSH IP: 198.51.100.75
+    SSH Port: 33003
+```
+
+However, this is not always what we want, particularly if we are writing a
+script to automate a set of ciao commands.  For example, say we wanted to
+programmatically retrieve the ssh connection details for the above instance.
+Using the command above we'd need to do some scripting to ignore the first 7
+lines and extract the IP and port number from lines 8 and 9.  Nasty.
+
+Luckily all the ciao-cli show and list commands accept a -f option which
+is specified along with a [Go template](https://golang.org/pkg/text/template/).
+These templates are little programs that can be used to extract the specific
+data we are interested in.  For example, to extract the SSH IP and port numbers
+we would issue the following command.
+
+```
+# ciao-cli instance show --instance cef5b810-5ffb-4dee-ab95-29748869afb6 -f '{{.SSHIP}}:{{.SSHPort}}'
+
+198.51.100.75:33003
+```
+
+No parsing required.
+
+Check the help for each individual show and list command to discover which
+fields, e.g., SSHIP, are supported.  For example,
+
+```
+# ciao-cli instance show --help
+
+usage: ciao-cli [options] instance show [flags]
+
+Print detailed information about an instance
+
+The show flags are:
+
+  -f string
+    	Template used to format output
+  -instance string
+    	Instance UUID
+
+The template passed to the -f option operates on a 
+
+struct {
+	HostID   string                               // ID of the host node
+	ID       string                               // Instance UUID
+	TenantID string                               // Tenant UUID
+	Flavor   struct {
+		ID string                             // Workload UUID
+	}
+	Image struct {
+		ID string                             // Backing image UUID
+	}
+	Status    string                              // Instance status
+	Addresses struct {
+		Private []struct {
+			Addr               string     // Instance IP address
+			OSEXTIPSMACMacAddr string     // Instance MAC address
+		}
+	}
+	SSHIP   string                                // Instance SSH IP address
+	SSHPort int                                   // Instance SSH Port
+}
+```
