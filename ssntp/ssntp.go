@@ -705,33 +705,33 @@ func (role *Role) IsCNCIAgent() bool {
 }
 
 func (role *Role) String() string {
-	roleString := ""
+	roleStrings := []string{}
 
 	if role.IsServer() {
-		roleString += "Server-"
+		roleStrings = append(roleStrings, "Server")
 	}
 
 	if role.IsController() {
-		roleString += "Controller-"
+		roleStrings = append(roleStrings, "Controller")
 	}
 
 	if role.IsAgent() {
-		roleString += "CNAgent-"
+		roleStrings = append(roleStrings, "CNAgent")
 	}
 
 	if role.IsScheduler() {
-		roleString += "Scheduler-"
+		roleStrings = append(roleStrings, "Scheduler")
 	}
 
 	if role.IsNetAgent() {
-		roleString += "NetworkingAgent-"
+		roleStrings = append(roleStrings, "NetworkingAgent")
 	}
 
 	if role.IsCNCIAgent() {
-		roleString += "CNCIAgent-"
+		roleStrings = append(roleStrings, "CNCIAgent")
 	}
 
-	return roleString
+	return strings.Join(roleStrings, "-")
 }
 
 // DefaultCACert is the default name for the SSNTP CA certificate
