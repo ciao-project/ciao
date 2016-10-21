@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/01org/ciao/ciao-controller/types"
@@ -338,6 +339,12 @@ func (cmd *instanceListCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
+type byCreated []compute.ServerDetails
+
+func (ss byCreated) Len() int           { return len(ss) }
+func (ss byCreated) Swap(i, j int)      { ss[i], ss[j] = ss[j], ss[i] }
+func (ss byCreated) Less(i, j int) bool { return ss[i].Created.Before(ss[j].Created) }
+
 func (cmd *instanceListCommand) run(args []string) error {
 	if cmd.tenant == "" {
 		cmd.tenant = *tenantID
@@ -399,7 +406,13 @@ func (cmd *instanceListCommand) run(args []string) error {
 		fmt.Fprintln(w, "#\tUUID\tStatus\tPrivate IP\tSSH IP\tSSH PORT")
 	}
 
-	for i, server := range servers.Servers {
+	sortedServers := []compute.ServerDetails{}
+	for _, v := range servers.Servers {
+		sortedServers = append(sortedServers, v)
+	}
+	sort.Sort(byCreated(sortedServers))
+
+	for i, server := range sortedServers {
 		if !cmd.detail {
 			fmt.Fprintf(w, "%d", i+1)
 			fmt.Fprintf(w, "\t%s", server.ID)

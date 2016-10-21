@@ -56,6 +56,7 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 		},
 		SSHIP:   instance.SSHIP,
 		SSHPort: instance.SSHPort,
+		Created: instance.CreateTime,
 	}
 
 	return server, nil

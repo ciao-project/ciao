@@ -179,6 +179,7 @@ func (d instanceData) Init() error {
 		workload_id string,
 		mac_address string,
 		ip string,
+		create_time DATETIME,
 		foreign key(tenant_id) references tenants(id),
 		foreign key(workload_id) references workload_template(id),
 		unique(tenant_id, ip, mac_address)
@@ -1441,7 +1442,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 func (ds *sqliteDB) addInstance(instance *types.Instance) error {
 	ds.dbLock.Lock()
 
-	err := ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.IPAddress)
+	err := ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano))
 
 	ds.dbLock.Unlock()
 
