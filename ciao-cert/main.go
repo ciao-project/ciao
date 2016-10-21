@@ -135,7 +135,7 @@ func createCertificates(role ssntp.Role) {
 
 	firstHost := getFirstHost()
 	CAcertName := fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
-	certName := fmt.Sprintf("%s/cert-%s%s.pem", *installDir, role.String(), firstHost)
+	certName := fmt.Sprintf("%s/cert-%s-%s.pem", *installDir, role.String(), firstHost)
 	if *isServer == true {
 		CAcertOut, err := os.Create(CAcertName)
 		if err != nil {
