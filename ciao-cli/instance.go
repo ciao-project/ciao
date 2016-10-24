@@ -395,9 +395,15 @@ func (cmd *instanceListCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
+	sortedServers := []compute.ServerDetails{}
+	for _, v := range servers.Servers {
+		sortedServers = append(sortedServers, v)
+	}
+	sort.Sort(byCreated(sortedServers))
+
 	if cmd.template != "" {
 		return outputToTemplate("instance-list", cmd.template,
-			&servers.Servers)
+			&sortedServers)
 	}
 
 	w := new(tabwriter.Writer)
@@ -405,12 +411,6 @@ func (cmd *instanceListCommand) run(args []string) error {
 		w.Init(os.Stdout, 0, 1, 1, ' ', 0)
 		fmt.Fprintln(w, "#\tUUID\tStatus\tPrivate IP\tSSH IP\tSSH PORT")
 	}
-
-	sortedServers := []compute.ServerDetails{}
-	for _, v := range servers.Servers {
-		sortedServers = append(sortedServers, v)
-	}
-	sort.Sort(byCreated(sortedServers))
 
 	for i, server := range sortedServers {
 		if !cmd.detail {
