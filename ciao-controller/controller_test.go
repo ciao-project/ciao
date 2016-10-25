@@ -1280,7 +1280,13 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		os.Exit(1)
 	}
-	defer os.RemoveAll(dir)
+	fakeImage := fmt.Sprintf("%s/73a86d7e-93c0-480e-9c41-ab42f69b7799", dir)
+
+	f, err := os.Create(fakeImage)
+	if err != nil {
+		os.RemoveAll(dir)
+		os.Exit(1)
+	}
 
 	ctl.image = image.Client{MountPoint: dir}
 
@@ -1293,6 +1299,8 @@ func TestMain(m *testing.M) {
 
 	err = ctl.ds.Init(dsConfig)
 	if err != nil {
+		f.Close()
+		os.RemoveAll(dir)
 		os.Exit(1)
 	}
 
@@ -1340,6 +1348,8 @@ func TestMain(m *testing.M) {
 	ctl.ds.Exit()
 	id.Close()
 	server.Shutdown()
+	f.Close()
+	os.RemoveAll(dir)
 
 	os.Exit(code)
 }
