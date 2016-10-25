@@ -18,12 +18,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
@@ -149,14 +149,39 @@ func (c *config) GetResources() map[string]int {
 func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.StorageResources, error) {
 	s := wl.Storage
 
-	var bd storage.BlockDevice
+	// storage already exists, use preexisting definition.
+	if s.ID != "" {
+		return payloads.StorageResources{ID: s.ID, Bootable: s.Bootable}, nil
+	}
 
-	// is it existing storage or new storage?
-	if s.ID == "" {
-		// assume always persistent for now.
-		// assume we have already checked quotas.
-		// ID of source is the image id.
-		path, err := c.image.GetImagePath(wl.ImageID)
+	// new storage.
+	// TBD: handle all these cases
+	// - create bootable volume from image.
+	//   assumptions: SourceType is "image"
+	//                Bootable is true
+	//                SourceID points to existing image
+	// - create bootable volume from volume.
+	//   Assumptions: SourceType is "volume"
+	//                Bootable is true
+	//                SourceID points to existing volume
+	// - create attachable empty volume.
+	//   Assumptions: SourceType is "empty"
+	//                Bootable is ignored
+	//                SourceID is ignored
+	// - create attachable volume from image?
+	//   Assumptions: SourceType is "image"
+	//                Bootable is false
+	//                SourceID points to existing image
+	// - create attachable volume from volume.
+	//   Assumptions: SourceType is "volume"
+	//                Bootable is false
+	//                SourceID points to existing volume.
+	// assume always persistent for now.
+	// assume we have already checked quotas.
+	// ID of source is the image id.
+	switch s.SourceType {
+	case types.ImageService:
+		path, err := c.image.GetImagePath(s.SourceID)
 		if err != nil {
 			// this image doesn't exist
 			return payloads.StorageResources{}, err
@@ -167,8 +192,10 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 			return payloads.StorageResources{}, err
 		}
 
+		// don't you need to add support for indicating whether
+		// a block device is bootable.
 		data := types.BlockData{
-			BlockDevice: bd,
+			BlockDevice: device,
 			Size:        s.Size,
 			CreateTime:  time.Now(),
 			TenantID:    tenant,
@@ -176,14 +203,60 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 
 		err = c.ds.AddBlockDevice(data)
 		if err != nil {
-			c.DeleteBlockDevice(bd.ID)
+			c.DeleteBlockDevice(device.ID)
 			return payloads.StorageResources{}, err
 		}
 
-		bd = device
+		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable}, nil
+	case types.VolumeService:
+		device, err := c.CopyBlockDevice(s.SourceID)
+		if err != nil {
+			return payloads.StorageResources{}, err
+		}
+
+		// don't you need to add support for indicating whether
+		// a block device is bootable.
+		data := types.BlockData{
+			BlockDevice: device,
+			Size:        s.Size,
+			CreateTime:  time.Now(),
+			TenantID:    tenant,
+		}
+
+		err = c.ds.AddBlockDevice(data)
+		if err != nil {
+			c.DeleteBlockDevice(device.ID)
+			return payloads.StorageResources{}, err
+		}
+
+		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable}, nil
+
+	case types.Empty:
+		device, err := c.CreateBlockDevice(nil, s.Size)
+		if err != nil {
+			return payloads.StorageResources{}, err
+		}
+
+		// don't you need to add support for indicating whether
+		// a block device is bootable.
+		data := types.BlockData{
+			BlockDevice: device,
+			Size:        s.Size,
+			CreateTime:  time.Now(),
+			TenantID:    tenant,
+		}
+
+		err = c.ds.AddBlockDevice(data)
+		if err != nil {
+			c.DeleteBlockDevice(device.ID)
+			return payloads.StorageResources{}, err
+		}
+
+		return payloads.StorageResources{ID: data.ID, Bootable: false}, nil
+
 	}
 
-	return payloads.StorageResources{ID: bd.ID, Bootable: s.Bootable}, nil
+	return payloads.StorageResources{}, errors.New("Not implemented yet")
 }
 
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {

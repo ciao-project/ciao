@@ -56,6 +56,22 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 	return BlockDevice{ID: ID}, nil
 }
 
+// CopyBlockDevice will copy an existing volume
+func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
+	ID := uuid.Generate().String()
+
+	var cmd *exec.Cmd
+
+	cmd = exec.Command("rbd", "--id", d.ID, "cp", volumeUUID, ID)
+
+	err := cmd.Run()
+	if err != nil {
+		return BlockDevice{}, err
+	}
+
+	return BlockDevice{ID: ID}, nil
+}
+
 // DeleteBlockDevice will remove a rbd image from the ceph cluster.
 func (d CephDriver) DeleteBlockDevice(volumeUUID string) error {
 	cmd := exec.Command("rbd", "--id", d.ID, "rm", volumeUUID)

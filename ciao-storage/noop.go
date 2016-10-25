@@ -31,6 +31,11 @@ func (d *NoopDriver) CreateBlockDevice(image *string, size int) (BlockDevice, er
 	return BlockDevice{ID: uuid.Generate().String()}, nil
 }
 
+// CopyBlockDevice pretends to copy an existing block device
+func (d *NoopDriver) CopyBlockDevice(string) (BlockDevice, error) {
+	return BlockDevice{ID: uuid.Generate().String()}, nil
+}
+
 // DeleteBlockDevice pretends to delete a block device.
 func (d *NoopDriver) DeleteBlockDevice(string) error {
 	return nil
