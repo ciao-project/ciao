@@ -104,12 +104,12 @@ func TestFw_Nat(t *testing.T) {
 	assert.Nil(err)
 }
 
-/*
-//Not fully implemented
+//Test assigment and removeal of floating IP
 //
-//Not fully implemented
+//Test if given a private IP and Public IP can be
+//assinged and removed as floating IP
 //
-//Expected to pass
+//Test is expected to pass
 func TestFw_PublicIP(t *testing.T) {
 	fwinit()
 	fw, err := InitFirewall(fwIf)
@@ -135,7 +135,6 @@ func TestFw_PublicIP(t *testing.T) {
 		t.Errorf("Error: Unable to shutdown firewall %v", err)
 	}
 }
-*/
 
 //Exercises all valid CNCI Firewall APIs
 //

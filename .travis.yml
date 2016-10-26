@@ -45,6 +45,7 @@ script:
    - docker --version
    - sudo docker pull debian
    - sudo ip link add testdummy type dummy
+   - export FWIFINT_ENV=testdummy
    - sudo ip addr add 198.51.100.1/24 dev testdummy
    - go get github.com/google/gofuzz github.com/stretchr/testify
    - go get github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell

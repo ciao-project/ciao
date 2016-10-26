@@ -306,13 +306,13 @@ func unmarshallPubIP(cmd *payloads.PublicIPCommand) (net.IP, net.IP, error) {
 func assignPubIP(cmd *payloads.PublicIPCommand) error {
 
 	prIP, puIP, err := unmarshallPubIP(cmd)
-
 	if err != nil {
-		glog.Errorf("cnci.assignPubIP invalid params %v %v", err, cmd)
+		return fmt.Errorf("cnci.assignPubIP invalid params %v %v", err, cmd)
 	}
 
-	if enableNetwork {
-		glog.Infof("cnci.assignPubIP success %v %v %v", prIP, puIP, cmd)
+	err = gFw.PublicIPAccess(libsnnet.FwEnable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
+	if err != nil {
+		return fmt.Errorf("%v", err)
 	}
 
 	return nil
@@ -321,13 +321,13 @@ func assignPubIP(cmd *payloads.PublicIPCommand) error {
 func releasePubIP(cmd *payloads.PublicIPCommand) error {
 
 	prIP, puIP, err := unmarshallPubIP(cmd)
-
 	if err != nil {
-		glog.Errorf("cnci.releasePubIP invalid params %v %v", err, cmd)
+		return fmt.Errorf("cnci.releasePubIP invalid params %v %v", err, cmd)
 	}
 
-	if enableNetwork {
-		glog.Infof("cnci.releasePubIP success %v %v %v", prIP, puIP, cmd)
+	err = gFw.PublicIPAccess(libsnnet.FwDisable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
+	if err != nil {
+		return fmt.Errorf("%v", err)
 	}
 
 	return nil

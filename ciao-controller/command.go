@@ -86,6 +86,17 @@ func (c *controller) deleteInstance(instanceID string) error {
 	return nil
 }
 
+func (c *controller) assignFloatingIP(floatingIP payloads.FloatingIP) error {
+	// validate the tenant exists
+	_, err := c.ds.GetTenant(floatingIP.AssignFloatingIP.TenantUUID)
+	if err != nil {
+		return err
+	}
+
+	go c.client.AssignFloatingIP(floatingIP)
+	return nil
+}
+
 func (c *controller) confirmTenant(tenantID string) error {
 	tenant, err := c.ds.GetTenant(tenantID)
 	if err != nil {

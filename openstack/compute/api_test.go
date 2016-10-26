@@ -20,6 +20,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/01org/ciao/payloads"
 )
 
 type test struct {
@@ -90,6 +92,14 @@ var tests = []test{
 		"/v2.1/{tenant}/servers/{server}/action",
 		serverAction,
 		`{"os-stop":null}`,
+		http.StatusAccepted,
+		"null",
+	},
+	{
+		"POST",
+		"/v2.1/{tenant}/servers/{server}/action",
+		serverAction,
+		`{"addFloatingIp":{"address":"172.16.0.7", "fixed_address": "172.16.0.8"}}`,
 		http.StatusAccepted,
 		"null",
 	},
@@ -190,6 +200,10 @@ func (cs testComputeService) StartServer(tenant string, server string) error {
 }
 
 func (cs testComputeService) StopServer(tenant string, server string) error {
+	return nil
+}
+
+func (cs testComputeService) AssignFloatingIP(floatingIP payloads.FloatingIP) error {
 	return nil
 }
 
