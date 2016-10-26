@@ -19,7 +19,12 @@ package database
 import (
 	"os"
 	"path"
+	"sync"
 	"testing"
+)
+
+const (
+	tableTestMap = "tests"
 )
 
 type Provider struct {
@@ -29,7 +34,32 @@ type Provider struct {
 	DbFile   string
 }
 
-var dbTables = []string{"samples"}
+type TestData struct {
+	ID string
+}
+
+// TestMap stores Image metadata
+type TestMap struct {
+	sync.RWMutex
+	m map[string]*TestData
+}
+
+// NewTable creates a new map of Images
+func (i *TestMap) NewTable() {
+	i.m = make(map[string]*TestData)
+}
+
+// Name provides Images table name
+func (i *TestMap) Name() string {
+	return tableTestMap
+}
+
+// NewElement returns a new Test struct
+func (i *TestMap) NewElement() interface{} {
+	return &TestData{}
+}
+
+var dbTables = []string{"tests"}
 var dbDir = "/tmp"
 var dbFile = "database.db"
 
@@ -75,7 +105,7 @@ func testDbTableInit(t *testing.T, provider Provider) {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbTableInit(provider.DbTables)
+	err = provider.Db.DbTablesInit(provider.DbTables)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,12 +119,12 @@ func testDbAdd(t *testing.T, provider Provider) {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbTableInit(provider.DbTables)
+	err = provider.Db.DbTablesInit(provider.DbTables)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbAdd(provider.DbTables[0], "sampleKey", "sampleValue")
+	err = provider.Db.DbAdd(provider.DbTables[0], "sampleKey", TestData{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,12 +138,12 @@ func testDbDelete(t *testing.T, provider Provider) {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbTableInit(provider.DbTables)
+	err = provider.Db.DbTablesInit(provider.DbTables)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbAdd(provider.DbTables[0], "sampleKey", "sampleValue")
+	err = provider.Db.DbAdd(provider.DbTables[0], "sampleKey", TestData{ID: "sampleKey"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,22 +162,17 @@ func testDbGet(t *testing.T, provider Provider) {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbTableInit(provider.DbTables)
+	err = provider.Db.DbTablesInit(provider.DbTables)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbAdd(provider.DbTables[0], "sampleKey", "sampleValue")
+	err = provider.Db.DbAdd(provider.DbTables[0], "sampleKey", TestData{ID: "sampleKey"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbDelete(provider.DbTables[0], "sampleKey")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = provider.Db.DbGet(provider.DbTables[0], "sampleKey")
+	_, err = provider.Db.DbGet(provider.DbTables[0], "sampleKey", &TestMap{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,27 +186,22 @@ func testDbGetAll(t *testing.T, provider Provider) {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbTableInit(provider.DbTables)
+	err = provider.Db.DbTablesInit(provider.DbTables)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbAdd(provider.DbTables[0], "sampleKey", "sampleValue")
+	err = provider.Db.DbAdd(provider.DbTables[0], "sampleKey", TestData{ID: "sampleKey"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = provider.Db.DbDelete(provider.DbTables[0], "sampleKey")
+	_, err = provider.Db.DbGet(provider.DbTables[0], "sampleKey", &TestMap{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = provider.Db.DbGet(provider.DbTables[0], "sampleKey")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = provider.Db.DbGetAll(provider.DbTables[0])
+	_, err = provider.Db.DbGetAll(provider.DbTables[0], &TestMap{})
 	if err != nil {
 		t.Fatal(err)
 	}

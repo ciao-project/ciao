@@ -57,7 +57,7 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Error on DB Initialization:%v ", err)
 	}
-	err = metaDs.DbTableInit(metaDsTables)
+	err = metaDs.DbTablesInit(metaDsTables)
 	if err != nil {
 		glog.Fatalf("Error on DB Tables Initialization:%v ", err)
 	}

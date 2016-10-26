@@ -15,6 +15,7 @@
 package datastore
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -27,17 +28,17 @@ func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 		State: Created,
 	}
 
-	cache := ImageCache{}
-	_ = cache.Init(d, m)
+	imageStore := ImageStore{}
+	_ = imageStore.Init(d, m)
 
 	// create the entry
-	err := cache.CreateImage(i)
+	err := imageStore.CreateImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// retrieve the entry
-	image, err := cache.GetImage(i.ID)
+	image, err := imageStore.GetImage(i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,27 +54,29 @@ func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 		State: Created,
 	}
 
-	cache := ImageCache{}
-	_ = cache.Init(d, m)
+	imageStore := ImageStore{}
+	_ = imageStore.Init(d, m)
 
 	// create the entry
-	err := cache.CreateImage(i)
+	err := imageStore.CreateImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// retrieve the entry
-	images, err := cache.GetAllImages()
+	images, err := imageStore.GetAllImages()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(images) != 1 {
-		t.Fatalf("len is actually %d\n", len(images))
-	}
+	if fmt.Sprintf("%T", m) != "*datastore.Noop" {
+		if len(images) != 1 {
+			t.Fatalf("len is actually %d\n", len(images))
+		}
 
-	if images[0].ID != i.ID {
-		t.Fatal(err)
+		if images[0].ID != i.ID {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -83,25 +86,27 @@ func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 		State: Created,
 	}
 
-	cache := ImageCache{}
-	_ = cache.Init(d, m)
+	imageStore := ImageStore{}
+	_ = imageStore.Init(d, m)
 
 	// create the entry
-	err := cache.CreateImage(i)
+	err := imageStore.CreateImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// delete the entry
-	err = cache.DeleteImage(i.ID)
+	err = imageStore.DeleteImage(i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// now attempt to retrive the entry
-	_, err = cache.GetImage(i.ID)
-	if err == nil {
-		t.Fatal(err)
+	if fmt.Sprintf("%T", m) != "*datastore.Noop" {
+		_, err = imageStore.GetImage(i.ID)
+		if err == nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -111,17 +116,17 @@ func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
 		State: Created,
 	}
 
-	cache := ImageCache{}
-	_ = cache.Init(d, m)
+	imageStore := ImageStore{}
+	_ = imageStore.Init(d, m)
 
 	// create the entry
-	err := cache.CreateImage(i)
+	err := imageStore.CreateImage(i)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Upload a string
-	err = cache.UploadImage(i.ID, strings.NewReader("Upload file"))
+	err = imageStore.UploadImage(i.ID, strings.NewReader("Upload file"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +165,7 @@ func initMetaDs() *MetaDs {
 	}
 	metaDsTables := []string{"images"}
 	_ = metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
-	_ = metaDs.DbTableInit(metaDsTables)
+	_ = metaDs.DbTablesInit(metaDsTables)
 	_ = metaDs.DbClose()
 
 	return metaDs

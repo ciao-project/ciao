@@ -29,8 +29,9 @@ import (
 )
 
 type boltDB struct {
-	Name string
-	DB   *bolt.DB
+	Name  string
+	Cache map[string]map[string]interface{}
+	DB    *bolt.DB
 }
 
 type dbProvider boltDB
@@ -72,11 +73,13 @@ func (db *dbProvider) DbClose() error {
 	return db.DB.Close()
 }
 
-func (db *dbProvider) DbTableInit(tables []string) (err error) {
+func (db *dbProvider) DbTablesInit(tables []string) (err error) {
 
 	glog.Infof("dbInit Tables := %v", tables)
-	for i, v := range tables {
-		glog.Infof("table[%v] := %v, %v", i, v, []byte(v))
+	db.Cache = make(map[string]map[string]interface{})
+	for i, table := range tables {
+		glog.Infof("table[%v] := %v, %v", i, table, []byte(table))
+		db.Cache[table] = make(map[string]interface{})
 	}
 
 	err = db.DB.Update(func(tx *bolt.Tx) error {
@@ -98,6 +101,7 @@ func (db *dbProvider) DbTableInit(tables []string) (err error) {
 
 func (db *dbProvider) DbAdd(table string, key string, value interface{}) (err error) {
 
+	db.Cache[table][key] = value
 	err = db.DB.Update(func(tx *bolt.Tx) error {
 
 		var v bytes.Buffer
@@ -124,6 +128,7 @@ func (db *dbProvider) DbAdd(table string, key string, value interface{}) (err er
 
 func (db *dbProvider) DbDelete(table string, key string) (err error) {
 
+	delete(db.Cache[table], key)
 	err = db.DB.Update(func(tx *bolt.Tx) error {
 
 		bucket := tx.Bucket([]byte(table))
@@ -141,28 +146,46 @@ func (db *dbProvider) DbDelete(table string, key string) (err error) {
 	return err
 }
 
-func (db *dbProvider) DbGet(table string, key string) (value interface{}, err error) {
+func (db *dbProvider) DbGet(table string, key string, dbTable DbTable) (interface{}, error) {
 
-	err = db.DB.View(func(tx *bolt.Tx) error {
+	elem := db.Cache[table][key]
+	if elem != nil {
+		return elem, nil
+	}
+
+	err := db.DB.View(func(tx *bolt.Tx) error {
 
 		bucket := tx.Bucket([]byte(table))
 		if bucket == nil {
 			return fmt.Errorf("Bucket %v not found", table)
 		}
-		value = bucket.Get([]byte(key))
+		data := bucket.Get([]byte(key))
+		vr := bytes.NewReader(data)
+
+		elem = dbTable.NewElement()
+		if err := gob.NewDecoder(vr).Decode(elem); err != nil {
+			return err
+		}
 		return nil
 	})
 
-	return value, err
+	db.Cache[table][key] = elem
+
+	return elem, err
 }
 
-func (db *dbProvider) DbGetAll(table string) (elements []interface{}, err error) {
+func (db *dbProvider) DbGetAll(table string, dbTable DbTable) (elements []interface{}, err error) {
 	err = db.DB.View(func(tx *bolt.Tx) error {
-		// Assume bucket exists and has keys
 		b := tx.Bucket([]byte(table))
 
 		err := b.ForEach(func(key, value []byte) error {
-			elements = append(elements, value)
+			vr := bytes.NewReader(value)
+			elem := dbTable.NewElement()
+			if err := gob.NewDecoder(vr).Decode(elem); err != nil {
+				return err
+			}
+			db.Cache[table][bytes.NewBuffer(key).String()] = elem
+			elements = append(elements, elem)
 			return nil
 		})
 		return err

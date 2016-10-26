@@ -205,7 +205,7 @@ func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
 // then wrap them in keystone validation. It will then start the https
 // service.
 func Start(config Config) error {
-	is := ImageService{ds: &datastore.ImageCache{}}
+	is := ImageService{ds: &datastore.ImageStore{}}
 	err := is.ds.Init(config.RawDataStore, config.MetaDataStore)
 	if err != nil {
 		return err

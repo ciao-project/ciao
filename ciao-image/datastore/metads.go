@@ -15,10 +15,6 @@
 package datastore
 
 import (
-	"bytes"
-	"encoding/gob"
-	"fmt"
-
 	"github.com/01org/ciao/database"
 	"github.com/golang/glog"
 )
@@ -43,8 +39,7 @@ func (m *MetaDs) Write(i Image) error {
 	if err != nil {
 		glog.Errorf("Error on Db Initialization: %v", err)
 	}
-
-	err = m.DbAdd("images", i.ID, i)
+	err = m.DbAdd("images", i.ID, &i)
 	if err != nil {
 		return err
 	}
@@ -73,17 +68,14 @@ func (m *MetaDs) Get(ID string) (Image, error) {
 		glog.Errorf("Error on Db Initialization: %v", err)
 	}
 
-	img := Image{}
-	data, err := m.DbGet("images", ID)
+	imageTable := &ImageMap{}
+	img, err := m.DbGet("images", ID, imageTable)
 	if err != nil {
-		return img, fmt.Errorf("Error on image retrieve: %v ", err)
-	}
-	vr := bytes.NewReader(data.([]byte))
-	if err := gob.NewDecoder(vr).Decode(&img); err != nil {
-		return img, fmt.Errorf("Decode Error: %v", err)
+		return Image{}, err
 	}
 
-	return img, err
+	image := *img.(*Image)
+	return image, err
 }
 
 // GetAll is the metadata get all images implementation.
@@ -96,17 +88,12 @@ func (m *MetaDs) GetAll() (images []Image, err error) {
 	}
 
 	var elements []interface{}
-	elements, err = m.DbProvider.DbGetAll("images")
+	imageTable := &ImageMap{}
+	elements, err = m.DbProvider.DbGetAll("images", imageTable)
 
-	for _, data := range elements {
-		if data != nil {
-			img := Image{}
-			vr := bytes.NewReader(data.([]byte))
-			if err := gob.NewDecoder(vr).Decode(&img); err != nil {
-				return images, fmt.Errorf("Decode Error: %v", err)
-			}
-			images = append(images, img)
-		}
+	for _, img := range elements {
+		image := img.(*Image)
+		images = append(images, *image)
 	}
 
 	return images, err

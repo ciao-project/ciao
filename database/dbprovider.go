@@ -16,21 +16,30 @@
 
 package database
 
-// A DbProvider represents a persistent data base provider
-// that can be used by the DockerPlugin to store its internal state
+// DbTable defines basic table operations
+type DbTable interface {
+	// Creates the backing map
+	NewTable()
+	// Name of the table as stored in the database
+	Name() string
+	// Allocates and returns a single value in the table
+	NewElement() interface{}
+}
+
+// DbProvider represents a persistent database provider
 type DbProvider interface {
-	//Initializes the Database
+	// Initializes the Database
 	DbInit(dbDir, dbFile string) error
-	//Closes the database
+	// Closes the database
 	DbClose() error
-	//Creates the tables if the tables do not already exist in the database
-	DbTableInit(tables []string) error
-	//Adds the key value pair to the table
+	// Creates the tables if the tables do not already exist in the database
+	DbTablesInit(tables []string) error
+	// Adds the key/value pair to the table
 	DbAdd(table string, key string, value interface{}) error
-	//Adds the key value pair to the table
+	//Deletes the key/value pair from the table
 	DbDelete(table string, key string) error
 	//Retrives the value corresponding to the key from the table
-	DbGet(table string, key string) (interface{}, error)
+	DbGet(table string, key string, dbTable DbTable) (interface{}, error)
 	//Retrieves all values from a table
-	DbGetAll(table string) ([]interface{}, error)
+	DbGetAll(table string, dbTable DbTable) ([]interface{}, error)
 }
