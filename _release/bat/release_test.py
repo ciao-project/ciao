@@ -405,10 +405,6 @@ class BATTests(unittest.TestCase):
         """Start one instance of all workloads"""
         self.failUnless(launch_all_workloads())
 
-    def test_start_all_workloads10(self):
-        """Start 10 instances of all workloads"""
-        self.failUnless(launch_all_workloads("10"))
-
     def test_get_cncis(self):
         """Start a random workload, then get CNCI information"""
         self.failUnless(start_random_workload())
@@ -458,7 +454,7 @@ def main():
     parser = argparse.ArgumentParser(description="ciao Basic Acceptance Tests")
     parser.add_argument("--command_timeout", action="store", dest="cli_timeout",
                         help="Seconds to wait for a command to complete",
-                        default=30)
+                        default=300)
     parser.add_argument("--cluster_timeout", action="store", dest="retry_count",
                         help="Seconds to wait for cluster to respond",
                         default=60)
