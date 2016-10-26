@@ -75,6 +75,10 @@ func (s dockerTestStorage) cleanup() error {
 	return os.RemoveAll(s.root)
 }
 
+func (s dockerTestStorage) CopyBlockDevice(volumeUUID string) (storage.BlockDevice, error) {
+	return storage.BlockDevice{}, nil
+}
+
 // Checks that the logic of the code that mounts and unmounts ceph volumes in
 // docker containers.
 //

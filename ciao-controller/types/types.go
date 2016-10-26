@@ -34,6 +34,9 @@ const (
 
 	// VolumeService indicates the source comes from the volume service.
 	VolumeService SourceType = "volume"
+
+	// Empty indicates that there is no source for the storage source
+	Empty SourceType = "empty"
 )
 
 // StorageResource defines a storage resource for a workload.
