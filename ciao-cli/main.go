@@ -51,6 +51,7 @@ func (c *command) run(args []string) error {
 		c.usage(cmdName)
 	}
 	args = subCmd.parseArgs(args[2:])
+	prepareForCommand()
 	return subCmd.run(args)
 }
 
@@ -341,21 +342,8 @@ func checkCompulsoryOptions() {
 	}
 }
 
-func main() {
+func prepareForCommand() {
 	var err error
-
-	flag.Usage = usage
-	flag.Parse()
-
-	getCiaoEnvVariables()
-	checkCompulsoryOptions()
-
-	// Print usage if no arguments are given
-	args := flag.Args()
-	if len(args) < 1 {
-		usage()
-	}
-
 	/* Load CA file if necessary */
 	if *caCertFile != "" {
 		caCert, err := ioutil.ReadFile(*caCertFile)
@@ -381,6 +369,22 @@ func main() {
 	scopedToken, *tenantID, _, err = getScopedToken(*identityUser, *identityPassword, *tenantName)
 	if err != nil {
 		fatalf(err.Error())
+	}
+}
+
+func main() {
+	var err error
+
+	flag.Usage = usage
+	flag.Parse()
+
+	getCiaoEnvVariables()
+	checkCompulsoryOptions()
+
+	// Print usage if no arguments are given
+	args := flag.Args()
+	if len(args) < 1 {
+		usage()
 	}
 
 	// Find command in cmdline args
