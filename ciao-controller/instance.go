@@ -318,9 +318,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		if wl.Storage != nil {
 			storage, err = getStorage(ctl, wl, tenantID)
 			if err != nil {
-				glog.Warning(err)
-				// we should really clean up and return here,
-				// but just keep going for now.
+				return config, err
 			}
 		}
 	} else {
