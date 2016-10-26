@@ -189,7 +189,7 @@ func (cmd *instanceDeleteCommand) run(args []string) error {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusAccepted {
+	if resp.StatusCode != http.StatusNoContent {
 		fatalf("Instance deletion failed: %s", resp.Status)
 	}
 
