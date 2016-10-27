@@ -186,7 +186,8 @@ func listCNCINodes(t *template.Template) error {
 }
 
 type nodeStatusCommand struct {
-	Flag flag.FlagSet
+	Flag     flag.FlagSet
+	template string
 }
 
 func (cmd *nodeStatusCommand) usage(...string) {
@@ -194,10 +195,24 @@ func (cmd *nodeStatusCommand) usage(...string) {
 
 Show cluster status
 `)
+	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a
+
+struct {
+	TotalNodes            int
+	TotalNodesReady       int
+	TotalNodesFull        int
+	TotalNodesOffline     int
+	TotalNodesMaintenance int
+}
+`)
+
 	os.Exit(2)
 }
 
 func (cmd *nodeStatusCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -215,6 +230,11 @@ func (cmd *nodeStatusCommand) run(args []string) error {
 	err = unmarshalHTTPResponse(resp, &status)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("node-status", cmd.template,
+			&status.Status)
 	}
 
 	fmt.Printf("Total Nodes %d\n", status.Status.TotalNodes)
