@@ -192,11 +192,11 @@ func (c *controller) DeleteServer(tenant string, server string) error {
 	}
 
 	err = c.deleteInstance(server)
-	if err != nil {
-		return err
+	if err == types.ErrInstanceNotAssigned {
+		return compute.ErrInstanceNotAvailable
 	}
 
-	return nil
+	return err
 }
 
 func (c *controller) StartServer(tenant string, ID string) error {
@@ -209,7 +209,12 @@ func (c *controller) StartServer(tenant string, ID string) error {
 		return compute.ErrServerOwner
 	}
 
-	return c.restartInstance(ID)
+	err = c.restartInstance(ID)
+	if err == types.ErrInstanceNotAssigned {
+		return compute.ErrInstanceNotAvailable
+	}
+
+	return err
 }
 
 func (c *controller) StopServer(tenant string, ID string) error {
@@ -222,7 +227,12 @@ func (c *controller) StopServer(tenant string, ID string) error {
 		return compute.ErrServerOwner
 	}
 
-	return c.stopInstance(ID)
+	err = c.stopInstance(ID)
+	if err == types.ErrInstanceNotAssigned {
+		return compute.ErrInstanceNotAvailable
+	}
+
+	return err
 }
 
 func (c *controller) ListFlavors(tenant string) (compute.Flavors, error) {

@@ -322,7 +322,7 @@ func testDeleteServer(t *testing.T, httpExpectedStatus int, httpExpectedErrorSta
 }
 
 func TestDeleteServer(t *testing.T) {
-	testDeleteServer(t, http.StatusNoContent, http.StatusInternalServerError, true)
+	testDeleteServer(t, http.StatusNoContent, http.StatusForbidden, true)
 }
 
 func TestDeleteServerInvalidToken(t *testing.T) {
