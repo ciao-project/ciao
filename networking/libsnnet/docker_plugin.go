@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/01org/ciao/database"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/libnetwork/drivers/remote/api"
@@ -179,16 +180,6 @@ func (d *DockerEpMap) NewElement() interface{} {
 	return &DockerEpVal{}
 }
 
-//Add adds a value to the map with the specified key
-func (d *DockerEpMap) Add(k string, v interface{}) error {
-	val, ok := v.(*DockerEpVal)
-	if !ok {
-		return fmt.Errorf("Invalid value type %t", v)
-	}
-	d.m[k] = val
-	return nil
-}
-
 //DockerNwMap maintains the Docker Network UUID to ciao Network mappings
 type DockerNwMap struct {
 	sync.Mutex
@@ -210,20 +201,10 @@ func (d *DockerNwMap) NewElement() interface{} {
 	return &DockerNwVal{}
 }
 
-//Add adds a value to the map with the specified key
-func (d *DockerNwMap) Add(k string, v interface{}) error {
-	val, ok := v.(*DockerNwVal)
-	if !ok {
-		return fmt.Errorf("Invalid value type %t", v)
-	}
-	d.m[k] = val
-	return nil
-}
-
 // DockerPlugin describes a single instance of a docker plugin
 // In the current design the plugin acts as an IPAM and Network Plugin
 type DockerPlugin struct {
-	TableDBProvider //Database used to persist the Docker to ciao Mapping
+	database.DbProvider //Database used to persist the Docker to ciao Mapping
 	//This is needed as the Docker Daemon and ciao have
 	//different life cycles and UUIDs
 	*mux.Router
@@ -746,7 +727,7 @@ func DockerHandler(d *DockerPlugin,
 //NewDockerPlugin instantiates a new Docker Plugin instance
 func NewDockerPlugin() *DockerPlugin {
 	return &DockerPlugin{
-		TableDBProvider: NewTableBoltDBProvider(),
+		DbProvider: database.NewBoltDBProvider(),
 	}
 }
 
@@ -789,10 +770,11 @@ func (d *DockerPlugin) Init() error {
 	if err := d.DbInit(DockerPluginCfg.DataDir, DockerPluginCfg.DbFile); err != nil {
 		return err
 	}
-	if err := d.DbTableRebuild(&d.DockerNwMap); err != nil {
-		return err
-	}
-	if err := d.DbTableRebuild(&d.DockerEpMap); err != nil {
+
+	tables := []string{tableNetworkMap, tableEndPointMap}
+
+	err := d.DbTablesInit(tables)
+	if err != nil {
 		return err
 	}
 
