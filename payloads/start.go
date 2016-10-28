@@ -93,6 +93,10 @@ type StorageResources struct {
 
 	// Bootable indicates that this is a bootable storage device.
 	Bootable bool `yaml:"boot"`
+
+	// Ephemeral indicates whether this storage should only last as long as
+	// the instance
+	Ephemeral bool `yaml:"ephemeral"`
 }
 
 // RequestedResource is used to specify an individual resource contained within

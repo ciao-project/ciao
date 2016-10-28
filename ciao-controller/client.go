@@ -61,6 +61,27 @@ func (client *ssntpClient) CommandNotify(command ssntp.Command, frame *ssntp.Fra
 	glog.V(1).Info(string(payload))
 }
 
+func (client *ssntpClient) deleteEphemeralStorage(instanceID string) {
+	attachments, _ := client.ctl.ds.GetStorageAttachments(instanceID)
+	for _, attachment := range attachments {
+		if !attachment.Ephemeral {
+			continue
+		}
+		err := client.ctl.ds.DeleteStorageAttachment(attachment.ID)
+		if err != nil {
+			glog.Warningf("Error deleting attachment from datastore: %v", err)
+		}
+		err = client.ctl.ds.DeleteBlockDevice(attachment.BlockID)
+		if err != nil {
+			glog.Warningf("Error deleting block device from datastore: %v", err)
+		}
+		err = client.ctl.DeleteBlockDevice(attachment.BlockID)
+		if err != nil {
+			glog.Warningf("Error deleting block device: %v", err)
+		}
+	}
+}
+
 func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 	payload := frame.Payload
 
@@ -73,6 +94,7 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 			glog.Warning("Error unmarshalling InstanceDeleted")
 			return
 		}
+		client.deleteEphemeralStorage(event.InstanceDeleted.InstanceUUID)
 		client.ctl.ds.DeleteInstance(event.InstanceDeleted.InstanceUUID)
 	case ssntp.ConcentratorInstanceAdded:
 		var event payloads.EventConcentratorInstanceAdded

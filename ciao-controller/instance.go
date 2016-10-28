@@ -90,6 +90,13 @@ func (i *instance) Add() error {
 	if i.CNCI == false {
 		ds := i.ctl.ds
 		ds.AddInstance(&i.Instance)
+		storage := i.newConfig.sc.Start.Storage
+		if (storage != payloads.StorageResources{}) {
+			_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral)
+			if err != nil {
+				glog.Error(err)
+			}
+		}
 	} else {
 		i.ctl.ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}
@@ -208,7 +215,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 			return payloads.StorageResources{}, err
 		}
 
-		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable}, nil
+		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable, Ephemeral: true}, nil
 	case types.VolumeService:
 		device, err := c.CopyBlockDevice(s.SourceID)
 		if err != nil {

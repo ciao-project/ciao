@@ -251,6 +251,7 @@ type StorageAttachment struct {
 	ID         string // a uuid
 	InstanceID string // the instance this volume is attached to
 	BlockID    string // the ID of the block device
+	Ephemeral  bool   // whether the storage should be deleted on Cleanup
 }
 
 // CiaoComputeTenants represents the unmarshalled version of the contents of a
