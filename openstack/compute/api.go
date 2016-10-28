@@ -72,10 +72,11 @@ type SecurityGroup struct {
 
 // These errors can be returned by the Service interface
 var (
-	ErrQuota          = errors.New("Tenant over quota")
-	ErrTenantNotFound = errors.New("Tenant not found")
-	ErrServerNotFound = errors.New("Server not found")
-	ErrServerOwner    = errors.New("You are not server owner")
+	ErrQuota                = errors.New("Tenant over quota")
+	ErrTenantNotFound       = errors.New("Tenant not found")
+	ErrServerNotFound       = errors.New("Server not found")
+	ErrServerOwner          = errors.New("You are not server owner")
+	ErrInstanceNotAvailable = errors.New("Instance not currently available for this operation")
 )
 
 // errorResponse maps service error responses to http responses.
@@ -83,14 +84,12 @@ var (
 // on return values all the time.
 func errorResponse(err error) APIResponse {
 	switch err {
-	case ErrQuota:
-		return APIResponse{http.StatusForbidden, nil}
-	case ErrTenantNotFound:
+	case ErrTenantNotFound, ErrServerNotFound:
 		return APIResponse{http.StatusNotFound, nil}
-	case ErrServerNotFound:
-		return APIResponse{http.StatusNotFound, nil}
-	case ErrServerOwner:
+
+	case ErrQuota, ErrServerOwner, ErrInstanceNotAvailable:
 		return APIResponse{http.StatusForbidden, nil}
+
 	default:
 		return APIResponse{http.StatusInternalServerError, nil}
 	}

@@ -508,4 +508,7 @@ var (
 
 	// ErrInstanceNotFound is returned when an instance is not found.
 	ErrInstanceNotFound = errors.New("Instance not found")
+
+	// ErrInstanceNotAssigned is returned when an instance is not assigned to a node.
+	ErrInstanceNotAssigned = errors.New("Cannot perform operation: instance not assigned to Node")
 )
