@@ -25,20 +25,9 @@ const (
 	tableImageMap = "images"
 )
 
-// ImageMap stores Image metadata
+// ImageMap provide Image empty struct generator and mutex control
 type ImageMap struct {
 	sync.RWMutex
-	m map[string]Image
-}
-
-// NewTable creates a new map of Images
-func (i *ImageMap) NewTable() {
-	i.m = make(map[string]Image)
-}
-
-// Name provides Images table name
-func (i *ImageMap) Name() string {
-	return tableImageMap
 }
 
 // NewElement generates a new Image struct
@@ -55,7 +44,6 @@ type ImageStore struct {
 
 // Init initializes the datastore struct and must be called before anything.
 func (s *ImageStore) Init(rawDs RawDataStore, metaDs MetaDataStore) error {
-	s.ImageMap.NewTable()
 	s.metaDs = metaDs
 	s.rawDs = rawDs
 

@@ -18,10 +18,6 @@ package database
 
 // DbTable defines basic table operations
 type DbTable interface {
-	// Creates the backing map
-	NewTable()
-	// Name of the table as stored in the database
-	Name() string
 	// Allocates and returns a single value in the table
 	NewElement() interface{}
 }

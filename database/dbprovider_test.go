@@ -38,20 +38,9 @@ type TestData struct {
 	ID string
 }
 
-// TestMap stores Image metadata
+// TestMap provides Test empty struct generator and mutex control
 type TestMap struct {
 	sync.RWMutex
-	m map[string]*TestData
-}
-
-// NewTable creates a new map of Images
-func (i *TestMap) NewTable() {
-	i.m = make(map[string]*TestData)
-}
-
-// Name provides Images table name
-func (i *TestMap) Name() string {
-	return tableTestMap
 }
 
 // NewElement returns a new Test struct
