@@ -146,7 +146,7 @@ func (c *config) GetResources() map[string]int {
 	return resources
 }
 
-func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.StorageResources, error) {
+func getStorage(c *controller, wl *types.Workload, tenant string, instanceID string) (payloads.StorageResources, error) {
 	s := wl.Storage
 
 	// storage already exists, use preexisting definition.
@@ -199,6 +199,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 			Size:        s.Size,
 			CreateTime:  time.Now(),
 			TenantID:    tenant,
+			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
 		}
 
 		err = c.ds.AddBlockDevice(data)
@@ -221,6 +222,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 			Size:        s.Size,
 			CreateTime:  time.Now(),
 			TenantID:    tenant,
+			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
 		}
 
 		err = c.ds.AddBlockDevice(data)
@@ -244,6 +246,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 			Size:        s.Size,
 			CreateTime:  time.Now(),
 			TenantID:    tenant,
+			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
 		}
 
 		err = c.ds.AddBlockDevice(data)
@@ -316,7 +319,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 
 		// handle storage resources
 		if wl.Storage != nil {
-			storage, err = getStorage(ctl, wl, tenantID)
+			storage, err = getStorage(ctl, wl, tenantID, instanceID)
 			if err != nil {
 				return config, err
 			}

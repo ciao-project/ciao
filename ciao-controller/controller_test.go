@@ -1113,7 +1113,7 @@ func TestGetStorage(t *testing.T) {
 		Storage: s,
 	}
 
-	pl, err := getStorage(ctl, wl, tenant.ID)
+	pl, err := getStorage(ctl, wl, tenant.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
