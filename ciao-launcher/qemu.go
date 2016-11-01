@@ -427,7 +427,10 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
 	networkParams []string, cephID string) []string {
 	params := make([]string, 0, 32)
 
-	addr := 4
+	addr := 3
+	if launchWithUI.String() == "spice" {
+		addr = 4
+	}
 	if cfg.Image != "" {
 		vmImage := path.Join(instanceDir, "image.qcow2")
 		fileParam := fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage)
@@ -439,8 +442,7 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
 	// hangs on startup.  I can't find a way to get qemu to pre-allocate the address.
 	// It will do this when using the legacy method of adding volumes but we can't do
 	// this if we want to be able to live detach these volumes.  The first drive qemu
-	// adds, i.e., the root address is assigned a slot of 3, with the current qemu
-	// parameters.
+	// adds, i.e., the rootfs  is assigned a slot of 3 without spice and 4 with.
 
 	for _, v := range cfg.Volumes {
 		blockdevID := fmt.Sprintf("drive_%s", v.UUID)
