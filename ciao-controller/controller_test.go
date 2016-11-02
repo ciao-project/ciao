@@ -1124,6 +1124,16 @@ func TestGetStorageForVolume(t *testing.T) {
 	if pl.Ephemeral != false {
 		t.Errorf("ephemeral flag not correct")
 	}
+
+	createdVolume, err := ctl.ds.GetBlockDevice(pl.ID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(createdVolume.Name) == 0 {
+		t.Errorf("block device name not set")
+	}
 }
 
 func TestGetStorageForImage(t *testing.T) {
@@ -1170,6 +1180,16 @@ func TestGetStorageForImage(t *testing.T) {
 
 	if pl.Ephemeral != true {
 		t.Errorf("ephemeral flag not correct")
+	}
+
+	createdVolume, err := ctl.ds.GetBlockDevice(pl.ID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(createdVolume.Name) == 0 {
+		t.Errorf("block device name not set")
 	}
 }
 
