@@ -32,41 +32,13 @@ type dockerNetworkState struct {
 	err  error
 }
 
-var dockerNetworkMap struct {
-	sync.Mutex
-	networks map[string]*dockerNetworkState
-}
-
-func init() {
-	dockerNetworkMap.networks = make(map[string]*dockerNetworkState)
-}
+var dockerNetworkLock sync.Mutex
 
 func createDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet.SsntpEventInfo, *libsnnet.ContainerInfo, error) {
-	dockerNetworkMap.Lock()
-	state := dockerNetworkMap.networks[vnicCfg.SubnetID]
-	if state != nil {
-		dockerNetworkMap.Unlock()
-		glog.Info("Waiting for Docker network creation")
-		<-state.done
-		if state.err != nil {
-			return nil, nil, nil, state.err
-		}
-
-		return cnNet.CreateVnic(vnicCfg)
-	}
-	ch := make(chan struct{})
-	defer close(ch)
-	state = &dockerNetworkState{done: ch}
-	dockerNetworkMap.networks[vnicCfg.SubnetID] = state
-	dockerNetworkMap.Unlock()
+	dockerNetworkLock.Lock()
+	defer dockerNetworkLock.Unlock()
 	vnic, event, info, err := cnNet.CreateVnic(vnicCfg)
-	state.err = err
 	if err != nil {
-		return vnic, event, info, err
-	}
-
-	if info == nil {
-		glog.Warning("VNIC information expected")
 		return vnic, event, info, err
 	}
 
@@ -77,7 +49,7 @@ func createDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet.S
 	// the container will not launch.
 
 	_ = createDockerNetwork(context.Background(), info)
-	return vnic, event, info, state.err
+	return vnic, event, info, nil
 }
 
 func destroyDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.SsntpEventInfo, error) {
@@ -96,9 +68,6 @@ func destroyDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.SsntpEventInfo, 
 		// these inconsistencies and cleans up:
 		// https://github.com/01org/ciao/issues/4
 		_ = destroyDockerNetwork(context.Background(), info.SubnetID)
-		dockerNetworkMap.Lock()
-		delete(dockerNetworkMap.networks, vnicCfg.SubnetID)
-		dockerNetworkMap.Unlock()
 	}
 
 	return event, err
