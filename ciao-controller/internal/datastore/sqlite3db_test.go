@@ -241,6 +241,7 @@ func TestGetAllStorageAttachments(t *testing.T) {
 		ID:         uuid.Generate().String(),
 		InstanceID: uuid.Generate().String(),
 		BlockID:    uuid.Generate().String(),
+		Ephemeral:  false,
 	}
 
 	err = db.createStorageAttachment(a)
@@ -257,5 +258,51 @@ func TestGetAllStorageAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	alpha := attachments[a.ID]
+
+	if alpha != a {
+		t.Fatal("Attachment from DB doesn't match original attachment")
+	}
+
+	b := types.StorageAttachment{
+		ID:         uuid.Generate().String(),
+		InstanceID: uuid.Generate().String(),
+		BlockID:    uuid.Generate().String(),
+		Ephemeral:  true,
+	}
+
+	err = db.createStorageAttachment(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachments, err = db.getAllStorageAttachments()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(attachments) != 2 {
+		t.Fatal(err)
+	}
+
+	err = db.deleteStorageAttachment(a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachments, err = db.getAllStorageAttachments()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(attachments) != 1 {
+		t.Fatal(err)
+	}
+
+	beta := attachments[b.ID]
+
+	if beta != b {
+		t.Fatal("Attachment from DB doesn't match original attachment")
+	}
 	db.disconnect()
 }
