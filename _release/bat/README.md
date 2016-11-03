@@ -18,6 +18,11 @@ existing test case runner, test-cases.
 
 ## Set up
 
+The BAT tests require a running ciao cluster to execute.  This can be a
+full ciao cluster running on hundreds of nodes or a Single VM ciao cluster
+running on a single machine.  For more information about Single VM see
+(here)[https://github.com/01org/ciao/wiki/Single-Machine-Development-Environment].
+
 The BAT tests require that certain environment variables have been set before they
 can be run:
 
@@ -27,6 +32,15 @@ can be run:
 * "CIAO_PASSWORD" - your test user's password
 * "CIAO_ADMIN_USERNAME" - your cluster admin user name
 * "CIAO_ADMIN_PASSWORD" - your cluster admin password.
+
+Note if you are using Single VM a script will be created for you called
+~/local/demo.sh that initialises these variables to their correct
+values for the Single VM cluster.  You just need to source this file
+before running the tests, e.g.,
+
+```
+. ~/local/demo.sh
+```
 
 ## Running all the BAT tests
 
