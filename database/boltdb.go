@@ -28,26 +28,26 @@ import (
 	"github.com/golang/glog"
 )
 
-type boltDB struct {
+// BoltDB database structure
+type BoltDB struct {
 	Name string
 	DB   *bolt.DB
 }
 
-type dbProvider boltDB
-
-func newBoltDb() *boltDB {
-	return &boltDB{
+func newBoltDb() *BoltDB {
+	return &BoltDB{
 		Name: "bolt.DB",
 	}
 }
 
 //NewBoltDBProvider returns a bolt based database that conforms
 //to the DBProvider interface
-func NewBoltDBProvider() DbProvider {
-	return (*dbProvider)(newBoltDb())
+func NewBoltDBProvider() *BoltDB {
+	return newBoltDb()
 }
 
-func (db *dbProvider) DbInit(dbDir, dbFile string) error {
+// DbInit initialize Bolt database
+func (db *BoltDB) DbInit(dbDir, dbFile string) error {
 
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		return fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
@@ -68,11 +68,13 @@ func (db *dbProvider) DbInit(dbDir, dbFile string) error {
 	return err
 }
 
-func (db *dbProvider) DbClose() error {
+// DbClose closes Bolt database
+func (db *BoltDB) DbClose() error {
 	return db.DB.Close()
 }
 
-func (db *dbProvider) DbTableRebuild(table DbTable) error {
+// DbTableRebuild builds bolt table into memory
+func (db *BoltDB) DbTableRebuild(table DbTable) error {
 	tables := []string{table.Name()}
 	if err := db.DbTablesInit(tables); err != nil {
 		return fmt.Errorf("dbInit failed %v", err)
@@ -99,7 +101,8 @@ func (db *dbProvider) DbTableRebuild(table DbTable) error {
 	return err
 }
 
-func (db *dbProvider) DbTablesInit(tables []string) (err error) {
+// DbTablesInit initializes list of tables in Bolt
+func (db *BoltDB) DbTablesInit(tables []string) (err error) {
 
 	glog.Info("dbInit Tables")
 	for i, table := range tables {
@@ -123,7 +126,8 @@ func (db *dbProvider) DbTablesInit(tables []string) (err error) {
 	return err
 }
 
-func (db *dbProvider) DbAdd(table string, key string, value interface{}) (err error) {
+// DbAdd adds a new element to table in Bolt database
+func (db *BoltDB) DbAdd(table string, key string, value interface{}) (err error) {
 
 	err = db.DB.Update(func(tx *bolt.Tx) error {
 		var v bytes.Buffer
@@ -148,12 +152,18 @@ func (db *dbProvider) DbAdd(table string, key string, value interface{}) (err er
 	return err
 }
 
-func (db *dbProvider) DbDelete(table string, key string) (err error) {
+// DbDelete deletes an element from table in Bolt database
+func (db *BoltDB) DbDelete(table string, key string) (err error) {
 
 	err = db.DB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(table))
 		if bucket == nil {
 			return fmt.Errorf("Bucket %v not found", table)
+		}
+
+		data := bucket.Get([]byte(key))
+		if len(data) == 0 {
+			return fmt.Errorf("Key is not found: %v", key)
 		}
 
 		err = bucket.Delete([]byte(key))
@@ -166,7 +176,8 @@ func (db *dbProvider) DbDelete(table string, key string) (err error) {
 	return err
 }
 
-func (db *dbProvider) DbGet(table string, key string, dbTable DbTable) (interface{}, error) {
+// DbGet obtains value by key from table
+func (db *BoltDB) DbGet(table string, key string, dbTable DbTable) (interface{}, error) {
 
 	var elem interface{}
 
@@ -175,10 +186,14 @@ func (db *dbProvider) DbGet(table string, key string, dbTable DbTable) (interfac
 		if bucket == nil {
 			return fmt.Errorf("Bucket %v not found", table)
 		}
-		data := bucket.Get([]byte(key))
-		vr := bytes.NewReader(data)
-
 		elem = dbTable.NewElement()
+		data := bucket.Get([]byte(key))
+
+		if data == nil {
+			return nil
+		}
+
+		vr := bytes.NewReader(data)
 		if err := gob.NewDecoder(vr).Decode(elem); err != nil {
 			return err
 		}
@@ -188,7 +203,8 @@ func (db *dbProvider) DbGet(table string, key string, dbTable DbTable) (interfac
 	return elem, err
 }
 
-func (db *dbProvider) DbGetAll(table string, dbTable DbTable) (elements []interface{}, err error) {
+// DbGetAll gets all elements from specific table
+func (db *BoltDB) DbGetAll(table string, dbTable DbTable) (elements []interface{}, err error) {
 	err = db.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(table))
 

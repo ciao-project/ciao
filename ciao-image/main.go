@@ -32,7 +32,7 @@ var identity = "https://localhost:35357/"
 var userName = "csr"
 var password = "hello"
 var mountPoint = "/var/lib/ciao/images"
-var dbDir = "/var/lib/ciao/images"
+var dbDir = "/var/lib/ciao/ciao-image/"
 var dbFile = "ciao-image.db"
 
 var identityURL = flag.String("identity", identity, "URL of keystone service")
@@ -57,12 +57,12 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Error on DB Initialization:%v ", err)
 	}
+	defer metaDs.DbClose()
+
 	err = metaDs.DbTablesInit(metaDsTables)
 	if err != nil {
 		glog.Fatalf("Error on DB Tables Initialization:%v ", err)
 	}
-
-	_ = metaDs.DbClose()
 
 	rawDs := &datastore.Posix{
 		MountPoint: mountPoint,

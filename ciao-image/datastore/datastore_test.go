@@ -15,7 +15,6 @@
 package datastore
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -69,7 +68,7 @@ func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 		t.Fatal(err)
 	}
 
-	if fmt.Sprintf("%T", m) != "*datastore.Noop" {
+	if _, ok := m.(*Noop); !ok {
 		if len(images) != 1 {
 			t.Fatalf("len is actually %d\n", len(images))
 		}
@@ -102,9 +101,9 @@ func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	// now attempt to retrive the entry
-	if fmt.Sprintf("%T", m) != "*datastore.Noop" {
+	if _, ok := m.(*Noop); !ok {
 		_, err = imageStore.GetImage(i.ID)
-		if err == nil {
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -166,27 +165,30 @@ func initMetaDs() *MetaDs {
 	metaDsTables := []string{"images"}
 	_ = metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
 	_ = metaDs.DbTablesInit(metaDsTables)
-	_ = metaDs.DbClose()
 
 	return metaDs
 }
 
 func TestPosixMetaDsCreateAndGet(t *testing.T) {
 	metaDs := initMetaDs()
+	defer metaDs.DbClose()
 	testCreateAndGet(t, &Posix{MountPoint: mountPoint}, metaDs)
 }
 
 func TestPosixMetaDsGetAll(t *testing.T) {
 	metaDs := initMetaDs()
+	defer metaDs.DbClose()
 	testGetAll(t, &Posix{MountPoint: mountPoint}, metaDs)
 }
 
 func TestPosixMetaDsDelete(t *testing.T) {
 	metaDs := initMetaDs()
+	defer metaDs.DbClose()
 	testDelete(t, &Posix{MountPoint: mountPoint}, metaDs)
 }
 
 func TestPosixMetaDsUpload(t *testing.T) {
 	metaDs := initMetaDs()
+	defer metaDs.DbClose()
 	testUpload(t, &Posix{MountPoint: mountPoint}, metaDs)
 }

@@ -15,6 +15,7 @@
 package datastore
 
 import (
+	"fmt"
 	"io"
 	"sync"
 
@@ -28,11 +29,32 @@ const (
 // ImageMap provide Image empty struct generator and mutex control
 type ImageMap struct {
 	sync.RWMutex
+	m map[string]*Image
+}
+
+//NewTable creates a new map
+func (i *ImageMap) NewTable() {
+	i.m = make(map[string]*Image)
+}
+
+//Name provides the name of the map
+func (i *ImageMap) Name() string {
+	return tableImageMap
 }
 
 // NewElement generates a new Image struct
 func (i *ImageMap) NewElement() interface{} {
 	return &Image{}
+}
+
+//Add adds a value to the map with the specified key
+func (i *ImageMap) Add(k string, v interface{}) error {
+	val, ok := v.(*Image)
+	if !ok {
+		return fmt.Errorf("Invalid value type %t", v)
+	}
+	i.m[k] = val
+	return nil
 }
 
 // ImageStore is an image metadata cache.
@@ -52,8 +74,8 @@ func (s *ImageStore) Init(rawDs RawDataStore, metaDs MetaDataStore) error {
 
 // CreateImage will add an image to the datastore.
 func (s *ImageStore) CreateImage(i Image) error {
-	defer s.ImageMap.Unlock()
 	s.ImageMap.Lock()
+	defer s.ImageMap.Unlock()
 
 	err := s.metaDs.Write(i)
 	if err != nil {
@@ -66,8 +88,8 @@ func (s *ImageStore) CreateImage(i Image) error {
 // GetAllImages gets returns all the known images.
 func (s *ImageStore) GetAllImages() ([]Image, error) {
 	var images []Image
-	defer s.ImageMap.RUnlock()
 	s.ImageMap.RLock()
+	defer s.ImageMap.RUnlock()
 
 	images, err := s.metaDs.GetAll()
 	if err != nil {
@@ -79,8 +101,8 @@ func (s *ImageStore) GetAllImages() ([]Image, error) {
 
 // GetImage returns the image specified by the ID string.
 func (s *ImageStore) GetImage(ID string) (Image, error) {
-	defer s.ImageMap.RUnlock()
 	s.ImageMap.RLock()
+	defer s.ImageMap.RUnlock()
 
 	img, err := s.metaDs.Get(ID)
 	if err != nil {
@@ -92,8 +114,8 @@ func (s *ImageStore) GetImage(ID string) (Image, error) {
 
 // UpdateImage will modify an existing image.
 func (s *ImageStore) UpdateImage(i Image) error {
-	defer s.ImageMap.Unlock()
 	s.ImageMap.Lock()
+	defer s.ImageMap.Unlock()
 
 	err := s.metaDs.Write(i)
 	if err != nil {
@@ -105,17 +127,16 @@ func (s *ImageStore) UpdateImage(i Image) error {
 
 // DeleteImage will delete an existing image.
 func (s *ImageStore) DeleteImage(ID string) error {
-	defer s.ImageMap.Unlock()
 	s.ImageMap.Lock()
+	defer s.ImageMap.Unlock()
 
-	err := s.metaDs.Delete(ID)
-	if err != nil {
-		return image.ErrNoImage
-	}
-
-	err = s.rawDs.Delete(ID)
+	err := s.rawDs.Delete(ID)
 	if err != nil {
 		return err
+	}
+	err = s.metaDs.Delete(ID)
+	if err != nil {
+		return image.ErrNoImage
 	}
 
 	return nil
@@ -123,7 +144,10 @@ func (s *ImageStore) DeleteImage(ID string) error {
 
 // UploadImage will read an image, save it and update the image cache.
 func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
+
+	s.ImageMap.RLock()
 	img, err := s.metaDs.Get(ID)
+	s.ImageMap.RUnlock()
 	if err != nil {
 		return image.ErrNoImage
 	}
@@ -143,12 +167,12 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 
 	img.State = Active
 	s.ImageMap.Lock()
+	defer s.ImageMap.Unlock()
 
 	err = s.metaDs.Write(img)
 	if err != nil {
 		return err
 	}
-	s.ImageMap.Unlock()
 
 	return nil
 }
