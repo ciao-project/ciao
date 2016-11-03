@@ -1,5 +1,5 @@
 # clearlinux.ciao-common
-This role is a requirement for other clearlinux.ciao-* roles
+This role is a requirement for other ciao-* roles
 
 ## Requirements
 None
@@ -23,9 +23,6 @@ None
 
 ## Example Playbook
 None
-
-## Contribution
-**Pull Requests and Issues should be opened at [clearlinux/clear-config-management](https://github.com/clearlinux/clear-config-management).**
 
 ## License
 Apache-2.0

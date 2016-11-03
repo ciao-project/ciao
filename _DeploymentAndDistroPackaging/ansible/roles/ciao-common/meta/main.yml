@@ -1,6 +1,6 @@
 galaxy_info:
   author: Alberto Murillo
-  description: This role is a requirement for other clearlinux.ciao-* roles
+  description: This role is a requirement for other ciao-* roles
   company: Intel
 
   issue_tracker_url: https://github.com/01org/ciao

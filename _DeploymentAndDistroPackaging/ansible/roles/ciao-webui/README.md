@@ -19,11 +19,8 @@ file *ciao.yml*
 ```
 - hosts: controllers
   roles:
-    - clearlinux.ciao-webui
+    - ciao-webui
 ```
-
-## Contribution
-**Pull Requests and Issues should be opened at [clearlinux/clear-config-management](https://github.com/clearlinux/clear-config-management).**
 
 ## License
 Apache-2.0

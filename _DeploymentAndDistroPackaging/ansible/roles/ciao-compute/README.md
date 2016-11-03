@@ -7,10 +7,10 @@ Ansible role to install the compute node for a CIAO cluster
 * xorriso
 
 ## Role Variables
-The available variables for this roles are the variables from [clearlinux.ciao-common](https://github.com/clearlinux/ansible-role-ciao-common)
+The available variables for this roles are the variables from [ciao-common](../ciao-common)
 
 ## Dependencies
-* [clearlinux.ciao-common](https://github.com/clearlinux/ansible-role-ciao-common)
+* [ciao-common](../ciao-common)
 
 ## Example Playbook
 file *ciao.yml*
@@ -24,9 +24,6 @@ file *group_vars/all*
 ```
 ciao_controller_fqdn: controller.example.com
 ```
-
-## Contribution
-**Pull Requests and Issues should be opened at [clearlinux/clear-config-management](https://github.com/clearlinux/clear-config-management).**
 
 ## License
 Apache-2.0
