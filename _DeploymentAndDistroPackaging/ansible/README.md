@@ -44,11 +44,6 @@ Install the latest release of go for your distribution as described in
 
 ## Configuration
 
-### ansible-galaxy
-Install the required roles from ansible-galaxy
-
-    sudo ansible-galaxy install -r requirements.yml
-
 ### Edit the [hosts](hosts) file according to your cluster setup
 ```ini
 [controllers]

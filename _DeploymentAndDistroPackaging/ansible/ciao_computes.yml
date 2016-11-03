@@ -2,4 +2,4 @@
   - hosts: computes
     become: yes
     roles:
-      - clearlinux.ciao-compute
+      - ciao-compute
