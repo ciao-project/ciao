@@ -1,0 +1,9 @@
+---
+# from galaxy
+- src: clearlinux.docker
+- src: clearlinux.keystone
+- src: clearlinux.ciao-common
+- src: clearlinux.ciao-controller
+- src: clearlinux.ciao-compute
+- src: clearlinux.ciao-network
+- src: clearlinux.ciao-webui

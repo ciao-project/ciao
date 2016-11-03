@@ -1,0 +1,23 @@
+---
+# Install docker and download container images in background
+- hosts: controllers
+  become: yes
+  roles:
+    - clearlinux.docker
+  post_tasks:
+    - name: Download container images in background
+      docker_image: name={{ item }} state=present
+      with_items:
+        - clearlinux/keystone
+        - clearlinux/ciao-webui
+      async: 1800
+      poll: 0
+      register: pull_images
+
+    - name: Check container images have been downloaded
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: pull_images_wait
+      until: pull_images_wait.finished
+      retries: 1800
+      with_items: "{{ pull_images.results }}"

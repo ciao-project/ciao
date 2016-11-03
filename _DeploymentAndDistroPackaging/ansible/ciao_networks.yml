@@ -1,0 +1,5 @@
+---
+  - hosts: networks
+    become: yes
+    roles:
+      - clearlinux.ciao-network

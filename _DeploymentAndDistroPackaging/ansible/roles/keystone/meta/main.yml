@@ -1,0 +1,25 @@
+galaxy_info:
+  author: Alberto Murillo
+  description: This role installs clearlinux/keystone docker container
+  company: Intel
+
+  issue_tracker_url: https://github.com/clearlinux/ansible-role-keystone
+
+  license: Apache
+
+  min_ansible_version: 2.1
+
+  platforms:
+  - name: Ubuntu
+    versions:
+      - xenial
+  - name: ClearLinux
+
+  galaxy_tags:
+    - ubuntu
+    - xenial
+    - clearlinux
+    - docker
+    - keystone
+
+dependencies: []

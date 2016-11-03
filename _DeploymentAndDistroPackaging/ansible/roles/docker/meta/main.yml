@@ -1,0 +1,30 @@
+galaxy_info:
+  author: Alberto Murillo
+  description: Role to install docker on ubuntu, fedora and clearlinux
+  company: Intel
+
+  issue_tracker_url: https://github.com/clearlinux/clear-config-management/issues
+
+  license: Apache
+
+  min_ansible_version: 2.1
+
+  platforms:
+  - name: Ubuntu
+    versions:
+      - xenial
+  - name: Fedora
+    versions:
+      - 24
+  - name: ClearLinux
+    versions:
+      - all
+
+  galaxy_tags:
+    - ubuntu
+    - xenial
+    - clearlinux
+    - fedora
+    - docker
+
+dependencies: []
