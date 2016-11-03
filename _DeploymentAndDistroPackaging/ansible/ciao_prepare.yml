@@ -5,19 +5,18 @@
   roles:
     - docker
   post_tasks:
-    - name: Download container images in background
-      docker_image: name={{ item }} state=present
+    - name: Download container images
+      shell: docker pull {{ item }}
+      register: pull_images
+      changed_when: "'Image is up to date' not in pull_images.stdout"
       with_items:
         - clearlinux/keystone
         - clearlinux/ciao-webui
-      async: 1800
-      poll: 0
-      register: pull_images
 
-    - name: Check container images have been downloaded
-      async_status:
-        jid: "{{ item.ansible_job_id }}"
-      register: pull_images_wait
-      until: pull_images_wait.finished
-      retries: 1800
+    - name: Stop containers running from an old image
+      docker_container:
+        name: "{{ item.item }}"
+        state: absent
+        force_kill: yes
       with_items: "{{ pull_images.results }}"
+      when: "{{ pull_images | changed }}"
