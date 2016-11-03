@@ -17,6 +17,7 @@
 package database
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"sync"
@@ -41,11 +42,32 @@ type TestData struct {
 // TestMap provides Test empty struct generator and mutex control
 type TestMap struct {
 	sync.RWMutex
+	m map[string]*TestData
 }
 
-// NewElement returns a new Test struct
-func (i *TestMap) NewElement() interface{} {
+//NewTable creates a new map
+func (t *TestMap) NewTable() {
+	t.m = make(map[string]*TestData)
+}
+
+//Name provides the name of the map
+func (t *TestMap) Name() string {
+	return tableTestMap
+}
+
+// NewElement generates a new Image struct
+func (t *TestMap) NewElement() interface{} {
 	return &TestData{}
+}
+
+//Add adds a value to the map with the specified key
+func (t *TestMap) Add(k string, v interface{}) error {
+	val, ok := v.(*TestData)
+	if !ok {
+		return fmt.Errorf("Invalid value type %t", v)
+	}
+	t.m[k] = val
+	return nil
 }
 
 var dbTables = []string{"tests"}

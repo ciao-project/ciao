@@ -29,9 +29,8 @@ import (
 )
 
 type boltDB struct {
-	Name  string
-	Cache map[string]map[string]interface{}
-	DB    *bolt.DB
+	Name string
+	DB   *bolt.DB
 }
 
 type dbProvider boltDB
@@ -73,13 +72,38 @@ func (db *dbProvider) DbClose() error {
 	return db.DB.Close()
 }
 
+func (db *dbProvider) DbTableRebuild(table DbTable) error {
+	tables := []string{table.Name()}
+	if err := db.DbTablesInit(tables); err != nil {
+		return fmt.Errorf("dbInit failed %v", err)
+	}
+
+	table.NewTable()
+
+	err := db.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(table.Name()))
+
+		err := b.ForEach(func(k, v []byte) error {
+			vr := bytes.NewReader(v)
+
+			val := table.NewElement()
+			if err := gob.NewDecoder(vr).Decode(val); err != nil {
+				return fmt.Errorf("Decode Error: %v %v %v", string(k), string(v), err)
+			}
+			glog.Infof("%v key=%v, value=%v\n", table, string(k), val)
+
+			return table.Add(string(k), val)
+		})
+		return err
+	})
+	return err
+}
+
 func (db *dbProvider) DbTablesInit(tables []string) (err error) {
 
-	glog.Infof("dbInit Tables := %v", tables)
-	db.Cache = make(map[string]map[string]interface{})
+	glog.Info("dbInit Tables")
 	for i, table := range tables {
 		glog.Infof("table[%v] := %v, %v", i, table, []byte(table))
-		db.Cache[table] = make(map[string]interface{})
 	}
 
 	err = db.DB.Update(func(tx *bolt.Tx) error {
@@ -101,9 +125,7 @@ func (db *dbProvider) DbTablesInit(tables []string) (err error) {
 
 func (db *dbProvider) DbAdd(table string, key string, value interface{}) (err error) {
 
-	db.Cache[table][key] = value
 	err = db.DB.Update(func(tx *bolt.Tx) error {
-
 		var v bytes.Buffer
 
 		if err := gob.NewEncoder(&v).Encode(value); err != nil {
@@ -128,9 +150,7 @@ func (db *dbProvider) DbAdd(table string, key string, value interface{}) (err er
 
 func (db *dbProvider) DbDelete(table string, key string) (err error) {
 
-	delete(db.Cache[table], key)
 	err = db.DB.Update(func(tx *bolt.Tx) error {
-
 		bucket := tx.Bucket([]byte(table))
 		if bucket == nil {
 			return fmt.Errorf("Bucket %v not found", table)
@@ -148,13 +168,9 @@ func (db *dbProvider) DbDelete(table string, key string) (err error) {
 
 func (db *dbProvider) DbGet(table string, key string, dbTable DbTable) (interface{}, error) {
 
-	elem := db.Cache[table][key]
-	if elem != nil {
-		return elem, nil
-	}
+	var elem interface{}
 
 	err := db.DB.View(func(tx *bolt.Tx) error {
-
 		bucket := tx.Bucket([]byte(table))
 		if bucket == nil {
 			return fmt.Errorf("Bucket %v not found", table)
@@ -169,8 +185,6 @@ func (db *dbProvider) DbGet(table string, key string, dbTable DbTable) (interfac
 		return nil
 	})
 
-	db.Cache[table][key] = elem
-
 	return elem, err
 }
 
@@ -184,7 +198,6 @@ func (db *dbProvider) DbGetAll(table string, dbTable DbTable) (elements []interf
 			if err := gob.NewDecoder(vr).Decode(elem); err != nil {
 				return err
 			}
-			db.Cache[table][bytes.NewBuffer(key).String()] = elem
 			elements = append(elements, elem)
 			return nil
 		})

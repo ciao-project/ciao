@@ -18,8 +18,14 @@ package database
 
 // DbTable defines basic table operations
 type DbTable interface {
+	// Creates the backing map
+	NewTable()
+	// Name of the table as stored in the database
+	Name() string
 	// Allocates and returns a single value in the table
 	NewElement() interface{}
+	// Add an value to the in memory table
+	Add(k string, v interface{}) error
 }
 
 // DbProvider represents a persistent database provider
@@ -30,6 +36,8 @@ type DbProvider interface {
 	DbClose() error
 	// Creates the tables if the tables do not already exist in the database
 	DbTablesInit(tables []string) error
+	// Populates the in-memory table from the database
+	DbTableRebuild(table DbTable) error
 	// Adds the key/value pair to the table
 	DbAdd(table string, key string, value interface{}) error
 	//Deletes the key/value pair from the table

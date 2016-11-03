@@ -180,6 +180,16 @@ func (d *DockerEpMap) NewElement() interface{} {
 	return &DockerEpVal{}
 }
 
+//Add adds a value to the map with the specified key
+func (d *DockerEpMap) Add(k string, v interface{}) error {
+	val, ok := v.(*DockerEpVal)
+	if !ok {
+		return fmt.Errorf("Invalid value type %t", v)
+	}
+	d.m[k] = val
+	return nil
+}
+
 //DockerNwMap maintains the Docker Network UUID to ciao Network mappings
 type DockerNwMap struct {
 	sync.Mutex
@@ -199,6 +209,16 @@ func (d *DockerNwMap) Name() string {
 //NewElement allocates and returns an network value
 func (d *DockerNwMap) NewElement() interface{} {
 	return &DockerNwVal{}
+}
+
+//Add adds a value to the map with the specified key
+func (d *DockerNwMap) Add(k string, v interface{}) error {
+	val, ok := v.(*DockerNwVal)
+	if !ok {
+		return fmt.Errorf("Invalid value type %t", v)
+	}
+	d.m[k] = val
+	return nil
 }
 
 // DockerPlugin describes a single instance of a docker plugin
@@ -770,11 +790,10 @@ func (d *DockerPlugin) Init() error {
 	if err := d.DbInit(DockerPluginCfg.DataDir, DockerPluginCfg.DbFile); err != nil {
 		return err
 	}
-
-	tables := []string{tableNetworkMap, tableEndPointMap}
-
-	err := d.DbTablesInit(tables)
-	if err != nil {
+	if err := d.DbTableRebuild(&d.DockerNwMap); err != nil {
+		return err
+	}
+	if err := d.DbTableRebuild(&d.DockerEpMap); err != nil {
 		return err
 	}
 
