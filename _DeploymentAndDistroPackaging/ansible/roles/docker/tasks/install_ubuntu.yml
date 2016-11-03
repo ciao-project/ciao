@@ -23,7 +23,7 @@
   - name: Install docker repository GPG Key (Ubuntu)
     apt_key:
       keyserver: hkp://p80.pool.sks-keyservers.net:80
-      id: 72C52609D
+      id: 58118E89F3A912897C070ADBF76221572C52609D
       state: present
 
   - name: Install docker repository (Ubuntu)
