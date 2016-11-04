@@ -51,7 +51,7 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 
 	err := cmd.Run()
 	if err != nil {
-		return BlockDevice{}, err
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
 	}
 
 	return BlockDevice{ID: ID}, nil
@@ -67,7 +67,7 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return BlockDevice{}, err
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
 	}
 
 	return BlockDevice{ID: ID}, nil
