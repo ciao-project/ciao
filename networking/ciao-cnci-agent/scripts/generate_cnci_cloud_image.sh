@@ -63,19 +63,18 @@ fi
 
 echo -e "\nMounting image: $image"
 tmpdir=$(mktemp -d)
-sudo modprobe nbd max_part=63
-sudo qemu-nbd --format=raw -c /dev/nbd0 "$image" 
 
 #it can take some time for the device to get created
 retry=0
+loop=''
 until [ $retry -ge 3 ]
 do
-	sudo udevadm settle
-	sudo partprobe /dev/nbd0
-	sudo mount /dev/nbd0p$partition "$tmpdir" && break
-	let retry=retry+1
-	echo "Mount failed, retrying $retry"
-	sleep 10
+    if [ "$loop" == "" ]; then
+	loop=`sudo losetup -f --show -P $image`
+    fi
+    sudo mount ${loop}p$partition "$tmpdir" && break
+    let retry=retry+1
+    echo "Mount failed, retrying $retry"
 done
 
 if [ $retry -ge 3 ]
@@ -111,6 +110,6 @@ sudo rm -rf "$tmpdir"/var/lib/cloud
 #Umount
 echo -e "Done! unmounting\n"
 sudo umount "$tmpdir"
-sudo qemu-nbd -d /dev/nbd0
+sudo losetup -d $loop
 sudo rm -rf "$tmpdir"
 exit 0
