@@ -117,3 +117,6 @@ Apache-2.0
 
 ## Author Information
 This role was created by [Leoswaldo Macias](leoswaldo.macias@intel.com) and [Obed Munoz](obed.n.munoz@intel.com)
+
+[library/keystone](https://github.com/openstack/openstack-ansible-plugins/blob/master/library/keystone)
+taken from [openstack-ansible-plugins](https://github.com/openstack/openstack-ansible-plugins)
