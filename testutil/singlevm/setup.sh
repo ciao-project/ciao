@@ -284,7 +284,7 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-echo "export CIAO_CONTROLLER=""$ciao_host" >> "$ciao_env"
+echo "export CIAO_CONTROLLER=""$ciao_host" > "$ciao_env"
 echo "export CIAO_USERNAME=admin" >> "$ciao_env"
 echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
 echo "export CIAO_ADMIN_USERNAME=admin" >> "$ciao_env"
