@@ -295,17 +295,19 @@ func createVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) (string, string, 
 
 func destroyVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) error {
 	if vnicCfg.VnicRole != libsnnet.DataCenter {
-		var event *libsnnet.SsntpEventInfo
-		var err error
-
-		if vnicCfg.VnicRole == libsnnet.TenantContainer {
-			event, err = destroyDockerVnic(vnicCfg)
-		} else {
-			event, _, err = cnNet.DestroyVnic(vnicCfg)
-		}
+		event, info, err := cnNet.DestroyVnic(vnicCfg)
 		if err != nil {
 			glog.Errorf("cn.DestroyVnic failed %v", err)
 			return err
+		}
+
+		if info != nil && info.CNContainerEvent == libsnnet.ContainerNetworkDel {
+			// This is one of these weird cases we will have with
+			// docker in which some launcher and libssnet state gets out of
+			// sync with docker.  Launcher needs a cleanup routine that detects
+			// these inconsistencies and cleans up:
+			// https://github.com/01org/ciao/issues/4
+			_ = destroyDockerNetwork(context.Background(), info.SubnetID)
 		}
 
 		sendNetworkEvent(conn, ssntp.TenantRemoved, event)
