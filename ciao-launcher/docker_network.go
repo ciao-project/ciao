@@ -38,7 +38,7 @@ func createDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet.S
 	dockerNetworkLock.Lock()
 	defer dockerNetworkLock.Unlock()
 	vnic, event, info, err := cnNet.CreateVnic(vnicCfg)
-	if err != nil {
+	if info.CNContainerEvent != libsnnet.ContainerNetworkAdd || err != nil {
 		return vnic, event, info, err
 	}
 
@@ -50,27 +50,6 @@ func createDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet.S
 
 	_ = createDockerNetwork(context.Background(), info)
 	return vnic, event, info, nil
-}
-
-func destroyDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.SsntpEventInfo, error) {
-	// BUG(markus): We need to pass in a context to destroyVnic
-
-	event, info, err := cnNet.DestroyVnic(vnicCfg)
-	if err != nil {
-		glog.Errorf("cn.DestroyVnic failed %v", err)
-		return event, err
-	}
-
-	if info != nil {
-		// This is one of these weird cases we will have with
-		// docker in which some launcher and libssnet state gets out of
-		// sync with docker.  Launcher needs a cleanup routine that detects
-		// these inconsistencies and cleans up:
-		// https://github.com/01org/ciao/issues/4
-		_ = destroyDockerNetwork(context.Background(), info.SubnetID)
-	}
-
-	return event, err
 }
 
 func createDockerNetwork(ctx context.Context, info *libsnnet.ContainerInfo) error {
