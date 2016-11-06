@@ -509,8 +509,8 @@ func usedBy(name string, packages piList, depsMap map[string][]string) string {
 		}
 	}
 
-	// BUG(markus): We don't report when a depdenency is used by ciao if
-	// it is also used by a depdenency
+	// BUG(markus): We don't report when a dependency is used by ciao if
+	// it is also used by a dependency
 
 	if users.Len() == 0 {
 		return "ciao"
