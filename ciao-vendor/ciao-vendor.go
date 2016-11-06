@@ -178,12 +178,12 @@ func checkWD() (string, string, error) {
 	pths := strings.Split(gopath, ":")
 
 	for _, p := range pths {
-		if path.Join(p, "src/github.com/01org/ciao") == cwd {
-			return cwd, gopath, nil
+		if strings.HasPrefix(cwd, path.Join(p, "src")) {
+			return cwd, p, nil
 		}
 	}
 
-	return "", "", fmt.Errorf("ciao-vendor must be run from $GOPATH/src/01org/ciao")
+	return "", "", fmt.Errorf("ciao-vendor must be run from $GOPATH/src/path/to/project")
 }
 
 func copyRepos(cwd, sourceRoot string, subPackages map[string][]*subPackage) error {
