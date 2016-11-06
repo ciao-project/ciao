@@ -1057,7 +1057,7 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 }
 
 func readRepos(projectRoot string) error {
-	packageFile := path.Join(projectRoot, "ciao-vendor", "packages.json")
+	packageFile := path.Join(projectRoot, "packages.json")
 	d, err := ioutil.ReadFile(packageFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -1075,7 +1075,7 @@ func readRepos(projectRoot string) error {
 }
 
 func writeRepos(projectRoot string) error {
-	packageFile := path.Join(projectRoot, "ciao-vendor", "packages.json")
+	packageFile := path.Join(projectRoot, "packages.json")
 
 	d, err := json.MarshalIndent(&repos, "", "\t")
 	if err != nil {
