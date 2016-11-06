@@ -608,7 +608,7 @@ func checkKnown(missing []string, deps piList) bool {
 	fmt.Println("All Dependencies Known: [FAIL]")
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
-	fmt.Fprintln(w, "Package\tUsed By")
+	fmt.Fprintln(w, "Missing Package\tUsed By")
 	for _, d := range missing {
 		fmt.Fprintf(w, "%s\t%s\n", d, clientMap[d])
 	}
