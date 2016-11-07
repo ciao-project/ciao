@@ -993,7 +993,7 @@ func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, rea
 	ds.db.logEvent(i.TenantID, string(userError), msg)
 }
 
-func (ds *Datastore) deleteInstance(instanceID string) error {
+func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 	ds.instanceLastStatLock.Lock()
 	delete(ds.instanceLastStat, instanceID)
 	ds.instanceLastStatLock.Unlock()
@@ -1044,18 +1044,18 @@ func (ds *Datastore) deleteInstance(instanceID string) error {
 
 	ds.updateStorageAttachments(instanceID, nil)
 
-	return err
+	return i.TenantID, err
 }
 
 // DeleteInstance removes an instance from the datastore.
 func (ds *Datastore) DeleteInstance(instanceID string) error {
-	err := ds.deleteInstance(instanceID)
+	tenantID, err := ds.deleteInstance(instanceID)
 	if err != nil {
 		return err
 	}
 
 	msg := fmt.Sprintf("Deleted Instance %s", instanceID)
-	ds.db.logEvent(instanceID, string(userInfo), msg)
+	ds.db.logEvent(tenantID, string(userInfo), msg)
 
 	return nil
 }
