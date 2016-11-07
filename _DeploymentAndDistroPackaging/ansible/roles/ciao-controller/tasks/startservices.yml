@@ -25,18 +25,14 @@
       - reload systemd config
       - restart controller
 
-  - name: Copy table files
-    copy: dest=/var/lib/ciao src=tables owner=ciao group=ciao
-
-  - name: Create workloads directory
-    file: path=/var/lib/ciao/workloads state=directory owner=ciao group=ciao
-
-  - name: Copy workloads files
-    template: dest=/var/lib/ciao/workloads/{{ item }} src=workloads/{{ item }}.j2 owner=ciao group=ciao
+  - name: Copy tables/workload files
+    copy: dest=/var/lib/ciao src={{ item }} owner=ciao group=ciao
     with_items:
-      - docker-iperf.yaml
-      - docker-ubuntu.yaml
-      - test.yaml
+      - tables
+      - workloads
+
+  - name: Copy test.yaml file
+    template: dest=/var/lib/ciao/workloads/test.yaml src=workloads/test.yaml.j2 owner=ciao group=ciao
 
   - name: Create /etc/ciao config dir
     file: path=/etc/ciao state=directory owner=ciao group=ciao
