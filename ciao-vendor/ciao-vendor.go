@@ -513,7 +513,7 @@ func usedBy(name string, packages piList, depsMap map[string][]string) string {
 	// it is also used by a dependency
 
 	if users.Len() == 0 {
-		return "ciao"
+		return "project"
 	}
 
 	return users.String()[1:]
