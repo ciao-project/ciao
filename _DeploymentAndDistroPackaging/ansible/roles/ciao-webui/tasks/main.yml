@@ -19,6 +19,8 @@
     template: src=docker-ciao-webui.service.j2 dest=/etc/systemd/system/docker-ciao-webui.service mode=0600
     notify: reload systemd config
 
+  - meta: flush_handlers
+
   - name: Enable docker-ciao-webui systemd unit
     service: name=docker-ciao-webui.service enabled=yes
 
