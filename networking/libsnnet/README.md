@@ -64,6 +64,12 @@ unit test framework. The tests can be run as follows
 sudo ip link add testdummy type dummy
 sudo ip addr add 198.51.100.1/24 dev testdummy
 export SNNET_ENV=198.51.100.0/24
+export FWIFINT_ENV=testdummy
+
+sudo ip link add extdummy type dummy
+sudo ip addr add 203.0.113.1/24 dev extdummy
+export FWIF_ENV=extdummy
+
 sudo -E go test --tags travis -v --short
 ```
 
