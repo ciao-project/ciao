@@ -200,7 +200,7 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			glog.Infof("Processing: CiaoCommandAssignPublicIP %v", c)
 			err := assignPubIP(c)
 			if err != nil {
-				glog.Infof("Error Processing: CiaoCommandAssignPublicIP %v", err)
+				glog.Errorf("Error Processing: CiaoCommandAssignPublicIP %v", err)
 			}
 		}(cmd)
 
