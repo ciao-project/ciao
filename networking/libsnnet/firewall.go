@@ -24,6 +24,7 @@ import (
 	"strconv"
 
 	"github.com/coreos/go-iptables/iptables"
+	"github.com/vishvananda/netlink"
 )
 
 /* https://wiki.archlinux.org/index.php/iptables
@@ -103,6 +104,37 @@ func InitFirewall(devices ...string) (*Firewall, error) {
 
 	f := &Firewall{
 		IPTables: ipt,
+	}
+
+	// create CIAO Floating IPs user defined chains
+	floatingIPsChains := []string{"ciao-floating-ip-pre", "ciao-floating-ip-post"}
+	for _, chain := range floatingIPsChains {
+		// verify it exists if not create it
+		_ = ipt.NewChain("nat", chain)
+	}
+
+	// insert ciao-floating-ip-pre into PREROUTING Chain
+	ok, err := ipt.Exists("nat", "PREROUTING", "-j", "ciao-floating-ip-pre")
+	if err != nil {
+		return nil, fmt.Errorf("Error: InitFirewall could not verify existence of chain ciao-floating-ip-pre, %v", err)
+	}
+	if !ok {
+		err := ipt.Insert("nat", "PREROUTING", 1, "-j", "ciao-floating-ip-pre")
+		if err != nil {
+			return nil, fmt.Errorf("Error: InitFirewall could not create ciao-floating-ip-pre chain")
+		}
+	}
+
+	// insert ciao-floating-ip-post into POSTROUTING Chain
+	ok, err = ipt.Exists("nat", "POSTROUTING", "-j", "ciao-floating-ip-post")
+	if err != nil {
+		return nil, fmt.Errorf("Error: InitFirewall could not verify existence of chain ciao-floating-ip-post, %v", err)
+	}
+	if !ok {
+		err := ipt.Insert("nat", "POSTROUTING", 1, "-j", "ciao-floating-ip-post")
+		if err != nil {
+			return nil, fmt.Errorf("Error: InitFirewall could not create ciao-floating-ip-post chain")
+		}
 	}
 
 	for _, device := range devices {
@@ -276,8 +308,6 @@ func (f *Firewall) ExtPortAccess(action FwAction, protocol string, extDevice str
 	return nil
 }
 
-/* Not implemented
-
 func ipAssign(action FwAction, ip net.IP, iface string) error {
 
 	link, err := netlink.LinkByName(iface)
@@ -328,95 +358,109 @@ func ipAssign(action FwAction, ip net.IP, iface string) error {
 	}
 
 	return nil
-
 }
 
-*/
-
-/* Not implemented
-
 //PublicIPAccess Enables/Disables public access to an internal IP
-//TODO: Consider NATing only when exiting
-//TODO: Create our own tables vs using default one
 func (f *Firewall) PublicIPAccess(action FwAction,
 	internalIP net.IP, publicIP net.IP, extInterface string) error {
 
+	intIP := internalIP.String()
+	pubIP := publicIP.String()
+
 	switch action {
 	case FwEnable:
-
+		// assign the pubIP to the cnci agent
 		err := ipAssign(FwEnable, publicIP, extInterface)
 		if err != nil {
 			return fmt.Errorf("Public IP Assignment failure %v", err)
 		}
-
-		//iptables -t nat -A PREROUTING -d $publicIP/32 -j DNAT --to-destination $internalIP
-		err = f.AppendUnique("nat", "PREROUTING",
-			"-d", publicIP.String()+"/32", "-j", "DNAT", "--to-destination", internalIP.String())
-
-		if err != nil {
-			ok, err2 := f.Exists("nat", "PREROUTING",
-				"-d", publicIP.String()+"/32", "-j", "DNAT", "--to-destination", internalIP.String())
-
-			if !ok {
-				err = fmt.Errorf("Unable to perform public IP PREROUTING %v %s %s [%v],[%v]",
-					action, internalIP, publicIP, err, err2)
-			}
-		}
-
-		//iptables -t nat -A POSTROUTING -s $internalIP/32 -j SNAT -–to-source $publicIP
-		err = f.AppendUnique("nat", "POSTROUTING",
-			"-s", internalIP.String()+"/32", "-j", "SNAT", "--to-source", publicIP.String())
-
-		if err != nil {
-			ok, err2 := f.Exists("nat", "POSTROUTING",
-				"-s", internalIP.String()+"/32", "-j", "SNAT", "--to-source", publicIP.String())
-
-			if !ok {
-				err = fmt.Errorf("Unable to perform public IP POSTROUTNG %v %s %s [%v],[%v]",
-					action, internalIP, publicIP, err, err2)
-			}
-		}
-
-		return err
-
+		return enablePublicIP(intIP, pubIP)
 	case FwDisable:
+		// remove the pubIP from the cnci agent
 		err := ipAssign(FwDisable, publicIP, extInterface)
 		if err != nil {
 			return fmt.Errorf("Public IP Assignment failure %v", err)
 		}
 
-		//iptables -t nat -D PREROUTING -d $publicIP/32 -j DNAT –to-destination $internalIP
-		err = f.Delete("nat", "PREROUTING",
-			"-d", publicIP.String()+"/32", "-j", "DNAT", "--to-destination", internalIP.String())
-		if err != nil {
-			ok, err1 := f.Exists("nat", "PREROUTING",
-				"-d", publicIP.String()+"/32", "-j", "DNAT", "--to-destination", internalIP.String())
-			if ok {
-				return fmt.Errorf("Unable to disable public IP PREROUTING %s %s %v %v",
-					publicIP, internalIP, err, err1)
-
-			}
-		}
-
-		//iptables -t nat -D POSTROUTING -s $internalIP/32 -j SNAT –to-source $publicIP
-		err = f.Delete("nat", "POSTROUTING",
-			"-s", internalIP.String()+"/32", "-j", "SNAT", "--to-source", publicIP.String())
-
-		if err != nil {
-			ok, err1 := f.Exists("nat", "POSTROUTING",
-				"-s", internalIP.String()+"/32", "-j", "SNAT", "--to-source", publicIP.String())
-			if ok {
-				return fmt.Errorf("Unable to disable public IP POSTROUTING %s %s %v %v",
-					publicIP, internalIP, err, err1)
-			}
-		}
-		return nil
+		return disablePublicIP(intIP, pubIP)
 	default:
 		return fmt.Errorf("Invalid parameter %v", action)
 	}
 }
 
-*/
+func enablePublicIP(intIP, pubIP string) error {
+	ipt, err := iptables.New()
+	if err != nil {
+		return fmt.Errorf("initFirewall: Unable to setup iptables %v", err)
+	}
+
+	// insert DNAT rule of PREROUTING
+	// iptables -t nat -I ciao-floating-ip-pre -d <pubIP> -j DNAT --to-destination <intIP>
+	ok, err := ipt.Exists("nat", "ciao-floating-ip-pre", "-d", pubIP+"/32", "-j", "DNAT", "--to-destination", intIP)
+	if err != nil {
+		return fmt.Errorf("Error: InitFirewall could not verify existence of PREROUTING rule %s to %s", pubIP, intIP)
+	}
+
+	if !ok {
+		err := ipt.Insert("nat", "ciao-floating-ip-pre", 1, "-d", pubIP+"/32", "-j", "DNAT", "--to-destination", intIP)
+		if err != nil {
+			return fmt.Errorf("Could not insert firewall PREROUTING rule %s to %s into chain ciao-floating-ip-pre", pubIP, intIP)
+		}
+	}
+
+	// insert SNAT rule of POSTROUTING
+	// iptables -t nat -I ciao-floating-ip-post -s <intIP> -j SNAT --to-source <pubIP>
+	ok, err = ipt.Exists("nat", "ciao-floating-ip-post", "-s", intIP+"/32", "-j", "SNAT", "--to-source", pubIP)
+	if err != nil {
+		return fmt.Errorf("Error: InitFirewall could not verify existence of POSTROUTING rule %s to %s", intIP, pubIP)
+	}
+
+	if !ok {
+		err := ipt.Insert("nat", "ciao-floating-ip-post", 1, "-s", intIP+"/32", "-j", "SNAT", "--to-source", pubIP)
+		if err != nil {
+			return fmt.Errorf("Could not insert firewall POSTROUTING rule %s to %s into chain ciao-floating-ip-post", intIP, pubIP)
+		}
+	}
+
+	return nil
+}
+
+func disablePublicIP(intIP, pubIP string) error {
+	ipt, err := iptables.New()
+	if err != nil {
+		return fmt.Errorf("initFirewall: Unable to setup iptables %v", err)
+	}
+
+	// delete DNAT PREROUTING rule
+	// iptables -t nat -D ciao-floating-ip-pre -d <pubIP> -j DNAT --to-destination <intIP>
+	ok, err := ipt.Exists("nat", "ciao-floating-ip-pre", "-d", pubIP+"/32", "-j", "DNAT", "--to-destination", intIP)
+	if err != nil {
+		return fmt.Errorf("Error: InitFirewall could not verify existence of PREROUTING rule %s to %s", pubIP, intIP)
+	}
+
+	if !ok {
+		err := ipt.Delete("nat", "ciao-floating-ip-pre", "-d", pubIP+"/32", "-j", "DNAT", "--to-destination", intIP)
+		if err != nil {
+			return fmt.Errorf("Could not delete firewall PREROUTING rule %s to %s into chain ciao-floating-ip-pre", pubIP, intIP)
+		}
+	}
+
+	// delete SNAT POSTROUTING rule
+	// iptables -t nat -D ciao-floating-ip-post -s <intIP> -j SNAT --to-source <pubIP>
+	ok, err = ipt.Exists("nat", "ciao-floating-ip-post", "-s", intIP+"/32", "-j", "SNAT", "--to-source", pubIP)
+	if err != nil {
+		return fmt.Errorf("Error: InitFirewall could not verify existence of POSTROUTING rule %s to %s", intIP, pubIP)
+	}
+
+	if ok {
+		err := ipt.Delete("nat", "ciao-floating-ip-post", "-s", intIP+"/32", "-j", "SNAT", "--to-source", pubIP)
+		if err != nil {
+			return fmt.Errorf("Could not delete firewall POSTROUTING rule %s to %s into chain ciao-floating-ip-post", intIP, pubIP)
+		}
+	}
+
+	return nil
+}
 
 //DumpIPTables provides a utility routine that returns
 //the current state of the iptables
