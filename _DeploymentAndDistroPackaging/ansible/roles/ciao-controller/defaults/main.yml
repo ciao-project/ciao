@@ -1,0 +1,82 @@
+---
+# Copyright (c) 2016 Intel Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# IP Address for CIAO controller node
+ciao_controller_ip: "{{ ansible_default_ipv4['address'] }}"
+
+# CIAO management subnets
+ciao_mgmt_subnets: "{{ [(ansible_default_ipv4.network + '/' + ansible_default_ipv4.netmask) | ipaddr] }}"
+
+# CIAO compute subnets
+ciao_compute_subnets: "{{ ciao_mgmt_subnets }}"
+
+# OpenStack user for CIAO services
+ciao_service_user: ciao
+
+# Password for 'ciao_service_user'
+ciao_service_password: ciaoUserPassword
+
+# CIAO administrator email address
+# this address is embedded in ciao certificates
+ciao_admin_email: admin@example.com
+
+# Name of the organization running the CIAO cluster
+# this name is embedded in ciao certificates
+ciao_cert_organization: Example Inc.
+
+# CIAO virtual machines can be accessed with this username and it's public key
+ciao_guest_user: demouser
+
+# A path to an SSH public authentication key for `ciao_guest_user`
+ciao_guest_key: ~/.ssh/id_rsa.pub
+
+# The contents of ciao_guest_key file
+ciao_ssh_public_key: "{{ lookup('file', ciao_guest_key) }}"
+
+# CIAO Services to create in Keystone
+ciao_openstack_services:
+  - service: ciao
+    type: compute
+    description: CIAO Compute Service
+  - service: cinder
+    type: volume
+    description: CIAO Storage Service
+  - service: cinderv2
+    type: volumev2
+    description: CIAO Storage Service v2
+
+# CIAO endpoints to create in Keystone
+ciao_openstack_endpoints:
+  - service: ciao
+    type: compute
+    public_url: https://{{ ciao_controller_fqdn }}:8774/v2.1/%(tenant_id)s
+    internal_url: https://{{ ciao_controller_fqdn }}:8774/v2.1/%(tenant_id)s
+    admin_url: https://{{ ciao_controller_fqdn }}:8774/v2.1/%(tenant_id)s
+  - service: cinder
+    type: volume
+    public_url: https://{{ ciao_controller_fqdn }}:8776/v1/%(tenant_id)s
+    internal_url: https://{{ ciao_controller_fqdn }}:8776/v1/%(tenant_id)s
+    admin_url: https://{{ ciao_controller_fqdn }}:8776/v1/%(tenant_id)s
+  - service: cinderv2
+    type: volumev2
+    public_url: https://{{ ciao_controller_fqdn }}:8776/v2/%(tenant_id)s
+    internal_url: https://{{ ciao_controller_fqdn }}:8776/v2/%(tenant_id)s
+    admin_url: https://{{ ciao_controller_fqdn }}:8776/v2/%(tenant_id)s
+
+# Cephx user to authenticate
+ceph_id: admin
+
+# Path to ceph user keyring
+secret_path: /etc/ceph/ceph.client.admin.keyring
