@@ -181,7 +181,7 @@ func getUserProjects(username string, password string) ([]Project, error) {
 
 	identity := fmt.Sprintf("%s/v3/users/%s/projects", *identityURL, user)
 
-	resp, err := sendHTTPRequestToken("GET", identity, nil, token, nil)
+	resp, err := sendHTTPRequestToken("GET", identity, nil, token, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func getAllProjects(username string, password string) (*IdentityProjects, error)
 
 	identity := fmt.Sprintf("%s/v3/projects", *identityURL)
 
-	resp, err := sendHTTPRequestToken("GET", identity, nil, token, nil)
+	resp, err := sendHTTPRequestToken("GET", identity, nil, token, nil, nil)
 	if err != nil {
 		return nil, err
 	}
