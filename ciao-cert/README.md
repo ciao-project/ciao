@@ -51,55 +51,60 @@ Usage of ciao-cert:
 
 ## Example
 
-On our example cluster the scheduler is running on ciao-ctl.intel.com.
-ciao.ctl.intel.com is a multi homed machine connected to the cluster
-control plane through 192.168.1.118
+On our example cluster, the scheduler is running on ciao-ctl.intel.com.
+The ciao-ctl.intel.com host is a multi homed machine connected to the
+cluster control plane through 192.168.1.118.
 
-We need to generate 5 private keys for the Scheduler, Controller, Networking Agent,
-CNCI Agent and the Compute Node Agents. We also need to generate the CA certificate.
+At a minimum, need to generate 5 private keys for the Scheduler,
+Controller, Networking Agent, CNCI Agent and the Compute Node Agents. We
+also need to generate the CA certificate.
+
+Depending on your security tolerances, you may choose one of two deployment
+styles for SSNTP client certificates:
+* a generic private key for each SSNTP client type: ```-host=localhost``` in the command examples below.  Each Compute Node agent machine would have a copy of the one compute node agent key with 'localhost' validity.  This may be easiest for a fleet of ephemeral test systems.
+* a unique private key per instance of each SSNTP client type:  For each machine, use a ```-host``` argument containing the fully qualified domain name (FQDN) of that machine.  Each Compute Node agent machine would have a unique compute node agent key valid for that machine's FQDN.  This enables more fine grained access control and revocation.
+Note though that the SSNTP server certificate (```-role scheduler```) MUST
+have a FQDN specified.
+
+The examples below create a key for the scheduler server specific
+to the FQDN "ciao-ctl.intel.com", a key for the controller client
+specific to the FQDN "ciao-ctl.intel.com", and generic client keys with
+```--host=localhost``` for the remaining SSNTP client classes (compute
+node agent, networking node agent, and CNCI agent).
 
 * Scheduler private key and CA certificate
 
-```shell
-$GOBIN/ciao-cert -server -role scheduler -email=ciao-devel@lists.clearlinux.org -organization=Intel -ip=192.168.1.118 -host=ciao-ctl.intel.com -verify
-```
-
-That will generate `CAcert-ciao-ctl.intel.com.pem` and `cert-Scheduler-ciao.ctl.intel.com.pem`.
-
-* Compute Node Agent private key
-
-```$GOBIN/ciao-cert -role agent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify```
-
-That will generate `cert-CNAgent-localhost.pem`.
-
-* Networking Node Agent private key
-
-```$GOBIN/ciao-cert -role netagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify```
-
-That will generate `cert-NetworkingAgent-localhost.pem`.
-
-* CNCI Agent private key
-
-```$GOBIN/ciao-cert -role cnciagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify```
-
-That will generate `cert-CNCIAgent-localhost.pem`.
-
+        $GOBIN/ciao-cert -server -role scheduler -email=ciao-devel@lists.clearlinux.org -organization=Intel -ip=192.168.1.118 -host=ciao-ctl.intel.com -verify
+  That will generate `CAcert-ciao-ctl.intel.com.pem` and `cert-Scheduler-ciao.ctl.intel.com.pem`.
 * Controller private key
 
-```$GOBIN/ciao-cert -role controller -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify```
+        $GOBIN/ciao-cert -role controller -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=ciao-ctl.intel.com -verify
+  That will generate `cert-Controller-ciao-ctl.intel.com.pem`.
+* Compute Node Agent private key
 
-That will generate `cert-Controller-localhost.pem`.
+        $GOBIN/ciao-cert -role agent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
+  That will generate `cert-CNAgent-localhost.pem`.
+* Networking Node Agent private key
+
+        $GOBIN/ciao-cert -role netagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
+  That will generate `cert-NetworkingAgent-localhost.pem`.
+* CNCI Agent private key
+
+        $GOBIN/ciao-cert -role cnciagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
+  That will generate `cert-CNCIAgent-localhost.pem`.
 
 ## Multi roles support
 
 In some cases SSNTP clients or servers want to support
 several roles at the same time and SSNTP supports that feature.
 
-But certificates need to be generated accordingly, by passing a
-comma separated list of roles to ciao-cert.
-For example launcher may want to expose both the CN and NN agent roles:
+But certificates need to be generated accordingly, by passing a comma
+separated list of roles to ciao-cert.  For example a specific testing
+focused launcher agent may want to expose both the CN and NN agent roles:
 
-```$GOBIN/ciao-cert -role agent,netagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify```
+```shell
+$GOBIN/ciao-cert -role agent,netagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
+```
 
 ## Inspecting certificates
 
@@ -107,7 +112,7 @@ It is possible to have `ciao-cert` provide some information about the generated
 certificates; this is done by using the `-dump` command line flag. Here is some
 sample output from the scheduler certificate generated above:
 
-```
+```shell
 $GOBIN/ciao-cert -dump ./cert-Scheduler-ciao-ctl.intel.com.pem
 Certificate:    ./cert-Scheduler-ciao-ctl.intel.com.pem
 Organization:   Intel
