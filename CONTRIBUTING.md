@@ -43,6 +43,9 @@ For example:
 	Signed-off-by: Samuel Ortiz <sameo@linux.intel.com>
 ```
 
+Under exceptional circumstances, if the patch is fixing a typo in a comment for
+instance, it is acceptable to omit the detailed explanation.
+
 ## Pull requests
 
 We accept github pull requests.
