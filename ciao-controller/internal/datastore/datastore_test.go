@@ -1818,7 +1818,7 @@ func TestCreateStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1875,7 +1875,7 @@ func TestUpdateStorageAttachmentExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1982,7 +1982,7 @@ func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2032,7 +2032,7 @@ func TestGetStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2127,7 +2127,7 @@ func TestDeleteStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2141,7 +2141,7 @@ func TestDeleteStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ds.deleteStorageAttachment(a.ID)
+	err = ds.DeleteStorageAttachment(a.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2189,7 +2189,7 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2203,7 +2203,7 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ds.deleteStorageAttachment(a.ID)
+	err = ds.DeleteStorageAttachment(a.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2213,7 +2213,7 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ds.deleteStorageAttachment(a.ID)
+	err = ds.DeleteStorageAttachment(a.ID)
 	if err != ErrNoStorageAttachment {
 		t.Fatal(err)
 	}
@@ -2256,7 +2256,7 @@ func TestGetVolumeAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.createStorageAttachment(instance.ID, data.ID)
+	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}

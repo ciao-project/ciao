@@ -219,6 +219,7 @@ func (d attachments) Init() error {
 		id string primary key,
 		instance_id string,
 		block_id string,
+		ephemeral int,
 		foreign key(instance_id) references instances(id),
 		foreign key(block_id) references block_data(id)
 		);`
@@ -555,6 +556,8 @@ func (ds *sqliteDB) exec(db *sql.DB, cmd string) error {
 	return err
 }
 
+// This function is deprecated and will be removed soon. It should not be used
+// for newly written or updated code.
 func (ds *sqliteDB) create(tableName string, record ...interface{}) error {
 	// get database location of this table
 	db := ds.getTableDB(tableName)
@@ -2304,8 +2307,25 @@ func (ds *sqliteDB) deleteBlockData(ID string) error {
 }
 
 func (ds *sqliteDB) createStorageAttachment(a types.StorageAttachment) error {
+	datastore := ds.getTableDB("attachments")
+
 	ds.dbLock.Lock()
-	err := ds.create("attachments", a.ID, a.InstanceID, a.BlockID)
+
+	tx, err := datastore.Begin()
+	if err != nil {
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	_, err = tx.Exec("INSERT INTO attachments (id, instance_id, block_id, ephemeral) VALUES (?, ?, ?, ?)", a.ID, a.InstanceID, a.BlockID, a.Ephemeral)
+	if err != nil {
+		tx.Rollback()
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
+
 	ds.dbLock.Unlock()
 	return err
 }
@@ -2317,7 +2337,8 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 
 	query := `SELECT	attachments.id,
 				attachments.instance_id,
-				attachments.block_id
+				attachments.block_id,
+				attachments.ephemeral
 		  FROM	attachments `
 
 	rows, err := datastore.Query(query)
@@ -2329,7 +2350,7 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 	for rows.Next() {
 		var a types.StorageAttachment
 
-		err = rows.Scan(&a.ID, &a.InstanceID, &a.BlockID)
+		err = rows.Scan(&a.ID, &a.InstanceID, &a.BlockID, &a.Ephemeral)
 		if err != nil {
 			continue
 		}

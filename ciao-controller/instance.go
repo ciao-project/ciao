@@ -90,6 +90,13 @@ func (i *instance) Add() error {
 	if i.CNCI == false {
 		ds := i.ctl.ds
 		ds.AddInstance(&i.Instance)
+		storage := i.newConfig.sc.Start.Storage
+		if (storage != payloads.StorageResources{}) {
+			_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral)
+			if err != nil {
+				glog.Error(err)
+			}
+		}
 	} else {
 		i.ctl.ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}
@@ -146,7 +153,7 @@ func (c *config) GetResources() map[string]int {
 	return resources
 }
 
-func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.StorageResources, error) {
+func getStorage(c *controller, wl *types.Workload, tenant string, instanceID string) (payloads.StorageResources, error) {
 	s := wl.Storage
 
 	// storage already exists, use preexisting definition.
@@ -199,6 +206,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 			Size:        s.Size,
 			CreateTime:  time.Now(),
 			TenantID:    tenant,
+			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
 		}
 
 		err = c.ds.AddBlockDevice(data)
@@ -207,7 +215,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 			return payloads.StorageResources{}, err
 		}
 
-		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable}, nil
+		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable, Ephemeral: true}, nil
 	case types.VolumeService:
 		device, err := c.CopyBlockDevice(s.SourceID)
 		if err != nil {
@@ -221,6 +229,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 			Size:        s.Size,
 			CreateTime:  time.Now(),
 			TenantID:    tenant,
+			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
 		}
 
 		err = c.ds.AddBlockDevice(data)
@@ -244,6 +253,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string) (payloads.Stor
 			Size:        s.Size,
 			CreateTime:  time.Now(),
 			TenantID:    tenant,
+			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
 		}
 
 		err = c.ds.AddBlockDevice(data)
@@ -316,7 +326,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 
 		// handle storage resources
 		if wl.Storage != nil {
-			storage, err = getStorage(ctl, wl, tenantID)
+			storage, err = getStorage(ctl, wl, tenantID, instanceID)
 			if err != nil {
 				return config, err
 			}

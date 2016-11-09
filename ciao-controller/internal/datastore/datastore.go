@@ -1488,7 +1488,9 @@ func (ds *Datastore) UpdateBlockDevice(data types.BlockData) error {
 	return ds.AddBlockDevice(data)
 }
 
-func (ds *Datastore) createStorageAttachment(instanceID string, blockID string) (types.StorageAttachment, error) {
+// CreateStorageAttachment will associate an instance with a block device in
+// the datastore
+func (ds *Datastore) CreateStorageAttachment(instanceID string, blockID string, ephemeral bool) (types.StorageAttachment, error) {
 	link := attachment{
 		instanceID: instanceID,
 		volumeID:   blockID,
@@ -1498,6 +1500,7 @@ func (ds *Datastore) createStorageAttachment(instanceID string, blockID string) 
 		InstanceID: instanceID,
 		ID:         uuid.Generate().String(),
 		BlockID:    blockID,
+		Ephemeral:  ephemeral,
 	}
 
 	// add it to our links map
@@ -1639,7 +1642,9 @@ func (ds *Datastore) getStorageAttachment(instanceID string, volumeID string) (t
 	return a, nil
 }
 
-func (ds *Datastore) deleteStorageAttachment(ID string) error {
+// DeleteStorageAttachment will delete the attachment with the associated ID
+// from the datastore.
+func (ds *Datastore) DeleteStorageAttachment(ID string) error {
 	ds.attachLock.Lock()
 	a, ok := ds.attachments[ID]
 	if ok {

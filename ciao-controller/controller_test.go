@@ -1084,7 +1084,59 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	return netClient, instances
 }
 
-func TestGetStorage(t *testing.T) {
+func TestGetStorageForVolume(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sourceVolume := addTestBlockDevice(t, tenant.ID)
+	defer ctl.DeleteBlockDevice(sourceVolume.ID)
+
+	// a temporary in memory filesystem?
+	s := &types.StorageResource{
+		ID:         "",
+		Bootable:   true,
+		Persistent: true,
+		SourceType: types.VolumeService,
+		SourceID:   sourceVolume.ID,
+	}
+
+	wl := &types.Workload{
+		ID:      "validID",
+		ImageID: uuid.Generate().String(),
+		Storage: s,
+	}
+
+	pl, err := getStorage(ctl, wl, tenant.ID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pl.ID == "" {
+		t.Errorf("storage ID does not exist")
+	}
+
+	if pl.Bootable != true {
+		t.Errorf("bootable flag not correct")
+	}
+
+	if pl.Ephemeral != false {
+		t.Errorf("ephemeral flag not correct")
+	}
+
+	createdVolume, err := ctl.ds.GetBlockDevice(pl.ID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(createdVolume.Name) == 0 {
+		t.Errorf("block device name not set")
+	}
+}
+
+func TestGetStorageForImage(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
 		t.Fatal(err)
@@ -1113,7 +1165,7 @@ func TestGetStorage(t *testing.T) {
 		Storage: s,
 	}
 
-	pl, err := getStorage(ctl, wl, tenant.ID)
+	pl, err := getStorage(ctl, wl, tenant.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1124,6 +1176,20 @@ func TestGetStorage(t *testing.T) {
 
 	if pl.Bootable != true {
 		t.Errorf("bootable flag not correct")
+	}
+
+	if pl.Ephemeral != true {
+		t.Errorf("ephemeral flag not correct")
+	}
+
+	createdVolume, err := ctl.ds.GetBlockDevice(pl.ID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(createdVolume.Name) == 0 {
+		t.Errorf("block device name not set")
 	}
 }
 
