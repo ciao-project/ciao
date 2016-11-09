@@ -109,6 +109,7 @@ type imageAddCommand struct {
 	protected       bool
 	tags            string
 	file            string
+	template        string
 }
 
 func (cmd *imageAddCommand) usage(...string) {
@@ -120,6 +121,11 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+%s
+`, imageTemplateDesc)
 	os.Exit(2)
 }
 
@@ -136,6 +142,7 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.BoolVar(&cmd.protected, "protected", false, "Prevent an image from being deleted")
 	cmd.Flag.StringVar(&cmd.tags, "tags", "", "Image tags separated by comma")
 	cmd.Flag.StringVar(&cmd.file, "file", "", "Image file to upload")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -183,6 +190,10 @@ func (cmd *imageAddCommand) run(args []string) error {
 		if err != nil {
 			fatalf("Could not retrieve new created image [%s]\n", err)
 		}
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("image-add", cmd.template, image)
 	}
 
 	fmt.Printf("Created image:\n")
