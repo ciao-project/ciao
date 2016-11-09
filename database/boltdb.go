@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package libsnnet
+package database
 
 import (
 	"bytes"
@@ -28,62 +28,26 @@ import (
 	"github.com/golang/glog"
 )
 
-//DbTable interface that needs to be supported
-//for the table to be handled by the database
-type DbTable interface {
-	// Creates the backing map
-	NewTable()
-
-	// Name of the table as stored in the database
-	Name() string
-
-	// Allocates and returns a single value in the table
-	NewElement() interface{}
-
-	// Add an value to the in memory table
-	Add(k string, v interface{}) error
-}
-
-// A TableDBProvider represents a persistent database provider
-// that can be used to store map, arrays or any other type of
-// tables into a database
-type TableDBProvider interface {
-	//Initializes the Database
-	DbInit(dir string, file string) error
-	//Populates the in-memory table from the database
-	DbTableRebuild(table DbTable) error
-	//Closes the database
-	DbClose() error
-	//Creates the tables if the tables do not already exist in the database
-	DbTableInit(tables []string) error
-	//Adds the key value pair to the table
-	DbAdd(table string, key string, value interface{}) error
-	//Adds the key value pair to the table
-	DbDelete(table string, key string) error
-	//Retrives the value corresponding to the key from the table
-	DbGet(table string, key string) (interface{}, error)
-}
-
-type tableBoltDB struct {
+// BoltDB database structure
+type BoltDB struct {
 	Name string
 	DB   *bolt.DB
 }
 
-func newTableBoltDb() *tableBoltDB {
-	return &tableBoltDB{
-		Name: "tableBolt.DB",
+func newBoltDb() *BoltDB {
+	return &BoltDB{
+		Name: "bolt.DB",
 	}
 }
 
-type dbProvider tableBoltDB
-
-//NewTableBoltDBProvider returns a bolt based database that conforms
-//to the tableDBProvider interface
-func NewTableBoltDBProvider() TableDBProvider {
-	return (*dbProvider)(newTableBoltDb())
+//NewBoltDBProvider returns a bolt based database that conforms
+//to the DBProvider interface
+func NewBoltDBProvider() *BoltDB {
+	return newBoltDb()
 }
 
-func (db *dbProvider) DbInit(dbDir string, dbFile string) error {
+// DbInit initialize Bolt database
+func (db *BoltDB) DbInit(dbDir, dbFile string) error {
 
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		return fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
@@ -104,13 +68,15 @@ func (db *dbProvider) DbInit(dbDir string, dbFile string) error {
 	return err
 }
 
-func (db *dbProvider) DbClose() error {
+// DbClose closes Bolt database
+func (db *BoltDB) DbClose() error {
 	return db.DB.Close()
 }
 
-func (db *dbProvider) DbTableRebuild(table DbTable) error {
+// DbTableRebuild builds bolt table into memory
+func (db *BoltDB) DbTableRebuild(table DbTable) error {
 	tables := []string{table.Name()}
-	if err := db.DbTableInit(tables); err != nil {
+	if err := db.DbTablesInit(tables); err != nil {
 		return fmt.Errorf("dbInit failed %v", err)
 	}
 
@@ -135,11 +101,12 @@ func (db *dbProvider) DbTableRebuild(table DbTable) error {
 	return err
 }
 
-func (db *dbProvider) DbTableInit(tables []string) (err error) {
+// DbTablesInit initializes list of tables in Bolt
+func (db *BoltDB) DbTablesInit(tables []string) (err error) {
 
-	glog.Infof("dbInit Tables := %v", tables)
-	for i, v := range tables {
-		glog.Infof("table[%v] := %v, %v", i, v, []byte(v))
+	glog.Info("dbInit Tables")
+	for i, table := range tables {
+		glog.Infof("table[%v] := %v, %v", i, table, []byte(table))
 	}
 
 	err = db.DB.Update(func(tx *bolt.Tx) error {
@@ -159,7 +126,8 @@ func (db *dbProvider) DbTableInit(tables []string) (err error) {
 	return err
 }
 
-func (db *dbProvider) DbAdd(table string, key string, value interface{}) (err error) {
+// DbAdd adds a new element to table in Bolt database
+func (db *BoltDB) DbAdd(table string, key string, value interface{}) (err error) {
 
 	err = db.DB.Update(func(tx *bolt.Tx) error {
 		var v bytes.Buffer
@@ -184,13 +152,18 @@ func (db *dbProvider) DbAdd(table string, key string, value interface{}) (err er
 	return err
 }
 
-func (db *dbProvider) DbDelete(table string, key string) (err error) {
+// DbDelete deletes an element from table in Bolt database
+func (db *BoltDB) DbDelete(table string, key string) (err error) {
 
 	err = db.DB.Update(func(tx *bolt.Tx) error {
-
 		bucket := tx.Bucket([]byte(table))
 		if bucket == nil {
 			return fmt.Errorf("Bucket %v not found", table)
+		}
+
+		data := bucket.Get([]byte(key))
+		if len(data) == 0 {
+			return fmt.Errorf("Key is not found: %v", key)
 		}
 
 		err = bucket.Delete([]byte(key))
@@ -203,28 +176,49 @@ func (db *dbProvider) DbDelete(table string, key string) (err error) {
 	return err
 }
 
-func (db *dbProvider) DbGet(table string, key string) (value interface{}, err error) {
+// DbGet obtains value by key from table
+func (db *BoltDB) DbGet(table string, key string, dbTable DbTable) (interface{}, error) {
 
-	err = db.DB.View(func(tx *bolt.Tx) error {
+	var elem interface{}
 
+	err := db.DB.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(table))
 		if bucket == nil {
 			return fmt.Errorf("Bucket %v not found", table)
 		}
+		elem = dbTable.NewElement()
+		data := bucket.Get([]byte(key))
 
-		val := bucket.Get([]byte(key))
-		if val == nil {
+		if data == nil {
 			return nil
 		}
 
-		v := bytes.NewReader(val)
-		if err := gob.NewDecoder(v).Decode(value); err != nil {
-			glog.Errorf("Decode Error: %v %v %v", table, key, err)
+		vr := bytes.NewReader(data)
+		if err := gob.NewDecoder(vr).Decode(elem); err != nil {
 			return err
 		}
-
 		return nil
 	})
 
-	return value, err
+	return elem, err
+}
+
+// DbGetAll gets all elements from specific table
+func (db *BoltDB) DbGetAll(table string, dbTable DbTable) (elements []interface{}, err error) {
+	err = db.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(table))
+
+		err := b.ForEach(func(key, value []byte) error {
+			vr := bytes.NewReader(value)
+			elem := dbTable.NewElement()
+			if err := gob.NewDecoder(vr).Decode(elem); err != nil {
+				return err
+			}
+			elements = append(elements, elem)
+			return nil
+		})
+		return err
+	})
+
+	return elements, err
 }

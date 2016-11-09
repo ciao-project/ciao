@@ -32,8 +32,14 @@ func (n *Noop) Delete(id string) error {
 	return nil
 }
 
+// Get is the noop image metadata get an image implementation.
+// It drops data.
+func (n *Noop) Get(id string) (Image, error) {
+	return Image{ID: id}, nil
+}
+
 // GetAll is the noop image metadata get all images implementation.
 // It drops data.
 func (n *Noop) GetAll() ([]Image, error) {
-	return nil, nil
+	return []Image{}, nil
 }

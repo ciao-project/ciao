@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/01org/ciao/database"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/libnetwork/drivers/remote/api"
@@ -223,7 +224,7 @@ func (d *DockerNwMap) Add(k string, v interface{}) error {
 // DockerPlugin describes a single instance of a docker plugin
 // In the current design the plugin acts as an IPAM and Network Plugin
 type DockerPlugin struct {
-	TableDBProvider //Database used to persist the Docker to ciao Mapping
+	database.DbProvider //Database used to persist the Docker to ciao Mapping
 	//This is needed as the Docker Daemon and ciao have
 	//different life cycles and UUIDs
 	*mux.Router
@@ -746,7 +747,7 @@ func DockerHandler(d *DockerPlugin,
 //NewDockerPlugin instantiates a new Docker Plugin instance
 func NewDockerPlugin() *DockerPlugin {
 	return &DockerPlugin{
-		TableDBProvider: NewTableBoltDBProvider(),
+		DbProvider: database.NewBoltDBProvider(),
 	}
 }
 

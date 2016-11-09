@@ -47,7 +47,12 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultR
 			return image.DefaultResponse{}, image.ErrBadUUID
 		}
 
-		if _, err := is.ds.GetImage(id); err == nil {
+		img, err := is.ds.GetImage(id)
+		if err != nil {
+			return image.DefaultResponse{}, image.ErrDecodeImage
+		}
+
+		if img != (datastore.Image{}) {
 			return image.DefaultResponse{}, image.ErrAlreadyExists
 		}
 	}
@@ -205,7 +210,7 @@ func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
 // then wrap them in keystone validation. It will then start the https
 // service.
 func Start(config Config) error {
-	is := ImageService{ds: &datastore.ImageCache{}}
+	is := ImageService{ds: &datastore.ImageStore{}}
 	err := is.ds.Init(config.RawDataStore, config.MetaDataStore)
 	if err != nil {
 		return err

@@ -44,5 +44,15 @@ func (p *Posix) Write(ID string, body io.Reader) (int64, error) {
 func (p *Posix) Delete(ID string) error {
 	imageName := path.Join(p.MountPoint, ID)
 
-	return os.Remove(imageName)
+	_, err := os.Stat(imageName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
+		return err
+	}
+
+	err = os.Remove(imageName)
+
+	return err
 }
