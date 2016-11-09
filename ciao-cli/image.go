@@ -32,6 +32,25 @@ import (
 	"github.com/rackspace/gophercloud/pagination"
 )
 
+const imageTemplateDesc = `struct {
+	Name             string   // Image name
+	SizeBytes        int      // Size of image in bytes
+	ID               string   // Image UUID
+	Status           string   // Image status.  Can be queued or active
+	Owner            string   // Tenant that owns the image
+	ContainerFormat  string   // Format of the container, e.g., ovf
+	DiskFormat       string   // Format of the image, e.g., qcow2
+	MinDiskGigabytes int      // Minimum amount of disk space required to boot image
+	MinRAMMegabytes  int      // Minimum amount of RAM required to boot image
+	Checksum         string   // Checksum of image data
+	Protected        bool     // Indicates whether or not an image can be deleted
+	CreatedDate      string   // Image creation date
+	LastUpdate       string   // Timestamp of last update
+	Tags             []string // List of image tags
+	File             string   // Image path
+	Schema           string   // Path to json schema
+}`
+
 type imageDiskFormat string
 
 func (f *imageDiskFormat) Set(value string) error {
@@ -69,6 +88,7 @@ func (f *imageContainerFormat) String() string {
 var imageCommand = &command{
 	SubCommands: map[string]subCommand{
 		"add":      new(imageAddCommand),
+		"show":     new(imageShowCommand),
 		"list":     new(imageListCommand),
 		"upload":   new(imageUploadCommand),
 		"download": new(imageDownloadCommand),
@@ -170,6 +190,58 @@ func (cmd *imageAddCommand) run(args []string) error {
 	return nil
 }
 
+type imageShowCommand struct {
+	Flag     flag.FlagSet
+	image    string
+	template string
+}
+
+func (cmd *imageShowCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] image show
+
+Show images
+`)
+	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on a 
+
+%s
+`, imageTemplateDesc)
+	os.Exit(2)
+}
+
+func (cmd *imageShowCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
+	cmd.Flag.StringVar(&cmd.image, "image", "", "Image UUID")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *imageShowCommand) run(args []string) error {
+	if cmd.image == "" {
+		return errors.New("Missing required -image parameter")
+	}
+
+	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
+	if err != nil {
+		fatalf("Could not get Image service client [%s]\n", err)
+	}
+
+	i, err := images.Get(client, cmd.image).Extract()
+	if err != nil {
+		fatalf("Could not retrieve image %s [%s]\n", cmd.image, err)
+	}
+
+	if cmd.template != "" {
+		return outputToTemplate("image-show", cmd.template, i)
+	}
+
+	dumpImage(i)
+
+	return nil
+}
+
 type imageListCommand struct {
 	Flag     flag.FlagSet
 	template string
@@ -184,29 +256,12 @@ List images
 	fmt.Fprintf(os.Stderr, `
 The template passed to the -f option operates on a 
 
-[]struct {
-	Name             string   // Image name
-	SizeBytes        int      // Size of image in bytes
-	ID               string   // Image UUID
-	Status           string   // Image status.  Can be queued or active
-	Owner            string   // Tenant that owns the image
-	ContainerFormat  string   // Format of the container, e.g., ovf
-	DiskFormat       string   // Format of the image, e.g., qcow2
-	MinDiskGigabytes int      // Minimum amount of disk space required to boot image
-	MinRAMMegabytes  int      // Minimum amount of RAM required to boot image
-	Checksum         string   // Checksum of image data
-	Protected        bool     // Indicates whether or not an image can be deleted
-	CreatedDate      string   // Image creation date
-	LastUpdate       string   // Timestamp of last update
-	Tags             []string // List of image tags
-	File             string   // Image path
-	Schema           string   // Path to json schema
-}
+[]%s
 
 As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
-`)
+`, imageTemplateDesc)
 	os.Exit(2)
 }
 

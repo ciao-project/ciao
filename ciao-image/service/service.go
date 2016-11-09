@@ -149,12 +149,16 @@ func (is ImageService) DeleteImage(imageID string) (image.NoContentImageResponse
 func (is ImageService) GetImage(imageID string) (image.DefaultResponse, error) {
 	var response image.DefaultResponse
 
-	image, err := is.ds.GetImage(imageID)
+	img, err := is.ds.GetImage(imageID)
 	if err != nil {
 		return response, err
 	}
 
-	response, _ = createImageResponse(image)
+	if (img == datastore.Image{}) {
+		return response, image.ErrNoImage
+	}
+
+	response, _ = createImageResponse(img)
 	return response, nil
 }
 
