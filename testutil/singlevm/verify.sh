@@ -126,6 +126,33 @@ else
 	echo "Container connectivity verified"
 fi
 
+#Clear out all prior events
+"$ciao_gobin"/ciao-cli event delete
+
+#Wait for the event count to drop to 0
+retry=0
+ciao_events=0
+
+until [ $retry -ge 6 ]
+do
+	ciao_events=`"$ciao_gobin"/ciao-cli event list | grep "0 Ciao event" | wc -l`
+
+	if [ $ciao_events -eq 1 ]
+	then
+		break
+	fi
+
+	let retry=retry+1
+	sleep 1
+done
+
+if [ $ciao_events -ne 1 ]
+then
+	echo "FATAL ERROR: ciao events not deleted properly"
+	"$ciao_gobin"/ciao-cli event list
+	exit 1
+fi
+
 #Now delete all instances
 "$ciao_gobin"/ciao-cli instance delete --all
 
@@ -136,4 +163,63 @@ then
 fi
 
 "$ciao_gobin"/ciao-cli instance list
-"$ciao_gobin"/ciao-cli instance delete --all
+
+#Wait for all the instance deletions to be reported back
+retry=0
+ciao_events=0
+
+until [ $retry -ge 6 ]
+do
+	ciao_events=`"$ciao_gobin"/ciao-cli event list | grep "4 Ciao event(s)" | wc -l`
+
+	if [ $ciao_events -eq 1 ]
+	then
+		break
+	fi
+
+	let retry=retry+1
+	sleep 1
+done
+
+if [ $ciao_events -ne 1 ]
+then
+	echo "FATAL ERROR: ciao instances not deleted properly"
+	"$ciao_gobin"/ciao-cli event list
+	exit 1
+fi
+
+#Wait around a bit as instance delete is asynchronous
+retry=0
+ciao_networks=0
+until [ $retry -ge 6 ]
+do
+	#Verify that there are no ciao related artifacts left behind
+	ciao_networks=`sudo docker network ls --filter driver=ciao -q | wc -l`
+
+	if [ $ciao_networks -eq 0 ]
+	then
+		break
+	fi
+	let retry=retry+1
+	sleep 1
+done
+
+if [ $ciao_networks -ne 0 ]
+then
+	echo "FATAL ERROR: ciao docker networks not cleaned up"
+	sudo docker network ls --filter driver=ciao
+	exit 1
+fi
+
+
+#The only ciao interfaces left behind should be CNCI VNICs
+#Once we can delete tenants we should not even have them around
+cnci_vnics=`ip -d link | grep alias | grep cnci | wc -l`
+ciao_vnics=`ip -d link | grep alias | wc -l`
+
+if [ $cnci_vnics -ne $ciao_vnics ]
+then
+	echo "FATAL ERROR: ciao network interfaces not cleaned up"
+	ip -d link | grep alias
+	exit 1
+fi
