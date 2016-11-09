@@ -149,6 +149,9 @@ var (
 	// ErrAlreadyExists is returned when an attempt is made to add
 	// an image with a UUID that already exists.
 	ErrAlreadyExists = errors.New("Already Exists")
+
+	// ErrDecodeImage is returned when there was an error on image decoding
+	ErrDecodeImage = errors.New("Error on Image decode")
 )
 
 // CreateImageRequest contains information for a create image request.

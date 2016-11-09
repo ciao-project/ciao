@@ -47,7 +47,12 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultR
 			return image.DefaultResponse{}, image.ErrBadUUID
 		}
 
-		if _, err := is.ds.GetImage(id); err == nil {
+		img, err := is.ds.GetImage(id)
+		if err != nil {
+			return image.DefaultResponse{}, image.ErrDecodeImage
+		}
+
+		if img != (datastore.Image{}) {
 			return image.DefaultResponse{}, image.ErrAlreadyExists
 		}
 	}
