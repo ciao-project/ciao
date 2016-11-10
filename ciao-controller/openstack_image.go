@@ -12,27 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package service
+package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"time"
 
-	"github.com/01org/ciao/ciao-image/datastore"
-	"github.com/01org/ciao/openstack/identity"
+	imageDatastore "github.com/01org/ciao/ciao-image/datastore"
+	"github.com/01org/ciao/database"
+	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/openstack/image"
 	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
 )
 
 // ImageService is the context for the image service implementation.
 type ImageService struct {
-	ds datastore.DataStore
+	ds imageDatastore.DataStore
 }
 
 // CreateImage will create an empty image in the image datastore.
@@ -52,14 +52,14 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultR
 			return image.DefaultResponse{}, image.ErrDecodeImage
 		}
 
-		if img != (datastore.Image{}) {
+		if img != (imageDatastore.Image{}) {
 			return image.DefaultResponse{}, image.ErrAlreadyExists
 		}
 	}
 
-	i := datastore.Image{
+	i := imageDatastore.Image{
 		ID:         id,
-		State:      datastore.Created,
+		State:      imageDatastore.Created,
 		Name:       req.Name,
 		CreateTime: time.Now(),
 	}
@@ -85,7 +85,7 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultR
 	}, nil
 }
 
-func createImageResponse(img datastore.Image) (image.DefaultResponse, error) {
+func createImageResponse(img imageDatastore.Image) (image.DefaultResponse, error) {
 	return image.DefaultResponse{
 		Status:     img.State.Status(),
 		CreatedAt:  img.CreateTime,
@@ -154,7 +154,7 @@ func (is ImageService) GetImage(imageID string) (image.DefaultResponse, error) {
 		return response, err
 	}
 
-	if (img == datastore.Image{}) {
+	if (img == imageDatastore.Image{}) {
 		return response, image.ErrNoImage
 	}
 
@@ -162,8 +162,8 @@ func (is ImageService) GetImage(imageID string) (image.DefaultResponse, error) {
 	return response, nil
 }
 
-// Config is required to setup the API context for the image service.
-type Config struct {
+// ImageConfig is required to setup the API context for the image service.
+type ImageConfig struct {
 	// Port represents the http port that should be used for the service.
 	Port int
 
@@ -174,48 +174,53 @@ type Config struct {
 	HTTPSKey string
 
 	// DataStore is an interface to a persistent datastore for the image raw data.
-	RawDataStore datastore.RawDataStore
+	RawDataStore imageDatastore.RawDataStore
 
 	// MetaDataStore is an interface to a persistent datastore for the image meta data.
-	MetaDataStore datastore.MetaDataStore
-
-	// IdentityEndpoint is the location of the keystone service.
-	IdentityEndpoint string
-
-	// Username is the service username for the image service in keystone.
-	Username string
-
-	// Password is the password for the image service user in keystone.
-	Password string
+	MetaDataStore imageDatastore.MetaDataStore
 }
 
-func getIdentityClient(config Config) (*gophercloud.ServiceClient, error) {
-	opt := gophercloud.AuthOptions{
-		IdentityEndpoint: config.IdentityEndpoint + "/v3/",
-		Username:         config.Username,
-		Password:         config.Password,
-		DomainID:         "default",
-		AllowReauth:      true,
-	}
-	provider, err := openstack.AuthenticatedClient(opt)
-	if err != nil {
-		return nil, err
-	}
-
-	v3client := openstack.NewIdentityV3(provider)
-	if v3client == nil {
-		return nil, errors.New("Unable to get keystone V3 client")
-	}
-
-	return v3client, nil
-}
-
-// Start will get the Image API endpoints from the OpenStack image api,
+// startImageService will get the Image API endpoints from the OpenStack image api,
 // then wrap them in keystone validation. It will then start the https
 // service.
-func Start(config Config) error {
-	is := ImageService{ds: &datastore.ImageStore{}}
-	err := is.ds.Init(config.RawDataStore, config.MetaDataStore)
+func (c *controller) startImageService() error {
+
+	dbDir := filepath.Dir(*imageDatastoreLocation)
+	dbFile := filepath.Base(*imageDatastoreLocation)
+	glog.Infof("Image Datastore Location: %v", *imageDatastoreLocation)
+
+	metaDs := &imageDatastore.MetaDs{
+		DbProvider: database.NewBoltDBProvider(),
+		DbDir:      dbDir,
+		DbFile:     dbFile,
+	}
+	metaDsTables := []string{"images"}
+
+	err := metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
+	if err != nil {
+		glog.Fatalf("Error on DB Initialization:%v ", err)
+	}
+	defer metaDs.DbClose()
+
+	err = metaDs.DbTablesInit(metaDsTables)
+	if err != nil {
+		glog.Fatalf("Error on DB Tables Initialization:%v ", err)
+	}
+
+	rawDs := &imageDatastore.Posix{
+		MountPoint: c.image.MountPoint,
+	}
+
+	config := ImageConfig{
+		Port:          image.APIPort,
+		HTTPSCACert:   httpsCAcert,
+		HTTPSKey:      httpsKey,
+		RawDataStore:  rawDs,
+		MetaDataStore: metaDs,
+	}
+
+	is := ImageService{ds: &imageDatastore.ImageStore{}}
+	err = is.ds.Init(config.RawDataStore, config.MetaDataStore)
 	if err != nil {
 		return err
 	}
@@ -229,24 +234,19 @@ func Start(config Config) error {
 	r := image.Routes(apiConfig)
 
 	// setup identity for these routes.
-	validServices := []identity.ValidService{
+	validServices := []osIdentity.ValidService{
 		{ServiceType: "image", ServiceName: "ciao"},
 		{ServiceType: "image", ServiceName: "glance"},
 	}
 
-	validAdmins := []identity.ValidAdmin{
+	validAdmins := []osIdentity.ValidAdmin{
 		{Project: "service", Role: "admin"},
 		{Project: "admin", Role: "admin"},
 	}
 
-	client, err := getIdentityClient(config)
-	if err != nil {
-		return err
-	}
-
 	err = r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		h := identity.Handler{
-			Client:        client,
+		h := osIdentity.Handler{
+			Client:        c.id.scV3,
 			Next:          route.GetHandler(),
 			ValidServices: validServices,
 			ValidAdmins:   validAdmins,
