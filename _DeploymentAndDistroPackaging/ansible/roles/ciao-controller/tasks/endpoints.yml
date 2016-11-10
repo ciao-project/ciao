@@ -38,9 +38,9 @@
     endpoint_list:
       - url: "{{ item.public_url }}"
         interface: "public"
-      - url: "{{ item.internal_url }}"
+      - url: "{{ item.internal_url | default(item.public_url) }}"
         interface: "internal"
-      - url: "{{ item.admin_url }}"
+      - url: "{{ item.admin_url | default(item.public_url) }}"
         interface: "admin"
     endpoint: "https://{{ keystone_fqdn }}:35357/v3"
     insecure: yes
