@@ -37,7 +37,7 @@ func TestCreateBlockDevice(t *testing.T) {
 	}
 	defer os.Remove(path)
 
-	device, err := driver.CreateBlockDevice(path, 0)
+	device, err := driver.CreateBlockDevice("", path, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestCopyBlockDevice(t *testing.T) {
 	}
 	defer os.Remove(path)
 
-	device, err := driver.CreateBlockDevice(path, 0)
+	device, err := driver.CreateBlockDevice("", path, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

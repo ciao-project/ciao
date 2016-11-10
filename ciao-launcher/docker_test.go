@@ -55,7 +55,7 @@ func (s dockerTestStorage) MapVolumeToNode(volumeUUID string) (string, error) {
 	return "", nil
 }
 
-func (s dockerTestStorage) CreateBlockDevice(image string, sizeGB int) (storage.BlockDevice, error) {
+func (s dockerTestStorage) CreateBlockDevice(volumeUUID string, image string, sizeGB int) (storage.BlockDevice, error) {
 	return storage.BlockDevice{}, nil
 }
 

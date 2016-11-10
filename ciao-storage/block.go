@@ -25,7 +25,7 @@ var (
 
 // BlockDriver is the interface that all block drivers must implement.
 type BlockDriver interface {
-	CreateBlockDevice(image string, sizeGB int) (BlockDevice, error)
+	CreateBlockDevice(volumeUUID string, image string, sizeGB int) (BlockDevice, error)
 	DeleteBlockDevice(string) error
 	MapVolumeToNode(volumeUUID string) (string, error)
 	UnmapVolumeFromNode(volumeUUID string) error
