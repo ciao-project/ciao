@@ -6,7 +6,8 @@ the following sub folders.
 
 ```
 .
-├── base      - Basic tests that verify that the cluster is functional
+├── base       - Basic tests that verify that the cluster is functional
+├── image_bat  - BAT tests for the image service
 ```
 
 The tests are implemented using the go testing framework.  This is convenient
