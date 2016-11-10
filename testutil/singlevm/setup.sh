@@ -2,10 +2,15 @@
 ciao_host=$(hostname)
 ciao_interface=ciao_eth
 ciao_ip=198.51.100.1
-ciao_subnet=198.51.100.1/24
+ciao_subnet=${ciao_ip}/24
 ciao_brdcast=198.51.100.255
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
+ciao_controller_key=controller_key.pem
+ciao_controller_cert=controller_cert.pem
+ciao_image_key=ciao-image-key.pem
+ciao_image_cert=ciao-image-cacert.pem
+ciao_pki_path=/etc/pki/ciao
 export no_proxy=$no_proxy,$ciao_ip,$ciao_host
 
 ciao_email="ciao-devel@lists.clearlinux.org"
@@ -20,6 +25,27 @@ ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
+conf_file=configuration.yaml
+ciao_username=csr
+ciao_password=hello
+ciao_admin_username=admin
+ciao_admin_password=giveciaoatry
+ciao_demo_username=demo
+ciao_demo_password=hello
+
+# Variables for ciao binaries
+export CIAO_CONTROLLER="$ciao_host"
+export CIAO_USERNAME="$ciao_username"
+export CIAO_PASSWORD="$ciao_password"
+export CIAO_ADMIN_USERNAME="$ciao_admin_username"
+export CIAO_ADMIN_PASSWORD="$ciao_admin_password"
+export CIAO_CA_CERT_FILE="$ciao_pki_path"/"$ciao_controller_cert"
+
+# Save these vars for later use, too
+> "$ciao_env" # Clean out previous data
+set | grep ^CIAO_ | while read VAR; do
+    echo export "$VAR" >> "$ciao_env"
+done
 
 echo "Subnet =" $ciao_subnet
 
@@ -79,6 +105,31 @@ done
 
 set -o nounset
 
+echo "Generating configuration file $conf_file"
+(
+cat <<-EOF
+configure:
+  scheduler:
+    storage_uri: /etc/ciao/configuration.yaml
+  storage:
+    ceph_id: ciao
+  controller:
+    compute_ca: ${ciao_pki_path}/${ciao_controller_cert}
+    compute_cert: ${ciao_pki_path}/${ciao_controller_key}
+    identity_user: ${ciao_username}
+    identity_password: ${ciao_password}
+  image_service:
+    url: http://glance.example.com
+  launcher:
+    compute_net: [${ciao_subnet}]
+    mgmt_net: [${ciao_subnet}]
+    disk_limit: false
+    mem_limit: false
+  identity_service:
+    url: http://keystone.example.com
+EOF
+) > $conf_file
+
 sudo mkdir -p /var/lib/ciao/images
 if [ ! -d /var/lib/ciao/images ]
 then
@@ -87,10 +138,10 @@ then
 
 fi
 
-sudo mkdir -p /etc/pki/ciao
-if [ ! -d /etc/pki/ciao ]
+sudo mkdir -p ${ciao_pki_path}
+if [ ! -d ${ciao_pki_path} ]
 then
-	echo "FATAL ERROR: Unable to create /etc/pki/ciao"
+	echo "FATAL ERROR: Unable to create ${ciao_pki_path}"
 	exit 1
 fi
 
@@ -100,7 +151,7 @@ then
 	echo "FATAL ERROR: Unable to create /etc/ciao"
 	exit 1
 fi
-sudo cp -f "$ciao_scripts"/configuration.yaml /etc/ciao
+sudo install -m 0644 $conf_file /etc/ciao
 
 #Stop any running agents and CNCIs
 sudo killall ciao-scheduler
@@ -142,21 +193,26 @@ then
 fi
 
 #Generate Certificates
-"$GOPATH"/bin/ciao-cert -server -role scheduler -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+"$GOPATH"/bin/ciao-cert -server -role scheduler -email="$ciao_email" \
+    -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role cnciagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+"$GOPATH"/bin/ciao-cert -role cnciagent -server-cert "$ciao_cert" \
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role controller -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+"$GOPATH"/bin/ciao-cert -role controller -server-cert "$ciao_cert" \
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+"$GOPATH"/bin/ciao-cert -role agent,netagent -server-cert "$ciao_cert" \
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout ${ciao_controller_key} -out ${ciao_controller_cert} -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
 
 #Copy the certs
-sudo cp -f controller_key.pem /etc/pki/ciao
-sudo cp -f controller_cert.pem /etc/pki/ciao
-sudo ln -s /etc/pki/ciao/controller_key.pem /etc/pki/ciao/ciao-image-key.pem
-sudo ln -s /etc/pki/ciao/controller_cert.pem /etc/pki/ciao/ciao-image-cacert.pem
+sudo cp -f ${ciao_controller_key} ${ciao_pki_path}
+sudo cp -f ${ciao_controller_cert} ${ciao_pki_path}
+sudo ln -s ${ciao_pki_path}/${ciao_controller_key} ${ciao_pki_path}/${ciao_image_key}
+sudo ln -s ${ciao_pki_path}/${ciao_controller_cert} ${ciao_pki_path}/${ciao_image_cert}
 
 
 #Copy the configuration
@@ -284,12 +340,6 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-echo "export CIAO_CONTROLLER=""$ciao_host" > "$ciao_env"
-echo "export CIAO_USERNAME=admin" >> "$ciao_env"
-echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
-echo "export CIAO_ADMIN_USERNAME=admin" >> "$ciao_env"
-echo "export CIAO_ADMIN_PASSWORD=giveciaoatry" >> "$ciao_env"
-echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
 identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
 echo "$identity" >> "$ciao_env"
@@ -301,21 +351,27 @@ identity_url=$(echo $identity | sed 's/^.*=//')
 
 sleep 1
 
-. ~/local/demo.sh
+. $ciao_env
 
 echo ""
 echo "Uploading test images to image service"
 echo "---------------------------------------------------------------------------------------"
 if [ -f "$ciao_cnci_image".qcow ]; then
-    ciao-cli image add --file "$ciao_cnci_image".qcow --name "ciao CNCI image" --id 4e16e743-265a-4bf2-9fd1-57ada0b28904
+    ciao-cli \
+        image add --file "$ciao_cnci_image".qcow \
+        --name "ciao CNCI image" --id 4e16e743-265a-4bf2-9fd1-57ada0b28904
 fi
 
 if [ -f clear-"${LATEST}"-cloud.img ]; then
-    ciao-cli image add --file clear-"${LATEST}"-cloud.img --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169
+    ciao-cli \
+        image add --file clear-"${LATEST}"-cloud.img \
+        --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169
 fi
 
 if [ -f $fedora_cloud_image ]; then
-    ciao-cli image add --file $fedora_cloud_image --name "Fedorda Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799
+    ciao-cli \
+        image add --file $fedora_cloud_image \
+        --name "Fedora Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799
 fi
 
 echo "---------------------------------------------------------------------------------------"
