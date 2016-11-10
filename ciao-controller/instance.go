@@ -323,20 +323,19 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		// set the hostname and uuid for userdata
 		userData.UUID = instanceID
 		userData.Hostname = instanceID
-
-		// handle storage resources
-		if wl.Storage != nil {
-			storage, err = getStorage(ctl, wl, tenantID, instanceID)
-			if err != nil {
-				return config, err
-			}
-		}
 	} else {
 		networking.VnicMAC = tenant.CNCIMAC
 
 		// set the hostname and uuid for userdata
 		userData.UUID = instanceID
 		userData.Hostname = "cnci-" + tenantID
+	}
+	// handle storage resources
+	if wl.Storage != nil {
+		storage, err = getStorage(ctl, wl, tenantID, instanceID)
+		if err != nil {
+			return config, err
+		}
 	}
 
 	// hardcode persistence until changes can be made to workload
