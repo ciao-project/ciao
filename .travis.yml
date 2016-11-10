@@ -65,6 +65,7 @@ script:
    - export GOROOT=`go env GOROOT` && export SNNET_ENV=198.51.100.0/24 && sudo -E PATH=$PATH:$GOROOT/bin $GOPATH/bin/test-cases -v -timeout 9 -short -tags travis -coverprofile /tmp/cover.out -append-profile github.com/01org/ciao/networking/libsnnet
    # API Documentation is automated by swagger, every PR will verify the documentation can be generated
    # verify ciao-controller api documentation can be generated with swagger
+   - go get golang.org/x/sys/unix
    - go get github.com/yvasiyarov/swagger
    - $GOPATH/bin/swagger  -apiPackage=github.com/01org/ciao/ciao-controller -mainApiFile=github.com/01org/ciao/ciao-controller/main.go -format=markdown -contentsTable=false -models=false -vendoringPath $HOME/gopath/src/github.com/01org/ciao/vendor
    # Test ansible playbooks
