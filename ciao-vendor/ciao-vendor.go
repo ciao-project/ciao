@@ -178,12 +178,12 @@ func checkWD() (string, string, error) {
 	pths := strings.Split(gopath, ":")
 
 	for _, p := range pths {
-		if path.Join(p, "src/github.com/01org/ciao") == cwd {
-			return cwd, gopath, nil
+		if strings.HasPrefix(cwd, path.Join(p, "src")) {
+			return cwd, p, nil
 		}
 	}
 
-	return "", "", fmt.Errorf("ciao-vendor must be run from $GOPATH/src/01org/ciao")
+	return "", "", fmt.Errorf("ciao-vendor must be run from $GOPATH/src/path/to/project")
 }
 
 func copyRepos(cwd, sourceRoot string, subPackages map[string][]*subPackage) error {
@@ -509,11 +509,11 @@ func usedBy(name string, packages piList, depsMap map[string][]string) string {
 		}
 	}
 
-	// BUG(markus): We don't report when a depdenency is used by ciao if
-	// it is also used by a depdenency
+	// BUG(markus): We don't report when a dependency is used by ciao if
+	// it is also used by a dependency
 
 	if users.Len() == 0 {
-		return "ciao"
+		return "project"
 	}
 
 	return users.String()[1:]
@@ -608,7 +608,7 @@ func checkKnown(missing []string, deps piList) bool {
 	fmt.Println("All Dependencies Known: [FAIL]")
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
-	fmt.Fprintln(w, "Package\tUsed By")
+	fmt.Fprintln(w, "Missing Package\tUsed By")
 	for _, d := range missing {
 		fmt.Fprintf(w, "%s\t%s\n", d, clientMap[d])
 	}
@@ -1057,7 +1057,7 @@ func runCommand(cwd, sourceRoot string, args []string) error {
 }
 
 func readRepos(projectRoot string) error {
-	packageFile := path.Join(projectRoot, "ciao-vendor", "packages.json")
+	packageFile := path.Join(projectRoot, "packages.json")
 	d, err := ioutil.ReadFile(packageFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -1075,7 +1075,7 @@ func readRepos(projectRoot string) error {
 }
 
 func writeRepos(projectRoot string) error {
-	packageFile := path.Join(projectRoot, "ciao-vendor", "packages.json")
+	packageFile := path.Join(projectRoot, "packages.json")
 
 	d, err := json.MarshalIndent(&repos, "", "\t")
 	if err != nil {
