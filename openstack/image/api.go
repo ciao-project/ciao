@@ -155,7 +155,7 @@ var (
 )
 
 // CreateImageRequest contains information for a create image request.
-// http://developer.openstack.org/api-ref-image-v2.html#createImage-v2
+// http://developer.openstack.org/api-ref/image/v2/index.html#create-an-image
 type CreateImageRequest struct {
 	Name            string          `json:"name,omitempty"`
 	ID              string          `json:"id,omitempty"`
@@ -170,7 +170,7 @@ type CreateImageRequest struct {
 }
 
 // DefaultResponse contains information about an image
-// http://developer.openstack.org/api-ref-image-v2.html#createImage-v2
+// http://developer.openstack.org/api-ref/image/v2/index.html#create-an-image
 type DefaultResponse struct {
 	Status          Status           `json:"status"`
 	ContainerFormat *ContainerFormat `json:"container_format"`
@@ -196,7 +196,7 @@ type DefaultResponse struct {
 }
 
 // ListImagesResponse contains the list of all images that have been created.
-// http://developer.openstack.org/api-ref-image-v2.html#listImages-v2
+// http://developer.openstack.org/api-ref/image/v2/index.html#show-images
 type ListImagesResponse struct {
 	Images []DefaultResponse `json:"images"`
 	Schema string            `json:"schema"`
@@ -205,7 +205,7 @@ type ListImagesResponse struct {
 
 // NoContentImageResponse contains the UUID of the image which content
 // got uploaded or deleted
-// http://developer.openstack.org/api-ref-image-v2.html#storeImageFile-v2
+// http://developer.openstack.org/api-ref/image/v2/index.html#upload-binary-image-data
 type NoContentImageResponse struct {
 	ImageID string `json:"image_id"`
 }
