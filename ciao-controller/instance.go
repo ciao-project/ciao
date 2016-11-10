@@ -188,14 +188,9 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 	// ID of source is the image id.
 	switch s.SourceType {
 	case types.ImageService:
-		path, err := c.image.GetImagePath(s.SourceID)
+		device, err := c.CreateBlockDeviceFromSnapshot(s.SourceID, "ciao-image")
 		if err != nil {
-			// this image doesn't exist
-			return payloads.StorageResources{}, err
-		}
-
-		device, err := c.CreateBlockDevice("", path, s.Size)
-		if err != nil {
+			glog.Errorf("Unable to get block device for image: %v", err)
 			return payloads.StorageResources{}, err
 		}
 
