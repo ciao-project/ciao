@@ -44,6 +44,7 @@ const imageTemplateDesc = `struct {
 	MinRAMMegabytes  int      // Minimum amount of RAM required to boot image
 	Checksum         string   // Checksum of image data
 	Protected        bool     // Indicates whether or not an image can be deleted
+	Visibility       string   // Indicates whether the image is public or private
 	CreatedDate      string   // Image creation date
 	LastUpdate       string   // Timestamp of last update
 	Tags             []string // List of image tags
