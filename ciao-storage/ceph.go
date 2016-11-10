@@ -63,6 +63,42 @@ func (d CephDriver) CreateBlockDevice(volumeUUID string, imagePath string, size 
 	return BlockDevice{ID: volumeUUID}, nil
 }
 
+// CreateBlockDeviceFromSnapshot will create a block device derived from the previously created snapshot.
+func (d CephDriver) CreateBlockDeviceFromSnapshot(volumeUUID string, snapshotID string) (BlockDevice, error) {
+	ID := uuid.Generate().String()
+
+	var cmd *exec.Cmd
+
+	cmd = exec.Command("rbd", "--id", d.ID, "clone", volumeUUID+"@"+snapshotID, ID)
+
+	err := cmd.Run()
+	if err != nil {
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	return BlockDevice{ID: ID}, nil
+}
+
+// CreateBlockDeviceSnapshot creates and protects the snapshot with the provided name
+func (d CephDriver) CreateBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
+	var cmd *exec.Cmd
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "create", volumeUUID+"@"+snapshotID)
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "protect", volumeUUID+"@"+snapshotID)
+
+	err = cmd.Run()
+	if err != nil {
+		d.DeleteBlockDevice(volumeUUID)
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+	return nil
+}
+
 // CopyBlockDevice will copy an existing volume
 func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 	ID := uuid.Generate().String()
@@ -83,6 +119,24 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 func (d CephDriver) DeleteBlockDevice(volumeUUID string) error {
 	cmd := exec.Command("rbd", "--id", d.ID, "rm", volumeUUID)
 	return cmd.Run()
+}
+
+// DeleteBlockDeviceSnapshot unprotects and deletes the snapshot with the provided name
+func (d CephDriver) DeleteBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
+	var cmd *exec.Cmd
+
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "unprotect", volumeUUID+"@"+snapshotID)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "rm", volumeUUID+"@"+snapshotID)
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+	return nil
 }
 
 func (d CephDriver) getCredentials() []string {

@@ -59,7 +59,19 @@ func (s dockerTestStorage) CreateBlockDevice(volumeUUID string, image string, si
 	return storage.BlockDevice{}, nil
 }
 
+func (s dockerTestStorage) CreateBlockDeviceFromSnapshot(volumeUUID string, snapshotID string) (storage.BlockDevice, error) {
+	return storage.BlockDevice{}, nil
+}
+
+func (s dockerTestStorage) CreateBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
+	return nil
+}
+
 func (s dockerTestStorage) DeleteBlockDevice(string) error {
+	return nil
+}
+
+func (s dockerTestStorage) DeleteBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
 	return nil
 }
 
