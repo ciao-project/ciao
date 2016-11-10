@@ -497,7 +497,7 @@ func TestDetachVolume(t *testing.T) {
 }
 
 func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
-	bd, err := ctl.CreateBlockDevice(nil, 0)
+	bd, err := ctl.CreateBlockDevice("", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

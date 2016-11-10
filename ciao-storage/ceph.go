@@ -32,7 +32,7 @@ type CephDriver struct {
 }
 
 // CreateBlockDevice will create a rbd image in the ceph cluster.
-func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice, error) {
+func (d CephDriver) CreateBlockDevice(imagePath string, size int) (BlockDevice, error) {
 	// generate a UUID to use for this image.
 	ID := uuid.Generate().String()
 
@@ -41,9 +41,9 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 	// imageFeatures holds the image features to use when creating a ceph rbd image format 2
 	// Currently the kernel rdb client only supports layering but in the future more feaures
 	// should be added as they are enabled in the kernel.
-	if imagePath != nil {
+	if imagePath != "" {
 		rbdStr := fmt.Sprintf("rbd:rbd/%s:id=%s", ID, d.ID)
-		cmd = exec.Command("qemu-img", "convert", "-O", "rbd", *imagePath, rbdStr)
+		cmd = exec.Command("qemu-img", "convert", "-O", "rbd", imagePath, rbdStr)
 	} else {
 		// create an empty volume
 		cmd = exec.Command("rbd", "--id", d.ID, "--image-feature", "layering", "create", "--size", strconv.Itoa(size)+"G", ID)

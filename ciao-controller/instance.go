@@ -194,7 +194,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 			return payloads.StorageResources{}, err
 		}
 
-		device, err := c.CreateBlockDevice(&path, s.Size)
+		device, err := c.CreateBlockDevice(path, s.Size)
 		if err != nil {
 			return payloads.StorageResources{}, err
 		}
@@ -241,7 +241,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable}, nil
 
 	case types.Empty:
-		device, err := c.CreateBlockDevice(nil, s.Size)
+		device, err := c.CreateBlockDevice("", s.Size)
 		if err != nil {
 			return payloads.StorageResources{}, err
 		}
