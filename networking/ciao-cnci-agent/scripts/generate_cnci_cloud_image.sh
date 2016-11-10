@@ -64,21 +64,13 @@ fi
 echo -e "\nMounting image: $image"
 tmpdir=$(mktemp -d)
 
-#it can take some time for the device to get created
-retry=0
-loop=''
-until [ $retry -ge 3 ]
-do
-    if [ "$loop" == "" ]; then
-	loop=`sudo losetup -f --show -P $image`
-    fi
-    sudo mount ${loop}p$partition "$tmpdir" && break
-    let retry=retry+1
-    echo "Mount failed, retrying $retry"
-done
+loop=`sudo losetup -f --show -P $image`
+sudo udevadm settle
+sudo mount ${loop}p$partition "$tmpdir"
 
-if [ $retry -ge 3 ]
-then
+# simplistic sanity check...most any linux image rootfs successfully mounted
+# will have a /usr directory
+if [ ! -e $tmpdir/usr ]; then
 	echo "Unable to mount CNCI Image"
 	return 1
 fi
