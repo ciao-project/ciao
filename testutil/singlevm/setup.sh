@@ -307,15 +307,15 @@ echo ""
 echo "Uploading test images to image service"
 echo "---------------------------------------------------------------------------------------"
 if [ -f "$ciao_cnci_image".qcow ]; then
-    ciao-cli image add --file "$ciao_cnci_image".qcow --name "ciao CNCI image" --id 4e16e743-265a-4bf2-9fd1-57ada0b28904
+    "$ciao_gobin"/ciao-cli image add --file "$ciao_cnci_image".qcow --name "ciao CNCI image" --id 4e16e743-265a-4bf2-9fd1-57ada0b28904
 fi
 
 if [ -f clear-"${LATEST}"-cloud.img ]; then
-    ciao-cli image add --file clear-"${LATEST}"-cloud.img --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169
+    "$ciao_gobin"/ciao-cli image add --file clear-"${LATEST}"-cloud.img --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169
 fi
 
 if [ -f $fedora_cloud_image ]; then
-    ciao-cli image add --file $fedora_cloud_image --name "Fedorda Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799
+    "$ciao_gobin"/ciao-cli image add --file $fedora_cloud_image --name "Fedorda Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799
 fi
 
 echo "---------------------------------------------------------------------------------------"
