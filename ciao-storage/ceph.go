@@ -32,10 +32,7 @@ type CephDriver struct {
 }
 
 // CreateBlockDevice will create a rbd image in the ceph cluster.
-func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice, error) {
-	// generate a UUID to use for this image.
-	ID := uuid.Generate().String()
-
+func (d CephDriver) CreateBlockDevice(ID string, imagePath *string, size int) (BlockDevice, error) {
 	var cmd *exec.Cmd
 
 	// imageFeatures holds the image features to use when creating a ceph rbd image format 2
@@ -51,7 +48,7 @@ func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice,
 
 	err := cmd.Run()
 	if err != nil {
-		return BlockDevice{}, err
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
 	}
 
 	return BlockDevice{ID: ID}, nil
@@ -67,10 +64,45 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return BlockDevice{}, err
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
 	}
 
 	return BlockDevice{ID: ID}, nil
+}
+
+// CreateBlockDeviceFromSnapshot will create a block device derived from the previously created snapshot.
+func (d CephDriver) CreateBlockDeviceFromSnapshot(volumeUUID string, snapshotID string) (BlockDevice, error) {
+	ID := uuid.Generate().String()
+
+	var cmd *exec.Cmd
+
+	cmd = exec.Command("rbd", "--id", d.ID, "clone", volumeUUID+"@"+snapshotID, ID)
+
+	err := cmd.Run()
+	if err != nil {
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	return BlockDevice{ID: ID}, nil
+}
+
+// CreateBlockDeviceSnapshot creates and protects the snapshot with the provided name
+func (d CephDriver) CreateBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
+	var cmd *exec.Cmd
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "create", volumeUUID+"@"+snapshotID)
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "protect", volumeUUID+"@"+snapshotID)
+
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+	return nil
 }
 
 // DeleteBlockDevice will remove a rbd image from the ceph cluster.

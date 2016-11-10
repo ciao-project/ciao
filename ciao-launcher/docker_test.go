@@ -55,8 +55,16 @@ func (s dockerTestStorage) MapVolumeToNode(volumeUUID string) (string, error) {
 	return "", nil
 }
 
-func (s dockerTestStorage) CreateBlockDevice(image *string, sizeGB int) (storage.BlockDevice, error) {
+func (s dockerTestStorage) CreateBlockDevice(volumeUUID string, image *string, sizeGB int) (storage.BlockDevice, error) {
 	return storage.BlockDevice{}, nil
+}
+
+func (s dockerTestStorage) CreateBlockDeviceFromSnapshot(volumeUUID string, snapshotID string) (storage.BlockDevice, error) {
+	return storage.BlockDevice{}, nil
+}
+
+func (s dockerTestStorage) CreateBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
+	return nil
 }
 
 func (s dockerTestStorage) DeleteBlockDevice(string) error {

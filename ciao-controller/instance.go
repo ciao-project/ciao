@@ -23,7 +23,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
@@ -153,6 +155,57 @@ func (c *config) GetResources() map[string]int {
 	return resources
 }
 
+// getImageBlockDevice first tries to see if the imageID already has a
+// corresponding volumeID, if so then it will create a new clone. Otherwise it
+// will create a new block device from the file on disk and then clone that.
+//
+// This latter behaviour will ultimately be moved into ciao-image's upload
+// functionality.
+func getImageBlockDevice(c *controller, tenant string, imageID string) (storage.BlockDevice, error) {
+	data, err := c.ds.GetBlockDevice(imageID)
+
+	// Found existing - assume it's snapped & ready to go
+	if err != datastore.ErrNoBlockData {
+		glog.Infof("Found existing block device for: %v", imageID)
+		return c.CreateBlockDeviceFromSnapshot(data.ID, "ciao-image")
+	}
+	glog.Infof("No existing block device for: %v", imageID)
+
+	// Otherwise upload, snap & protect
+	path, err := c.image.GetImagePath(imageID)
+	if err != nil {
+		return storage.BlockDevice{}, fmt.Errorf("Unable to get image path for: %s: %v", imageID, err)
+	}
+
+	device, err := c.CreateBlockDevice(imageID, &path, 0)
+	if err != nil {
+		return storage.BlockDevice{}, fmt.Errorf("Unable to create block device: %v", err)
+	}
+
+	data = types.BlockData{
+		BlockDevice: device,
+		CreateTime:  time.Now(),
+		TenantID:    tenant,
+		Name:        fmt.Sprintf("Volume for image: %s", imageID),
+	}
+
+	err = c.ds.AddBlockDevice(data)
+	if err != nil {
+		c.DeleteBlockDevice(device.ID)
+		return storage.BlockDevice{}, fmt.Errorf("Error adding block device to datastore: %v", err)
+	}
+
+	err = c.CreateBlockDeviceSnapshot(device.ID, "ciao-image")
+	if err != nil {
+		c.DeleteBlockDevice(device.ID)
+		c.ds.DeleteBlockDevice(device.ID)
+		return storage.BlockDevice{}, fmt.Errorf("Unable to create snapshot: %v", err)
+	}
+
+	// And then create a clone from new snap
+	return c.CreateBlockDeviceFromSnapshot(device.ID, "ciao-image")
+}
+
 func getStorage(c *controller, wl *types.Workload, tenant string, instanceID string) (payloads.StorageResources, error) {
 	s := wl.Storage
 
@@ -188,14 +241,9 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 	// ID of source is the image id.
 	switch s.SourceType {
 	case types.ImageService:
-		path, err := c.image.GetImagePath(s.SourceID)
+		device, err := getImageBlockDevice(c, tenant, s.SourceID)
 		if err != nil {
-			// this image doesn't exist
-			return payloads.StorageResources{}, err
-		}
-
-		device, err := c.CreateBlockDevice(&path, s.Size)
-		if err != nil {
+			glog.Errorf("Unable to get block device for image: %v", err)
 			return payloads.StorageResources{}, err
 		}
 
@@ -241,7 +289,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable}, nil
 
 	case types.Empty:
-		device, err := c.CreateBlockDevice(nil, s.Size)
+		device, err := c.CreateBlockDevice(uuid.Generate().String(), nil, s.Size)
 		if err != nil {
 			return payloads.StorageResources{}, err
 		}

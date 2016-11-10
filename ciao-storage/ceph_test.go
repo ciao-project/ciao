@@ -26,7 +26,7 @@ var driver = CephDriver{
 var imagePath = "/var/lib/ciao/images/73a86d7e-93c0-480e-9c41-ab42f69b7799"
 
 func TestCreateBlockDevice(t *testing.T) {
-	device, err := driver.CreateBlockDevice(&imagePath, 0)
+	device, err := driver.CreateBlockDevice(uuid.Generate().String(), &imagePath, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

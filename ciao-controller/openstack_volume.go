@@ -25,6 +25,7 @@ import (
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
 	osIdentity "github.com/01org/ciao/openstack/identity"
+	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
@@ -51,13 +52,13 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	// no limits checking for now.
 	if req.ImageRef != nil {
 		// create bootable volume
-		bd, err = c.CreateBlockDevice(req.ImageRef, req.Size)
+		bd, err = getImageBlockDevice(c, tenant, *req.ImageRef)
 	} else if req.SourceVolID != nil {
 		// copy existing volume
 		bd, err = c.CopyBlockDevice(*req.SourceVolID)
 	} else {
 		// create empty volume
-		bd, err = c.CreateBlockDevice(nil, req.Size)
+		bd, err = c.CreateBlockDevice(uuid.Generate().String(), nil, req.Size)
 	}
 
 	if err != nil {

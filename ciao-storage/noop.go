@@ -27,8 +27,18 @@ type NoopDriver struct {
 }
 
 // CreateBlockDevice pretends to create a block device.
-func (d *NoopDriver) CreateBlockDevice(image *string, size int) (BlockDevice, error) {
+func (d *NoopDriver) CreateBlockDevice(ID string, image *string, size int) (BlockDevice, error) {
+	return BlockDevice{ID: ID}, nil
+}
+
+// CreateBlockDeviceFromSnapshot pretends to create a block device from snapshot
+func (d *NoopDriver) CreateBlockDeviceFromSnapshot(string, string) (BlockDevice, error) {
 	return BlockDevice{ID: uuid.Generate().String()}, nil
+}
+
+// CreateBlockDeviceSnapshot pretends to create a snapshot on the block device
+func (d *NoopDriver) CreateBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
+	return nil
 }
 
 // CopyBlockDevice pretends to copy an existing block device
