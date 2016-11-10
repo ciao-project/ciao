@@ -67,6 +67,7 @@ you would start the container as follows:
 ```
 $ docker run --privileged -v /path/to/your/.ssh/key:/root/.ssh/id_rsa \
              -v $(pwd):/root/ciao \
+             -v /dev/:/dev/ \
              -it clearlinux/ciao-deploy
 ```
 
@@ -81,9 +82,10 @@ $ docker run --privileged -v /path/to/your/.ssh/key:/root/.ssh/id_rsa \
 
 ## NOTES:
 
-### Running container in privileged mode
+### Running container in privileged mode mapping /dev/
 Container is called in *privileged* mode in order to install your certificates
-in the CNCI image by using the `losetup` command.
+in the CNCI image by using the `losetup` command. Because we need to access
+`/dev/loop*` devices, we also need to mount `/dev/` into the container.
 To learn more about the Docker options used, please refer to the
 [Docker documentation](https://docs.docker.com/engine/reference/commandline/run/).
 
