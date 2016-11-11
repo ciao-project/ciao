@@ -52,3 +52,4 @@
     when: not ciao_dev
 
   - include: ceph.yml
+    when: not skip_ceph
