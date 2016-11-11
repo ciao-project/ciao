@@ -479,6 +479,10 @@ func (sched *ssntpSchedulerServer) getCommandConcentratorUUID(command ssntp.Comm
 		var cmd payloads.CommandAssignPublicIP
 		err := yaml.Unmarshal(payload, &cmd)
 		return cmd.AssignIP.ConcentratorUUID, err
+	case ssntp.ReleasePublicIP:
+		var cmd payloads.CommandReleasePublicIP
+		err := yaml.Unmarshal(payload, &cmd)
+		return cmd.ReleaseIP.ConcentratorUUID, err
 	}
 }
 
@@ -739,6 +743,8 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 	case ssntp.EVACUATE:
 		dest, instanceUUID = sched.fwdCmdToComputeNode(command, payload)
 	case ssntp.AssignPublicIP:
+		fallthrough
+	case ssntp.ReleasePublicIP:
 		dest = sched.fwdCmdToCNCI(command, payload)
 
 	default:
@@ -1041,6 +1047,10 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 		},
 		{ // all AssignPublicIP commands are processed by the Command forwarder
 			Operand:        ssntp.AssignPublicIP,
+			CommandForward: sched,
+		},
+		{ // all ReleasePublicIP commands are processed by the Command forwarder
+			Operand:        ssntp.ReleasePublicIP,
 			CommandForward: sched,
 		},
 	}
