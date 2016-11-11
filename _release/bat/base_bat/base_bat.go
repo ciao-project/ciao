@@ -14,5 +14,5 @@
 // limitations under the License.
 //
 
-// base is a placeholder package for the basic BAT tests.
-package base
+// base_bat is a placeholder package for the basic BAT tests.
+package base_bat
