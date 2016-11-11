@@ -16,7 +16,10 @@
 
 package bat
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 var instances = []string{
 	"d258443c-72c7-4971-8c2b-cb9925522c3e",
@@ -121,5 +124,36 @@ Created new instance: f7709d71-8a1e-4295-8940-b32a5c82ede4
 	instances, err = parseInstances([]byte(goodOutput), 4)
 	if err == nil || instances != nil {
 		t.Errorf("parseInstance failed on too few instances error case")
+	}
+}
+
+func TestImageOptions(t *testing.T) {
+	opts := &ImageOptions{
+		ContainerFormat:  "ovf",
+		DiskFormat:       "qcow2",
+		ID:               "test-id",
+		MinDiskGigabytes: 1,
+		MinRAMMegabytes:  2,
+		Name:             "test-name",
+		Protected:        true,
+		Tags:             []string{"tag1", "tag2"},
+		Visibility:       "private",
+	}
+
+	computedArgs := computeImageAddArgs(opts)
+	expectedArgs := []string{
+		"-container-format", "ovf",
+		"-disk-format", "qcow2",
+		"-id", "test-id",
+		"-min-disk-size", "1",
+		"-min-ram-size", "2",
+		"-name", "test-name",
+		"-protected",
+		"-tags", "tag1,tag2",
+		"-visibility", "private",
+	}
+
+	if !reflect.DeepEqual(computedArgs, expectedArgs) {
+		t.Fatalf("Compute image arguments are incorrect")
 	}
 }

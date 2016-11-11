@@ -32,6 +32,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -47,6 +48,21 @@ const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}",
       {{end -}}
     {{- end }}
   }
+`
+
+const imageTemplateDesc = `{ "name" : "{{.Name | js}}", "id" : "{{.ID | js}}",
+    "container_format" : "{{.ContainerFormat | js}}", "disk_format" : "{{.DiskFormat | js}}",
+    "min_disk" : {{.MinDiskGigabytes}}, "min_ram" : {{.MinRAMMegabytes}},
+    "protected" : {{.Protected}}, "visibility" : "{{.Visibility | js}}",
+    "size" : {{.SizeBytes}}, "status" : "{{.Status | js }}", "owner" : "{{.Owner | js}}",
+    "checksum" : "{{.Checksum | js}}", "created" : "{{.CreatedDate | js}}",
+    "late_update" : "{{.LastUpdate | js}}", "file" : "{{.File | js}}",
+    "schema" : "{{.Schema | js}}", "tags" : [
+    {{- range $i, $t := .Tags -}}
+    {{ if $i }}, {{end}}{{$t}}
+    {{- end -}}
+    ]
+}
 `
 
 // Tenant contains basic information about a tenant
@@ -92,6 +108,32 @@ type ClusterStatus struct {
 	TotalNodesFull        int `json:"full"`
 	TotalNodesOffline     int `json:"offline"`
 	TotalNodesMaintenance int `json:"maintenance"`
+}
+
+// ImageOptions contains user supplied image meta data
+type ImageOptions struct {
+	Name             string   `json:"name"`
+	ID               string   `json:"id"`
+	ContainerFormat  string   `json:"container_format"`
+	DiskFormat       string   `json:"disk_format"`
+	MinDiskGigabytes int      `json:"min_disk"`
+	MinRAMMegabytes  int      `json:"min_ram"`
+	Protected        bool     `json:"protected"`
+	Visibility       string   `json:"visibility"`
+	Tags             []string `json:"tags"`
+}
+
+// Image contains all the meta data for a single image
+type Image struct {
+	ImageOptions
+	SizeBytes   int    `json:"size"`
+	Status      string `json:"status"`
+	Owner       string `json:"owner"`
+	Checksum    string `json:"checksum"`
+	CreatedDate string `json:"created"`
+	LastUpdate  string `json:"last_update"`
+	File        string `json:"file"`
+	Schema      string `json:"schema"`
 }
 
 func checkEnv(vars []string) error {
@@ -550,4 +592,135 @@ func GetClusterStatus(ctx context.Context) (*ClusterStatus, error) {
 	}
 
 	return cs, nil
+}
+
+func computeImageAddArgs(options *ImageOptions) []string {
+	args := make([]string, 0, 8)
+
+	if options.ContainerFormat != "" {
+		args = append(args, "-container-format", options.ContainerFormat)
+	}
+	if options.DiskFormat != "" {
+		args = append(args, "-disk-format", options.DiskFormat)
+	}
+	if options.ID != "" {
+		args = append(args, "-id", options.ID)
+	}
+	if options.MinDiskGigabytes != 0 {
+		args = append(args, "-min-disk-size",
+			fmt.Sprintf("%d", options.MinDiskGigabytes))
+	}
+	if options.MinRAMMegabytes != 0 {
+		args = append(args, "-min-ram-size",
+			fmt.Sprintf("%d", options.MinRAMMegabytes))
+	}
+	if options.Name != "" {
+		args = append(args, "-name", options.Name)
+	}
+	if options.Protected {
+		args = append(args, "-protected")
+	}
+	if len(options.Tags) > 0 {
+		args = append(args, "-tags", strings.Join(options.Tags, ","))
+	}
+	if options.Visibility != "" {
+		args = append(args, "-visibility", options.Visibility)
+	}
+
+	return args
+}
+
+// AddImage uploads a new image to the ciao-image service.  The caller can
+// supply a number of pieces of meta data about the image via the options
+// parameter.  It is implemented by calling ciao-cli image add.
+// On success the function returns the entire meta data of the
+// newly updated image that includes the caller supplied meta data and the
+// meta data added by the image service.  An error will be returned
+// if the following environment variables are not set; CIAO_IDENTITY,
+// CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (*Image, error) {
+	var img *Image
+	args := []string{"image", "add", "-f", imageTemplateDesc, "-file", path}
+	args = append(args, computeImageAddArgs(options)...)
+	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
+	if err != nil {
+		return nil, err
+	}
+
+	return img, nil
+}
+
+// DeleteImage deletes an image from the image service.  It is implemented
+// by calling ciao-cli image delete.  An error will be returned if the following
+// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
+// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+func DeleteImage(ctx context.Context, tenant, ID string) error {
+	args := []string{"image", "delete", "-image", ID}
+	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
+	return err
+}
+
+// GetImage retrieves the meta data for a given image.  It is implemented by
+// calling ciao-cli image show.  An error will be returned if the following
+// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
+// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+func GetImage(ctx context.Context, tenant, ID string) (*Image, error) {
+	var img *Image
+	args := []string{"image", "show", "-image", ID, "-f", imageTemplateDesc}
+
+	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
+	if err != nil {
+		return nil, err
+	}
+
+	return img, nil
+}
+
+// GetImages retrieves the meta data for all images.  It is implemented by
+// calling ciao-cli image list.  An error will be returned if the following
+// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
+// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+func GetImages(ctx context.Context, tenant string) (map[string]*Image, error) {
+	var images map[string]*Image
+	template := `
+{
+{{- range $i, $val := .}}
+  {{- if $i }},{{end}}
+  "{{$val.ID | js }}" : {{with $val}}` + imageTemplateDesc + `{{end}}
+{{- end }}
+}
+`
+	args := []string{"image", "list", "-f", template}
+	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &images)
+	if err != nil {
+		return nil, err
+	}
+
+	return images, nil
+}
+
+// GetImageCount returns the number of images currently stored in the
+// image service.  It is implemented by calling ciao-cli image list.
+// An error will be returned if the following environment variables are
+// not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_ADMIN_USERNAME,
+// CIAO_ADMIN_PASSWORD.
+func GetImageCount(ctx context.Context, tenant string) (int, error) {
+	args := []string{"image", "list", "-f", "{{len .}}"}
+
+	data, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.Atoi(string(data))
+}
+
+// UploadImage overrides the contents of an existing image with a new file.  It is
+// implemented by calling ciao-cli image upload.  An error will be returned if the
+// following environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
+// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+func UploadImage(ctx context.Context, tenant, ID, path string) error {
+	args := []string{"image", "upload", "-image", ID, "-file", path}
+	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
+	return err
 }

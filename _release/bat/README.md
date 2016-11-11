@@ -6,7 +6,8 @@ the following sub folders.
 
 ```
 .
-├── base      - Basic tests that verify that the cluster is functional
+├── base_bat   - Basic tests that verify that the cluster is functional
+├── image_bat  - BAT tests for the image service
 ```
 
 The tests are implemented using the go testing framework.  This is convenient
@@ -74,7 +75,7 @@ before running the tests, e.g.,
 
 ```
 # cd $GOPATH/src/github.com/01org/ciao/_release/bat
-# go test -v github.com/01org/ciao/_release/bat/base
+# go test -v github.com/01org/ciao/_release/bat/base_bat
 ```
 
 ## Run a Single Test
