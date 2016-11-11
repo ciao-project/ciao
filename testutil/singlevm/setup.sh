@@ -32,6 +32,10 @@ ciao_admin_username=admin
 ciao_admin_password=giveciaoatry
 ciao_demo_username=demo
 ciao_demo_password=hello
+keystone_int_port=5000
+keystone_ext_port=35357
+mysql_data_dir="${ciao_bin}"/mysql
+ciao_identity_url="https://""$ciao_host"":""$keystone_int_port"
 
 # Variables for ciao binaries
 export CIAO_CONTROLLER="$ciao_host"
@@ -40,10 +44,28 @@ export CIAO_PASSWORD="$ciao_password"
 export CIAO_ADMIN_USERNAME="$ciao_admin_username"
 export CIAO_ADMIN_PASSWORD="$ciao_admin_password"
 export CIAO_CA_CERT_FILE="$ciao_pki_path"/"$ciao_controller_cert"
+export CIAO_IDENTITY="$ciao_identity_url"
 
 # Save these vars for later use, too
 > "$ciao_env" # Clean out previous data
 set | grep ^CIAO_ | while read VAR; do
+    echo export "$VAR" >> "$ciao_env"
+done
+
+# Variables for keystone
+export OS_USER_DOMAIN_NAME=default
+export OS_IMAGE_API_VERSION=2
+export OS_PROJECT_NAME=admin
+export OS_IDENTITY_API_VERSION=3
+export OS_PASSWORD=${ciao_admin_password}
+export OS_AUTH_URL=https://"$ciao_host":$keystone_ext_port/v3
+export OS_USERNAME=${ciao_admin_username}
+export OS_KEY=
+export OS_CACERT=${ciao_pki_path}/${ciao_image_cert}
+export OS_PROJECT_DOMAIN_NAME=default
+
+# Save these vars for later use, too
+set | grep ^OS_ | while read VAR; do
     echo export "$VAR" >> "$ciao_env"
 done
 
@@ -119,14 +141,16 @@ configure:
     identity_user: ${ciao_username}
     identity_password: ${ciao_password}
   image_service:
-    url: http://glance.example.com
+    type: glance
+    url: https://${ciao_host}
   launcher:
     compute_net: [${ciao_subnet}]
     mgmt_net: [${ciao_subnet}]
     disk_limit: false
     mem_limit: false
   identity_service:
-    url: http://keystone.example.com
+    type: keystone
+    url: https://${ciao_host}:${keystone_ext_port}
 EOF
 ) > $conf_file
 
@@ -209,10 +233,18 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout ${ciao_controller_key} -out ${ciao_controller_cert} -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
 
 #Copy the certs
-sudo cp -f ${ciao_controller_key} ${ciao_pki_path}
-sudo cp -f ${ciao_controller_cert} ${ciao_pki_path}
-sudo ln -s ${ciao_pki_path}/${ciao_controller_key} ${ciao_pki_path}/${ciao_image_key}
-sudo ln -s ${ciao_pki_path}/${ciao_controller_cert} ${ciao_pki_path}/${ciao_image_cert}
+sudo install -m 0644 ${ciao_controller_key} ${ciao_pki_path}
+sudo install -m 0644 ${ciao_controller_cert} ${ciao_pki_path}
+sudo ln -s ${ciao_controller_key} ${ciao_pki_path}/${ciao_image_key}
+sudo ln -s ${ciao_controller_cert} ${ciao_pki_path}/${ciao_image_cert}
+#Update system's trusted certificates
+CACERT_PROG=$(type -p update-ca-certificates)
+CACERT_DIR=/usr/local/share/ca-certificates
+if [ x"${CACERT_PROG}" != x ] && [ -x "${CACERT_PROG}" ] && \
+    [ -d "${CACERT_DIR}" ]; then
+    sudo install -m 0644 ${ciao_controller_cert} "${CACERT_DIR}"/ciao.crt
+    sudo "${CACERT_PROG}" --fresh
+fi
 
 #Copy the configuration
 cd "$ciao_bin"
@@ -328,7 +360,139 @@ else
     echo 'dnsmasq command is not supported'
 fi
 
+# Helper functions for openstack commands
+function os_exists() {
+    os_cmd="$1"
+    os_val="$2"
+    os_col="${3:-Name}"
+
+    openstack "$os_cmd" list -f value -c "$os_col" | grep -q -w "$os_val"
+    return $?
+}
+
+function os_exists_ep() {
+    # Special case
+    os_name="$1"
+    os_service="$2"
+    os_region="$3"
+    os_interface="$4"
+
+    openstack endpoint list --service "$os_service" --region "$os_region" \
+        --interface "$os_interface" -f value -c 'Service Type' | \
+        grep -q -w "$os_name"
+    return $?
+}
+
+function os_create_ep() {
+    os_name="$1"
+    os_service="$2"
+    os_region="$3"
+    os_interface="$4"
+    os_url="$5"
+
+    if ! os_exists_ep "$os_name" "$os_service" "$os_region" "$os_interface";
+    then
+        echo "Attempting to add \"$os_interface\" endpoint"
+        openstack endpoint create --region "$os_region" "$os_name" \
+            "$os_interface" "$os_url"
+    fi
+}
+
+function os_create_project() {
+    project="$1"
+
+    if ! os_exists project "$project"; then
+        echo "Attempting to create \"$project\" project"
+        openstack project create "$project"
+    fi
+}
+
+function os_create_service() {
+    svc_name="$1"
+    svc_type="$2"
+    svc_desc="${3:-}"
+
+    if ! os_exists service "$svc_name"; then
+        echo "Attempting to create \"$svc_name\" $svc_type service"
+        if [ x"$svc_desc" != x ]; then
+            openstack service create --name "$svc_name" \
+                --description "$svc_desc" "$svc_type"
+        else
+            openstack service create --name "$svc_name" "$svc_type"
+        fi
+    fi
+}
+
+function os_create_user() {
+    user="$1"
+    pass="$2"
+
+    if ! os_exists user "$user"; then
+        echo "Attempting to create \"$user\" user"
+        openstack user create --password "$pass" "$user"
+    fi
+}
+
+function os_create_role() {
+    role="$1"
+
+    if ! os_exists role "$role"; then
+        echo "Attempting to create \"$role\" role"
+        openstack role create "$role"
+    fi
+}
+
+function os_add_role() {
+    role="$1"
+    user="$2"
+    project="$3"
+
+    # Duplicate is OK
+    openstack role add --project "$project" --user "$user" "$role"
+}
+
+
+## Install keystone
+sudo docker run -d -it --name keystone \
+    -p $keystone_int_port:5000 \
+    -p $keystone_ext_port:35357 \
+    -e IDENTITY_HOST="$ciao_host" -e KEYSTONE_ADMIN_PASSWORD="${OS_PASSWORD}" \
+    -v $mysql_data_dir:/var/lib/mysql \
+    -v ${OS_CACERT}:/etc/nginx/ssl/keystone_cert.pem \
+    -v ${ciao_pki_path}/${ciao_image_key}:/etc/nginx/ssl/keystone_key.pem clearlinux/keystone
+
+echo -n "Waiting for keystone identity service to become available"
+try_until=$(($(date +%s) + 30))
+while : ; do
+    while [ $(date +%s) -le $try_until ]; do
+        if openstack service list > /dev/null 2>&1; then
+            echo READY
+            break 2
+        else
+            echo -n .
+            sleep 1
+        fi
+    done
+    echo FAILED
+    break
+done
+# Create services/projects/roles/users if needed
+os_create_service ciao compute
+os_create_user "$ciao_username" "$ciao_password"
+os_create_project service
+os_create_role admin
+os_add_role admin "$ciao_username" service
+os_create_user "$ciao_demo_username" "$ciao_demo_password"
+os_create_project demo
+os_create_role user
+os_add_role user "$ciao_demo_username" demo
+os_create_service glance image "Image Service"
+os_create_ep image glance RegionOne public   https://$ciao_host:9292
+os_create_ep image glance RegionOne internal https://$ciao_host:9292
+os_create_ep image glance RegionOne admin    https://$ciao_host:9292
+
 # Install ceph
+# This runs *after* keystone so keystone will get port 5000 first
 sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
 sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
 
@@ -339,8 +503,10 @@ cd "$ciao_bin"
 "$ciao_bin"/run_controller.sh &> /dev/null
 
 sleep 5
-identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
-echo "$identity" >> "$ciao_env"
+
+# Run the image service
+
+"$ciao_bin"/run_image.sh "$ciao_identity_url" &> /dev/null
 
 sleep 1
 
