@@ -66,15 +66,6 @@ func addRandomImage(ctx context.Context, tenant string, size int, options *bat.I
 	return bat.AddImage(ctx, tenant, path, options)
 }
 
-func uploadRandomImage(ctx context.Context, tenant, id string, size int) error {
-	path, err := createRandomFile(size)
-	if err != nil {
-		return fmt.Errorf("Unable to create random file : %v", err)
-	}
-	defer func() { _ = os.Remove(path) }()
-	return bat.UploadImage(ctx, tenant, id, path)
-}
-
 // Add a new image, check it's listed and delete it
 //
 // TestAddShowDelete adds a new image containing random content to the image
@@ -190,60 +181,6 @@ func TestImageList(t *testing.T) {
 	if !foundNewImage {
 		t.Errorf("New image was not returned by ciao-cli image list")
 	}
-
-	err = bat.DeleteImage(ctx, "", img.ID)
-	if err != nil {
-		t.Fatalf("Unable to delete image %v", err)
-	}
-}
-
-// Overwrite a non-existing image
-//
-// TestUploadNonExisting attempts to overwrite the contents of an non-existing image.
-//
-// The attempt to upload the new file should fail
-func TestUploadNonExisting(t *testing.T) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
-	err := uploadRandomImage(ctx, "", uuid.Generate().String(), 10)
-	cancelFunc()
-	if err == nil {
-		t.Errorf("Call to upload a non-existing image should fail")
-	}
-}
-
-// Overwrite an existing image
-//
-// TestUploadImage adds a new image and then attempts to overwrite its contents with a new
-// image.  We then retrieve the meta data for the new image before deleting it.
-//
-// The attempts to create and overwrite the new image should both succeed.  We should be
-// able to retrieve the meta data for the image and determine that the size of the
-// updated image is correct.  Finally, the image should be deleted successfully.
-func TestUploadImage(t *testing.T) {
-	const name = "test-image"
-	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
-	defer cancelFunc()
-
-	options := bat.ImageOptions{
-		Name: name,
-	}
-	img, err := addRandomImage(ctx, "", 10, &options)
-	if err != nil {
-		t.Fatalf("Unable to add image %v", err)
-	}
-
-	err = uploadRandomImage(ctx, "", img.ID, 20)
-	if err != nil {
-		t.Errorf("Failed to upload image %v", err)
-	}
-
-	_, err = bat.GetImage(ctx, "", img.ID)
-	if err != nil {
-		t.Errorf("Unable to retrieve meta data for image %v", err)
-	}
-
-	// TODO check size has changed.  Not currently supported by image
-	// service.
 
 	err = bat.DeleteImage(ctx, "", img.ID)
 	if err != nil {
