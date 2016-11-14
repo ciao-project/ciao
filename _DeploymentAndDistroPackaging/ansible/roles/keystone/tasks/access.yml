@@ -41,6 +41,14 @@
       login_project_name: "admin"
       insecure: yes
     with_items: "{{ keystone_projects | default([]) }}"
+    # TODO: Remove the following workaround
+    # There is an issue with clearcontainers where it says the port is open
+    # even when it is not ready yet.
+    # https://github.com/01org/cc-oci-runtime/issues/349
+    register: result
+    until: result.failed == false or result.failed is undefined
+    retries: 10
+    delay: 1
 
   - name: Create custom roles
     keystone:
