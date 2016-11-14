@@ -16,7 +16,13 @@
 
 package testutil
 
-import "github.com/01org/ciao/ssntp"
+import (
+	"errors"
+	"path"
+	"runtime"
+
+	"github.com/01org/ciao/ssntp"
+)
 
 // TestCACert is a snake oil Certificate Authority for test automation.
 const TestCACert = `
@@ -485,4 +491,34 @@ func RoleToTestCert(role ssntp.Role) string {
 	}
 
 	return TestCertUnknown
+}
+
+// RoleToTestCertPath returns the path containing the CA certificate,
+// the path to the certificate matching the specified ssntp.Role and
+// an error if there was no certificate path matching the given role.
+func RoleToTestCertPath(role ssntp.Role) (string, string, error) {
+	_, filename, _, _ := runtime.Caller(0)
+	certdir := path.Dir(filename)
+	cacert := path.Join(certdir, "CAcert-localhost.pem")
+	roleCert := ""
+	var err error
+
+	switch role {
+	case ssntp.SCHEDULER:
+		roleCert = path.Join(certdir, "cert-Scheduler-localhost.pem")
+	case ssntp.AGENT:
+		roleCert = path.Join(certdir, "cert-CNAgent-localhost.pem")
+	case ssntp.Controller:
+		roleCert = path.Join(certdir, "cert-Controller-localhost.pem")
+	case ssntp.CNCIAGENT:
+		roleCert = path.Join(certdir, "cert-CNCIAgent-localhost.pem")
+	case ssntp.NETAGENT:
+		roleCert = path.Join(certdir, "cert-NetworkingAgent-localhost.pem")
+	}
+
+	if roleCert == "" {
+		err = errors.New("No cert for role")
+	}
+
+	return cacert, roleCert, err
 }
