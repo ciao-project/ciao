@@ -20,25 +20,14 @@ CIAO dependencies will be installed automatically
 * If running behind a proxy server read [this](doc/requirements.md#proxies)
 
 #### Deployment machine
-The deployment machine can be any Linux OS as long as it has the following requirements installed.
+The deployment machine can be any Linux OS as long as it has docker installed.
 
-NOTE: In ClearLinux, all the requirements can be installed with the following bundles:
+###### Pull the ciao-deploy container
+We provide a ready-to-use
+[Docker container](https://hub.docker.com/r/clearlinux/ciao-deploy/).
+Simply download it and run your setup:
 
-    sudo swupd bundle-add sysadmin-hostmgmt go-basic python-openstack-clients os-core-dev
-
-###### Install Ansible
-The required version of ansible is 2.1 or later. Install ansible in your distribution as described in [Installing ansible](http://docs.ansible.com/ansible/intro_installation.html)
-
-###### Install ansible roles dependencies
-This playbook make use of roles that requires extra dependencies. These dependencies
-are usually outdated in the OS package manager and is recommended to install them from pip.
-
-    sudo pip install netaddr docker-py python-keystoneclient
-
-###### Install Go
-To build ciao from sources the deployment machine requires golang to be installed.
-Install the latest release of go for your distribution as described in
-[Installing Go](https://golang.org/doc/install)
+    $ docker pull clarlinux/ciao-deploy
 
 ---
 
@@ -70,13 +59,36 @@ before proceeding to the next step.
 
 ---
 
+## Start the deployment container with your setup
+Once you have edited the `hosts` file, you must map the ciao repository
+to the container, so if your current working directory is `./ciao`,
+you would start the container as follows:
+
+```
+$ docker run --privileged -v /path/to/your/.ssh/key:/root/.ssh/id_rsa \
+             -v $(pwd):/root/ciao \
+             -v /dev/:/dev/ \
+             -it clearlinux/ciao-deploy
+```
+
 ### Run the playbook
 
-    ansible-playbook -i hosts ciao.yml
+```
+# cd /root/ciao/_DeploymentAndDistroPackaging/ansible
+# ansible-playbook -i hosts ciao.yml
+```
 
 ---
 
 ## NOTES:
+
+### Running container in privileged mode mapping /dev/
+Container is called in *privileged* mode in order to install your certificates
+in the CNCI image by using the `losetup` command. Because we need to access
+`/dev/loop*` devices, we also need to mount `/dev/` into the container.
+To learn more about the Docker options used, please refer to the
+[Docker documentation](https://docs.docker.com/engine/reference/commandline/run/).
+
 ### A note on docker hostname resolution
 This playbook uses docker containers to start the [identity service](https://hub.docker.com/r/clearlinux/keystone/) and [ciao-webui](https://hub.docker.com/r/clearlinux/ciao-webui/).
 
