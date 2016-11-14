@@ -67,6 +67,7 @@ var tablesInitPath = flag.String("tables_init_path", "./tables", "path to csv fi
 var workloadsPath = flag.String("workloads_path", "./workloads", "path to yaml files")
 var noNetwork = flag.Bool("nonetwork", false, "Debug with no networking")
 var persistentDatastoreLocation = flag.String("database_path", "./ciao-controller.db", "path to persistent database")
+var imageDatastoreLocation = flag.String("image_database_path", "./ciao-image.db", "path to image persistent database")
 var transientDatastoreLocation = flag.String("stats_path", "/tmp/ciao-controller-stats.db", "path to stats database")
 var logDir = "/var/lib/ciao/logs/controller"
 
@@ -197,6 +198,9 @@ func main() {
 
 	wg.Add(1)
 	go ctl.startVolumeService()
+
+	wg.Add(1)
+	go ctl.startImageService()
 
 	wg.Wait()
 	ctl.ds.Exit()
