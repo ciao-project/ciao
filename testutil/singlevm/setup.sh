@@ -37,6 +37,16 @@ keystone_ext_port=35357
 mysql_data_dir="${ciao_bin}"/mysql
 ciao_identity_url="https://""$ciao_host"":""$keystone_int_port"
 
+#Create a directory where all the certificates, binaries and other
+#dependencies are placed
+mkdir -p "$ciao_bin"
+
+if [ ! -d  "$ciao_bin" ]
+then
+	echo "FATAL ERROR: Unable to create $ciao_bin"
+	exit 1
+fi
+
 # Variables for ciao binaries
 export CIAO_CONTROLLER="$ciao_host"
 export CIAO_USERNAME="$ciao_username"
@@ -69,17 +79,26 @@ set | grep ^OS_ | while read VAR; do
     echo export "$VAR" >> "$ciao_env"
 done
 
-echo "Subnet =" $ciao_subnet
+# Checking for openstack client
+OPENSTACK=$(type -p openstack)
 
-#Create a directory where all the certificates, binaries and other
-#dependencies are placed
-mkdir -p "$ciao_bin"
-
-if [ ! -d  "$ciao_bin" ]
-then
-	echo "FATAL ERROR: Unable to create $ciao_bin"
-	exit 1
+if [ -z "$OPENSTACK" ] || ! [ -x "$OPENSTACK" ]; then
+    echo "This demo requires the openstack command-line tool"
+    echo
+    echo "To install it, try an appropriate command from the following:"
+    echo "* sudo swupd bundle-add openstack-python-clients"
+    echo "* sudo apt-get install python-openstackclient"
+    echo "* sudo yum install python-openstackclient"
+    echo "* sudo pip install python-openstackclient"
+    echo
+    echo "See:"
+    echo \
+    "http://docs.openstack.org/icehouse/install-guide/install/yum/content/install_clients.html"
+    echo "for more information"
+    exit 1
 fi
+
+echo "Subnet =" $ciao_subnet
 
 # Copy the cleanup scripts
 cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
@@ -235,8 +254,8 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 #Copy the certs
 sudo install -m 0644 ${ciao_controller_key} ${ciao_pki_path}
 sudo install -m 0644 ${ciao_controller_cert} ${ciao_pki_path}
-sudo ln -s ${ciao_controller_key} ${ciao_pki_path}/${ciao_image_key}
-sudo ln -s ${ciao_controller_cert} ${ciao_pki_path}/${ciao_image_cert}
+sudo ln -sf ${ciao_controller_key} ${ciao_pki_path}/${ciao_image_key}
+sudo ln -sf ${ciao_controller_cert} ${ciao_pki_path}/${ciao_image_cert}
 #Update system's trusted certificates
 CACERT_PROG=$(type -p update-ca-certificates)
 CACERT_DIR=/usr/local/share/ca-certificates
@@ -366,7 +385,7 @@ function os_exists() {
     os_val="$2"
     os_col="${3:-Name}"
 
-    openstack "$os_cmd" list -f value -c "$os_col" | grep -q -w "$os_val"
+    "$OPENSTACK" "$os_cmd" list -f value -c "$os_col" | grep -q -w "$os_val"
     return $?
 }
 
@@ -377,7 +396,7 @@ function os_exists_ep() {
     os_region="$3"
     os_interface="$4"
 
-    openstack endpoint list --service "$os_service" --region "$os_region" \
+    "$OPENSTACK" endpoint list --service "$os_service" --region "$os_region" \
         --interface "$os_interface" -f value -c 'Service Type' | \
         grep -q -w "$os_name"
     return $?
@@ -393,7 +412,7 @@ function os_create_ep() {
     if ! os_exists_ep "$os_name" "$os_service" "$os_region" "$os_interface";
     then
         echo "Attempting to add \"$os_interface\" endpoint"
-        openstack endpoint create --region "$os_region" "$os_name" \
+        "$OPENSTACK" endpoint create --region "$os_region" "$os_name" \
             "$os_interface" "$os_url"
     fi
 }
@@ -403,7 +422,7 @@ function os_create_project() {
 
     if ! os_exists project "$project"; then
         echo "Attempting to create \"$project\" project"
-        openstack project create "$project"
+        "$OPENSTACK" project create "$project"
     fi
 }
 
@@ -415,10 +434,10 @@ function os_create_service() {
     if ! os_exists service "$svc_name"; then
         echo "Attempting to create \"$svc_name\" $svc_type service"
         if [ x"$svc_desc" != x ]; then
-            openstack service create --name "$svc_name" \
+            "$OPENSTACK" service create --name "$svc_name" \
                 --description "$svc_desc" "$svc_type"
         else
-            openstack service create --name "$svc_name" "$svc_type"
+            "$OPENSTACK" service create --name "$svc_name" "$svc_type"
         fi
     fi
 }
@@ -429,7 +448,7 @@ function os_create_user() {
 
     if ! os_exists user "$user"; then
         echo "Attempting to create \"$user\" user"
-        openstack user create --password "$pass" "$user"
+        "$OPENSTACK" user create --password "$pass" "$user"
     fi
 }
 
@@ -438,7 +457,7 @@ function os_create_role() {
 
     if ! os_exists role "$role"; then
         echo "Attempting to create \"$role\" role"
-        openstack role create "$role"
+        "$OPENSTACK" role create "$role"
     fi
 }
 
@@ -448,7 +467,7 @@ function os_add_role() {
     project="$3"
 
     # Duplicate is OK
-    openstack role add --project "$project" --user "$user" "$role"
+    "$OPENSTACK" role add --project "$project" --user "$user" "$role"
 }
 
 
