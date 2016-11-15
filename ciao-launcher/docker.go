@@ -518,7 +518,9 @@ func (d *docker) stats() (disk, memory, cpu int) {
 		return
 	}
 
-	resp, err := d.cli.ContainerStats(context.Background(), d.dockerID, false)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
+	resp, err := d.cli.ContainerStats(ctx, d.dockerID, false)
+	cancelFunc()
 	if err != nil {
 		glog.Errorf("Unable to get stats from container: %s:%s %v", d.cfg.Instance, d.dockerID, err)
 		return
