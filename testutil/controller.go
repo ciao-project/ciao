@@ -96,10 +96,10 @@ func (ctl *SsntpTestController) GetCmdChanResult(c *chan Result, cmd ssntp.Comma
 	select {
 	case result = <-*c:
 		if result.Err != nil {
-			err = fmt.Errorf("Controller error sending %s command: %s\n", cmd, result.Err)
+			err = fmt.Errorf("Controller error sending %s command: %s", cmd, result.Err)
 		}
 	case <-time.After(25 * time.Second):
-		err = fmt.Errorf("Timeout waiting for controller %s command result\n", cmd)
+		err = fmt.Errorf("Timeout waiting for controller %s command result", cmd)
 	}
 
 	return result, err
@@ -135,10 +135,10 @@ func (ctl *SsntpTestController) GetEventChanResult(c *chan Result, evt ssntp.Eve
 	select {
 	case result = <-*c:
 		if result.Err != nil {
-			err = fmt.Errorf("Controller error sending %s event: %s\n", evt, result.Err)
+			err = fmt.Errorf("Controller error sending %s event: %s", evt, result.Err)
 		}
 	case <-time.After(25 * time.Second):
-		err = fmt.Errorf("Timeout waiting for controller %s event result\n", evt)
+		err = fmt.Errorf("Timeout waiting for controller %s event result", evt)
 	}
 
 	return result, err
@@ -174,10 +174,10 @@ func (ctl *SsntpTestController) GetErrorChanResult(c *chan Result, error ssntp.E
 	select {
 	case result = <-*c:
 		if result.Err != nil {
-			err = fmt.Errorf("Controller error sending %s error: %s\n", error, result.Err)
+			err = fmt.Errorf("Controller error sending %s error: %s", error, result.Err)
 		}
 	case <-time.After(25 * time.Second):
-		err = fmt.Errorf("Timeout waiting for controller %s error result\n", error)
+		err = fmt.Errorf("Timeout waiting for controller %s error result", error)
 	}
 
 	return result, err

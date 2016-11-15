@@ -376,7 +376,7 @@ func startNetwork(doneCh chan struct{}) error {
 		case <-doneCh:
 			glog.Info("Received terminating signal.  Quitting")
 			cancelFunc()
-			return fmt.Errorf("Init network cancelled.")
+			return fmt.Errorf("init network cancelled")
 		case err := <-ch:
 			cancelFunc()
 			if err != nil {

@@ -248,7 +248,7 @@ func (q *qemuV) checkBackingImage() error {
 }
 
 func (q *qemuV) downloadBackingImage() error {
-	return fmt.Errorf("Not supported yet!")
+	return fmt.Errorf("not supported yet")
 }
 
 func (q *qemuV) createImage(bridge string, userData, metaData []byte) error {

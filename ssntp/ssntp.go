@@ -1041,7 +1041,7 @@ func GetOIDsFromRole(role Role) ([]asn1.ObjectIdentifier, error) {
 }
 
 func verifyRole(conn interface{}, role Role) (bool, error) {
-	var oidError = fmt.Errorf("**** TEMPORARY WARNING ****\n*** Wrong certificate or missing/mismatched role OID ***\nIn order to fix this, use the -role option when generating your certificates with the ciao-cert tool.\n")
+	var oidError = fmt.Errorf("**** TEMPORARY WARNING ****\n*** Wrong certificate or missing/mismatched role OID ***\nIn order to fix this, use the -role option when generating your certificates with the ciao-cert tool")
 	switch tlsConn := conn.(type) {
 	case *tls.Conn:
 		state := tlsConn.ConnectionState()
