@@ -134,7 +134,7 @@ type ServerDetails struct {
 // Servers represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/servers/detail response.  It contains information about a
 // set of instances within a ciao cluster.
-// http://developer.openstack.org/api-ref-compute-v2.1.html#listServersDetailed
+// http://developer.openstack.org/api-ref/compute/?expanded=list-servers-detailed-detail
 // BUG - TotalServers is not specified by the openstack api. We are going
 // to pretend it is for now.
 type Servers struct {
