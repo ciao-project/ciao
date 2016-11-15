@@ -833,7 +833,7 @@ func (d *DockerPlugin) Start() error {
 	var err error
 	d.listener, err = net.Listen("tcp", DockerPluginCfg.Addr)
 	if err != nil {
-		return fmt.Errorf("Unable to create listener: %v\n", err)
+		return fmt.Errorf("unable to create listener: %v", err)
 	}
 
 	d.Server = &http.Server{
