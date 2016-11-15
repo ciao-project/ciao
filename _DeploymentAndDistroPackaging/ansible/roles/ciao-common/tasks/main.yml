@@ -32,7 +32,9 @@
       - /etc/pki
       - /etc/pki/ciao
       - /etc/pki/keystone
-      - /etc/systemd/system
+
+  - name: Create /etc/systemd/system if it does not exists
+    file: path=/etc/systemd/system state=directory owner=root group=root
 
   - name: Set bindir location
     set_fact: bindir={{ '/usr/local/bin' if ciao_dev else '/usr/bin' }}
