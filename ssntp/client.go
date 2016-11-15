@@ -178,7 +178,7 @@ func (client *Client) sendConnect() (bool, error) {
 			return false, fmt.Errorf("SSNTP Client: Connection failure")
 		}
 
-		return true, fmt.Errorf("SSNTP Client: Connection error %s\n", (Error)(connected.Operand))
+		return true, fmt.Errorf("SSNTP Client: Connection error %s", (Error)(connected.Operand))
 
 	default:
 		return true, fmt.Errorf("SSNTP Client: Unknown frame type %d", connected.Type)
