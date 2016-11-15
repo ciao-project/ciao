@@ -91,7 +91,6 @@ var imageCommand = &command{
 		"add":      new(imageAddCommand),
 		"show":     new(imageShowCommand),
 		"list":     new(imageListCommand),
-		"upload":   new(imageUploadCommand),
 		"download": new(imageDownloadCommand),
 		"delete":   new(imageDeleteCommand),
 		"modify":   new(imageModifyCommand),
@@ -154,6 +153,10 @@ func (cmd *imageAddCommand) run(args []string) error {
 		return errors.New("Missing required -name parameter")
 	}
 
+	if cmd.file == "" {
+		return errors.New("Missing required -file parameter")
+	}
+
 	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
 	if err != nil {
 		fatalf("Could not get Image service client [%s]\n", err)
@@ -185,12 +188,10 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Could not create image [%s]\n", err)
 	}
 
-	if cmd.file != "" {
-		uploadTenantImage(*identityUser, *identityPassword, *tenantID, image.ID, cmd.file)
-		image, err = images.Get(client, image.ID).Extract()
-		if err != nil {
-			fatalf("Could not retrieve new created image [%s]\n", err)
-		}
+	uploadTenantImage(*identityUser, *identityPassword, *tenantID, image.ID, cmd.file)
+	image, err = images.Get(client, image.ID).Extract()
+	if err != nil {
+		fatalf("Could not retrieve new created image [%s]\n", err)
 	}
 
 	if cmd.template != "" {
@@ -322,36 +323,6 @@ func (cmd *imageListCommand) run(args []string) error {
 		return false, nil
 	})
 	return err
-}
-
-type imageUploadCommand struct {
-	Flag  flag.FlagSet
-	image string
-	file  string
-}
-
-func (cmd *imageUploadCommand) usage(...string) {
-	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] image upload [flags]
-
-Uploads a file to an image data
-
-The upload flags are:
-
-`)
-	cmd.Flag.PrintDefaults()
-	os.Exit(2)
-}
-
-func (cmd *imageUploadCommand) parseArgs(args []string) []string {
-	cmd.Flag.StringVar(&cmd.image, "image", "", "Image UUID")
-	cmd.Flag.StringVar(&cmd.file, "file", "", "File to upload")
-	cmd.Flag.Usage = func() { cmd.usage() }
-	cmd.Flag.Parse(args)
-	return cmd.Flag.Args()
-}
-
-func (cmd *imageUploadCommand) run(args []string) error {
-	return uploadTenantImage(*identityUser, *identityPassword, *tenantID, cmd.image, cmd.file)
 }
 
 type imageDownloadCommand struct {
