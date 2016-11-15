@@ -15,6 +15,7 @@
 package datastore
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -26,9 +27,11 @@ type Posix struct {
 }
 
 // Write copies an image into the posix filesystem.
-// If the image already exists it will be overridden.
 func (p *Posix) Write(ID string, body io.Reader) (int64, error) {
 	imageName := path.Join(p.MountPoint, ID)
+	if _, err := os.Stat(imageName); !os.IsNotExist(err) {
+		return 0, fmt.Errorf("image already uploaded with that ID")
+	}
 
 	image, err := os.Create(imageName)
 	if err != nil {
