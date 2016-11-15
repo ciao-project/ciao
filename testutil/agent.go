@@ -122,10 +122,10 @@ func (client *SsntpTestClient) GetCmdChanResult(c *chan Result, cmd ssntp.Comman
 	select {
 	case result = <-*c:
 		if result.Err != nil {
-			err = fmt.Errorf("Client error sending %s command: %s\n", cmd, result.Err)
+			err = fmt.Errorf("Client error sending %s command: %s", cmd, result.Err)
 		}
 	case <-time.After(25 * time.Second):
-		err = fmt.Errorf("Timeout waiting for client %s command result\n", cmd)
+		err = fmt.Errorf("Timeout waiting for client %s command result", cmd)
 	}
 
 	return result, err
@@ -161,10 +161,10 @@ func (client *SsntpTestClient) GetEventChanResult(c *chan Result, evt ssntp.Even
 	select {
 	case result = <-*c:
 		if result.Err != nil {
-			err = fmt.Errorf("Client error sending %s event: %s\n", evt, result.Err)
+			err = fmt.Errorf("Client error sending %s event: %s", evt, result.Err)
 		}
 	case <-time.After(25 * time.Second):
-		err = fmt.Errorf("Timeout waiting for client %s event result\n", evt)
+		err = fmt.Errorf("Timeout waiting for client %s event result", evt)
 	}
 
 	return result, err
@@ -200,10 +200,10 @@ func (client *SsntpTestClient) GetErrorChanResult(c *chan Result, error ssntp.Er
 	select {
 	case result = <-*c:
 		if result.Err != nil {
-			err = fmt.Errorf("Client error sending %s error: %s\n", error, result.Err)
+			err = fmt.Errorf("Client error sending %s error: %s", error, result.Err)
 		}
 	case <-time.After(25 * time.Second):
-		err = fmt.Errorf("Timeout waiting for client %s error result\n", error)
+		err = fmt.Errorf("Timeout waiting for client %s error result", error)
 	}
 
 	return result, err
@@ -239,10 +239,10 @@ func (client *SsntpTestClient) GetStatusChanResult(c *chan Result, status ssntp.
 	select {
 	case result = <-*c:
 		if result.Err != nil {
-			err = fmt.Errorf("Client error sending %s status: %s\n", status, result.Err)
+			err = fmt.Errorf("Client error sending %s status: %s", status, result.Err)
 		}
 	case <-time.After(25 * time.Second):
-		err = fmt.Errorf("Timeout waiting for client %s status result\n", status)
+		err = fmt.Errorf("Timeout waiting for client %s status result", status)
 	}
 
 	return result, err
