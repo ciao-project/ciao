@@ -118,7 +118,7 @@ func getPackageDependencies(packages []string, template string) (map[string]stru
 	cmd.Stdout = &output
 	err := cmd.Run()
 	if err != nil {
-		return nil, fmt.Errorf("go list failed: %v\n", err)
+		return nil, fmt.Errorf("go list failed: %v", err)
 	}
 
 	scanner := bufio.NewScanner(&output)
@@ -774,7 +774,7 @@ func uses(pkg string, projectRoot string, direct bool) error {
 	cmd.Stdout = &output
 	err = cmd.Run()
 	if err != nil {
-		return fmt.Errorf("go list failed: %v\n", err)
+		return fmt.Errorf("go list failed: %v", err)
 	}
 
 	scanner := bufio.NewScanner(&output)
