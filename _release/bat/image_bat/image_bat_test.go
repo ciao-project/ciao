@@ -18,9 +18,7 @@ package image_bat
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -31,34 +29,8 @@ import (
 
 const standardTimeout = time.Second * 300
 
-func createRandomFile(sizeMB int) (path string, err error) {
-	var f *os.File
-	f, err = ioutil.TempFile("/tmp", "image-")
-	if err != nil {
-		return
-	}
-	defer func() {
-		err1 := f.Close()
-		if err1 != nil && err == nil {
-			err = err1
-		}
-	}()
-
-	b := make([]byte, sizeMB*1000000)
-	_, err = rand.Read(b)
-	if err != nil {
-		return
-	}
-	_, err = f.Write(b)
-	if err == nil {
-		path = f.Name()
-	}
-
-	return
-}
-
 func addRandomImage(ctx context.Context, tenant string, size int, options *bat.ImageOptions) (*bat.Image, error) {
-	path, err := createRandomFile(size)
+	path, err := bat.CreateRandomFile(size)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create random file : %v", err)
 	}
