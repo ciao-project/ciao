@@ -13,25 +13,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create images directory
-    file: path=images state=directory
-
   - name: Download images
     get_url:
       url: "{{ item.url }}"
-      dest: "{{ item.dest }}"
+      dest: "/var/lib/ciao/images/{{ item.dest }}"
       validate_certs: no
       force: no
     with_items:
       - url: "{{ ovmf_url }}"
-        dest: images/OVMF.fd
+        dest: OVMF.fd
       - url: "{{ fedora_cloud_image_url }}"
-        dest: images/{{ fedora_cloud_image }}
+        dest: "{{ fedora_cloud_image }}"
       - url: "{{ clear_cloud_image_url }}"
-        dest: images/{{ clear_cloud_image }}.xz
+        dest: "{{ clear_cloud_image }}.xz"
+
 
   - name: Uncompress ClearLinux Image
     command: unxz -k {{ clear_cloud_image }}.xz
     args:
-      chdir: images
+      chdir: /var/lib/ciao/images
       creates: "{{ clear_cloud_image }}"
+
+  - name: Link images to its reference in the DB
+    file:
+      path: "/var/lib/ciao/images/{{ item.id }}"
+      src: "/var/lib/ciao/images/{{ item.image }}"
+      state: link
+    with_items:
+      - id: df3768da-31f5-4ba6-82f0-127a1a705169
+        image: "{{ clear_cloud_image }}"
+      - id: 73a86d7e-93c0-480e-9c41-ab42f69b7799
+        image: "{{ fedora_cloud_image }}"

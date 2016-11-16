@@ -13,27 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create /usr/share/qemu directory
-    file: path=/usr/share/qemu state=directory
+  - block:
+      - name: Create /usr/share/qemu
+        file: path=/usr/share/qemu state=directory
 
-  - name: Download OVMF.fd
-    copy: src=images/OVMF.fd dest=/usr/share/qemu/OVMF.fd
+      - name: Create /usr/share/qemu/OVMF.fd
+        file: path=/usr/share/qemu/OVMF.fd src=/var/lib/ciao/images/OVMF.fd state=link
     when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
-
-  - name: Download Fedora Image
-    copy: src=images/{{ fedora_cloud_image }} dest=/var/lib/ciao/images/{{ fedora_cloud_image }}
-
-  - name: Link fedora image to its reference in the DB
-    file:
-      path: /var/lib/ciao/images/73a86d7e-93c0-480e-9c41-ab42f69b7799
-      src: /var/lib/ciao/images/{{ fedora_cloud_image }}
-      state: link
-
-  - name: Download ClearLinux Image
-    copy: src=images/{{ clear_cloud_image }} dest=/var/lib/ciao/images/{{ clear_cloud_image }}
-
-  - name: Link clear linux image to its reference in the DB
-    file:
-      path: /var/lib/ciao/images/df3768da-31f5-4ba6-82f0-127a1a705169
-      src: /var/lib/ciao/images/{{ clear_cloud_image }}
-      state: link
