@@ -58,7 +58,6 @@ type ovsGetCmd struct {
 
 type ovsRemoveCmd struct {
 	instance string
-	suicide  bool
 	errCh    chan<- error
 }
 
@@ -494,24 +493,6 @@ func getStats(instancesDir string) *cnStats {
 	return &s
 }
 
-func (ovs *overseer) sendInstanceDeletedEvent(instance string) {
-	var event payloads.EventInstanceDeleted
-
-	event.InstanceDeleted.InstanceUUID = instance
-
-	payload, err := yaml.Marshal(&event)
-	if err != nil {
-		glog.Errorf("Unable to Marshall STATS %v", err)
-		return
-	}
-
-	_, err = ovs.ac.conn.SendEvent(ssntp.InstanceDeleted, payload)
-	if err != nil {
-		glog.Errorf("Failed to send event command %v", err)
-		return
-	}
-}
-
 func (ovs *overseer) processGetCommand(cmd *ovsGetCmd) {
 	glog.Infof("Overseer: looking for instance %s", cmd.instance)
 	var insState ovsGetResult
@@ -579,9 +560,6 @@ func (ovs *overseer) processRemoveCommand(cmd *ovsRemoveCmd) {
 	}
 
 	delete(ovs.instances, cmd.instance)
-	if !cmd.suicide {
-		ovs.sendInstanceDeletedEvent(cmd.instance)
-	}
 	cmd.errCh <- nil
 }
 
