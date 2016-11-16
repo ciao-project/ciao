@@ -6,10 +6,8 @@ ciao_subnet=${ciao_ip}/24
 ciao_brdcast=198.51.100.255
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
-ciao_controller_key=controller_key.pem
-ciao_controller_cert=controller_cert.pem
-ciao_image_key=ciao-image-key.pem
-ciao_image_cert=ciao-image-cacert.pem
+keystone_key="$ciao_bin"/keystone_key.pem
+keystone_cert="$ciao_bin"/keystone_cert.pem
 ciao_pki_path=/etc/pki/ciao
 export no_proxy=$no_proxy,$ciao_ip,$ciao_host
 
@@ -32,10 +30,10 @@ ciao_admin_username=admin
 ciao_admin_password=giveciaoatry
 ciao_demo_username=demo
 ciao_demo_password=hello
-keystone_int_port=5000
-keystone_ext_port=35357
+keystone_public_port=5000
+keystone_admin_port=35357
 mysql_data_dir="${ciao_bin}"/mysql
-ciao_identity_url="https://""$ciao_host"":""$keystone_int_port"
+ciao_identity_url="https://""$ciao_host"":""$keystone_public_port"
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -48,12 +46,13 @@ then
 fi
 
 # Variables for ciao binaries
+export CIAO_DEMO_PATH="$ciao_bin"
 export CIAO_CONTROLLER="$ciao_host"
 export CIAO_USERNAME="$ciao_username"
 export CIAO_PASSWORD="$ciao_password"
 export CIAO_ADMIN_USERNAME="$ciao_admin_username"
 export CIAO_ADMIN_PASSWORD="$ciao_admin_password"
-export CIAO_CA_CERT_FILE="$ciao_pki_path"/"$ciao_controller_cert"
+export CIAO_CA_CERT_FILE="$ciao_bin"/"CAcert-""$ciao_host"".pem"
 export CIAO_IDENTITY="$ciao_identity_url"
 
 # Save these vars for later use, too
@@ -68,10 +67,10 @@ export OS_IMAGE_API_VERSION=2
 export OS_PROJECT_NAME=admin
 export OS_IDENTITY_API_VERSION=3
 export OS_PASSWORD=${ciao_admin_password}
-export OS_AUTH_URL=https://"$ciao_host":$keystone_ext_port/v3
+export OS_AUTH_URL=https://"$ciao_host":$keystone_admin_port/v3
 export OS_USERNAME=${ciao_admin_username}
 export OS_KEY=
-export OS_CACERT=${ciao_pki_path}/${ciao_image_cert}
+export OS_CACERT="$keystone_cert"
 export OS_PROJECT_DOMAIN_NAME=default
 
 # Save these vars for later use, too
@@ -155,8 +154,8 @@ configure:
   storage:
     ceph_id: ciao
   controller:
-    compute_ca: ${ciao_pki_path}/${ciao_controller_cert}
-    compute_cert: ${ciao_pki_path}/${ciao_controller_key}
+    compute_ca: $keystone_cert
+    compute_cert: $keystone_key
     identity_user: ${ciao_username}
     identity_password: ${ciao_password}
   image_service:
@@ -169,7 +168,7 @@ configure:
     mem_limit: false
   identity_service:
     type: keystone
-    url: https://${ciao_host}:${keystone_ext_port}
+    url: https://${ciao_host}:${keystone_admin_port}
 EOF
 ) > $conf_file
 
@@ -194,7 +193,7 @@ then
 	echo "FATAL ERROR: Unable to create /etc/ciao"
 	exit 1
 fi
-sudo install -m 0644 $conf_file /etc/ciao
+sudo install -m 0644 -t /etc/ciao $conf_file
 
 #Stop any running agents and CNCIs
 sudo killall ciao-scheduler
@@ -240,29 +239,49 @@ fi
     -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
 
 "$GOPATH"/bin/ciao-cert -role cnciagent -anchor-cert "$ciao_cert" \
-    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
+    -ip="$ciao_ip" -verify
 
 "$GOPATH"/bin/ciao-cert -role controller -anchor-cert "$ciao_cert" \
-    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
+    -ip="$ciao_ip" -verify
 
 "$GOPATH"/bin/ciao-cert -role agent,netagent -anchor-cert "$ciao_cert" \
-    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
+    -ip="$ciao_ip" -verify
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout ${ciao_controller_key} -out ${ciao_controller_cert} -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
+    -keyout "$keystone_key" -out "$keystone_cert" -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
 
 #Copy the certs
-sudo install -m 0644 ${ciao_controller_key} ${ciao_pki_path}
-sudo install -m 0644 ${ciao_controller_cert} ${ciao_pki_path}
-sudo ln -sf ${ciao_controller_key} ${ciao_pki_path}/${ciao_image_key}
-sudo ln -sf ${ciao_controller_cert} ${ciao_pki_path}/${ciao_image_cert}
+sudo install -m 0644 -t "$ciao_pki_path" "$keystone_cert"
+sudo install -m 0644 -t "$ciao_pki_path" \
+    "$ciao_bin"/"cert-Controller-""$ciao_host"".pem"
+sudo install -m 0644 -t "$ciao_pki_path" \
+    "$ciao_bin"/"CAcert-""$ciao_host"".pem"
+
 #Update system's trusted certificates
-CACERT_PROG=$(type -p update-ca-certificates)
-CACERT_DIR=/usr/local/share/ca-certificates
-if [ x"${CACERT_PROG}" != x ] && [ -x "${CACERT_PROG}" ] && \
-    [ -d "${CACERT_DIR}" ]; then
-    sudo install -m 0644 ${ciao_controller_cert} "${CACERT_DIR}"/ciao.crt
-    sudo "${CACERT_PROG}" --fresh
+cacert_prog_ubuntu=$(type -p update-ca-certificates)
+cacert_prog_fedora=$(type -p update-ca-trust)
+if [ x"$cacert_prog_ubuntu" != x ] && [ -x "$cacert_prog_ubuntu" ]; then
+    cacert_dir=/usr/local/share/ca-certificates
+    sudo install -m 0644 -T "$keystone_cert" "$cacert_dir"/keystone.crt
+    sudo install -m 0644 -T "$CIAO_CA_CERT_FILE" "$cacert_dir"/ciao.crt
+    sudo "$cacert_prog_ubuntu"
+
+    # Do it a second time with nothing new to make it clean out the old
+    sudo "$cacert_prog_ubuntu" --fresh
+elif [ x"$cacert_prog_fedora" != x ] && [ -x "$cacert_prog_fedora" ]; then
+    cacert_dir=/etc/pki/ca-trust/source/anchors/
+    if [ -d "$cacert_dir" ]; then
+        sudo install -m 0644 -t "$cacert_dir" "$keystone_cert"
+        sudo install -m 0644 -t "$cacert_dir" "$CIAO_CA_CERT_FILE"
+        sudo "$cacert_prog_fedora" extract
+    fi
+else
+    echo "Unable to add keystone's CA certificate to your system's trusted \
+        store!"
+    exit 1
 fi
 
 #Copy the configuration
@@ -470,15 +489,14 @@ function os_add_role() {
     "$OPENSTACK" role add --project "$project" --user "$user" "$role"
 }
 
-
 ## Install keystone
 sudo docker run -d -it --name keystone \
-    -p $keystone_int_port:5000 \
-    -p $keystone_ext_port:35357 \
+    -p $keystone_public_port:5000 \
+    -p $keystone_admin_port:35357 \
     -e IDENTITY_HOST="$ciao_host" -e KEYSTONE_ADMIN_PASSWORD="${OS_PASSWORD}" \
     -v $mysql_data_dir:/var/lib/mysql \
-    -v ${OS_CACERT}:/etc/nginx/ssl/keystone_cert.pem \
-    -v ${ciao_pki_path}/${ciao_image_key}:/etc/nginx/ssl/keystone_key.pem clearlinux/keystone
+    -v "$keystone_cert":/etc/nginx/ssl/keystone_cert.pem \
+    -v "$keystone_key":/etc/nginx/ssl/keystone_key.pem clearlinux/keystone
 
 echo -n "Waiting for keystone identity service to become available"
 try_until=$(($(date +%s) + 30))
@@ -500,7 +518,9 @@ os_create_service ciao compute
 os_create_user "$ciao_username" "$ciao_password"
 os_create_project service
 os_create_role admin
-os_add_role admin "$ciao_username" service
+os_add_role admin "$ciao_username" admin # Required by BAT
+os_add_role admin "$ciao_username" service # Required by ciao-controller
+os_add_role admin "$ciao_admin_username" service
 os_create_user "$ciao_demo_username" "$ciao_demo_password"
 os_create_project demo
 os_create_role user
@@ -518,16 +538,10 @@ sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring m
 #Kick off the agents
 cd "$ciao_bin"
 "$ciao_bin"/run_scheduler.sh  &> /dev/null
-"$ciao_bin"/run_launcher.sh &> /dev/null
+"$ciao_bin"/run_launcher.sh   &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
 sleep 5
-
-# Run the image service
-
-"$ciao_bin"/run_image.sh "$ciao_identity_url" &> /dev/null
-
-sleep 1
 
 . $ciao_env
 
