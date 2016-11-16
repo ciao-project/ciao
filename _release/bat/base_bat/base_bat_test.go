@@ -266,6 +266,8 @@ func TestGetAllInstances(t *testing.T) {
 // The instance should be started and scheduled, the DeleteAllInstances command should
 // succeed and GetAllInstances command should return 0 instances.
 func TestDeleteAllInstances(t *testing.T) {
+	const retryCount = 5
+
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()
 
@@ -284,13 +286,28 @@ func TestDeleteAllInstances(t *testing.T) {
 		t.Fatalf("Failed to delete all instances: %v", err)
 	}
 
-	instanceDetails, err := bat.GetAllInstances(ctx, "")
-	if err != nil {
-		t.Fatalf("Failed to retrieve instances: %v", err)
+	// TODO:  The correct thing to do here is to wait for the Delete Events
+	// But these aren't correctly reported yet, see
+	// https://github.com/01org/ciao/issues/792
+
+	var i int
+	var instancesFound int
+	for ; i < retryCount; i++ {
+		instanceDetails, err := bat.GetAllInstances(ctx, "")
+		if err != nil {
+			t.Fatalf("Failed to retrieve instances: %v", err)
+		}
+
+		instancesFound = len(instanceDetails)
+		if instancesFound == 0 {
+			break
+		}
+
+		time.Sleep(time.Second)
 	}
 
-	if len(instanceDetails) != 0 {
-		t.Fatalf("0 instances expected.  Found %d", len(instanceDetails))
+	if instancesFound != 0 {
+		t.Fatalf("0 instances expected.  Found %d", instancesFound)
 	}
 }
 

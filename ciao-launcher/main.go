@@ -362,7 +362,6 @@ func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) 
 		errCh := make(chan error)
 		ovsCh <- &ovsRemoveCmd{
 			cmd.instance,
-			delCmd.suicide,
 			errCh}
 		<-errCh
 	}

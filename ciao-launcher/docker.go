@@ -67,6 +67,7 @@ type docker struct {
 	prevSampleTime time.Time
 	storageDriver  storage.BlockDriver
 	mount          mounter
+	cli            *client.Client
 }
 
 type mounter interface {
@@ -74,25 +75,13 @@ type mounter interface {
 	Unmount(path string, flags int) error
 }
 
-// It's not entirely clear that it's safe to call a client.Client object from
-// multiple go routines simulataneously.  The code looks like it is re-entrant
-// but this doesn't seem to be documented anywhere.  Need to check this.
-
-// There's no real way to return an error from init at the moment, so we'll
-// try to retrieve the client object at each new invocation of the virtualizer.
-
 // BUG(markus): We shouldn't report ssh ports for docker instances
 
 func getDockerClient() (cli *client.Client, err error) {
-	dockerClient.Lock()
-	if dockerClient.cli == nil {
-		defaultHeaders := map[string]string{"User-Agent": "ciao-1.0"}
-		dockerClient.cli, err = client.NewClient("unix:///var/run/docker.sock",
-			"v1.22", nil, defaultHeaders)
-	}
-	cli = dockerClient.cli
-	dockerClient.Unlock()
-	return cli, err
+	return client.NewClient("unix:///var/run/docker.sock", "v1.22", nil,
+		map[string]string{
+			"User-Agent": "ciao-1.0",
+		})
 }
 
 func (d *docker) init(cfg *vmConfig, instanceDir string) {
@@ -101,18 +90,31 @@ func (d *docker) init(cfg *vmConfig, instanceDir string) {
 	if d.mount == nil {
 		d.mount = dockerMounter{}
 	}
+	_ = d.initDockerClient()
+}
+
+func (d *docker) initDockerClient() error {
+	if d.cli != nil {
+		return nil
+	}
+	cli, err := getDockerClient()
+	if err != nil {
+		return fmt.Errorf("Unable to init docker client: %v", err)
+	}
+	d.cli = cli
+	return nil
 }
 
 func (d *docker) checkBackingImage() error {
 	glog.Infof("Checking backing docker image %s", d.cfg.Image)
 
-	cli, err := getDockerClient()
+	err := d.initDockerClient()
 	if err != nil {
 		return err
 	}
 
 	args := filters.NewArgs()
-	images, err := cli.ImageList(context.Background(),
+	images, err := d.cli.ImageList(context.Background(),
 		types.ImageListOptions{
 			MatchName: d.cfg.Image,
 			All:       false,
@@ -137,12 +139,12 @@ func (d *docker) checkBackingImage() error {
 func (d *docker) downloadBackingImage() error {
 	glog.Infof("Downloading backing docker image %s", d.cfg.Image)
 
-	cli, err := getDockerClient()
+	err := d.initDockerClient()
 	if err != nil {
 		return err
 	}
 
-	prog, err := cli.ImagePull(context.Background(), types.ImagePullOptions{ImageID: d.cfg.Image}, nil)
+	prog, err := d.cli.ImagePull(context.Background(), types.ImagePullOptions{ImageID: d.cfg.Image}, nil)
 	if err != nil {
 		glog.Errorf("Unable to download image %s: %v\n", d.cfg.Image, err)
 		return err
@@ -300,7 +302,7 @@ func (d *docker) prepareVolumes() ([]string, error) {
 }
 
 func (d *docker) createImage(bridge string, userData, metaData []byte) error {
-	cli, err := getDockerClient()
+	err := d.initDockerClient()
 	if err != nil {
 		return err
 	}
@@ -313,7 +315,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 
 	config, hostConfig, networkConfig := d.createConfigs(bridge, userData, metaData, volumes)
 
-	resp, err := cli.ContainerCreate(context.Background(), config, hostConfig, networkConfig,
+	resp, err := d.cli.ContainerCreate(context.Background(), config, hostConfig, networkConfig,
 		d.cfg.Instance)
 	if err != nil {
 		glog.Errorf("Unable to create container %v", err)
@@ -341,12 +343,12 @@ func (d *docker) deleteImage() error {
 		return nil
 	}
 
-	cli, err := getDockerClient()
+	err := d.initDockerClient()
 	if err != nil {
 		return err
 	}
 
-	err = cli.ContainerRemove(context.Background(),
+	err = d.cli.ContainerRemove(context.Background(),
 		types.ContainerRemoveOptions{
 			ContainerID: d.dockerID,
 			Force:       true})
@@ -360,7 +362,7 @@ func (d *docker) deleteImage() error {
 }
 
 func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
-	cli, err := getDockerClient()
+	err := d.initDockerClient()
 	if err != nil {
 		return err
 	}
@@ -371,7 +373,7 @@ func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
 		return err
 	}
 
-	err = cli.ContainerStart(context.Background(), d.dockerID)
+	err = d.cli.ContainerStart(context.Background(), d.dockerID)
 	if err != nil {
 		d.umountVolumes(d.cfg.Volumes)
 		d.unmapVolumes()
@@ -482,12 +484,12 @@ func (d *docker) computeInstanceDiskspace() int {
 		return -1
 	}
 
-	cli, err := getDockerClient()
+	err := d.initDockerClient()
 	if err != nil {
 		return -1
 	}
 
-	con, _, err := cli.ContainerInspectWithRaw(context.Background(), d.dockerID, true)
+	con, _, err := d.cli.ContainerInspectWithRaw(context.Background(), d.dockerID, true)
 	if err != nil {
 		glog.Errorf("Unable to determine status of instance %s:%s: %v", d.cfg.Instance,
 			d.dockerID, err)
@@ -510,13 +512,15 @@ func (d *docker) stats() (disk, memory, cpu int) {
 		return
 	}
 
-	cli, err := getDockerClient()
+	err := d.initDockerClient()
 	if err != nil {
 		glog.Errorf("Unable to get docker client: %v", err)
 		return
 	}
 
-	resp, err := cli.ContainerStats(context.Background(), d.dockerID, false)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
+	resp, err := d.cli.ContainerStats(ctx, d.dockerID, false)
+	cancelFunc()
 	if err != nil {
 		glog.Errorf("Unable to get stats from container: %s:%s %v", d.cfg.Instance, d.dockerID, err)
 		return

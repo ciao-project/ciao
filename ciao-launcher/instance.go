@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	yaml "gopkg.in/yaml.v2"
+
 	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
@@ -192,6 +194,24 @@ func (id *instanceData) stopCommand(cmd *insStopCmd) {
 	id.monitorCh <- virtualizerStopCmd{}
 }
 
+func (id *instanceData) sendInstanceDeletedEvent() {
+	var event payloads.EventInstanceDeleted
+
+	event.InstanceDeleted.InstanceUUID = id.instance
+
+	payload, err := yaml.Marshal(&event)
+	if err != nil {
+		glog.Errorf("Unable to Marshall STATS %v", err)
+		return
+	}
+
+	_, err = id.ac.conn.SendEvent(ssntp.InstanceDeleted, payload)
+	if err != nil {
+		glog.Errorf("Failed to send event command %v", err)
+		return
+	}
+}
+
 func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	if id.shuttingDown && !cmd.suicide {
 		deleteErr := &deleteError{nil, payloads.DeleteNoInstance}
@@ -211,6 +231,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	id.unmapVolumes()
 
 	if !cmd.suicide {
+		id.sendInstanceDeletedEvent()
 		id.ovsCh <- &ovsStatusCmd{}
 	}
 	return true
