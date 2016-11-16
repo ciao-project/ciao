@@ -44,5 +44,8 @@ clear_cloud_image_url: https://download.clearlinux.org/releases/10820/clear/clea
 # Clearlinux cloud image file name
 clear_cloud_image: "{{ clear_cloud_image_url.split('/') | last | regex_replace('(.*).xz', '\\1') }}"
 
+# Set to true to skip ceph configuration in ciao nodes
+skip_ceph: False
+
 # cephx user
 cephx_user: admin
