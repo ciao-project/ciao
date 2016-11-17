@@ -24,7 +24,7 @@ ciao_service_password | ciaoUserPassword | Password for `ciao_service_user`
 ciao_admin_email | admin@example.com | CIAO administrator email address
 ciao_cert_organization | Example Inc. | Name of the organization running the CIAO cluster
 ciao_guest_user | demouser | CIAO virtual machines can be accessed with this username and it's public key
-ciao_guest_key | ~/.ssh/id_rsa.pub | A path to an SSH public authentication key for `ciao_guest_user`
+ciao_guest_key | default ssh public key | SSH public authentication key for `ciao_guest_user`
 ceph_id | admin | Cephx user to authenticate
 secret_path | /etc/ceph/ceph.client.admin.keyring| Path to ceph user keyring
 
