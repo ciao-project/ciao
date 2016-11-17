@@ -126,6 +126,10 @@ runcmd:
  - {{template "PROXIES" .}}apt-get install ceph-common -y
  - curl -X PUT -d "Ceph-common installed" 10.0.2.2:{{.HTTPServerPort}}
 
+ - curl -X PUT -d "Installing Openstack client" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install python-openstackclient -y
+ - curl -X PUT -d "Openstack client installed" 10.0.2.2:{{.HTTPServerPort}}
+
  - curl -X PUT -d "Auto removing unused components" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get auto-remove -y
  - curl -X PUT -d "Unused components removed" 10.0.2.2:{{.HTTPServerPort}}
@@ -143,6 +147,10 @@ runcmd:
  - curl -X PUT -d "Pulling ceph/demo" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}} docker pull ceph/demo
  - curl -X PUT -d "Retrieved ceph/demo" 10.0.2.2:{{.HTTPServerPort}}
+
+ - curl -X PUT -d "Pulling clearlinux/keystone" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}} docker pull clearlinux/keystone
+ - curl -X PUT -d "Retrieved clearlinux/keystone" 10.0.2.2:{{.HTTPServerPort}}
 
  - mkdir -p /home/{{.User}}/local
 
