@@ -22,6 +22,7 @@ import (
 	"time"
 
 	imageDatastore "github.com/01org/ciao/ciao-image/datastore"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/database"
 	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/openstack/image"
@@ -207,8 +208,11 @@ func (c *controller) startImageService() error {
 		glog.Fatalf("Error on DB Tables Initialization:%v ", err)
 	}
 
-	rawDs := &imageDatastore.Posix{
-		MountPoint: c.image.MountPoint,
+	rawDs := &imageDatastore.Ceph{
+		ImageTempDir: c.image.MountPoint,
+		BlockDriver: storage.CephDriver{
+			ID: *cephID,
+		},
 	}
 
 	config := ImageConfig{

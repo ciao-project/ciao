@@ -32,29 +32,71 @@ type CephDriver struct {
 }
 
 // CreateBlockDevice will create a rbd image in the ceph cluster.
-func (d CephDriver) CreateBlockDevice(imagePath *string, size int) (BlockDevice, error) {
-	// generate a UUID to use for this image.
-	ID := uuid.Generate().String()
+func (d CephDriver) CreateBlockDevice(volumeUUID string, imagePath string, size int) (BlockDevice, error) {
+	if volumeUUID == "" {
+		volumeUUID = uuid.Generate().String()
+	} else {
+		_, err := uuid.Parse(volumeUUID)
+		if err != nil {
+			return BlockDevice{}, fmt.Errorf("invalid UUID supplied for volume ID")
+		}
+	}
 
 	var cmd *exec.Cmd
 
 	// imageFeatures holds the image features to use when creating a ceph rbd image format 2
 	// Currently the kernel rdb client only supports layering but in the future more feaures
 	// should be added as they are enabled in the kernel.
-	if imagePath != nil {
-		rbdStr := fmt.Sprintf("rbd:rbd/%s:id=%s", ID, d.ID)
-		cmd = exec.Command("qemu-img", "convert", "-O", "rbd", *imagePath, rbdStr)
+	if imagePath != "" {
+		rbdStr := fmt.Sprintf("rbd:rbd/%s:id=%s", volumeUUID, d.ID)
+		cmd = exec.Command("qemu-img", "convert", "-O", "rbd", imagePath, rbdStr)
 	} else {
 		// create an empty volume
-		cmd = exec.Command("rbd", "--id", d.ID, "--image-feature", "layering", "create", "--size", strconv.Itoa(size)+"G", ID)
+		cmd = exec.Command("rbd", "--id", d.ID, "--image-feature", "layering", "create", "--size", strconv.Itoa(size)+"G", volumeUUID)
 	}
 
 	err := cmd.Run()
 	if err != nil {
-		return BlockDevice{}, err
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	return BlockDevice{ID: volumeUUID}, nil
+}
+
+// CreateBlockDeviceFromSnapshot will create a block device derived from the previously created snapshot.
+func (d CephDriver) CreateBlockDeviceFromSnapshot(volumeUUID string, snapshotID string) (BlockDevice, error) {
+	ID := uuid.Generate().String()
+
+	var cmd *exec.Cmd
+
+	cmd = exec.Command("rbd", "--id", d.ID, "clone", volumeUUID+"@"+snapshotID, ID)
+
+	err := cmd.Run()
+	if err != nil {
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
 	}
 
 	return BlockDevice{ID: ID}, nil
+}
+
+// CreateBlockDeviceSnapshot creates and protects the snapshot with the provided name
+func (d CephDriver) CreateBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
+	var cmd *exec.Cmd
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "create", volumeUUID+"@"+snapshotID)
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "protect", volumeUUID+"@"+snapshotID)
+
+	err = cmd.Run()
+	if err != nil {
+		d.DeleteBlockDevice(volumeUUID)
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+	return nil
 }
 
 // CopyBlockDevice will copy an existing volume
@@ -67,7 +109,7 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return BlockDevice{}, err
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
 	}
 
 	return BlockDevice{ID: ID}, nil
@@ -77,6 +119,24 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 func (d CephDriver) DeleteBlockDevice(volumeUUID string) error {
 	cmd := exec.Command("rbd", "--id", d.ID, "rm", volumeUUID)
 	return cmd.Run()
+}
+
+// DeleteBlockDeviceSnapshot unprotects and deletes the snapshot with the provided name
+func (d CephDriver) DeleteBlockDeviceSnapshot(volumeUUID string, snapshotID string) error {
+	var cmd *exec.Cmd
+
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "unprotect", volumeUUID+"@"+snapshotID)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	cmd = exec.Command("rbd", "--id", d.ID, "snap", "rm", volumeUUID+"@"+snapshotID)
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+	return nil
 }
 
 func (d CephDriver) getCredentials() []string {
