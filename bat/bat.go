@@ -29,6 +29,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -723,4 +724,32 @@ func UploadImage(ctx context.Context, tenant, ID, path string) error {
 	args := []string{"image", "upload", "-image", ID, "-file", path}
 	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
 	return err
+}
+
+// CreateRandomFile creates a file of the desired size with random data
+// returning the path.
+func CreateRandomFile(sizeMB int) (path string, err error) {
+	var f *os.File
+	f, err = ioutil.TempFile("/tmp", "ciao-random-")
+	if err != nil {
+		return
+	}
+	defer func() {
+		err1 := f.Close()
+		if err1 != nil && err == nil {
+			err = err1
+		}
+	}()
+
+	b := make([]byte, sizeMB*1000000)
+	_, err = rand.Read(b)
+	if err != nil {
+		return
+	}
+	_, err = f.Write(b)
+	if err == nil {
+		path = f.Name()
+	}
+
+	return
 }
