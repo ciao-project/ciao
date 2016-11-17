@@ -24,4 +24,7 @@
       gpgcheck: yes
 
   - name: Install docker (Fedora)
-    dnf: name=docker-engine state=present
+    dnf: name={{ item }} state=present
+    with_items:
+      - docker-engine
+      - python-docker-py
