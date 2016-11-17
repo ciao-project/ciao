@@ -518,9 +518,7 @@ os_create_service ciao compute
 os_create_user "$ciao_username" "$ciao_password"
 os_create_project service
 os_create_role admin
-os_add_role admin "$ciao_username" admin # Required by BAT
 os_add_role admin "$ciao_username" service # Required by ciao-controller
-os_add_role admin "$ciao_admin_username" service
 os_create_user "$ciao_demo_username" "$ciao_demo_password"
 os_create_project demo
 os_create_role user
