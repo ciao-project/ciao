@@ -373,6 +373,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 	if err != nil {
 		return server, err
 	}
+	volumes := abstractBlockDevices(blockDeviceMappings)
 
 	// openstack doesn't allow us to use our traced start workload
 	// functionality. So we use the name field in our cli to indicate
@@ -384,7 +385,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 		label = server.Server.Name
 	}
 
-	instances, err := c.startWorkload(server.Server.Flavor, tenant, nInstances, trace, label)
+	instances, err := c.startWorkload(server.Server.Flavor, tenant, nInstances, trace, label, volumes)
 	if err != nil {
 		return server, err
 	}

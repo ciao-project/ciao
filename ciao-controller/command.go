@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/golang/glog"
 )
@@ -130,7 +131,9 @@ func (c *controller) confirmTenant(tenantID string) error {
 	return nil
 }
 
-func (c *controller) startWorkload(workloadID string, tenantID string, instances int, trace bool, label string) ([]*types.Instance, error) {
+func (c *controller) startWorkload(workloadID string, tenantID string, instances int,
+	trace bool, label string, volumes []storage.BlockDevice) ([]*types.Instance, error) {
+
 	var e error
 
 	if instances <= 0 {
@@ -202,7 +205,9 @@ func (c *controller) launchCNCI(tenantID string) error {
 
 	c.ds.AddTenantChan(ch, tenantID)
 
-	_, err = c.startWorkload(workloadID, tenantID, 1, false, "")
+	noVolumes := []storage.BlockDevice{}
+
+	_, err = c.startWorkload(workloadID, tenantID, 1, false, "", noVolumes)
 	if err != nil {
 		return err
 	}
