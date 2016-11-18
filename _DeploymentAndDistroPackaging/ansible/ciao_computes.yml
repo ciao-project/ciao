@@ -16,4 +16,5 @@
   - hosts: computes
     become: yes
     roles:
+      - docker
       - ciao-compute
