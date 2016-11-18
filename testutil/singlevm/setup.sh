@@ -1,15 +1,16 @@
 #!/bin/bash
 ciao_host=$(hostname)
+ciao_ip=$(hostname -i)
 ciao_interface=ciao_eth
-ciao_ip=198.51.100.1
-ciao_subnet=${ciao_ip}/24
-ciao_brdcast=198.51.100.255
+ciao_vlan_ip=198.51.100.1
+ciao_vlan_subnet=${ciao_vlan_ip}/24
+ciao_vlan_brdcast=198.51.100.255
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
 keystone_key="$ciao_bin"/keystone_key.pem
 keystone_cert="$ciao_bin"/keystone_cert.pem
 ciao_pki_path=/etc/pki/ciao
-export no_proxy=$no_proxy,$ciao_ip,$ciao_host
+export no_proxy=$no_proxy,$ciao_vlan_ip,$ciao_host
 
 ciao_email="ciao-devel@lists.clearlinux.org"
 ciao_org="Intel"
@@ -97,7 +98,7 @@ if [ -z "$OPENSTACK" ] || ! [ -x "$OPENSTACK" ]; then
     exit 1
 fi
 
-echo "Subnet =" $ciao_subnet
+echo "Subnet =" $ciao_vlan_subnet
 
 # Copy the cleanup scripts
 cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
@@ -162,8 +163,8 @@ configure:
     type: glance
     url: https://${ciao_host}
   launcher:
-    compute_net: [${ciao_subnet}]
-    mgmt_net: [${ciao_subnet}]
+    compute_net: [${ciao_vlan_subnet}]
+    mgmt_net: [${ciao_vlan_subnet}]
     disk_limit: false
     mem_limit: false
   identity_service:
@@ -236,19 +237,19 @@ fi
 
 #Generate Certificates
 "$GOPATH"/bin/ciao-cert -anchor -role scheduler -email="$ciao_email" \
-    -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+    -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_vlan_ip" -verify
 
 "$GOPATH"/bin/ciao-cert -role cnciagent -anchor-cert "$ciao_cert" \
     -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
-    -ip="$ciao_ip" -verify
+    -ip="$ciao_vlan_ip" -verify
 
 "$GOPATH"/bin/ciao-cert -role controller -anchor-cert "$ciao_cert" \
     -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
-    -ip="$ciao_ip" -verify
+    -ip="$ciao_vlan_ip" -verify
 
 "$GOPATH"/bin/ciao-cert -role agent,netagent -anchor-cert "$ciao_cert" \
     -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
-    -ip="$ciao_ip" -verify
+    -ip="$ciao_vlan_ip" -verify
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout "$keystone_key" -out "$keystone_cert" -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
@@ -380,7 +381,7 @@ if [ -x "$(command -v ip)" ]; then
     sudo ip link del "$ciao_interface"
     sudo ip link add name "$ciao_interface" type bridge
     sudo ip link add link "$ciao_interface" name ciaovlan type macvlan mode bridge
-    sudo ip addr add "$ciao_subnet" brd "$ciao_brdcast" dev ciaovlan
+    sudo ip addr add "$ciao_vlan_subnet" brd "$ciao_vlan_brdcast" dev ciaovlan
     sudo ip link set dev ciaovlan up
     sudo ip -d link show ciaovlan
     sudo ip link set dev "$ciao_interface" up
@@ -491,6 +492,7 @@ function os_add_role() {
 
 ## Install keystone
 sudo docker run -d -it --name keystone \
+    --add-host="$ciao_host":"$ciao_ip" \
     -p $keystone_public_port:5000 \
     -p $keystone_admin_port:35357 \
     -e IDENTITY_HOST="$ciao_host" -e KEYSTONE_ADMIN_PASSWORD="${OS_PASSWORD}" \
@@ -530,7 +532,7 @@ os_create_ep image glance RegionOne admin    https://$ciao_host:9292
 
 # Install ceph
 # This runs *after* keystone so keystone will get port 5000 first
-sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
+sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_vlan_ip -e CEPH_PUBLIC_NETWORK=$ciao_vlan_subnet ceph/demo
 sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
 
 #Kick off the agents
