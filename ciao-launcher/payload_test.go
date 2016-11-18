@@ -53,8 +53,8 @@ start:
     subnet: 192.168.8.0/21
     private_ip: 192.168.8.2
   storage:
-    id: 69e84267-ed01-4738-b15f-b47de06b62e7
-    boot: true
+     - id: 69e84267-ed01-4738-b15f-b47de06b62e7
+       boot: true
 `,
 		&vmConfig{
 			Cpus:       2,
@@ -103,8 +103,8 @@ start:
     subnet: 192.168.8.0/21
     private_ip: 192.168.8.2
   storage:
-    id: 69e84267-ed01-4738-b15f-b47de06b62e7
-    boot: true
+     - id: 69e84267-ed01-4738-b15f-b47de06b62e7
+       boot: true
 `,
 		nil,
 	},
@@ -129,8 +129,8 @@ start:
     subnet: 192.168.8.0/21
     private_ip: 192.168.8.2
   storage:
-    id: 69e84267-ed01-4738-b15f-b47de06b62e7
-    boot: true
+     - id: 69e84267-ed01-4738-b15f-b47de06b62e7
+       boot: true
 `,
 		nil,
 	},
@@ -156,8 +156,8 @@ start:
     subnet: 192.168.8.0/21
     private_ip: 192.168.8.2
   storage:
-    id: 69e84267-ed01-4738-b15f-b47de06b62e7
-    boot: true
+     - id: 69e84267-ed01-4738-b15f-b47de06b62e7
+       boot: true
 `,
 		nil,
 	},

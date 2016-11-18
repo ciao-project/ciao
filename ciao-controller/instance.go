@@ -93,8 +93,7 @@ func (i *instance) Add() error {
 	} else {
 		ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}
-	storage := i.newConfig.sc.Start.Storage
-	if (storage != payloads.StorageResources{}) {
+	for _, storage := range i.newConfig.sc.Start.Storage {
 		_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral, storage.Bootable)
 		if err != nil {
 			glog.Error(err)
@@ -153,12 +152,12 @@ func (c *config) GetResources() map[string]int {
 	return resources
 }
 
-func getStorage(c *controller, wl *types.Workload, tenant string, instanceID string) (payloads.StorageResources, error) {
+func getStorage(c *controller, wl *types.Workload, tenant string, instanceID string) (payloads.StorageResource, error) {
 	s := wl.Storage
 
 	// storage already exists, use preexisting definition.
 	if s.ID != "" {
-		return payloads.StorageResources{ID: s.ID, Bootable: s.Bootable}, nil
+		return payloads.StorageResource{ID: s.ID, Bootable: s.Bootable}, nil
 	}
 
 	// new storage.
@@ -191,7 +190,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 		device, err := c.CreateBlockDeviceFromSnapshot(s.SourceID, "ciao-image")
 		if err != nil {
 			glog.Errorf("Unable to get block device for image: %v", err)
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
 		// don't you need to add support for indicating whether
@@ -207,14 +206,14 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 		err = c.ds.AddBlockDevice(data)
 		if err != nil {
 			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
-		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable, Ephemeral: true}, nil
+		return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable, Ephemeral: true}, nil
 	case types.VolumeService:
 		device, err := c.CopyBlockDevice(s.SourceID)
 		if err != nil {
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
 		// don't you need to add support for indicating whether
@@ -230,15 +229,15 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 		err = c.ds.AddBlockDevice(data)
 		if err != nil {
 			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
-		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable}, nil
+		return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable}, nil
 
 	case types.Empty:
 		device, err := c.CreateBlockDevice("", "", s.Size)
 		if err != nil {
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
 		// don't you need to add support for indicating whether
@@ -254,14 +253,14 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 		err = c.ds.AddBlockDevice(data)
 		if err != nil {
 			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
-		return payloads.StorageResources{ID: data.ID, Bootable: false}, nil
+		return payloads.StorageResource{ID: data.ID, Bootable: false}, nil
 
 	}
 
-	return payloads.StorageResources{}, errors.New("Unsupported workload storage variant in getStorage()")
+	return payloads.StorageResource{}, errors.New("Unsupported workload storage variant in getStorage()")
 }
 
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {
@@ -286,7 +285,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	config.cnci = isCNCIWorkload(wl)
 
 	var networking payloads.NetworkResources
-	var storage payloads.StorageResources
+	var storage []payloads.StorageResource
 
 	// do we ever need to save the vnic uuid?
 	networking.VnicUUID = uuid.Generate().String()
@@ -325,12 +324,13 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		userData.UUID = instanceID
 		userData.Hostname = "cnci-" + tenantID
 	}
-	// handle storage resources
+	// handle workload storage resources
 	if wl.Storage != nil {
-		storage, err = getStorage(ctl, wl, tenantID, instanceID)
+		workloadStorage, err := getStorage(ctl, wl, tenantID, instanceID)
 		if err != nil {
 			return config, err
 		}
+		storage = append(storage, workloadStorage)
 	}
 
 	// hardcode persistence until changes can be made to workload
