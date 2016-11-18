@@ -39,5 +39,5 @@ type BlockDriver interface {
 
 // BlockDevice contains information about a block devices.
 type BlockDevice struct {
-	ID string
+	ID         string // device UUID
 }
