@@ -17,6 +17,7 @@ ciao_env="$ciao_bin/demo.sh"
 ciao_ctl_log="/var/lib/ciao/logs/controller/ciao-controller.ERROR"
 ciao_cnci_image="clear-8260-ciao-networking.img"
 ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
+ciao_data=$ciao_bin"/data"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
@@ -26,6 +27,7 @@ echo "Subnet =" $ciao_subnet
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
 mkdir -p "$ciao_bin"
+mkdir -p "$ciao_data"
 
 if [ ! -d  "$ciao_bin" ]
 then
@@ -113,13 +115,7 @@ cd "$ciao_bin"
 
 #Cleanup any old artifacts
 rm -f "$ciao_bin"/*.pem
-sudo rm -f "$ciao_bin"/ciao-controller.db-shm
-sudo rm -f "$ciao_bin"/ciao-controller.db-wal
-sudo rm -f "$ciao_bin"/ciao-controller.db
-sudo rm -f /tmp/ciao-controller-stats.db
-sudo rm -f "$ciao_bin"/ciao-image.db
-rm -rf "$ciao_bin"/tables
-rm -rf "$ciao_bin"/workloads
+sudo rm -f "$ciao_data"/*
 
 #Build ciao
 rm -f "$ciao_gobin"/ciao*
@@ -158,12 +154,12 @@ sudo cp -f controller_cert.pem /etc/pki/ciao
 
 #Copy the configuration
 cd "$ciao_bin"
-cp -a "$ciao_src"/ciao-controller/tables "$ciao_bin"
-cp -a "$ciao_src"/ciao-controller/workloads "$ciao_bin"
+cp -a "$ciao_src"/ciao-controller/tables "$ciao_data"
+cp -a "$ciao_src"/ciao-controller/workloads "$ciao_data"
 
 #Over ride the configuration with test specific defaults
-cp -f "$ciao_scripts"/workloads/* "$ciao_bin"/workloads
-cp -f "$ciao_scripts"/tables/* "$ciao_bin"/tables
+cp -f "$ciao_scripts"/workloads/* "$ciao_data"/workloads
+cp -f "$ciao_scripts"/tables/* "$ciao_data"/tables
 
 
 #Copy the launch scripts
