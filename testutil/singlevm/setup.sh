@@ -79,25 +79,6 @@ set | grep ^OS_ | while read VAR; do
     echo export "$VAR" >> "$ciao_env"
 done
 
-# Checking for openstack client
-OPENSTACK=$(type -p openstack)
-
-if [ -z "$OPENSTACK" ] || ! [ -x "$OPENSTACK" ]; then
-    echo "This demo requires the openstack command-line tool"
-    echo
-    echo "To install it, try an appropriate command from the following:"
-    echo "* sudo swupd bundle-add openstack-python-clients"
-    echo "* sudo apt-get install python-openstackclient"
-    echo "* sudo yum install python-openstackclient"
-    echo "* sudo pip install python-openstackclient"
-    echo
-    echo "See:"
-    echo \
-    "http://docs.openstack.org/icehouse/install-guide/install/yum/content/install_clients.html"
-    echo "for more information"
-    exit 1
-fi
-
 echo "Subnet =" $ciao_vlan_subnet
 
 # Copy the cleanup scripts
@@ -399,96 +380,27 @@ else
     echo 'dnsmasq command is not supported'
 fi
 
-# Helper functions for openstack commands
-function os_exists() {
-    os_cmd="$1"
-    os_val="$2"
-    os_col="${3:-Name}"
+# Generate the post-keystone script to issue singlevm-specific openstack
+# commands
+( cat <<-EOF
+#!/bin/bash
 
-    "$OPENSTACK" "$os_cmd" list -f value -c "$os_col" | grep -q -w "$os_val"
-    return $?
-}
-
-function os_exists_ep() {
-    # Special case
-    os_name="$1"
-    os_service="$2"
-    os_region="$3"
-    os_interface="$4"
-
-    "$OPENSTACK" endpoint list --service "$os_service" --region "$os_region" \
-        --interface "$os_interface" -f value -c 'Service Type' | \
-        grep -q -w "$os_name"
-    return $?
-}
-
-function os_create_ep() {
-    os_name="$1"
-    os_service="$2"
-    os_region="$3"
-    os_interface="$4"
-    os_url="$5"
-
-    if ! os_exists_ep "$os_name" "$os_service" "$os_region" "$os_interface";
-    then
-        echo "Attempting to add \"$os_interface\" endpoint"
-        "$OPENSTACK" endpoint create --region "$os_region" "$os_name" \
-            "$os_interface" "$os_url"
-    fi
-}
-
-function os_create_project() {
-    project="$1"
-
-    if ! os_exists project "$project"; then
-        echo "Attempting to create \"$project\" project"
-        "$OPENSTACK" project create "$project"
-    fi
-}
-
-function os_create_service() {
-    svc_name="$1"
-    svc_type="$2"
-    svc_desc="${3:-}"
-
-    if ! os_exists service "$svc_name"; then
-        echo "Attempting to create \"$svc_name\" $svc_type service"
-        if [ x"$svc_desc" != x ]; then
-            "$OPENSTACK" service create --name "$svc_name" \
-                --description "$svc_desc" "$svc_type"
-        else
-            "$OPENSTACK" service create --name "$svc_name" "$svc_type"
-        fi
-    fi
-}
-
-function os_create_user() {
-    user="$1"
-    pass="$2"
-
-    if ! os_exists user "$user"; then
-        echo "Attempting to create \"$user\" user"
-        "$OPENSTACK" user create --password "$pass" "$user"
-    fi
-}
-
-function os_create_role() {
-    role="$1"
-
-    if ! os_exists role "$role"; then
-        echo "Attempting to create \"$role\" role"
-        "$OPENSTACK" role create "$role"
-    fi
-}
-
-function os_add_role() {
-    role="$1"
-    user="$2"
-    project="$3"
-
-    # Duplicate is OK
-    "$OPENSTACK" role add --project "$project" --user "$user" "$role"
-}
+openstack service create --name ciao compute
+openstack user create --password "$ciao_password" "$ciao_username"
+openstack role add --project service --user "$ciao_username" admin
+openstack user create --password "$ciao_demo_password" "$ciao_demo_username"
+openstack project show demo
+if [[ \$? == 1 ]]; then
+    openstack project create --domain default demo
+fi
+openstack role add --project demo --user "$ciao_demo_username" user
+openstack service create --name glance --description "Image Service" image
+openstack endpoint create --region RegionOne image public   https://$ciao_host:9292
+openstack endpoint create --region RegionOne image internal https://$ciao_host:9292
+openstack endpoint create --region RegionOne image admin    https://$ciao_host:9292
+EOF
+) > "$ciao_bin"/post-keystone.sh
+chmod 755 "$ciao_bin"/post-keystone.sh
 
 ## Install keystone
 sudo docker run -d -it --name keystone \
@@ -496,6 +408,7 @@ sudo docker run -d -it --name keystone \
     -p $keystone_public_port:5000 \
     -p $keystone_admin_port:35357 \
     -e IDENTITY_HOST="$ciao_host" -e KEYSTONE_ADMIN_PASSWORD="${OS_PASSWORD}" \
+    -v "$ciao_bin"/post-keystone.sh:/usr/bin/post-keystone.sh \
     -v $mysql_data_dir:/var/lib/mysql \
     -v "$keystone_cert":/etc/nginx/ssl/keystone_cert.pem \
     -v "$keystone_key":/etc/nginx/ssl/keystone_key.pem clearlinux/keystone
@@ -504,7 +417,9 @@ echo -n "Waiting for keystone identity service to become available"
 try_until=$(($(date +%s) + 30))
 while : ; do
     while [ $(date +%s) -le $try_until ]; do
-        if openstack service list > /dev/null 2>&1; then
+        # The keystone container tails the log at the end of its
+        # initialization script
+        if docker exec keystone pidof tail > /dev/null 2>&1; then
             echo READY
             break 2
         else
@@ -515,20 +430,6 @@ while : ; do
     echo FAILED
     break
 done
-# Create services/projects/roles/users if needed
-os_create_service ciao compute
-os_create_user "$ciao_username" "$ciao_password"
-os_create_project service
-os_create_role admin
-os_add_role admin "$ciao_username" service # Required by ciao-controller
-os_create_user "$ciao_demo_username" "$ciao_demo_password"
-os_create_project demo
-os_create_role user
-os_add_role user "$ciao_demo_username" demo
-os_create_service glance image "Image Service"
-os_create_ep image glance RegionOne public   https://$ciao_host:9292
-os_create_ep image glance RegionOne internal https://$ciao_host:9292
-os_create_ep image glance RegionOne admin    https://$ciao_host:9292
 
 # Install ceph
 # This runs *after* keystone so keystone will get port 5000 first
