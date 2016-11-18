@@ -101,7 +101,9 @@ Usage of ciao-controller/ciao-controller:
   -cert string
     	Client certificate (default "/etc/pki/ciao/cert-client-localhost.pem")
   -database_path string
-    	path to persistent database (default "./ciao-controller.db")
+        path to persistent database (default "/var/lib/ciao/data/controller/ciao-controller.db")
+  -image_database_path string
+        path to image persistent database (default "/var/lib/ciao/data/image/ciao-image.db")
   -log_backtrace_at value
     	when logging hits line file:N, emit a stack trace (default :0)
   -log_dir string
@@ -111,11 +113,11 @@ Usage of ciao-controller/ciao-controller:
   -nonetwork
     	Debug with no networking
   -stats_path string
-    	path to stats database (default "/tmp/ciao-controller-stats.db")
+    	path to stats database (default "/var/lib/ciao/data/controller/ciao-controller-stats.db")
   -stderrthreshold value
     	logs at or above this threshold go to stderr
   -tables_init_path string
-	path to csv files (default "./tables")
+	path to csv files (default "/var/lib/ciao/data/controller/tables")
   -url string
     	Server URL (default "localhost")
   -v value
@@ -123,7 +125,7 @@ Usage of ciao-controller/ciao-controller:
   -vmodule value
     	comma-separated list of pattern=N settings for file-filtered logging
   -workloads_path string
-	path to yaml files (default "./workloads")
+	path to yaml files (default "/var/lib/ciao/data/controller/workloads")
 ```
 
 ### Example

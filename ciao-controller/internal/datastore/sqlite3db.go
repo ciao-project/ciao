@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -605,6 +606,12 @@ func (ds *sqliteDB) getTableDB(name string) *sql.DB {
 func getPersistentStore(config Config) (persistentStore, error) {
 	var ds = &sqliteDB{}
 
+	dbDir := filepath.Dir(config.PersistentURI)
+	if err := os.MkdirAll(dbDir, 0755); err != nil && dbDir != "." {
+		fmt.Println(err)
+		return nil, fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
+	}
+
 	err := ds.Connect(config.PersistentURI, config.TransientURI)
 	if err != nil {
 		return nil, err
@@ -633,7 +640,18 @@ func getPersistentStore(config Config) (persistentStore, error) {
 	}
 
 	ds.tableInitPath = config.InitTablesPath
+	if ds.tableInitPath != "" {
+		if err := os.MkdirAll(ds.tableInitPath, 0755); err != nil {
+			return nil, fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
+		}
+	}
+
 	ds.workloadsPath = config.InitWorkloadsPath
+	if ds.workloadsPath != "" {
+		if err := os.MkdirAll(ds.workloadsPath, 0755); err != nil {
+			return nil, fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
+		}
+	}
 
 	for _, table := range ds.tables {
 		err = table.Init()
