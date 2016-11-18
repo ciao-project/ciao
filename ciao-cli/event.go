@@ -58,6 +58,7 @@ The template passed to the -f option operates on a
 	Message   string    // Event message
 }
 `)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 

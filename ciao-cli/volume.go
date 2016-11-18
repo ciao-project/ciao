@@ -132,7 +132,7 @@ As volumes are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of volumes.
 `, volumeTemplateDesc)
-
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
@@ -211,6 +211,7 @@ The template passed to the -f option operates on a
 
 %s
 `, volumeTemplateDesc)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 

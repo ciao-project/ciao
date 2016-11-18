@@ -51,6 +51,7 @@ The template passed to the -f option operates on
 	Instances int    // Number of instances created with this label
 }
 `)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
@@ -119,6 +120,7 @@ struct {
 	VarianceScheduler        float64 // Scheduler start time variance
 }
 `)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 

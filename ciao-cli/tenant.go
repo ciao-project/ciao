@@ -97,6 +97,7 @@ struct {
 	Timestamp time.Time  // Time resource snapshot was taken
 }
 `)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
