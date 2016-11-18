@@ -16,4 +16,4 @@ sudo rm -rf /var/lib/ciao/ciao-image
 sudo rm /var/lib/ciao/images/4e16e743-265a-4bf2-9fd1-57ada0b28904
 sudo rm /var/lib/ciao/images/df3768da-31f5-4ba6-82f0-127a1a705169
 sudo rm /var/lib/ciao/images/73a86d7e-93c0-480e-9c41-ab42f69b7799
-
+sudo docker network rm $(sudo docker network ls --filter driver=ciao -q)
