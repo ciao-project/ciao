@@ -438,7 +438,7 @@ func disablePublicIP(intIP, pubIP string) error {
 		return fmt.Errorf("Error: InitFirewall could not verify existence of PREROUTING rule %s to %s", pubIP, intIP)
 	}
 
-	if !ok {
+	if ok {
 		err := ipt.Delete("nat", "ciao-floating-ip-pre", "-d", pubIP+"/32", "-j", "DNAT", "--to-destination", intIP)
 		if err != nil {
 			return fmt.Errorf("Could not delete firewall PREROUTING rule %s to %s into chain ciao-floating-ip-pre", pubIP, intIP)
