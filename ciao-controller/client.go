@@ -17,8 +17,10 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
@@ -86,6 +88,9 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 	payload := frame.Payload
 
 	glog.Info("EVENT ", event, " for ", client.name)
+
+	glog.V(1).Info(string(payload))
+
 	switch event {
 	case ssntp.InstanceDeleted:
 		var event payloads.EventInstanceDeleted
@@ -134,14 +139,54 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 		glog.Infof("Node %s disconnected", nodeDisconnected.Disconnected.NodeUUID)
 		client.ctl.ds.DeleteNode(nodeDisconnected.Disconnected.NodeUUID)
 
+	case ssntp.PublicIPAssigned:
+		var event payloads.EventPublicIPAssigned
+		err := yaml.Unmarshal(payload, &event)
+		if err != nil {
+			glog.Warning(err)
+			return
+		}
+
+		i, err := client.ctl.ds.GetInstance(event.AssignedIP.InstanceUUID)
+		if err != nil {
+			glog.Warning(err)
+			return
+		}
+
+		msg := fmt.Sprintf("Mapped %s to %s", event.AssignedIP.PublicIP, event.AssignedIP.PrivateIP)
+		client.ctl.ds.LogEvent(i.TenantID, msg)
+
+	case ssntp.PublicIPUnassigned:
+		var event payloads.EventPublicIPUnassigned
+		err := yaml.Unmarshal(payload, &event)
+		if err != nil {
+			glog.Warning(err)
+			return
+		}
+
+		i, err := client.ctl.ds.GetInstance(event.UnassignedIP.InstanceUUID)
+		if err != nil {
+			glog.Warning(err)
+			return
+		}
+
+		err = client.ctl.ds.UnMapExternalIP(event.UnassignedIP.PublicIP)
+		if err != nil {
+			glog.Warning(err)
+			return
+		}
+
+		msg := fmt.Sprintf("Unmapped %s from %s", event.UnassignedIP.PublicIP, event.UnassignedIP.PrivateIP)
+		client.ctl.ds.LogEvent(i.TenantID, msg)
 	}
-	glog.V(1).Info(string(payload))
 }
 
 func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 	payload := frame.Payload
 
 	glog.Info("ERROR (", err, ") for ", client.name)
+	glog.V(1).Info(string(payload))
+
 	switch err {
 	case ssntp.StartFailure:
 		var failure payloads.ErrorStartFailure
@@ -185,8 +230,24 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 		}
 		client.ctl.ds.DetachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
 
+	case ssntp.AssignPublicIPFailure:
+		var failure payloads.ErrorPublicIPFailure
+		err := yaml.Unmarshal(payload, &failure)
+		if err != nil {
+			glog.Warning("Error unmarshalling ErrorPublicIPFailure")
+			return
+		}
+
+		err = client.ctl.ds.UnMapExternalIP(failure.PublicIP)
+		if err != nil {
+			glog.Warning(err)
+			return
+		}
+
+		msg := fmt.Sprintf("Failed to map %s to %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
+		client.ctl.ds.LogEvent(failure.TenantUUID, msg)
+
 	}
-	glog.V(1).Info(string(payload))
 }
 
 func newSSNTPClient(ctl *controller, config *ssntp.Config) (*ssntpClient, error) {
@@ -357,4 +418,52 @@ func (client *ssntpClient) detachVolume(volID string, instanceID string, nodeID 
 
 func (client *ssntpClient) Disconnect() {
 	client.ssntp.Close()
+}
+
+func (client *ssntpClient) mapExternalIP(t types.Tenant, m types.MappedIP) error {
+	payload := payloads.CommandAssignPublicIP{
+		AssignIP: payloads.PublicIPCommand{
+			ConcentratorUUID: t.CNCIID,
+			TenantUUID:       m.TenantID,
+			InstanceUUID:     m.InstanceID,
+			PublicIP:         m.ExternalIP,
+			PrivateIP:        m.InternalIP,
+			VnicMAC:          t.CNCIMAC,
+		},
+	}
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	glog.Infof("Request Map of %s to %s\n", m.ExternalIP, m.InternalIP)
+	glog.V(1).Info(string(y))
+
+	_, err = client.ssntp.SendCommand(ssntp.AssignPublicIP, y)
+	return err
+}
+
+func (client *ssntpClient) unMapExternalIP(t types.Tenant, m types.MappedIP) error {
+	payload := payloads.CommandReleasePublicIP{
+		ReleaseIP: payloads.PublicIPCommand{
+			ConcentratorUUID: t.CNCIID,
+			TenantUUID:       m.TenantID,
+			InstanceUUID:     m.InstanceID,
+			PublicIP:         m.ExternalIP,
+			PrivateIP:        m.InternalIP,
+			VnicMAC:          t.CNCIMAC,
+		},
+	}
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	glog.Infof("Request unmap of %s from %s\n", m.ExternalIP, m.InternalIP)
+	glog.V(1).Info(string(y))
+
+	_, err = client.ssntp.SendCommand(ssntp.ReleasePublicIP, y)
+	return err
 }

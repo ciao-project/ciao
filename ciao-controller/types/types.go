@@ -512,4 +512,134 @@ var (
 
 	// ErrInstanceNotAssigned is returned when an instance is not assigned to a node.
 	ErrInstanceNotAssigned = errors.New("Cannot perform operation: instance not assigned to Node")
+
+	// ErrDuplicateSubnet is returned when a subnet already exists
+	ErrDuplicateSubnet = errors.New("Cannot add overlapping subnet")
+
+	// ErrDuplicateIP is returned when a duplicate external IP is added
+	ErrDuplicateIP = errors.New("Cannot add duplicated external IP")
+
+	// ErrInvalidIP is returned when an IP cannot be parsed
+	ErrInvalidIP = errors.New("The IP Address is not valid")
+
+	// ErrPoolNotFound is returned when an external IP pool is not found
+	ErrPoolNotFound = errors.New("Pool not found")
+
+	// ErrPoolNotEmpty is returned when a pool is still in use
+	ErrPoolNotEmpty = errors.New("Pool has mapped IPs")
+
+	// ErrAddressNotFound is returned when an address isn't found.
+	ErrAddressNotFound = errors.New("Address Not Found")
+
+	// ErrInvalidPoolAddress is returned when an address isn't part of a pool
+	ErrInvalidPoolAddress = errors.New("The Address is not found in this pool")
+
+	// ErrBadRequest is returned when we have a malformed request
+	ErrBadRequest = errors.New("Invalid Request")
+
+	// ErrPoolEmpty is returned when a pool has no free IPs
+	ErrPoolEmpty = errors.New("Pool has no Free IPs")
+
+	// ErrDuplicatePoolName is returned when a duplicate pool name is used
+	ErrDuplicatePoolName = errors.New("Pool by that name already exists")
 )
+
+// Link provides a url and relationship for a resource.
+type Link struct {
+	Rel  string `json:"rel"`
+	Href string `json:"href"`
+}
+
+// APILink provides information and links about a supported resource.
+type APILink struct {
+	Rel        string `json:"rel"`
+	Href       string `json:"href"`
+	Version    string `json:"version"`
+	MinVersion string `json:"minimum_version"`
+}
+
+// ExternalSubnet represents a subnet for External IPs.
+type ExternalSubnet struct {
+	ID    string `json:"id"`
+	CIDR  string `json:"subnet"`
+	Links []Link `json:"links"`
+}
+
+// ExternalIP represents an External IP individual address.
+type ExternalIP struct {
+	ID      string `json:"id"`
+	Address string `json:"address"`
+	Links   []Link `json:"links"`
+}
+
+// Pool represents a pool of external IPs.
+type Pool struct {
+	ID       string           `json:"id"`
+	Name     string           `json:"name"`
+	Free     int              `json:"free"`
+	TotalIPs int              `json:"total_ips"`
+	Links    []Link           `json:"links"`
+	Subnets  []ExternalSubnet `json:"subnets"`
+	IPs      []ExternalIP     `json:"ips"`
+}
+
+// NewPoolRequest is used to create a new pool.
+type NewPoolRequest struct {
+	Name   string  `json:"name"`
+	Subnet *string `json:"subnet"`
+	IPs    []struct {
+		IP string `json:"ip"`
+	} `json:"ips"`
+}
+
+// PoolSummary is a short form of Pool.
+type PoolSummary struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Free     *int   `json:"free,omitempty"`
+	TotalIPs *int   `json:"total_ips,omitempty"`
+	Links    []Link `json:"links,omitempty"`
+}
+
+// ListPoolsResponse respresents a summary list of all pools.
+type ListPoolsResponse struct {
+	Pools []PoolSummary `json:"pools"`
+}
+
+// NewIPAddressRequest is used to add a new external IP to a pool.
+type NewIPAddressRequest struct {
+	IP string `json:"ip"`
+}
+
+// NewAddressRequest is used to add a new IP or new subnet to a pool.
+type NewAddressRequest struct {
+	Subnet *string               `json:"subnet"`
+	IPs    []NewIPAddressRequest `json:"ips"`
+}
+
+// MappedIP represents a mapping of external IP -> instance IP.
+type MappedIP struct {
+	ID         string `json:"mapping_id"`
+	ExternalIP string `json:"external_ip"`
+	InternalIP string `json:"internal_ip"`
+	InstanceID string `json:"instance_id"`
+	TenantID   string `json:"tenant_id"`
+	PoolID     string `json:"pool_id"`
+	PoolName   string `json:"pool_name"`
+	Links      []Link `json:"links"`
+}
+
+// MappedIPShort is a summary version of a MappedIP.
+type MappedIPShort struct {
+	ID         string `json:"mapping_id"`
+	ExternalIP string `json:"external_ip"`
+	InternalIP string `json:"internal_ip"`
+	Links      []Link `json:"links"`
+}
+
+// MapIPRequest is used to request that an external IP be assigned from a pool
+// to a particular instance.
+type MapIPRequest struct {
+	PoolName   *string `json:"pool_name"`
+	InstanceID string  `json:"instance_id"`
+}
