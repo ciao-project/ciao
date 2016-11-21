@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -2274,6 +2275,574 @@ func TestGetVolumeAttachments(t *testing.T) {
 		if a.InstanceID != instance.ID || a.BlockID != data.ID {
 			t.Fatal("Returned incorrect attachment")
 		}
+	}
+}
+
+func TestAddPool(t *testing.T) {
+	pool := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test",
+	}
+
+	err := ds.AddPool(pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// add one with a subnet.
+	subnet := types.ExternalSubnet{
+		ID:   uuid.Generate().String(),
+		CIDR: "192.168.0.0/24",
+	}
+
+	pool2 := types.Pool{
+		ID:      uuid.Generate().String(),
+		Name:    "test2",
+		Subnets: []types.ExternalSubnet{subnet},
+	}
+
+	err = ds.AddPool(pool2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// add one with a duplicate subnet - should fail.
+	subnet = types.ExternalSubnet{
+		ID:   uuid.Generate().String(),
+		CIDR: "192.168.0.0/24",
+	}
+
+	pool3 := types.Pool{
+		ID:      uuid.Generate().String(),
+		Name:    "test3",
+		Subnets: []types.ExternalSubnet{subnet},
+	}
+
+	err = ds.AddPool(pool3)
+	if err != types.ErrDuplicateSubnet {
+		t.Fatal("Duplicate subnet allowed")
+	}
+
+	// add one with ip addresses
+	addr := types.ExternalIP{
+		ID:      uuid.Generate().String(),
+		Address: "192.168.1.1",
+	}
+
+	pool4 := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test4",
+		IPs:  []types.ExternalIP{addr},
+	}
+
+	err = ds.AddPool(pool4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// add one with a duplicate IP - should fail.
+	addr = types.ExternalIP{
+		ID:      uuid.Generate().String(),
+		Address: "192.168.1.1",
+	}
+
+	pool5 := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test5",
+		IPs:  []types.ExternalIP{addr},
+	}
+
+	err = ds.AddPool(pool5)
+	if err != types.ErrDuplicateIP {
+		t.Fatal("Duplicate IP allowed")
+	}
+
+	// add one that overlaps an existing subnet
+	addr.Address = "192.168.0.1"
+	pool5.IPs = []types.ExternalIP{addr}
+	err = ds.AddPool(pool5)
+	if err != types.ErrDuplicateIP {
+		t.Fatal("Duplicate IP allowed")
+	}
+
+	// delete all the pools
+	pools, err := ds.GetPools()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, p := range pools {
+		err := ds.DeletePool(p.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestGetPool(t *testing.T) {
+	orig := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test",
+	}
+
+	err := ds.AddPool(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pool, err := ds.GetPool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(orig, pool) == false {
+		t.Fatalf("expected %v, got %v\n", orig, pool)
+	}
+
+	// try to get an invalid pool
+	_, err = ds.GetPool(uuid.Generate().String())
+	if err != types.ErrPoolNotFound {
+		t.Fatal("Found non existent pool")
+	}
+
+	err = ds.DeletePool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAddExternalSubnet(t *testing.T) {
+	orig := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test",
+	}
+
+	err := ds.AddPool(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	subnet := "192.168.2.0/24"
+	err = ds.AddExternalSubnet(orig.ID, subnet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pool, err := ds.GetPool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(pool.Subnets) != 1 || pool.Subnets[0].CIDR != subnet {
+		t.Fatal("subnet not added correctly")
+	}
+
+	// try to add to a not existing pool
+	err = ds.AddExternalSubnet(uuid.Generate().String(), subnet)
+	if err != types.ErrPoolNotFound {
+		t.Fatal("Unknown pool allowed")
+	}
+
+	// try to add an overlapping subnet
+	overlap := "192.168.0.0/8"
+	err = ds.AddExternalSubnet(orig.ID, overlap)
+	if err != types.ErrDuplicateSubnet {
+		t.Fatal("overlapping subnet allowed")
+	}
+
+	// try an invalid subnet
+	invalid := "not.a.subnet/10"
+	err = ds.AddExternalSubnet(orig.ID, invalid)
+	if err == nil {
+		t.Fatal("invalid subnet allowed")
+	}
+
+	// cleanup.
+	err = ds.DeletePool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAddExternalIPs(t *testing.T) {
+	orig := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test",
+	}
+
+	err := ds.AddPool(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	IPs := []string{"192.168.0.1"}
+	err = ds.AddExternalIPs(orig.ID, IPs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pool, err := ds.GetPool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(pool.IPs) != 1 || pool.IPs[0].Address != IPs[0] {
+		t.Fatal("address not added correctly")
+	}
+
+	// add an invalid IP
+	IPs = []string{"not.a.IP"}
+	err = ds.AddExternalIPs(orig.ID, IPs)
+	if err != types.ErrInvalidIP {
+		t.Fatal("invalid IP allowed")
+	}
+
+	// add a duplicate IP
+	IPs = []string{"192.168.0.1"}
+	err = ds.AddExternalIPs(orig.ID, IPs)
+	if err != types.ErrDuplicateIP {
+		t.Fatal("duplicate IP allowed")
+	}
+
+	// add to an invalid pool
+	IPs = []string{"192.168.0.2"}
+	err = ds.AddExternalIPs(uuid.Generate().String(), IPs)
+	if err != types.ErrPoolNotFound {
+		t.Fatal("duplicate IP allowed")
+	}
+
+	// cleanup.
+	err = ds.DeletePool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDeleteExternalSubnet(t *testing.T) {
+	orig := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test",
+	}
+
+	err := ds.AddPool(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	subnet := "192.168.2.0/24"
+	err = ds.AddExternalSubnet(orig.ID, subnet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pool, err := ds.GetPool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// delete from the wrong pool
+	err = ds.DeleteSubnet(uuid.Generate().String(), pool.Subnets[0].CIDR)
+	if err != types.ErrPoolNotFound {
+		t.Fatal("delete from invalid pool allowed")
+	}
+
+	// delete the wrong address
+	err = ds.DeleteSubnet(pool.ID, "192.168.0.0/24")
+	if err != types.ErrInvalidPoolAddress {
+		t.Fatal("delete of wrong subnet")
+	}
+
+	// delete an invalid address
+	err = ds.DeleteSubnet(pool.ID, "192.not.a.subnet/24")
+	if err == nil {
+		t.Fatal("delete of invalid subnet")
+	}
+
+	// try to delete a mapped subnet
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := ds.MapExternalIP(pool.ID, instance.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.DeleteSubnet(pool.ID, pool.Subnets[0].ID)
+	if err != types.ErrPoolNotEmpty {
+		t.Fatal("delete with mapped IP in subnet allowed")
+	}
+
+	// unmap
+	err = ds.UnMapExternalIP(m.ExternalIP)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// delete an existing subnet
+	err = ds.DeleteSubnet(pool.ID, pool.Subnets[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// cleanup.
+	err = ds.DeletePool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDeleteExternalIPs(t *testing.T) {
+	orig := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test",
+	}
+
+	err := ds.AddPool(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	IPs := []string{"192.168.0.1"}
+	err = ds.AddExternalIPs(orig.ID, IPs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pool, err := ds.GetPool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// try to delete from invalid pool
+	err = ds.DeleteExternalIP(uuid.Generate().String(), pool.IPs[0].ID)
+	if err != types.ErrPoolNotFound {
+		t.Fatal("delete from invalid pool")
+	}
+
+	// try to delete an invalid address
+	err = ds.DeleteExternalIP(pool.ID, uuid.Generate().String())
+	if err != types.ErrInvalidPoolAddress {
+		t.Fatal("delete invalid address")
+	}
+
+	// try to delete a mapped address
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := ds.MapExternalIP(pool.ID, instance.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.DeleteExternalIP(pool.ID, pool.IPs[0].ID)
+	if err != types.ErrPoolNotEmpty {
+		t.Fatal("delete mapped address")
+	}
+
+	// unmap
+	err = ds.UnMapExternalIP(m.ExternalIP)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.DeleteExternalIP(pool.ID, pool.IPs[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// cleanup.
+	err = ds.DeletePool(pool.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMapIPs(t *testing.T) {
+	orig := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test",
+	}
+
+	err := ds.AddPool(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	IPs := []string{"192.168.0.1"}
+	err = ds.AddExternalIPs(orig.ID, IPs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pool, err := ds.GetPool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// prepare for map
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// try to map to an invalid instance.
+	_, err = ds.MapExternalIP(pool.ID, uuid.Generate().String())
+	if err == nil {
+		t.Fatal("map to invalid instance allowed")
+	}
+
+	// try to map to an invalid pool
+	_, err = ds.MapExternalIP(uuid.Generate().String(), instance.ID)
+	if err != types.ErrPoolNotFound {
+		t.Fatal("map to invalid pool allowed")
+	}
+
+	// try to map to an empty pool
+	err = ds.DeleteExternalIP(pool.ID, pool.IPs[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.MapExternalIP(pool.ID, instance.ID)
+	if err != types.ErrPoolEmpty {
+		t.Fatal(err)
+	}
+
+	// try to map to a valid instance.
+	err = ds.AddExternalIPs(orig.ID, IPs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := ds.MapExternalIP(pool.ID, instance.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// unmap
+	err = ds.UnMapExternalIP(m.ExternalIP)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// cleanup.
+	err = ds.DeletePool(pool.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGetMappedIPs(t *testing.T) {
+	orig := types.Pool{
+		ID:   uuid.Generate().String(),
+		Name: "test",
+	}
+
+	err := ds.AddPool(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	IPs := []string{"192.168.0.1"}
+	err = ds.AddExternalIPs(orig.ID, IPs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pool, err := ds.GetPool(orig.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// prepare for map
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := ds.MapExternalIP(pool.ID, instance.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get mapped ips with tenant
+	ips := ds.GetMappedIPs(&instance.TenantID)
+	if len(ips) != 1 {
+		t.Fatal("GetMappedIPs failed")
+	}
+
+	// get without tenant.
+	ips = ds.GetMappedIPs(nil)
+	if len(ips) != 1 {
+		t.Fatal("GetMappedIPs failed")
+	}
+
+	// get specific mapped IP
+	_, err = ds.GetMappedIP(m.ExternalIP)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get invalid mapped IP
+	_, err = ds.GetMappedIP("192.168.0.2")
+	if err != types.ErrAddressNotFound {
+		t.Fatal("found invalid address")
+	}
+
+	// unmap
+	err = ds.UnMapExternalIP(m.ExternalIP)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// cleanup.
+	err = ds.DeletePool(pool.ID)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
