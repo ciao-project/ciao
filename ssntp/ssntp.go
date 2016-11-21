@@ -525,6 +525,10 @@ const (
 	// DetachVolumeFailure is sent by launcher agents to report a failure to detach
 	// a volume from an instance.
 	DetachVolumeFailure
+
+	// AssignPublicIPFailure is sent by the CNCI when a an external IP
+	// cannot be assigned.
+	AssignPublicIPFailure
 )
 
 // Major is the SSNTP protocol major version
