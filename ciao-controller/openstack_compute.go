@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/compute"
 	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/payloads"
@@ -305,6 +306,59 @@ func validateBlockDeviceMappings(blockDeviceMappings []compute.BlockDeviceMappin
 	return nil
 }
 
+// The storage.BlockDevice has a "bootable" flag because the payloads.Start
+// is going to be populated with requested storage resources and that yaml
+// includes a bootable flag as a hint to hypervisor when the storage is
+// coming from a legacy Cinder data flow.  We must infer for the
+// compute.BlockDeviceMappingV2 if the device may be bootable.
+func isBootable(volume compute.BlockDeviceMappingV2) bool {
+	if !(volume.SourceType == "snapshot" || volume.SourceType == "volume" || volume.SourceType == "image") ||
+		volume.DestinationType != "volume" ||
+		volume.GuestFormat == "swap" ||
+		noBlockDeviceMappingBootIndex(volume.BootIndex) ||
+		volume.UUID == "" ||
+		volume.VolumeSize != 0 {
+
+		return false
+	}
+
+	return true
+}
+
+// abstractBlockDevices assumes its input blockDeviceMappings data contents
+// have been validated to not contain illegal values
+func abstractBlockDevices(blockDeviceMappings []compute.BlockDeviceMappingV2) (volumes []storage.BlockDevice) {
+	for _, bd := range blockDeviceMappings {
+		var volume storage.BlockDevice
+
+		volume.ID = bd.UUID
+
+		if isBootable(bd) {
+			volume.Bootable = true
+			integerIndex, _ := strconv.Atoi(bd.BootIndex)
+			volume.BootIndex = integerIndex
+		}
+
+		volume.Ephemeral = bd.DeleteOnTermination
+
+		if bd.DestinationType == "local" {
+			volume.Local = true
+		}
+
+		if bd.GuestFormat == "swap" {
+			volume.Swap = true
+		}
+
+		volume.Tag = bd.Tag
+
+		volume.Size = bd.VolumeSize
+
+		volumes = append(volumes, volume)
+	}
+
+	return
+}
+
 func (c *controller) CreateServer(tenant string, server compute.CreateServerRequest) (resp interface{}, err error) {
 	nInstances := 1
 
@@ -314,7 +368,8 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 		nInstances = server.Server.MinInstances
 	}
 
-	err = validateBlockDeviceMappings(server.Server.BlockDeviceMappings, nInstances)
+	blockDeviceMappings := server.Server.BlockDeviceMappings
+	err = validateBlockDeviceMappings(blockDeviceMappings, nInstances)
 	if err != nil {
 		return server, err
 	}
