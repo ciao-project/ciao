@@ -25,13 +25,13 @@ before_install:
 before_script:
    - sudo mkdir -p /etc/pki/ciao/
    - sudo mkdir -p /var/lib/ciao/logs/scheduler
-   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server -role scheduler
-   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent
-   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent,netagent
-   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role controller
-   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role cnciagent
-   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role netagent
-   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -server-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role server
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor -role scheduler
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent,netagent
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role controller
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role cnciagent
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role netagent
+   - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role server
    - sudo cp /etc/pki/ciao/CAcert-localhost.pem /etc/pki/ciao/ca_cert.crt
    - sudo cp /etc/pki/ciao/CAcert-localhost.pem /etc/pki/ciao/CAcert-server-localhost.pem
    - sudo cp /etc/pki/ciao/cert-Scheduler-localhost.pem /etc/pki/ciao/server.pem

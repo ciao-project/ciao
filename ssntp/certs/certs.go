@@ -133,7 +133,7 @@ func addDNSNames(hosts []string, names []string) []string {
 	return names
 }
 
-// CreateCertTemplate provides the certificate template from which client or server certificated can be derived.
+// CreateCertTemplate provides the certificate template from which trust anchor or derivative certificates can be derived.
 func CreateCertTemplate(role ssntp.Role, organization string, email string, hosts []string, mgmtIPs []string) (*x509.Certificate, error) {
 	notBefore := time.Now()
 	notAfter := notBefore.Add(365 * 24 * time.Hour)
@@ -164,8 +164,8 @@ func CreateCertTemplate(role ssntp.Role, organization string, email string, host
 	return &template, nil
 }
 
-// CreateServerCert creates the server certificate and the CA certificate. Both are written out PEM encoded.
-func CreateServerCert(template *x509.Certificate, useElliptic bool, certOutput io.Writer, caCertOutput io.Writer) error {
+// CreateAnchorCert creates the trust anchor certificate and the CA certificate. Both are written out PEM encoded.
+func CreateAnchorCert(template *x509.Certificate, useElliptic bool, certOutput io.Writer, caCertOutput io.Writer) error {
 	priv, err := generatePrivateKey(useElliptic)
 	if err != nil {
 		return fmt.Errorf("Unable to create private key: %v", err)
@@ -202,8 +202,8 @@ func CreateServerCert(template *x509.Certificate, useElliptic bool, certOutput i
 	return nil
 }
 
-// CreateClientCert creates the client certificate signed by the giver server certificate. It is written PEM encoded.
-func CreateClientCert(template *x509.Certificate, useElliptic bool, serverCert []byte, certOutput io.Writer) error {
+// CreateCert creates the certificate signed by the giver trust anchor certificate. It is written PEM encoded.
+func CreateCert(template *x509.Certificate, useElliptic bool, anchorCert []byte, certOutput io.Writer) error {
 	priv, err := generatePrivateKey(useElliptic)
 	if err != nil {
 		return fmt.Errorf("Unable to create private key: %v", err)
@@ -212,27 +212,27 @@ func CreateClientCert(template *x509.Certificate, useElliptic bool, serverCert [
 	template.IsCA = false
 
 	// Parent public key first
-	certBlock, rest := pem.Decode(serverCert)
+	certBlock, rest := pem.Decode(anchorCert)
 	parentCert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
-		return fmt.Errorf("Unable to parse server cert: %v", err)
+		return fmt.Errorf("Unable to parse anchor cert: %v", err)
 	}
 
 	// Parent private key
 	privKeyBlock, _ := pem.Decode(rest)
 	if privKeyBlock == nil {
-		return fmt.Errorf("Unable to extract private key from server cert: %v", err)
+		return fmt.Errorf("Unable to extract private key from anchor cert: %v", err)
 	}
 
-	serverPrivKey, err := keyFromPemBlock(privKeyBlock)
+	anchorPrivKey, err := keyFromPemBlock(privKeyBlock)
 	if err != nil {
-		return fmt.Errorf("Unable to parse private key from server cert: %v", err)
+		return fmt.Errorf("Unable to parse private key from anchor cert: %v", err)
 	}
 
-	// Create certificate signed by private key from serverCert
-	derBytes, err := x509.CreateCertificate(rand.Reader, template, parentCert, publicKey(priv), serverPrivKey)
+	// Create certificate signed by private key from anchorCert
+	derBytes, err := x509.CreateCertificate(rand.Reader, template, parentCert, publicKey(priv), anchorPrivKey)
 	if err != nil {
-		return fmt.Errorf("Unable to create client certificate: %v", err)
+		return fmt.Errorf("Unable to create certificate: %v", err)
 	}
 
 	// Write out certificate (including private key)

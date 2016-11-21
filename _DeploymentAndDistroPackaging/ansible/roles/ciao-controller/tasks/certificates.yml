@@ -25,7 +25,7 @@
     become: no
     connection: local
     command: >
-      {{ ciao_cert }} -server -role scheduler
+      {{ ciao_cert }} -anchor -role scheduler
       -email={{ ciao_admin_email }} -organization="{{ ciao_cert_organization }}"
       -ip={{ ciao_controller_ip }} -host={{ ciao_controller_fqdn }} -verify
     args:
@@ -36,7 +36,7 @@
     become: no
     connection: local
     command: >
-      {{ ciao_cert }} -role {{ item.role }} --server-cert
+      {{ ciao_cert }} -role {{ item.role }} --anchor-cert
       cert-Scheduler-{{ ciao_controller_fqdn }}.pem -email={{ ciao_admin_email }}
       --organization="{{ ciao_cert_organization }}" -host=localhost -verify
     args:
