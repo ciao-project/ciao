@@ -19,10 +19,10 @@ package configuration
 import (
 	"bytes"
 	"io/ioutil"
+	"reflect"
 	"syscall"
 	"testing"
 
-	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
 	"github.com/google/gofuzz"
 )
@@ -66,6 +66,7 @@ const fullValidConf = `configure:
   controller:
     volume_port: 8776
     compute_port: 8774
+    ciao_port: 8889
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
     identity_user: controller
@@ -111,47 +112,13 @@ func TestBlobCorrectPayload(t *testing.T) {
 }
 
 func equalPayload(p1, p2 payloads.Configure) bool {
-	return (p1.Configure.Scheduler.ConfigStorageURI == p2.Configure.Scheduler.ConfigStorageURI &&
-
-		p1.Configure.Controller.VolumePort == p2.Configure.Controller.VolumePort &&
-		p1.Configure.Controller.ComputePort == p2.Configure.Controller.ComputePort &&
-		p1.Configure.Controller.HTTPSCACert == p2.Configure.Controller.HTTPSCACert &&
-		p1.Configure.Controller.HTTPSKey == p2.Configure.Controller.HTTPSKey &&
-		p1.Configure.Controller.IdentityUser == p2.Configure.Controller.IdentityUser &&
-		p1.Configure.Controller.IdentityPassword == p2.Configure.Controller.IdentityPassword &&
-
-		libsnnet.EqualNetSlice(p1.Configure.Launcher.ComputeNetwork, p2.Configure.Launcher.ComputeNetwork) &&
-		libsnnet.EqualNetSlice(p1.Configure.Launcher.ManagementNetwork, p2.Configure.Launcher.ManagementNetwork) &&
-		p1.Configure.Launcher.DiskLimit == p2.Configure.Launcher.DiskLimit &&
-		p1.Configure.Launcher.MemoryLimit == p2.Configure.Launcher.MemoryLimit &&
-
-		p1.Configure.ImageService.Type == p2.Configure.ImageService.Type &&
-		p1.Configure.ImageService.URL == p2.Configure.ImageService.URL &&
-
-		p1.Configure.IdentityService.Type == p2.Configure.IdentityService.Type &&
-		p1.Configure.IdentityService.URL == p2.Configure.IdentityService.URL)
+	return reflect.DeepEqual(p1, p2)
 }
 
 func emptyPayload(p payloads.Configure) bool {
-	return (p.Configure.Scheduler.ConfigStorageURI != "" &&
+	p2 := payloads.Configure{}
 
-		p.Configure.Controller.VolumePort != 0 &&
-		p.Configure.Controller.ComputePort != 0 &&
-		p.Configure.Controller.HTTPSCACert != "" &&
-		p.Configure.Controller.HTTPSKey != "" &&
-		p.Configure.Controller.IdentityUser != "" &&
-		p.Configure.Controller.IdentityPassword != "" &&
-
-		len(p.Configure.Launcher.ComputeNetwork) > 0 &&
-		len(p.Configure.Launcher.ManagementNetwork) > 0 &&
-		p.Configure.Launcher.DiskLimit != false &&
-		p.Configure.Launcher.MemoryLimit != false &&
-
-		p.Configure.ImageService.Type != "" &&
-		p.Configure.ImageService.URL != "" &&
-
-		p.Configure.IdentityService.Type != "" &&
-		p.Configure.IdentityService.URL != "")
+	return reflect.DeepEqual(p, p2)
 }
 
 func fillPayload(conf *payloads.Configure) {
@@ -212,6 +179,7 @@ func TestPayloadCorrectBlob(t *testing.T) {
 func saneDefaults(conf *payloads.Configure) bool {
 	return (conf.Configure.Controller.VolumePort == 8776 &&
 		conf.Configure.Controller.ComputePort == 8774 &&
+		conf.Configure.Controller.CiaoPort == 8889 &&
 		conf.Configure.ImageService.Type == payloads.Glance &&
 		conf.Configure.IdentityService.Type == payloads.Keystone &&
 		conf.Configure.Launcher.DiskLimit == true &&

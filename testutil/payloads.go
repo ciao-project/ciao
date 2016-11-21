@@ -84,6 +84,9 @@ const VolumePort = "446"
 // ComputePort is a test port for the compute service
 const ComputePort = "443"
 
+// CiaoPort is a test port for ciao's api service
+const CiaoPort = "447"
+
 // HTTPSKey is a path to a key for the compute service
 const HTTPSKey = "/etc/pki/ciao/compute_key.pem"
 
@@ -346,6 +349,7 @@ const ConfigureYaml = `configure:
   controller:
     volume_port: ` + VolumePort + `
     compute_port: ` + ComputePort + `
+    ciao_port: ` + CiaoPort + `
     compute_ca: ` + HTTPSCACert + `
     compute_cert: ` + HTTPSKey + `
     identity_user: ` + IdentityUser + `
