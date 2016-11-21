@@ -742,29 +742,27 @@ func (ds *sqliteDB) getTableDB(name string) *sql.DB {
 	return nil
 }
 
-// Init initializes the private data for the database object.
+// init initializes the private data for the database object.
 // The sql tables are populated with initial data from csv
 // files if this is the first time the database has been
 // created.  The datastore caches are also filled.
-func getPersistentStore(config Config) (persistentStore, error) {
-	var ds = &sqliteDB{}
-
+func (ds *sqliteDB) init(config Config) error {
 	u, err := url.Parse(config.PersistentURI)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid URL (%s) for persistent data store: %v", config.PersistentURI, err)
+		return fmt.Errorf("Invalid URL (%s) for persistent data store: %v", config.PersistentURI, err)
 	}
 
 	if u.Scheme == "file" {
 		dbDir := filepath.Dir(u.Path)
 		err = os.MkdirAll(dbDir, 0755)
 		if err != nil && dbDir != "." {
-			return nil, fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
+			return fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
 		}
 	}
 
 	err = ds.Connect(config.PersistentURI, config.TransientURI)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	ds.dbLock = &sync.Mutex{}
@@ -799,7 +797,7 @@ func getPersistentStore(config Config) (persistentStore, error) {
 	for _, table := range ds.tables {
 		err = table.Init()
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -808,8 +806,7 @@ func getPersistentStore(config Config) (persistentStore, error) {
 		// there's no initial data to populate
 		_ = table.Populate()
 	}
-
-	return ds, nil
+	return nil
 }
 
 var pSQLLiteConfig = []string{

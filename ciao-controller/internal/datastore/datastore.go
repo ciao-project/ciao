@@ -44,6 +44,7 @@ var (
 
 // Config contains configuration information for the datastore.
 type Config struct {
+	DBBackend         persistentStore
 	PersistentURI     string
 	TransientURI      string
 	InitTablesPath    string
@@ -82,6 +83,7 @@ type attachment struct {
 }
 
 type persistentStore interface {
+	init(config Config) error
 	disconnect()
 
 	// interfaces related to logging
@@ -208,8 +210,13 @@ func (ds *Datastore) initExternalIPs() {
 // files if this is the first time the database has been
 // created.  The datastore caches are also filled.
 func (ds *Datastore) Init(config Config) error {
-	// init persistentStore first...
-	ps, err := getPersistentStore(config)
+	ps := config.DBBackend
+
+	if ps == nil {
+		ps = &sqliteDB{}
+	}
+
+	err := ps.init(config)
 	if err != nil {
 		return err
 	}

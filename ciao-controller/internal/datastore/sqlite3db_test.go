@@ -24,6 +24,12 @@ import (
 	"github.com/01org/ciao/ssntp/uuid"
 )
 
+func getPersistentStore(config Config) (persistentStore, error) {
+	ps := &sqliteDB{}
+	err := ps.init(config)
+	return ps, err
+}
+
 func TestGetWorkloadStorage(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:memdb3?mode=memory&cache=shared",

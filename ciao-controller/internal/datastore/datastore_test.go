@@ -2825,6 +2825,7 @@ func TestMain(m *testing.M) {
 	ds = new(Datastore)
 
 	dsConfig := Config{
+		dbBackend:         &sqliteDB{},
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
 		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitTablesPath:    *tablesInitPath,
