@@ -166,7 +166,7 @@ func TestCreateCertTemplateRoles(t *testing.T) {
 	}
 }
 
-func TestCreateServerCert(t *testing.T) {
+func TestCreateAnchorCert(t *testing.T) {
 	var certOutput, caCertOutput bytes.Buffer
 
 	hosts := []string{"test.example.com", "test2.example.com"}
@@ -177,9 +177,9 @@ func TestCreateServerCert(t *testing.T) {
 		t.Errorf("Unexpected error when creating cert template: %v", err)
 	}
 
-	err = CreateServerCert(template, false, &certOutput, &caCertOutput)
+	err = CreateAnchorCert(template, false, &certOutput, &caCertOutput)
 	if err != nil {
-		t.Errorf("Unexpected error when creating server cert: %v", err)
+		t.Errorf("Unexpected error when creating anchor cert: %v", err)
 	}
 
 	// Decode server cert & private key
@@ -195,15 +195,15 @@ func TestCreateServerCert(t *testing.T) {
 
 	privKeyBlock, _ := pem.Decode(rest)
 	if privKeyBlock == nil {
-		t.Errorf("Unable to extract private key from server cert")
+		t.Errorf("Unable to extract private key from anchor cert")
 	}
 
-	serverPrivKey, err := keyFromPemBlock(privKeyBlock)
+	anchorPrivKey, err := keyFromPemBlock(privKeyBlock)
 	if err != nil {
-		t.Errorf("Unable to parse private key from server cert: %v", err)
+		t.Errorf("Unable to parse private key from anchor cert: %v", err)
 	}
 
-	_, ok := serverPrivKey.(*rsa.PrivateKey)
+	_, ok := anchorPrivKey.(*rsa.PrivateKey)
 	if !ok || err != nil {
 		t.Errorf("Expected RSA private key: %v", err)
 	}
@@ -224,8 +224,8 @@ func TestCreateServerCert(t *testing.T) {
 	}
 }
 
-func TestCreateClientCert(t *testing.T) {
-	var certOutput, caCertOutput, clientCertOutput bytes.Buffer
+func TestCreateCert(t *testing.T) {
+	var anchorCertOutput, caCertOutput, certOutput bytes.Buffer
 
 	hosts := []string{"test.example.com", "test2.example.com"}
 	mgmtIPs := []string{}
@@ -235,29 +235,29 @@ func TestCreateClientCert(t *testing.T) {
 		t.Errorf("Unexpected error when creating cert template: %v", err)
 	}
 
-	err = CreateServerCert(template, false, &certOutput, &caCertOutput)
+	err = CreateAnchorCert(template, false, &anchorCertOutput, &caCertOutput)
 	if err != nil {
-		t.Errorf("Unexpected error when creating server cert: %v", err)
+		t.Errorf("Unexpected error when creating anchor cert: %v", err)
 	}
 
-	err = CreateClientCert(template, false, certOutput.Bytes(), &clientCertOutput)
+	err = CreateCert(template, false, anchorCertOutput.Bytes(), &certOutput)
 	if err != nil {
-		t.Errorf("Unexpected error when creating client cert: %v", err)
+		t.Errorf("Unexpected error when creating signed cert: %v", err)
 	}
 
-	// Decode client cert & private key
-	certBlock, rest := pem.Decode(clientCertOutput.Bytes())
+	// Decode signed cert & private key
+	certBlock, rest := pem.Decode(certOutput.Bytes())
 	privKeyBlock, _ := pem.Decode(rest)
 	if privKeyBlock == nil {
-		t.Errorf("Unable to extract private key from server cert")
+		t.Errorf("Unable to extract private key from anchor cert")
 	}
 
-	serverPrivKey, err := keyFromPemBlock(privKeyBlock)
+	anchorPrivKey, err := keyFromPemBlock(privKeyBlock)
 	if err != nil {
-		t.Errorf("Unable to parse private key from server cert: %v", err)
+		t.Errorf("Unable to parse private key from anchor cert: %v", err)
 	}
 
-	_, ok := serverPrivKey.(*rsa.PrivateKey)
+	_, ok := anchorPrivKey.(*rsa.PrivateKey)
 	if !ok || err != nil {
 		t.Errorf("Expected RSA private key: %v", err)
 	}

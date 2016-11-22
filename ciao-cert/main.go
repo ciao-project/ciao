@@ -43,9 +43,9 @@ import (
 var (
 	host         = flag.String("host", "", "Comma-separated hostnames to generate a certificate for")
 	mgmtIP       = flag.String("ip", "", "Comma-separated IPs to generate a certificate for")
-	serverCert   = flag.String("server-cert", "", "Server certificate for signing a client one")
-	isServer     = flag.Bool("server", false, "Whether this cert should be a server one")
-	verify       = flag.Bool("verify", false, "Verify client certificate")
+	anchorCert   = flag.String("anchor-cert", "", "Trust anchor certificate for signing")
+	isAnchor     = flag.Bool("anchor", false, "Whether this cert should be the trust anchor")
+	verify       = flag.Bool("verify", false, "Verify certificate")
 	isElliptic   = flag.Bool("elliptic-key", false, "Use elliptic curve algorithms")
 	email        = flag.String("email", "ciao-devel@lists.clearlinux.org", "Certificate email address")
 	organization = flag.String("organization", "", "Certificates organization")
@@ -54,28 +54,28 @@ var (
 )
 
 func verifyCert(CACert string, certName string) {
-	if *isServer == true || *verify == false {
+	if *isAnchor == true || *verify == false {
 		return
 	}
 
-	bytesServerCert, err := ioutil.ReadFile(CACert)
+	bytesAnchorCert, err := ioutil.ReadFile(CACert)
 	if err != nil {
 		log.Printf("Could not load [%s] %s", CACert, err)
 	}
 
-	bytesClientCert, err := ioutil.ReadFile(certName)
+	bytesCert, err := ioutil.ReadFile(certName)
 	if err != nil {
 		log.Printf("Could not load [%s] %s", certName, err)
 	}
 
-	blockClient, _ := pem.Decode(bytesClientCert)
-	certClient, err := x509.ParseCertificate(blockClient.Bytes)
+	blockCert, _ := pem.Decode(bytesCert)
+	cert, err := x509.ParseCertificate(blockCert.Bytes)
 	if err != nil {
 		log.Printf("Could not parse [%s] %s", certName, err)
 	}
 
 	roots := x509.NewCertPool()
-	ok := roots.AppendCertsFromPEM(bytesServerCert)
+	ok := roots.AppendCertsFromPEM(bytesAnchorCert)
 	if !ok {
 		log.Printf("Could not add CA cert to poll")
 	}
@@ -84,29 +84,20 @@ func verifyCert(CACert string, certName string) {
 		Roots: roots,
 	}
 
-	if _, err = certClient.Verify(opts); err != nil {
+	if _, err = cert.Verify(opts); err != nil {
 		log.Printf("Failed to verify certificate: %s", err)
 	}
 }
 
-func instructionDisplay(server bool, CAcert string, Cert string) {
-	if server {
-		fmt.Printf("--------------------------------------------------------\n")
-		fmt.Printf("CA certificate:     [%s]\n", CAcert)
-		fmt.Printf("Server certificate: [%s]\n", Cert)
-		fmt.Printf("--------------------------------------------------------\n")
-		fmt.Printf("You should now copy \"%s\" and \"%s\" ", CAcert, Cert)
-		fmt.Printf("to a safe location of your choice, and pass them to your ")
-		fmt.Printf("SSNTP server through its Config CAcert and Cert fields.\n")
-	} else {
-		fmt.Printf("--------------------------------------------------------\n")
-		fmt.Printf("CA certificate: [%s]\n", CAcert)
-		fmt.Printf("Client certificate: [%s]\n", Cert)
-		fmt.Printf("--------------------------------------------------------\n")
-		fmt.Printf("You should now copy \"%s\" and \"%s\" ", CAcert, Cert)
-		fmt.Printf("to a safe location of your choice, and pass them to your ")
-		fmt.Printf("SSNTP client through its Config CAcert and Cert fields.\n")
-	}
+func instructionDisplay(CAcert string, Cert string) {
+	fmt.Printf("--------------------------------------------------------\n")
+	fmt.Printf("CA certificate:     [%s]\n", CAcert)
+	fmt.Printf("Certificate: [%s]\n", Cert)
+	fmt.Printf("--------------------------------------------------------\n")
+	fmt.Printf("You should now copy \"%s\" and \"%s\" ", CAcert, Cert)
+	fmt.Printf("to a safe location of your choice, and pass them to your ")
+	fmt.Printf("SSNTP client or server through its Config CAcert and Cert ")
+	fmt.Printf("fields.\n")
 }
 
 func getFirstHost() string {
@@ -119,8 +110,8 @@ func checkCompulsoryOptions() {
 		log.Fatalf("Missing required --host parameter")
 	}
 
-	if *isServer == false && *serverCert == "" {
-		log.Fatalf("Missing required --server-cert parameter")
+	if *isAnchor == false && *anchorCert == "" {
+		log.Fatalf("Missing required --anchor-cert parameter")
 	}
 }
 
@@ -136,7 +127,7 @@ func createCertificates(role ssntp.Role) {
 	firstHost := getFirstHost()
 	CAcertName := fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
 	certName := fmt.Sprintf("%s/cert-%s-%s.pem", *installDir, role.String(), firstHost)
-	if *isServer == true {
+	if *isAnchor == true {
 		CAcertOut, err := os.Create(CAcertName)
 		if err != nil {
 			log.Fatalf("Failed to open %s for writing: %s", CAcertName, err)
@@ -145,7 +136,7 @@ func createCertificates(role ssntp.Role) {
 		if err != nil {
 			log.Fatalf("Failed to open %s for writing: %s", certName, err)
 		}
-		err = certs.CreateServerCert(template, *isElliptic, certOut, CAcertOut)
+		err = certs.CreateAnchorCert(template, *isElliptic, certOut, CAcertOut)
 		if err != nil {
 			log.Fatalf("Failed to create certificate: %v", err)
 		}
@@ -159,9 +150,9 @@ func createCertificates(role ssntp.Role) {
 		}
 	} else {
 		// Need to fetch the public and private key from the signer
-		bytesCert, err := ioutil.ReadFile(*serverCert)
+		bytesCert, err := ioutil.ReadFile(*anchorCert)
 		if err != nil {
-			log.Fatalf("Could not load %s", *serverCert)
+			log.Fatalf("Could not load %s", *anchorCert)
 		}
 
 		// Create certificate: Concatenate public and private key
@@ -170,7 +161,7 @@ func createCertificates(role ssntp.Role) {
 			log.Fatalf("Failed to open %s for writing: %s", certName, err)
 		}
 
-		err = certs.CreateClientCert(template, *isElliptic, bytesCert, certOut)
+		err = certs.CreateCert(template, *isElliptic, bytesCert, certOut)
 		if err != nil {
 			log.Fatalf("Failed to create certificate: %v", err)
 		}
@@ -180,8 +171,8 @@ func createCertificates(role ssntp.Role) {
 		}
 	}
 
-	verifyCert(*serverCert, certName)
-	instructionDisplay(*isServer, CAcertName, certName)
+	verifyCert(*anchorCert, certName)
+	instructionDisplay(CAcertName, certName)
 }
 
 func dumpCertificate(certName string) {

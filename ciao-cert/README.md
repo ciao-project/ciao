@@ -35,10 +35,10 @@ Usage of ciao-cert:
         Certificates organization
   -role value
         Comma separated list of SSNTP role [agent, scheduler, controller, netagent, server, cnciagent]
-  -server
-        Whether this cert should be a server one
-  -server-cert string
-        Server certificate for signing a client one
+  -anchor
+        Whether this cert should be the trust anchor
+  -anchor-cert string
+        Trust anchor certificate for signing
   -stderrthreshold value
         logs at or above this threshold go to stderr
   -v value
@@ -74,23 +74,23 @@ node agent, networking node agent, and CNCI agent).
 
 * Scheduler private key and CA certificate
 
-        $GOBIN/ciao-cert -server -role scheduler -email=ciao-devel@lists.clearlinux.org -organization=Intel -ip=192.168.1.118 -host=ciao-ctl.intel.com -verify
+        $GOBIN/ciao-cert -anchor -role scheduler -email=ciao-devel@lists.clearlinux.org -organization=Intel -ip=192.168.1.118 -host=ciao-ctl.intel.com -verify
   That will generate `CAcert-ciao-ctl.intel.com.pem` and `cert-Scheduler-ciao.ctl.intel.com.pem`.
 * Controller private key
 
-        $GOBIN/ciao-cert -role controller -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=ciao-ctl.intel.com -verify
+        $GOBIN/ciao-cert -role controller -anchor-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=ciao-ctl.intel.com -verify
   That will generate `cert-Controller-ciao-ctl.intel.com.pem`.
 * Compute Node Agent private key
 
-        $GOBIN/ciao-cert -role agent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
+        $GOBIN/ciao-cert -role agent -anchor-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
   That will generate `cert-CNAgent-localhost.pem`.
 * Networking Node Agent private key
 
-        $GOBIN/ciao-cert -role netagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
+        $GOBIN/ciao-cert -role netagent -anchor-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
   That will generate `cert-NetworkingAgent-localhost.pem`.
 * CNCI Agent private key
 
-        $GOBIN/ciao-cert -role cnciagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
+        $GOBIN/ciao-cert -role cnciagent -anchor-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
   That will generate `cert-CNCIAgent-localhost.pem`.
 
 ## Multi roles support
@@ -103,7 +103,7 @@ separated list of roles to ciao-cert.  For example a specific testing
 focused launcher agent may want to expose both the CN and NN agent roles:
 
 ```shell
-$GOBIN/ciao-cert -role agent,netagent -server-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
+$GOBIN/ciao-cert -role agent,netagent -anchor-cert cert-Scheduler-ciao-ctl.intel.com.pem -email=ciao-devel@lists.clearlinux.org -organization=Intel -host=localhost -verify
 ```
 
 ## Inspecting certificates
