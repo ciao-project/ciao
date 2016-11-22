@@ -153,7 +153,7 @@ func (c *config) GetResources() map[string]int {
 	return resources
 }
 
-func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s *types.StorageResource) (payloads.StorageResource, error) {
+func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s types.StorageResource) (payloads.StorageResource, error) {
 	// don't you need to add support for indicating whether
 	// a block device is bootable.
 	data := types.BlockData{
@@ -173,8 +173,7 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 	return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable, Ephemeral: !s.Persistent}, nil
 }
 
-func getStorage(c *controller, wl *types.Workload, tenant string, instanceID string) (payloads.StorageResource, error) {
-	s := wl.Storage
+func getStorage(c *controller, s types.StorageResource, tenant string, instanceID string) (payloads.StorageResource, error) {
 
 	// storage already exists, use preexisting definition.
 	if s.ID != "" {
@@ -304,7 +303,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	}
 	// handle workload storage resources
 	if wl.Storage != nil {
-		workloadStorage, err := getStorage(ctl, wl, tenantID, instanceID)
+		workloadStorage, err := getStorage(ctl, *wl.Storage, tenantID, instanceID)
 		if err != nil {
 			return config, err
 		}

@@ -1100,7 +1100,7 @@ func TestGetStorageForVolume(t *testing.T) {
 	defer ctl.DeleteBlockDevice(sourceVolume.ID)
 
 	// a temporary in memory filesystem?
-	s := &types.StorageResource{
+	s := types.StorageResource{
 		ID:         "",
 		Bootable:   true,
 		Persistent: true,
@@ -1108,13 +1108,7 @@ func TestGetStorageForVolume(t *testing.T) {
 		SourceID:   sourceVolume.ID,
 	}
 
-	wl := &types.Workload{
-		ID:      "validID",
-		ImageID: uuid.Generate().String(),
-		Storage: s,
-	}
-
-	pl, err := getStorage(ctl, wl, tenant.ID, "")
+	pl, err := getStorage(ctl, s, tenant.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1157,7 +1151,7 @@ func TestGetStorageForImage(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// a temporary in memory filesystem?
-	s := &types.StorageResource{
+	s := types.StorageResource{
 		ID:         "",
 		Bootable:   true,
 		Persistent: true,
@@ -1165,13 +1159,7 @@ func TestGetStorageForImage(t *testing.T) {
 		SourceID:   filepath.Base(tmpfile.Name()),
 	}
 
-	wl := &types.Workload{
-		ID:      "validID",
-		ImageID: filepath.Base(tmpfile.Name()),
-		Storage: s,
-	}
-
-	pl, err := getStorage(ctl, wl, tenant.ID, "")
+	pl, err := getStorage(ctl, s, tenant.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
