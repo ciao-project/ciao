@@ -1009,6 +1009,10 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 			Operand: ssntp.PublicIPAssigned,
 			Dest:    ssntp.Controller,
 		},
+		{ // all PublicIPUnassigned events go to all Controllers
+			Operand: ssntp.PublicIPUnassigned,
+			Dest:    ssntp.Controller,
+		},
 		{ // all START command are processed by the Command forwarder
 			Operand:        ssntp.START,
 			CommandForward: sched,

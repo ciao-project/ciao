@@ -253,6 +253,34 @@ func cnciAddedMarshal(agentUUID string) ([]byte, error) {
 	return yaml.Marshal(&cnciAdded)
 }
 
+func publicIPAssignedMarshal(cmd *payloads.PublicIPCommand) ([]byte, error) {
+	var publicIPAssigned payloads.EventPublicIPAssigned
+	evt := &publicIPAssigned.AssignedIP
+
+	evt.ConcentratorUUID = cmd.ConcentratorUUID
+	evt.InstanceUUID = cmd.InstanceUUID
+	evt.PublicIP = cmd.PublicIP
+	evt.PrivateIP = cmd.PrivateIP
+
+	glog.Infoln("PublicIPAssignedMarshal Event ", publicIPAssigned)
+
+	return yaml.Marshal(&publicIPAssigned)
+}
+
+func publicIPUnassignedMarshal(cmd *payloads.PublicIPCommand) ([]byte, error) {
+	var publicIPUnassigned payloads.EventPublicIPUnassigned
+	evt := &publicIPUnassigned.UnassignedIP
+
+	evt.ConcentratorUUID = cmd.ConcentratorUUID
+	evt.InstanceUUID = cmd.InstanceUUID
+	evt.PublicIP = cmd.PublicIP
+	evt.PrivateIP = cmd.PrivateIP
+
+	glog.Infoln("PublicIPUnassignedMarshal Event ", publicIPUnassigned)
+
+	return yaml.Marshal(&publicIPUnassigned)
+}
+
 func sendNetworkEvent(client *ssntpConn, eventType ssntp.Event, eventInfo interface{}) error {
 
 	if !client.isConnected() {
@@ -279,8 +307,19 @@ func generateNetEventPayload(eventType ssntp.Event, eventInfo interface{}, agent
 		glog.Infof("generating cnciAdded Event Payload %s", agentUUID)
 		return cnciAddedMarshal(agentUUID)
 	case ssntp.PublicIPAssigned:
-		glog.Infof("generating publicIP Assigned Event Payload %s", agentUUID)
-		return nil, nil
+		glog.Infof("generating publicIP Assigned Event Payload %v", eventInfo)
+		cmd, ok := eventInfo.(*payloads.PublicIPCommand)
+		if !ok {
+			return nil, fmt.Errorf("PublicIPAssigned Invalid eventInfo [%T] %v", eventInfo, eventInfo)
+		}
+		return publicIPAssignedMarshal(cmd)
+	case ssntp.PublicIPUnassigned:
+		glog.Infof("generating publicIP Unassigned Event Payload %v", eventInfo)
+		cmd, ok := eventInfo.(*payloads.PublicIPCommand)
+		if !ok {
+			return nil, fmt.Errorf("PublicIPUnassigned Invalid eventInfo [%T] %v", eventInfo, eventInfo)
+		}
+		return publicIPUnassignedMarshal(cmd)
 	default:
 		return nil, fmt.Errorf("Unsupported ssntpEventInfo type: %v", eventType)
 	}

@@ -491,6 +491,17 @@ func TestPublicIPAssigned(t *testing.T) {
 	}
 }
 
+func TestPublicIPUnassigned(t *testing.T) {
+	controllerCh := controller.AddEventChan(ssntp.PublicIPUnassigned)
+
+	go cnciAgent.SendPublicIPUnassignedEvent()
+
+	_, err := controller.GetEventChanResult(controllerCh, ssntp.PublicIPUnassigned)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func waitForController(uuid string) {
 	for {
 		server.controllerMutex.Lock()
