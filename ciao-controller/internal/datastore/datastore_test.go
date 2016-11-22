@@ -287,8 +287,6 @@ func TestDeleteInstanceResources(t *testing.T) {
 		resourcesBefore[r.Rname] = r.Usage
 	}
 
-	time.Sleep(1 * time.Second)
-
 	err = ds.DeleteInstance(instance.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -347,8 +345,6 @@ func TestDeleteInstanceNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
-
 	err = ds.DeleteInstance(instance.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -372,8 +368,6 @@ func TestDeleteInstanceNetwork(t *testing.T) {
 	if tenantAfter.network[int(subnetInt)][int(ipBytes[3])] != false {
 		t.Fatal("IP Address not released from cache")
 	}
-
-	time.Sleep(1 * time.Second)
 
 	// clear tenant from cache
 	ds.tenantsLock.Lock()
@@ -457,7 +451,6 @@ func TestGetAllInstancesFromTenant(t *testing.T) {
 	// if we don't get 10 eventually, the test will timeout and fail
 	instances, err := ds.GetAllInstancesFromTenant(tenant.ID)
 	for len(instances) < 10 {
-		time.Sleep(1 * time.Second)
 		instances, err = ds.GetAllInstancesFromTenant(tenant.ID)
 	}
 
@@ -480,7 +473,6 @@ func TestGetAllInstancesByNode(t *testing.T) {
 	retry := 5
 	for len(newInstances) < len(instances) && retry > 0 {
 		retry--
-		time.Sleep(1 * time.Second)
 		newInstances, err = ds.GetAllInstancesByNode(stat.NodeUUID)
 		if err != nil {
 			t.Fatal(err)
@@ -501,7 +493,6 @@ func TestGetInstance(t *testing.T) {
 	}
 
 	for instance == nil {
-		time.Sleep(1 * time.Second)
 		instance, err = ds.GetInstance(instances[0].ID)
 		if err != nil && err != sql.ErrNoRows {
 			t.Fatal(err)
@@ -572,8 +563,6 @@ func TestHandleStats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	time.Sleep(1 * time.Second)
 
 	// check instance stats recorded
 	for i := range stats {
@@ -649,8 +638,6 @@ func TestGetInstanceLastStats(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
-
 	serverStats := ds.GetInstanceLastStats(stat.NodeUUID)
 
 	if len(serverStats.Servers) != len(instances) {
@@ -713,8 +700,6 @@ func TestGetNodeLastStats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	time.Sleep(1 * time.Second)
 
 	computeNodes := ds.GetNodeLastStats()
 
@@ -950,8 +935,6 @@ func TestAllocateTenantIP(t *testing.T) {
 	if newTenant.network[subnetInt][host] != true {
 		t.Fatal("IP Address not claimed in cache")
 	}
-
-	time.Sleep(5 * time.Second)
 
 	// clear out cache
 	ds.tenantsLock.Lock()
@@ -1192,8 +1175,6 @@ func TestReleaseTenantIP(t *testing.T) {
 		t.Fatal("IP Address not marked Used")
 	}
 
-	time.Sleep(1 * time.Second)
-
 	err = ds.ReleaseTenantIP(tenant.ID, ip.String())
 	if err != nil {
 		t.Fatal(err)
@@ -1209,8 +1190,6 @@ func TestReleaseTenantIP(t *testing.T) {
 	if newTenant.network[int(subnetInt)][int(ipBytes[3])] != false {
 		t.Fatal("IP Address not released from cache")
 	}
-
-	time.Sleep(1 * time.Second)
 
 	// clear tenant from cache
 	ds.tenantsLock.Lock()
@@ -1307,7 +1286,6 @@ func TestRestartFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
 	reason := payloads.RestartNoInstance
 
 	err = ds.RestartFailure(instance.ID, reason)
@@ -1332,7 +1310,6 @@ func TestStopFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
 	reason := payloads.StopNoInstance
 
 	err = ds.StopFailure(instance.ID, reason)
@@ -1356,8 +1333,6 @@ func TestStartFailureFullCloud(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	time.Sleep(1 * time.Second)
 
 	tenantBefore, err := ds.GetTenant(tenant.ID)
 	if err != nil {
