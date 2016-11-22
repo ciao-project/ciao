@@ -40,20 +40,24 @@ type ImageService struct {
 func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultResponse, error) {
 	// create an ImageInfo struct and store it in our image
 	// datastore.
+	glog.Infof("Creating Image: %v", req.ID)
 	id := req.ID
 	if id == "" {
 		id = uuid.Generate().String()
 	} else {
 		if _, err := uuid.Parse(id); err != nil {
+			glog.Errorf("Error on parsing UUID: %v", err)
 			return image.DefaultResponse{}, image.ErrBadUUID
 		}
 
 		img, err := is.ds.GetImage(id)
 		if err != nil {
+			glog.Errorf("Error on decoding image: %v", err)
 			return image.DefaultResponse{}, image.ErrDecodeImage
 		}
 
 		if img != (imageDatastore.Image{}) {
+			glog.Errorf("Image %v already exists", err)
 			return image.DefaultResponse{}, image.ErrAlreadyExists
 		}
 	}
@@ -67,9 +71,11 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultR
 
 	err := is.ds.CreateImage(i)
 	if err != nil {
+		glog.Errorf("Error on creating image: %v", err)
 		return image.DefaultResponse{}, err
 	}
 
+	glog.Infof("Image %v created", id)
 	return image.DefaultResponse{
 		Status:     image.Queued,
 		CreatedAt:  i.CreateTime,
@@ -105,10 +111,12 @@ func createImageResponse(img imageDatastore.Image) (image.DefaultResponse, error
 
 // ListImages will return a list of all the images in the datastore.
 func (is ImageService) ListImages() ([]image.DefaultResponse, error) {
+	glog.Info("Listing images")
 	var response []image.DefaultResponse
 
 	images, err := is.ds.GetAllImages()
 	if err != nil {
+		glog.Errorf("Error on listing images: %v", err)
 		return response, err
 	}
 
@@ -122,44 +130,54 @@ func (is ImageService) ListImages() ([]image.DefaultResponse, error) {
 
 // UploadImage will upload a raw image data and update its status.
 func (is ImageService) UploadImage(imageID string, body io.Reader) (image.NoContentImageResponse, error) {
+	glog.Infof("Uploading image: %v", imageID)
 	var response image.NoContentImageResponse
 
 	err := is.ds.UploadImage(imageID, body)
 	if err != nil {
+		glog.Errorf("Error on uploading image: %v", err)
 		return response, err
 	}
 
 	response.ImageID = imageID
+	glog.Infof("Image %v uploaded", imageID)
 	return response, nil
 }
 
 // DeleteImage will delete a raw image and its metadata
 func (is ImageService) DeleteImage(imageID string) (image.NoContentImageResponse, error) {
+	glog.Infof("Deleting image: %v", imageID)
 	var response image.NoContentImageResponse
 
 	err := is.ds.DeleteImage(imageID)
 	if err != nil {
+		glog.Errorf("Error on deleting image: %v", err)
 		return response, err
 	}
 
 	response.ImageID = imageID
+	glog.Infof("Image %v deleted", imageID)
 	return response, nil
 }
 
 // GetImage will get the raw image data
 func (is ImageService) GetImage(imageID string) (image.DefaultResponse, error) {
+	glog.Infof("Getting Image %v", imageID)
 	var response image.DefaultResponse
 
 	img, err := is.ds.GetImage(imageID)
 	if err != nil {
+		glog.Errorf("Error on getting image: %v", err)
 		return response, err
 	}
 
 	if (img == imageDatastore.Image{}) {
+		glog.Infof("Image %v not found", imageID)
 		return response, image.ErrNoImage
 	}
 
 	response, _ = createImageResponse(img)
+	glog.Infof("Image %v found", imageID)
 	return response, nil
 }
 
@@ -188,24 +206,29 @@ func (c *controller) startImageService() error {
 
 	dbDir := filepath.Dir(*imageDatastoreLocation)
 	dbFile := filepath.Base(*imageDatastoreLocation)
-	glog.Infof("Image Datastore Location: %v", *imageDatastoreLocation)
 
 	metaDs := &imageDatastore.MetaDs{
 		DbProvider: database.NewBoltDBProvider(),
 		DbDir:      dbDir,
 		DbFile:     dbFile,
 	}
+
+	glog.Info("ciao-image - MetaDatastore Initialization")
+	glog.Infof("DBProvider : %T", metaDs.DbProvider)
+	glog.Infof("DbDir      : %v", metaDs.DbDir)
+	glog.Infof("DbFile     : %v", metaDs.DbFile)
+
 	metaDsTables := []string{"images"}
 
 	err := metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
 	if err != nil {
-		glog.Fatalf("Error on DB Initialization:%v ", err)
+		glog.Fatalf("Error on DB Initialization: %v", err)
 	}
 	defer metaDs.DbClose()
 
 	err = metaDs.DbTablesInit(metaDsTables)
 	if err != nil {
-		glog.Fatalf("Error on DB Tables Initialization:%v ", err)
+		glog.Fatalf("Error on DB Tables Initialization: %v ", err)
 	}
 
 	rawDs := &imageDatastore.Ceph{
@@ -215,6 +238,11 @@ func (c *controller) startImageService() error {
 		},
 	}
 
+	glog.Info("ciao-image - Initialize raw datastore")
+	glog.Infof("rawDs        : %T", rawDs)
+	glog.Infof("ImageTempDir : %v", rawDs.ImageTempDir)
+	glog.Infof("ID           : %v", rawDs.BlockDriver.ID)
+
 	config := ImageConfig{
 		Port:          image.APIPort,
 		HTTPSCACert:   httpsCAcert,
@@ -222,6 +250,13 @@ func (c *controller) startImageService() error {
 		RawDataStore:  rawDs,
 		MetaDataStore: metaDs,
 	}
+
+	glog.Info("ciao-image - Configuration")
+	glog.Infof("Port          : %v", config.Port)
+	glog.Infof("HTTPSCACert   : %v", config.HTTPSCACert)
+	glog.Infof("HTTPSKey      : %v", config.HTTPSKey)
+	glog.Infof("RawDataStore  : %T", config.RawDataStore)
+	glog.Infof("MetaDataStore : %T", config.MetaDataStore)
 
 	is := ImageService{ds: &imageDatastore.ImageStore{}}
 	err = is.ds.Init(config.RawDataStore, config.MetaDataStore)
@@ -266,6 +301,6 @@ func (c *controller) startImageService() error {
 
 	// start service.
 	service := fmt.Sprintf(":%d", config.Port)
-
+	glog.Infof("Starting CIAO Image Service")
 	return http.ListenAndServeTLS(service, config.HTTPSCACert, config.HTTPSKey, r)
 }
