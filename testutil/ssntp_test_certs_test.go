@@ -45,3 +45,11 @@ func TestRoleToTestCert(t *testing.T) {
 		}
 	}
 }
+
+func TestMakeTestCerts(t *testing.T) {
+	err := MakeTestCerts()
+	if err != nil {
+		t.Errorf("Failed to create test certificates: %v", err)
+	}
+	RemoveTestCerts()
+}

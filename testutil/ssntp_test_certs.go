@@ -16,7 +16,17 @@
 
 package testutil
 
-import "github.com/01org/ciao/ssntp"
+import (
+	"crypto/x509"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
+
+	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/ssntp/certs"
+)
 
 // TestCACert is a snake oil Certificate Authority for test automation.
 const TestCACert = `
@@ -485,4 +495,146 @@ func RoleToTestCert(role ssntp.Role) string {
 	}
 
 	return TestCertUnknown
+}
+
+// RoleToTestCertPath returns a string containing the path to a test
+// ca cert file, a string containing the path to the cert file for
+// the given role
+func RoleToTestCertPath(role ssntp.Role) (string, string, error) {
+	certdir, err := os.Getwd()
+	if err != nil {
+		return "", "", errors.New("Unable to get current directory")
+	}
+	cacert := path.Join(certdir, "CAcert-localhost.pem")
+	roleCert := ""
+
+	switch role {
+	case ssntp.SCHEDULER:
+		roleCert = path.Join(certdir, "cert-Scheduler-localhost.pem")
+	case ssntp.AGENT:
+		roleCert = path.Join(certdir, "cert-CNAgent-localhost.pem")
+	case ssntp.Controller:
+		roleCert = path.Join(certdir, "cert-Controller-localhost.pem")
+	case ssntp.CNCIAGENT:
+		roleCert = path.Join(certdir, "cert-CNCIAgent-localhost.pem")
+	case ssntp.NETAGENT:
+		roleCert = path.Join(certdir, "cert-NetworkingAgent-localhost.pem")
+	}
+
+	if roleCert == "" {
+		err = errors.New("No cert for role")
+	}
+
+	return cacert, roleCert, err
+}
+
+func makeTestCert(role ssntp.Role) (err error) {
+	var caPath string
+	var path string
+	caPath, path, err = RoleToTestCertPath(role)
+	if err != nil {
+		return fmt.Errorf("Missing cert path: %v", err)
+	}
+
+	var template *x509.Certificate
+	template, err = certs.CreateCertTemplate(role, "test", "test@test.test", []string{"localhost"}, []string{"127.0.0.1"})
+	if err != nil {
+		return fmt.Errorf("Unable to create cert template: %v", err)
+	}
+
+	var writer *os.File
+	writer, err = os.Create(path)
+	if err != nil {
+		return fmt.Errorf("Unable to create cert file: %v", err)
+	}
+	defer func() {
+		err1 := writer.Close()
+		if err == nil && err1 != nil {
+			err = fmt.Errorf("Unable to close cert file: %v", err1)
+		}
+	}()
+	if role == ssntp.SCHEDULER {
+		var caWriter *os.File
+		caWriter, err = os.Create(caPath)
+		if err != nil {
+			return fmt.Errorf("Unable to create ca file: %v", err)
+		}
+		defer func() {
+			err1 := caWriter.Close()
+			if err == nil && err1 != nil {
+				err = fmt.Errorf("Unable to close ca file: %v", err1)
+			}
+		}()
+		err = certs.CreateAnchorCert(template, true, writer, caWriter)
+		if err != nil {
+			return fmt.Errorf("Unable to populate cert file: %v", err)
+		}
+	} else {
+		var schedulerPath string
+		_, schedulerPath, err = RoleToTestCertPath(ssntp.SCHEDULER)
+		if err != nil {
+			return fmt.Errorf("Unable to get scheduler cert path: %v", err)
+		}
+		var anchorCert []byte
+		anchorCert, err = ioutil.ReadFile(schedulerPath)
+		if err != nil {
+			return fmt.Errorf("Unable to read scheduler cert file: %v", err)
+		}
+		err = certs.CreateCert(template, true, anchorCert, writer)
+		if err != nil {
+			return fmt.Errorf("Unable to populate cert file: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// MakeTestCerts will create test certificate files for all roles
+// that return valid paths from RoleToTestCertPath
+func MakeTestCerts() error {
+	err := makeTestCert(ssntp.SCHEDULER)
+	if err != nil {
+		RemoveTestCerts()
+		return fmt.Errorf("Error creating scheduler cert: %v", err)
+	}
+	err = makeTestCert(ssntp.AGENT)
+	if err != nil {
+		RemoveTestCerts()
+		return fmt.Errorf("Error creating agent cert: %v", err)
+	}
+	err = makeTestCert(ssntp.Controller)
+	if err != nil {
+		RemoveTestCerts()
+		return fmt.Errorf("Error creating controller cert: %v", err)
+	}
+	err = makeTestCert(ssntp.CNCIAGENT)
+	if err != nil {
+		RemoveTestCerts()
+		return fmt.Errorf("Error creating cnci agent cert: %v", err)
+	}
+	err = makeTestCert(ssntp.NETAGENT)
+	if err != nil {
+		RemoveTestCerts()
+		return fmt.Errorf("Error creating net agent cert: %v", err)
+	}
+
+	return nil
+}
+
+func removeTestCert(role ssntp.Role) {
+	caPath, path, err := RoleToTestCertPath(role)
+	if err != nil {
+		return
+	}
+	os.Remove(caPath)
+	os.Remove(path)
+}
+
+// RemoveTestCerts will remove test cert files created by MakeTestCerts
+func RemoveTestCerts() {
+	removeTestCert(ssntp.SCHEDULER)
+	removeTestCert(ssntp.AGENT)
+	removeTestCert(ssntp.Controller)
+	removeTestCert(ssntp.CNCIAGENT)
+	removeTestCert(ssntp.NETAGENT)
 }
