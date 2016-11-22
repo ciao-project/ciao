@@ -64,6 +64,9 @@ type StorageResource struct {
 	// SourceID represents the ID of either the image or the volume
 	// that the storage resource is based on.
 	SourceID string `json:"source_id"`
+
+	// Tag is a piece of abitrary search/sort identifier text
+	Tag string
 }
 
 // Workload contains resource and configuration information for a user
