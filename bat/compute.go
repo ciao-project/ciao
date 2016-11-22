@@ -39,7 +39,8 @@ import (
 const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}", 
     "tenant_id" : "{{.TenantID | js }}", "flavor_id" : "{{.Flavor.ID | js}}",
     "image_id" : "{{.Image.ID | js}}", "status" : "{{.Status | js}}",
-    "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}}
+    "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
+    "volumes" : {{tojson .OsExtendedVolumesVolumesAttached}}
     {{ $addrLen := len .Addresses.Private }}
     {{- if gt $addrLen 0 }}
       {{- with index .Addresses.Private 0 -}}
@@ -66,15 +67,16 @@ type Workload struct {
 
 // Instance contains detailed information about an instance
 type Instance struct {
-	HostID     string `json:"host_id"`
-	TenantID   string `json:"tenant_id"`
-	FlavorID   string `json:"flavor_id"`
-	ImageID    string `json:"image_id"`
-	Status     string `json:"status"`
-	PrivateIP  string `json:"private_ip"`
-	MacAddress string `json:"mac_address"`
-	SSHIP      string `json:"ssh_ip"`
-	SSHPort    int    `json:"ssh_port"`
+	HostID     string   `json:"host_id"`
+	TenantID   string   `json:"tenant_id"`
+	FlavorID   string   `json:"flavor_id"`
+	ImageID    string   `json:"image_id"`
+	Status     string   `json:"status"`
+	PrivateIP  string   `json:"private_ip"`
+	MacAddress string   `json:"mac_address"`
+	SSHIP      string   `json:"ssh_ip"`
+	SSHPort    int      `json:"ssh_port"`
+	Volumes    []string `json:"volumes"`
 }
 
 // CNCI contains information about a CNCI
@@ -318,6 +320,42 @@ func RetrieveInstancesStatuses(ctx context.Context, tenant string) (map[string]s
 	return statuses, nil
 }
 
+// StopInstance stops a ciao instance by invoking the ciao-cli instance stop command.
+// An error will be returned if the following environment variables are not set;
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func StopInstance(ctx context.Context, tenant string, instance string) error {
+	args := []string{"instance", "stop", "-instance", instance}
+	_, err := RunCIAOCLI(ctx, tenant, args)
+	return err
+}
+
+// StopInstanceAndWait stops a ciao instance by invoking the ciao-cli instance stop command.
+// It then waits until the instance's status changes to exited.
+// An error will be returned if the following environment variables are not set;
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func StopInstanceAndWait(ctx context.Context, tenant string, instance string) error {
+	if err := StopInstance(ctx, tenant, instance); err != nil {
+		return err
+	}
+	for {
+		status, err := RetrieveInstanceStatus(ctx, tenant, instance)
+		if err != nil {
+			return err
+		}
+
+		if status == "exited" {
+			return nil
+		}
+
+		select {
+		case <-time.After(time.Second):
+			continue
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
 // DeleteInstance deletes a specific instance from the cluster.  It deletes
 // the instance using ciao-cli instance delete.  An error will be returned
 // if the following environment variables are not set; CIAO_IDENTITY,
@@ -326,6 +364,39 @@ func DeleteInstance(ctx context.Context, tenant string, instance string) error {
 	args := []string{"instance", "delete", "-instance", instance}
 	_, err := RunCIAOCLI(ctx, tenant, args)
 	return err
+}
+
+// DeleteInstanceAndWait deletes a specific instance from the cluster.  It deletes
+// the instance using ciao-cli instance delete and then blocks until ciao-cli
+// reports that the instance is truly deleted.  An error will be returned
+// if the following environment variables are not set; CIAO_IDENTITY,
+// CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func DeleteInstanceAndWait(ctx context.Context, tenant string, instance string) error {
+	if err := DeleteInstance(ctx, tenant, instance); err != nil {
+		return err
+	}
+
+	// TODO:  The correct thing to do here is to wait for the Delete Events
+	// But these do not yet contain enough information to easily identify
+	// the event we're interested in.
+
+	for {
+		_, err := RetrieveInstanceStatus(ctx, tenant, instance)
+		if err == nil {
+			select {
+			case <-time.After(time.Second):
+				continue
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+
+		if err == context.Canceled {
+			return err
+		}
+
+		return nil
+	}
 }
 
 // DeleteInstances deletes a set of instances provided by the instances slice.
