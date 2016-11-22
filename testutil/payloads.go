@@ -314,6 +314,14 @@ const AssignedIPYaml = `public_ip_assigned:
   private_ip: ` + InstancePrivateIP + `
 `
 
+// UnassignedIPYaml is a sample PublicIPUnassigned ssntp.Event payload for test cases
+const UnassignedIPYaml = `public_ip_unassigned:
+  concentrator_uuid: ` + CNCIUUID + `
+  instance_uuid: ` + InstanceUUID + `
+  public_ip: ` + InstancePublicIP + `
+  private_ip: ` + InstancePrivateIP + `
+`
+
 // TenantAddedYaml is a sample TenantAdded ssntp.Event payload for test cases
 const TenantAddedYaml = `tenant_added:
   agent_uuid: ` + AgentUUID + `
