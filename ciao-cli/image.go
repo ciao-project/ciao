@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -428,14 +427,7 @@ func uploadTenantImage(username, password, tenant, image, filename string) error
 	}
 	defer file.Close()
 
-	fileInfo, _ := file.Stat()
-	var size = fileInfo.Size()
-	buffer := make([]byte, size)
-
-	file.Read(buffer)
-	fileBytes := bytes.NewReader(buffer)
-
-	res := images.Upload(client, image, fileBytes)
+	res := images.Upload(client, image, file)
 	if res.Err != nil {
 		fatalf("Could not upload %s [%s]", filename, res.Err)
 	}
