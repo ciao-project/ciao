@@ -20,14 +20,13 @@ package main
 import "github.com/01org/ciao/osprepare"
 
 var controllerDeps = osprepare.PackageRequirements{
-	// no known dependencies
 	"clearlinux": {
-		{BinaryName: "", PackageName: ""},
+		{BinaryName: "/usr/bin/qemu-img", PackageName: "kvm-host"},
 	},
 	"fedora": {
-		{BinaryName: "", PackageName: ""},
+		{BinaryName: "/usr/bin/qemu-img", PackageName: "qemu-img"},
 	},
 	"ubuntu": {
-		{BinaryName: "", PackageName: ""},
+		{BinaryName: "/usr/bin/qemu-img", PackageName: "qemu-utils"},
 	},
 }
