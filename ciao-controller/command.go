@@ -156,7 +156,7 @@ func (c *controller) startWorkload(workloadID string, tenantID string, instances
 
 	for i := 0; i < instances; i++ {
 		startTime := time.Now()
-		instance, err := newInstance(c, tenantID, wl)
+		instance, err := newInstance(c, tenantID, wl, volumes)
 		if err != nil {
 			glog.V(2).Info("error newInstance")
 			e = err

@@ -166,8 +166,9 @@ func BenchmarkNewConfig(b *testing.B) {
 	id := uuid.Generate()
 
 	b.ResetTimer()
+	noVolumes = []storage.BlockDevice{}
 	for n := 0; n < b.N; n++ {
-		_, err := newConfig(ctl, wls[0], id.String(), tenant.ID)
+		_, err := newConfig(ctl, wls[0], id.String(), tenant.ID, noVolumes)
 		if err != nil {
 			b.Error(err)
 		}
@@ -1225,7 +1226,8 @@ func TestStorageConfig(t *testing.T) {
 
 	id := uuid.Generate()
 
-	_, err = newConfig(ctl, wls[0], id.String(), tenant.ID)
+	noVolumes := []storage.BlockDevice{}
+	_, err = newConfig(ctl, wls[0], id.String(), tenant.ID, noVolumes)
 	if err != nil {
 		t.Fatal(err)
 	}

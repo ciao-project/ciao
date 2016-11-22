@@ -56,10 +56,12 @@ func isCNCIWorkload(workload *types.Workload) bool {
 	return false
 }
 
-func newInstance(ctl *controller, tenantID string, workload *types.Workload) (*instance, error) {
+func newInstance(ctl *controller, tenantID string, workload *types.Workload,
+	volumes []storage.BlockDevice) (*instance, error) {
+
 	id := uuid.Generate()
 
-	config, err := newConfig(ctl, workload, id.String(), tenantID)
+	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +96,17 @@ func (i *instance) Add() error {
 	} else {
 		ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}
-	for _, storage := range i.newConfig.sc.Start.Storage {
-		_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral, storage.Bootable)
+	for _, volume := range i.newConfig.sc.Start.Storage {
+		if volume.ID == "" && volume.Local {
+			// these are launcher auto-created ephemeral
+			continue
+		}
+		_, err := ds.GetBlockDevice(volume.ID)
+		if err != nil {
+			return fmt.Errorf("Invalid block device mapping.  %s already in use", volume.ID)
+		}
+
+		_, err = ds.CreateStorageAttachment(i.Instance.ID, volume)
 		if err != nil {
 			glog.Error(err)
 		}
@@ -240,7 +251,21 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 	return payloads.StorageResource{}, errors.New("Unsupported workload storage variant in getStorage()")
 }
 
-func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {
+func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s types.StorageResource) {
+	s.ID = volume.ID
+	s.Bootable = volume.Bootable
+	s.Persistent = !volume.Ephemeral
+	s.Size = volume.Size
+	s.SourceType = ""
+	s.SourceID = ""
+	s.Tag = volume.Tag
+
+	return
+}
+
+func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
+	volumes []storage.BlockDevice) (config, error) {
+
 	type UserData struct {
 		UUID     string `json:"uuid"`
 		Hostname string `json:"hostname"`
@@ -294,6 +319,42 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		// set the hostname and uuid for userdata
 		userData.UUID = instanceID
 		userData.Hostname = instanceID
+
+		// handle storage resources for just this instance
+		for _, volume := range volumes {
+			instanceStorage := payloads.StorageResource{
+				ID:        volume.ID,
+				Bootable:  volume.Bootable,
+				Ephemeral: volume.Ephemeral,
+				Local:     volume.Local,
+				Swap:      volume.Swap,
+				BootIndex: volume.BootIndex,
+				Tag:       volume.Tag,
+				Size:      volume.Size,
+			}
+
+			// controller created (as opposed to launcher
+			// created) instance storage (workload storage is later)
+			if volume.ID == "" && !volume.Local {
+				// auto-create empty
+				device, err := ctl.CreateBlockDevice("", "", volume.Size)
+				if err != nil {
+					return config, err
+				}
+
+				instanceStorage.ID = device.ID
+				s := controllerStorageResourceFromPayload(instanceStorage)
+				_, err = addBlockDevice(ctl, tenantID, instanceID, device, s)
+				if err != nil {
+					return config, err
+				}
+			} /* else {
+				// volume.ID != "": launcher will attach pre-existing volume
+				// volume.Local: launcher will create ephemeral volume
+			} */
+
+			storage = append(storage, instanceStorage)
+		}
 	} else {
 		networking.VnicMAC = tenant.CNCIMAC
 
@@ -301,7 +362,8 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		userData.UUID = instanceID
 		userData.Hostname = "cnci-" + tenantID
 	}
-	// handle workload storage resources
+
+	// handle storage resources in workload definition
 	if wl.Storage != nil {
 		workloadStorage, err := getStorage(ctl, *wl.Storage, tenantID, instanceID)
 		if err != nil {

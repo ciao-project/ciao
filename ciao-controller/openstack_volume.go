@@ -25,6 +25,7 @@ import (
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
 	osIdentity "github.com/01org/ciao/openstack/identity"
+	"github.com/01org/ciao/payloads"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
@@ -185,7 +186,12 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 	}
 
 	// create an attachment object
-	_, err = c.ds.CreateStorageAttachment(i.ID, info.ID, false, false)
+	a := payloads.StorageResource{
+		ID:        info.ID,
+		Ephemeral: false,
+		Bootable:  false,
+	}
+	_, err = c.ds.CreateStorageAttachment(i.ID, a)
 	if err != nil {
 		info.State = types.Available
 		dsErr := c.ds.UpdateBlockDevice(info)

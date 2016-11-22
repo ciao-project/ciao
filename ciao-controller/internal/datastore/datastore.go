@@ -1556,18 +1556,18 @@ func (ds *Datastore) UpdateBlockDevice(data types.BlockData) error {
 
 // CreateStorageAttachment will associate an instance with a block device in
 // the datastore
-func (ds *Datastore) CreateStorageAttachment(instanceID string, blockID string, ephemeral bool, boot bool) (types.StorageAttachment, error) {
+func (ds *Datastore) CreateStorageAttachment(instanceID string, volume payloads.StorageResource) (types.StorageAttachment, error) {
 	link := attachment{
 		instanceID: instanceID,
-		volumeID:   blockID,
+		volumeID:   volume.ID,
 	}
 
 	a := types.StorageAttachment{
 		InstanceID: instanceID,
 		ID:         uuid.Generate().String(),
-		BlockID:    blockID,
-		Ephemeral:  ephemeral,
-		Boot:       boot,
+		BlockID:    volume.ID,
+		Ephemeral:  volume.Ephemeral,
+		Boot:       volume.Bootable,
 	}
 
 	err := ds.db.createStorageAttachment(a)
@@ -1576,7 +1576,7 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, blockID string, 
 	}
 
 	// ensure that the volume is marked in use as we have created an attachment
-	bd, err := ds.GetBlockDevice(blockID)
+	bd, err := ds.GetBlockDevice(volume.ID)
 	if err != nil {
 		ds.db.deleteStorageAttachment(a.ID)
 		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
