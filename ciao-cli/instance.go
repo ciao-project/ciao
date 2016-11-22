@@ -322,7 +322,7 @@ The template passed to the -f option operates on a
 
 []%s
 `, instanceTemplateDesc)
-
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
@@ -456,7 +456,7 @@ The template passed to the -f option operates on a
 
 %s
 `, instanceTemplateDesc)
-
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 

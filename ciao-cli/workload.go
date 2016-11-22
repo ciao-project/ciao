@@ -58,7 +58,7 @@ The template passed to the -f option operates on a
 	Vcpus                  int     // Number of Vcpus allocated to instances of this workload 
 }
 `)
-
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 

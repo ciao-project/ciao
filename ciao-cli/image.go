@@ -126,6 +126,7 @@ The template passed to the -f option operates on a
 
 %s
 `, imageTemplateDesc)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
@@ -220,6 +221,7 @@ The template passed to the -f option operates on a
 
 %s
 `, imageTemplateDesc)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
@@ -275,6 +277,7 @@ As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
 `, imageTemplateDesc)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
@@ -293,11 +296,7 @@ func (cmd *imageListCommand) run(args []string) error {
 
 	var t *template.Template
 	if cmd.template != "" {
-		var err error
-		t, err = template.New("image-list").Parse(cmd.template)
-		if err != nil {
-			fatalf(err.Error())
-		}
+		t = createTemplate("image-list", cmd.template)
 	}
 
 	pager := images.List(client, images.ListOpts{})

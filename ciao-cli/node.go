@@ -88,6 +88,7 @@ The template passed to the -f option operates on one of the following types:
 
 []%s
 `, cnciTemplateDesc, computeTemplateDesc)
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
@@ -207,7 +208,7 @@ struct {
 	TotalNodesMaintenance int
 }
 `)
-
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
@@ -268,7 +269,7 @@ The template passed to the -f option operates on one of the following types:
 
 %s
 `, cnciTemplateDesc)
-
+	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
