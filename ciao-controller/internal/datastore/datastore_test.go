@@ -2833,6 +2833,7 @@ func TestMain(m *testing.M) {
 
 	err := ds.Init(dsConfig)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v", err)
 		os.Exit(1)
 	}
 
