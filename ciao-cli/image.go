@@ -20,7 +20,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"text/template"
@@ -350,7 +350,7 @@ func (cmd *imageDownloadCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-func (cmd *imageDownloadCommand) run(args []string) error {
+func (cmd *imageDownloadCommand) run(args []string) (err error) {
 	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
 	if err != nil {
 		fatalf("Could not get Image service client [%s]\n", err)
@@ -361,19 +361,25 @@ func (cmd *imageDownloadCommand) run(args []string) error {
 		fatalf("Could not download image [%s]\n", err)
 	}
 
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		fatalf("Could not read [%s]\n", err)
-	}
-
-	if cmd.file == "" {
-		fmt.Printf("%s\n", b)
-	} else {
-		err := ioutil.WriteFile(cmd.file, b, 0644)
+	dest := os.Stdout
+	if cmd.file != "" {
+		dest, err = os.Create(cmd.file)
+		defer func() {
+			closeErr := dest.Close()
+			if err == nil {
+				err = closeErr
+			}
+		}()
 		if err != nil {
-			fatalf("Could not write image to file [%s]\n", err)
+			fatalf("Could not create destination file: %s: %v", cmd.file, err)
 		}
 	}
+
+	_, err = io.Copy(dest, r)
+	if err != nil {
+		fatalf("Error copying to destination: %v", err)
+	}
+
 	return nil
 }
 
