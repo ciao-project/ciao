@@ -51,21 +51,6 @@ const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}",
   }
 `
 
-const imageTemplateDesc = `{ "name" : "{{.Name | js}}", "id" : "{{.ID | js}}",
-    "container_format" : "{{.ContainerFormat | js}}", "disk_format" : "{{.DiskFormat | js}}",
-    "min_disk" : {{.MinDiskGigabytes}}, "min_ram" : {{.MinRAMMegabytes}},
-    "protected" : {{.Protected}}, "visibility" : "{{.Visibility | js}}",
-    "size" : {{.SizeBytes}}, "status" : "{{.Status | js }}", "owner" : "{{.Owner | js}}",
-    "checksum" : "{{.Checksum | js}}", "created" : "{{.CreatedDate | js}}",
-    "late_update" : "{{.LastUpdate | js}}", "file" : "{{.File | js}}",
-    "schema" : "{{.Schema | js}}", "tags" : [
-    {{- range $i, $t := .Tags -}}
-    {{ if $i }}, {{end}}{{$t}}
-    {{- end -}}
-    ]
-}
-`
-
 // Tenant contains basic information about a tenant
 type Tenant struct {
 	ID   string `json:"id"`
@@ -76,9 +61,9 @@ type Tenant struct {
 type Workload struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
-	ImageUUID string `json:"image_uuid"`
-	CPUs      int    `json:"cpus"`
-	Mem       int    `json:"mem"`
+	ImageUUID string `json:"disk"`
+	CPUs      int    `json:"vcpus"`
+	Mem       int    `json:"ram"`
 }
 
 // Instance contains detailed information about an instance
@@ -104,37 +89,37 @@ type CNCI struct {
 
 // ClusterStatus contains information about the status of a ciao cluster
 type ClusterStatus struct {
-	TotalNodes            int `json:"nodes"`
-	TotalNodesReady       int `json:"ready"`
-	TotalNodesFull        int `json:"full"`
-	TotalNodesOffline     int `json:"offline"`
-	TotalNodesMaintenance int `json:"maintenance"`
+	TotalNodes            int `json:"total_nodes"`
+	TotalNodesReady       int `json:"total_nodes_ready"`
+	TotalNodesFull        int `json:"total_nodes_full"`
+	TotalNodesOffline     int `json:"total_nodes_offline"`
+	TotalNodesMaintenance int `json:"total_nodes_maintenance"`
 }
 
 // ImageOptions contains user supplied image meta data
 type ImageOptions struct {
-	Name             string   `json:"name"`
-	ID               string   `json:"id"`
-	ContainerFormat  string   `json:"container_format"`
-	DiskFormat       string   `json:"disk_format"`
-	MinDiskGigabytes int      `json:"min_disk"`
-	MinRAMMegabytes  int      `json:"min_ram"`
-	Protected        bool     `json:"protected"`
-	Visibility       string   `json:"visibility"`
-	Tags             []string `json:"tags"`
+	Name             string
+	ID               string
+	ContainerFormat  string
+	DiskFormat       string
+	MinDiskGigabytes int
+	MinRAMMegabytes  int
+	Protected        bool
+	Visibility       string
+	Tags             []string
 }
 
 // Image contains all the meta data for a single image
 type Image struct {
 	ImageOptions
-	SizeBytes   int    `json:"size"`
-	Status      string `json:"status"`
-	Owner       string `json:"owner"`
-	Checksum    string `json:"checksum"`
-	CreatedDate string `json:"created"`
-	LastUpdate  string `json:"last_update"`
-	File        string `json:"file"`
-	Schema      string `json:"schema"`
+	SizeBytes   int
+	Status      string
+	Owner       string
+	Checksum    string
+	CreatedDate string
+	LastUpdate  string
+	File        string
+	Schema      string
 }
 
 func checkEnv(vars []string) error {
@@ -260,15 +245,8 @@ func RunCIAOCLIAsAdminJS(ctx context.Context, tenant string, args []string,
 // CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
 func GetAllTenants(ctx context.Context) ([]*Tenant, error) {
 	var tenants []*Tenant
-	template := `
-[
-{{- range $i, $val := .}}
-  {{- if $i }},{{end}} 
-  { "id" : "{{$val.ID | js }}", "name" : "{{$val.Name | js }}" }
-{{- end }}
-]
-`
-	args := []string{"tenant", "list", "-all", "-f", template}
+
+	args := []string{"tenant", "list", "-all", "-f", "{{tojson .}}"}
 	err := RunCIAOCLIAsAdminJS(ctx, "", args, &tenants)
 	if err != nil {
 		return nil, err
@@ -283,17 +261,8 @@ func GetAllTenants(ctx context.Context) ([]*Tenant, error) {
 // CIAO_USERNAME, CIAO_PASSWORD.
 func GetAllWorkloads(ctx context.Context, tenant string) ([]Workload, error) {
 	var workloads []Workload
-	template := `
-[
-{{- range $i, $val := .}}
-  {{- if $i }},{{end}} 
-  { "id" : "{{$val.ID | js }}", "name" : "{{$val.Name | js }}",
-    "image_uuid" : "{{$val.Disk | js }}", "cpus" : {{$val.Vcpus}},
-    "mem" : {{$val.RAM}} }
-{{- end }}
-]
-`
-	args := []string{"workload", "list", "-f", template}
+
+	args := []string{"workload", "list", "-f", "{{tojson .}}"}
 	err := RunCIAOCLIJS(ctx, tenant, args, &workloads)
 	if err != nil {
 		return nil, err
@@ -579,14 +548,7 @@ func GetCNCIs(ctx context.Context) (map[string]*CNCI, error) {
 // CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
 func GetClusterStatus(ctx context.Context) (*ClusterStatus, error) {
 	var cs *ClusterStatus
-	template := `
-{
-    "nodes" : {{.TotalNodes}}, "ready" : {{.TotalNodesReady}},
-    "full" : {{.TotalNodesFull}}, "offline" : {{.TotalNodesOffline}},
-    "maintenance" : {{.TotalNodesMaintenance}}
-}
-`
-	args := []string{"node", "status", "-f", template}
+	args := []string{"node", "status", "-f", "{{tojson .}}"}
 	err := RunCIAOCLIAsAdminJS(ctx, "", args, &cs)
 	if err != nil {
 		return nil, err
@@ -641,7 +603,7 @@ func computeImageAddArgs(options *ImageOptions) []string {
 // CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
 func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (*Image, error) {
 	var img *Image
-	args := []string{"image", "add", "-f", imageTemplateDesc, "-file", path}
+	args := []string{"image", "add", "-f", "{{tojson .}}", "-file", path}
 	args = append(args, computeImageAddArgs(options)...)
 	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
 	if err != nil {
@@ -667,7 +629,7 @@ func DeleteImage(ctx context.Context, tenant, ID string) error {
 // CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
 func GetImage(ctx context.Context, tenant, ID string) (*Image, error) {
 	var img *Image
-	args := []string{"image", "show", "-image", ID, "-f", imageTemplateDesc}
+	args := []string{"image", "show", "-image", ID, "-f", "{{tojson .}}"}
 
 	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
 	if err != nil {
@@ -687,7 +649,7 @@ func GetImages(ctx context.Context, tenant string) (map[string]*Image, error) {
 {
 {{- range $i, $val := .}}
   {{- if $i }},{{end}}
-  "{{$val.ID | js }}" : {{with $val}}` + imageTemplateDesc + `{{end}}
+  "{{$val.ID | js }}" : {{tojson $val}}
 {{- end }}
 }
 `
