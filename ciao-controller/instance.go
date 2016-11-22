@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
@@ -152,6 +153,26 @@ func (c *config) GetResources() map[string]int {
 	return resources
 }
 
+func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s *types.StorageResource) (payloads.StorageResource, error) {
+	// don't you need to add support for indicating whether
+	// a block device is bootable.
+	data := types.BlockData{
+		BlockDevice: device,
+		Size:        s.Size,
+		CreateTime:  time.Now(),
+		TenantID:    tenant,
+		Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
+	}
+
+	err := c.ds.AddBlockDevice(data)
+	if err != nil {
+		c.DeleteBlockDevice(device.ID)
+		return payloads.StorageResource{}, err
+	}
+
+	return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable, Ephemeral: !s.Persistent}, nil
+}
+
 func getStorage(c *controller, wl *types.Workload, tenant string, instanceID string) (payloads.StorageResource, error) {
 	s := wl.Storage
 
@@ -193,46 +214,17 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 			return payloads.StorageResource{}, err
 		}
 
-		// don't you need to add support for indicating whether
-		// a block device is bootable.
-		data := types.BlockData{
-			BlockDevice: device,
-			Size:        s.Size,
-			CreateTime:  time.Now(),
-			TenantID:    tenant,
-			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
-		}
+		s.Persistent = true
+		return addBlockDevice(c, tenant, instanceID, device, s)
 
-		err = c.ds.AddBlockDevice(data)
-		if err != nil {
-			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResource{}, err
-		}
-
-		return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable, Ephemeral: true}, nil
 	case types.VolumeService:
 		device, err := c.CopyBlockDevice(s.SourceID)
 		if err != nil {
 			return payloads.StorageResource{}, err
 		}
 
-		// don't you need to add support for indicating whether
-		// a block device is bootable.
-		data := types.BlockData{
-			BlockDevice: device,
-			Size:        s.Size,
-			CreateTime:  time.Now(),
-			TenantID:    tenant,
-			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
-		}
-
-		err = c.ds.AddBlockDevice(data)
-		if err != nil {
-			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResource{}, err
-		}
-
-		return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable}, nil
+		s.Persistent = false
+		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	case types.Empty:
 		device, err := c.CreateBlockDevice("", "", s.Size)
@@ -240,23 +232,9 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 			return payloads.StorageResource{}, err
 		}
 
-		// don't you need to add support for indicating whether
-		// a block device is bootable.
-		data := types.BlockData{
-			BlockDevice: device,
-			Size:        s.Size,
-			CreateTime:  time.Now(),
-			TenantID:    tenant,
-			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
-		}
-
-		err = c.ds.AddBlockDevice(data)
-		if err != nil {
-			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResource{}, err
-		}
-
-		return payloads.StorageResource{ID: data.ID, Bootable: false}, nil
+		s.Bootable = false
+		s.Persistent = false
+		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	}
 
