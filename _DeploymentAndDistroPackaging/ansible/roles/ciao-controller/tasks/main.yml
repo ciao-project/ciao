@@ -34,6 +34,15 @@
     changed_when: "ciao_build_wait.stderr is defined and 'github.com/01org/ciao/' in ciao_build_wait.stderr"
     when: ciao_dev
 
+  - name: Create directories required by ciao-controller
+    file: path={{ item }} state=directory owner=ciao group=ciao
+    with_items:
+      - /var/lib/ciao/data
+      - /var/lib/ciao/data/controller
+      - /var/lib/ciao/data/controller/workloads
+      - /var/lib/ciao/data/controller/tables
+      - /var/lib/ciao/data/image
+
   - include: install.yml
 
   - include: certificates.yml

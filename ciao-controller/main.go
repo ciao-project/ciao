@@ -63,11 +63,11 @@ var computeAPIPort = compute.APIPort
 var imageAPIPort = osimage.APIPort
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
-var tablesInitPath = flag.String("tables_init_path", "./tables", "path to csv files")
-var workloadsPath = flag.String("workloads_path", "./workloads", "path to yaml files")
+var tablesInitPath = flag.String("tables_init_path", "/var/lib/ciao/data/controller/tables", "path to csv files")
+var workloadsPath = flag.String("workloads_path", "/var/lib/ciao/data/controller/workloads", "path to yaml files")
 var noNetwork = flag.Bool("nonetwork", false, "Debug with no networking")
-var persistentDatastoreLocation = flag.String("database_path", "./ciao-controller.db", "path to persistent database")
-var imageDatastoreLocation = flag.String("image_database_path", "./ciao-image.db", "path to image persistent database")
+var persistentDatastoreLocation = flag.String("database_path", "/var/lib/ciao/data/controller/ciao-controller.db", "path to persistent database")
+var imageDatastoreLocation = flag.String("image_database_path", "/var/lib/ciao/data/image/ciao-image.db", "path to image persistent database")
 var transientDatastoreLocation = flag.String("stats_path", "/tmp/ciao-controller-stats.db", "path to stats database")
 var logDir = "/var/lib/ciao/logs/controller"
 
