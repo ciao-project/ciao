@@ -87,18 +87,18 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload) (*i
 }
 
 func (i *instance) Add() error {
+	ds := i.ctl.ds
 	if i.CNCI == false {
-		ds := i.ctl.ds
 		ds.AddInstance(&i.Instance)
-		storage := i.newConfig.sc.Start.Storage
-		if (storage != payloads.StorageResources{}) {
-			_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral)
-			if err != nil {
-				glog.Error(err)
-			}
-		}
 	} else {
-		i.ctl.ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
+		ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
+	}
+	storage := i.newConfig.sc.Start.Storage
+	if (storage != payloads.StorageResources{}) {
+		_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral)
+		if err != nil {
+			glog.Error(err)
+		}
 	}
 
 	return nil
