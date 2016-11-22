@@ -1503,12 +1503,6 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, blockID string, 
 		Ephemeral:  ephemeral,
 	}
 
-	// add it to our links map
-	ds.attachLock.Lock()
-	ds.attachments[a.ID] = a
-	ds.instanceVolumes[link] = a.ID
-	ds.attachLock.Unlock()
-
 	err := ds.db.createStorageAttachment(a)
 	if err != nil {
 		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
@@ -1527,6 +1521,12 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, blockID string, 
 		ds.db.deleteStorageAttachment(a.ID)
 		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
 	}
+
+	// add it to our links map
+	ds.attachLock.Lock()
+	ds.attachments[a.ID] = a
+	ds.instanceVolumes[link] = a.ID
+	ds.attachLock.Unlock()
 
 	return a, nil
 }
