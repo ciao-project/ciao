@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 
 	"github.com/01org/ciao/ssntp/uuid"
 )
@@ -230,4 +231,20 @@ func (d CephDriver) GetVolumeMapping() (map[string][]string, error) {
 	}
 
 	return volumeDevMap, nil
+}
+
+// IsValidSnapshotUUID returns true if the uuid matches the ciao/ceph expected
+// form of {UUID}@{UUID}
+func (d CephDriver) IsValidSnapshotUUID(snapshotUUID string) error {
+	UUIDs := strings.Split(snapshotUUID, "@")
+	if len(UUIDs) != 2 {
+		return fmt.Errorf("missing '@'")
+	}
+	_, e1 := uuid.Parse(UUIDs[0])
+	_, e2 := uuid.Parse(UUIDs[1])
+	if e1 != nil || e2 != nil {
+		return fmt.Errorf("uuid not of form \"{UUID}@{UUID}\"")
+	}
+
+	return nil
 }

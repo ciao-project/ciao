@@ -77,3 +77,8 @@ func (d *NoopDriver) UnmapVolumeFromNode(volumeUUID string) error {
 func (d *NoopDriver) GetVolumeMapping() (map[string][]string, error) {
 	return nil, nil
 }
+
+// IsValidSnapshotUUID pretends a uuid is a valid snapshot uuid
+func (d *NoopDriver) IsValidSnapshotUUID(snapshotUUID string) error {
+	return nil
+}
