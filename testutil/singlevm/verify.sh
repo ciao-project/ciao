@@ -156,7 +156,19 @@ fi
 #Test External IP Assignment support
 #Pick the first instance which is a VM, as we can even SSH into it
 #We have already checked that the VM is up.
-"$ciao_gobin"/ciao-cli pool create -name test && ciao-cli pool add -subnet 203.0.113.0/24 -name test
+# first create a new external IP pool and add a subnet to it.
+# this is an admin only operation, so make sure our env variables
+# are set accordingly. Since user admin might belong to more than one
+# tenant, make sure to specify that we are logging in as part of the
+# "admin" tenant/project.
+ciao_user=$CIAO_USERNAME
+ciao_passwd=$CIAO_PASSWORD
+export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
+export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
+"$ciao_gobin"/ciao-cli -tenant-name admin pool create -name test
+"$ciao_gobin"/ciao-cli -tenant-name admin pool add -subnet 203.0.113.0/24 -name test
+export CIAO_USERNAME=$ciao_user
+export CIAO_PASSWORD=$ciao_passwd
 
 testinstance=`"$ciao_gobin"/ciao-cli instance list -f '{{with index . 0}}{{.ID}}{{end}}'`
 
