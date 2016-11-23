@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/ciao-storage"
@@ -205,21 +204,16 @@ func (c *controller) validateBlockDeviceAuto(bd compute.BlockDeviceMappingV2) (o
 	return true, nil
 }
 
-func validateUUIDForPreCreatedVolume(sourceType string, UUID string) error {
+func (c *controller) validateUUIDForPreCreatedVolume(sourceType string, UUID string) error {
 	if sourceType == "volume" || sourceType == "image" {
 		_, err := uuid.Parse(UUID)
 		if err != nil {
 			return fmt.Errorf("Invalid block device uuid. \"%s\" is invalid: %s", UUID, err)
 		}
 	} else { // sourceType == "snapshot"
-		UUIDs := strings.Split(UUID, "@")
-		if len(UUIDs) != 2 {
-			return fmt.Errorf("Invalid block device snapshot uuid. Expected \"{UUID}@{UUID}\", got \"%s\"", UUID)
-		}
-		_, e1 := uuid.Parse(UUIDs[0])
-		_, e2 := uuid.Parse(UUIDs[1])
-		if e1 != nil || e2 != nil {
-			return fmt.Errorf("Invalid block device snapshot uuid. Expected \"{UUID}@{UUID}\", got \"%s\"", UUID)
+		err := c.IsValidSnapshotUUID(UUID)
+		if err != nil {
+			return fmt.Errorf("Invalid block device snapshot uuid. \"%s\" is invalid: %s", UUID, err)
 		}
 	}
 
@@ -238,7 +232,7 @@ func (c *controller) validateBlockDevicePreCreated(bd compute.BlockDeviceMapping
 		return false, fmt.Errorf("Invalid block device destination type.  Expected \"volume\" or unset destination type with snapshot/volume/image source types, got destination type \"%s\"", bd.DestinationType)
 	}
 
-	err = validateUUIDForPreCreatedVolume(bd.SourceType, bd.UUID)
+	err = c.validateUUIDForPreCreatedVolume(bd.SourceType, bd.UUID)
 	if err != nil {
 		return false, err
 	}
