@@ -25,6 +25,20 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type controllerClient interface {
+	ssntp.ClientNotifier
+	StartTracedWorkload(config string, startTime time.Time, label string) error
+	StartWorkload(config string) error
+	DeleteInstance(instanceID string, nodeID string) error
+	StopInstance(instanceID string, nodeID string) error
+	RestartInstance(instanceID string, nodeID string) error
+	EvacuateNode(nodeID string) error
+	Disconnect()
+	attachVolume(volID string, instanceID string, nodeID string) error
+	detachVolume(volID string, instanceID string, nodeID string) error
+	ssntpClient() *ssntp.Client
+}
+
 type ssntpClient struct {
 	ctl   *controller
 	ssntp ssntp.Client
@@ -189,7 +203,7 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 	glog.V(1).Info(string(payload))
 }
 
-func newSSNTPClient(ctl *controller, config *ssntp.Config) (*ssntpClient, error) {
+func newSSNTPClient(ctl *controller, config *ssntp.Config) (controllerClient, error) {
 	client := &ssntpClient{name: "ciao Controller", ctl: ctl}
 
 	err := client.ssntp.Dial(config, client)
@@ -353,6 +367,10 @@ func (client *ssntpClient) detachVolume(volID string, instanceID string, nodeID 
 	_, err = client.ssntp.SendCommand(ssntp.DetachVolume, y)
 
 	return err
+}
+
+func (client *ssntpClient) ssntpClient() *ssntp.Client {
+	return &client.ssntp
 }
 
 func (client *ssntpClient) Disconnect() {
