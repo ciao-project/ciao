@@ -399,6 +399,10 @@ openstack service create --name glance --description "Image Service" image
 openstack endpoint create --region RegionOne image public   https://$ciao_host:9292
 openstack endpoint create --region RegionOne image internal https://$ciao_host:9292
 openstack endpoint create --region RegionOne image admin    https://$ciao_host:9292
+
+# admin should only be admin of the admin project. This role was created by the
+# keystone container's bootstrap.
+openstack role remove --project service --user admin admin
 EOF
 ) > "$ciao_bin"/post-keystone.sh
 chmod 755 "$ciao_bin"/post-keystone.sh
