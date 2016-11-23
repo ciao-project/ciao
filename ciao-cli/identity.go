@@ -231,7 +231,7 @@ func getAllProjects(username string, password string) (*IdentityProjects, error)
 		return nil, err
 	}
 
-	identity := fmt.Sprintf("%s/v3/projects", *identityURL)
+	identity := fmt.Sprintf("%s/v3/auth/projects", *identityURL)
 
 	resp, err := sendHTTPRequestToken("GET", identity, nil, token, nil)
 	if err != nil {
