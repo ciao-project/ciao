@@ -108,6 +108,10 @@ func (s dockerTestStorage) GetBlockDeviceSize(volumeUUID string) (uint64, error)
 	return 0, nil
 }
 
+func (s dockerTestStorage) IsValidSnapshotUUID(string) error {
+	return nil
+}
+
 type dockerTestClient struct {
 	err               error
 	images            []types.Image
