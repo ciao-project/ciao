@@ -35,6 +35,7 @@ keystone_public_port=5000
 keystone_admin_port=35357
 mysql_data_dir="${ciao_bin}"/mysql
 ciao_identity_url="https://""$ciao_host"":""$keystone_public_port"
+keystone_wait_time=60 # How long to wait for keystone to start
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -413,8 +414,9 @@ sudo docker run -d -it --name keystone \
     -v "$keystone_cert":/etc/nginx/ssl/keystone_cert.pem \
     -v "$keystone_key":/etc/nginx/ssl/keystone_key.pem clearlinux/keystone
 
-echo -n "Waiting for keystone identity service to become available"
-try_until=$(($(date +%s) + 30))
+echo -n "Waiting up to $keystone_wait_time seconds for keystone identity" \
+    "service to become available"
+try_until=$(($(date +%s) + $keystone_wait_time))
 while : ; do
     while [ $(date +%s) -le $try_until ]; do
         # The keystone container tails the log at the end of its
