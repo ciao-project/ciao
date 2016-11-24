@@ -1503,15 +1503,32 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, blockID string, 
 		Ephemeral:  ephemeral,
 	}
 
+	err := ds.db.createStorageAttachment(a)
+	if err != nil {
+		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
+	}
+
+	// ensure that the volume is marked in use as we have created an attachment
+	bd, err := ds.GetBlockDevice(blockID)
+	if err != nil {
+		ds.db.deleteStorageAttachment(a.ID)
+		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
+	}
+
+	bd.State = types.InUse
+	err = ds.UpdateBlockDevice(bd)
+	if err != nil {
+		ds.db.deleteStorageAttachment(a.ID)
+		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
+	}
+
 	// add it to our links map
 	ds.attachLock.Lock()
 	ds.attachments[a.ID] = a
 	ds.instanceVolumes[link] = a.ID
 	ds.attachLock.Unlock()
 
-	err := ds.db.createStorageAttachment(a)
-
-	return a, err
+	return a, nil
 }
 
 // GetStorageAttachments returns a list of volumes associated with this instance.
