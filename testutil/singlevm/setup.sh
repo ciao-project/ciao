@@ -386,6 +386,7 @@ fi
 ( cat <<-EOF
 #!/bin/bash
 
+# Create basic services, users, and projects/tenants
 openstack service create --name ciao compute
 openstack user create --password "$ciao_password" "$ciao_username"
 openstack role add --project service --user "$ciao_username" admin
@@ -395,6 +396,8 @@ if [[ \$? == 1 ]]; then
     openstack project create --domain default demo
 fi
 openstack role add --project demo --user "$ciao_demo_username" user
+
+# Create image service endpoints
 openstack service create --name glance --description "Image Service" image
 openstack endpoint create --region RegionOne image public   https://$ciao_host:9292
 openstack endpoint create --region RegionOne image internal https://$ciao_host:9292
@@ -403,6 +406,13 @@ openstack endpoint create --region RegionOne image admin    https://$ciao_host:9
 # admin should only be admin of the admin project. This role was created by the
 # keystone container's bootstrap.
 openstack role remove --project service --user admin admin
+
+# Create storage endpoints
+openstack service create --name cinderv2 --description "Volume Service" volumev2
+openstack endpoint create --region RegionOne volumev2 public   'https://$ciao_host:8776/v2/%(tenant_id)s'
+openstack endpoint create --region RegionOne volumev2 internal 'https://$ciao_host:8776/v2/%(tenant_id)s'
+openstack endpoint create --region RegionOne volumev2 admin    'https://$ciao_host:8776/v2/%(tenant_id)s'
+
 EOF
 ) > "$ciao_bin"/post-keystone.sh
 chmod 755 "$ciao_bin"/post-keystone.sh
