@@ -1,12 +1,16 @@
 #!/bin/bash
 ciao_host=$(hostname)
+ciao_ip=$(hostname -i)
 ciao_interface=ciao_eth
-ciao_ip=198.51.100.1
-ciao_subnet=198.51.100.1/24
-ciao_brdcast=198.51.100.255
+ciao_vlan_ip=198.51.100.1
+ciao_vlan_subnet=${ciao_vlan_ip}/24
+ciao_vlan_brdcast=198.51.100.255
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
-export no_proxy=$no_proxy,$ciao_ip,$ciao_host
+keystone_key="$ciao_bin"/keystone_key.pem
+keystone_cert="$ciao_bin"/keystone_cert.pem
+ciao_pki_path=/etc/pki/ciao
+export no_proxy=$no_proxy,$ciao_vlan_ip,$ciao_host
 
 ciao_email="ciao-devel@lists.clearlinux.org"
 ciao_org="Intel"
@@ -20,8 +24,18 @@ ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
-
-echo "Subnet =" $ciao_subnet
+conf_file="$ciao_bin"/configuration.yaml
+ciao_username=csr
+ciao_password=hello
+ciao_admin_username=admin
+ciao_admin_password=giveciaoatry
+ciao_demo_username=demo
+ciao_demo_password=hello
+keystone_public_port=5000
+keystone_admin_port=35357
+mysql_data_dir="${ciao_bin}"/mysql
+ciao_identity_url="https://""$ciao_host"":""$keystone_public_port"
+keystone_wait_time=60 # How long to wait for keystone to start
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -32,6 +46,41 @@ then
 	echo "FATAL ERROR: Unable to create $ciao_bin"
 	exit 1
 fi
+
+# Variables for ciao binaries
+export CIAO_DEMO_PATH="$ciao_bin"
+export CIAO_CONTROLLER="$ciao_host"
+export CIAO_USERNAME="$ciao_username"
+export CIAO_PASSWORD="$ciao_password"
+export CIAO_ADMIN_USERNAME="$ciao_admin_username"
+export CIAO_ADMIN_PASSWORD="$ciao_admin_password"
+export CIAO_CA_CERT_FILE="$ciao_bin"/"CAcert-""$ciao_host"".pem"
+export CIAO_IDENTITY="$ciao_identity_url"
+
+# Save these vars for later use, too
+> "$ciao_env" # Clean out previous data
+set | grep ^CIAO_ | while read VAR; do
+    echo export "$VAR" >> "$ciao_env"
+done
+
+# Variables for keystone
+export OS_USER_DOMAIN_NAME=default
+export OS_IMAGE_API_VERSION=2
+export OS_PROJECT_NAME=admin
+export OS_IDENTITY_API_VERSION=3
+export OS_PASSWORD=${ciao_admin_password}
+export OS_AUTH_URL=https://"$ciao_host":$keystone_admin_port/v3
+export OS_USERNAME=${ciao_admin_username}
+export OS_KEY=
+export OS_CACERT="$keystone_cert"
+export OS_PROJECT_DOMAIN_NAME=default
+
+# Save these vars for later use, too
+set | grep ^OS_ | while read VAR; do
+    echo export "$VAR" >> "$ciao_env"
+done
+
+echo "Subnet =" $ciao_vlan_subnet
 
 # Copy the cleanup scripts
 cp "$ciao_scripts"/cleanup.sh "$ciao_bin"
@@ -79,6 +128,33 @@ done
 
 set -o nounset
 
+echo "Generating configuration file $conf_file"
+(
+cat <<-EOF
+configure:
+  scheduler:
+    storage_uri: /etc/ciao/configuration.yaml
+  storage:
+    ceph_id: ciao
+  controller:
+    compute_ca: $keystone_cert
+    compute_cert: $keystone_key
+    identity_user: ${ciao_username}
+    identity_password: ${ciao_password}
+  image_service:
+    type: glance
+    url: https://${ciao_host}
+  launcher:
+    compute_net: [${ciao_vlan_subnet}]
+    mgmt_net: [${ciao_vlan_subnet}]
+    disk_limit: false
+    mem_limit: false
+  identity_service:
+    type: keystone
+    url: https://${ciao_host}:${keystone_admin_port}
+EOF
+) > $conf_file
+
 sudo mkdir -p /var/lib/ciao/images
 if [ ! -d /var/lib/ciao/images ]
 then
@@ -87,10 +163,10 @@ then
 
 fi
 
-sudo mkdir -p /etc/pki/ciao
-if [ ! -d /etc/pki/ciao ]
+sudo mkdir -p ${ciao_pki_path}
+if [ ! -d ${ciao_pki_path} ]
 then
-	echo "FATAL ERROR: Unable to create /etc/pki/ciao"
+	echo "FATAL ERROR: Unable to create ${ciao_pki_path}"
 	exit 1
 fi
 
@@ -100,7 +176,7 @@ then
 	echo "FATAL ERROR: Unable to create /etc/ciao"
 	exit 1
 fi
-sudo cp -f "$ciao_scripts"/configuration.yaml /etc/ciao
+sudo install -m 0644 -t /etc/ciao $conf_file
 
 #Stop any running agents and CNCIs
 sudo killall ciao-scheduler
@@ -142,19 +218,54 @@ then
 fi
 
 #Generate Certificates
-"$GOPATH"/bin/ciao-cert -anchor -role scheduler -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+"$GOPATH"/bin/ciao-cert -anchor -role scheduler -email="$ciao_email" \
+    -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_vlan_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role cnciagent -anchor-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+"$GOPATH"/bin/ciao-cert -role cnciagent -anchor-cert "$ciao_cert" \
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
+    -ip="$ciao_vlan_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role controller -anchor-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+"$GOPATH"/bin/ciao-cert -role controller -anchor-cert "$ciao_cert" \
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
+    -ip="$ciao_vlan_ip" -verify
 
-"$GOPATH"/bin/ciao-cert -role agent,netagent -anchor-cert "$ciao_cert" -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_ip" -verify
+"$GOPATH"/bin/ciao-cert -role agent,netagent -anchor-cert "$ciao_cert" \
+    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
+    -ip="$ciao_vlan_ip" -verify
 
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout controller_key.pem -out controller_cert.pem -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout "$keystone_key" -out "$keystone_cert" -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
 
 #Copy the certs
-sudo cp -f controller_key.pem /etc/pki/ciao
-sudo cp -f controller_cert.pem /etc/pki/ciao
+sudo install -m 0644 -t "$ciao_pki_path" "$keystone_cert"
+sudo install -m 0644 -t "$ciao_pki_path" \
+    "$ciao_bin"/"cert-Controller-""$ciao_host"".pem"
+sudo install -m 0644 -t "$ciao_pki_path" \
+    "$ciao_bin"/"CAcert-""$ciao_host"".pem"
+
+#Update system's trusted certificates
+cacert_prog_ubuntu=$(type -p update-ca-certificates)
+cacert_prog_fedora=$(type -p update-ca-trust)
+if [ x"$cacert_prog_ubuntu" != x ] && [ -x "$cacert_prog_ubuntu" ]; then
+    cacert_dir=/usr/local/share/ca-certificates
+    sudo install -m 0644 -T "$keystone_cert" "$cacert_dir"/keystone.crt
+    sudo install -m 0644 -T "$CIAO_CA_CERT_FILE" "$cacert_dir"/ciao.crt
+    sudo "$cacert_prog_ubuntu"
+
+    # Do it a second time with nothing new to make it clean out the old
+    sudo "$cacert_prog_ubuntu" --fresh
+elif [ x"$cacert_prog_fedora" != x ] && [ -x "$cacert_prog_fedora" ]; then
+    cacert_dir=/etc/pki/ca-trust/source/anchors/
+    if [ -d "$cacert_dir" ]; then
+        sudo install -m 0644 -t "$cacert_dir" "$keystone_cert"
+        sudo install -m 0644 -t "$cacert_dir" "$CIAO_CA_CERT_FILE"
+        sudo "$cacert_prog_fedora" extract
+    fi
+else
+    echo "Unable to add keystone's CA certificate to your system's trusted \
+        store!"
+    exit 1
+fi
 
 #Copy the configuration
 cd "$ciao_bin"
@@ -252,7 +363,7 @@ if [ -x "$(command -v ip)" ]; then
     sudo ip link del "$ciao_interface"
     sudo ip link add name "$ciao_interface" type bridge
     sudo ip link add link "$ciao_interface" name ciaovlan type macvlan mode bridge
-    sudo ip addr add "$ciao_subnet" brd "$ciao_brdcast" dev ciaovlan
+    sudo ip addr add "$ciao_vlan_subnet" brd "$ciao_vlan_brdcast" dev ciaovlan
     sudo ip link set dev ciaovlan up
     sudo ip -d link show ciaovlan
     sudo ip link set dev "$ciao_interface" up
@@ -270,43 +381,106 @@ else
     echo 'dnsmasq command is not supported'
 fi
 
+# Generate the post-keystone script to issue singlevm-specific openstack
+# commands
+( cat <<-EOF
+#!/bin/bash
+
+# Create basic services, users, and projects/tenants
+openstack service create --name ciao compute
+openstack user create --password "$ciao_password" "$ciao_username"
+openstack role add --project service --user "$ciao_username" admin
+openstack user create --password "$ciao_demo_password" "$ciao_demo_username"
+openstack project show demo
+if [[ \$? == 1 ]]; then
+    openstack project create --domain default demo
+fi
+openstack role add --project demo --user "$ciao_demo_username" user
+
+# Create image service endpoints
+openstack service create --name glance --description "Image Service" image
+openstack endpoint create --region RegionOne image public   https://$ciao_host:9292
+openstack endpoint create --region RegionOne image internal https://$ciao_host:9292
+openstack endpoint create --region RegionOne image admin    https://$ciao_host:9292
+
+# admin should only be admin of the admin project. This role was created by the
+# keystone container's bootstrap.
+openstack role remove --project service --user admin admin
+
+# Create storage endpoints
+openstack service create --name cinderv2 --description "Volume Service" volumev2
+openstack endpoint create --region RegionOne volumev2 public   'https://$ciao_host:8776/v2/%(tenant_id)s'
+openstack endpoint create --region RegionOne volumev2 internal 'https://$ciao_host:8776/v2/%(tenant_id)s'
+openstack endpoint create --region RegionOne volumev2 admin    'https://$ciao_host:8776/v2/%(tenant_id)s'
+
+EOF
+) > "$ciao_bin"/post-keystone.sh
+chmod 755 "$ciao_bin"/post-keystone.sh
+
+## Install keystone
+sudo docker run -d -it --name keystone \
+    --add-host="$ciao_host":"$ciao_ip" \
+    -p $keystone_public_port:5000 \
+    -p $keystone_admin_port:35357 \
+    -e IDENTITY_HOST="$ciao_host" -e KEYSTONE_ADMIN_PASSWORD="${OS_PASSWORD}" \
+    -v "$ciao_bin"/post-keystone.sh:/usr/bin/post-keystone.sh \
+    -v $mysql_data_dir:/var/lib/mysql \
+    -v "$keystone_cert":/etc/nginx/ssl/keystone_cert.pem \
+    -v "$keystone_key":/etc/nginx/ssl/keystone_key.pem clearlinux/keystone
+
+echo -n "Waiting up to $keystone_wait_time seconds for keystone identity" \
+    "service to become available"
+try_until=$(($(date +%s) + $keystone_wait_time))
+while : ; do
+    while [ $(date +%s) -le $try_until ]; do
+        # The keystone container tails the log at the end of its
+        # initialization script
+        if docker exec keystone pidof tail > /dev/null 2>&1; then
+            echo READY
+            break 2
+        else
+            echo -n .
+            sleep 1
+        fi
+    done
+    echo FAILED
+    break
+done
+
 # Install ceph
-sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_ip -e CEPH_PUBLIC_NETWORK=$ciao_subnet ceph/demo
+# This runs *after* keystone so keystone will get port 5000 first
+sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_vlan_ip -e CEPH_PUBLIC_NETWORK=$ciao_vlan_subnet ceph/demo
 sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
 
 #Kick off the agents
 cd "$ciao_bin"
 "$ciao_bin"/run_scheduler.sh  &> /dev/null
-"$ciao_bin"/run_launcher.sh &> /dev/null
+"$ciao_bin"/run_launcher.sh   &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-echo "export CIAO_CONTROLLER=""$ciao_host" > "$ciao_env"
-echo "export CIAO_USERNAME=admin" >> "$ciao_env"
-echo "export CIAO_PASSWORD=giveciaoatry" >> "$ciao_env"
-echo "export CIAO_ADMIN_USERNAME=admin" >> "$ciao_env"
-echo "export CIAO_ADMIN_PASSWORD=giveciaoatry" >> "$ciao_env"
-echo "export CIAO_CA_CERT_FILE=/etc/pki/ciao/controller_cert.pem" >> "$ciao_env"
 sleep 5
-identity=$(grep CIAO_IDENTITY $ciao_ctl_log | sed 's/^.*export/export/')
-echo "$identity" >> "$ciao_env"
 
-sleep 1
-
-. ~/local/demo.sh
+. $ciao_env
 
 echo ""
 echo "Uploading test images to image service"
 echo "---------------------------------------------------------------------------------------"
 if [ -f "$ciao_cnci_image".qcow ]; then
-    "$ciao_gobin"/ciao-cli image add --file "$ciao_cnci_image".qcow --name "ciao CNCI image" --id 4e16e743-265a-4bf2-9fd1-57ada0b28904
+    "$ciao_gobin"/ciao-cli \
+        image add --file "$ciao_cnci_image".qcow \
+        --name "ciao CNCI image" --id 4e16e743-265a-4bf2-9fd1-57ada0b28904
 fi
 
 if [ -f clear-"${LATEST}"-cloud.img ]; then
-    "$ciao_gobin"/ciao-cli image add --file clear-"${LATEST}"-cloud.img --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169
+    "$ciao_gobin"/ciao-cli \
+        image add --file clear-"${LATEST}"-cloud.img \
+        --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169
 fi
 
 if [ -f $fedora_cloud_image ]; then
-    "$ciao_gobin"/ciao-cli image add --file $fedora_cloud_image --name "Fedorda Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799
+    "$ciao_gobin"/ciao-cli \
+        image add --file $fedora_cloud_image \
+        --name "Fedora Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799
 fi
 
 echo "---------------------------------------------------------------------------------------"
