@@ -220,6 +220,7 @@ func (d attachments) Init() error {
 		instance_id string,
 		block_id string,
 		ephemeral int,
+		boot int,
 		foreign key(instance_id) references instances(id),
 		foreign key(block_id) references block_data(id)
 		);`
@@ -2317,7 +2318,7 @@ func (ds *sqliteDB) createStorageAttachment(a types.StorageAttachment) error {
 		return err
 	}
 
-	_, err = tx.Exec("INSERT INTO attachments (id, instance_id, block_id, ephemeral) VALUES (?, ?, ?, ?)", a.ID, a.InstanceID, a.BlockID, a.Ephemeral)
+	_, err = tx.Exec("INSERT INTO attachments (id, instance_id, block_id, ephemeral, boot) VALUES (?, ?, ?, ?, ?)", a.ID, a.InstanceID, a.BlockID, a.Ephemeral, a.Boot)
 	if err != nil {
 		tx.Rollback()
 		ds.dbLock.Unlock()
@@ -2338,7 +2339,8 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 	query := `SELECT	attachments.id,
 				attachments.instance_id,
 				attachments.block_id,
-				attachments.ephemeral
+				attachments.ephemeral,
+				attachments.boot
 		  FROM	attachments `
 
 	rows, err := datastore.Query(query)
@@ -2350,7 +2352,7 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 	for rows.Next() {
 		var a types.StorageAttachment
 
-		err = rows.Scan(&a.ID, &a.InstanceID, &a.BlockID, &a.Ephemeral)
+		err = rows.Scan(&a.ID, &a.InstanceID, &a.BlockID, &a.Ephemeral, &a.Boot)
 		if err != nil {
 			continue
 		}

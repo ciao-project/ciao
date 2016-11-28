@@ -235,6 +235,15 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 		return block.ErrVolumeNotAttached
 	}
 
+	// we cannot detach a boot device - these aren't
+	// like regular attachments and shouldn't be treated
+	// as such.
+	for _, a := range attachments {
+		if a.Boot == true {
+			return block.ErrVolumeNotAttached
+		}
+	}
+
 	// update volume state to detaching
 	info.State = types.Detaching
 
