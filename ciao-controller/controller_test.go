@@ -558,12 +558,8 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 		t.Fatalf("expected %s %s %s, got %s %s %s", instances[0].ID, client.UUID, data.ID, result.InstanceUUID, result.NodeUUID, result.VolumeUUID)
 	}
 
-	_, err = client.GetCmdChanResult(agentCh, ssntp.AttachVolume)
-	if fail == false && err != nil {
-		t.Fatal(err)
-	}
-
 	if fail == true {
+		_, err = client.GetCmdChanResult(agentCh, ssntp.AttachVolume)
 		if err == nil {
 			t.Fatal("Success when Failure expected")
 		}
@@ -587,6 +583,11 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 
 		if data2.State != types.Available {
 			t.Fatalf("block device state not updated")
+		}
+	} else {
+		_, err = client.GetCmdChanResult(agentCh, ssntp.AttachVolume)
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 
@@ -652,12 +653,8 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 		t.Fatalf("expected state %s, got %s\n", types.Detaching, data.State)
 	}
 
-	_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
-	if fail == false && err != nil {
-		t.Fatal(err)
-	}
-
 	if fail == true {
+		_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
 		if err == nil {
 			t.Fatal("Success when Failure expected")
 		}
@@ -682,6 +679,11 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 
 		if data2.State != types.InUse {
 			t.Fatalf("expected state %s, got %s\n", types.InUse, data2.State)
+		}
+	} else {
+		_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 
