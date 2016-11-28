@@ -833,6 +833,7 @@ func (cmd *poolRemoveCommand) run(args []string) error {
 
 	if cmd.subnet != "" && cmd.ip != "" {
 		errorf("You can only remove one item at a time")
+		cmd.usage()
 	}
 
 	pool, err := getCiaoPool(cmd.name)
