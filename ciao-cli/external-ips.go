@@ -261,9 +261,10 @@ func (cmd *externalIPListCommand) run(args []string) error {
 		}
 
 		fmt.Fprintf(w, "\n")
-
-		w.Flush()
 	}
+
+	w.Flush()
+
 	return nil
 }
 
@@ -539,9 +540,10 @@ func (cmd *poolListCommand) run(args []string) error {
 		}
 
 		fmt.Fprintf(w, "\n")
-
-		w.Flush()
 	}
+
+	w.Flush()
+
 	return nil
 }
 
