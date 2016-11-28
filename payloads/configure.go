@@ -68,6 +68,7 @@ type ConfigureScheduler struct {
 type ConfigureController struct {
 	VolumePort       int    `yaml:"volume_port"`
 	ComputePort      int    `yaml:"compute_port"`
+	CiaoPort         int    `yaml:"ciao_port"`
 	HTTPSCACert      string `yaml:"compute_ca"`
 	HTTPSKey         string `yaml:"compute_cert"`
 	IdentityUser     string `yaml:"identity_user"`
@@ -117,6 +118,7 @@ type Configure struct {
 func (conf *Configure) InitDefaults() {
 	conf.Configure.Controller.VolumePort = 8776
 	conf.Configure.Controller.ComputePort = 8774
+	conf.Configure.Controller.CiaoPort = 8889
 	conf.Configure.ImageService.Type = Glance
 	conf.Configure.IdentityService.Type = Keystone
 	conf.Configure.Launcher.DiskLimit = true

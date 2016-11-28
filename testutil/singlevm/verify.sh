@@ -135,7 +135,40 @@ ciao_events=0
 
 until [ $retry -ge 6 ]
 do
-	ciao_events=`"$ciao_gobin"/ciao-cli event list | grep "0 Ciao event" | wc -l`
+	ciao_events=`"$ciao_gobin"/ciao-cli event list -f '{{len .}}'`
+
+	if [ $ciao_events -eq 0 ]
+	then
+		break
+	fi
+
+	let retry=retry+1
+	sleep 1
+done
+
+if [ $ciao_events -ne 0 ]
+then
+	echo "FATAL ERROR: ciao events not deleted properly"
+	"$ciao_gobin"/ciao-cli event list
+	exit 1
+fi
+
+#Test External IP Assignment support
+#Pick the first instance which is a VM, as we can even SSH into it
+#We have already checked that the VM is up.
+"$ciao_gobin"/ciao-cli pool create -name test && ciao-cli pool add -subnet 203.0.113.0/24 -name test
+
+testinstance=`"$ciao_gobin"/ciao-cli instance list -f '{{with index . 0}}{{.ID}}{{end}}'`
+
+"$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
+
+#Wait for the CNCI to report successful map
+retry=0
+ciao_events=0
+
+until [ $retry -ge 6 ]
+do
+	ciao_events=`"$ciao_gobin"/ciao-cli event list -f '{{len .}}'`
 
 	if [ $ciao_events -eq 1 ]
 	then
@@ -148,10 +181,76 @@ done
 
 if [ $ciao_events -ne 1 ]
 then
-	echo "FATAL ERROR: ciao events not deleted properly"
+	echo "FATAL ERROR: ciao external IP event not reported"
 	"$ciao_gobin"/ciao-cli event list
 	exit 1
 fi
+
+mapped=`ciao-cli event list -f '{{if eq (len .) 1}}{{(index . 0).Message}}{{end}}' | cut -d " " -f 1`
+if [ $mapped != "Mapped" ]
+then
+	echo "FATAL ERROR: Unknown event"
+	"$ciao_gobin"/ciao-cli event list
+	exit 1
+fi
+
+"$ciao_gobin"/ciao-cli event list
+"$ciao_gobin"/ciao-cli external-ip list
+
+#We checked the event, so the mapping should exist
+testip=`"$ciao_gobin"/ciao-cli external-ip list -f '{{with index . 0}}{{.ExternalIP}}{{end}}'`
+
+sudo ip route add 203.0.113.0/24 dev ciaovlan
+ping -c 10 $testip
+ping_result=$?
+sudo ip route del 203.0.113.0/24 dev ciaovlan
+
+if [ $ping_result -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to ping external IP"
+	exit 1
+else
+	echo "Container external connectivity verified"
+fi
+
+
+"$ciao_gobin"/ciao-cli external-ip unmap -address $testip
+
+#Wait for the CNCI to report successful unmap
+retry=0
+ciao_events=0
+
+until [ $retry -ge 6 ]
+do
+	ciao_events=`"$ciao_gobin"/ciao-cli event list -f '{{len .}}'`
+
+	if [ $ciao_events -eq 2 ]
+	then
+		break
+	fi
+
+	let retry=retry+1
+	sleep 1
+done
+
+if [ $ciao_events -ne 2 ]
+then
+	echo "FATAL ERROR: ciao external IP event not reported"
+	"$ciao_gobin"/ciao-cli event list
+	exit 1
+fi
+
+unmapped=`"$ciao_gobin"/ciao-cli event list -f '{{if eq (len .) 2}}{{(index . 1).Message}}{{end}}' | cut -d " " -f 1`
+if [ $unmapped != "Unmapped" ]
+then
+	echo "FATAL ERROR: Unknown event"
+	"$ciao_gobin"/ciao-cli event list
+	exit 1
+fi
+
+"$ciao_gobin"/ciao-cli event list
+"$ciao_gobin"/ciao-cli external-ip list
+
 
 #Now delete all instances
 "$ciao_gobin"/ciao-cli instance delete --all
@@ -170,9 +269,9 @@ ciao_events=0
 
 until [ $retry -ge 6 ]
 do
-	ciao_events=`"$ciao_gobin"/ciao-cli event list | grep "4 Ciao event(s)" | wc -l`
+	ciao_events=`"$ciao_gobin"/ciao-cli event list -f '{{len .}}'`
 
-	if [ $ciao_events -eq 1 ]
+	if [ $ciao_events -eq 6 ]
 	then
 		break
 	fi
@@ -181,7 +280,7 @@ do
 	sleep 1
 done
 
-if [ $ciao_events -ne 1 ]
+if [ $ciao_events -ne 6 ]
 then
 	echo "FATAL ERROR: ciao instances not deleted properly"
 	"$ciao_gobin"/ciao-cli event list

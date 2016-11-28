@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -30,6 +31,8 @@ import (
 	"strconv"
 	"text/template"
 
+	"github.com/01org/ciao/ciao-controller/api"
+	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/golang/glog"
 )
 
@@ -81,14 +84,16 @@ type subCommand interface {
 }
 
 var commands = map[string]subCommand{
-	"instance": instanceCommand,
-	"workload": workloadCommand,
-	"tenant":   tenantCommand,
-	"event":    eventCommand,
-	"node":     nodeCommand,
-	"trace":    traceCommand,
-	"image":    imageCommand,
-	"volume":   volumeCommand,
+	"instance":    instanceCommand,
+	"workload":    workloadCommand,
+	"tenant":      tenantCommand,
+	"event":       eventCommand,
+	"node":        nodeCommand,
+	"trace":       traceCommand,
+	"image":       imageCommand,
+	"volume":      volumeCommand,
+	"pool":        poolCommand,
+	"external-ip": externalIPCommand,
 }
 
 var scopedToken string
@@ -135,6 +140,7 @@ var (
 	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	computePort      = flag.Int("computeport", openstackComputePort, "Openstack Compute API port")
+	ciaoPort         = flag.Int("ciaoport", api.Port, "ciao API port")
 	caCertFile       = flag.String("ca-file", "", "CA Certificate")
 )
 
@@ -176,7 +182,12 @@ func buildComputeURL(format string, args ...interface{}) string {
 	return fmt.Sprintf(prefix+format, args...)
 }
 
-func sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader) (*http.Response, error) {
+func buildCiaoURL(format string, args ...interface{}) string {
+	prefix := fmt.Sprintf("https://%s:%d/", *controllerURL, *ciaoPort)
+	return fmt.Sprintf(prefix+format, args...)
+}
+
+func sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader, content *string) (*http.Response, error) {
 	req, err := http.NewRequest(method, os.ExpandEnv(url), body)
 	if err != nil {
 		return nil, err
@@ -199,7 +210,11 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.Header.Add("X-Auth-Token", token)
 	}
 
-	if body != nil {
+	if content != nil {
+		contentType := fmt.Sprintf("application/%s", *content)
+		req.Header.Set("Content-Type", contentType)
+		req.Header.Set("Accept", contentType)
+	} else if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
 	}
@@ -238,7 +253,7 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 }
 
 func sendHTTPRequest(method string, url string, values []queryValue, body io.Reader) (*http.Response, error) {
-	return sendHTTPRequestToken(method, url, values, scopedToken, body)
+	return sendHTTPRequestToken(method, url, values, scopedToken, body, nil)
 }
 
 func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
@@ -261,6 +276,56 @@ func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
 	}
 
 	return nil
+}
+
+func sendCiaoRequest(method string, url string, values []queryValue, body io.Reader, content *string) (*http.Response, error) {
+	return sendHTTPRequestToken(method, url, values, scopedToken, body, content)
+}
+
+func getRef(rel string, links []types.Link) string {
+	for _, link := range links {
+		if link.Rel == rel {
+			return link.Href
+		}
+	}
+	return ""
+}
+
+func getCiaoResource(name string, minVersion string) (string, error) {
+	var resources []types.APILink
+	var url string
+
+	if checkPrivilege() {
+		url = buildCiaoURL("")
+	} else {
+		url = buildCiaoURL(fmt.Sprintf("%s", *tenantID))
+	}
+
+	resp, err := sendCiaoRequest("GET", url, nil, nil, nil)
+	if err != nil {
+		return "", err
+	}
+
+	err = unmarshalHTTPResponse(resp, &resources)
+	if err != nil {
+		return "", err
+	}
+
+	for _, l := range resources {
+		if l.Rel == name && l.MinVersion == minVersion {
+			return l.Href, nil
+		}
+	}
+
+	return "", errors.New("Supported version of resource not found")
+}
+
+func checkPrivilege() bool {
+	if *tenantName == "admin" {
+		return true
+	}
+
+	return false
 }
 
 func limitToString(limit int) string {

@@ -470,7 +470,23 @@ func (sched *ssntpSchedulerServer) sendStartFailureError(clientUUID string, inst
 	glog.Warningf("Unable to dispatch: %v\n", reason)
 	sched.ssntp.SendError(clientUUID, ssntp.StartFailure, payload)
 }
-func (sched *ssntpSchedulerServer) getConcentratorUUID(event ssntp.Event, payload []byte) (string, error) {
+
+func (sched *ssntpSchedulerServer) getCommandConcentratorUUID(command ssntp.Command, payload []byte) (string, error) {
+	switch command {
+	default:
+		return "", fmt.Errorf("unsupported ssntp.Command type \"%s\"", command)
+	case ssntp.AssignPublicIP:
+		var cmd payloads.CommandAssignPublicIP
+		err := yaml.Unmarshal(payload, &cmd)
+		return cmd.AssignIP.ConcentratorUUID, err
+	case ssntp.ReleasePublicIP:
+		var cmd payloads.CommandReleasePublicIP
+		err := yaml.Unmarshal(payload, &cmd)
+		return cmd.ReleaseIP.ConcentratorUUID, err
+	}
+}
+
+func (sched *ssntpSchedulerServer) getEventConcentratorUUID(event ssntp.Event, payload []byte) (string, error) {
 	switch event {
 	default:
 		return "", fmt.Errorf("unsupported ssntp.Event type \"%s\"", event)
@@ -485,18 +501,35 @@ func (sched *ssntpSchedulerServer) getConcentratorUUID(event ssntp.Event, payloa
 	}
 }
 
-func (sched *ssntpSchedulerServer) fwdEventToCNCI(event ssntp.Event, payload []byte) (dest ssntp.ForwardDestination) {
+func (sched *ssntpSchedulerServer) fwdCmdToCNCI(command ssntp.Command, payload []byte) (dest ssntp.ForwardDestination) {
 	// since the scheduler is the primary ssntp server, it needs to
-	// unwrap event payloads and forward them to the approriate recipient
+	// unwrap CNCI directed command payloads and forward to the right CNCI
 
-	concentratorUUID, err := sched.getConcentratorUUID(event, payload)
+	concentratorUUID, err := sched.getCommandConcentratorUUID(command, payload)
 	if err != nil || concentratorUUID == "" {
-		glog.Errorf("Bad %s event yaml from, concentratorUUID == %s\n", event, concentratorUUID)
+		glog.Errorf("Bad %s command yaml. Unable to forward to CNCI.\n", command)
 		dest.SetDecision(ssntp.Discard)
 		return
 	}
 
-	glog.V(2).Infof("Forwarding %s to %s\n", event.String(), concentratorUUID)
+	glog.V(2).Infof("Forwarding %s command to CNCI Agent %s\n", command.String(), concentratorUUID)
+	dest.AddRecipient(concentratorUUID)
+
+	return dest
+}
+
+func (sched *ssntpSchedulerServer) fwdEventToCNCI(event ssntp.Event, payload []byte) (dest ssntp.ForwardDestination) {
+	// since the scheduler is the primary ssntp server, it needs to
+	// unwrap CNCI directed event payloads and forward to the right CNCI
+
+	concentratorUUID, err := sched.getEventConcentratorUUID(event, payload)
+	if err != nil || concentratorUUID == "" {
+		glog.Errorf("Bad %s event yaml. Unable to forward to CNCI.\n", event)
+		dest.SetDecision(ssntp.Discard)
+		return
+	}
+
+	glog.V(2).Infof("Forwarding %s command to CNCI Agent%s\n", event.String(), concentratorUUID)
 	dest.AddRecipient(concentratorUUID)
 
 	return dest
@@ -709,6 +742,11 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 		fallthrough
 	case ssntp.EVACUATE:
 		dest, instanceUUID = sched.fwdCmdToComputeNode(command, payload)
+	case ssntp.AssignPublicIP:
+		fallthrough
+	case ssntp.ReleasePublicIP:
+		dest = sched.fwdCmdToCNCI(command, payload)
+
 	default:
 		dest.SetDecision(ssntp.Discard)
 	}
@@ -971,6 +1009,10 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 			Operand: ssntp.PublicIPAssigned,
 			Dest:    ssntp.Controller,
 		},
+		{ // all PublicIPUnassigned events go to all Controllers
+			Operand: ssntp.PublicIPUnassigned,
+			Dest:    ssntp.Controller,
+		},
 		{ // all START command are processed by the Command forwarder
 			Operand:        ssntp.START,
 			CommandForward: sched,
@@ -1005,6 +1047,14 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 		},
 		{ // all DetachVolume command are processed by the Command forwarder
 			Operand:        ssntp.DetachVolume,
+			CommandForward: sched,
+		},
+		{ // all AssignPublicIP commands are processed by the Command forwarder
+			Operand:        ssntp.AssignPublicIP,
+			CommandForward: sched,
+		},
+		{ // all ReleasePublicIP commands are processed by the Command forwarder
+			Operand:        ssntp.ReleasePublicIP,
 			CommandForward: sched,
 		},
 	}

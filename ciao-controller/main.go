@@ -25,21 +25,27 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"sync"
 
+	"github.com/01org/ciao/ciao-controller/api"
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	image "github.com/01org/ciao/ciao-image/client"
 	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/openstack/compute"
+	osIdentity "github.com/01org/ciao/openstack/identity"
 	osimage "github.com/01org/ciao/openstack/image"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/testutil"
 	"github.com/golang/glog"
+	"github.com/gorilla/mux"
 )
 
 type controller struct {
@@ -49,6 +55,7 @@ type controller struct {
 	ds     *datastore.Datastore
 	id     *identity
 	image  image.Client
+	apiURL string
 }
 
 var singleMachine = flag.Bool("single", false, "Enable single machine test")
@@ -61,6 +68,7 @@ var servicePassword = ""
 var volumeAPIPort = block.APIPort
 var computeAPIPort = compute.APIPort
 var imageAPIPort = osimage.APIPort
+var controllerAPIPort = api.Port
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
 var tablesInitPath = flag.String("tables_init_path", "./tables", "path to csv files")
@@ -138,6 +146,7 @@ func main() {
 
 	volumeAPIPort = clusterConfig.Configure.Controller.VolumePort
 	computeAPIPort = clusterConfig.Configure.Controller.ComputePort
+	controllerAPIPort = clusterConfig.Configure.Controller.CiaoPort
 	httpsCAcert = clusterConfig.Configure.Controller.HTTPSCACert
 	httpsKey = clusterConfig.Configure.Controller.HTTPSKey
 	identityURL = clusterConfig.Configure.IdentityService.URL
@@ -202,7 +211,61 @@ func main() {
 	wg.Add(1)
 	go ctl.startImageService()
 
+	host, _ := os.Hostname()
+	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
+
+	wg.Add(1)
+	go ctl.startCiaoService()
+
 	wg.Wait()
 	ctl.ds.Exit()
 	ctl.client.Disconnect()
+}
+
+func (c *controller) startCiaoService() error {
+	config := api.Config{URL: c.apiURL, CiaoService: c}
+
+	r := api.Routes(config)
+	if r == nil {
+		return errors.New("Unable to start Ciao API Service")
+	}
+
+	// wrap each route in keystone validation.
+	validServices := []osIdentity.ValidService{
+		{ServiceType: "compute", ServiceName: "ciao"},
+		{ServiceType: "compute", ServiceName: "nova"},
+	}
+
+	validAdmins := []osIdentity.ValidAdmin{
+		{Project: "service", Role: "admin"},
+		{Project: "admin", Role: "admin"},
+	}
+
+	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		h := osIdentity.Handler{
+			Client:        c.id.scV3,
+			Next:          route.GetHandler(),
+			ValidServices: validServices,
+			ValidAdmins:   validAdmins,
+		}
+
+		route.Handler(h)
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	service := fmt.Sprintf(":%d", controllerAPIPort)
+
+	glog.Infof("Starting ciao API on port %d\n", controllerAPIPort)
+
+	err = http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	return nil
 }

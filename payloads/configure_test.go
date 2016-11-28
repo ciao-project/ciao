@@ -82,6 +82,8 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Controller.VolumePort = p
 	p, _ = strconv.Atoi(testutil.ComputePort)
 	cfg.Configure.Controller.ComputePort = p
+	p, _ = strconv.Atoi(testutil.CiaoPort)
+	cfg.Configure.Controller.CiaoPort = p
 	cfg.Configure.Controller.HTTPSCACert = testutil.HTTPSCACert
 	cfg.Configure.Controller.HTTPSKey = testutil.HTTPSKey
 	cfg.Configure.Controller.IdentityUser = testutil.IdentityUser

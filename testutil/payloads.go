@@ -84,6 +84,9 @@ const VolumePort = "446"
 // ComputePort is a test port for the compute service
 const ComputePort = "443"
 
+// CiaoPort is a test port for ciao's api service
+const CiaoPort = "447"
+
 // HTTPSKey is a path to a key for the compute service
 const HTTPSKey = "/etc/pki/ciao/compute_key.pem"
 
@@ -311,6 +314,14 @@ const AssignedIPYaml = `public_ip_assigned:
   private_ip: ` + InstancePrivateIP + `
 `
 
+// UnassignedIPYaml is a sample PublicIPUnassigned ssntp.Event payload for test cases
+const UnassignedIPYaml = `public_ip_unassigned:
+  concentrator_uuid: ` + CNCIUUID + `
+  instance_uuid: ` + InstanceUUID + `
+  public_ip: ` + InstancePublicIP + `
+  private_ip: ` + InstancePrivateIP + `
+`
+
 // TenantAddedYaml is a sample TenantAdded ssntp.Event payload for test cases
 const TenantAddedYaml = `tenant_added:
   agent_uuid: ` + AgentUUID + `
@@ -346,6 +357,7 @@ const ConfigureYaml = `configure:
   controller:
     volume_port: ` + VolumePort + `
     compute_port: ` + ComputePort + `
+    ciao_port: ` + CiaoPort + `
     compute_ca: ` + HTTPSCACert + `
     compute_cert: ` + HTTPSKey + `
     identity_user: ` + IdentityUser + `

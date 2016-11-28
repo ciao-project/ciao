@@ -719,6 +719,18 @@ func (client *SsntpTestClient) SendPublicIPAssignedEvent() {
 	go client.SendResultAndDelEventChan(ssntp.PublicIPAssigned, result)
 }
 
+// SendPublicIPUnassignedEvent allows an SsntpTestClient to push an ssntp.PublicIPUnassigned event frame
+func (client *SsntpTestClient) SendPublicIPUnassignedEvent() {
+	var result Result
+
+	_, err := client.Ssntp.SendEvent(ssntp.PublicIPUnassigned, []byte(UnassignedIPYaml))
+	if err != nil {
+		result.Err = err
+	}
+
+	go client.SendResultAndDelEventChan(ssntp.PublicIPUnassigned, result)
+}
+
 // SendConcentratorAddedEvent allows an SsntpTestClient to push an ssntp.ConcentratorInstanceAdded event frame
 func (client *SsntpTestClient) SendConcentratorAddedEvent(instanceUUID string, tenantUUID string, ip string, vnicMAC string) {
 	var result Result
