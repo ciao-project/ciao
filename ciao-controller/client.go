@@ -250,7 +250,6 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 		err = client.ctl.ds.UnMapExternalIP(failure.PublicIP)
 		if err != nil {
 			glog.Warning(err)
-			return
 		}
 
 		msg := fmt.Sprintf("Failed to map %s to %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
