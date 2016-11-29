@@ -153,7 +153,7 @@ type instanceDeleteCommand struct {
 func (cmd *instanceDeleteCommand) usage(...string) {
 	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] instance delete [flags]
 
-Deltes a given instance
+Deletes a given instance
 
 The delete flags are:
 
