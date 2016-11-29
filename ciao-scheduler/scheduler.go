@@ -83,13 +83,15 @@ func newSsntpSchedulerServer() *ssntpSchedulerServer {
 }
 
 type nodeStat struct {
-	mutex      sync.Mutex
-	status     ssntp.Status
-	uuid       string
-	memTotalMB int
-	memAvailMB int
-	load       int
-	cpus       int
+	mutex       sync.Mutex
+	status      ssntp.Status
+	uuid        string
+	memTotalMB  int
+	memAvailMB  int
+	diskTotalMB int
+	diskAvailMB int
+	load        int
+	cpus        int
 }
 
 type controllerStatus uint8
@@ -372,6 +374,8 @@ func (sched *ssntpSchedulerServer) updateNodeStat(node *nodeStat, status ssntp.S
 		}
 		node.memTotalMB = stats.MemTotalMB
 		node.memAvailMB = stats.MemAvailableMB
+		node.diskTotalMB = stats.DiskTotalMB
+		node.diskAvailMB = stats.DiskAvailableMB
 		node.load = stats.Load
 		node.cpus = stats.CpusOnline
 
