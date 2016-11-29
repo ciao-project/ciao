@@ -1007,6 +1007,14 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 			Operand:        ssntp.DetachVolume,
 			CommandForward: sched,
 		},
+		{ // all AttachVolumeFailure errors go to all Controllers
+			Operand: ssntp.AttachVolumeFailure,
+			Dest:    ssntp.Controller,
+		},
+		{ // all DetachVolumeFailure errors go to all Controllers
+			Operand: ssntp.DetachVolumeFailure,
+			Dest:    ssntp.Controller,
+		},
 	}
 }
 
