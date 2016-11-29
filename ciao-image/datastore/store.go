@@ -159,7 +159,7 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 	img.State = Saving
 
 	if s.rawDs != nil {
-		_, err := s.rawDs.Write(ID, body)
+		err := s.rawDs.Write(ID, body)
 		if err != nil {
 			return err
 		}
