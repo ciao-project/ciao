@@ -710,7 +710,7 @@ func TestGetNodeLastStats(t *testing.T) {
 	}
 }
 
-func TestGetBatchFrameStatistics(t *testing.T) {
+func createTestFrameTraces(label string) []payloads.FrameTrace {
 	var nodes []payloads.SSNTPNode
 	for i := 0; i < 3; i++ {
 		node := payloads.SSNTPNode{
@@ -725,7 +725,7 @@ func TestGetBatchFrameStatistics(t *testing.T) {
 	var frames []payloads.FrameTrace
 	for i := 0; i < 3; i++ {
 		stat := payloads.FrameTrace{
-			Label:          "batch_frame_test",
+			Label:          label,
 			Type:           "type",
 			Operand:        "operand",
 			StartTimestamp: time.Now().Format(time.RFC3339Nano),
@@ -734,9 +734,12 @@ func TestGetBatchFrameStatistics(t *testing.T) {
 		}
 		frames = append(frames, stat)
 	}
+	return frames
+}
 
+func TestGetBatchFrameStatistics(t *testing.T) {
 	trace := payloads.Trace{
-		Frames: frames,
+		Frames: createTestFrameTraces("batch_frame_test"),
 	}
 
 	err := ds.HandleTraceReport(trace)
@@ -751,32 +754,8 @@ func TestGetBatchFrameStatistics(t *testing.T) {
 }
 
 func TestGetBatchFrameSummary(t *testing.T) {
-	var nodes []payloads.SSNTPNode
-	for i := 0; i < 3; i++ {
-		node := payloads.SSNTPNode{
-			SSNTPUUID:   uuid.Generate().String(),
-			SSNTPRole:   "test",
-			TxTimestamp: time.Now().Format(time.RFC3339Nano),
-			RxTimestamp: time.Now().Format(time.RFC3339Nano),
-		}
-		nodes = append(nodes, node)
-	}
-
-	var frames []payloads.FrameTrace
-	for i := 0; i < 3; i++ {
-		stat := payloads.FrameTrace{
-			Label:          "batch_summary_test",
-			Type:           "type",
-			Operand:        "operand",
-			StartTimestamp: time.Now().Format(time.RFC3339Nano),
-			EndTimestamp:   time.Now().Format(time.RFC3339Nano),
-			Nodes:          nodes,
-		}
-		frames = append(frames, stat)
-	}
-
 	trace := payloads.Trace{
-		Frames: frames,
+		Frames: createTestFrameTraces("batch_summary_test"),
 	}
 
 	err := ds.HandleTraceReport(trace)
@@ -824,25 +803,7 @@ func TestClearLog(t *testing.T) {
 }
 
 func TestAddFrameStat(t *testing.T) {
-	var nodes []payloads.SSNTPNode
-	for i := 0; i < 3; i++ {
-		node := payloads.SSNTPNode{
-			SSNTPUUID:   uuid.Generate().String(),
-			SSNTPRole:   "test",
-			TxTimestamp: time.Now().Format(time.RFC3339Nano),
-			RxTimestamp: time.Now().Format(time.RFC3339Nano),
-		}
-		nodes = append(nodes, node)
-	}
-
-	stat := payloads.FrameTrace{
-		Label:          "test",
-		Type:           "type",
-		Operand:        "operand",
-		StartTimestamp: time.Now().Format(time.RFC3339Nano),
-		EndTimestamp:   time.Now().Format(time.RFC3339Nano),
-		Nodes:          nodes,
-	}
+	stat := createTestFrameTraces("test")[0]
 	err := ds.db.addFrameStat(stat)
 	if err != nil {
 		t.Fatal(err)
@@ -1093,32 +1054,8 @@ func TestAddCNCIIP(t *testing.T) {
 }
 
 func TestHandleTraceReport(t *testing.T) {
-	var nodes []payloads.SSNTPNode
-	for i := 0; i < 3; i++ {
-		node := payloads.SSNTPNode{
-			SSNTPUUID:   uuid.Generate().String(),
-			SSNTPRole:   "test",
-			TxTimestamp: time.Now().Format(time.RFC3339Nano),
-			RxTimestamp: time.Now().Format(time.RFC3339Nano),
-		}
-		nodes = append(nodes, node)
-	}
-
-	var frames []payloads.FrameTrace
-	for i := 0; i < 3; i++ {
-		stat := payloads.FrameTrace{
-			Label:          "test",
-			Type:           "type",
-			Operand:        "operand",
-			StartTimestamp: time.Now().Format(time.RFC3339Nano),
-			EndTimestamp:   time.Now().Format(time.RFC3339Nano),
-			Nodes:          nodes,
-		}
-		frames = append(frames, stat)
-	}
-
 	trace := payloads.Trace{
-		Frames: frames,
+		Frames: createTestFrameTraces("test"),
 	}
 
 	err := ds.HandleTraceReport(trace)
