@@ -24,7 +24,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/01org/ciao/ciao-controller/types"
@@ -69,11 +72,336 @@ var instanceCommand = &command{
 	},
 }
 
+type volumeFlag struct {
+	uuid      string
+	bootIndex string
+	swap      bool
+	local     bool
+	ephemeral bool
+	size      int
+	tag       string
+}
+type volumeFlagSlice []volumeFlag
+
+func printVolumeFlagUsage() {
+	msg := `
+The volume flag allows specification of a volume to be attached
+to a workload instance.  Sub-options include 'uuid', 'boot_index',
+'swap', 'ephemeral', 'local', and 'size'.  Ephemeral volumes are
+automatically removed when an instance is removed.  Local volumes
+are constrained by a size which is a resource demand considered
+when scheduling a workload instance.  Size is an integer number of
+gigabytes.  The boot_index may be \"none\" or a negative integer to
+exclude the volume from boot, otherwise use a positive integer
+to indicate a relative ordering among multiple specified volumes.
+
+Valid combinations include:
+	-volume uuid=${UUID}[,boot_index=N]
+	-volume uuid=${UUID},swap
+	-volume uuid=${UUID},ephemeral[,boot_index=N]
+	-volume size=${SIZE}
+	-volume ephemeral,size=${SIZE}
+	-volume local,ephemeral,size=${SIZE}
+	-volume swap,size=${SIZE}
+	-volume local,swap,size=${SIZE}
+
+Multiple -volume arguments may be specified per workload instance.
+
+`
+	fmt.Fprintf(os.Stderr, msg)
+}
+
+func argMatch(patterns []string, arg string) bool {
+	for _, pattern := range patterns {
+		matched, _ := regexp.MatchString(pattern, arg)
+		if matched {
+			return true
+		}
+	}
+	return false
+}
+func isInstanceVolumeBoolArg(arg string) bool {
+	if isInstanceVolumeImplicitBoolArg(arg) {
+		return true
+	}
+
+	return isInstanceVolumeExplicitBoolArg(arg)
+}
+
+func isInstanceVolumeImplicitBoolArg(arg string) bool {
+	patterns := []string{
+		"^swap$",
+		"^local$",
+		"^ephemeral$",
+	}
+	return argMatch(patterns, arg)
+}
+func isInstanceVolumeExplicitBoolArg(arg string) bool {
+	patterns := []string{
+		"^swap=(true|false)$",
+		"^local=(true|false)$",
+		"^ephemeral=(true|false)$",
+	}
+	return argMatch(patterns, arg)
+}
+func isInstanceVolumeIntArg(arg string) bool {
+	patterns := []string{
+		"^size=[0-9]+$",
+	}
+	return argMatch(patterns, arg)
+}
+func isInstanceVolumeStringArg(arg string) bool {
+	patterns := []string{
+		"^uuid=.*$",
+		"^boot_index=.*$",
+		"^tag=.*$",
+	}
+	return argMatch(patterns, arg)
+}
+func getInstanceVolumeImplicitBoolArgs(subArg string, boolArgsMap map[string]bool) bool {
+	// search for implicit affirmative bools by name, put in map
+	if !isInstanceVolumeImplicitBoolArg(subArg) {
+		return false
+	}
+
+	boolArgsMap[subArg] = true
+	return true
+}
+func getInstanceVolumeExplicitBoolArgs(key string, val string, boolArgsMap map[string]bool) (bool, error) {
+	// search for explicit bools by name, put in map
+	if !isInstanceVolumeImplicitBoolArg(key) {
+		return false, nil
+	}
+	fullArg := key + "=" + val
+	if !isInstanceVolumeExplicitBoolArg(fullArg) {
+		return false, fmt.Errorf("Invalid argument. Expected %s={true|false}, got \"%s=%s\"",
+			key, key, val)
+	}
+
+	if boolArgsMap[key] != false {
+		return false, fmt.Errorf("Conflicting arguments. Already had \"%s=%t\", got additional  \"%s=%s\"",
+			key, boolArgsMap[key], key, val)
+	}
+
+	if val == "true" {
+		boolArgsMap[key] = true
+		return true, nil
+	} else if val == "false" {
+		boolArgsMap[key] = false
+		return true, nil
+	}
+
+	return false, fmt.Errorf("Invalid argument. Expected %s={true|false}, got \"%s=%s\"",
+		key, key, val)
+}
+func getInstanceVolumeIntegerArgs(key string, val string, intArgsMap map[string]int) (bool, error) {
+	// search for integer args by name, put in map
+	if key != "size" {
+		return false, nil
+	}
+
+	if intArgsMap[key] != 0 {
+		return false, fmt.Errorf("Conflicting arguments. Already had \"%s=%d\", got additional \"%s=%s\"",
+			key, intArgsMap[key], key, val)
+	}
+
+	i, err := strconv.Atoi(val)
+	if err != nil {
+		return false, fmt.Errorf("Invalid argument. Expected %s={integer}, got \"%s=%s\": %s", key, key, val, err)
+	}
+
+	intArgsMap[key] = i
+	return true, nil
+}
+func getInstanceVolumeStringArgs(key string, val string, stringArgsMap map[string]string) (bool, error) {
+	if stringArgsMap[key] != "" {
+		return false, fmt.Errorf("Conflicting arguments. Already had \"%s=%s\", got additional \"%s=%s\"",
+			key, stringArgsMap[key], key, val)
+	}
+
+	if val == "" {
+		return false, fmt.Errorf("Invalid argument. Expected %s={string}, got \"%s=%s\"", key, key, val)
+	}
+
+	if key == "boot_index" {
+		goodIndex := false
+		if val == "none" {
+			goodIndex = true
+		} else {
+			_, err := strconv.Atoi(val)
+			if err == nil {
+				goodIndex = true
+			}
+		}
+		if !goodIndex {
+			return false, fmt.Errorf("Invalid argument. boot_index must be \"none\" or an integer, got \"boot_index=%s\"", val)
+		}
+	}
+
+	stringArgsMap[key] = val
+	return true, nil
+}
+func processInstanceVolumeSubArg(subArg string, stringArgsMap map[string]string, boolArgsMap map[string]bool, intArgsMap map[string]int) error {
+	if !isInstanceVolumeIntArg(subArg) &&
+		!isInstanceVolumeStringArg(subArg) &&
+		!isInstanceVolumeBoolArg(subArg) {
+
+		return fmt.Errorf("Invalid argument \"%s\"", subArg)
+	}
+
+	ok := getInstanceVolumeImplicitBoolArgs(subArg, boolArgsMap)
+	if ok {
+		return nil
+	}
+
+	// split on "=", put in appropriate map
+	keyValue := strings.Split(subArg, "=")
+	if len(keyValue) != 2 {
+		return fmt.Errorf("Invalid argument. Expected key=value, got \"%s\"", keyValue)
+	}
+	key := keyValue[0]
+	val := keyValue[1]
+
+	ok, err := getInstanceVolumeExplicitBoolArgs(key, val, boolArgsMap)
+	if err != nil {
+		return err
+	} else if ok {
+		return nil
+	}
+
+	ok, err = getInstanceVolumeIntegerArgs(key, val, intArgsMap)
+	if err != nil {
+		return err
+	} else if ok {
+		return nil
+	}
+
+	ok, err = getInstanceVolumeStringArgs(key, val, stringArgsMap)
+	if err != nil {
+		return err
+	} else if ok {
+		return nil
+	}
+
+	return nil
+}
+func validateInstanceVolumeSubArgCombo(vols *volumeFlagSlice) error {
+	errPrefix := "Invalid volume argument combination:"
+
+	for _, v := range *vols {
+		if v.swap && v.uuid == "" && v.size == 0 {
+			return fmt.Errorf("%s swap requires either a uuid or size argument", errPrefix)
+		}
+
+		if v.ephemeral && v.uuid == "" && v.size == 0 {
+			return fmt.Errorf("%s ephemeral requires either a uuid or size argument", errPrefix)
+		}
+
+		if v.local && v.uuid == "" && v.size == 0 {
+			return fmt.Errorf("%s local requires either a uuid or size argument", errPrefix)
+		}
+
+		if v.uuid != "" && v.size != 0 {
+			return fmt.Errorf("%s only one of uuid or size arguments allowed", errPrefix)
+		}
+		if v.bootIndex != "" && v.uuid == "" {
+			return fmt.Errorf("%s boot_index requires a volume uuid", errPrefix)
+		}
+	}
+	return nil
+}
+
+// implement the flag.Value interface, eg:
+// type Value interface {
+// 	String() string
+// 	Set(string) error
+// }
+func (v *volumeFlagSlice) String() string {
+	var out string
+
+	for _, vol := range *v {
+		var subArgs []string
+		if vol.uuid != "" {
+			subArgs = append(subArgs, "uuid="+vol.uuid)
+		}
+		if vol.bootIndex != "" && vol.bootIndex != "none" {
+			subArgs = append(subArgs, "boot_index="+vol.bootIndex)
+		}
+		if vol.swap {
+			subArgs = append(subArgs, "swap")
+		}
+		if vol.local {
+			subArgs = append(subArgs, "local")
+		}
+		if vol.ephemeral {
+			subArgs = append(subArgs, "ephemeral")
+		}
+		if vol.size != 0 {
+			subArgs = append(subArgs, "size="+fmt.Sprintf("%d", vol.size))
+		}
+		if vol.tag != "" {
+			subArgs = append(subArgs, "tag="+vol.tag)
+		}
+
+		out += "-volume "
+		subArgCount := len(subArgs)
+		for subArgIdx, subArg := range subArgs {
+			out += subArg
+			if subArgIdx < subArgCount-1 {
+				out += ","
+			}
+		}
+
+		out += "\n"
+	}
+
+	return out
+}
+func (v *volumeFlagSlice) Set(value string) error {
+	if value == "" {
+		return fmt.Errorf("Invalid empty volume argument list")
+	}
+
+	stringArgsMap := make(map[string]string)
+	boolArgsMap := make(map[string]bool)
+	intArgsMap := make(map[string]int)
+
+	subArgs := strings.Split(value, ",")
+	for _, subArg := range subArgs {
+		if subArg == "" {
+			continue
+		}
+		err := processInstanceVolumeSubArg(subArg, stringArgsMap, boolArgsMap, intArgsMap)
+		if err != nil {
+			return err
+		}
+	}
+
+	vol := volumeFlag{
+		uuid:      stringArgsMap["uuid"],
+		bootIndex: stringArgsMap["boot_index"],
+		swap:      boolArgsMap["swap"],
+		local:     boolArgsMap["local"],
+		ephemeral: boolArgsMap["ephemeral"],
+		size:      intArgsMap["size"],
+		tag:       stringArgsMap["tag"],
+	}
+	*v = append(*v, vol)
+
+	err := validateInstanceVolumeSubArgCombo(v)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type instanceAddCommand struct {
 	Flag      flag.FlagSet
 	workload  string
 	instances int
 	label     string
+	volumes   volumeFlagSlice
 }
 
 func (cmd *instanceAddCommand) usage(...string) {
@@ -85,6 +413,7 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
+	printVolumeFlagUsage()
 	os.Exit(2)
 }
 
@@ -92,12 +421,13 @@ func (cmd *instanceAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.workload, "workload", "", "Workload UUID")
 	cmd.Flag.IntVar(&cmd.instances, "instances", 1, "Number of instances to create")
 	cmd.Flag.StringVar(&cmd.label, "label", "", "Set a frame label. This will trigger frame tracing")
+	cmd.Flag.Var(&cmd.volumes, "volume", "volume descriptor argument list")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
 }
 
-func (cmd *instanceAddCommand) run(args []string) error {
+func (cmd *instanceAddCommand) validateAddCommandArgs() {
 	if *tenantID == "" {
 		errorf("Missing required -tenant-id parameter")
 		cmd.usage()
@@ -108,13 +438,85 @@ func (cmd *instanceAddCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	var server compute.CreateServerRequest
-	var servers compute.Servers
+	for _, volume := range cmd.volumes {
+		//NOTE: volume.uuid itself may only be validated by controller as
+		//only it knows which storage interface is in use and what
+		//constitutes a valid uuid for that storage implementation
 
+		if cmd.instances != 1 && volume.uuid != "" {
+			errorf("Cannot attach volume by uuid (\"-volume uuid=%s\") to multiple instances (\"-instances=%d\")",
+				volume.uuid, cmd.instances)
+			cmd.usage()
+		}
+	}
+}
+func validateCreateServerRequest(server compute.CreateServerRequest) error {
+	for _, bd := range server.Server.BlockDeviceMappings {
+		if bd.DestinationType == "local" && bd.UUID != "" {
+			return fmt.Errorf("Only one of \"uuid={UUID}\" or \"local\" sub-arguments may be specified")
+		}
+
+		if bd.VolumeSize != 0 && bd.UUID != "" {
+			return fmt.Errorf("Only one of \"uuid={UUID}\" or \"size={SIZE}\" sub-arguments may be specificed")
+		}
+	}
+
+	return nil
+}
+
+func populateCreateServerRequest(cmd *instanceAddCommand, server *compute.CreateServerRequest) {
 	server.Server.Name = cmd.label
 	server.Server.Flavor = cmd.workload
 	server.Server.MaxInstances = cmd.instances
 	server.Server.MinInstances = 1
+
+	for _, volume := range cmd.volumes {
+		bd := compute.BlockDeviceMappingV2{
+			DeviceName:          "", //unsupported
+			DeleteOnTermination: volume.ephemeral,
+			BootIndex:           volume.bootIndex,
+			Tag:                 volume.tag,
+			UUID:                volume.uuid,
+			VolumeSize:          volume.size,
+		}
+
+		if volume.local {
+			bd.DestinationType = "local"
+		} else {
+			bd.DestinationType = "volume"
+		}
+
+		if bd.DestinationType == "volume" && volume.uuid != "" {
+			// treat all uuid specified items as
+			// volumes, ciao internals will figure out
+			// if it is an image, volume or snapshot
+			bd.SourceType = "volume"
+		} else {
+			bd.SourceType = "blank"
+		}
+
+		if volume.swap {
+			bd.GuestFormat = "swap"
+		} else {
+			bd.GuestFormat = "ephemeral"
+		}
+
+		server.Server.BlockDeviceMappings = append(server.Server.BlockDeviceMappings, bd)
+	}
+}
+
+func (cmd *instanceAddCommand) run(args []string) error {
+	cmd.validateAddCommandArgs()
+
+	var server compute.CreateServerRequest
+	var servers compute.Servers
+
+	populateCreateServerRequest(cmd, &server)
+
+	err := validateCreateServerRequest(server)
+	if err != nil {
+		return err
+	}
 
 	serverBytes, err := json.Marshal(server)
 	if err != nil {
