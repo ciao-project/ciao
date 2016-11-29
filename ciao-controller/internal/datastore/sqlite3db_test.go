@@ -822,3 +822,43 @@ func TestSQLiteDBTestUpdateTenant(t *testing.T) {
 		t.Fatal("Tenant not updated")
 	}
 }
+
+func TestSQLiteDBGetBatchFrameStatistics(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	frames := createTestFrameTraces("batch_frame_test")
+	for _, frame := range frames {
+		err := db.addFrameStat(frame)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, err = db.getBatchFrameStatistics("batch_frame_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSQLiteDBGetBatchFrameSummary(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	frames := createTestFrameTraces("batch_summary_test")
+	for _, frame := range frames {
+		err := db.addFrameStat(frame)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, err = db.getBatchFrameSummary()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
