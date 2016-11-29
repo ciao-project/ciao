@@ -374,7 +374,9 @@ func (sched *ssntpSchedulerServer) updateNodeStat(node *nodeStat, status ssntp.S
 		node.memAvailMB = stats.MemAvailableMB
 		node.load = stats.Load
 		node.cpus = stats.CpusOnline
-		//TODO pull in other types of payloads.Ready struct data
+
+		//any changes to the payloads.Ready struct should be
+		//accompanied by a change here
 	}
 }
 
