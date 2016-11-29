@@ -782,3 +782,34 @@ func TestDeleteMappedIP(t *testing.T) {
 		t.Fatal("IP not deleted")
 	}
 }
+
+func TestSQLiteDBGetAllWorkloads(t *testing.T) {
+	config := Config{
+		PersistentURI: "file:memdb13?mode=memory&cache=shared",
+		TransientURI:  "file:memdb14?mode=memory&cache=shared",
+	}
+
+	db, err := getPersistentStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := db.getWorkloadsNoCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("Expected non-empty workload list")
+	}
+
+	for _, wl := range wls {
+		wl2, err := db.getWorkloadNoCache(wl.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(wl, wl2) {
+			t.Fatal("Expected workload equality")
+		}
+	}
+}
