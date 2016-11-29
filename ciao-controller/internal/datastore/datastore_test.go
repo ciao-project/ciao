@@ -969,38 +969,6 @@ func TestAllocateTenantIP(t *testing.T) {
 	}
 }
 
-func TestNonOverlappingTenantIP(t *testing.T) {
-	/* add a new tenant */
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ip1, err := ds.AllocateTenantIP(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tenant, err = addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ip2, err := ds.AllocateTenantIP(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// make sure the subnet for ip1 and ip2 don't match
-	b1 := ip1.To4()
-	subnetInt1 := binary.BigEndian.Uint16(b1[1:3])
-	b2 := ip2.To4()
-	subnetInt2 := binary.BigEndian.Uint16(b2[1:3])
-	if subnetInt1 == subnetInt2 {
-		t.Fatal(errors.New("Tenant subnets must not overlap"))
-	}
-}
-
 func TestGetCNCIWorkloadID(t *testing.T) {
 	_, err := ds.db.getCNCIWorkloadID()
 	if err != nil {
