@@ -126,6 +126,19 @@ func (client *ssntpClient) assignEvent(payload []byte) {
 	client.ctl.ds.LogEvent(i.TenantID, msg)
 }
 
+func (client *ssntpClient) unassignError(payload []byte) {
+	var failure payloads.ErrorPublicIPFailure
+	err := yaml.Unmarshal(payload, &failure)
+	if err != nil {
+		glog.Warning("Error unmarshalling ErrorPublicIPFailure")
+		return
+	}
+
+	// we can't unmap the IP - all we can do is log.
+	msg := fmt.Sprintf("Failed to unmap %s from %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
+	client.ctl.ds.LogEvent(failure.TenantUUID, msg)
+}
+
 func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 	payload := frame.Payload
 
@@ -254,6 +267,9 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 
 		msg := fmt.Sprintf("Failed to map %s to %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
 		client.ctl.ds.LogEvent(failure.TenantUUID, msg)
+
+	case ssntp.UnassignPublicIPFailure:
+		client.unassignError(payload)
 
 	}
 }
