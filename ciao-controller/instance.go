@@ -95,7 +95,7 @@ func (i *instance) Add() error {
 	}
 	storage := i.newConfig.sc.Start.Storage
 	if (storage != payloads.StorageResources{}) {
-		_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral)
+		_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral, storage.Bootable)
 		if err != nil {
 			glog.Error(err)
 		}
