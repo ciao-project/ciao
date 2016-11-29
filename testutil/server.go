@@ -48,20 +48,20 @@ type SsntpTestServer struct {
 }
 
 // AddCmdChan adds an ssntp.Command to the SsntpTestServer command channel
-func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) *chan Result {
+func (server *SsntpTestServer) AddCmdChan(cmd ssntp.Command) chan Result {
 	c := make(chan Result)
 
 	server.CmdChansLock.Lock()
 	server.CmdChans[cmd] = c
 	server.CmdChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetCmdChanResult gets a Result from the SsntpTestServer command channel
-func (server *SsntpTestServer) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
+func (server *SsntpTestServer) GetCmdChanResult(c chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Server error on %s command: %s", cmd, result.Err)
 		}
@@ -87,20 +87,20 @@ func (server *SsntpTestServer) SendResultAndDelCmdChan(cmd ssntp.Command, result
 }
 
 // AddEventChan adds an ssntp.Event to the SsntpTestServer event channel
-func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) *chan Result {
+func (server *SsntpTestServer) AddEventChan(evt ssntp.Event) chan Result {
 	c := make(chan Result)
 
 	server.EventChansLock.Lock()
 	server.EventChans[evt] = c
 	server.EventChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetEventChanResult gets a Result from the SsntpTestServer event channel
-func (server *SsntpTestServer) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
+func (server *SsntpTestServer) GetEventChanResult(c chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Server error handling %s event: %s", evt, result.Err)
 		}
@@ -126,20 +126,20 @@ func (server *SsntpTestServer) SendResultAndDelEventChan(evt ssntp.Event, result
 }
 
 // AddErrorChan adds an ssntp.Error to the SsntpTestServer error channel
-func (server *SsntpTestServer) AddErrorChan(error ssntp.Error) *chan Result {
+func (server *SsntpTestServer) AddErrorChan(error ssntp.Error) chan Result {
 	c := make(chan Result)
 
 	server.ErrorChansLock.Lock()
 	server.ErrorChans[error] = c
 	server.ErrorChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetErrorChanResult gets a CmdResult from the SsntpTestServer error channel
-func (server *SsntpTestServer) GetErrorChanResult(c *chan Result, error ssntp.Error) (result Result, err error) {
+func (server *SsntpTestServer) GetErrorChanResult(c chan Result, error ssntp.Error) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Server error handling %s error: %s", error, result.Err)
 		}
@@ -165,20 +165,20 @@ func (server *SsntpTestServer) SendResultAndDelErrorChan(error ssntp.Error, resu
 }
 
 // AddStatusChan adds an ssntp.Status to the SsntpTestServer status channel
-func (server *SsntpTestServer) AddStatusChan(status ssntp.Status) *chan Result {
+func (server *SsntpTestServer) AddStatusChan(status ssntp.Status) chan Result {
 	c := make(chan Result)
 
 	server.StatusChansLock.Lock()
 	server.StatusChans[status] = c
 	server.StatusChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetStatusChanResult gets a Result from the SsntpTestServer status channel
-func (server *SsntpTestServer) GetStatusChanResult(c *chan Result, status ssntp.Status) (result Result, err error) {
+func (server *SsntpTestServer) GetStatusChanResult(c chan Result, status ssntp.Status) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Server error handling %s status: %s", status, result.Err)
 		}

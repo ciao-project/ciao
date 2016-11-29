@@ -307,7 +307,7 @@ func TestRestartFailure(t *testing.T) {
 func doDelete(fail bool) error {
 	agentCh := agent.AddCmdChan(ssntp.DELETE)
 
-	var controllerErrorCh *chan testutil.Result
+	var controllerErrorCh chan testutil.Result
 
 	if fail == true {
 		controllerErrorCh = controller.AddErrorChan(ssntp.DeleteFailure)
