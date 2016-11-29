@@ -130,16 +130,21 @@ func (s *ImageStore) DeleteImage(ID string) error {
 	s.ImageMap.Lock()
 	defer s.ImageMap.Unlock()
 
-	err := s.rawDs.Delete(ID)
-	if err != nil {
-		return err
-	}
-	err = s.metaDs.Delete(ID)
+	img, err := s.metaDs.Get(ID)
 	if err != nil {
 		return image.ErrNoImage
 	}
 
-	return nil
+	if img.State == Active {
+		err = s.rawDs.Delete(ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = s.metaDs.Delete(ID)
+
+	return err
 }
 
 // UploadImage will read an image, save it and update the image cache.
@@ -159,20 +164,19 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 	img.State = Saving
 
 	if s.rawDs != nil {
-		err := s.rawDs.Write(ID, body)
+		err = s.rawDs.Write(ID, body)
 		if err != nil {
-			return err
+			img.State = Killed
 		}
 	}
 
-	img.State = Active
+	if err == nil {
+		img.State = Active
+	}
 	s.ImageMap.Lock()
 	defer s.ImageMap.Unlock()
 
 	err = s.metaDs.Write(img)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
