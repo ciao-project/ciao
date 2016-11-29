@@ -419,6 +419,7 @@ func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status
 type workResources struct {
 	instanceUUID string
 	memReqMB     int
+	diskReqMB    int
 	networkNode  int
 }
 
@@ -438,9 +439,19 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 		// etc...
 	}
 
+	// volumes
+	for _, volume := range work.Start.Storage {
+		if volume.Local {
+			workload.diskReqMB += volume.Size * 1024
+		}
+	}
+
 	// validate the found resources
 	if workload.memReqMB <= 0 {
 		return workload, fmt.Errorf("invalid start payload resource demand: mem_mb (%d) <= 0, must be > 0", workload.memReqMB)
+	}
+	if workload.diskReqMB < 0 {
+		return workload, fmt.Errorf("invalid start payload local disk demand: disk MB (%d) < 0, must be >= 0", workload.diskReqMB)
 	}
 	if workload.networkNode != 0 && workload.networkNode != 1 {
 		return workload, fmt.Errorf("invalid start payload resource demand: network_node (%d) is not 0 or 1", workload.networkNode)
@@ -454,9 +465,11 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 
 // Check resource demands are satisfiable by the referenced, locked nodeStat object
 func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workResources) bool {
-	// simple scheduling policy == first memory fit
+	// simple scheduling policy == first fit
 	if node.memAvailMB >= workload.memReqMB &&
+		node.diskAvailMB >= workload.diskReqMB &&
 		node.status == ssntp.READY {
+
 		return true
 	}
 	return false
