@@ -740,3 +740,85 @@ func TestSQLiteDBGetAllWorkloads(t *testing.T) {
 		}
 	}
 }
+
+func createTestTenant(db persistentStore, t *testing.T) *tenant {
+	tid := uuid.Generate().String()
+	thw, err := newHardwareAddr()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.addTenant(tid, thw.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tn, err := db.getTenantNoCache(tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tn == nil {
+		t.Fatal("Expected added tenant")
+	}
+
+	if tn.CNCIMAC != thw.String() {
+		t.Fatal("Expected added tenant CNCI MACs to be equal")
+	}
+	return tn
+}
+
+func TestSQLiteDBTestTenants(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tns, err := db.getTenantsNoCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tns) != 0 {
+		t.Fatal("No tenants expected")
+	}
+
+	_ = createTestTenant(db, t)
+	_ = createTestTenant(db, t)
+
+	tns, err = db.getTenantsNoCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tns) != 2 {
+		t.Fatal("2 tenants expected")
+	}
+
+	for _, tn := range tns {
+		tn2, err := db.getTenantNoCache(tn.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(tn, tn2) {
+			t.Fatal("Expected tenant equality")
+		}
+	}
+}
+
+func TestSQLiteDBTestUpdateTenant(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tn := createTestTenant(db, t)
+	tn.CNCIIP = "127.0.0.2"
+
+	err = db.updateTenant(tn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tn.CNCIIP != "127.0.0.2" {
+		t.Fatal("Tenant not updated")
+	}
+}
