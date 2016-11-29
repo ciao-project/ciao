@@ -112,7 +112,7 @@ func createImageResponse(img imageDatastore.Image) (image.DefaultResponse, error
 // ListImages will return a list of all the images in the datastore.
 func (is ImageService) ListImages() ([]image.DefaultResponse, error) {
 	glog.Info("Listing images")
-	var response []image.DefaultResponse
+	response := []image.DefaultResponse{}
 
 	images, err := is.ds.GetAllImages()
 	if err != nil {
