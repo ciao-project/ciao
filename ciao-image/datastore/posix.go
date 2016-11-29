@@ -40,7 +40,15 @@ func (p *Posix) Write(ID string, body io.Reader) (int64, error) {
 
 	buf := make([]byte, 1<<16)
 
-	return io.CopyBuffer(image, body, buf)
+	length, err := io.CopyBuffer(image, body, buf)
+	defer func() {
+		err1 := image.Close()
+		if err == nil {
+			err = err1
+		}
+	}()
+
+	return length, err
 }
 
 // Delete removes an image from the posix filesystem
