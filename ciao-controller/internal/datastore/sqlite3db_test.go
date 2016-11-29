@@ -26,6 +26,8 @@ import (
 
 func getPersistentStore(config Config) (persistentStore, error) {
 	ps := &sqliteDB{}
+	config.InitTablesPath = *tablesInitPath
+	config.InitWorkloadsPath = *workloadsPath
 	err := ps.init(config)
 	return ps, err
 }
