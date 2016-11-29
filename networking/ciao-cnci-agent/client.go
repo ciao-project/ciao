@@ -201,9 +201,11 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			err := assignPubIP(c)
 			if err != nil {
 				glog.Errorf("Error Processing: CiaoCommandAssignPublicIP %v", err)
+				err = sendNetworkError(client, ssntp.AssignPublicIPFailure, c)
+			} else {
+				err = sendNetworkEvent(client, ssntp.PublicIPAssigned, c)
 			}
 
-			err = sendNetworkEvent(client, ssntp.PublicIPAssigned, c)
 			if err != nil {
 				glog.Errorf("Unable to send event : %v", err)
 			}
@@ -217,9 +219,11 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			err := releasePubIP(c)
 			if err != nil {
 				glog.Errorf("Error Processing: CiaoCommandReleasePublicIP %v", c)
+				err = sendNetworkError(client, ssntp.UnassignPublicIPFailure, c)
+			} else {
+				err = sendNetworkEvent(client, ssntp.PublicIPUnassigned, c)
 			}
 
-			err = sendNetworkEvent(client, ssntp.PublicIPUnassigned, c)
 			if err != nil {
 				glog.Errorf("Unable to send event : %v", err)
 			}

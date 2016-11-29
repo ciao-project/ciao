@@ -546,6 +546,10 @@ const (
 	// AssignPublicIPFailure is sent by the CNCI when a an external IP
 	// cannot be assigned.
 	AssignPublicIPFailure
+
+	// UnassignPublicIPFailure is sent by the CNCI when a an external IP
+	// cannot be unassigned.
+	UnassignPublicIPFailure
 )
 
 // Major is the SSNTP protocol major version

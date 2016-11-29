@@ -236,8 +236,6 @@ else
 	exit 1
 fi
 
-
-
 "$ciao_gobin"/ciao-cli external-ip unmap -address $testip
 
 #Wait for the CNCI to report successful unmap
@@ -274,6 +272,56 @@ fi
 
 "$ciao_gobin"/ciao-cli event list
 "$ciao_gobin"/ciao-cli external-ip list
+
+#Negative test case for external IP
+#Clear out a ciao chains to trigger a failure
+ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" << EOF
+sudo iptables-save > /tmp/rules.save
+sudo iptables -t nat -D PREROUTING -j ciao-floating-ip-pre
+sudo iptables -t nat -X ciao-floating-ip-pre
+EOF
+
+"$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
+
+#Wait for the CNCI to report unsuccessful map
+retry=0
+ciao_events=0
+
+until [ $retry -ge 6 ]
+do
+	ciao_events=`"$ciao_gobin"/ciao-cli event list -f '{{len .}}'`
+
+	if [ $ciao_events -eq 3 ]
+	then
+		break
+	fi
+
+	let retry=retry+1
+	sleep 1
+done
+
+if [ $ciao_events -ne 3 ]
+then
+	echo "FATAL ERROR: ciao external IP error not reported"
+	"$ciao_gobin"/ciao-cli event list
+	exit 1
+fi
+
+mapped=`ciao-cli event list -f '{{if eq (len .) 3}}{{(index . 2).Message}}{{end}}' | cut -d " " -f 1,2,3`
+if [ "$mapped" != "Failed to map" ]
+then
+	echo "FATAL ERROR: Unknown event"
+	"$ciao_gobin"/ciao-cli event list
+	exit 1
+fi
+
+#Verify that we see the error
+"$ciao_gobin"/ciao-cli event list
+
+#Restore the iptables so that the cluster is usable
+ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" << EOF
+sudo iptables-restore  /tmp/rules.save
+EOF
 
 #Cleanup the pool
 export CIAO_USERNAME=$CIAO_ADMIN_USERNAME

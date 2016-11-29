@@ -281,6 +281,61 @@ func publicIPUnassignedMarshal(cmd *payloads.PublicIPCommand) ([]byte, error) {
 	return yaml.Marshal(&publicIPUnassigned)
 }
 
+func publicIPFailureMarshal(reason payloads.PublicIPFailureReason, cmd *payloads.PublicIPCommand) ([]byte, error) {
+	var failure payloads.ErrorPublicIPFailure
+
+	failure.ConcentratorUUID = cmd.ConcentratorUUID
+	failure.TenantUUID = cmd.TenantUUID
+	failure.InstanceUUID = cmd.InstanceUUID
+	failure.PublicIP = cmd.PublicIP
+	failure.PrivateIP = cmd.PrivateIP
+	failure.VnicMAC = cmd.VnicMAC
+	failure.Reason = reason
+
+	glog.Infoln("publicIPFailureMarshal error ", failure)
+
+	return yaml.Marshal(&failure)
+}
+
+func sendNetworkError(client *ssntpConn, errorType ssntp.Error, errorInfo interface{}) error {
+
+	if !client.isConnected() {
+		return fmt.Errorf("Unable to send %s %v", errorType, errorInfo)
+	}
+
+	payload, err := generateNetErrorPayload(errorType, errorInfo)
+	if err != nil {
+		return fmt.Errorf("Unable parse ssntpError %s %v", err, errorInfo)
+	}
+
+	n, err := client.SendError(errorType, payload)
+	if err != nil {
+		return fmt.Errorf("Unable to send %s %s %v %d", err.Error(), errorType, errorInfo, n)
+	}
+
+	return nil
+}
+
+func generateNetErrorPayload(errorType ssntp.Error, errorInfo interface{}) ([]byte, error) {
+	switch errorType {
+	case ssntp.AssignPublicIPFailure:
+		cmd, ok := errorInfo.(*payloads.PublicIPCommand)
+		if !ok {
+			return nil, fmt.Errorf("PublicIPAssign Invalid errorInfo [%T] %v", errorInfo, errorInfo)
+		}
+		return publicIPFailureMarshal(payloads.PublicIPAssignFailure, cmd)
+	case ssntp.UnassignPublicIPFailure:
+		cmd, ok := errorInfo.(*payloads.PublicIPCommand)
+		if !ok {
+			return nil, fmt.Errorf("PublicIPUnassign Invalid errorInfo [%T] %v", errorInfo, errorInfo)
+		}
+		return publicIPFailureMarshal(payloads.PublicIPReleaseFailure, cmd)
+	default:
+		return nil, fmt.Errorf("Unsupported ssntpErrorInfo type: %v", errorType)
+	}
+
+}
+
 func sendNetworkEvent(client *ssntpConn, eventType ssntp.Event, eventInfo interface{}) error {
 
 	if !client.isConnected() {
