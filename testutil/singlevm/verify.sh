@@ -211,10 +211,13 @@ fi
 
 #We checked the event, so the mapping should exist
 testip=`"$ciao_gobin"/ciao-cli external-ip list -f '{{with index . 0}}{{.ExternalIP}}{{end}}'`
+test_instance=`"$ciao_gobin"/ciao-cli instance list -f '{{with index . 0}}{{.ID}}{{end}}'`
 
 sudo ip route add 203.0.113.0/24 dev ciaovlan
-ping -c 10 $testip
+ping -c 3 $testip
 ping_result=$?
+#Make sure we are able to reach the VM
+test_hostname=`ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$testip" hostname`
 sudo ip route del 203.0.113.0/24 dev ciaovlan
 
 if [ $ping_result -ne 0 ]
@@ -224,6 +227,15 @@ then
 else
 	echo "Container external connectivity verified"
 fi
+
+if [ "$test_hostname" == "$test_instance" ]
+then
+	echo "SSH connectivity using external IP verified"
+else
+	echo "FATAL ERROR: Unable to ssh via external IP"
+	exit 1
+fi
+
 
 
 "$ciao_gobin"/ciao-cli external-ip unmap -address $testip
@@ -262,6 +274,18 @@ fi
 
 "$ciao_gobin"/ciao-cli event list
 "$ciao_gobin"/ciao-cli external-ip list
+
+#Cleanup the pool
+export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
+export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
+"$ciao_gobin"/ciao-cli -tenant-name admin pool delete -name test
+if [ $? -ne 0 ]
+then
+	echo "FATAL ERROR: Unable to delete pool"
+	exit 1
+fi
+export CIAO_USERNAME=$ciao_user
+export CIAO_PASSWORD=$ciao_passwd
 
 
 #Now delete all instances

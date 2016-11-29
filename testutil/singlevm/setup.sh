@@ -9,6 +9,8 @@ ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
 keystone_key="$ciao_bin"/keystone_key.pem
 keystone_cert="$ciao_bin"/keystone_cert.pem
+workload_sshkey="$ciao_bin"/testkey
+workload_cloudinit="$ciao_bin"/workloads/test.yaml
 ciao_pki_path=/etc/pki/ciao
 export no_proxy=$no_proxy,$ciao_vlan_ip,$ciao_host
 
@@ -56,6 +58,7 @@ export CIAO_ADMIN_USERNAME="$ciao_admin_username"
 export CIAO_ADMIN_PASSWORD="$ciao_admin_password"
 export CIAO_CA_CERT_FILE="$ciao_bin"/"CAcert-""$ciao_host"".pem"
 export CIAO_IDENTITY="$ciao_identity_url"
+export CIAO_SSH_KEY="$workload_sshkey"
 
 # Save these vars for later use, too
 > "$ciao_env" # Clean out previous data
@@ -217,6 +220,8 @@ then
 	exit 1
 fi
 
+
+
 #Generate Certificates
 "$GOPATH"/bin/ciao-cert -anchor -role scheduler -email="$ciao_email" \
     -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_vlan_ip" -verify
@@ -275,6 +280,32 @@ cp -a "$ciao_src"/ciao-controller/workloads "$ciao_bin"
 #Over ride the configuration with test specific defaults
 cp -f "$ciao_scripts"/workloads/* "$ciao_bin"/workloads
 cp -f "$ciao_scripts"/tables/* "$ciao_bin"/tables
+
+#Over ride the cloud-init configuration
+echo "Generating workload ssh key $workload_sshkey"
+rm -f "$workload_sshkey" "$workload_sshkey".pub
+ssh-keygen -f "$workload_sshkey" -t rsa -N ''
+test_sshkey=$(< "$workload_sshkey".pub)
+chmod 600 "$workload_sshkey".pub
+#Note: Password is set to ciao
+test_passwd='$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.'
+
+echo "Generating workload cloud-init file $workload_cloudinit"
+(
+cat <<-EOF
+---
+#cloud-config
+users:
+  - name: demouser
+    gecos: CIAO Demo User
+    lock-passwd: false
+    passwd: ${test_passwd}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+    - ${test_sshkey}
+...
+EOF
+) > $workload_cloudinit
 
 
 #Copy the launch scripts
