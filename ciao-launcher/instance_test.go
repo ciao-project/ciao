@@ -209,17 +209,56 @@ func (v *instanceTestState) verifyStatsUpdate(t *testing.T, cmd interface{}) {
 	}
 }
 
-func (v *instanceTestState) expectStatsUpdate(t *testing.T, ovsCh <-chan interface{}) bool {
+func (v *instanceTestState) getStatsUpdate(t *testing.T, ovsCh <-chan interface{}) *ovsStatsUpdateCmd {
 	var cmd interface{}
 	select {
 	case cmd = <-ovsCh:
 	case <-time.After(time.Second):
 		t.Error("Timed out waiting for ovsStatsUpdateCmd")
-		return false
+		return nil
 	}
 	stats, ok := cmd.(*ovsStatsUpdateCmd)
 	if !ok {
 		t.Error("Unexpected Command received on ovsCh")
+	}
+	return stats
+}
+
+func (v *instanceTestState) expectStatsUpdateWithVolumes(t *testing.T,
+	ovsCh <-chan interface{}, volumes []string) bool {
+
+	stats := v.getStatsUpdate(t, ovsCh)
+	if stats == nil {
+		return false
+	}
+
+	if len(volumes) != len(stats.volumes) {
+		t.Errorf("Unxpected number of volumes.  Expected %d found %d",
+			len(volumes), len(stats.volumes))
+	}
+
+	found := 0
+	for _, vol := range volumes {
+		for _, vol2 := range stats.volumes {
+			if vol2 == vol {
+				found++
+				break
+			}
+		}
+	}
+
+	if found < len(volumes) {
+		t.Errorf("Missing volumes.  Expected %d found %d", len(volumes), found)
+		return false
+	}
+
+	return true
+}
+
+func (v *instanceTestState) expectStatsUpdate(t *testing.T, ovsCh <-chan interface{}) bool {
+	stats := v.getStatsUpdate(t, ovsCh)
+	if stats == nil {
+		return false
 	}
 	if stats.diskUsageMB != v.statsArray[0] || stats.memoryUsageMB != v.statsArray[1] ||
 		stats.CPUUsage != v.statsArray[2] || stats.instance != v.instance {
@@ -935,6 +974,8 @@ func TestAttachVolumeToInstance(t *testing.T) {
 		t.Error("Timed out waiting for attach volume command result")
 	}
 
+	_ = state.expectStatsUpdateWithVolumes(t, ovsCh, []string{testutil.VolumeUUID})
+
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
 		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
@@ -967,6 +1008,8 @@ func TestAttachExistingVolumeToInstance(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Error("Timed out waiting for attach volume command result")
 	}
+
+	_ = state.expectStatsUpdateWithVolumes(t, ovsCh, []string{testutil.VolumeUUID})
 
 	select {
 	case <-state.errorCh:
@@ -1020,6 +1063,8 @@ func TestDetachVolumeFromInstance(t *testing.T) {
 		t.Error("Timed out waiting for attach volume command result")
 	}
 
+	_ = state.expectStatsUpdateWithVolumes(t, ovsCh, []string{testutil.VolumeUUID})
+
 	select {
 	case cmdCh <- &insDetachVolumeCmd{testutil.VolumeUUID}:
 	case <-time.After(time.Second):
@@ -1032,6 +1077,8 @@ func TestDetachVolumeFromInstance(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Error("Timed out waiting for attach volume command result")
 	}
+
+	_ = state.expectStatsUpdateWithVolumes(t, ovsCh, []string{})
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
 		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)

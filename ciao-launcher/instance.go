@@ -251,6 +251,8 @@ func (id *instanceData) attachVolumeCommand(cmd *insAttachVolumeCmd) {
 		attachErr.send(id.ac.conn, id.instance, cmd.volumeUUID)
 		return
 	}
+	d, m, c := id.vm.stats()
+	id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 
 	glog.Infof("Volume %s attached to instance %s", cmd.volumeUUID, id.instance)
 }
@@ -269,6 +271,8 @@ func (id *instanceData) detachVolumeCommand(cmd *insDetachVolumeCmd) {
 		detachErr.send(id.ac.conn, cmd.volumeUUID, id.instance)
 		return
 	}
+	d, m, c := id.vm.stats()
+	id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
 
 	glog.Infof("Volume %s detched from instance %s", cmd.volumeUUID, id.instance)
 }
