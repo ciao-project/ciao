@@ -242,6 +242,8 @@ func (cmd *externalIPListCommand) run(args []string) error {
 	fmt.Fprintf(w, "#\tExternalIP\tInternalIP")
 	if checkPrivilege() {
 		fmt.Fprintf(w, "\tInstanceID\tTenantID\tPoolName\n")
+	} else {
+		fmt.Fprintf(w, "\n")
 	}
 
 	for i, IP := range IPs {
