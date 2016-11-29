@@ -702,27 +702,27 @@ func StartTestServer() *SsntpTestServer {
 				Operand: ssntp.ConcentratorInstanceAdded,
 				Dest:    ssntp.Controller,
 			},
-			{ // all StartFailure events go to all Controllers
+			{ // all StartFailure errors go to all Controllers
 				Operand: ssntp.StartFailure,
 				Dest:    ssntp.Controller,
 			},
-			{ // all StopFailure events go to all Controllers
+			{ // all StopFailure errors go to all Controllers
 				Operand: ssntp.StopFailure,
 				Dest:    ssntp.Controller,
 			},
-			{ // all RestartFailure events go to all Controllers
+			{ // all RestartFailure errors go to all Controllers
 				Operand: ssntp.RestartFailure,
 				Dest:    ssntp.Controller,
 			},
-			{ // all DeleteFailure events go to all Controllers
+			{ // all DeleteFailure errors go to all Controllers
 				Operand: ssntp.DeleteFailure,
 				Dest:    ssntp.Controller,
 			},
-			{ // all VolumeAttachFailure events go to all Controllers
+			{ // all VolumeAttachFailure errors go to all Controllers
 				Operand: ssntp.AttachVolumeFailure,
 				Dest:    ssntp.Controller,
 			},
-			{ // all VolumeDetachFailure events go to all Controllers
+			{ // all VolumeDetachFailure errors go to all Controllers
 				Operand: ssntp.DetachVolumeFailure,
 				Dest:    ssntp.Controller,
 			},

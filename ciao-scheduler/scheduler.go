@@ -951,19 +951,19 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 			Operand: ssntp.ConcentratorInstanceAdded,
 			Dest:    ssntp.Controller,
 		},
-		{ // all StartFailure events go to all Controllers
+		{ // all StartFailure errors go to all Controllers
 			Operand: ssntp.StartFailure,
 			Dest:    ssntp.Controller,
 		},
-		{ // all StopFailure events go to all Controllers
+		{ // all StopFailure errors go to all Controllers
 			Operand: ssntp.StopFailure,
 			Dest:    ssntp.Controller,
 		},
-		{ // all RestartFailure events go to all Controllers
+		{ // all RestartFailure errors go to all Controllers
 			Operand: ssntp.RestartFailure,
 			Dest:    ssntp.Controller,
 		},
-		{ // all DeleteFailure events go to all Controllers
+		{ // all DeleteFailure errors go to all Controllers
 			Operand: ssntp.DeleteFailure,
 			Dest:    ssntp.Controller,
 		},
