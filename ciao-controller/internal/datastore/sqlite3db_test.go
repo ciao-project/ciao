@@ -32,7 +32,7 @@ func getPersistentStore(config Config) (persistentStore, error) {
 	return ps, err
 }
 
-func TestGetWorkloadStorage(t *testing.T) {
+func TestSQLiteDBGetWorkloadStorage(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:memdb3?mode=memory&cache=shared",
 		TransientURI:  "file:memdb4?mode=memory&cache=shared",
@@ -51,7 +51,7 @@ func TestGetWorkloadStorage(t *testing.T) {
 	db.disconnect()
 }
 
-func TestGetTenantDevices(t *testing.T) {
+func TestSQLiteDBGetTenantDevices(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:memdb5?mode=memory&cache=shared",
 		TransientURI:  "file:memdb6?mode=memory&cache=shared",
@@ -93,7 +93,7 @@ func TestGetTenantDevices(t *testing.T) {
 	db.disconnect()
 }
 
-func TestGetTenantWithStorage(t *testing.T) {
+func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:memdb11?mode=memory&cache=shared",
 		TransientURI:  "file:memdb12?mode=memory&cache=shared",
@@ -148,7 +148,7 @@ func TestGetTenantWithStorage(t *testing.T) {
 	db.disconnect()
 }
 
-func TestGetAllBlockData(t *testing.T) {
+func TestSQLiteDBGetAllBlockData(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:memdb7?mode=memory&cache=shared",
 		TransientURI:  "file:memdb8?mode=memory&cache=shared",
@@ -189,7 +189,7 @@ func TestGetAllBlockData(t *testing.T) {
 	db.disconnect()
 }
 
-func TestDeleteBlockData(t *testing.T) {
+func TestSQLiteDBDeleteBlockData(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:DeleteBlockData1?mode=memory&cache=shared",
 		TransientURI:  "file:DeleteBlockData2?mode=memory&cache=shared",
@@ -235,7 +235,7 @@ func TestDeleteBlockData(t *testing.T) {
 	db.disconnect()
 }
 
-func TestGetAllStorageAttachments(t *testing.T) {
+func TestSQLiteDBGetAllStorageAttachments(t *testing.T) {
 	config := Config{
 		PersistentURI: "file:memdb9?mode=memory&cache=shared",
 		TransientURI:  "file:memdb10?mode=memory&cache=shared",
