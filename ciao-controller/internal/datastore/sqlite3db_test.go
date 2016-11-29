@@ -24,21 +24,23 @@ import (
 	"github.com/01org/ciao/ssntp/uuid"
 )
 
-func getPersistentStore(config Config) (persistentStore, error) {
+var dbCount = 1
+
+func getPersistentStore() (persistentStore, error) {
 	ps := &sqliteDB{}
-	config.InitTablesPath = *tablesInitPath
-	config.InitWorkloadsPath = *workloadsPath
+	config := Config{
+		PersistentURI:     "file:memdb" + string(dbCount) + "?mode=memory&cache=shared",
+		TransientURI:      "file:memdb" + string(dbCount+1) + "?mode=memory&cache=shared",
+		InitTablesPath:    *tablesInitPath,
+		InitWorkloadsPath: *workloadsPath,
+	}
 	err := ps.init(config)
+	dbCount = dbCount + 2
 	return ps, err
 }
 
 func TestSQLiteDBGetWorkloadStorage(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb3?mode=memory&cache=shared",
-		TransientURI:  "file:memdb4?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,12 +54,7 @@ func TestSQLiteDBGetWorkloadStorage(t *testing.T) {
 }
 
 func TestSQLiteDBGetTenantDevices(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb5?mode=memory&cache=shared",
-		TransientURI:  "file:memdb6?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,12 +91,7 @@ func TestSQLiteDBGetTenantDevices(t *testing.T) {
 }
 
 func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb11?mode=memory&cache=shared",
-		TransientURI:  "file:memdb12?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,12 +141,7 @@ func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
 }
 
 func TestSQLiteDBGetAllBlockData(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb7?mode=memory&cache=shared",
-		TransientURI:  "file:memdb8?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,12 +177,7 @@ func TestSQLiteDBGetAllBlockData(t *testing.T) {
 }
 
 func TestSQLiteDBDeleteBlockData(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:DeleteBlockData1?mode=memory&cache=shared",
-		TransientURI:  "file:DeleteBlockData2?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,12 +218,7 @@ func TestSQLiteDBDeleteBlockData(t *testing.T) {
 }
 
 func TestSQLiteDBGetAllStorageAttachments(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb9?mode=memory&cache=shared",
-		TransientURI:  "file:memdb10?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,12 +294,7 @@ func TestSQLiteDBGetAllStorageAttachments(t *testing.T) {
 }
 
 func TestCreatePool(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testcreatepool?mode=memory&cache=shared",
-		TransientURI:  "file:testcreatepoolt?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,12 +323,7 @@ func TestCreatePool(t *testing.T) {
 }
 
 func TestUpdatePool(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testupdatepool?mode=memory&cache=shared",
-		TransientURI:  "file:testupdatepoolt?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -393,12 +360,7 @@ func TestUpdatePool(t *testing.T) {
 }
 
 func TestDeletePool(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testdeletepool?mode=memory&cache=shared",
-		TransientURI:  "file:testdeletepoolt?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,12 +404,7 @@ func TestDeletePool(t *testing.T) {
 }
 
 func TestCreateSubnet(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testcreatesubnet?mode=memory&cache=shared",
-		TransientURI:  "file:testcreatesubnett?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -497,12 +454,7 @@ func TestCreateSubnet(t *testing.T) {
 }
 
 func TestDeleteSubnet(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testdeletesubnet?mode=memory&cache=shared",
-		TransientURI:  "file:testdeletesubnett?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -549,12 +501,7 @@ func TestDeleteSubnet(t *testing.T) {
 }
 
 func TestCreateAddress(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:createaddress?mode=memory&cache=shared",
-		TransientURI:  "file:createaddresst?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,12 +542,7 @@ func TestCreateAddress(t *testing.T) {
 }
 
 func TestDeleteAddress(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:deleteaddress?mode=memory&cache=shared",
-		TransientURI:  "file:deleteaddresst?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,12 +590,7 @@ func TestDeleteAddress(t *testing.T) {
 }
 
 func TestCreateMappedIP(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:createmappedaddress?mode=memory&cache=shared",
-		TransientURI:  "file:createmappedaddresst?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -711,12 +648,7 @@ func TestCreateMappedIP(t *testing.T) {
 }
 
 func TestDeleteMappedIP(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:deletedmappedaddress?mode=memory&cache=shared",
-		TransientURI:  "file:deletemappedaddresst?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -784,12 +716,7 @@ func TestDeleteMappedIP(t *testing.T) {
 }
 
 func TestSQLiteDBGetAllWorkloads(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb13?mode=memory&cache=shared",
-		TransientURI:  "file:memdb14?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
