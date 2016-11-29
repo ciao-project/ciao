@@ -525,6 +525,8 @@ func (cmd *poolListCommand) run(args []string) error {
 	fmt.Fprintf(w, "#\tName")
 	if checkPrivilege() {
 		fmt.Fprintf(w, "\tTotalIPs\tFreeIPs\n")
+	} else {
+		fmt.Fprintf(w, "\n")
 	}
 
 	for i, pool := range pools.Pools {
