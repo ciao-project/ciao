@@ -184,6 +184,17 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 		return err
 	}
 
+	// create an attachment object
+	_, err = c.ds.CreateStorageAttachment(i.ID, info.ID, false, false)
+	if err != nil {
+		info.State = types.Available
+		dsErr := c.ds.UpdateBlockDevice(info)
+		if dsErr != nil {
+			glog.Error(dsErr)
+		}
+		return err
+	}
+
 	// send command to attach volume.
 	err = c.client.attachVolume(volume, instance, i.NodeID)
 	if err != nil {
