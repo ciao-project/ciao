@@ -41,10 +41,8 @@ const userDataTemplate = `
 {{if len .HTTPProxy }}http_proxy={{.HTTPProxy}} {{end -}}
 {{end}}
 #cloud-config
-bootcmd:
- - echo "127.0.0.1 singlevm" >> /etc/hosts
 mounts:
- - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L"]
+ - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L", 0, 0]
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
@@ -69,6 +67,7 @@ write_files:
    path: /etc/apt/sources.list.d/docker.list
 
 runcmd:
+ - echo "127.0.0.1 singlevm" >> /etc/hosts
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
  - rm /etc/legal
