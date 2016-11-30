@@ -81,20 +81,20 @@ func NewSsntpTestControllerConnection(name string, uuid string) (*SsntpTestContr
 }
 
 // AddCmdChan adds an ssntp.Command to the SsntpTestController command channel
-func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command) *chan Result {
+func (ctl *SsntpTestController) AddCmdChan(cmd ssntp.Command) chan Result {
 	c := make(chan Result)
 
 	ctl.CmdChansLock.Lock()
 	ctl.CmdChans[cmd] = c
 	ctl.CmdChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetCmdChanResult gets a Result from the SsntpTestController command channel
-func (ctl *SsntpTestController) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
+func (ctl *SsntpTestController) GetCmdChanResult(c chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s command: %s", cmd, result.Err)
 		}
@@ -120,20 +120,20 @@ func (ctl *SsntpTestController) SendResultAndDelCmdChan(cmd ssntp.Command, resul
 }
 
 // AddEventChan adds an ssntp.Event to the SsntpTestController event channel
-func (ctl *SsntpTestController) AddEventChan(evt ssntp.Event) *chan Result {
+func (ctl *SsntpTestController) AddEventChan(evt ssntp.Event) chan Result {
 	c := make(chan Result)
 
 	ctl.EventChansLock.Lock()
 	ctl.EventChans[evt] = c
 	ctl.EventChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetEventChanResult gets a Result from the SsntpTestController event channel
-func (ctl *SsntpTestController) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
+func (ctl *SsntpTestController) GetEventChanResult(c chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s event: %s", evt, result.Err)
 		}
@@ -159,20 +159,20 @@ func (ctl *SsntpTestController) SendResultAndDelEventChan(evt ssntp.Event, resul
 }
 
 // AddErrorChan adds an ssntp.Error to the SsntpTestController error channel
-func (ctl *SsntpTestController) AddErrorChan(error ssntp.Error) *chan Result {
+func (ctl *SsntpTestController) AddErrorChan(error ssntp.Error) chan Result {
 	c := make(chan Result)
 
 	ctl.ErrorChansLock.Lock()
 	ctl.ErrorChans[error] = c
 	ctl.ErrorChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetErrorChanResult gets a Result from the SsntpTestController error channel
-func (ctl *SsntpTestController) GetErrorChanResult(c *chan Result, error ssntp.Error) (result Result, err error) {
+func (ctl *SsntpTestController) GetErrorChanResult(c chan Result, error ssntp.Error) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Controller error sending %s error: %s", error, result.Err)
 		}

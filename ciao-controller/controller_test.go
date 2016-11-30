@@ -532,7 +532,7 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 
 	serverCh := server.AddCmdChan(ssntp.AttachVolume)
 	agentCh := client.AddCmdChan(ssntp.AttachVolume)
-	var serverErrorCh *chan testutil.Result
+	var serverErrorCh chan testutil.Result
 
 	time.Sleep(1 * time.Second)
 
@@ -616,7 +616,7 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 
 	serverCh := server.AddCmdChan(ssntp.DetachVolume)
 	agentCh := client.AddCmdChan(ssntp.DetachVolume)
-	var serverErrorCh *chan testutil.Result
+	var serverErrorCh chan testutil.Result
 
 	if fail == true {
 		serverErrorCh = server.AddErrorChan(ssntp.DetachVolumeFailure)

@@ -341,8 +341,8 @@ func doDelete(fail bool) error {
 	agentCh := agent.AddCmdChan(ssntp.DELETE)
 	serverCh := server.AddCmdChan(ssntp.DELETE)
 
-	var serverErrorCh *chan Result
-	var controllerErrorCh *chan Result
+	var serverErrorCh chan Result
+	var controllerErrorCh chan Result
 
 	if fail == true {
 		serverErrorCh = server.AddErrorChan(ssntp.DeleteFailure)
@@ -435,8 +435,8 @@ func doAttachVolume(fail bool) error {
 	agentCh := agent.AddCmdChan(ssntp.AttachVolume)
 	serverCh := server.AddCmdChan(ssntp.AttachVolume)
 
-	var serverErrorCh *chan Result
-	var controllerErrorCh *chan Result
+	var serverErrorCh chan Result
+	var controllerErrorCh chan Result
 
 	if fail == true {
 		serverErrorCh = server.AddErrorChan(ssntp.AttachVolumeFailure)
@@ -502,8 +502,8 @@ func doDetachVolume(fail bool) error {
 	agentCh := agent.AddCmdChan(ssntp.DetachVolume)
 	serverCh := server.AddCmdChan(ssntp.DetachVolume)
 
-	var serverErrorCh *chan Result
-	var controllerErrorCh *chan Result
+	var serverErrorCh chan Result
+	var controllerErrorCh chan Result
 
 	if fail == true {
 		serverErrorCh = server.AddErrorChan(ssntp.DetachVolumeFailure)

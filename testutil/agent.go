@@ -107,20 +107,20 @@ func NewSsntpTestClientConnection(name string, role ssntp.Role, uuid string) (*S
 }
 
 // AddCmdChan adds an ssntp.Command to the SsntpTestClient command channel
-func (client *SsntpTestClient) AddCmdChan(cmd ssntp.Command) *chan Result {
+func (client *SsntpTestClient) AddCmdChan(cmd ssntp.Command) chan Result {
 	c := make(chan Result)
 
 	client.CmdChansLock.Lock()
 	client.CmdChans[cmd] = c
 	client.CmdChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetCmdChanResult gets a Result from the SsntpTestClient command channel
-func (client *SsntpTestClient) GetCmdChanResult(c *chan Result, cmd ssntp.Command) (result Result, err error) {
+func (client *SsntpTestClient) GetCmdChanResult(c chan Result, cmd ssntp.Command) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s command: %s", cmd, result.Err)
 		}
@@ -146,20 +146,20 @@ func (client *SsntpTestClient) SendResultAndDelCmdChan(cmd ssntp.Command, result
 }
 
 // AddEventChan adds a ssntp.Event to the SsntpTestClient event channel
-func (client *SsntpTestClient) AddEventChan(evt ssntp.Event) *chan Result {
+func (client *SsntpTestClient) AddEventChan(evt ssntp.Event) chan Result {
 	c := make(chan Result)
 
 	client.EventChansLock.Lock()
 	client.EventChans[evt] = c
 	client.EventChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetEventChanResult gets a Result from the SsntpTestClient event channel
-func (client *SsntpTestClient) GetEventChanResult(c *chan Result, evt ssntp.Event) (result Result, err error) {
+func (client *SsntpTestClient) GetEventChanResult(c chan Result, evt ssntp.Event) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s event: %s", evt, result.Err)
 		}
@@ -185,20 +185,20 @@ func (client *SsntpTestClient) SendResultAndDelEventChan(evt ssntp.Event, result
 }
 
 // AddErrorChan adds a ssntp.Error to the SsntpTestClient error channel
-func (client *SsntpTestClient) AddErrorChan(error ssntp.Error) *chan Result {
+func (client *SsntpTestClient) AddErrorChan(error ssntp.Error) chan Result {
 	c := make(chan Result)
 
 	client.ErrorChansLock.Lock()
 	client.ErrorChans[error] = c
 	client.ErrorChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetErrorChanResult gets a Result from the SsntpTestClient error channel
-func (client *SsntpTestClient) GetErrorChanResult(c *chan Result, error ssntp.Error) (result Result, err error) {
+func (client *SsntpTestClient) GetErrorChanResult(c chan Result, error ssntp.Error) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s error: %s", error, result.Err)
 		}
@@ -224,20 +224,20 @@ func (client *SsntpTestClient) SendResultAndDelErrorChan(error ssntp.Error, resu
 }
 
 // AddStatusChan adds an ssntp.Status to the SsntpTestClient status channel
-func (client *SsntpTestClient) AddStatusChan(status ssntp.Status) *chan Result {
+func (client *SsntpTestClient) AddStatusChan(status ssntp.Status) chan Result {
 	c := make(chan Result)
 
 	client.StatusChansLock.Lock()
 	client.StatusChans[status] = c
 	client.StatusChansLock.Unlock()
 
-	return &c
+	return c
 }
 
 // GetStatusChanResult gets a Result from the SsntpTestClient status channel
-func (client *SsntpTestClient) GetStatusChanResult(c *chan Result, status ssntp.Status) (result Result, err error) {
+func (client *SsntpTestClient) GetStatusChanResult(c chan Result, status ssntp.Status) (result Result, err error) {
 	select {
-	case result = <-*c:
+	case result = <-c:
 		if result.Err != nil {
 			err = fmt.Errorf("Client error sending %s status: %s", status, result.Err)
 		}
