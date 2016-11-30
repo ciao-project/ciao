@@ -21,6 +21,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 )
 
@@ -917,5 +918,39 @@ func TestSQLiteDBEventLog(t *testing.T) {
 	}
 	if len(log) != 0 {
 		t.Fatal("Expected no log messages")
+	}
+}
+
+func TestSQLiteDBInstanceStats(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stats []payloads.InstanceStat
+
+	for i := 0; i < 3; i++ {
+		stat := payloads.InstanceStat{
+			InstanceUUID:  uuid.Generate().String(),
+			State:         payloads.ComputeStatusRunning,
+			SSHIP:         "192.168.0.1",
+			SSHPort:       34567,
+			MemoryUsageMB: 0,
+			DiskUsageMB:   0,
+			CPUUsage:      0,
+		}
+		stats = append(stats, stat)
+	}
+
+	nodeID := uuid.Generate().String()
+
+	err = db.addInstanceStatsDB(stats, nodeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = db.getNodeSummary()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
