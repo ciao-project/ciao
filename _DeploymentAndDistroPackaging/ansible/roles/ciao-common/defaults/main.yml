@@ -23,21 +23,6 @@ gopath: /tmp/go
 # Fully Qualified Domain Name for CIAO controller node
 ciao_controller_fqdn: "{{ hostvars[groups['controllers'][0]]['ansible_fqdn'] }}"
 
-# URL for the latest ciao networking image
-cnci_image_url: https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz
-
-# Ciao networking image file name
-cnci_image: "{{ cnci_image_url[0:-3].split('/') | last }}"
-
-# URL for EFI Firmware required by CNCI Image
-ovmf_url: https://download.clearlinux.org/image/OVMF.fd
-
-# URL for the latest clearlinux cloud image
-clear_cloud_image_url: https://download.clearlinux.org/releases/10820/clear/clear-10820-cloud.img.xz
-
-# Clearlinux cloud image file name
-clear_cloud_image: "{{ clear_cloud_image_url.split('/') | last | regex_replace('(.*).xz', '\\1') }}"
-
 # Set to true to skip ceph configuration in ciao nodes
 skip_ceph: False
 

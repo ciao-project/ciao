@@ -83,3 +83,18 @@ fedora_cloud_image_url: https://download.fedoraproject.org/pub/fedora/linux/rele
 
 # Fedora cloud image file name
 fedora_cloud_image: "{{ fedora_cloud_image_url.split('/') | last }}"
+
+# URL for the latest ciao networking image
+cnci_image_url: https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz
+
+# Ciao networking image file name
+cnci_image: "{{ cnci_image_url[0:-3].split('/') | last }}"
+
+# URL for the latest clearlinux cloud image
+clear_cloud_image_url: https://download.clearlinux.org/releases/11960/clear/clear-11960-cloud.img.xz
+
+# Clearlinux cloud image file name
+clear_cloud_image: "{{ clear_cloud_image_url.split('/') | last | regex_replace('(.*).xz', '\\1') }}"
+
+# URL for EFI Firmware required by CNCI Image
+ovmf_url: https://download.clearlinux.org/image/OVMF.fd
