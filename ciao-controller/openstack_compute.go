@@ -77,7 +77,7 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 	return server, nil
 }
 
-func (c *controller) validateBlockDeviceMappingSourceType(srcType string) (err error) {
+func (c *controller) validateBlockDeviceMappingSourceType(srcType string) error {
 	validSourceTypes := []string{
 		"blank",
 		"snapshot",
@@ -92,7 +92,7 @@ func (c *controller) validateBlockDeviceMappingSourceType(srcType string) (err e
 	return fmt.Errorf("Invalid block device mapping source type.  Expected value in %v, got \"%s\"", validSourceTypes, srcType)
 }
 
-func (c *controller) validateBlockDeviceMappingDestinationType(dstType string) (err error) {
+func (c *controller) validateBlockDeviceMappingDestinationType(dstType string) error {
 	validDestinationTypes := []string{
 		"",
 		"local",
@@ -106,7 +106,7 @@ func (c *controller) validateBlockDeviceMappingDestinationType(dstType string) (
 	return fmt.Errorf("Invalid block device mapping destination type.  Expected value in %v, got \"%s\"", validDestinationTypes, dstType)
 }
 
-func (c *controller) validateBlockDeviceMappingGuestFormat(format string) (err error) {
+func (c *controller) validateBlockDeviceMappingGuestFormat(format string) error {
 	validGuestFormat := []string{
 		"",
 		"ephemeral",
@@ -139,7 +139,7 @@ func noBlockDeviceMappingBootIndex(index string) bool {
 	return false
 }
 
-func (c *controller) validateBlockDeviceMappingBootIndex(index string) (err error) {
+func (c *controller) validateBlockDeviceMappingBootIndex(index string) error {
 	// Openstack docu says negative or "none" means don't use as bootable,
 	// otherwise 0..N are boot order possibilities
 
@@ -147,7 +147,7 @@ func (c *controller) validateBlockDeviceMappingBootIndex(index string) (err erro
 		return nil
 	}
 
-	_, err = strconv.Atoi(index)
+	_, err := strconv.Atoi(index)
 	if err != nil {
 		return fmt.Errorf("Invalid block device boot index.  Expected integer, got \"%s\". %s", index, err)
 	}
@@ -155,7 +155,7 @@ func (c *controller) validateBlockDeviceMappingBootIndex(index string) (err erro
 	return nil
 }
 
-func (c *controller) validateBlockDeviceAutoEphemeral(bd compute.BlockDeviceMappingV2) (ok bool, err error) {
+func (c *controller) validateBlockDeviceAutoEphemeral(bd compute.BlockDeviceMappingV2) (bool, error) {
 	// local dest with blank source is always an auto-created, non-bootable, non-persistent,
 	// data or swap disk.  This implies UUID must be "" and size must be specified.
 	if bd.DestinationType != "local" {
@@ -181,7 +181,7 @@ func (c *controller) validateBlockDeviceAutoEphemeral(bd compute.BlockDeviceMapp
 	return true, nil
 }
 
-func (c *controller) validateBlockDeviceAuto(bd compute.BlockDeviceMappingV2) (ok bool, err error) {
+func (c *controller) validateBlockDeviceAuto(bd compute.BlockDeviceMappingV2) (bool, error) {
 	// volume dest with blank source is always an auto-created, non-bootable,
 	// data or swap disk.  This implies UUID must be "" and size must be specified.
 	if bd.DestinationType != "volume" {
@@ -220,7 +220,7 @@ func (c *controller) validateUUIDForPreCreatedVolume(sourceType string, UUID str
 	return nil
 }
 
-func (c *controller) validateBlockDevicePreCreated(bd compute.BlockDeviceMappingV2, nInstances int) (ok bool, err error) {
+func (c *controller) validateBlockDevicePreCreated(bd compute.BlockDeviceMappingV2, nInstances int) (bool, error) {
 	// pre-created snapshot/volume/image sources map to a volume destination by UUID
 	if bd.UUID == "" ||
 		(bd.SourceType != "snapshot" && bd.SourceType != "volume" && bd.SourceType != "image") {
@@ -232,7 +232,7 @@ func (c *controller) validateBlockDevicePreCreated(bd compute.BlockDeviceMapping
 		return false, fmt.Errorf("Invalid block device destination type.  Expected \"volume\" or unset destination type with snapshot/volume/image source types, got destination type \"%s\"", bd.DestinationType)
 	}
 
-	err = c.validateUUIDForPreCreatedVolume(bd.SourceType, bd.UUID)
+	err := c.validateUUIDForPreCreatedVolume(bd.SourceType, bd.UUID)
 	if err != nil {
 		return false, err
 	}
@@ -250,10 +250,10 @@ func (c *controller) validateBlockDevicePreCreated(bd compute.BlockDeviceMapping
 	return true, nil
 }
 
-func (c *controller) validateBlockDeviceMappings(blockDeviceMappings []compute.BlockDeviceMappingV2, nInstances int) (err error) {
+func (c *controller) validateBlockDeviceMappings(blockDeviceMappings []compute.BlockDeviceMappingV2, nInstances int) error {
 	for _, bd := range blockDeviceMappings {
 		// Check individual fields conform to spec
-		err = c.validateBlockDeviceMappingSourceType(bd.SourceType)
+		err := c.validateBlockDeviceMappingSourceType(bd.SourceType)
 		if err != nil {
 			return err
 		}
