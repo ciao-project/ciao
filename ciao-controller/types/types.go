@@ -543,6 +543,10 @@ var (
 
 	// ErrDuplicatePoolName is returned when a duplicate pool name is used
 	ErrDuplicatePoolName = errors.New("Pool by that name already exists")
+
+	// ErrInstanceMapped is returned when an instance cannot be deleted
+	// due to having an external IP assigned to it.
+	ErrInstanceMapped = errors.New("Unmap the external IP prior to deletion")
 )
 
 // Link provides a url and relationship for a resource.
