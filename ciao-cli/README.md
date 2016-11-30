@@ -52,10 +52,14 @@ The options are:
 The commands are:
 
         event
+	external-ip
+	image
         instance
         node
+	pool
         tenant
         trace
+	volume
         workload
 
 Use "ciao-cli command -help" for more information about that command.

@@ -28,3 +28,8 @@ type PublicIPEvent struct {
 type EventPublicIPAssigned struct {
 	AssignedIP PublicIPEvent `yaml:"public_ip_assigned"`
 }
+
+// EventPublicIPUnassigned represents the SSNTP PublicIPUnassigned event payload.
+type EventPublicIPUnassigned struct {
+	UnassignedIP PublicIPEvent `yaml:"public_ip_unassigned"`
+}

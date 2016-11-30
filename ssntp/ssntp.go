@@ -61,7 +61,7 @@ type Error uint8
 
 // Event is the SSNTP Event operand.
 // It can be TenantAdded, TenantRemoval, InstanceDeleted,
-// ConcentratorInstanceAdded, PublicIPAssigned, TraceReport,
+// ConcentratorInstanceAdded, PublicIPAssigned, PublicIPUnassigned, TraceReport,
 // NodeConnected or NodeDisconnected
 type Event uint8
 
@@ -402,6 +402,23 @@ const (
 	//	+----------------------------------------------------------------------------+
 	PublicIPAssigned
 
+	// PublicIPUnassigned events are sent by Networking concentrator
+	// instances (CNCI) to the Scheduler when they successfully
+	// unassigned a public IP from a given instance.
+	//
+	// The Scheduler must forward those events to the Controller.
+	//
+	// The PublicIPUnassigned event payload contains a previously assigned
+	// public IP, the instance private IP and the instance UUID.
+	//
+	//					 SSNTP PublicIPUnassigned Event frame
+	//
+	//	+----------------------------------------------------------------------------+
+	//	| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload |
+	//	|       |       | (0x3) |  (0x4)  |                 |                        |
+	//	+----------------------------------------------------------------------------+
+	PublicIPUnassigned
+
 	// TraceReport events carry a tracing report payload from one
 	// of the SSNTP clients.
 	//
@@ -525,6 +542,14 @@ const (
 	// DetachVolumeFailure is sent by launcher agents to report a failure to detach
 	// a volume from an instance.
 	DetachVolumeFailure
+
+	// AssignPublicIPFailure is sent by the CNCI when a an external IP
+	// cannot be assigned.
+	AssignPublicIPFailure
+
+	// UnassignPublicIPFailure is sent by the CNCI when a an external IP
+	// cannot be unassigned.
+	UnassignPublicIPFailure
 )
 
 // Major is the SSNTP protocol major version
@@ -614,6 +639,8 @@ func (status Event) String() string {
 		return "Network Concentrator Instance Added"
 	case PublicIPAssigned:
 		return "Public IP Assigned"
+	case PublicIPUnassigned:
+		return "Public IP Unassigned"
 	case TraceReport:
 		return "Trace Report"
 	case NodeConnected:

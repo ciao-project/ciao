@@ -65,3 +65,46 @@ func TestPublicIPAssignedMarshal(t *testing.T) {
 		t.Errorf("PublicIPAssigned marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.AssignedIPYaml)
 	}
 }
+
+func TestPublicIPUnassignedUnmarshal(t *testing.T) {
+	var unassignedIP EventPublicIPUnassigned
+
+	err := yaml.Unmarshal([]byte(testutil.UnassignedIPYaml), &unassignedIP)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if unassignedIP.UnassignedIP.ConcentratorUUID != testutil.CNCIUUID {
+		t.Errorf("Wrong concentrator UUID field [%s]", unassignedIP.UnassignedIP.ConcentratorUUID)
+	}
+
+	if unassignedIP.UnassignedIP.InstanceUUID != testutil.InstanceUUID {
+		t.Errorf("Wrong instance UUID field [%s]", unassignedIP.UnassignedIP.InstanceUUID)
+	}
+
+	if unassignedIP.UnassignedIP.PublicIP != testutil.InstancePublicIP {
+		t.Errorf("Wrong public IP field [%s]", unassignedIP.UnassignedIP.PublicIP)
+	}
+
+	if unassignedIP.UnassignedIP.PrivateIP != testutil.InstancePrivateIP {
+		t.Errorf("Wrong private IP field [%s]", unassignedIP.UnassignedIP.PrivateIP)
+	}
+}
+
+func TestPublicIPUnassignedMarshal(t *testing.T) {
+	var unassignedIP EventPublicIPUnassigned
+
+	unassignedIP.UnassignedIP.ConcentratorUUID = testutil.CNCIUUID
+	unassignedIP.UnassignedIP.InstanceUUID = testutil.InstanceUUID
+	unassignedIP.UnassignedIP.PublicIP = testutil.InstancePublicIP
+	unassignedIP.UnassignedIP.PrivateIP = testutil.InstancePrivateIP
+
+	y, err := yaml.Marshal(&unassignedIP)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(y) != testutil.UnassignedIPYaml {
+		t.Errorf("PublicIPUnassigned marshalling failed\n[%s]\n vs\n[%s]", string(y), testutil.UnassignedIPYaml)
+	}
+}

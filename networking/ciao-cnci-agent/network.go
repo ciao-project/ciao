@@ -253,6 +253,89 @@ func cnciAddedMarshal(agentUUID string) ([]byte, error) {
 	return yaml.Marshal(&cnciAdded)
 }
 
+func publicIPAssignedMarshal(cmd *payloads.PublicIPCommand) ([]byte, error) {
+	var publicIPAssigned payloads.EventPublicIPAssigned
+	evt := &publicIPAssigned.AssignedIP
+
+	evt.ConcentratorUUID = cmd.ConcentratorUUID
+	evt.InstanceUUID = cmd.InstanceUUID
+	evt.PublicIP = cmd.PublicIP
+	evt.PrivateIP = cmd.PrivateIP
+
+	glog.Infoln("PublicIPAssignedMarshal Event ", publicIPAssigned)
+
+	return yaml.Marshal(&publicIPAssigned)
+}
+
+func publicIPUnassignedMarshal(cmd *payloads.PublicIPCommand) ([]byte, error) {
+	var publicIPUnassigned payloads.EventPublicIPUnassigned
+	evt := &publicIPUnassigned.UnassignedIP
+
+	evt.ConcentratorUUID = cmd.ConcentratorUUID
+	evt.InstanceUUID = cmd.InstanceUUID
+	evt.PublicIP = cmd.PublicIP
+	evt.PrivateIP = cmd.PrivateIP
+
+	glog.Infoln("PublicIPUnassignedMarshal Event ", publicIPUnassigned)
+
+	return yaml.Marshal(&publicIPUnassigned)
+}
+
+func publicIPFailureMarshal(reason payloads.PublicIPFailureReason, cmd *payloads.PublicIPCommand) ([]byte, error) {
+	var failure payloads.ErrorPublicIPFailure
+
+	failure.ConcentratorUUID = cmd.ConcentratorUUID
+	failure.TenantUUID = cmd.TenantUUID
+	failure.InstanceUUID = cmd.InstanceUUID
+	failure.PublicIP = cmd.PublicIP
+	failure.PrivateIP = cmd.PrivateIP
+	failure.VnicMAC = cmd.VnicMAC
+	failure.Reason = reason
+
+	glog.Infoln("publicIPFailureMarshal error ", failure)
+
+	return yaml.Marshal(&failure)
+}
+
+func sendNetworkError(client *ssntpConn, errorType ssntp.Error, errorInfo interface{}) error {
+
+	if !client.isConnected() {
+		return fmt.Errorf("Unable to send %s %v", errorType, errorInfo)
+	}
+
+	payload, err := generateNetErrorPayload(errorType, errorInfo)
+	if err != nil {
+		return fmt.Errorf("Unable parse ssntpError %s %v", err, errorInfo)
+	}
+
+	n, err := client.SendError(errorType, payload)
+	if err != nil {
+		return fmt.Errorf("Unable to send %s %s %v %d", err.Error(), errorType, errorInfo, n)
+	}
+
+	return nil
+}
+
+func generateNetErrorPayload(errorType ssntp.Error, errorInfo interface{}) ([]byte, error) {
+	switch errorType {
+	case ssntp.AssignPublicIPFailure:
+		cmd, ok := errorInfo.(*payloads.PublicIPCommand)
+		if !ok {
+			return nil, fmt.Errorf("PublicIPAssign Invalid errorInfo [%T] %v", errorInfo, errorInfo)
+		}
+		return publicIPFailureMarshal(payloads.PublicIPAssignFailure, cmd)
+	case ssntp.UnassignPublicIPFailure:
+		cmd, ok := errorInfo.(*payloads.PublicIPCommand)
+		if !ok {
+			return nil, fmt.Errorf("PublicIPUnassign Invalid errorInfo [%T] %v", errorInfo, errorInfo)
+		}
+		return publicIPFailureMarshal(payloads.PublicIPReleaseFailure, cmd)
+	default:
+		return nil, fmt.Errorf("Unsupported ssntpErrorInfo type: %v", errorType)
+	}
+
+}
+
 func sendNetworkEvent(client *ssntpConn, eventType ssntp.Event, eventInfo interface{}) error {
 
 	if !client.isConnected() {
@@ -279,8 +362,19 @@ func generateNetEventPayload(eventType ssntp.Event, eventInfo interface{}, agent
 		glog.Infof("generating cnciAdded Event Payload %s", agentUUID)
 		return cnciAddedMarshal(agentUUID)
 	case ssntp.PublicIPAssigned:
-		glog.Infof("generating publicIP Assigned Event Payload %s", agentUUID)
-		return nil, nil
+		glog.Infof("generating publicIP Assigned Event Payload %v", eventInfo)
+		cmd, ok := eventInfo.(*payloads.PublicIPCommand)
+		if !ok {
+			return nil, fmt.Errorf("PublicIPAssigned Invalid eventInfo [%T] %v", eventInfo, eventInfo)
+		}
+		return publicIPAssignedMarshal(cmd)
+	case ssntp.PublicIPUnassigned:
+		glog.Infof("generating publicIP Unassigned Event Payload %v", eventInfo)
+		cmd, ok := eventInfo.(*payloads.PublicIPCommand)
+		if !ok {
+			return nil, fmt.Errorf("PublicIPUnassigned Invalid eventInfo [%T] %v", eventInfo, eventInfo)
+		}
+		return publicIPUnassignedMarshal(cmd)
 	default:
 		return nil, fmt.Errorf("Unsupported ssntpEventInfo type: %v", eventType)
 	}
@@ -306,13 +400,13 @@ func unmarshallPubIP(cmd *payloads.PublicIPCommand) (net.IP, net.IP, error) {
 func assignPubIP(cmd *payloads.PublicIPCommand) error {
 
 	prIP, puIP, err := unmarshallPubIP(cmd)
-
 	if err != nil {
-		glog.Errorf("cnci.assignPubIP invalid params %v %v", err, cmd)
+		return fmt.Errorf("cnci.assignPubIP invalid params %v %v", err, cmd)
 	}
 
-	if enableNetwork {
-		glog.Infof("cnci.assignPubIP success %v %v %v", prIP, puIP, cmd)
+	err = gFw.PublicIPAccess(libsnnet.FwEnable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
+	if err != nil {
+		return fmt.Errorf("%v", err)
 	}
 
 	return nil
@@ -321,13 +415,13 @@ func assignPubIP(cmd *payloads.PublicIPCommand) error {
 func releasePubIP(cmd *payloads.PublicIPCommand) error {
 
 	prIP, puIP, err := unmarshallPubIP(cmd)
-
 	if err != nil {
-		glog.Errorf("cnci.releasePubIP invalid params %v %v", err, cmd)
+		return fmt.Errorf("cnci.releasePubIP invalid params %v %v", err, cmd)
 	}
 
-	if enableNetwork {
-		glog.Infof("cnci.releasePubIP success %v %v %v", prIP, puIP, cmd)
+	err = gFw.PublicIPAccess(libsnnet.FwDisable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
+	if err != nil {
+		return fmt.Errorf("%v", err)
 	}
 
 	return nil
