@@ -746,7 +746,6 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 		fallthrough
 	case ssntp.ReleasePublicIP:
 		dest = sched.fwdCmdToCNCI(command, payload)
-
 	default:
 		dest.SetDecision(ssntp.Discard)
 	}
