@@ -372,14 +372,12 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 	// openstack doesn't allow us to use our traced start workload
 	// functionality. So we use the name field in our cli to indicate
 	// that we want to trace this workload.
-	trace := false
 	label := ""
 	if server.Server.Name != "" {
-		trace = true
 		label = server.Server.Name
 	}
 
-	instances, err := c.startWorkload(server.Server.Flavor, tenant, nInstances, trace, label, volumes)
+	instances, err := c.startWorkload(server.Server.Flavor, tenant, nInstances, label, volumes)
 	if err != nil {
 		return server, err
 	}

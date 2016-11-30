@@ -132,7 +132,7 @@ func (c *controller) confirmTenant(tenantID string) error {
 }
 
 func (c *controller) startWorkload(workloadID string, tenantID string, instances int,
-	trace bool, label string, volumes []storage.BlockDevice) ([]*types.Instance, error) {
+	traceLabel string, volumes []storage.BlockDevice) ([]*types.Instance, error) {
 
 	var e error
 
@@ -175,10 +175,10 @@ func (c *controller) startWorkload(workloadID string, tenantID string, instances
 			}
 
 			newInstances = append(newInstances, &instance.Instance)
-			if trace == false {
+			if traceLabel == "" {
 				go c.client.StartWorkload(instance.newConfig.config)
 			} else {
-				go c.client.StartTracedWorkload(instance.newConfig.config, instance.startTime, label)
+				go c.client.StartTracedWorkload(instance.newConfig.config, instance.startTime, traceLabel)
 			}
 		} else {
 			instance.Clean()
@@ -207,7 +207,7 @@ func (c *controller) launchCNCI(tenantID string) error {
 
 	noVolumes := []storage.BlockDevice{}
 
-	_, err = c.startWorkload(workloadID, tenantID, 1, false, "", noVolumes)
+	_, err = c.startWorkload(workloadID, tenantID, 1, "", noVolumes)
 	if err != nil {
 		return err
 	}

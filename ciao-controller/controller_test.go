@@ -107,7 +107,7 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1, false, "", noVolumes)
+		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1, "", noVolumes)
 		if err != nil {
 			b.Error(err)
 		}
@@ -142,7 +142,7 @@ func BenchmarkStart1000Workload(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1000, false, "", noVolumes)
+		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1000, "", noVolumes)
 		if err != nil {
 			b.Error(err)
 		}
@@ -194,7 +194,7 @@ func TestTenantWithinBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 1, false, "", noVolumes)
+	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 1, "", noVolumes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestTenantOutOfBounds(t *testing.T) {
 	}
 
 	/* try to send 2 workload start commands */
-	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 2, false, "", noVolumes)
+	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 2, "", noVolumes)
 	if err == nil {
 		t.Errorf("Not tracking limits correctly")
 	}
@@ -922,7 +922,7 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	clientCh := client.AddCmdChan(ssntp.START)
 	serverCh := server.AddCmdChan(ssntp.START)
 
-	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, 1, true, "testtrace1", noVolumes)
+	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, 1, "testtrace1", noVolumes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -972,7 +972,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	client.StartFail = fail
 	client.StartFailReason = reason
 
-	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, num, false, "", noVolumes)
+	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, num, "", noVolumes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1027,7 +1027,7 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	instanceCh := make(chan []*types.Instance)
 
 	go func() {
-		instances, err := ctl.startWorkload(wls[0].ID, newTenant, 1, false, "", noVolumes)
+		instances, err := ctl.startWorkload(wls[0].ID, newTenant, 1, "", noVolumes)
 		if err != nil {
 			t.Fatal(err)
 		}
