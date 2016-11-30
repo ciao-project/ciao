@@ -2,6 +2,7 @@
 
 ciao_bin="$HOME/local"
 ciao_gobin="$GOPATH"/bin
+event_counter=0
 
 #Utility functions
 function exitOnError {
@@ -42,19 +43,18 @@ function checkForNetworkArtifacts() {
 	fi
 }
 
-#Clear out a ciao chains to trigger a failure
+#There are too many failsafes in the CNCI. Hence just disable iptables utility to trigger failure
+#This also ensures that the CNCI is always left in a consistent state (sans the permission)
 function triggerIPTablesFailure {
 	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" <<-EOF
-	sudo iptables-save > /tmp/rules.save
-	sudo iptables -t nat -D PREROUTING -j ciao-floating-ip-pre
-	sudo iptables -t nat -X ciao-floating-ip-pre
+	sudo chmod -x /usr/bin/iptables
 	EOF
 }
 
 #Restore the iptables so that the cluster is usable
 function restoreIPTables {
 	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" <<-EOF
-	sudo iptables-restore  /tmp/rules.save
+	sudo chmod +x /usr/bin/iptables
 	EOF
 }
 
@@ -246,7 +246,7 @@ testinstance=`"$ciao_gobin"/ciao-cli instance list -f '{{with index . 0}}{{.ID}}
 "$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
 
 #Wait for the CNCI to report successful map
-checkEventStatus 0 "Mapped"
+checkEventStatus $event_counter "Mapped"
 
 "$ciao_gobin"/ciao-cli event list
 "$ciao_gobin"/ciao-cli external-ip list
@@ -275,19 +275,36 @@ fi
 "$ciao_gobin"/ciao-cli external-ip unmap -address $testip
 
 #Wait for the CNCI to report successful unmap
-checkEventStatus 1 "Unmapped"
+event_counter=$((event_counter+1))
+checkEventStatus $event_counter "Unmapped"
 
 "$ciao_gobin"/ciao-cli external-ip list
 
 #Test for External IP Failures
-triggerIPTablesFailure 
+
+#Map failure
+triggerIPTablesFailure
 "$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
 #Wait for the CNCI to report unsuccessful map
-checkEventStatus 2 "Failed"
-
-#Restore the state of the CNCI so that the cluster is usable
-#This also ensures that verify.sh can be run multiple times
+event_counter=$((event_counter+1))
+checkEventStatus $event_counter "Failed"
 restoreIPTables
+
+#Unmap failure
+"$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
+event_counter=$((event_counter+1))
+checkEventStatus $event_counter "Mapped"
+
+triggerIPTablesFailure 
+"$ciao_gobin"/ciao-cli external-ip unmap -address $testip
+event_counter=$((event_counter+1))
+checkEventStatus $event_counter "Failed"
+restoreIPTables
+
+#Cleanup
+"$ciao_gobin"/ciao-cli external-ip unmap -address $testip
+event_counter=$((event_counter+1))
+checkEventStatus $event_counter "Unmapped"
 
 #Cleanup pools
 deleteExternalIPPool
@@ -299,7 +316,8 @@ exitOnError $?  "Unable to delete instances"
 "$ciao_gobin"/ciao-cli instance list
 
 #Wait for all the instance deletions to be reported back
-checkEventStatus 6 "Deleted"
+event_counter=$((event_counter+4))
+checkEventStatus $event_counter "Deleted"
 
 #Verify that there are no ciao related artifacts left behind
 checkForNetworkArtifacts
