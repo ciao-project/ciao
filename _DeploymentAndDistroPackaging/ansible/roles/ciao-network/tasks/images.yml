@@ -13,18 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create /usr/share/qemu
-    file: path=/usr/share/qemu state=directory
+  - block:
+      - name: Create /usr/share/qemu
+        file: path=/usr/share/qemu state=directory
 
-  - name: Download OVMF.fd
-    copy: src=images/OVMF.fd dest=/usr/share/qemu/OVMF.fd
-    when: ansible_os_family == "Debian"
+      - name: Create /usr/share/qemu/OVMF.fd
+        file: path=/usr/share/qemu/OVMF.fd src=/var/lib/ciao/images/OVMF.fd state=link
+    when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
 
   - name: Download cnci image
     copy: src=images/{{ cnci_image }} dest=/var/lib/ciao/images/{{ cnci_image }}
+    run_once: True
 
   - name: Link cnci image
     file:
       path: /var/lib/ciao/images/4e16e743-265a-4bf2-9fd1-57ada0b28904
       src: /var/lib/ciao/images/{{ cnci_image }}
       state: link
+    run_once: True

@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+  - name: Create images directory
+    become: no
+    file: path=images state=directory
+
   - name: Check if cnci image is already setup
     become: no
     stat: path=images/.cnci_ready

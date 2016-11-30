@@ -17,8 +17,6 @@
     become: no
 
   - include: images.yml
-    become: no
-    connection: local
 
   - include: endpoints.yml
     connection: local

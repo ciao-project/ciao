@@ -14,10 +14,32 @@
 # limitations under the License.
 
   - name: Create /etc/ceph directory
-    file: path=/etc/ceph state=directory mode=600
+    file: path=/etc/ceph state=directory mode=700
+
+  - name: Read cephx secret
+    connection: local
+    shell: >
+      awk '/key/ {print $3}' ceph/ceph.client.{{ cephx_user }}.keyring
+    register: cephx_secret
+    changed_when: False
+
+  - name: Read ceph mons
+    connection: local
+    shell: >
+      awk '/mon host/ { gsub(/,$/, ""); print $4 }' ceph/ceph.conf
+    register: ceph_mons
+    changed_when: False
 
   - name: Copy ceph files
     copy: src=ceph/{{ item }} dest=/etc/ceph/{{ item }} mode=400
     with_items:
       - ceph.conf
       - "ceph.client.{{ cephx_user }}.keyring"
+
+  - name: Mount ceph file system in /var/lib/ciao/images
+    mount:
+      fstype: ceph
+      name: /var/lib/ciao/images
+      src: "{{ ceph_mons.stdout }}:/"
+      state: mounted
+      opts: name={{ cephx_user }},secret={{ cephx_secret.stdout }}
