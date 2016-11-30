@@ -862,3 +862,60 @@ func TestSQLiteDBGetBatchFrameSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSQLiteDBEventLog(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err := db.getEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(log) != 0 {
+		t.Fatal("Expected no log messages")
+	}
+
+	tn := createTestTenant(db, t)
+
+	err = db.logEvent(tn.ID, string(userError), "test message 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err = db.getEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log) != 1 {
+		t.Fatal("Expected 1 log message")
+	}
+
+	err = db.logEvent(tn.ID, string(userError), "test message 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err = db.getEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log) != 2 {
+		t.Fatal("Expected 2 log message")
+	}
+
+	err = db.clearLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err = db.getEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log) != 0 {
+		t.Fatal("Expected no log messages")
+	}
+}
