@@ -31,38 +31,38 @@ type Ceph struct {
 
 // Write copies an image onto the fileystem into a tempory location and uploads
 // it into ceph, snapshots.
-func (c *Ceph) Write(ID string, body io.Reader) (int64, error) {
+func (c *Ceph) Write(ID string, body io.Reader) error {
 	image, err := ioutil.TempFile("", "ciao-image")
 	if err != nil {
-		return 0, fmt.Errorf("Error creating temporary image file: %v", err)
+		return fmt.Errorf("Error creating temporary image file: %v", err)
 	}
 	defer os.Remove(image.Name())
 
 	// TODO(rbradford): Is there a better way
 	buf := make([]byte, 1<<16)
-	res, err := io.CopyBuffer(image, body, buf)
+	_, err = io.CopyBuffer(image, body, buf)
 	if err != nil {
 		image.Close()
-		return 0, fmt.Errorf("Error writing to temporary image file: %v", err)
+		return fmt.Errorf("Error writing to temporary image file: %v", err)
 	}
 
 	err = image.Close()
 	if err != nil {
-		return 0, fmt.Errorf("Error closing temporary image file: %v", err)
+		return fmt.Errorf("Error closing temporary image file: %v", err)
 	}
 
 	_, err = c.BlockDriver.CreateBlockDevice(ID, image.Name(), 0)
 	if err != nil {
-		return 0, fmt.Errorf("Error creating block device: %v", err)
+		return fmt.Errorf("Error creating block device: %v", err)
 	}
 
 	err = c.BlockDriver.CreateBlockDeviceSnapshot(ID, "ciao-image")
 	if err != nil {
 		c.BlockDriver.DeleteBlockDevice(ID)
-		return 0, fmt.Errorf("Unable to create snapshot: %v", err)
+		return fmt.Errorf("Unable to create snapshot: %v", err)
 	}
 
-	return res, nil
+	return nil
 }
 
 // Delete removes an image from ceph after deleting the snapshot.

@@ -27,20 +27,28 @@ type Posix struct {
 }
 
 // Write copies an image into the posix filesystem.
-func (p *Posix) Write(ID string, body io.Reader) (int64, error) {
+func (p *Posix) Write(ID string, body io.Reader) (err error) {
 	imageName := path.Join(p.MountPoint, ID)
 	if _, err := os.Stat(imageName); !os.IsNotExist(err) {
-		return 0, fmt.Errorf("image already uploaded with that ID")
+		return fmt.Errorf("image already uploaded with that ID")
 	}
 
 	image, err := os.Create(imageName)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	buf := make([]byte, 1<<16)
 
-	return io.CopyBuffer(image, body, buf)
+	_, err = io.CopyBuffer(image, body, buf)
+	defer func() {
+		err1 := image.Close()
+		if err == nil {
+			err = err1
+		}
+	}()
+
+	return err
 }
 
 // Delete removes an image from the posix filesystem
