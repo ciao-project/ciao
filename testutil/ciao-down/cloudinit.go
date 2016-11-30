@@ -40,6 +40,12 @@ const userDataTemplate = `
 {{if len .HTTPSProxy }}https_proxy={{.HTTPSProxy}} {{end -}}
 {{if len .HTTPProxy }}http_proxy={{.HTTPProxy}} {{end -}}
 {{end}}
+{{- define "CHECK" -}}
+if [ $? -eq 0 ] ; then ret="OK" ; else ret="FAIL" ; fi ; curl -X PUT -d $ret 10.0.2.2:{{.HTTPServerPort -}}
+{{end -}}
+{{- define "OK" -}}
+curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
+{{end -}}
 #cloud-config
 mounts:
  - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L", 0, 0]
@@ -71,7 +77,8 @@ runcmd:
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
  - rm /etc/legal
- - curl -X PUT -d "VM Booted" 10.0.2.2:{{.HTTPServerPort}}
+ - curl -X PUT -d "Booting VM" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "OK" .}}
 {{if len $.HTTPProxy }}
  - echo "HTTP_PROXY={{.HTTPProxy}}" >> /etc/environment
  - echo "http_proxy={{.HTTPProxy}}" >> /etc/environment
@@ -88,82 +95,89 @@ runcmd:
  - echo "GOPATH={{.GoPath}}" >> /etc/environment
  - echo "PATH=$PATH:/usr/local/go/bin:{{$.GoPath}}/bin"  >> /etc/environment
  - {{template "PROXIES" .}}wget https://storage.googleapis.com/golang/go1.7.3.linux-amd64.tar.gz -O /tmp/go1.7.3.linux-amd64.tar.gz
+ - {{template "CHECK" .}}
+ - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
  - tar -C /usr/local -xzf /tmp/go1.7.3.linux-amd64.tar.gz
  - rm /tmp/go1.7.3.linux-amd64.tar.gz
- - curl -X PUT -d "Go Installed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - groupadd docker
  - sudo gpasswd -a {{.User}} docker
+ - curl -X PUT -d "Installing apt-transport-https and ca-certificates" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get install apt-transport-https ca-certificates
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Add docker GPG key" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Retrieving updated list of packages" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get update
- - curl -X PUT -d "Package list updated" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Upgrading" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get upgrade -y
- - curl -X PUT -d "Upgrade complete" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Docker" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get install docker-engine -y
- - curl -X PUT -d "Docker installed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing GCC" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get install gcc -y
- - curl -X PUT -d "GCC installed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing QEMU" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get install qemu-system-x86 -y
- - curl -X PUT -d "QEMU installed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing xorriso" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get install xorriso -y
- - curl -X PUT -d "Xorriso installed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing ceph-common" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get install ceph-common -y
- - curl -X PUT -d "Ceph-common installed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Openstack client" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get install python-openstackclient -y
- - curl -X PUT -d "Openstack client installed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Auto removing unused components" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get auto-remove -y
- - curl -X PUT -d "Unused components removed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Building ciao" 10.0.2.2:{{.HTTPServerPort}}
  - sudo -u {{.User}} {{template "PROXIES" .}} GOPATH={{.GoPath}} /usr/local/go/bin/go get github.com/01org/ciao/...
- - curl -X PUT -d "ciao built" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Go development utils" 10.0.2.2:{{.HTTPServerPort}}
  - sudo -u {{.User}} {{template "PROXIES" .}} GOPATH={{.GoPath}} /usr/local/go/bin/go get github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
- - curl -X PUT -d "Go development utils installed" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - chown {{.User}}:{{.User}} -R {{.GoPath}}
 
  - curl -X PUT -d "Pulling ceph/demo" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}} docker pull ceph/demo
- - curl -X PUT -d "Retrieved ceph/demo" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Pulling clearlinux/keystone" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}} docker pull clearlinux/keystone
- - curl -X PUT -d "Retrieved clearlinux/keystone" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - mkdir -p /home/{{.User}}/local
 
  - curl -X PUT -d "Downloading Fedora-Cloud-Base-24-1.2.x86_64.qcow2" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}wget https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2 -O /home/{{.User}}/local/Fedora-Cloud-Base-24-1.2.x86_64.qcow2
- - curl -X PUT -d "Fedora-Cloud-Base-24-1.2.x86_64.qcow2 Downloaded" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Downloading CNCI image" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}wget https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz -O /home/{{.User}}/local/clear-8260-ciao-networking.img.xz
- - curl -X PUT -d "CNCI image downloaded" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - curl -X PUT -d "Downloading latest clear cloud image" 10.0.2.2:{{.HTTPServerPort}}
  - LATEST=$({{template "PROXIES" .}} curl -s https://download.clearlinux.org/latest) &&  {{template "PROXIES" .}} wget https://download.clearlinux.org/releases/"$LATEST"/clear/clear-"$LATEST"-cloud.img.xz -O /home/{{.User}}/local/clear-"$LATEST"-cloud.img.xz
- - curl -X PUT -d "Latest clear cloud image downloaded" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "CHECK" .}}
 
  - cd /home/{{.User}}/local && xz -T0 --decompress *.xz
 
@@ -171,10 +185,12 @@ runcmd:
 {{if len .GitUserName}}
  - curl -X PUT -d "Setting git user.name" 10.0.2.2:{{.HTTPServerPort}}
  - sudo -u {{.User}} git config --global user.name "{{.GitUserName}}"
+ - {{template "CHECK" .}}
 {{end}}
 {{if len .GitEmail}}
  - curl -X PUT -d "Setting git user.email" 10.0.2.2:{{.HTTPServerPort}}
  - sudo -u {{.User}} git config --global user.email {{.GitEmail}}
+ - {{template "CHECK" .}}
 {{end}}
  - curl -X PUT -d "FINISHED" 10.0.2.2:{{.HTTPServerPort}}
 
@@ -368,7 +384,11 @@ func startHTTPServer(listener net.Listener, errCh chan error) {
 			finished = true
 			return
 		}
-		fmt.Println(line)
+		if line == "OK" || line == "FAIL" {
+			fmt.Printf("[%s]\n", line)
+		} else {
+			fmt.Printf("%s : ", line)
+		}
 	})
 
 	server := &http.Server{}

@@ -20,7 +20,6 @@
 5. Install kernel
 11. README
 12. Make most output from osprepare optional
-14. Error reporting from cloud-init
 18. Rename and put code in correct files
 */
 
