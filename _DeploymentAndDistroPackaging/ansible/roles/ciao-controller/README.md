@@ -27,6 +27,7 @@ ciao_guest_user | demouser | CIAO virtual machines can be accessed with this use
 ciao_guest_key | default ssh public key | SSH public authentication key for `ciao_guest_user`
 ceph_id | admin | Cephx user to authenticate
 secret_path | /etc/ceph/ceph.client.admin.keyring| Path to ceph user keyring
+fedora_cloud_image_url | [Fedora-Cloud-Base-24-1.2.x86_64.qcow2](https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2) | URL for the latest fedora cloud image
 
 **WARNING**: `ciao_guest_user` and `ciao_guest_key` are a temporary development feature. They give the developer running a dev/test ciao cluster superuser ssh access to all compute workload instances and also all cnci instances. In the future this will be removed when cloud-init and user specified workloads are enabled in the webui and cli.
 

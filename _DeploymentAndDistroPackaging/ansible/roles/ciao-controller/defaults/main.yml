@@ -77,3 +77,9 @@ ceph_id: admin
 
 # Path to ceph user keyring
 secret_path: /etc/ceph/ceph.client.admin.keyring
+
+# URL for the latest fedora cloud image
+fedora_cloud_image_url: https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2
+
+# Fedora cloud image file name
+fedora_cloud_image: "{{ fedora_cloud_image_url.split('/') | last }}"

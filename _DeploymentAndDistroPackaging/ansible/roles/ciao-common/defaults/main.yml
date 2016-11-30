@@ -32,12 +32,6 @@ cnci_image: "{{ cnci_image_url[0:-3].split('/') | last }}"
 # URL for EFI Firmware required by CNCI Image
 ovmf_url: https://download.clearlinux.org/image/OVMF.fd
 
-# URL for the latest fedora cloud image
-fedora_cloud_image_url: https://dl.fedoraproject.org/pub/fedora/linux/releases/23/Cloud/x86_64/Images/Fedora-Cloud-Base-23-20151030.x86_64.qcow2
-
-# Fedora cloud image file name
-fedora_cloud_image: "{{ fedora_cloud_image_url.split('/') | last }}"
-
 # URL for the latest clearlinux cloud image
 clear_cloud_image_url: https://download.clearlinux.org/releases/10820/clear/clear-10820-cloud.img.xz
 
