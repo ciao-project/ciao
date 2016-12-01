@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -748,12 +749,20 @@ func (ds *sqliteDB) getTableDB(name string) *sql.DB {
 func getPersistentStore(config Config) (persistentStore, error) {
 	var ds = &sqliteDB{}
 
-	dbDir := filepath.Dir(config.PersistentURI)
-	if err := os.MkdirAll(dbDir, 0755); err != nil && dbDir != "." {
-		return nil, fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
+	u, err := url.Parse(config.PersistentURI)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid URL (%s) for persistent data store: %v", config.PersistentURI, err)
 	}
 
-	err := ds.Connect(config.PersistentURI, config.TransientURI)
+	if u.Scheme == "file" {
+		dbDir := filepath.Dir(u.Path)
+		err = os.MkdirAll(dbDir, 0755)
+		if err != nil && dbDir != "." {
+			return nil, fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
+		}
+	}
+
+	err = ds.Connect(config.PersistentURI, config.TransientURI)
 	if err != nil {
 		return nil, err
 	}
