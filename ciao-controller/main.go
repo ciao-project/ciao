@@ -112,8 +112,8 @@ func main() {
 	ctl.image = image.Client{MountPoint: *imagesPath}
 
 	dsConfig := datastore.Config{
-		PersistentURI:     *persistentDatastoreLocation,
-		TransientURI:      *transientDatastoreLocation,
+		PersistentURI:     "file:" + *persistentDatastoreLocation,
+		TransientURI:      "file:" + *transientDatastoreLocation,
 		InitTablesPath:    *tablesInitPath,
 		InitWorkloadsPath: *workloadsPath,
 	}
