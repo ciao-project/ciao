@@ -284,12 +284,17 @@ func sendTraceReportEvent(client *testutil.SsntpTestClient, t *testing.T) {
 func sendStatsCmd(client *testutil.SsntpTestClient, t *testing.T) {
 	clientCh := client.AddCmdChan(ssntp.STATS)
 	serverCh := server.AddCmdChan(ssntp.STATS)
+	controllerCh := wrappedClient.addCmdChan(ssntp.STATS)
 	go client.SendStatsCmd()
 	_, err := client.GetCmdChanResult(clientCh, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = server.GetCmdChanResult(serverCh, ssntp.STATS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = wrappedClient.getCmdChan(controllerCh, ssntp.STATS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,8 +312,6 @@ func TestDeleteInstance(t *testing.T) {
 	sendStatsCmd(client, t)
 
 	serverCh := server.AddCmdChan(ssntp.DELETE)
-
-	time.Sleep(1 * time.Second)
 
 	err := ctl.deleteInstance(instances[0].ID)
 	if err != nil {
@@ -334,8 +337,6 @@ func TestStopInstance(t *testing.T) {
 
 	serverCh := server.AddCmdChan(ssntp.STOP)
 
-	time.Sleep(1 * time.Second)
-
 	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
@@ -356,14 +357,10 @@ func TestRestartInstance(t *testing.T) {
 	client, instances := testStartWorkload(t, 1, false, reason)
 	defer client.Shutdown()
 
-	time.Sleep(1 * time.Second)
-
 	sendStatsCmd(client, t)
 
 	serverCh := server.AddCmdChan(ssntp.STOP)
 	clientCh := client.AddCmdChan(ssntp.STOP)
-
-	time.Sleep(1 * time.Second)
 
 	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
@@ -387,8 +384,6 @@ func TestRestartInstance(t *testing.T) {
 	sendStatsCmd(client, t)
 
 	serverCh = server.AddCmdChan(ssntp.RESTART)
-
-	time.Sleep(1 * time.Second)
 
 	err = ctl.restartInstance(instances[0].ID)
 	if err != nil {
@@ -534,11 +529,11 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 	serverCh := server.AddCmdChan(ssntp.AttachVolume)
 	agentCh := client.AddCmdChan(ssntp.AttachVolume)
 	var serverErrorCh chan testutil.Result
-
-	time.Sleep(1 * time.Second)
+	var controllerCh chan struct{}
 
 	if fail == true {
 		serverErrorCh = server.AddErrorChan(ssntp.AttachVolumeFailure)
+		controllerCh = wrappedClient.addErrorChan(ssntp.AttachVolumeFailure)
 		client.AttachFail = true
 		client.AttachVolumeFailReason = payloads.AttachVolumeAlreadyAttached
 
@@ -564,12 +559,8 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 		t.Fatalf("expected %s %s %s, got %s %s %s", instances[0].ID, client.UUID, data.ID, result.InstanceUUID, result.NodeUUID, result.VolumeUUID)
 	}
 
-	_, err = client.GetCmdChanResult(agentCh, ssntp.AttachVolume)
-	if fail == false && err != nil {
-		t.Fatal(err)
-	}
-
 	if fail == true {
+		_, err = client.GetCmdChanResult(agentCh, ssntp.AttachVolume)
 		if err == nil {
 			t.Fatal("Success when Failure expected")
 		}
@@ -579,10 +570,13 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 			t.Fatal(err)
 		}
 
+		err = wrappedClient.getErrorChan(controllerCh, ssntp.AttachVolumeFailure)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		// at this point, the state of the block device should
 		// be set back to available.
-		time.Sleep(time.Second)
-
 		data2, err := ctl.ds.GetBlockDevice(data.ID)
 		if err != nil {
 			t.Fatal(err)
@@ -590,6 +584,11 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 
 		if data2.State != types.Available {
 			t.Fatalf("block device state not updated")
+		}
+	} else {
+		_, err = client.GetCmdChanResult(agentCh, ssntp.AttachVolume)
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 
@@ -613,14 +612,14 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 
 	sendStatsCmd(client, t)
 
-	time.Sleep(1 * time.Second)
-
 	serverCh := server.AddCmdChan(ssntp.DetachVolume)
 	agentCh := client.AddCmdChan(ssntp.DetachVolume)
 	var serverErrorCh chan testutil.Result
+	var controllerCh chan struct{}
 
 	if fail == true {
 		serverErrorCh = server.AddErrorChan(ssntp.DetachVolumeFailure)
+		controllerCh = wrappedClient.addErrorChan(ssntp.DetachVolumeFailure)
 		client.DetachFail = true
 		client.DetachVolumeFailReason = payloads.DetachVolumeNotAttached
 
@@ -655,12 +654,8 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 		t.Fatalf("expected state %s, got %s\n", types.Detaching, data.State)
 	}
 
-	_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
-	if fail == false && err != nil {
-		t.Fatal(err)
-	}
-
 	if fail == true {
+		_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
 		if err == nil {
 			t.Fatal("Success when Failure expected")
 		}
@@ -670,9 +665,13 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 			t.Fatal(err)
 		}
 
+		err = wrappedClient.getErrorChan(controllerCh, ssntp.DetachVolumeFailure)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		// at this point, the state of the block device should
 		// be set back to InUse
-		time.Sleep(time.Second)
 
 		data2, err := ctl.ds.GetBlockDevice(volume)
 		if err != nil {
@@ -681,6 +680,11 @@ func doDetachVolumeCommand(t *testing.T, fail bool) {
 
 		if data2.State != types.InUse {
 			t.Fatalf("expected state %s, got %s\n", types.InUse, data2.State)
+		}
+	} else {
+		_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 
@@ -717,8 +721,6 @@ func TestInstanceDeletedEvent(t *testing.T) {
 
 	serverCh := server.AddCmdChan(ssntp.DELETE)
 
-	time.Sleep(1 * time.Second)
-
 	err := ctl.deleteInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
@@ -731,6 +733,7 @@ func TestInstanceDeletedEvent(t *testing.T) {
 
 	clientEvtCh := client.AddEventChan(ssntp.InstanceDeleted)
 	serverEvtCh := server.AddEventChan(ssntp.InstanceDeleted)
+	controllerCh := wrappedClient.addEventChan(ssntp.InstanceDeleted)
 	go client.SendDeleteEvent(instances[0].ID)
 	_, err = client.GetEventChanResult(clientEvtCh, ssntp.InstanceDeleted)
 	if err != nil {
@@ -740,8 +743,10 @@ func TestInstanceDeletedEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	time.Sleep(1 * time.Second)
+	err = wrappedClient.getEventChan(controllerCh, ssntp.InstanceDeleted)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// try to get instance info
 	_, err = ctl.ds.GetInstance(instances[0].ID)
@@ -774,8 +779,7 @@ func TestStopFailure(t *testing.T) {
 	sendStatsCmd(client, t)
 
 	serverCh := server.AddCmdChan(ssntp.STOP)
-
-	time.Sleep(1 * time.Second)
+	controllerCh := wrappedClient.addErrorChan(ssntp.StopFailure)
 
 	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
@@ -786,11 +790,13 @@ func TestStopFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = wrappedClient.getErrorChan(controllerCh, ssntp.StopFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if result.InstanceUUID != instances[0].ID {
 		t.Fatal("Did not get correct Instance ID")
 	}
-
-	time.Sleep(1 * time.Second)
 
 	// the response to a stop failure is to log the failure
 	entries, err := ctl.ds.GetEventLog()
@@ -821,8 +827,6 @@ func TestRestartFailure(t *testing.T) {
 
 	sendStatsCmd(client, t)
 
-	time.Sleep(1 * time.Second)
-
 	serverCh := server.AddCmdChan(ssntp.STOP)
 	clientCh := client.AddCmdChan(ssntp.STOP)
 
@@ -845,9 +849,8 @@ func TestRestartFailure(t *testing.T) {
 
 	sendStatsCmd(client, t)
 
-	time.Sleep(1 * time.Second)
-
 	serverCh = server.AddCmdChan(ssntp.RESTART)
+	controllerCh := wrappedClient.addErrorChan(ssntp.RestartFailure)
 
 	err = ctl.restartInstance(instances[0].ID)
 	if err != nil {
@@ -858,11 +861,13 @@ func TestRestartFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = wrappedClient.getErrorChan(controllerCh, ssntp.RestartFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if result.InstanceUUID != instances[0].ID {
 		t.Fatal("Did not get correct Instance ID")
 	}
-
-	time.Sleep(1 * time.Second)
 
 	// the response to a restart failure is to log the failure
 	entries, err := ctl.ds.GetEventLog()
@@ -1782,6 +1787,7 @@ func TestMapAddressNoPool(t *testing.T) {
 var testClients []*testutil.SsntpTestClient
 var ctl *controller
 var server *testutil.SsntpTestServer
+var wrappedClient *ssntpClientWrapper
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -1830,10 +1836,11 @@ func TestMain(m *testing.M) {
 		Cert:   ssntp.RoleToDefaultCertName(ssntp.Controller),
 	}
 
-	ctl.client, err = newSSNTPClient(ctl, config)
+	wrappedClient, err = newWrappedSSNTPClient(ctl, config)
 	if err != nil {
 		os.Exit(1)
 	}
+	ctl.client = wrappedClient
 
 	testIdentityConfig := testutil.IdentityConfig{
 		ComputeURL: testutil.ComputeURL,
@@ -1856,9 +1863,7 @@ func TestMain(m *testing.M) {
 
 	_, _ = addComputeTestTenant()
 	go ctl.startComputeService()
-
 	time.Sleep(1 * time.Second)
-
 	go ctl.startVolumeService()
 	time.Sleep(1 * time.Second)
 

@@ -1315,7 +1315,7 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 			Disk:   instanceStat.DiskUsage - lastInstanceStat.DiskUsage,
 		}
 
-		go ds.updateTenantUsage(deltaUsage, lastInstanceStat.TenantID)
+		ds.updateTenantUsage(deltaUsage, lastInstanceStat.TenantID)
 
 		instanceStat.TenantID = lastInstanceStat.TenantID
 

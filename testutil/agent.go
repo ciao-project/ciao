@@ -591,7 +591,9 @@ func (client *SsntpTestClient) ErrorNotify(error ssntp.Error, frame *ssntp.Frame
 func (client *SsntpTestClient) SendStatsCmd() {
 	var result Result
 
+	client.instancesLock.Lock()
 	payload := StatsPayload(client.UUID, client.Name, client.instances, nil)
+	client.instancesLock.Unlock()
 
 	y, err := yaml.Marshal(payload)
 	if err != nil {

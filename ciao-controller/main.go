@@ -51,7 +51,7 @@ import (
 type controller struct {
 	storage.BlockDriver
 
-	client *ssntpClient
+	client controllerClient
 	ds     *datastore.Datastore
 	id     *identity
 	image  image.Client
@@ -138,7 +138,8 @@ func main() {
 		return
 	}
 
-	clusterConfig, err := ctl.client.ssntp.ClusterConfiguration()
+	ssntpClient := ctl.client.ssntpClient()
+	clusterConfig, err := ssntpClient.ClusterConfiguration()
 	if err != nil {
 		glog.Fatalf("Unable to retrieve Cluster Configuration: %v", err)
 		return
