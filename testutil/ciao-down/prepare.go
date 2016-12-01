@@ -28,7 +28,6 @@ import (
 	"text/template"
 
 	"github.com/01org/ciao/osprepare"
-	"github.com/golang/glog"
 )
 
 type logger struct{}
@@ -139,20 +138,17 @@ func createCloudInitISO(ctx context.Context, instanceDir string, userData, metaD
 
 	err := os.MkdirAll(dataDirPath, 0755)
 	if err != nil {
-		glog.Errorf("Unable to create config drive directory %s", dataDirPath)
-		return err
+		return fmt.Errorf("Unable to create config drive directory %s", dataDirPath)
 	}
 
 	err = ioutil.WriteFile(metaDataPath, metaData, 0644)
 	if err != nil {
-		glog.Errorf("Unable to create %s", metaDataPath)
-		return err
+		return fmt.Errorf("Unable to create %s", metaDataPath)
 	}
 
 	err = ioutil.WriteFile(userDataPath, userData, 0644)
 	if err != nil {
-		glog.Errorf("Unable to create %s", userDataPath)
-		return err
+		return fmt.Errorf("Unable to create %s", userDataPath)
 	}
 
 	cmd := exec.CommandContext(ctx, "xorriso", "-as", "mkisofs", "-R", "-V", "config-2",
