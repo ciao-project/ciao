@@ -29,11 +29,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -41,7 +39,8 @@ import (
 const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}", 
     "tenant_id" : "{{.TenantID | js }}", "flavor_id" : "{{.Flavor.ID | js}}",
     "image_id" : "{{.Image.ID | js}}", "status" : "{{.Status | js}}",
-    "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}}
+    "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
+    "volumes" : {{tojson .OsExtendedVolumesVolumesAttached}}
     {{ $addrLen := len .Addresses.Private }}
     {{- if gt $addrLen 0 }}
       {{- with index .Addresses.Private 0 -}}
@@ -49,21 +48,6 @@ const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}",
       {{end -}}
     {{- end }}
   }
-`
-
-const imageTemplateDesc = `{ "name" : "{{.Name | js}}", "id" : "{{.ID | js}}",
-    "container_format" : "{{.ContainerFormat | js}}", "disk_format" : "{{.DiskFormat | js}}",
-    "min_disk" : {{.MinDiskGigabytes}}, "min_ram" : {{.MinRAMMegabytes}},
-    "protected" : {{.Protected}}, "visibility" : "{{.Visibility | js}}",
-    "size" : {{.SizeBytes}}, "status" : "{{.Status | js }}", "owner" : "{{.Owner | js}}",
-    "checksum" : "{{.Checksum | js}}", "created" : "{{.CreatedDate | js}}",
-    "late_update" : "{{.LastUpdate | js}}", "file" : "{{.File | js}}",
-    "schema" : "{{.Schema | js}}", "tags" : [
-    {{- range $i, $t := .Tags -}}
-    {{ if $i }}, {{end}}{{$t}}
-    {{- end -}}
-    ]
-}
 `
 
 // Tenant contains basic information about a tenant
@@ -76,22 +60,23 @@ type Tenant struct {
 type Workload struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
-	ImageUUID string `json:"image_uuid"`
-	CPUs      int    `json:"cpus"`
-	Mem       int    `json:"mem"`
+	ImageUUID string `json:"disk"`
+	CPUs      int    `json:"vcpus"`
+	Mem       int    `json:"ram"`
 }
 
 // Instance contains detailed information about an instance
 type Instance struct {
-	HostID     string `json:"host_id"`
-	TenantID   string `json:"tenant_id"`
-	FlavorID   string `json:"flavor_id"`
-	ImageID    string `json:"image_id"`
-	Status     string `json:"status"`
-	PrivateIP  string `json:"private_ip"`
-	MacAddress string `json:"mac_address"`
-	SSHIP      string `json:"ssh_ip"`
-	SSHPort    int    `json:"ssh_port"`
+	HostID     string   `json:"host_id"`
+	TenantID   string   `json:"tenant_id"`
+	FlavorID   string   `json:"flavor_id"`
+	ImageID    string   `json:"image_id"`
+	Status     string   `json:"status"`
+	PrivateIP  string   `json:"private_ip"`
+	MacAddress string   `json:"mac_address"`
+	SSHIP      string   `json:"ssh_ip"`
+	SSHPort    int      `json:"ssh_port"`
+	Volumes    []string `json:"volumes"`
 }
 
 // CNCI contains information about a CNCI
@@ -104,37 +89,11 @@ type CNCI struct {
 
 // ClusterStatus contains information about the status of a ciao cluster
 type ClusterStatus struct {
-	TotalNodes            int `json:"nodes"`
-	TotalNodesReady       int `json:"ready"`
-	TotalNodesFull        int `json:"full"`
-	TotalNodesOffline     int `json:"offline"`
-	TotalNodesMaintenance int `json:"maintenance"`
-}
-
-// ImageOptions contains user supplied image meta data
-type ImageOptions struct {
-	Name             string   `json:"name"`
-	ID               string   `json:"id"`
-	ContainerFormat  string   `json:"container_format"`
-	DiskFormat       string   `json:"disk_format"`
-	MinDiskGigabytes int      `json:"min_disk"`
-	MinRAMMegabytes  int      `json:"min_ram"`
-	Protected        bool     `json:"protected"`
-	Visibility       string   `json:"visibility"`
-	Tags             []string `json:"tags"`
-}
-
-// Image contains all the meta data for a single image
-type Image struct {
-	ImageOptions
-	SizeBytes   int    `json:"size"`
-	Status      string `json:"status"`
-	Owner       string `json:"owner"`
-	Checksum    string `json:"checksum"`
-	CreatedDate string `json:"created"`
-	LastUpdate  string `json:"last_update"`
-	File        string `json:"file"`
-	Schema      string `json:"schema"`
+	TotalNodes            int `json:"total_nodes"`
+	TotalNodesReady       int `json:"total_nodes_ready"`
+	TotalNodesFull        int `json:"total_nodes_full"`
+	TotalNodesOffline     int `json:"total_nodes_offline"`
+	TotalNodesMaintenance int `json:"total_nodes_maintenance"`
 }
 
 func checkEnv(vars []string) error {
@@ -260,15 +219,8 @@ func RunCIAOCLIAsAdminJS(ctx context.Context, tenant string, args []string,
 // CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
 func GetAllTenants(ctx context.Context) ([]*Tenant, error) {
 	var tenants []*Tenant
-	template := `
-[
-{{- range $i, $val := .}}
-  {{- if $i }},{{end}} 
-  { "id" : "{{$val.ID | js }}", "name" : "{{$val.Name | js }}" }
-{{- end }}
-]
-`
-	args := []string{"tenant", "list", "-all", "-f", template}
+
+	args := []string{"tenant", "list", "-all", "-f", "{{tojson .}}"}
 	err := RunCIAOCLIAsAdminJS(ctx, "", args, &tenants)
 	if err != nil {
 		return nil, err
@@ -283,17 +235,8 @@ func GetAllTenants(ctx context.Context) ([]*Tenant, error) {
 // CIAO_USERNAME, CIAO_PASSWORD.
 func GetAllWorkloads(ctx context.Context, tenant string) ([]Workload, error) {
 	var workloads []Workload
-	template := `
-[
-{{- range $i, $val := .}}
-  {{- if $i }},{{end}} 
-  { "id" : "{{$val.ID | js }}", "name" : "{{$val.Name | js }}",
-    "image_uuid" : "{{$val.Disk | js }}", "cpus" : {{$val.Vcpus}},
-    "mem" : {{$val.RAM}} }
-{{- end }}
-]
-`
-	args := []string{"workload", "list", "-f", template}
+
+	args := []string{"workload", "list", "-f", "{{tojson .}}"}
 	err := RunCIAOCLIJS(ctx, tenant, args, &workloads)
 	if err != nil {
 		return nil, err
@@ -377,6 +320,42 @@ func RetrieveInstancesStatuses(ctx context.Context, tenant string) (map[string]s
 	return statuses, nil
 }
 
+// StopInstance stops a ciao instance by invoking the ciao-cli instance stop command.
+// An error will be returned if the following environment variables are not set;
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func StopInstance(ctx context.Context, tenant string, instance string) error {
+	args := []string{"instance", "stop", "-instance", instance}
+	_, err := RunCIAOCLI(ctx, tenant, args)
+	return err
+}
+
+// StopInstanceAndWait stops a ciao instance by invoking the ciao-cli instance stop command.
+// It then waits until the instance's status changes to exited.
+// An error will be returned if the following environment variables are not set;
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func StopInstanceAndWait(ctx context.Context, tenant string, instance string) error {
+	if err := StopInstance(ctx, tenant, instance); err != nil {
+		return err
+	}
+	for {
+		status, err := RetrieveInstanceStatus(ctx, tenant, instance)
+		if err != nil {
+			return err
+		}
+
+		if status == "exited" {
+			return nil
+		}
+
+		select {
+		case <-time.After(time.Second):
+			continue
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
 // DeleteInstance deletes a specific instance from the cluster.  It deletes
 // the instance using ciao-cli instance delete.  An error will be returned
 // if the following environment variables are not set; CIAO_IDENTITY,
@@ -385,6 +364,39 @@ func DeleteInstance(ctx context.Context, tenant string, instance string) error {
 	args := []string{"instance", "delete", "-instance", instance}
 	_, err := RunCIAOCLI(ctx, tenant, args)
 	return err
+}
+
+// DeleteInstanceAndWait deletes a specific instance from the cluster.  It deletes
+// the instance using ciao-cli instance delete and then blocks until ciao-cli
+// reports that the instance is truly deleted.  An error will be returned
+// if the following environment variables are not set; CIAO_IDENTITY,
+// CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func DeleteInstanceAndWait(ctx context.Context, tenant string, instance string) error {
+	if err := DeleteInstance(ctx, tenant, instance); err != nil {
+		return err
+	}
+
+	// TODO:  The correct thing to do here is to wait for the Delete Events
+	// But these do not yet contain enough information to easily identify
+	// the event we're interested in.
+
+	for {
+		_, err := RetrieveInstanceStatus(ctx, tenant, instance)
+		if err == nil {
+			select {
+			case <-time.After(time.Second):
+				continue
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+
+		if err == context.Canceled {
+			return err
+		}
+
+		return nil
+	}
 }
 
 // DeleteInstances deletes a set of instances provided by the instances slice.
@@ -579,177 +591,11 @@ func GetCNCIs(ctx context.Context) (map[string]*CNCI, error) {
 // CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
 func GetClusterStatus(ctx context.Context) (*ClusterStatus, error) {
 	var cs *ClusterStatus
-	template := `
-{
-    "nodes" : {{.TotalNodes}}, "ready" : {{.TotalNodesReady}},
-    "full" : {{.TotalNodesFull}}, "offline" : {{.TotalNodesOffline}},
-    "maintenance" : {{.TotalNodesMaintenance}}
-}
-`
-	args := []string{"node", "status", "-f", template}
+	args := []string{"node", "status", "-f", "{{tojson .}}"}
 	err := RunCIAOCLIAsAdminJS(ctx, "", args, &cs)
 	if err != nil {
 		return nil, err
 	}
 
 	return cs, nil
-}
-
-func computeImageAddArgs(options *ImageOptions) []string {
-	args := make([]string, 0, 8)
-
-	if options.ContainerFormat != "" {
-		args = append(args, "-container-format", options.ContainerFormat)
-	}
-	if options.DiskFormat != "" {
-		args = append(args, "-disk-format", options.DiskFormat)
-	}
-	if options.ID != "" {
-		args = append(args, "-id", options.ID)
-	}
-	if options.MinDiskGigabytes != 0 {
-		args = append(args, "-min-disk-size",
-			fmt.Sprintf("%d", options.MinDiskGigabytes))
-	}
-	if options.MinRAMMegabytes != 0 {
-		args = append(args, "-min-ram-size",
-			fmt.Sprintf("%d", options.MinRAMMegabytes))
-	}
-	if options.Name != "" {
-		args = append(args, "-name", options.Name)
-	}
-	if options.Protected {
-		args = append(args, "-protected")
-	}
-	if len(options.Tags) > 0 {
-		args = append(args, "-tags", strings.Join(options.Tags, ","))
-	}
-	if options.Visibility != "" {
-		args = append(args, "-visibility", options.Visibility)
-	}
-
-	return args
-}
-
-// AddImage uploads a new image to the ciao-image service.  The caller can
-// supply a number of pieces of meta data about the image via the options
-// parameter.  It is implemented by calling ciao-cli image add.
-// On success the function returns the entire meta data of the
-// newly updated image that includes the caller supplied meta data and the
-// meta data added by the image service.  An error will be returned
-// if the following environment variables are not set; CIAO_IDENTITY,
-// CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
-func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (*Image, error) {
-	var img *Image
-	args := []string{"image", "add", "-f", imageTemplateDesc, "-file", path}
-	args = append(args, computeImageAddArgs(options)...)
-	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
-	if err != nil {
-		return nil, err
-	}
-
-	return img, nil
-}
-
-// DeleteImage deletes an image from the image service.  It is implemented
-// by calling ciao-cli image delete.  An error will be returned if the following
-// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
-func DeleteImage(ctx context.Context, tenant, ID string) error {
-	args := []string{"image", "delete", "-image", ID}
-	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
-	return err
-}
-
-// GetImage retrieves the meta data for a given image.  It is implemented by
-// calling ciao-cli image show.  An error will be returned if the following
-// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
-func GetImage(ctx context.Context, tenant, ID string) (*Image, error) {
-	var img *Image
-	args := []string{"image", "show", "-image", ID, "-f", imageTemplateDesc}
-
-	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
-	if err != nil {
-		return nil, err
-	}
-
-	return img, nil
-}
-
-// GetImages retrieves the meta data for all images.  It is implemented by
-// calling ciao-cli image list.  An error will be returned if the following
-// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
-func GetImages(ctx context.Context, tenant string) (map[string]*Image, error) {
-	var images map[string]*Image
-	template := `
-{
-{{- range $i, $val := .}}
-  {{- if $i }},{{end}}
-  "{{$val.ID | js }}" : {{with $val}}` + imageTemplateDesc + `{{end}}
-{{- end }}
-}
-`
-	args := []string{"image", "list", "-f", template}
-	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &images)
-	if err != nil {
-		return nil, err
-	}
-
-	return images, nil
-}
-
-// GetImageCount returns the number of images currently stored in the
-// image service.  It is implemented by calling ciao-cli image list.
-// An error will be returned if the following environment variables are
-// not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_ADMIN_USERNAME,
-// CIAO_ADMIN_PASSWORD.
-func GetImageCount(ctx context.Context, tenant string) (int, error) {
-	args := []string{"image", "list", "-f", "{{len .}}"}
-
-	data, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
-	if err != nil {
-		return 0, err
-	}
-
-	return strconv.Atoi(string(data))
-}
-
-// UploadImage overrides the contents of an existing image with a new file.  It is
-// implemented by calling ciao-cli image upload.  An error will be returned if the
-// following environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
-func UploadImage(ctx context.Context, tenant, ID, path string) error {
-	args := []string{"image", "upload", "-image", ID, "-file", path}
-	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
-	return err
-}
-
-// CreateRandomFile creates a file of the desired size with random data
-// returning the path.
-func CreateRandomFile(sizeMB int) (path string, err error) {
-	var f *os.File
-	f, err = ioutil.TempFile("/tmp", "ciao-random-")
-	if err != nil {
-		return
-	}
-	defer func() {
-		err1 := f.Close()
-		if err1 != nil && err == nil {
-			err = err1
-		}
-	}()
-
-	b := make([]byte, sizeMB*1000000)
-	_, err = rand.Read(b)
-	if err != nil {
-		return
-	}
-	_, err = f.Write(b)
-	if err == nil {
-		path = f.Name()
-	}
-
-	return
 }

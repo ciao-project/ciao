@@ -44,19 +44,35 @@ before running the tests, e.g.,
 . ~/local/demo.sh
 ```
 
-## Running all the BAT tests
-
-```
-# cd $GOPATH/src/github.com/01org/ciao/_release/bat
-# go test -v ./...
-```
-
 ## Run the BAT Tests and Generate a Pretty Report
 
 ```
 # cd $GOPATH/src/github.com/01org/ciao/_release/bat
 # test-cases ./...
 ```
+
+## DON'T use go test to run the BAT tests!
+
+You might be forgiven for thinking that the easiest way to run all the
+BAT tests would be to do the following.
+
+```
+# cd $GOPATH/src/github.com/01org/ciao/_release/bat
+# go test -v ./...
+```
+
+This currently does not work.  The reason is that when go test is run
+with a wildcard and that widlcard matches multiple packages the tests
+for all of these packages are run in parallel.  As all tests are run in
+the same tenant and some tests call ciao-cli instance delete -all, the
+tests from different packages can interfere with each other.  This means
+we cannot safely use go test to run all the BAT tests.  Once
+we have ciao-cli support for tenant creation, it will be possible to
+have each set of tests create their own tenants.  It will then be
+possible to run the BAT tests concurrently.  For the time being, use
+test-cases which runs the tests for all packages serially.  go test
+can be safely used to run the BAT tests for a specific package.
+
 
 ## Run the BAT Tests and Generate TAP report
 
