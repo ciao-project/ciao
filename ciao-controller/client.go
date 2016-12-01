@@ -36,6 +36,8 @@ type controllerClient interface {
 	RestartInstance(instanceID string, nodeID string) error
 	EvacuateNode(nodeID string) error
 	Disconnect()
+	mapExternalIP(t types.Tenant, m types.MappedIP) error
+	unMapExternalIP(t types.Tenant, m types.MappedIP) error
 	attachVolume(volID string, instanceID string, nodeID string) error
 	detachVolume(volID string, instanceID string, nodeID string) error
 	ssntpClient() *ssntp.Client
