@@ -33,6 +33,9 @@ const (
 
 	// Active means that the image is created, uploaded and ready to use.
 	Active State = "active"
+
+	// Killed means that an image data upload error occurred.
+	Killed State = "killed"
 )
 
 // Status translate an image state to an openstack image status.
@@ -44,6 +47,8 @@ func (state State) Status() image.Status {
 		return image.Saving
 	case Active:
 		return image.Active
+	case Killed:
+		return image.Killed
 	}
 
 	return image.Active
