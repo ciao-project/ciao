@@ -321,6 +321,8 @@ users:
 EOF
 ) > $workload_cloudinit
 
+sudo cp -f "$workload_cloudinit" ${ciao_ctl_dir}/workloads
+
 
 #Copy the launch scripts
 cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
