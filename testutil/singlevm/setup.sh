@@ -20,7 +20,9 @@ ciao_src="$GOPATH"/src/github.com/01org/ciao
 ciao_gobin="$GOPATH"/bin
 ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
 ciao_env="$ciao_bin/demo.sh"
-ciao_ctl_log="/var/lib/ciao/logs/controller/ciao-controller.ERROR"
+ciao_dir=/var/lib/ciao
+ciao_data_dir=${ciao_dir}/data
+ciao_ctl_dir=${ciao_data_dir}/controller
 ciao_cnci_image="clear-8260-ciao-networking.img"
 ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
@@ -158,10 +160,10 @@ configure:
 EOF
 ) > $conf_file
 
-sudo mkdir -p /var/lib/ciao/images
-if [ ! -d /var/lib/ciao/images ]
+sudo mkdir -p ${ciao_dir}/images
+if [ ! -d ${ciao_dir}/images ]
 then
-	echo "FATAL ERROR: Unable to create /var/lib/ciao/images"
+	echo "FATAL ERROR: Unable to create $ciao_dir/images"
 	exit 1
 
 fi
@@ -186,19 +188,13 @@ sudo killall ciao-scheduler
 sudo killall ciao-controller
 sudo killall ciao-launcher
 sudo killall qemu-system-x86_64
-sudo rm -rf /var/lib/ciao/instances
+sudo rm -rf ${ciao_dir}
+
 
 cd "$ciao_bin"
 
 #Cleanup any old artifacts
 rm -f "$ciao_bin"/*.pem
-sudo rm -f "$ciao_bin"/ciao-controller.db-shm
-sudo rm -f "$ciao_bin"/ciao-controller.db-wal
-sudo rm -f "$ciao_bin"/ciao-controller.db
-sudo rm -f /tmp/ciao-controller-stats.db
-sudo rm -f "$ciao_bin"/ciao-image.db
-rm -rf "$ciao_bin"/tables
-rm -rf "$ciao_bin"/workloads
 
 #Build ciao
 rm -f "$ciao_gobin"/ciao*
@@ -272,14 +268,32 @@ else
     exit 1
 fi
 
+#Create controller dirs
+
+sudo mkdir -p ${ciao_ctl_dir}/tables
+if [ ! -d ${ciao_ctl_dir}/tables ]
+then
+	echo "FATAL ERROR: Unable to create ${ciao_ctl_dir}/tables"
+	exit 1
+
+fi
+
+sudo mkdir -p ${ciao_ctl_dir}/workloads
+if [ ! -d ${ciao_ctl_dir}/workloads ]
+then
+	echo "FATAL ERROR: Unable to create ${ciao_ctl_dir}/workloads"
+	exit 1
+
+fi
+
 #Copy the configuration
 cd "$ciao_bin"
-cp -a "$ciao_src"/ciao-controller/tables "$ciao_bin"
-cp -a "$ciao_src"/ciao-controller/workloads "$ciao_bin"
+sudo cp -a "$ciao_src"/ciao-controller/tables ${ciao_ctl_dir}
+sudo cp -a "$ciao_src"/ciao-controller/workloads ${ciao_ctl_dir}
 
 #Over ride the configuration with test specific defaults
-cp -f "$ciao_scripts"/workloads/* "$ciao_bin"/workloads
-cp -f "$ciao_scripts"/tables/* "$ciao_bin"/tables
+sudo cp -f "$ciao_scripts"/workloads/* ${ciao_ctl_dir}/workloads
+sudo cp -f "$ciao_scripts"/tables/* ${ciao_ctl_dir}/tables
 
 #Over ride the cloud-init configuration
 echo "Generating workload ssh key $workload_sshkey"
