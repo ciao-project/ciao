@@ -321,13 +321,13 @@ func executeQMPCommand(ctx context.Context, instanceDir string,
 	disconnectedCh := make(chan struct{})
 	qmp, _, err := qemu.QMPStart(ctx, socket, qemu.QMPConfig{}, disconnectedCh)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to VM")
+		return fmt.Errorf("Failed to connect to VM : %v", err)
 	}
 	defer qmp.Shutdown()
 
 	err = qmp.ExecuteQMPCapabilities(ctx)
 	if err != nil {
-		return fmt.Errorf("Unable to query QEMU caps")
+		return fmt.Errorf("Unable to query QEMU caps : %v", err)
 	}
 
 	err = cmd(ctx, qmp)
@@ -425,8 +425,6 @@ func manageInstallation(ctx context.Context, instanceDir string, ws *workspace) 
 	if err != nil {
 		return fmt.Errorf("Unable to query QEMU caps")
 	}
-
-	// TODO: Cleanup
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", ws.HTTPServerPort))
 	if err != nil {
