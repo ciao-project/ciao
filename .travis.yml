@@ -42,6 +42,10 @@ before_script:
    - sudo update-ca-certificates
 
 script:
+   - cat /etc/lsb-release
+   - echo $PATH
+   - which dnsmasq
+   - dpkg -S `which dnsmasq`
    - go env
    - docker --version
    - sudo docker pull debian
