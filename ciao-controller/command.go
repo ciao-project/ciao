@@ -82,6 +82,14 @@ func (c *controller) deleteInstance(instanceID string) error {
 		return types.ErrInstanceNotAssigned
 	}
 
+	// check for any external IPs
+	IPs := c.ds.GetMappedIPs(&i.TenantID)
+	for _, m := range IPs {
+		if m.InstanceID == instanceID {
+			return types.ErrInstanceMapped
+		}
+	}
+
 	go c.client.DeleteInstance(instanceID, i.NodeID)
 	return nil
 }
