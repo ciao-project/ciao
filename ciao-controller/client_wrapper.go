@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/ssntp"
 )
 
@@ -96,6 +97,14 @@ func (client *ssntpClientWrapper) RestartInstance(instanceID string, nodeID stri
 
 func (client *ssntpClientWrapper) EvacuateNode(nodeID string) error {
 	return client.realClient.EvacuateNode(nodeID)
+}
+
+func (client *ssntpClientWrapper) mapExternalIP(t types.Tenant, m types.MappedIP) error {
+	return client.realClient.mapExternalIP(t, m)
+}
+
+func (client *ssntpClientWrapper) unMapExternalIP(t types.Tenant, m types.MappedIP) error {
+	return client.realClient.unMapExternalIP(t, m)
 }
 
 func (client *ssntpClientWrapper) attachVolume(volID string, instanceID string, nodeID string) error {
