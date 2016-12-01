@@ -153,7 +153,6 @@ type Datastore struct {
 
 	tenants     map[string]*tenant
 	tenantsLock *sync.RWMutex
-	allSubnets  map[int]bool
 
 	workloads      map[string]*workload
 	workloadsLock  *sync.RWMutex
@@ -230,7 +229,6 @@ func (ds *Datastore) Init(config Config) error {
 	// networking information right now.  that is not
 	// updated, just the resources
 	ds.tenants = make(map[string]*tenant)
-	ds.allSubnets = make(map[int]bool)
 	ds.tenantsLock = &sync.RWMutex{}
 
 	// cache all our instances prior to getting tenants
@@ -683,16 +681,11 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
 		i := binary.BigEndian.Uint16(subnetBytes)
 
 		for {
-			// sub, ok := network[int(i)]
-			// for now, prevent overlapping subnets
-			// due to bug in docker.
-			ok := ds.allSubnets[int(i)]
+			// check for new subnet.
+			_, ok := network[int(i)]
 			if !ok {
 				sub := make(map[int]bool)
 				network[int(i)] = sub
-
-				// claim so no one else can use it
-				ds.allSubnets[int(i)] = true
 
 				break
 			}
