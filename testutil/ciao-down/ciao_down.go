@@ -18,9 +18,7 @@
 
 1. Good resource defaults and overrides, mem, cpus, disk
 5. Install kernel
-11. README
 12. Make most output from osprepare optional
-18. Rename and put code in correct files
 */
 
 package main

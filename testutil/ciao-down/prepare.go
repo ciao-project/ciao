@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -24,8 +25,10 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"text/template"
 
 	"github.com/01org/ciao/osprepare"
+	"github.com/golang/glog"
 )
 
 type logger struct{}
@@ -119,4 +122,77 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	}
 
 	return ws, nil
+}
+
+// TODO: Code copied from launcher.  Needs to be moved to qemu
+
+func createCloudInitISO(ctx context.Context, instanceDir string, userData, metaData []byte) error {
+	configDrivePath := path.Join(instanceDir, "clr-cloud-init")
+	dataDirPath := path.Join(configDrivePath, "openstack", "latest")
+	metaDataPath := path.Join(dataDirPath, "meta_data.json")
+	userDataPath := path.Join(dataDirPath, "user_data")
+	isoPath := path.Join(instanceDir, "config.iso")
+
+	defer func() {
+		_ = os.RemoveAll(configDrivePath)
+	}()
+
+	err := os.MkdirAll(dataDirPath, 0755)
+	if err != nil {
+		glog.Errorf("Unable to create config drive directory %s", dataDirPath)
+		return err
+	}
+
+	err = ioutil.WriteFile(metaDataPath, metaData, 0644)
+	if err != nil {
+		glog.Errorf("Unable to create %s", metaDataPath)
+		return err
+	}
+
+	err = ioutil.WriteFile(userDataPath, userData, 0644)
+	if err != nil {
+		glog.Errorf("Unable to create %s", userDataPath)
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, "xorriso", "-as", "mkisofs", "-R", "-V", "config-2",
+		"-o", isoPath, configDrivePath)
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Unable to create cloudinit iso image %v", err)
+	}
+
+	return nil
+}
+
+func buildISOImage(ctx context.Context, instanceDir string, ws *workspace) error {
+	udt := template.Must(template.New("user-data").Parse(userDataTemplate))
+	var udBuf bytes.Buffer
+	err := udt.Execute(&udBuf, ws)
+	if err != nil {
+		return fmt.Errorf("Unable to execute user data template : %v", err)
+	}
+
+	mdt := template.Must(template.New("meta-data").Parse(metaDataTemplate))
+
+	var mdBuf bytes.Buffer
+	err = mdt.Execute(&mdBuf, ws)
+	if err != nil {
+		return fmt.Errorf("Unable to execute user data template : %v", err)
+	}
+
+	return createCloudInitISO(ctx, instanceDir, udBuf.Bytes(), mdBuf.Bytes())
+}
+
+// TODO: Code copied from launcher.  Needs to be moved to qemu
+
+func createRootfs(ctx context.Context, backingImage, instanceDir string) error {
+	vmImage := path.Join(instanceDir, "image.qcow2")
+	if _, err := os.Stat(vmImage); err == nil {
+		_ = os.Remove(vmImage)
+	}
+	params := make([]string, 0, 32)
+	params = append(params, "create", "-f", "qcow2", "-o", "backing_file="+backingImage,
+		vmImage, "60000M")
+	return exec.CommandContext(ctx, "qemu-img", params...).Run()
 }
