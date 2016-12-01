@@ -261,7 +261,7 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 
 	}
 
-	return payloads.StorageResources{}, errors.New("Not implemented yet")
+	return payloads.StorageResources{}, errors.New("Unsupported workload storage variant in getStorage()")
 }
 
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {
