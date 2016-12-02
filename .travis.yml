@@ -52,8 +52,7 @@ script:
    - go get github.com/google/gofuzz github.com/stretchr/testify
    - go get github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
    - go list ./... | grep -v github.com/01org/ciao/vendor | xargs -t go vet
-#  - go list ./... | grep -v github.com/01org/ciao/vendor | xargs -tL 1 golint -set_exit_status
-   - if [[ "$TRAVIS_GO_VERSION" != "tip" ]] ; then go list ./... | grep -v github.com/01org/ciao/vendor | xargs -tL 1 golint -set_exit_status ; fi
+   - go list ./... | grep -v github.com/01org/ciao/vendor | xargs -tL 1 golint -set_exit_status
    - go list ./... | grep -v github.com/01org/ciao/vendor | xargs go list -f '{{.Dir}}/*.go' | xargs -I % bash -c "misspell -error %"
    - go list ./... | grep -v github.com/01org/ciao/vendor | xargs go list -f '{{.Dir}}' | xargs gocyclo -over 15
    - go list ./... | grep -v github.com/01org/ciao/vendor | xargs go list -f '{{.Dir}}' | xargs -L 1 ineffassign
