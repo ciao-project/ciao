@@ -321,3 +321,7 @@ checkEventStatus $event_counter "Deleted"
 
 #Verify that there are no ciao related artifacts left behind
 checkForNetworkArtifacts
+
+echo "###########################################"
+echo "-----------All checks passed!--------------"
+echo "###########################################"

@@ -10,7 +10,6 @@ ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
 keystone_key="$ciao_bin"/keystone_key.pem
 keystone_cert="$ciao_bin"/keystone_cert.pem
 workload_sshkey="$ciao_bin"/testkey
-workload_cloudinit="$ciao_bin"/workloads/test.yaml
 ciao_pki_path=/etc/pki/ciao
 export no_proxy=$no_proxy,$ciao_vlan_ip,$ciao_host
 
@@ -304,7 +303,8 @@ chmod 600 "$workload_sshkey".pub
 #Note: Password is set to ciao
 test_passwd='$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.'
 
-echo "Generating workload cloud-init file $workload_cloudinit"
+workload_cloudinit=${ciao_ctl_dir}/workloads/test.yaml
+sudo echo "Generating workload cloud-init file $workload_cloudinit"
 (
 cat <<-EOF
 ---
@@ -321,7 +321,6 @@ users:
 EOF
 ) > $workload_cloudinit
 
-sudo cp -f "$workload_cloudinit" ${ciao_ctl_dir}/workloads
 
 
 #Copy the launch scripts
