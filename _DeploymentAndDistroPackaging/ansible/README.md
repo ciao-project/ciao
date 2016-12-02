@@ -18,6 +18,7 @@ also check requirements for [fedora](doc/requirements.md#fedora).
 * CIAO can be installed in ClearLinux, Fedora 24 and Ubuntu 16.04.
 CIAO dependencies will be installed automatically
 * If running behind a proxy server read [this](doc/requirements.md#proxies)
+* For firewall settings read [this](doc/firewall.md)
 
 #### Deployment machine
 The deployment machine can be any Linux OS as long as it has docker installed.
