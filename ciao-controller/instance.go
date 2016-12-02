@@ -173,6 +173,7 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 		CreateTime:  time.Now(),
 		TenantID:    tenant,
 		Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
+		Description: s.Tag,
 	}
 
 	err := c.ds.AddBlockDevice(data)
