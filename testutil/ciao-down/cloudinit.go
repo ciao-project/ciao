@@ -29,7 +29,7 @@ curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
 {{end -}}
 #cloud-config
 mounts:
- - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L", 0, 0]
+ - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L", "0", "0"]
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
@@ -55,6 +55,7 @@ write_files:
 
 runcmd:
  - echo "127.0.0.1 singlevm" >> /etc/hosts
+ - mount hostgo
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
  - rm /etc/legal
