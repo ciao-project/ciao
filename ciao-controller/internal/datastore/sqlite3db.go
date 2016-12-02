@@ -742,29 +742,27 @@ func (ds *sqliteDB) getTableDB(name string) *sql.DB {
 	return nil
 }
 
-// Init initializes the private data for the database object.
+// init initializes the private data for the database object.
 // The sql tables are populated with initial data from csv
 // files if this is the first time the database has been
 // created.  The datastore caches are also filled.
-func getPersistentStore(config Config) (persistentStore, error) {
-	var ds = &sqliteDB{}
-
+func (ds *sqliteDB) init(config Config) error {
 	u, err := url.Parse(config.PersistentURI)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid URL (%s) for persistent data store: %v", config.PersistentURI, err)
+		return fmt.Errorf("Invalid URL (%s) for persistent data store: %v", config.PersistentURI, err)
 	}
 
 	if u.Scheme == "file" {
 		dbDir := filepath.Dir(u.Path)
 		err = os.MkdirAll(dbDir, 0755)
 		if err != nil && dbDir != "." {
-			return nil, fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
+			return fmt.Errorf("Unable to create db directory (%s) %v", dbDir, err)
 		}
 	}
 
 	err = ds.Connect(config.PersistentURI, config.TransientURI)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	ds.dbLock = &sync.Mutex{}
@@ -799,7 +797,7 @@ func getPersistentStore(config Config) (persistentStore, error) {
 	for _, table := range ds.tables {
 		err = table.Init()
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -808,8 +806,7 @@ func getPersistentStore(config Config) (persistentStore, error) {
 		// there's no initial data to populate
 		_ = table.Populate()
 	}
-
-	return ds, nil
+	return nil
 }
 
 var pSQLLiteConfig = []string{
@@ -2015,113 +2012,6 @@ ON total_instances.node_id = total_exited.node_id
 	ds.tdbLock.RUnlock()
 
 	return summary, err
-}
-
-// GetFrameStatistics will return trace data by label id.
-func (ds *sqliteDB) GetFrameStatistics(label string) ([]types.FrameStat, error) {
-	var stats []types.FrameStat
-
-	ds.tdbLock.RLock()
-
-	query := `WITH total AS
-		 (
-			SELECT	id,
-				start_timestamp,
-				end_timestamp,
-				(julianday(end_timestamp) - julianday(start_timestamp)) * 24 * 60 * 60 AS total_elapsed
-			 FROM frame_statistics
-			 WHERE label = ?
-		 ),
-		 total_start AS
-		 (
-			SELECT	trace_data.frame_id,
-				trace_data.ssntp_uuid,
-				(julianday(trace_data.tx_timestamp) - julianday(total.start_timestamp)) * 24 * 60 * 60 AS total_elapsed
-			FROM trace_data
-			JOIN total
-			WHERE rx_timestamp = '' and trace_data.frame_id = total.id
-		),
-		total_end AS
-		(
-			SELECT	trace_data.frame_id,
-				trace_data.ssntp_uuid,
-				(julianday(total.end_timestamp) - julianday(trace_data.rx_timestamp)) * 24 * 60 * 60 AS total_elapsed
-			FROM trace_data
-			JOIN total
-			WHERE tx_timestamp = '' and trace_data.frame_id = total.id
-		),
-		total_per_node AS
-		(
-			SELECT	trace_data.frame_id,
-				trace_data.ssntp_uuid,
-				(julianday(trace_data.tx_timestamp) - julianday(trace_data.rx_timestamp)) * 24 * 60 * 60 AS total_elapsed
-			FROM trace_data
-			WHERE tx_timestamp != '' and rx_timestamp != ''
-		)
-		SELECT	total_end.ssntp_uuid,
-			total.total_elapsed,
-			total_start.total_elapsed,
-			total_end.total_elapsed,
-			total_per_node.total_elapsed
-		FROM total
-		LEFT JOIN total_start
-		ON total.id = total_start.frame_id
-		LEFT JOIN total_end
-		ON total_start.frame_id = total_end.frame_id
-		LEFT JOIN total_per_node
-		ON total_start.frame_id = total_per_node.frame_id
-		ORDER BY total.start_timestamp;`
-
-	datastore := ds.getTableDB("frame_statistics")
-
-	rows, err := datastore.Query(query, label)
-	if err != nil {
-		ds.tdbLock.RUnlock()
-		return nil, err
-	}
-	defer rows.Close()
-
-	stats = make([]types.FrameStat, 0)
-
-	for rows.Next() {
-		var stat types.FrameStat
-		var uuid sql.NullString
-		var controllerTime sql.NullFloat64
-		var launcherTime sql.NullFloat64
-		var schedulerTime sql.NullFloat64
-		var totalTime sql.NullFloat64
-		err = rows.Scan(&uuid, &totalTime, &controllerTime, &launcherTime, &schedulerTime)
-		if err != nil {
-			ds.tdbLock.RUnlock()
-			return nil, err
-		}
-
-		if uuid.Valid {
-			stat.ID = uuid.String
-		}
-
-		if controllerTime.Valid {
-			stat.ControllerTime = controllerTime.Float64
-		}
-
-		if launcherTime.Valid {
-			stat.LauncherTime = launcherTime.Float64
-		}
-
-		if schedulerTime.Valid {
-			stat.SchedulerTime = schedulerTime.Float64
-		}
-
-		if totalTime.Valid {
-			stat.TotalElapsedTime = totalTime.Float64
-		}
-
-		stats = append(stats, stat)
-	}
-
-	ds.tdbLock.RUnlock()
-
-	return stats, err
 }
 
 // GetBatchFrameSummary will retieve the count of traces we have for a specific label

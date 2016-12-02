@@ -21,16 +21,27 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 )
 
-func TestGetWorkloadStorage(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb3?mode=memory&cache=shared",
-		TransientURI:  "file:memdb4?mode=memory&cache=shared",
-	}
+var dbCount = 1
 
-	db, err := getPersistentStore(config)
+func getPersistentStore() (persistentStore, error) {
+	ps := &sqliteDB{}
+	config := Config{
+		PersistentURI:     "file:memdb" + string(dbCount) + "?mode=memory&cache=shared",
+		TransientURI:      "file:memdb" + string(dbCount+1) + "?mode=memory&cache=shared",
+		InitTablesPath:    *tablesInitPath,
+		InitWorkloadsPath: *workloadsPath,
+	}
+	err := ps.init(config)
+	dbCount = dbCount + 2
+	return ps, err
+}
+
+func TestSQLiteDBGetWorkloadStorage(t *testing.T) {
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,13 +54,8 @@ func TestGetWorkloadStorage(t *testing.T) {
 	db.disconnect()
 }
 
-func TestGetTenantDevices(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb5?mode=memory&cache=shared",
-		TransientURI:  "file:memdb6?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+func TestSQLiteDBGetTenantDevices(t *testing.T) {
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,13 +91,8 @@ func TestGetTenantDevices(t *testing.T) {
 	db.disconnect()
 }
 
-func TestGetTenantWithStorage(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb11?mode=memory&cache=shared",
-		TransientURI:  "file:memdb12?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,13 +141,8 @@ func TestGetTenantWithStorage(t *testing.T) {
 	db.disconnect()
 }
 
-func TestGetAllBlockData(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb7?mode=memory&cache=shared",
-		TransientURI:  "file:memdb8?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+func TestSQLiteDBGetAllBlockData(t *testing.T) {
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,13 +177,8 @@ func TestGetAllBlockData(t *testing.T) {
 	db.disconnect()
 }
 
-func TestDeleteBlockData(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:DeleteBlockData1?mode=memory&cache=shared",
-		TransientURI:  "file:DeleteBlockData2?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+func TestSQLiteDBDeleteBlockData(t *testing.T) {
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,13 +218,8 @@ func TestDeleteBlockData(t *testing.T) {
 	db.disconnect()
 }
 
-func TestGetAllStorageAttachments(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:memdb9?mode=memory&cache=shared",
-		TransientURI:  "file:memdb10?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+func TestSQLiteDBGetAllStorageAttachments(t *testing.T) {
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,12 +295,7 @@ func TestGetAllStorageAttachments(t *testing.T) {
 }
 
 func TestCreatePool(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testcreatepool?mode=memory&cache=shared",
-		TransientURI:  "file:testcreatepoolt?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,12 +324,7 @@ func TestCreatePool(t *testing.T) {
 }
 
 func TestUpdatePool(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testupdatepool?mode=memory&cache=shared",
-		TransientURI:  "file:testupdatepoolt?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,12 +361,7 @@ func TestUpdatePool(t *testing.T) {
 }
 
 func TestDeletePool(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testdeletepool?mode=memory&cache=shared",
-		TransientURI:  "file:testdeletepoolt?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -434,12 +405,7 @@ func TestDeletePool(t *testing.T) {
 }
 
 func TestCreateSubnet(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testcreatesubnet?mode=memory&cache=shared",
-		TransientURI:  "file:testcreatesubnett?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,12 +455,7 @@ func TestCreateSubnet(t *testing.T) {
 }
 
 func TestDeleteSubnet(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:testdeletesubnet?mode=memory&cache=shared",
-		TransientURI:  "file:testdeletesubnett?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -541,12 +502,7 @@ func TestDeleteSubnet(t *testing.T) {
 }
 
 func TestCreateAddress(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:createaddress?mode=memory&cache=shared",
-		TransientURI:  "file:createaddresst?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,12 +543,7 @@ func TestCreateAddress(t *testing.T) {
 }
 
 func TestDeleteAddress(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:deleteaddress?mode=memory&cache=shared",
-		TransientURI:  "file:deleteaddresst?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -640,12 +591,7 @@ func TestDeleteAddress(t *testing.T) {
 }
 
 func TestCreateMappedIP(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:createmappedaddress?mode=memory&cache=shared",
-		TransientURI:  "file:createmappedaddresst?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -703,12 +649,7 @@ func TestCreateMappedIP(t *testing.T) {
 }
 
 func TestDeleteMappedIP(t *testing.T) {
-	config := Config{
-		PersistentURI: "file:deletedmappedaddress?mode=memory&cache=shared",
-		TransientURI:  "file:deletemappedaddresst?mode=memory&cache=shared",
-	}
-
-	db, err := getPersistentStore(config)
+	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -772,5 +713,244 @@ func TestDeleteMappedIP(t *testing.T) {
 	IPs = db.getMappedIPs()
 	if len(IPs) != 0 {
 		t.Fatal("IP not deleted")
+	}
+}
+
+func TestSQLiteDBGetAllWorkloads(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := db.getWorkloadsNoCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("Expected non-empty workload list")
+	}
+
+	for _, wl := range wls {
+		wl2, err := db.getWorkloadNoCache(wl.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(wl, wl2) {
+			t.Fatal("Expected workload equality")
+		}
+	}
+}
+
+func createTestTenant(db persistentStore, t *testing.T) *tenant {
+	tid := uuid.Generate().String()
+	thw, err := newHardwareAddr()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.addTenant(tid, thw.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tn, err := db.getTenantNoCache(tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tn == nil {
+		t.Fatal("Expected added tenant")
+	}
+
+	if tn.CNCIMAC != thw.String() {
+		t.Fatal("Expected added tenant CNCI MACs to be equal")
+	}
+	return tn
+}
+
+func TestSQLiteDBTestTenants(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tns, err := db.getTenantsNoCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tns) != 0 {
+		t.Fatal("No tenants expected")
+	}
+
+	_ = createTestTenant(db, t)
+	_ = createTestTenant(db, t)
+
+	tns, err = db.getTenantsNoCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tns) != 2 {
+		t.Fatal("2 tenants expected")
+	}
+
+	for _, tn := range tns {
+		tn2, err := db.getTenantNoCache(tn.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(tn, tn2) {
+			t.Fatal("Expected tenant equality")
+		}
+	}
+}
+
+func TestSQLiteDBTestUpdateTenant(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tn := createTestTenant(db, t)
+	tn.CNCIIP = "127.0.0.2"
+
+	err = db.updateTenant(tn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tn.CNCIIP != "127.0.0.2" {
+		t.Fatal("Tenant not updated")
+	}
+}
+
+func TestSQLiteDBGetBatchFrameStatistics(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	frames := createTestFrameTraces("batch_frame_test")
+	for _, frame := range frames {
+		err := db.addFrameStat(frame)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, err = db.getBatchFrameStatistics("batch_frame_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSQLiteDBGetBatchFrameSummary(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	frames := createTestFrameTraces("batch_summary_test")
+	for _, frame := range frames {
+		err := db.addFrameStat(frame)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, err = db.getBatchFrameSummary()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSQLiteDBEventLog(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err := db.getEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(log) != 0 {
+		t.Fatal("Expected no log messages")
+	}
+
+	tn := createTestTenant(db, t)
+
+	err = db.logEvent(tn.ID, string(userError), "test message 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err = db.getEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log) != 1 {
+		t.Fatal("Expected 1 log message")
+	}
+
+	err = db.logEvent(tn.ID, string(userError), "test message 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err = db.getEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log) != 2 {
+		t.Fatal("Expected 2 log message")
+	}
+
+	err = db.clearLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log, err = db.getEventLog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log) != 0 {
+		t.Fatal("Expected no log messages")
+	}
+}
+
+func TestSQLiteDBInstanceStats(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stats []payloads.InstanceStat
+
+	for i := 0; i < 3; i++ {
+		stat := payloads.InstanceStat{
+			InstanceUUID:  uuid.Generate().String(),
+			State:         payloads.ComputeStatusRunning,
+			SSHIP:         "192.168.0.1",
+			SSHPort:       34567,
+			MemoryUsageMB: 0,
+			DiskUsageMB:   0,
+			CPUUsage:      0,
+		}
+		stats = append(stats, stat)
+	}
+
+	nodeID := uuid.Generate().String()
+
+	err = db.addInstanceStatsDB(stats, nodeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = db.getNodeSummary()
+	if err != nil {
+		t.Fatal(err)
 	}
 }

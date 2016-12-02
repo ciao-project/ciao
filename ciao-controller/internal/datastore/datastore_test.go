@@ -287,8 +287,6 @@ func TestDeleteInstanceResources(t *testing.T) {
 		resourcesBefore[r.Rname] = r.Usage
 	}
 
-	time.Sleep(1 * time.Second)
-
 	err = ds.DeleteInstance(instance.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -347,8 +345,6 @@ func TestDeleteInstanceNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
-
 	err = ds.DeleteInstance(instance.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -372,8 +368,6 @@ func TestDeleteInstanceNetwork(t *testing.T) {
 	if tenantAfter.network[int(subnetInt)][int(ipBytes[3])] != false {
 		t.Fatal("IP Address not released from cache")
 	}
-
-	time.Sleep(1 * time.Second)
 
 	// clear tenant from cache
 	ds.tenantsLock.Lock()
@@ -457,7 +451,6 @@ func TestGetAllInstancesFromTenant(t *testing.T) {
 	// if we don't get 10 eventually, the test will timeout and fail
 	instances, err := ds.GetAllInstancesFromTenant(tenant.ID)
 	for len(instances) < 10 {
-		time.Sleep(1 * time.Second)
 		instances, err = ds.GetAllInstancesFromTenant(tenant.ID)
 	}
 
@@ -480,7 +473,6 @@ func TestGetAllInstancesByNode(t *testing.T) {
 	retry := 5
 	for len(newInstances) < len(instances) && retry > 0 {
 		retry--
-		time.Sleep(1 * time.Second)
 		newInstances, err = ds.GetAllInstancesByNode(stat.NodeUUID)
 		if err != nil {
 			t.Fatal(err)
@@ -501,7 +493,6 @@ func TestGetInstance(t *testing.T) {
 	}
 
 	for instance == nil {
-		time.Sleep(1 * time.Second)
 		instance, err = ds.GetInstance(instances[0].ID)
 		if err != nil && err != sql.ErrNoRows {
 			t.Fatal(err)
@@ -572,8 +563,6 @@ func TestHandleStats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	time.Sleep(1 * time.Second)
 
 	// check instance stats recorded
 	for i := range stats {
@@ -649,8 +638,6 @@ func TestGetInstanceLastStats(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
-
 	serverStats := ds.GetInstanceLastStats(stat.NodeUUID)
 
 	if len(serverStats.Servers) != len(instances) {
@@ -714,8 +701,6 @@ func TestGetNodeLastStats(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
-
 	computeNodes := ds.GetNodeLastStats()
 
 	// how many compute Nodes should be here?  If we want to
@@ -725,7 +710,7 @@ func TestGetNodeLastStats(t *testing.T) {
 	}
 }
 
-func TestGetBatchFrameStatistics(t *testing.T) {
+func createTestFrameTraces(label string) []payloads.FrameTrace {
 	var nodes []payloads.SSNTPNode
 	for i := 0; i < 3; i++ {
 		node := payloads.SSNTPNode{
@@ -740,7 +725,7 @@ func TestGetBatchFrameStatistics(t *testing.T) {
 	var frames []payloads.FrameTrace
 	for i := 0; i < 3; i++ {
 		stat := payloads.FrameTrace{
-			Label:          "batch_frame_test",
+			Label:          label,
 			Type:           "type",
 			Operand:        "operand",
 			StartTimestamp: time.Now().Format(time.RFC3339Nano),
@@ -749,9 +734,12 @@ func TestGetBatchFrameStatistics(t *testing.T) {
 		}
 		frames = append(frames, stat)
 	}
+	return frames
+}
 
+func TestGetBatchFrameStatistics(t *testing.T) {
 	trace := payloads.Trace{
-		Frames: frames,
+		Frames: createTestFrameTraces("batch_frame_test"),
 	}
 
 	err := ds.HandleTraceReport(trace)
@@ -766,32 +754,8 @@ func TestGetBatchFrameStatistics(t *testing.T) {
 }
 
 func TestGetBatchFrameSummary(t *testing.T) {
-	var nodes []payloads.SSNTPNode
-	for i := 0; i < 3; i++ {
-		node := payloads.SSNTPNode{
-			SSNTPUUID:   uuid.Generate().String(),
-			SSNTPRole:   "test",
-			TxTimestamp: time.Now().Format(time.RFC3339Nano),
-			RxTimestamp: time.Now().Format(time.RFC3339Nano),
-		}
-		nodes = append(nodes, node)
-	}
-
-	var frames []payloads.FrameTrace
-	for i := 0; i < 3; i++ {
-		stat := payloads.FrameTrace{
-			Label:          "batch_summary_test",
-			Type:           "type",
-			Operand:        "operand",
-			StartTimestamp: time.Now().Format(time.RFC3339Nano),
-			EndTimestamp:   time.Now().Format(time.RFC3339Nano),
-			Nodes:          nodes,
-		}
-		frames = append(frames, stat)
-	}
-
 	trace := payloads.Trace{
-		Frames: frames,
+		Frames: createTestFrameTraces("batch_summary_test"),
 	}
 
 	err := ds.HandleTraceReport(trace)
@@ -839,25 +803,7 @@ func TestClearLog(t *testing.T) {
 }
 
 func TestAddFrameStat(t *testing.T) {
-	var nodes []payloads.SSNTPNode
-	for i := 0; i < 3; i++ {
-		node := payloads.SSNTPNode{
-			SSNTPUUID:   uuid.Generate().String(),
-			SSNTPRole:   "test",
-			TxTimestamp: time.Now().Format(time.RFC3339Nano),
-			RxTimestamp: time.Now().Format(time.RFC3339Nano),
-		}
-		nodes = append(nodes, node)
-	}
-
-	stat := payloads.FrameTrace{
-		Label:          "test",
-		Type:           "type",
-		Operand:        "operand",
-		StartTimestamp: time.Now().Format(time.RFC3339Nano),
-		EndTimestamp:   time.Now().Format(time.RFC3339Nano),
-		Nodes:          nodes,
-	}
+	stat := createTestFrameTraces("test")[0]
 	err := ds.db.addFrameStat(stat)
 	if err != nil {
 		t.Fatal(err)
@@ -950,8 +896,6 @@ func TestAllocateTenantIP(t *testing.T) {
 	if newTenant.network[subnetInt][host] != true {
 		t.Fatal("IP Address not claimed in cache")
 	}
-
-	time.Sleep(5 * time.Second)
 
 	// clear out cache
 	ds.tenantsLock.Lock()
@@ -1110,32 +1054,8 @@ func TestAddCNCIIP(t *testing.T) {
 }
 
 func TestHandleTraceReport(t *testing.T) {
-	var nodes []payloads.SSNTPNode
-	for i := 0; i < 3; i++ {
-		node := payloads.SSNTPNode{
-			SSNTPUUID:   uuid.Generate().String(),
-			SSNTPRole:   "test",
-			TxTimestamp: time.Now().Format(time.RFC3339Nano),
-			RxTimestamp: time.Now().Format(time.RFC3339Nano),
-		}
-		nodes = append(nodes, node)
-	}
-
-	var frames []payloads.FrameTrace
-	for i := 0; i < 3; i++ {
-		stat := payloads.FrameTrace{
-			Label:          "test",
-			Type:           "type",
-			Operand:        "operand",
-			StartTimestamp: time.Now().Format(time.RFC3339Nano),
-			EndTimestamp:   time.Now().Format(time.RFC3339Nano),
-			Nodes:          nodes,
-		}
-		frames = append(frames, stat)
-	}
-
 	trace := payloads.Trace{
-		Frames: frames,
+		Frames: createTestFrameTraces("test"),
 	}
 
 	err := ds.HandleTraceReport(trace)
@@ -1192,8 +1112,6 @@ func TestReleaseTenantIP(t *testing.T) {
 		t.Fatal("IP Address not marked Used")
 	}
 
-	time.Sleep(1 * time.Second)
-
 	err = ds.ReleaseTenantIP(tenant.ID, ip.String())
 	if err != nil {
 		t.Fatal(err)
@@ -1209,8 +1127,6 @@ func TestReleaseTenantIP(t *testing.T) {
 	if newTenant.network[int(subnetInt)][int(ipBytes[3])] != false {
 		t.Fatal("IP Address not released from cache")
 	}
-
-	time.Sleep(1 * time.Second)
 
 	// clear tenant from cache
 	ds.tenantsLock.Lock()
@@ -1307,7 +1223,6 @@ func TestRestartFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
 	reason := payloads.RestartNoInstance
 
 	err = ds.RestartFailure(instance.ID, reason)
@@ -1332,7 +1247,6 @@ func TestStopFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
 	reason := payloads.StopNoInstance
 
 	err = ds.StopFailure(instance.ID, reason)
@@ -1356,8 +1270,6 @@ func TestStartFailureFullCloud(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	time.Sleep(1 * time.Second)
 
 	tenantBefore, err := ds.GetTenant(tenant.ID)
 	if err != nil {
@@ -2825,6 +2737,7 @@ func TestMain(m *testing.M) {
 	ds = new(Datastore)
 
 	dsConfig := Config{
+		DBBackend:         &MemoryDB{},
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
 		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitTablesPath:    *tablesInitPath,
@@ -2833,6 +2746,7 @@ func TestMain(m *testing.M) {
 
 	err := ds.Init(dsConfig)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v", err)
 		os.Exit(1)
 	}
 
