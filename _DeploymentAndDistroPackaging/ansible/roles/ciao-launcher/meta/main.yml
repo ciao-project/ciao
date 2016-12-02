@@ -13,13 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create ciao-network unit
-    template: src=ciao-network.service.j2 dest=/etc/systemd/system/ciao-network.service
-    notify:
-      - reload systemd config
-      - restart network
+galaxy_info:
+  author: Alberto Murillo
+  description: Ansible role to install the compute or network node for a CIAO cluster
+  company: Intel
 
-  - meta: flush_handlers
+  issue_tracker_url: https://github.com/01org/ciao
 
-  - name: Ensure ciao-network service is running
-    service: name=ciao-network.service enabled=yes state=started
+  license: Apache
+
+  min_ansible_version: 2.1
+
+  platforms:
+  - name: Ubuntu
+    versions:
+      - xenial
+  - name: ClearLinux
+
+  galaxy_tags:
+    - ubuntu
+    - xenial
+    - clearlinux
+    - ciao
+
+dependencies:
+  - ciao-common

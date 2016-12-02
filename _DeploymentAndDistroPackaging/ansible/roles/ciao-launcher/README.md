@@ -1,8 +1,10 @@
-# clearlinux.ciao-network
-Ansible role to install the network node for a CIAO cluster
+# clearlinux.ciao-launcher
+Ansible role to install the compute or network node for a CIAO cluster
 
 ## Requirements
+* docker
 * qemu-kvm
+* xorriso
 
 ## Role Variables
 The available variables for this roles are the variables from [ciao-common](../ciao-common)
@@ -13,9 +15,17 @@ The available variables for this roles are the variables from [ciao-common](../c
 ## Example Playbook
 file *ciao.yml*
 ```
-- hosts: networks
+- hosts: computes
+  vars:
+    ciao_role: compute
   roles:
-    - clearlinux.ciao-network
+    - clearlinux.ciao-launcher
+
+- hosts: networks
+  vars:
+    ciao_role: network
+  roles:
+    - clearlinux.ciao-launcher
 ```
 
 file *group_vars/all*

@@ -13,5 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: restart compute
-    service: name=ciao-compute.service enabled=yes state=restarted
+  - name: Copy CIAO Binaries
+    copy: src={{ gopath }}/bin/{{ item }} dest={{ bindir }}/{{ item }} mode=755
+    with_items:
+      - ciao-cert
+      - ciao-cli
+      - ciao-launcher
+    when: ciao_dev
+    notify: restart launcher
+
+  - name: Copy ciao certificates
+    copy: src=certificates/ciao/{{ item }} dest=/etc/pki/ciao/{{ item }}
+    with_items:
+      - CAcert-{{ ciao_controller_fqdn }}.pem
+      - "{{ agent_key }}"
+    notify: restart launcher

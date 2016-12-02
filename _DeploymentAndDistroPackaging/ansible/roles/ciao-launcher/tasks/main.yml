@@ -13,5 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: restart network
-    service: name=ciao-network.service enabled=yes state=restarted
+  - include_vars: "{{ ciao_role }}.yml"
+  - include: install.yml
+  - include: startservices.yml
