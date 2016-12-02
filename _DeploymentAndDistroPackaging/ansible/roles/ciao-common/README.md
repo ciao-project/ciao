@@ -14,10 +14,6 @@ skip_ceph | False | When set to true, ansible will not configure ceph on Ciao no
 ciao_dev | False | Set to True to install from source, otherwise install form OS packages
 gopath | /tmp/go | golang GOPATH
 ciao_controller_fqdn | `{{ ansible_fqdn }}` | FQDN for CIAO controller node
-cnci_image_url | [clear-8260-ciao-networking.img.xz](https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz) | URL for the latest ciao networking image
-ovmf_url | [OVMF.fd](https://download.clearlinux.org/image/OVMF.fd) | EFI firmware required for CNCI Image.
-fedora_cloud_image_url | [Fedora-Cloud-Base-23-20151030.x86_64.qcow2](https://dl.fedoraproject.org/pub/fedora/linux/releases/23/Cloud/x86_64/Images/Fedora-Cloud-Base-23-20151030.x86_64.qcow2) | URL for the latest fedora cloud image
-clear_cloud_image_url | [clear-10820-cloud.img.xz](https://download.clearlinux.org/releases/10820/clear/clear-10820-cloud.img.xz) | URL for the latest clearlinux cloud image
 
 ## Dependencies
 None

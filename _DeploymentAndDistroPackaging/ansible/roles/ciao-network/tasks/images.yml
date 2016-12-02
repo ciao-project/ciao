@@ -19,12 +19,3 @@
   - name: Download OVMF.fd
     copy: src=images/OVMF.fd dest=/usr/share/qemu/OVMF.fd
     when: ansible_os_family == "Debian"
-
-  - name: Download cnci image
-    copy: src=images/{{ cnci_image }} dest=/var/lib/ciao/images/{{ cnci_image }}
-
-  - name: Link cnci image
-    file:
-      path: /var/lib/ciao/images/4e16e743-265a-4bf2-9fd1-57ada0b28904
-      src: /var/lib/ciao/images/{{ cnci_image }}
-      state: link

@@ -298,7 +298,7 @@ $GOBIN/ciao-cli event list
 
 ## Scripting with ciao-cli
 
-Most of the ciao-cli commands contain a list or show subcommand, e.g., 
+Most of the ciao-cli commands contain a list or show subcommand, e.g.,
 
 ```
 ciao-cli instance list
@@ -358,7 +358,7 @@ The show flags are:
   -instance string
     	Instance UUID
 
-The template passed to the -f option operates on a 
+The template passed to the -f option operates on a
 
 struct {
 	HostID   string                               // ID of the host node
@@ -519,7 +519,7 @@ read if it were split onto multiple lines, e.g.,
 > {{end}}
 > '
 
-  
+
 
 
 #
@@ -553,7 +553,7 @@ List all workloads
   -f string
     	Template used to format output
 
-The template passed to the -f option operates on a 
+The template passed to the -f option operates on a
 
 []struct {
 	OSFLVDISABLEDDisabled  bool    // Not used
@@ -563,9 +563,9 @@ The template passed to the -f option operates on a
 	ID                     string  // ID of the workload
 	Links                  []Link  // Not currently used
 	Name                   string  // Name of the workload
-	RAM                    int     // Amount of RAM allocated to instances of this workload 
+	RAM                    int     // Amount of RAM allocated to instances of this workload
 	Swap                   string  // Not currently used
-	Vcpus                  int     // Number of Vcpus allocated to instances of this workload 
+	Vcpus                  int     // Number of Vcpus allocated to instances of this workload
 }
 ```
 
@@ -582,9 +582,9 @@ To output the names of each workload we might do
 
 ```
 # ciao-cli workload list -f '{{range .}}{{println .Name}}{{end}}'
-Fedora 23 Cloud
+Fedora 24 Cloud
 Clear Cloud
 Docker Debian latest
 Docker Iperf
-Boot Fedora23 from created volume based on image
+Boot Fedora24 from created volume based on image
 ```
