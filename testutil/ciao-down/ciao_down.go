@@ -16,7 +16,6 @@
 
 /* TODO
 
-1. Good resource defaults and overrides, mem, cpus, disk
 5. Install kernel
 12. Make most output from osprepare optional
 */
@@ -25,6 +24,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,6 +32,32 @@ import (
 	"path"
 	"syscall"
 )
+
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "%s [prepare|start|stop|quit|status|connect|delete]\n\n", os.Args[0])
+		fmt.Fprintln(os.Stderr, "- prepare : creates a new VM")
+		fmt.Fprintln(os.Stderr, "- start : boots a stopped VM")
+		fmt.Fprintln(os.Stderr, "- stop : cleanly powers down a running VM")
+		fmt.Fprintln(os.Stderr, "- quit : quits a running VM")
+		fmt.Fprintln(os.Stderr, "- status : prints status information about the ciao-down VM")
+		fmt.Fprintln(os.Stderr, "- connect : connects to the VM via SSH")
+		fmt.Fprintln(os.Stderr, "- delete : shuts down and deletes the VM")
+	}
+}
+
+func vmflags(cmd string) (mem int, cpus int, err error) {
+	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
+	memGB, CPUs := getMemAndCpus()
+	fs.IntVar(&memGB, "mem", memGB, "Gigabytes of RAM allocated to VM")
+	fs.IntVar(&CPUs, "cpus", CPUs, "VCPUs assignged to VM")
+	if err := fs.Parse(flag.Args()[1:]); err != nil {
+		return -1, -1, err
+	}
+
+	return memGB, CPUs, nil
+}
 
 func downloadProgress(p progress) {
 	if p.totalMB >= 0 {
@@ -43,6 +69,12 @@ func downloadProgress(p progress) {
 
 func prepare(ctx context.Context, errCh chan error) {
 	fmt.Println("Checking environment")
+	memGB, CPUs, err := vmflags("prepare")
+	if err != nil {
+		errCh <- err
+		return
+	}
+
 	ws, err := prepareEnv(ctx)
 	if err != nil {
 		errCh <- err
@@ -89,7 +121,9 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	err = bootVM(ctx, ws)
+	fmt.Printf("Booting VM with %d GB RAM and %d cpus\n", memGB, CPUs)
+
+	err = bootVM(ctx, ws, memGB, CPUs)
 	if err != nil {
 		errCh <- err
 		return
@@ -107,13 +141,21 @@ func prepare(ctx context.Context, errCh chan error) {
 }
 
 func start(ctx context.Context, errCh chan error) {
+	memGB, CPUs, err := vmflags("start")
+	if err != nil {
+		errCh <- err
+		return
+	}
+
 	ws, err := prepareEnv(ctx)
 	if err != nil {
 		errCh <- err
 		return
 	}
 
-	err = bootVM(ctx, ws)
+	fmt.Printf("Booting VM with %d GB RAM and %d cpus\n", memGB, CPUs)
+
+	err = bootVM(ctx, ws, memGB, CPUs)
 	if err != nil {
 		errCh <- err
 		return
@@ -244,11 +286,12 @@ func runCommand(signalCh <-chan os.Signal) error {
 }
 
 func main() {
-	if len(os.Args) != 2 ||
+	flag.Parse()
+	if len(os.Args) < 2 ||
 		!(os.Args[1] == "prepare" || os.Args[1] == "start" || os.Args[1] == "stop" ||
 			os.Args[1] == "quit" || os.Args[1] == "status" ||
 			os.Args[1] == "connect" || os.Args[1] == "delete") {
-		fmt.Fprintf(os.Stderr, "Usage [prepare|start|stop|quit|status|connect|delete]\n")
+		flag.Usage()
 		os.Exit(1)
 	}
 

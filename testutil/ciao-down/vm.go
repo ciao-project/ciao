@@ -31,7 +31,7 @@ import (
 	"github.com/01org/ciao/qemu"
 )
 
-func bootVM(ctx context.Context, ws *workspace) error {
+func bootVM(ctx context.Context, ws *workspace, memGB, CPUs int) error {
 	disconnectedCh := make(chan struct{})
 	socket := path.Join(ws.instanceDir, "socket")
 	qmp, _, err := qemu.QMPStart(ctx, socket, qemu.QMPConfig{}, disconnectedCh)
@@ -42,10 +42,13 @@ func bootVM(ctx context.Context, ws *workspace) error {
 
 	vmImage := path.Join(ws.instanceDir, "image.qcow2")
 	isoPath := path.Join(ws.instanceDir, "config.iso")
+	memParam := fmt.Sprintf("%dG", memGB)
+	CPUsParam := fmt.Sprintf("cpus=%d", CPUs)
 	fsdevParam := fmt.Sprintf("local,security_model=passthrough,id=fsdev0,path=%s",
 		ws.GoPath)
 	args := []string{
-		"-qmp", fmt.Sprintf("unix:%s,server,nowait", socket), "-m", "8G", "-smp", "cpus=2",
+		"-qmp", fmt.Sprintf("unix:%s,server,nowait", socket),
+		"-m", memParam, "-smp", CPUsParam,
 		"-drive", fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage),
 		"-drive", fmt.Sprintf("file=%s,if=virtio,media=cdrom", isoPath),
 		"-daemonize", "-enable-kvm", "-cpu", "host",

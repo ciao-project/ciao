@@ -79,6 +79,16 @@ VM successfully created!
 Type ciao-down connect to start using it.
 ```
 
+By default, ciao-down will assign half of your host's resources to the VM
+that it creates and launches.  If you have 8 CPUs and 8 GB of RAM on your
+host, ciao-down will assign 4GB of RAM and 4 VCPUs to the guest VM.  You
+can control this behaviour by using the --mem and --cpu options.  For
+example,
+
+ciao-down prepare --cpus 2 -mem 2
+
+Creates and boots a VM with 2 VCPUs and 2 GB of RAM.
+
 ### delete
 
 ciao-down delete, shuts down and deletes all the files associated with the VM.
@@ -101,6 +111,9 @@ ciao-down stop is used to power down the ciao-down VM cleanly.
 ### start
 
 ciao-down start boots a previously prepared but not running ciao-down VM.
+The start command also supports the --mem and --cpu options.  So it's
+possible to change the resources assigned to the guest VM by stopping it
+and restarting it, specifying --mem and --cpu.
 
 ### quit
 
