@@ -9,4 +9,4 @@ defaults:
 cloud_init: "fedora_vm.yaml"
 disks:
 - size: 20
-  persistent: true
+  ephemeral: true

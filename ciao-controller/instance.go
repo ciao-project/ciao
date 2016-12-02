@@ -182,7 +182,7 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 		return payloads.StorageResource{}, err
 	}
 
-	return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable, Ephemeral: !s.Persistent}, nil
+	return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable, Ephemeral: s.Ephemeral}, nil
 }
 
 func getStorage(c *controller, s types.StorageResource, tenant string, instanceID string) (payloads.StorageResource, error) {
@@ -225,7 +225,7 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 			return payloads.StorageResource{}, err
 		}
 
-		s.Persistent = true
+		s.Ephemeral = false
 		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	case types.VolumeService:
@@ -234,7 +234,7 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 			return payloads.StorageResource{}, err
 		}
 
-		s.Persistent = false
+		s.Ephemeral = true
 		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	case types.Empty:
@@ -244,7 +244,7 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 		}
 
 		s.Bootable = false
-		s.Persistent = false
+		s.Ephemeral = true
 		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	}
@@ -255,7 +255,7 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s types.StorageResource) {
 	s.ID = volume.ID
 	s.Bootable = volume.Bootable
-	s.Persistent = !volume.Ephemeral
+	s.Ephemeral = volume.Ephemeral
 	s.Size = volume.Size
 	s.SourceType = ""
 	s.SourceID = ""

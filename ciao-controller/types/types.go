@@ -48,10 +48,10 @@ type StorageResource struct {
 	// Bootable indicates whether should the resource be used for booting
 	Bootable bool `json:"bootable"`
 
-	// Persistent indicates whether the storage is temporary
+	// Ephemeral indicates whether the storage is temporary
 	// TBD: do we bother to save info about temp storage?
 	//      does it count against quota?
-	Persistent bool `json:"persistent"`
+	Ephemeral bool `json:"ephemeral"`
 
 	// Size is the size of the storage to be created if new.
 	Size int `json:"size"`

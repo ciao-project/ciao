@@ -1104,7 +1104,7 @@ func TestGetStorageForVolume(t *testing.T) {
 	s := types.StorageResource{
 		ID:         "",
 		Bootable:   true,
-		Persistent: true,
+		Ephemeral:  false,
 		SourceType: types.VolumeService,
 		SourceID:   sourceVolume.ID,
 	}
@@ -1122,7 +1122,7 @@ func TestGetStorageForVolume(t *testing.T) {
 		t.Errorf("bootable flag not correct")
 	}
 
-	if pl.Ephemeral != false {
+	if pl.Ephemeral != true {
 		t.Errorf("ephemeral flag not correct")
 	}
 
@@ -1155,7 +1155,7 @@ func TestGetStorageForImage(t *testing.T) {
 	s := types.StorageResource{
 		ID:         "",
 		Bootable:   true,
-		Persistent: true,
+		Ephemeral:  false,
 		SourceType: types.ImageService,
 		SourceID:   filepath.Base(tmpfile.Name()),
 	}
@@ -1173,7 +1173,7 @@ func TestGetStorageForImage(t *testing.T) {
 		t.Errorf("bootable flag not correct")
 	}
 
-	if pl.Ephemeral != true {
+	if pl.Ephemeral != false {
 		t.Errorf("ephemeral flag not correct")
 	}
 
@@ -1217,7 +1217,7 @@ func TestStorageConfig(t *testing.T) {
 	s := &types.StorageResource{
 		ID:         "",
 		Bootable:   true,
-		Persistent: true,
+		Ephemeral:  false,
 		SourceType: types.ImageService,
 		SourceID:   info.Name(),
 	}

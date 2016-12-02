@@ -67,13 +67,13 @@ disks:
 
 Disks for the workload may be bootable, or attached. To create a new volume
 to be attached to your workload for persistent storage, specify the size
-of your new disk in GigaBytes. Newly created disks may be marked as persistent
-if you wish to persist the disk after the instance has been destroyed.
+of your new disk in GigaBytes. Newly created disks may be marked as ephemeral
+if you wish to not persist the disk after the instance has been destroyed.
 
 ```
 disks:
 - size: 20
-  persistent: true
+  ephemeral: true
 ```
 
 To attach a volume that has already been created in the ciao volume service,
