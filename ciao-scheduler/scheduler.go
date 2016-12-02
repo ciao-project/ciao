@@ -1095,18 +1095,23 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 	}
 }
 
-func configSchedulerServer() (sched *ssntpSchedulerServer) {
+func initLogger() error {
 	logDirFlag := flag.Lookup("log_dir")
 	if logDirFlag == nil {
-		glog.Errorf("log_dir does not exist")
+		return fmt.Errorf("log_dir does not exist")
 	}
 	if logDirFlag.Value.String() == "" {
-		logDirFlag.Value.Set(logDir)
+		if err := logDirFlag.Value.Set(logDir); err != nil {
+			return err
+		}
 	}
 	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
-		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
+		return fmt.Errorf("Unable to create log directory (%s) %v", logDir, err)
 	}
+	return nil
+}
 
+func configSchedulerServer() (sched *ssntpSchedulerServer) {
 	setLimits()
 
 	sched = newSsntpSchedulerServer()
@@ -1128,6 +1133,14 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 
 func main() {
 	flag.Parse()
+
+	if err := initLogger(); err != nil {
+		fmt.Printf("Unable to initialise logs: %v", err)
+		return
+	}
+
+	glog.Info("Starting Scheduler")
+
 	logger := gloginterface.CiaoGlogLogger{}
 	osprepare.Bootstrap(context.TODO(), logger)
 	osprepare.InstallDeps(context.TODO(), schedDeps, logger)
