@@ -47,11 +47,26 @@ func init() {
 	}
 }
 
-func vmflags(cmd string) (mem int, cpus int, err error) {
-	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
-	memGB, CPUs := getMemAndCpus()
-	fs.IntVar(&memGB, "mem", memGB, "Gigabytes of RAM allocated to VM")
-	fs.IntVar(&CPUs, "cpus", CPUs, "VCPUs assignged to VM")
+func vmFlags(fs *flag.FlagSet, memGB, CPUs *int) {
+	*memGB, *CPUs = getMemAndCpus()
+	fs.IntVar(memGB, "mem", *memGB, "Gigabytes of RAM allocated to VM")
+	fs.IntVar(CPUs, "cpus", *CPUs, "VCPUs assignged to VM")
+}
+
+func prepareFlags() (memGB int, CPUs int, debug bool, err error) {
+	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
+	vmFlags(fs, &memGB, &CPUs)
+	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
+	if err := fs.Parse(flag.Args()[1:]); err != nil {
+		return -1, -1, false, err
+	}
+
+	return memGB, CPUs, debug, nil
+}
+
+func startFlags() (memGB int, CPUs int, err error) {
+	fs := flag.NewFlagSet("start", flag.ExitOnError)
+	vmFlags(fs, &memGB, &CPUs)
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
 		return -1, -1, err
 	}
@@ -69,7 +84,7 @@ func downloadProgress(p progress) {
 
 func prepare(ctx context.Context, errCh chan error) {
 	fmt.Println("Checking environment")
-	memGB, CPUs, err := vmflags("prepare")
+	memGB, CPUs, debug, err := prepareFlags()
 	if err != nil {
 		errCh <- err
 		return
@@ -109,7 +124,7 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	err = buildISOImage(ctx, ws.instanceDir, ws)
+	err = buildISOImage(ctx, ws.instanceDir, ws, debug)
 	if err != nil {
 		errCh <- err
 		return
@@ -141,7 +156,7 @@ func prepare(ctx context.Context, errCh chan error) {
 }
 
 func start(ctx context.Context, errCh chan error) {
-	memGB, CPUs, err := vmflags("start")
+	memGB, CPUs, err := startFlags()
 	if err != nil {
 		errCh <- err
 		return

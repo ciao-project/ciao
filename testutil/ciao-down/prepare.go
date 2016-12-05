@@ -161,7 +161,7 @@ func createCloudInitISO(ctx context.Context, instanceDir string, userData, metaD
 	return nil
 }
 
-func buildISOImage(ctx context.Context, instanceDir string, ws *workspace) error {
+func buildISOImage(ctx context.Context, instanceDir string, ws *workspace, debug bool) error {
 	udt := template.Must(template.New("user-data").Parse(userDataTemplate))
 	var udBuf bytes.Buffer
 	err := udt.Execute(&udBuf, ws)
@@ -175,6 +175,11 @@ func buildISOImage(ctx context.Context, instanceDir string, ws *workspace) error
 	err = mdt.Execute(&mdBuf, ws)
 	if err != nil {
 		return fmt.Errorf("Unable to execute user data template : %v", err)
+	}
+
+	if debug {
+		fmt.Println(string(udBuf.Bytes()))
+		fmt.Println(string(mdBuf.Bytes()))
 	}
 
 	return createCloudInitISO(ctx, instanceDir, udBuf.Bytes(), mdBuf.Bytes())
