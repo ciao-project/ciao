@@ -18,72 +18,10 @@ package osprepare
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
+	"github.com/01org/ciao/clogger"
 )
-
-// OSPLog is a logging interface used by the osprepare package to log various
-// interesting pieces of information.  Rather than introduce a dependency
-// on a given logging package, osprepare presents this interface that allows
-// clients to provide their own logging type or reuse the OSPGlogLogger..
-type OSPLog interface {
-	// V returns true if the given argument is less than or equal
-	// to the implementation's defined verbosity level.
-	V(int32) bool
-
-	// Infof writes informational output to the log.  A newline will be
-	// added to the output if one is not provided.
-	Infof(string, ...interface{})
-
-	// Warningf writes warning output to the log.  A newline will be
-	// added to the output if one is not provided.
-	Warningf(string, ...interface{})
-
-	// Errorf writes error output to the log.  A newline will be
-	// added to the output if one is not provided.
-	Errorf(string, ...interface{})
-}
-
-type ospNullLogger struct{}
-
-func (l ospNullLogger) V(level int32) bool {
-	return false
-}
-
-func (l ospNullLogger) Infof(format string, v ...interface{}) {
-}
-
-func (l ospNullLogger) Warningf(format string, v ...interface{}) {
-}
-
-func (l ospNullLogger) Errorf(format string, v ...interface{}) {
-}
-
-// OSPGlogLogger is a type that makes use of glog for the OSPLog interface
-type OSPGlogLogger struct{}
-
-// V returns true if the given argument is less than or equal
-// to glog's verbosity level.
-func (l OSPGlogLogger) V(level int32) bool {
-	return bool(glog.V(glog.Level(level)))
-}
-
-// Infof writes informational output to glog.
-func (l OSPGlogLogger) Infof(format string, v ...interface{}) {
-	glog.InfoDepth(2, fmt.Sprintf(format, v...))
-}
-
-// Warningf writes warning output to glog.
-func (l OSPGlogLogger) Warningf(format string, v ...interface{}) {
-	glog.WarningDepth(2, fmt.Sprintf(format, v...))
-}
-
-// Errorf writes error output to glog.
-func (l OSPGlogLogger) Errorf(format string, v ...interface{}) {
-	glog.ErrorDepth(2, fmt.Sprintf(format, v...))
-}
 
 // Minimal versions supported by ciao
 const (
@@ -188,9 +126,9 @@ func collectPackages(dist distro, reqs PackageRequirements) []string {
 
 // InstallDeps installs all the dependencies defined in a component
 // specific PackageRequirements in order to enable running the component
-func InstallDeps(ctx context.Context, reqs PackageRequirements, logger OSPLog) {
+func InstallDeps(ctx context.Context, reqs PackageRequirements, logger clogger.CiaoLog) {
 	if logger == nil {
-		logger = ospNullLogger{}
+		logger = clogger.CiaoNullLogger{}
 	}
 
 	distro := getDistro()
@@ -222,6 +160,6 @@ func InstallDeps(ctx context.Context, reqs PackageRequirements, logger OSPLog) {
 
 // Bootstrap installs all the core dependencies required to bootstrap the core
 // configuration of all Ciao components
-func Bootstrap(ctx context.Context, logger OSPLog) {
+func Bootstrap(ctx context.Context, logger clogger.CiaoLog) {
 	InstallDeps(ctx, BootstrapRequirements, logger)
 }

@@ -30,6 +30,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
@@ -256,8 +257,8 @@ func (client *agentClient) installLauncherDeps(doneCh chan struct{}) {
 	ch := make(chan error)
 	go func() {
 
-		ospLogger := osprepare.OSPGlogLogger{}
-		osprepare.Bootstrap(ctx, ospLogger)
+		logger := gloginterface.CiaoGlogLogger{}
+		osprepare.Bootstrap(ctx, logger)
 
 		launcherDeps := osprepare.NewPackageRequirements()
 
@@ -269,7 +270,7 @@ func (client *agentClient) installLauncherDeps(doneCh chan struct{}) {
 			launcherDeps.Append(launcherComputeNodeDeps)
 		}
 
-		osprepare.InstallDeps(ctx, launcherDeps, ospLogger)
+		osprepare.InstallDeps(ctx, launcherDeps, logger)
 
 		ch <- nil
 	}()

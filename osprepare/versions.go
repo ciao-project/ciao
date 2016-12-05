@@ -22,9 +22,11 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/01org/ciao/clogger"
 )
 
-func getCommandOutput(command string, logger OSPLog) string {
+func getCommandOutput(command string, logger clogger.CiaoLog) string {
 	splits := strings.Split(command, " ")
 	c := exec.Command(splits[0], splits[1:]...)
 	c.Env = os.Environ()
@@ -42,7 +44,7 @@ func getCommandOutput(command string, logger OSPLog) string {
 	return string(out)
 }
 
-func getDockerVersion(logger OSPLog) string {
+func getDockerVersion(logger clogger.CiaoLog) string {
 	ret := getCommandOutput("docker --version", logger)
 	var version string
 
@@ -56,7 +58,7 @@ func getDockerVersion(logger OSPLog) string {
 	return version
 }
 
-func getQemuVersion(logger OSPLog) string {
+func getQemuVersion(logger clogger.CiaoLog) string {
 	ret := getCommandOutput("qemu-system-x86_64 --version", logger)
 	var version string
 

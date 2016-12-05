@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
@@ -1108,9 +1109,9 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 
 func main() {
 	flag.Parse()
-	ospLogger := osprepare.OSPGlogLogger{}
-	osprepare.Bootstrap(context.TODO(), ospLogger)
-	osprepare.InstallDeps(context.TODO(), schedDeps, ospLogger)
+	logger := gloginterface.CiaoGlogLogger{}
+	osprepare.Bootstrap(context.TODO(), logger)
+	osprepare.InstallDeps(context.TODO(), schedDeps, logger)
 
 	sched := configSchedulerServer()
 	if sched == nil {
