@@ -998,6 +998,47 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 	return defaults, nil
 }
 
+// lock must be held by caller
+func (ds *sqliteDB) getResources(tx *sql.Tx) (map[string]int, error) {
+	m := make(map[string]int)
+
+	query := `SELECT id, name from resources`
+
+	rows, err := tx.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var name string
+		err := rows.Scan(&id, &name)
+		if err != nil {
+			return nil, err
+		}
+
+		m[name] = id
+	}
+
+	return m, nil
+}
+
+// lock must be held by caller
+func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resourceID int, resource payloads.RequestedResource) error {
+
+	_, err := tx.Exec("INSERT INTO workload_resources (workload_id, resource_id, default_value, estimated_value, mandatory) VALUES (?, ?, ?, ?, ?)", workloadID, resourceID, resource.Value, resource.Value, resource.Mandatory)
+
+	return err
+}
+
+// lock must be held by caller
+func (ds *sqliteDB) createWorkloadStorage(tx *sql.Tx, workloadID string, storage types.StorageResource) error {
+	_, err := tx.Exec("INSERT INTO workload_storage (workload_id, volume_id, bootable, persistent, size, source_type, source_id) VALUES (?, ?, ?, ?, ?, ?, ?)", workloadID, storage.ID, storage.Bootable, storage.Persistent, storage.Size, string(storage.SourceType), storage.SourceID)
+
+	return err
+}
+
 func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
 	query := `SELECT volume_id, bootable, persistent, size,
 			 source_type, source_id
@@ -1261,6 +1302,77 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 		return nil, err
 	}
 	return workloads, nil
+}
+
+func (ds *sqliteDB) updateWorkload(w workload) error {
+	db := ds.getTableDB("workload_template")
+
+	workloads, err := ds.getWorkloadsNoCache()
+	if err != nil {
+		return err
+	}
+
+	m := make(map[string]bool)
+	for _, work := range workloads {
+		m[work.ID] = true
+	}
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	resources, err := ds.getResources(tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// if this is a new workload, put it in, otherwise just update.
+	_, ok := m[w.ID]
+	if !ok {
+		// add in workload resources
+		for _, d := range w.Defaults {
+			err := ds.createWorkloadDefault(tx, w.ID, resources[string(d.Type)], d)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		// add in any workload storage resources
+		if w.Storage != nil {
+			err := ds.createWorkloadStorage(tx, w.ID, *w.Storage)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		// write config to file.
+		path := fmt.Sprintf("%s/%s", ds.workloadsPath, w.filename)
+		err := ioutil.WriteFile(path, []byte(w.Config), 0644)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		_, err = tx.Exec("INSERT INTO workload_template (id, description, filename, fw_type, vm_type, image_id, image_name, internal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.Description, w.filename, w.FWType, string(w.VMType), w.ImageID, w.ImageName, false)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	} else {
+		// update not supported yet.
+		tx.Rollback()
+		return errors.New("Workload Update not supported yet")
+	}
+
+	tx.Commit()
+	return nil
 }
 
 func (ds *sqliteDB) updateTenant(t *tenant) error {

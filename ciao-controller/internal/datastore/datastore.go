@@ -95,6 +95,7 @@ type persistentStore interface {
 	getCNCIWorkloadID() (id string, err error)
 	getWorkloadNoCache(id string) (*workload, error)
 	getWorkloadsNoCache() ([]*workload, error)
+	updateWorkload(wl workload) error
 
 	// interfaces related to tenants
 	addLimit(tenantID string, resourceID int, limit int) (err error)
@@ -442,6 +443,28 @@ func (ds *Datastore) GetTenant(id string) (*types.Tenant, error) {
 	}
 
 	return &t.Tenant, nil
+}
+
+// AddWorkload is used to add a new workload to the datastore.
+// Both cache and persistent store are updated.
+func (ds *Datastore) AddWorkload(w types.Workload) error {
+	ds.workloadsLock.Lock()
+	defer ds.workloadsLock.Unlock()
+
+	wl := workload{
+		Workload: w,
+		filename: fmt.Sprintf("%s_config.yaml", w.ID),
+	}
+
+	err := ds.db.updateWorkload(wl)
+	if err != nil {
+		return err
+	}
+
+	// cache it.
+	ds.workloads[wl.ID] = &wl
+
+	return nil
 }
 
 func (ds *Datastore) getWorkload(id string) (*workload, error) {

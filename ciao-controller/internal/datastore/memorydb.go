@@ -304,3 +304,8 @@ func (db *MemoryDB) deleteMappedIP(ID string) error {
 func (db *MemoryDB) getMappedIPs() map[string]types.MappedIP {
 	return make(map[string]types.MappedIP)
 }
+
+func (db *MemoryDB) updateWorkload(wl workload) error {
+	db.workloads[wl.ID] = &wl
+	return nil
+}
