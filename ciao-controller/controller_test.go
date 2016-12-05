@@ -1122,7 +1122,7 @@ func TestGetStorageForVolume(t *testing.T) {
 		t.Errorf("bootable flag not correct")
 	}
 
-	if pl.Ephemeral != true {
+	if pl.Ephemeral != false {
 		t.Errorf("ephemeral flag not correct")
 	}
 

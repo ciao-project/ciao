@@ -225,7 +225,6 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 			return payloads.StorageResource{}, err
 		}
 
-		s.Ephemeral = false
 		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	case types.VolumeService:
@@ -234,7 +233,6 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 			return payloads.StorageResource{}, err
 		}
 
-		s.Ephemeral = true
 		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	case types.Empty:
@@ -243,10 +241,7 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 			return payloads.StorageResource{}, err
 		}
 
-		s.Bootable = false
-		s.Ephemeral = true
 		return addBlockDevice(c, tenant, instanceID, device, s)
-
 	}
 
 	return payloads.StorageResource{}, errors.New("Unsupported workload storage variant in getStorage()")
