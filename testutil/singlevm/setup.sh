@@ -39,6 +39,7 @@ keystone_admin_port=35357
 mysql_data_dir="${ciao_bin}"/mysql
 ciao_identity_url="https://""$ciao_host"":""$keystone_public_port"
 keystone_wait_time=60 # How long to wait for keystone to start
+ciao_image_wait_time=60 # How long to wait for ciao_image to start
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -504,9 +505,24 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh   &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-sleep 5
-
 . $ciao_env
+
+echo -n "Waiting up to $ciao_image_wait_time seconds for the ciao image" \
+    "service to become available "
+try_until=$(($(date +%s) + $ciao_image_wait_time))
+while : ; do
+    while [ $(date +%s) -le $try_until ]; do
+        if ciao-cli image list > /dev/null 2>&1; then
+            echo " READY"
+            break 2
+        else
+            echo -n .
+            sleep 1
+        fi
+    done
+    echo FAILED
+    break
+done
 
 echo ""
 echo "Uploading test images to image service"
