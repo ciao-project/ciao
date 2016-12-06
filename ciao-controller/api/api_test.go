@@ -48,7 +48,7 @@ var tests = []test{
 		"",
 		"application/text",
 		http.StatusOK,
-		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"}]`,
+		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"}]`,
 	},
 	{
 		"GET",
@@ -137,6 +137,15 @@ var tests = []test{
 		mapExternalIP,
 		`{"pool_name":"apool","instance_id":"validinstanceID"}`,
 		"application/x.ciao.v1.pools",
+		http.StatusNoContent,
+		"null",
+	},
+	{
+		"POST",
+		"/workloads",
+		addWorkload,
+		`{"id":"","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_id":"73a86d7e-93c0-480e-9c41-ab42f69b7799","image_name":"","config":"this will totally work!","defaults":[]}`,
+		"application/x.ciao.v1.workloads",
 		http.StatusNoContent,
 		"null",
 	},
@@ -242,6 +251,10 @@ func (ts testCiaoService) MapAddress(name *string, instanceID string) error {
 }
 
 func (ts testCiaoService) UnMapAddress(string) error {
+	return nil
+}
+
+func (ts testCiaoService) CreateWorkload(req types.Workload) error {
 	return nil
 }
 

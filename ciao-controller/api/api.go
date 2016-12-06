@@ -34,6 +34,9 @@ const (
 
 	// ExternalIPsV1 is the content-type string for v1 of our external-ips resource
 	ExternalIPsV1 = "x.ciao.external-ips.v1"
+
+	// WorkloadsV1 is the content-type string for v1 of our workloads resource
+	WorkloadsV1 = "x.ciao.workloads.v1"
 )
 
 // HTTPErrorData represents the HTTP response body for
@@ -157,6 +160,21 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 		link.Href = fmt.Sprintf("%s/external-ips", c.URL)
 	} else {
 		link.Href = fmt.Sprintf("%s/%s/external-ips", c.URL, tenantID)
+	}
+
+	links = append(links, link)
+
+	// we support the "workloads" resource
+	link = types.APILink{
+		Rel:        "workloads",
+		Version:    WorkloadsV1,
+		MinVersion: WorkloadsV1,
+	}
+
+	if !ok {
+		link.Href = fmt.Sprintf("%s/workloads", c.URL)
+	} else {
+		link.Href = fmt.Sprintf("%s/%s/workloads", c.URL, tenantID)
 	}
 
 	links = append(links, link)
@@ -409,6 +427,27 @@ func unmapExternalIP(c *Context, w http.ResponseWriter, r *http.Request) (Respon
 	return errorResponse(types.ErrAddressNotFound), types.ErrAddressNotFound
 }
 
+func addWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	var req types.Workload
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	err = c.CreateWorkload(req)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -420,6 +459,7 @@ type Service interface {
 	ListMappedAddresses(tenantID *string) []types.MappedIP
 	MapAddress(poolName *string, instanceID string) error
 	UnMapAddress(ID string) error
+	CreateWorkload(req types.Workload) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -511,6 +551,13 @@ func Routes(config Config) *mux.Router {
 
 	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/external-ips/{mapping_id:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, unmapExternalIP})
 	route.Methods("DELETE")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	// workloads
+	matchContent = fmt.Sprintf("application/(%s|json)", WorkloadsV1)
+
+	route = r.Handle("/workloads", Handler{context, addWorkload})
+	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 	return r
 }

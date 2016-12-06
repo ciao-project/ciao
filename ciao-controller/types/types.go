@@ -43,27 +43,27 @@ const (
 // TBD: should the workload support multiple of these?
 type StorageResource struct {
 	// ID indicates a volumeID. If ID is blank, then it needs to be created.
-	ID string
+	ID string `json:"id"`
 
 	// Bootable indicates whether should the resource be used for booting
-	Bootable bool
+	Bootable bool `json:"bootable"`
 
 	// Persistent indicates whether the storage is temporary
 	// TBD: do we bother to save info about temp storage?
 	//      does it count against quota?
-	Persistent bool
+	Persistent bool `json:"persistent"`
 
 	// Size is the size of the storage to be created if new.
-	Size int
+	Size int `json:"size"`
 
 	// ImageType indicates whether we are making a new resource
 	// based on an image or existing volume.
 	// Needed only for new storage.
-	SourceType SourceType
+	SourceType SourceType `json:"source_type"`
 
 	// SourceID represents the ID of either the image or the volume
 	// that the storage resource is based on.
-	SourceID string
+	SourceID string `json:"source_id"`
 }
 
 // Workload contains resource and configuration information for a user
@@ -71,13 +71,13 @@ type StorageResource struct {
 type Workload struct {
 	ID          string                       `json:"id"`
 	Description string                       `json:"description"`
-	FWType      string                       `json:"-"`
-	VMType      payloads.Hypervisor          `json:"-"`
-	ImageID     string                       `json:"-"`
-	ImageName   string                       `json:"-"`
-	Config      string                       `json:"-"`
-	Defaults    []payloads.RequestedResource `json:"-"`
-	Storage     *StorageResource             `json:"-"`
+	FWType      string                       `json:"fw_type"`
+	VMType      payloads.Hypervisor          `json:"vm_type"`
+	ImageID     string                       `json:"image_id"`
+	ImageName   string                       `json:"image_name"`
+	Config      string                       `json:"config"`
+	Defaults    []payloads.RequestedResource `json:"defaults"`
+	Storage     *StorageResource             `json:"storage"`
 }
 
 // Instance contains information about an instance of a workload.
