@@ -25,10 +25,14 @@ import (
 	"path"
 )
 
-const ubuntuCloudURL = "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
-const sha1Sum = "64bcd107384573b394a1570f88ad1cc82670fd90"
+// Constants for the Guest image used by ciao-down
 
-// TODO: SHA1 Check
+const (
+	guestDownloadURL       = "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
+	guestImageName         = "xenial-server-cloudimg-amd64-disk1.img"
+	guestImageTmpName      = "xenial-server-cloudimg-amd64-disk1.img.part"
+	guestImageFriendlyName = "Ubuntu 16.04"
+)
 
 type progressCB func(p progress)
 
@@ -64,7 +68,7 @@ func getUbuntu(ctx context.Context, dest io.WriteCloser, cb progressCB) (err err
 			err = err1
 		}
 	}()
-	req, err := http.NewRequest("GET", ubuntuCloudURL, nil)
+	req, err := http.NewRequest("GET", guestDownloadURL, nil)
 	if err != nil {
 		return
 	}
@@ -94,15 +98,15 @@ func getUbuntu(ctx context.Context, dest io.WriteCloser, cb progressCB) (err err
 }
 
 func downloadUbuntu(ctx context.Context, instanceDir string, cb progressCB) (string, error) {
-	imgPath := path.Join(instanceDir, "xenial-server-cloudimg-amd64-disk1.img")
+	imgPath := path.Join(instanceDir, guestImageName)
 
 	if _, err := os.Stat(imgPath); err == nil {
 		return imgPath, nil
 	}
 
-	fmt.Println("Downloading Ubuntu 16.04")
+	fmt.Printf("Downloading %s\n", guestImageFriendlyName)
 
-	tmpImgPath := path.Join(instanceDir, "xenial-server-cloudimg-amd64-disk1.img.part")
+	tmpImgPath := path.Join(instanceDir, guestImageTmpName)
 
 	if _, err := os.Stat(imgPath); err == nil {
 		return imgPath, nil
@@ -121,7 +125,7 @@ func downloadUbuntu(ctx context.Context, instanceDir string, cb progressCB) (str
 	if err != nil {
 		_ = os.Remove(tmpImgPath)
 		return "", fmt.Errorf("Unable download file %s: %v",
-			ubuntuCloudURL, err)
+			guestDownloadURL, err)
 	}
 
 	err = os.Rename(tmpImgPath, imgPath)
