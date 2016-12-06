@@ -65,6 +65,8 @@ type workspace struct {
 	GitEmail       string
 	ciaoDir        string
 	instanceDir    string
+	keyPath        string
+	publicKeyPath  string
 }
 
 func installDeps(ctx context.Context) {
@@ -93,6 +95,27 @@ func hostSupportsNestedKVM() bool {
 	return hostSupportsNestedKVMIntel() || hostSupportsNestedKVMAMD()
 }
 
+func prepareSSHKeys(ctx context.Context, ws *workspace) error {
+	_, privKeyErr := os.Stat(ws.keyPath)
+	_, pubKeyErr := os.Stat(ws.publicKeyPath)
+
+	if pubKeyErr != nil || privKeyErr != nil {
+		err := exec.CommandContext(ctx, "ssh-keygen",
+			"-f", ws.keyPath, "-t", "rsa", "-N", "").Run()
+		if err != nil {
+			return fmt.Errorf("Unable to generate SSH key pair : %v", err)
+		}
+	}
+
+	publicKey, err := ioutil.ReadFile(ws.publicKeyPath)
+	if err != nil {
+		return fmt.Errorf("Unable to read public ssh key: %v", err)
+	}
+
+	ws.PublicKey = string(publicKey)
+	return nil
+}
+
 func prepareEnv(ctx context.Context) (*workspace, error) {
 	ws := &workspace{HTTPServerPort: 8080}
 	ws.GoPath = os.Getenv("GOPATH")
@@ -119,17 +142,10 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	}
 
 	ws.NoProxy = os.Getenv("no_proxy")
-
-	pkPath := path.Join(ws.Home, ".ssh/id_rsa.pub")
-	var err error
-	publicKey, err := ioutil.ReadFile(pkPath)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to read public ssh key: %v", err)
-	}
-	ws.PublicKey = string(publicKey)
-
 	ws.ciaoDir = path.Join(ws.Home, ".ciao-down")
 	ws.instanceDir = path.Join(ws.ciaoDir, "instance")
+	ws.keyPath = path.Join(ws.ciaoDir, "id_rsa")
+	ws.publicKeyPath = fmt.Sprintf("%s.pub", ws.keyPath)
 
 	data, err := exec.Command("git", "config", "--global", "user.name").Output()
 	if err == nil {

@@ -116,6 +116,12 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
+	err = prepareSSHKeys(ctx, ws)
+	if err != nil {
+		errCh <- err
+		return
+	}
+
 	failed := true
 	defer func() {
 		if failed {
@@ -234,19 +240,27 @@ func status(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	statusVM(ctx, ws.instanceDir)
+	statusVM(ctx, ws.instanceDir, ws.keyPath)
 	errCh <- err
 }
 
-func connect(errCh chan error) {
+func connect(ctx context.Context, errCh chan error) {
+	ws, err := prepareEnv(ctx)
+	if err != nil {
+		errCh <- err
+		return
+	}
+
 	path, err := exec.LookPath("ssh")
 	if err != nil {
 		errCh <- fmt.Errorf("Unable to locate ssh binary")
+		return
 	}
 
 	err = syscall.Exec(path, []string{path,
 		"-q", "-o", "UserKnownHostsFile=/dev/null",
 		"-o", "StrictHostKeyChecking=no",
+		"-i", ws.keyPath,
 		"127.0.0.1", "-p", "10022"},
 		os.Environ())
 	errCh <- err
@@ -286,7 +300,7 @@ func runCommand(signalCh <-chan os.Signal) error {
 	case "status":
 		go status(ctx, errCh)
 	case "connect":
-		go connect(errCh)
+		go connect(ctx, errCh)
 	case "delete":
 		go delete(ctx, errCh)
 	}

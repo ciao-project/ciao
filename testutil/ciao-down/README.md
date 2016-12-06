@@ -5,7 +5,6 @@ everything you need to run ciao's Single VM. All you need to have
 installed on your machine is:
 
 - Go 1.7 or greater
-- An ssh key
 
 Then simply type
 
@@ -101,7 +100,7 @@ it is running, and how to connect to it.  For example,
 ```
 $ ciao-down status
 Status	:	ciao up
-SSH	:	ssh 127.0.0.1 -p 10022
+SSH	:	ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /home/user/.ciao-down/id_rsa 127.0.0.1 -p 10022
 ```
 
 ### stop
