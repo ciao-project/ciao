@@ -36,17 +36,8 @@ const imageTemplateDesc = `struct {
 	SizeBytes        int      // Size of image in bytes
 	ID               string   // Image UUID
 	Status           string   // Image status.  Can be queued or active
-	Owner            string   // Tenant that owns the image
-	ContainerFormat  string   // Format of the container, e.g., ovf
-	DiskFormat       string   // Format of the image, e.g., qcow2
-	MinDiskGigabytes int      // Minimum amount of disk space required to boot image
-	MinRAMMegabytes  int      // Minimum amount of RAM required to boot image
-	Checksum         string   // Checksum of image data
-	Protected        bool     // Indicates whether or not an image can be deleted
-	Visibility       string   // Indicates whether the image is public or private
 	CreatedDate      string   // Image creation date
 	LastUpdate       string   // Timestamp of last update
-	Tags             []string // List of image tags
 	File             string   // Image path
 	Schema           string   // Path to json schema
 }`
@@ -525,19 +516,7 @@ func dumpImage(i *images.Image) {
 	fmt.Printf("\tSize             [%d bytes]\n", i.SizeBytes)
 	fmt.Printf("\tUUID             [%s]\n", i.ID)
 	fmt.Printf("\tStatus           [%s]\n", i.Status)
-	fmt.Printf("\tOwner            [%s]\n", i.Owner)
-	fmt.Printf("\tDisk format      [%s]\n", i.DiskFormat)
-	fmt.Printf("\tContainer format [%s]\n", i.ContainerFormat)
-	fmt.Printf("\tMinimal disk     [%d GB]\n", i.MinDiskGigabytes)
-	fmt.Printf("\tMinimal memory   [%d MB]\n", i.MinRAMMegabytes)
-	fmt.Printf("\tChecksum         [%s]\n", i.Checksum)
-	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)
-	fmt.Printf("\tProtected        [%t]\n", i.Protected)
 	fmt.Printf("\tCreatedDate      [%s]\n", i.CreatedDate)
-	fmt.Printf("\tLastUpdate       [%s]\n", i.LastUpdate)
-	fmt.Printf("\tTags             [%s]\n", i.Tags)
-	fmt.Printf("\tFile             [%s]\n", i.File)
-	fmt.Printf("\tSchema           [%s]\n", i.Schema)
 }
 
 func imageServiceClient(username, password, tenant string) (*gophercloud.ServiceClient, error) {
