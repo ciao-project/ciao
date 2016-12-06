@@ -21,16 +21,22 @@ import "github.com/01org/ciao/osprepare"
 var ciaoDevClearDeps = []osprepare.PackageRequirement{
 	{BinaryName: "/usr/bin/qemu-system-x86_64", PackageName: "cloud-control"},
 	{BinaryName: "/usr/bin/xorriso", PackageName: "cloud-control"},
+	{BinaryName: "/usr/bin/ssh", PackageName: "openssh-server"},
+	{BinaryName: "/usr/bin/ssh-keygen", PackageName: "openssh-server"},
 }
 
 var ciaoDevFedoraDeps = []osprepare.PackageRequirement{
 	{BinaryName: "/usr/bin/qemu-system-x86_64", PackageName: "qemu-system-x86"},
 	{BinaryName: "/usr/bin/xorriso", PackageName: "xorriso"},
+	{BinaryName: "/usr/bin/ssh", PackageName: "openssh-clients"},
+	{BinaryName: "/usr/bin/ssh-keygen", PackageName: "openssh-clients"},
 }
 
 var ciaoDevUbuntuDeps = []osprepare.PackageRequirement{
 	{BinaryName: "/usr/bin/qemu-system-x86_64", PackageName: "qemu-system-x86"},
 	{BinaryName: "/usr/bin/xorriso", PackageName: "xorriso"},
+	{BinaryName: "/usr/bin/ssh", PackageName: "openssh-client"},
+	{BinaryName: "/usr/bin/ssh-keygen", PackageName: "openssh-client"},
 }
 
 var ciaoDevDeps = map[string][]osprepare.PackageRequirement{
