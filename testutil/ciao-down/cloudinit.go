@@ -56,6 +56,7 @@ write_files:
 runcmd:
  - echo "127.0.0.1 singlevm" >> /etc/hosts
  - mount hostgo
+ - chown {{.User}}:{{.User}} /home/{{.User}}
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
  - rm /etc/legal
