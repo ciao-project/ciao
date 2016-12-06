@@ -187,9 +187,7 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if err == nil {
-		fmt.Println("VM Started")
-	}
+	fmt.Println("VM Started")
 
 	errCh <- err
 }
@@ -207,9 +205,7 @@ func stop(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if err == nil {
-		fmt.Println("VM Stopped")
-	}
+	fmt.Println("VM Stopped")
 
 	errCh <- err
 }
@@ -227,9 +223,7 @@ func quit(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if err == nil {
-		fmt.Println("VM Quit")
-	}
+	fmt.Println("VM Quit")
 
 	errCh <- err
 }
