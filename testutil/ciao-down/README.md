@@ -119,5 +119,14 @@ and restarting it, specifying --mem and --cpu.
 ciao-down quit terminates the VM immediately.  It does not shut down the OS
 running in the VM cleanly.
 
+## Git config
+
+Ciao-down will try to copy the git config variables, user.name and user.email,
+from the host to the newly created guest during the execution of the prepare
+command.  This is done to allow you to create git commits from inside the guest.
+Normally, you would modify the ciao source code and submit any changes on
+the host.  However, it is sometimes useful to be able to create commits from
+inside the guest, for example, if you were to ssh into the guest from a machine
+that is not the host.
 
 
