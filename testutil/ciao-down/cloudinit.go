@@ -181,7 +181,6 @@ users:
     gecos: CIAO Demo User
     lock-passwd: true
     shell: /bin/bash
-    passwd: $1$vzmNmLLD$04bivxcjdXRzZLUd.enRl1
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh-authorized-keys:
     - {{.PublicKey}}
