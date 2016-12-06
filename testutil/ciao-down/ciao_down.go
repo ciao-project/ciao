@@ -29,7 +29,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"syscall"
 )
 
@@ -245,7 +244,10 @@ func connect(errCh chan error) {
 		errCh <- fmt.Errorf("Unable to locate ssh binary")
 	}
 
-	err = syscall.Exec(path, []string{path, "127.0.0.1", "-p", "10022"},
+	err = syscall.Exec(path, []string{path,
+		"-q", "-o", "UserKnownHostsFile=/dev/null",
+		"-o", "StrictHostKeyChecking=no",
+		"127.0.0.1", "-p", "10022"},
 		os.Environ())
 	errCh <- err
 }
@@ -262,12 +264,6 @@ func delete(ctx context.Context, errCh chan error) {
 	if err != nil {
 		errCh <- fmt.Errorf("unable to delete instance: %v", err)
 		return
-	}
-
-	knownHosts := path.Join(ws.Home, ".ssh", "known_hosts")
-	err = exec.Command("ssh-keygen", "-f", knownHosts, "-R", "[127.0.0.1]:10022").Run()
-	if err != nil {
-		fmt.Println("Failed to remove VM entry from known_hosts")
 	}
 
 	errCh <- nil

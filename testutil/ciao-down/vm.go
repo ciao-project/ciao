@@ -107,7 +107,7 @@ func statusVM(ctx context.Context, instanceDir string) {
 	qmp, _, err := qemu.QMPStart(ctx, socket, qemu.QMPConfig{}, disconnectedCh)
 	if err == nil {
 		status = "ciao up"
-		ssh = fmt.Sprintf("ssh 127.0.0.1 -p %d", 10022)
+		ssh = fmt.Sprintf("ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 127.0.0.1 -p %d", 10022)
 		defer qmp.Shutdown()
 	}
 
