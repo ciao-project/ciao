@@ -83,7 +83,7 @@ func downloadProgress(p progress) {
 
 func prepare(ctx context.Context, errCh chan error) {
 	if !hostSupportsNestedKVM() {
-		errCh <- fmt.Errorf("Nested KVM is not enabled.  Please enable try again.")
+		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
 
@@ -168,7 +168,7 @@ func prepare(ctx context.Context, errCh chan error) {
 
 func start(ctx context.Context, errCh chan error) {
 	if !hostSupportsNestedKVM() {
-		errCh <- fmt.Errorf("Nested KVM is not enabled.  Please enable try again.")
+		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
 
