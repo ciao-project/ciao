@@ -71,9 +71,30 @@ func installDeps(ctx context.Context) {
 	osprepare.InstallDeps(ctx, ciaoDevDeps, logger{})
 }
 
+func hostSupportsNestedKVMIntel() bool {
+	data, err := ioutil.ReadFile("/sys/module/kvm_intel/parameters/nested")
+	if err != nil {
+		return false
+	}
+
+	return strings.TrimSpace(string(data)) == "Y"
+}
+
+func hostSupportsNestedKVMAMD() bool {
+	data, err := ioutil.ReadFile("/sys/module/kvm_amd/parameters/nested")
+	if err != nil {
+		return false
+	}
+
+	return strings.TrimSpace(string(data)) == "1"
+}
+
+func hostSupportsNestedKVM() bool {
+	return hostSupportsNestedKVMIntel() || hostSupportsNestedKVMAMD()
+}
+
 func prepareEnv(ctx context.Context) (*workspace, error) {
 	ws := &workspace{HTTPServerPort: 8080}
-
 	ws.GoPath = os.Getenv("GOPATH")
 	if ws.GoPath == "" {
 		return nil, fmt.Errorf("GOPATH is not defined")

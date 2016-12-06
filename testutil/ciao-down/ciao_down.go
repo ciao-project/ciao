@@ -83,7 +83,13 @@ func downloadProgress(p progress) {
 }
 
 func prepare(ctx context.Context, errCh chan error) {
+	if !hostSupportsNestedKVM() {
+		errCh <- fmt.Errorf("Nested KVM is not enabled.  Please enable try again.")
+		return
+	}
+
 	fmt.Println("Checking environment")
+
 	memGB, CPUs, debug, err := prepareFlags()
 	if err != nil {
 		errCh <- err
@@ -156,6 +162,11 @@ func prepare(ctx context.Context, errCh chan error) {
 }
 
 func start(ctx context.Context, errCh chan error) {
+	if !hostSupportsNestedKVM() {
+		errCh <- fmt.Errorf("Nested KVM is not enabled.  Please enable try again.")
+		return
+	}
+
 	memGB, CPUs, err := startFlags()
 	if err != nil {
 		errCh <- err
