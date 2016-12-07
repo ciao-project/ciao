@@ -42,6 +42,7 @@
         with_items:
           - ciao-cert
           - ciao-cnci-agent
+          - ciao-cli
 
       - name: Make ciao files runnable
         connection: local
@@ -49,4 +50,5 @@
         with_items:
           - ciao-cert
           - ciao-cnci-agent
+          - ciao-cli
     when: not ciao_dev
