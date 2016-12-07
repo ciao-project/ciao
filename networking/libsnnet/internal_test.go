@@ -53,12 +53,12 @@ func TestCN_dbRebuild(t *testing.T) {
 	vnicAlias := alias.vnic
 	greAlias := alias.gre
 
-	bridge, _ := newBridge(bridgeAlias)
+	bridge, _ := NewBridge(bridgeAlias)
 
-	if assert.NotNil(bridge.getDevice()) {
+	if assert.NotNil(bridge.GetDevice()) {
 		// First instance to land, create the bridge and tunnel
-		assert.Nil(bridge.create())
-		defer func(b *Bridge) { _ = b.destroy() }(bridge)
+		assert.Nil(bridge.Create())
+		defer func(b *Bridge) { _ = b.Destroy() }(bridge)
 
 		// Create the tunnel to connect to the CNCI
 		local := vnicCfg.VnicIP //Fake it for now

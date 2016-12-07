@@ -714,12 +714,12 @@ func TestCN_Whitebox(t *testing.T) {
 
 	// Create the CN tenant bridge only if it does not exist
 	bridgeAlias := fmt.Sprintf("br_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
-	bridge, _ := newBridge(bridgeAlias)
+	bridge, _ := NewBridge(bridgeAlias)
 
-	if assert.NotNil(bridge.getDevice()) {
+	if assert.NotNil(bridge.GetDevice()) {
 		// First instance to land, create the bridge and tunnel
-		assert.Nil(bridge.create())
-		defer func() { _ = bridge.destroy() }()
+		assert.Nil(bridge.Create())
+		defer func() { _ = bridge.Destroy() }()
 
 		// Create the tunnel to connect to the CNCI
 		local := cnIP
@@ -733,7 +733,7 @@ func TestCN_Whitebox(t *testing.T) {
 
 		assert.Nil(gre.attach(bridge))
 		assert.Nil(gre.enable())
-		assert.Nil(bridge.enable())
+		assert.Nil(bridge.Enable())
 	}
 
 	// Create the VNIC for the instance
@@ -746,5 +746,5 @@ func TestCN_Whitebox(t *testing.T) {
 
 	assert.Nil(vnic.attach(bridge))
 	assert.Nil(vnic.enable())
-	assert.Nil(bridge.enable())
+	assert.Nil(bridge.Enable())
 }

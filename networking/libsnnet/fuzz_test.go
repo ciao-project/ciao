@@ -126,20 +126,20 @@ func TestNwPrimitives_Fuzz(t *testing.T) {
 	}
 
 	bridge := Bridge{}
-	_ = bridge.create()
-	_ = bridge.enable()
-	_ = bridge.disable()
-	_ = bridge.getDevice()
-	_ = bridge.destroy()
+	_ = bridge.Create()
+	_ = bridge.Enable()
+	_ = bridge.Disable()
+	_ = bridge.GetDevice()
+	_ = bridge.Destroy()
 	for i := 0; i < 100; i++ {
 		bridge := Bridge{}
 		f.Fuzz(&bridge.GlobalID)
 		f.Fuzz(&bridge.TenantID)
-		_ = bridge.create()
-		_ = bridge.enable()
-		_ = bridge.disable()
-		_ = bridge.getDevice()
-		_ = bridge.destroy()
+		_ = bridge.Create()
+		_ = bridge.Enable()
+		_ = bridge.Disable()
+		_ = bridge.GetDevice()
+		_ = bridge.Destroy()
 	}
 
 	gre := &GreTunEP{}

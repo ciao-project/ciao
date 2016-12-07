@@ -139,12 +139,12 @@ func TestCNCI_Internal(t *testing.T) {
 
 	// Create the CNCI aggregation bridge
 	bridgeAlias := fmt.Sprintf("br_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
-	bridge, _ := newBridge(bridgeAlias)
+	bridge, _ := NewBridge(bridgeAlias)
 
-	assert.Nil(bridge.create())
-	defer func() { _ = bridge.destroy() }()
+	assert.Nil(bridge.Create())
+	defer func() { _ = bridge.Destroy() }()
 
-	assert.Nil(bridge.enable())
+	assert.Nil(bridge.Enable())
 
 	// Attach the DNS masq against the CNCI bridge. This gives it an IP address
 	d, err := newDnsmasq(bridgeAlias, tenantUUID, subnet, reserved, bridge)

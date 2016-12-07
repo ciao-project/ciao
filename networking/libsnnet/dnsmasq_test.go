@@ -44,12 +44,12 @@ func TestDnsmasq_Basic(t *testing.T) {
 		Mask: net.IPv4Mask(255, 255, 255, 0),
 	}
 
-	bridge, _ := newBridge("dns_testbr")
+	bridge, _ := NewBridge("dns_testbr")
 
-	err := bridge.create()
+	err := bridge.Create()
 	assert.Nil(err)
 
-	defer func() { _ = bridge.destroy() }()
+	defer func() { _ = bridge.Destroy() }()
 
 	d, err := newDnsmasq(id, tenant, subnet, reserved, bridge)
 	assert.Nil(err)
@@ -99,11 +99,11 @@ func TestDnsmasq_Negative(t *testing.T) {
 		Mask: net.IPv4Mask(255, 255, 255, 0),
 	}
 
-	bridge, _ := newBridge("dns_testbr")
+	bridge, _ := NewBridge("dns_testbr")
 
-	err := bridge.create()
+	err := bridge.Create()
 	assert.Nil(err)
-	defer func() { _ = bridge.destroy() }()
+	defer func() { _ = bridge.Destroy() }()
 
 	// Note: Re instantiate d each time as that
 	// is how it will be used

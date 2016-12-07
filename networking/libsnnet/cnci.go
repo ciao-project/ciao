@@ -230,12 +230,12 @@ func (cnci *Cnci) rebuildBridgeMap(links []netlink.Link) error {
 			continue
 		}
 
-		br, err := newBridge(bridgeID)
+		br, err := NewBridge(bridgeID)
 		if err != nil {
 			return (err)
 		}
 
-		if err = br.getDevice(); err != nil {
+		if err = br.GetDevice(); err != nil {
 			return (err)
 		}
 
@@ -367,10 +367,10 @@ func createCnciBridge(bridge *Bridge, brInfo *bridgeInfo, tenant string, subnet 
 	if bridge == nil || brInfo == nil {
 		return fmt.Errorf("nil pointer encountered bridge[%v] brInfo[%v]", bridge, brInfo)
 	}
-	if err = bridge.create(); err != nil {
+	if err = bridge.Create(); err != nil {
 		return err
 	}
-	if err = bridge.enable(); err != nil {
+	if err = bridge.Enable(); err != nil {
 		return err
 	}
 	brInfo.Dnsmasq, err = startDnsmasq(bridge, tenant, subnet)
@@ -472,7 +472,7 @@ func (cnci *Cnci) AddRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 		return "", err
 	}
 
-	bridge, err := newBridge(genBridgeAlias(subnet))
+	bridge, err := NewBridge(genBridgeAlias(subnet))
 	if err != nil {
 		return "", err
 	}

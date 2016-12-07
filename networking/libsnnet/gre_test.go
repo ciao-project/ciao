@@ -73,20 +73,20 @@ func TestGre_Bridge(t *testing.T) {
 
 	gre, err := newGreTunEP(id, local, remote, key)
 	assert.Nil(err)
-	bridge, err := newBridge("testbridge")
+	bridge, err := NewBridge("testbridge")
 	assert.Nil(err)
 
 	assert.Nil(gre.create())
 	defer func() { _ = gre.destroy() }()
 
-	assert.Nil(bridge.create())
-	defer func() { _ = bridge.destroy() }()
+	assert.Nil(bridge.Create())
+	defer func() { _ = bridge.Destroy() }()
 
 	assert.Nil(gre.attach(bridge))
 	//Duplicate
 	assert.Nil(gre.attach(bridge))
 	assert.Nil(gre.enable())
-	assert.Nil(bridge.enable())
+	assert.Nil(bridge.Enable())
 	assert.Nil(gre.detach(bridge))
 	//Duplicate
 	assert.Nil(gre.detach(bridge))

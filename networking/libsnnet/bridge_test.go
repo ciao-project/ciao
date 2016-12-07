@@ -27,9 +27,9 @@ func performBridgeOps(shouldPass bool, assert *assert.Assertions, bridge *Bridge
 	if !shouldPass {
 		a = assert.NotNil
 	}
-	a(bridge.enable())
-	a(bridge.disable())
-	a(bridge.destroy())
+	a(bridge.Enable())
+	a(bridge.Disable())
+	a(bridge.Destroy())
 }
 
 //Test all Bridge primitives
@@ -42,18 +42,18 @@ func performBridgeOps(shouldPass bool, assert *assert.Assertions, bridge *Bridge
 func TestBridge_Basic(t *testing.T) {
 	assert := assert.New(t)
 
-	bridge, err := newBridge("go_testbr")
+	bridge, err := NewBridge("go_testbr")
 	assert.Nil(err)
 
-	assert.Nil(bridge.create())
+	assert.Nil(bridge.Create())
 
-	bridge1, err := newBridge("go_testbr")
+	bridge1, err := NewBridge("go_testbr")
 	assert.Nil(err)
 
-	assert.Nil(bridge1.getDevice())
+	assert.Nil(bridge1.GetDevice())
 	performBridgeOps(true, assert, bridge)
 
-	assert.NotNil(bridge.destroy())
+	assert.NotNil(bridge.Destroy())
 
 }
 
@@ -65,15 +65,15 @@ func TestBridge_Basic(t *testing.T) {
 //Test is expected to pass
 func TestBridge_Dup(t *testing.T) {
 	assert := assert.New(t)
-	bridge, err := newBridge("go_testbr")
+	bridge, err := NewBridge("go_testbr")
 	assert.Nil(err)
 
-	assert.Nil(bridge.create())
-	defer func() { _ = bridge.destroy() }()
+	assert.Nil(bridge.Create())
+	defer func() { _ = bridge.Destroy() }()
 
-	bridge1, err := newBridge("go_testbr")
+	bridge1, err := NewBridge("go_testbr")
 	assert.Nil(err)
-	assert.NotNil(bridge1.create())
+	assert.NotNil(bridge1.Create())
 }
 
 //Negative test cases for bridge primitives
@@ -85,10 +85,10 @@ func TestBridge_Dup(t *testing.T) {
 func TestBridge_Invalid(t *testing.T) {
 	assert := assert.New(t)
 
-	bridge, err := newBridge("go_testbr")
+	bridge, err := NewBridge("go_testbr")
 	assert.Nil(err)
 
-	assert.NotNil(bridge.getDevice())
+	assert.NotNil(bridge.GetDevice())
 
 	performBridgeOps(false, assert, bridge)
 }
@@ -101,14 +101,14 @@ func TestBridge_Invalid(t *testing.T) {
 //Test is expected to pass
 func TestBridge_GetDevice(t *testing.T) {
 	assert := assert.New(t)
-	bridge, err := newBridge("go_testbr")
+	bridge, err := NewBridge("go_testbr")
 	assert.Nil(err)
 
-	assert.Nil(bridge.create())
+	assert.Nil(bridge.Create())
 
-	bridge1, err := newBridge("go_testbr")
+	bridge1, err := NewBridge("go_testbr")
 	assert.Nil(err)
 
-	assert.Nil(bridge1.getDevice())
+	assert.Nil(bridge1.GetDevice())
 	performBridgeOps(true, assert, bridge1)
 }
