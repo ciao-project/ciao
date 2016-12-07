@@ -111,9 +111,9 @@ func (d *Dnsmasq) start() error {
 		return fmt.Errorf("d.createHostsFile failed %v", err)
 	}
 
-	if err := d.Dev.addIP(&d.gateway); err != nil {
-		_ = d.Dev.delIP(&d.gateway) //TODO: check it already has the IP
-		if err = d.Dev.addIP(&d.gateway); err != nil {
+	if err := d.Dev.AddIP(&d.gateway); err != nil {
+		_ = d.Dev.DelIP(&d.gateway) //TODO: check it already has the IP
+		if err = d.Dev.AddIP(&d.gateway); err != nil {
 			return fmt.Errorf("d.Dev.AddIP failed %v %v", err, d.gateway.String())
 		}
 	}
@@ -161,7 +161,7 @@ func (d *Dnsmasq) stop() error {
 		}
 	}
 
-	if err = d.Dev.delIP(&d.gateway); err != nil {
+	if err = d.Dev.DelIP(&d.gateway); err != nil {
 		cumError = append(cumError, fmt.Errorf("Unable to delete bridge IP %v", err))
 	}
 

@@ -734,7 +734,7 @@ func (cn *ComputeNode) createDevicesFromCfg(cfg *VnicConfig) (*Vnic, *Bridge, *G
 
 	alias := genCnVnicAliases(cfg)
 
-	bridge, err := newBridge(alias.bridge)
+	bridge, err := NewBridge(alias.bridge)
 	if err != nil {
 		return nil, nil, nil, NewAPIError(err.Error())
 	}
@@ -950,7 +950,7 @@ func (cn *ComputeNode) logicallyCreateBridge(bridge *Bridge, gre *GreTunEP, vnic
 //TODO: Try to be more fault tolerant here. We may miss errors but try to
 // honor the request  e.g. If bridge exists use it and try and create tunnel
 func createAndEnableBridge(bridge *Bridge, gre *GreTunEP) error {
-	if err := bridge.create(); err != nil {
+	if err := bridge.Create(); err != nil {
 		return fmt.Errorf("Bridge creation failed %s %s", bridge.GlobalID, err.Error())
 	}
 	if err := gre.create(); err != nil {
@@ -963,7 +963,7 @@ func createAndEnableBridge(bridge *Bridge, gre *GreTunEP) error {
 	if err := gre.enable(); err != nil {
 		return fmt.Errorf("GRE enable failed %s %s %s", gre.GlobalID, bridge.GlobalID, err.Error())
 	}
-	if err := bridge.enable(); err != nil {
+	if err := bridge.Enable(); err != nil {
 		return fmt.Errorf("Bridge enable failed %s %s %s", gre.GlobalID, bridge.GlobalID, err.Error())
 	}
 	return nil
@@ -1080,7 +1080,7 @@ func (cn *ComputeNode) deleteBridgeInternal(bridge *Bridge, bLink *linkInfo, brD
 		return NewFatalError(bridge.GlobalID + err.Error())
 	}
 
-	if err := bridge.destroy(); err != nil {
+	if err := bridge.Destroy(); err != nil {
 		return NewFatalError("bridge destroy failed " + err.Error())
 	}
 	// We delete the container network when the bridge is deleted
@@ -1137,7 +1137,7 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 		return nil, nil
 	}
 
-	bridge, err := newBridge(alias.bridge)
+	bridge, err := NewBridge(alias.bridge)
 	if err != nil {
 		return nil, NewFatalError(err.Error())
 	}

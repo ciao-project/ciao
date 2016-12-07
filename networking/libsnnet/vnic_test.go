@@ -192,17 +192,17 @@ func TestVnicContainer_GetDevice(t *testing.T) {
 func TestVnic_Bridge(t *testing.T) {
 	assert := assert.New(t)
 	vnic, _ := newVnic("testvnic")
-	bridge, _ := newBridge("testbridge")
+	bridge, _ := NewBridge("testbridge")
 
 	assert.Nil(vnic.create())
 	defer func() { _ = vnic.destroy() }()
 
-	assert.Nil(bridge.create())
-	defer func() { _ = bridge.destroy() }()
+	assert.Nil(bridge.Create())
+	defer func() { _ = bridge.Destroy() }()
 
 	assert.Nil(vnic.attach(bridge))
 	assert.Nil(vnic.enable())
-	assert.Nil(bridge.enable())
+	assert.Nil(bridge.Enable())
 	assert.Nil(vnic.detach(bridge))
 
 }
@@ -215,17 +215,17 @@ func TestVnic_Bridge(t *testing.T) {
 func TestVnicContainer_Bridge(t *testing.T) {
 	assert := assert.New(t)
 	vnic, _ := newContainerVnic("testvnic")
-	bridge, _ := newBridge("testbridge")
+	bridge, _ := NewBridge("testbridge")
 
 	assert.Nil(vnic.create())
 
 	defer func() { _ = vnic.destroy() }()
 
-	assert.Nil(bridge.create())
-	defer func() { _ = bridge.destroy() }()
+	assert.Nil(bridge.Create())
+	defer func() { _ = bridge.Destroy() }()
 
 	assert.Nil(vnic.attach(bridge))
 	assert.Nil(vnic.enable())
-	assert.Nil(bridge.enable())
+	assert.Nil(bridge.Enable())
 	assert.Nil(vnic.detach(bridge))
 }
