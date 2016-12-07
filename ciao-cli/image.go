@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"text/template"
 
 	"github.com/rackspace/gophercloud"
@@ -36,54 +35,11 @@ const imageTemplateDesc = `struct {
 	SizeBytes        int      // Size of image in bytes
 	ID               string   // Image UUID
 	Status           string   // Image status.  Can be queued or active
-	Owner            string   // Tenant that owns the image
-	ContainerFormat  string   // Format of the container, e.g., ovf
-	DiskFormat       string   // Format of the image, e.g., qcow2
-	MinDiskGigabytes int      // Minimum amount of disk space required to boot image
-	MinRAMMegabytes  int      // Minimum amount of RAM required to boot image
-	Checksum         string   // Checksum of image data
-	Protected        bool     // Indicates whether or not an image can be deleted
-	Visibility       string   // Indicates whether the image is public or private
 	CreatedDate      string   // Image creation date
 	LastUpdate       string   // Timestamp of last update
-	Tags             []string // List of image tags
 	File             string   // Image path
 	Schema           string   // Path to json schema
 }`
-
-type imageDiskFormat string
-
-func (f *imageDiskFormat) Set(value string) error {
-	*f = imageDiskFormat(value)
-	supportedFormats := []string{"ami", "ari", "aki", "vhd", "vmdk", "raw", "qcow2", "vdi", "iso"}
-	for _, format := range supportedFormats {
-		if format == value {
-			return nil
-		}
-	}
-	return fmt.Errorf("Supported image disk formats are: %s", supportedFormats)
-}
-
-func (f *imageDiskFormat) String() string {
-	return fmt.Sprint(*f)
-}
-
-type imageContainerFormat string
-
-func (f *imageContainerFormat) Set(value string) error {
-	*f = imageContainerFormat(value)
-	supportedFormats := []string{"ami", "ari", "aki", "bare", "ovf", "ova", "docker"}
-	for _, format := range supportedFormats {
-		if format == value {
-			return nil
-		}
-	}
-	return fmt.Errorf("Supported image container formats are: %s", supportedFormats)
-}
-
-func (f *imageContainerFormat) String() string {
-	return fmt.Sprint(*f)
-}
 
 var imageCommand = &command{
 	SubCommands: map[string]subCommand{
@@ -97,18 +53,11 @@ var imageCommand = &command{
 }
 
 type imageAddCommand struct {
-	Flag            flag.FlagSet
-	name            string
-	id              string
-	containerFormat imageContainerFormat
-	diskFormat      imageDiskFormat
-	minDiskSize     int
-	minRAMSize      int
-	visibility      string
-	protected       bool
-	tags            string
-	file            string
-	template        string
+	Flag     flag.FlagSet
+	name     string
+	id       string
+	file     string
+	template string
 }
 
 func (cmd *imageAddCommand) usage(...string) {
@@ -130,17 +79,8 @@ The template passed to the -f option operates on a
 }
 
 func (cmd *imageAddCommand) parseArgs(args []string) []string {
-	cmd.containerFormat = "bare"
-	cmd.diskFormat = "qcow2"
 	cmd.Flag.StringVar(&cmd.name, "name", "", "Image Name")
 	cmd.Flag.StringVar(&cmd.id, "id", "", "Image UUID")
-	cmd.Flag.Var(&cmd.containerFormat, "container-format", "Image Container Format (ami, ari, aki, bare, ovf, ova, docker")
-	cmd.Flag.Var(&cmd.diskFormat, "disk-format", "Image Disk Format (ami, ari, aki, vhd, vmdk, raw, qcow2, vdi, iso")
-	cmd.Flag.IntVar(&cmd.minDiskSize, "min-disk-size", 0, "Minimum disk size in GB")
-	cmd.Flag.IntVar(&cmd.minRAMSize, "min-ram-size", 0, "Minimum amount of RAM in MB")
-	cmd.Flag.StringVar(&cmd.visibility, "visibility", "public", "Image visibility (public or private)")
-	cmd.Flag.BoolVar(&cmd.protected, "protected", false, "Prevent an image from being deleted")
-	cmd.Flag.StringVar(&cmd.tags, "tags", "", "Image tags separated by comma")
 	cmd.Flag.StringVar(&cmd.file, "file", "", "Image file to upload")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
@@ -162,25 +102,9 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Could not get Image service client [%s]\n", err)
 	}
 
-	var visibility images.ImageVisibility
-	if cmd.visibility == "public" {
-		visibility = images.ImageVisibilityPublic
-	} else if cmd.visibility == "private" {
-		visibility = images.ImageVisibilityPrivate
-	} else {
-		fatalf("Image visibility should be public or private")
-	}
-
 	opts := images.CreateOpts{
-		Name:             cmd.name,
-		ID:               cmd.id,
-		ContainerFormat:  cmd.containerFormat.String(),
-		DiskFormat:       cmd.diskFormat.String(),
-		MinDiskGigabytes: cmd.minDiskSize,
-		MinRAMMegabytes:  cmd.minRAMSize,
-		Visibility:       &visibility,
-		Protected:        cmd.protected,
-		Tags:             strings.Split(cmd.tags, ","),
+		Name: cmd.name,
+		ID:   cmd.id,
 	}
 
 	image, err := images.Create(client, opts).Extract()
@@ -440,11 +364,9 @@ func uploadTenantImage(username, password, tenant, image, filename string) error
 }
 
 type imageModifyCommand struct {
-	Flag       flag.FlagSet
-	name       string
-	visibility string
-	tags       string
-	image      string
+	Flag  flag.FlagSet
+	name  string
+	image string
 }
 
 func (cmd *imageModifyCommand) usage(...string) {
@@ -461,8 +383,6 @@ The modify flags are:
 
 func (cmd *imageModifyCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.name, "name", "", "Image Name")
-	cmd.Flag.StringVar(&cmd.visibility, "visibility", "public", "Image visibility (public or private)")
-	cmd.Flag.StringVar(&cmd.tags, "tags", "", "Image tags separated by comma")
 	cmd.Flag.StringVar(&cmd.image, "image", "", "Image UUID")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
@@ -480,34 +400,11 @@ func (cmd *imageModifyCommand) run(args []string) error {
 	}
 
 	var opts images.UpdateOpts
-	if cmd.visibility != "" {
-		var visibility images.ImageVisibility
-		if cmd.visibility == "public" {
-			visibility = images.ImageVisibilityPublic
-		} else if cmd.visibility == "private" {
-			visibility = images.ImageVisibilityPrivate
-		} else {
-			fatalf("Image visibility should be public or private")
-		}
-		v := images.UpdateVisibility{
-			Visibility: visibility,
-		}
-		opts = append(opts, v)
-	}
-
 	if cmd.name != "" {
 		n := images.ReplaceImageName{
 			NewName: cmd.name,
 		}
 		opts = append(opts, n)
-	}
-
-	if len(cmd.tags) > 0 {
-		inputTags := strings.Split(cmd.tags, ",")
-		t := images.ReplaceImageTags{
-			NewTags: inputTags,
-		}
-		opts = append(opts, t)
 	}
 
 	image, err := images.Update(client, cmd.image, opts).Extract()
@@ -525,19 +422,7 @@ func dumpImage(i *images.Image) {
 	fmt.Printf("\tSize             [%d bytes]\n", i.SizeBytes)
 	fmt.Printf("\tUUID             [%s]\n", i.ID)
 	fmt.Printf("\tStatus           [%s]\n", i.Status)
-	fmt.Printf("\tOwner            [%s]\n", i.Owner)
-	fmt.Printf("\tDisk format      [%s]\n", i.DiskFormat)
-	fmt.Printf("\tContainer format [%s]\n", i.ContainerFormat)
-	fmt.Printf("\tMinimal disk     [%d GB]\n", i.MinDiskGigabytes)
-	fmt.Printf("\tMinimal memory   [%d MB]\n", i.MinRAMMegabytes)
-	fmt.Printf("\tChecksum         [%s]\n", i.Checksum)
-	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)
-	fmt.Printf("\tProtected        [%t]\n", i.Protected)
 	fmt.Printf("\tCreatedDate      [%s]\n", i.CreatedDate)
-	fmt.Printf("\tLastUpdate       [%s]\n", i.LastUpdate)
-	fmt.Printf("\tTags             [%s]\n", i.Tags)
-	fmt.Printf("\tFile             [%s]\n", i.File)
-	fmt.Printf("\tSchema           [%s]\n", i.Schema)
 }
 
 func imageServiceClient(username, password, tenant string) (*gophercloud.ServiceClient, error) {
