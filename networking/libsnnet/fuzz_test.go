@@ -106,11 +106,11 @@ func TestNwPrimitives_Fuzz(t *testing.T) {
 	f := fuzz.New()
 
 	vnic := Vnic{}
-	_ = vnic.create()
-	_ = vnic.enable()
-	_ = vnic.disable()
-	_ = vnic.getDevice()
-	_ = vnic.destroy()
+	_ = vnic.Create()
+	_ = vnic.Enable()
+	_ = vnic.Disable()
+	_ = vnic.GetDevice()
+	_ = vnic.Destroy()
 	for i := 0; i < 100; i++ {
 		vnic := Vnic{}
 		f.Fuzz(&vnic.Role)
@@ -118,11 +118,11 @@ func TestNwPrimitives_Fuzz(t *testing.T) {
 		f.Fuzz(&vnic.TenantID)
 		f.Fuzz(&vnic.InstanceID)
 		f.Fuzz(&vnic.BridgeID)
-		_ = vnic.create()
-		_ = vnic.enable()
-		_ = vnic.disable()
-		_ = vnic.getDevice()
-		_ = vnic.destroy()
+		_ = vnic.Create()
+		_ = vnic.Enable()
+		_ = vnic.Disable()
+		_ = vnic.GetDevice()
+		_ = vnic.Destroy()
 	}
 
 	bridge := Bridge{}
@@ -175,16 +175,16 @@ func TestNwPrimitives_Fuzz(t *testing.T) {
 	}
 
 	for i := 0; i < 100; i++ {
-		vnic, _ := newVnic("xyz")
+		vnic, _ := NewVnic("xyz")
 		f.Fuzz(&vnic.Role)
 		f.Fuzz(&vnic.GlobalID)
 		f.Fuzz(&vnic.TenantID)
 		f.Fuzz(&vnic.InstanceID)
 		f.Fuzz(&vnic.BridgeID)
-		_ = vnic.create()
-		_ = vnic.enable()
-		_ = vnic.disable()
-		_ = vnic.getDevice()
-		_ = vnic.destroy()
+		_ = vnic.Create()
+		_ = vnic.Enable()
+		_ = vnic.Disable()
+		_ = vnic.GetDevice()
+		_ = vnic.Destroy()
 	}
 }

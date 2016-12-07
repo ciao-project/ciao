@@ -74,22 +74,22 @@ func TestCN_dbRebuild(t *testing.T) {
 	}
 
 	// Create the VNIC for the instance
-	vnic, _ := newVnic(vnicAlias)
+	vnic, _ := NewVnic(vnicAlias)
 
-	assert.Nil(vnic.create())
-	defer func() { _ = vnic.destroy() }()
+	assert.Nil(vnic.Create())
+	defer func() { _ = vnic.Destroy() }()
 
-	assert.Nil(vnic.attach(bridge))
+	assert.Nil(vnic.Attach(bridge))
 
 	//Add a second vnic
 	vnicCfg.VnicIP = net.IPv4(192, 168, 1, 101)
 	alias1 := genCnVnicAliases(vnicCfg)
-	vnic1, _ := newVnic(alias1.vnic)
+	vnic1, _ := NewVnic(alias1.vnic)
 
-	assert.Nil(vnic1.create())
-	defer func() { _ = vnic1.destroy() }()
+	assert.Nil(vnic1.Create())
+	defer func() { _ = vnic1.Destroy() }()
 
-	assert.Nil(vnic1.attach(bridge))
+	assert.Nil(vnic1.Attach(bridge))
 
 	/* Test negative test cases */
 	assert.NotNil(cn.DbRebuild(nil))
