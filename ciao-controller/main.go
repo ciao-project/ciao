@@ -37,6 +37,7 @@ import (
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
 	image "github.com/01org/ciao/ciao-image/client"
 	storage "github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/openstack/compute"
 	osIdentity "github.com/01org/ciao/openstack/identity"
@@ -157,9 +158,9 @@ func main() {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
 
-	ospLogger := osprepare.OSPGlogLogger{}
-	osprepare.Bootstrap(context.TODO(), ospLogger)
-	osprepare.InstallDeps(context.TODO(), controllerDeps, ospLogger)
+	logger := gloginterface.CiaoGlogLogger{}
+	osprepare.Bootstrap(context.TODO(), logger)
+	osprepare.InstallDeps(context.TODO(), controllerDeps, logger)
 
 	if *singleMachine {
 		hostname, _ := os.Hostname()

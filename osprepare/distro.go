@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/01org/ciao/clogger"
 )
 
 const (
@@ -175,7 +177,7 @@ type distro interface {
 	// InstallPackages should implement the installation
 	// of packages using distro specific methods for
 	// the given target list of items to install
-	InstallPackages(ctx context.Context, packages []string, logger OSPLog) bool
+	InstallPackages(ctx context.Context, packages []string, logger clogger.CiaoLog) bool
 
 	// getID should return a string specifying
 	// the distribution ID (e.g: "clearlinux")
@@ -212,7 +214,7 @@ func (d *clearLinuxDistro) getID() string {
 
 // Correctly split and format the command, using sudo if appropriate, as a
 // common mechanism for the various package install functions.
-func sudoFormatCommand(ctx context.Context, command string, packages []string, logger OSPLog) bool {
+func sudoFormatCommand(ctx context.Context, command string, packages []string, logger clogger.CiaoLog) bool {
 	var executable string
 	var args string
 
@@ -251,7 +253,7 @@ func sudoFormatCommand(ctx context.Context, command string, packages []string, l
 	return true
 }
 
-func (d *clearLinuxDistro) InstallPackages(ctx context.Context, packages []string, logger OSPLog) bool {
+func (d *clearLinuxDistro) InstallPackages(ctx context.Context, packages []string, logger clogger.CiaoLog) bool {
 	return sudoFormatCommand(ctx, "swupd bundle-add %s", packages, logger)
 }
 
@@ -264,7 +266,7 @@ func (d *ubuntuDistro) getID() string {
 	return "ubuntu"
 }
 
-func (d *ubuntuDistro) InstallPackages(ctx context.Context, packages []string, logger OSPLog) bool {
+func (d *ubuntuDistro) InstallPackages(ctx context.Context, packages []string, logger clogger.CiaoLog) bool {
 	return sudoFormatCommand(ctx, "apt-get --yes --force-yes install %s", packages, logger)
 }
 
@@ -277,6 +279,6 @@ func (d *fedoraDistro) getID() string {
 }
 
 // Use dnf to install on Fedora
-func (d *fedoraDistro) InstallPackages(ctx context.Context, packages []string, logger OSPLog) bool {
+func (d *fedoraDistro) InstallPackages(ctx context.Context, packages []string, logger clogger.CiaoLog) bool {
 	return sudoFormatCommand(ctx, "dnf install -y %s", packages, logger)
 }
