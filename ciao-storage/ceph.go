@@ -55,9 +55,9 @@ func (d CephDriver) CreateBlockDevice(volumeUUID string, imagePath string, size 
 		cmd = exec.Command("rbd", "--id", d.ID, "--image-feature", "layering", "create", "--size", strconv.Itoa(size)+"G", volumeUUID)
 	}
 
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 
 	return BlockDevice{ID: volumeUUID}, nil
@@ -71,9 +71,9 @@ func (d CephDriver) CreateBlockDeviceFromSnapshot(volumeUUID string, snapshotID 
 
 	cmd = exec.Command("rbd", "--id", d.ID, "clone", volumeUUID+"@"+snapshotID, ID)
 
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 
 	return BlockDevice{ID: ID}, nil
@@ -84,17 +84,17 @@ func (d CephDriver) CreateBlockDeviceSnapshot(volumeUUID string, snapshotID stri
 	var cmd *exec.Cmd
 	cmd = exec.Command("rbd", "--id", d.ID, "snap", "create", volumeUUID+"@"+snapshotID)
 
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+		return fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 
 	cmd = exec.Command("rbd", "--id", d.ID, "snap", "protect", volumeUUID+"@"+snapshotID)
 
-	err = cmd.Run()
+	out, err = cmd.CombinedOutput()
 	if err != nil {
 		d.DeleteBlockDevice(volumeUUID)
-		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+		return fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 	return nil
 }
@@ -107,9 +107,9 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 
 	cmd = exec.Command("rbd", "--id", d.ID, "cp", volumeUUID, ID)
 
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 
 	return BlockDevice{ID: ID}, nil
@@ -118,7 +118,11 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 // DeleteBlockDevice will remove a rbd image from the ceph cluster.
 func (d CephDriver) DeleteBlockDevice(volumeUUID string) error {
 	cmd := exec.Command("rbd", "--id", d.ID, "rm", volumeUUID)
-	return cmd.Run()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
+	}
+	return nil
 }
 
 // DeleteBlockDeviceSnapshot unprotects and deletes the snapshot with the provided name
@@ -126,15 +130,15 @@ func (d CephDriver) DeleteBlockDeviceSnapshot(volumeUUID string, snapshotID stri
 	var cmd *exec.Cmd
 
 	cmd = exec.Command("rbd", "--id", d.ID, "snap", "unprotect", volumeUUID+"@"+snapshotID)
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+		return fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 
 	cmd = exec.Command("rbd", "--id", d.ID, "snap", "rm", volumeUUID+"@"+snapshotID)
-	err = cmd.Run()
+	out, err = cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+		return fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 	return nil
 }
@@ -166,7 +170,13 @@ func (d CephDriver) MapVolumeToNode(volumeUUID string) (string, error) {
 // UnmapVolumeFromNode unmaps a ceph volume from a local device on a node.
 func (d CephDriver) UnmapVolumeFromNode(volumeUUID string) error {
 	args := append(d.getCredentials(), "unmap", volumeUUID)
-	return exec.Command("rbd", args...).Run()
+	cmd := exec.Command("rbd", args...)
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
+	}
+	return nil
 }
 
 // GetVolumeMapping returns a map of volumeUUID to mapped devices.
@@ -175,7 +185,10 @@ func (d CephDriver) GetVolumeMapping() (map[string][]string, error) {
 	cmd := exec.Command("rbd", args...)
 	data, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		if err, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, err.Stderr)
+		}
+		return nil, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
 	}
 
 	vmap := map[string]struct {
