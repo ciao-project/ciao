@@ -23,7 +23,14 @@ existing test case runner, test-cases.
 The BAT tests require a running ciao cluster to execute.  This can be a
 full ciao cluster running on hundreds of nodes or a Single VM ciao cluster
 running on a single machine.  For more information about Single VM see
-(here)[https://github.com/01org/ciao/wiki/Single-Machine-Development-Environment].
+[here](https://github.com/01org/ciao/wiki/Single-Machine-Development-Environment).
+
+The BAT tests have some dependencies. The device on which they are run must have
+qemu-img installed and must also have access to the ceph cluster. The controller
+node in a ciao cluster fulfills both of these requirements so it is often easiest
+to run the BAT tests from this node. There is only one node in Single VM clusters,
+so when using Single VM, simply run the BAT tests from the device on which you ran
+setup.sh.
 
 The BAT tests require that certain environment variables have been set before they
 can be run:
@@ -62,7 +69,7 @@ BAT tests would be to do the following.
 ```
 
 This currently does not work.  The reason is that when go test is run
-with a wildcard and that widlcard matches multiple packages the tests
+with a wildcard and that wildcard matches multiple packages the tests
 for all of these packages are run in parallel.  As all tests are run in
 the same tenant and some tests call ciao-cli instance delete -all, the
 tests from different packages can interfere with each other.  This means
