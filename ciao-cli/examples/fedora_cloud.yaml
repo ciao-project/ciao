@@ -1,0 +1,9 @@
+description: "Fedora VM no storage"
+vm_type: qemu
+fw_type: legacy
+image_id: "73a86d7e-93c0-480e-9c41-ab42f69b7799"
+defaults:
+    vcpus: 2
+    mem_mb: 512
+    disk_mb: 1024
+cloud_init: fedora_vm.yaml
