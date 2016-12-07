@@ -139,7 +139,7 @@ func (cmd *instanceAddCommand) run(args []string) error {
 	}
 
 	for _, server := range servers.Servers {
-		fmt.Printf("Created new instance: %s\n", server.ID)
+		fmt.Printf("Created new (pending) instance: %s\n", server.ID)
 	}
 	return nil
 }
