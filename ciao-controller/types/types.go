@@ -90,6 +90,16 @@ type WorkloadResponse struct {
 	Link     Link     `json:"link"`
 }
 
+// WorkloadRequest contains resource and configuration for a user
+// workload.
+type WorkloadRequest struct {
+	WorkloadID string
+	TenantID   string
+	Instances  int
+	TraceLabel string
+	Volumes    []storage.BlockDevice
+}
+
 // Instance contains information about an instance of a workload.
 type Instance struct {
 	ID          string              `json:"instance_id"`
