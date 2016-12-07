@@ -33,6 +33,9 @@ import (
 // UUID represents a single 128 bit UUID as an array of 16 bytes.
 type UUID [16]byte
 
+// UUIDRegex defines a pattern for validating UUIDs
+const UUIDRegex = "[a-fA-F0-9]{8}-?[a-fA-F0-9]{4}-?4[a-fA-F0-9]{3}-?[8|9|aA|bB][a-fA-F0-9]{3}-?[a-fA-F0-9]{12}"
+
 var (
 	// ErrUUIDInvalid indicates that a UIID is invalid.  Currently,
 	// returned by uuid.Parse if the string passed to this function

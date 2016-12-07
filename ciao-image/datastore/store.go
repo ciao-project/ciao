@@ -132,6 +132,10 @@ func (s *ImageStore) DeleteImage(ID string) error {
 
 	img, err := s.metaDs.Get(ID)
 	if err != nil {
+		return err
+	}
+
+	if img == (Image{}) {
 		return image.ErrNoImage
 	}
 
@@ -154,6 +158,10 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 	img, err := s.metaDs.Get(ID)
 	s.ImageMap.RUnlock()
 	if err != nil {
+		return err
+	}
+
+	if img == (Image{}) {
 		return image.ErrNoImage
 	}
 
