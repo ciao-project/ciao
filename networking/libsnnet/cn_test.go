@@ -738,13 +738,13 @@ func TestCN_Whitebox(t *testing.T) {
 
 	// Create the VNIC for the instance
 	vnicAlias := fmt.Sprintf("vnic_%s_%s_%s_%s", tenantUUID, instanceUUID, instanceMAC, concUUID)
-	vnic, _ := newVnic(vnicAlias)
+	vnic, _ := NewVnic(vnicAlias)
 	vnic.MACAddr = &instanceMAC
 
-	assert.Nil(vnic.create())
-	defer func() { _ = vnic.destroy() }()
+	assert.Nil(vnic.Create())
+	defer func() { _ = vnic.Destroy() }()
 
-	assert.Nil(vnic.attach(bridge))
-	assert.Nil(vnic.enable())
+	assert.Nil(vnic.Attach(bridge))
+	assert.Nil(vnic.Enable())
 	assert.Nil(bridge.Enable())
 }

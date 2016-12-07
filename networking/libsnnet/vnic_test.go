@@ -27,9 +27,9 @@ func performVnicOps(shouldPass bool, assert *assert.Assertions, vnic *Vnic) {
 	if !shouldPass {
 		a = assert.NotNil
 	}
-	a(vnic.enable())
-	a(vnic.disable())
-	a(vnic.destroy())
+	a(vnic.Enable())
+	a(vnic.Disable())
+	a(vnic.Destroy())
 }
 
 //Tests all the basic VNIC primitives
@@ -42,16 +42,16 @@ func performVnicOps(shouldPass bool, assert *assert.Assertions, vnic *Vnic) {
 func TestVnic_Basic(t *testing.T) {
 	assert := assert.New(t)
 
-	vnic, err := newVnic("testvnic")
+	vnic, err := NewVnic("testvnic")
 	assert.Nil(err)
-	assert.Nil(vnic.create())
+	assert.Nil(vnic.Create())
 
-	vnic1, err := newVnic("testvnic")
+	vnic1, err := NewVnic("testvnic")
 	assert.Nil(err)
 
-	assert.Nil(vnic1.getDevice())
-	assert.NotEqual(vnic.interfaceName(), "")
-	assert.Equal(vnic.peerName(), vnic.interfaceName())
+	assert.Nil(vnic1.GetDevice())
+	assert.NotEqual(vnic.InterfaceName(), "")
+	assert.Equal(vnic.PeerName(), vnic.InterfaceName())
 
 	performVnicOps(true, assert, vnic)
 }
@@ -66,11 +66,11 @@ func TestVnic_Basic(t *testing.T) {
 func TestVnicContainer_Basic(t *testing.T) {
 	assert := assert.New(t)
 
-	vnic, _ := newContainerVnic("testvnic")
-	assert.Nil(vnic.create())
+	vnic, _ := NewContainerVnic("testvnic")
+	assert.Nil(vnic.Create())
 
-	vnic1, _ := newContainerVnic("testvnic")
-	assert.Nil(vnic1.getDevice())
+	vnic1, _ := NewContainerVnic("testvnic")
+	assert.Nil(vnic1.GetDevice())
 
 	performVnicOps(true, assert, vnic)
 }
@@ -83,12 +83,12 @@ func TestVnicContainer_Basic(t *testing.T) {
 //Test is expected to pass
 func TestVnic_Dup(t *testing.T) {
 	assert := assert.New(t)
-	vnic, _ := newVnic("testvnic")
-	vnic1, _ := newVnic("testvnic")
+	vnic, _ := NewVnic("testvnic")
+	vnic1, _ := NewVnic("testvnic")
 
-	assert.Nil(vnic.create())
-	defer func() { _ = vnic.destroy() }()
-	assert.NotNil(vnic1.create())
+	assert.Nil(vnic.Create())
+	defer func() { _ = vnic.Destroy() }()
+	assert.NotNil(vnic1.Create())
 }
 
 //Duplicate Container VNIC creation detection
@@ -99,12 +99,12 @@ func TestVnic_Dup(t *testing.T) {
 //Test is expected to pass
 func TestVnicContainer_Dup(t *testing.T) {
 	assert := assert.New(t)
-	vnic, _ := newContainerVnic("testconvnic")
-	vnic1, _ := newContainerVnic("testconvnic")
+	vnic, _ := NewContainerVnic("testconvnic")
+	vnic1, _ := NewContainerVnic("testconvnic")
 
-	assert.Nil(vnic.create())
-	defer func() { _ = vnic.destroy() }()
-	assert.NotNil(vnic1.create())
+	assert.Nil(vnic.Create())
+	defer func() { _ = vnic.Destroy() }()
+	assert.NotNil(vnic1.Create())
 }
 
 //Negative test case for VNIC primitives
@@ -115,10 +115,10 @@ func TestVnicContainer_Dup(t *testing.T) {
 //Test is expected to pass
 func TestVnic_Invalid(t *testing.T) {
 	assert := assert.New(t)
-	vnic, err := newVnic("testvnic")
+	vnic, err := NewVnic("testvnic")
 	assert.Nil(err)
 
-	assert.NotNil(vnic.getDevice())
+	assert.NotNil(vnic.GetDevice())
 
 	performVnicOps(false, assert, vnic)
 }
@@ -132,10 +132,10 @@ func TestVnic_Invalid(t *testing.T) {
 func TestVnicContainer_Invalid(t *testing.T) {
 	assert := assert.New(t)
 
-	vnic, err := newContainerVnic("testcvnic")
+	vnic, err := NewContainerVnic("testcvnic")
 	assert.Nil(err)
 
-	assert.NotNil(vnic.getDevice())
+	assert.NotNil(vnic.GetDevice())
 
 	performVnicOps(false, assert, vnic)
 }
@@ -148,16 +148,16 @@ func TestVnicContainer_Invalid(t *testing.T) {
 //Test is expected to pass
 func TestVnic_GetDevice(t *testing.T) {
 	assert := assert.New(t)
-	vnic1, _ := newVnic("testvnic")
+	vnic1, _ := NewVnic("testvnic")
 
-	assert.Nil(vnic1.create())
-	vnic, _ := newVnic("testvnic")
+	assert.Nil(vnic1.Create())
+	vnic, _ := NewVnic("testvnic")
 
-	assert.Nil(vnic.getDevice())
-	assert.NotEqual(vnic.interfaceName(), "")
-	assert.Equal(vnic.interfaceName(), vnic1.interfaceName())
-	assert.NotEqual(vnic1.peerName(), "")
-	assert.Equal(vnic1.peerName(), vnic.peerName())
+	assert.Nil(vnic.GetDevice())
+	assert.NotEqual(vnic.InterfaceName(), "")
+	assert.Equal(vnic.InterfaceName(), vnic1.InterfaceName())
+	assert.NotEqual(vnic1.PeerName(), "")
+	assert.Equal(vnic1.PeerName(), vnic.PeerName())
 
 	performVnicOps(true, assert, vnic)
 }
@@ -171,16 +171,16 @@ func TestVnic_GetDevice(t *testing.T) {
 func TestVnicContainer_GetDevice(t *testing.T) {
 	assert := assert.New(t)
 
-	vnic1, err := newContainerVnic("testvnic")
+	vnic1, err := NewContainerVnic("testvnic")
 	assert.Nil(err)
 
-	err = vnic1.create()
+	err = vnic1.Create()
 	assert.Nil(err)
 
-	vnic, err := newContainerVnic("testvnic")
+	vnic, err := NewContainerVnic("testvnic")
 	assert.Nil(err)
 
-	assert.Nil(vnic.getDevice())
+	assert.Nil(vnic.GetDevice())
 	performVnicOps(true, assert, vnic)
 }
 
@@ -191,19 +191,19 @@ func TestVnicContainer_GetDevice(t *testing.T) {
 //Test is expected to pass
 func TestVnic_Bridge(t *testing.T) {
 	assert := assert.New(t)
-	vnic, _ := newVnic("testvnic")
+	vnic, _ := NewVnic("testvnic")
 	bridge, _ := NewBridge("testbridge")
 
-	assert.Nil(vnic.create())
-	defer func() { _ = vnic.destroy() }()
+	assert.Nil(vnic.Create())
+	defer func() { _ = vnic.Destroy() }()
 
 	assert.Nil(bridge.Create())
 	defer func() { _ = bridge.Destroy() }()
 
-	assert.Nil(vnic.attach(bridge))
-	assert.Nil(vnic.enable())
+	assert.Nil(vnic.Attach(bridge))
+	assert.Nil(vnic.Enable())
 	assert.Nil(bridge.Enable())
-	assert.Nil(vnic.detach(bridge))
+	assert.Nil(vnic.Detach(bridge))
 
 }
 
@@ -214,18 +214,18 @@ func TestVnic_Bridge(t *testing.T) {
 //Test is expected to pass
 func TestVnicContainer_Bridge(t *testing.T) {
 	assert := assert.New(t)
-	vnic, _ := newContainerVnic("testvnic")
+	vnic, _ := NewContainerVnic("testvnic")
 	bridge, _ := NewBridge("testbridge")
 
-	assert.Nil(vnic.create())
+	assert.Nil(vnic.Create())
 
-	defer func() { _ = vnic.destroy() }()
+	defer func() { _ = vnic.Destroy() }()
 
 	assert.Nil(bridge.Create())
 	defer func() { _ = bridge.Destroy() }()
 
-	assert.Nil(vnic.attach(bridge))
-	assert.Nil(vnic.enable())
+	assert.Nil(vnic.Attach(bridge))
+	assert.Nil(vnic.Enable())
 	assert.Nil(bridge.Enable())
-	assert.Nil(vnic.detach(bridge))
+	assert.Nil(vnic.Detach(bridge))
 }

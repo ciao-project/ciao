@@ -259,7 +259,7 @@ func TestCNContainer_Base(t *testing.T) {
 
 		//Cache the first subnet ID we see. All subsequent should have the same
 		subnetID = cInfo.SubnetID
-		iface = vnic.interfaceName()
+		iface = vnic.InterfaceName()
 		assert.NotEqual(iface, "")
 
 		//Launcher will attach to this name and send out the event
@@ -282,7 +282,7 @@ func TestCNContainer_Base(t *testing.T) {
 		if assert.NotNil(cInfo) {
 			assert.Equal(cInfo.SubnetID, subnetID)
 			assert.Equal(cInfo.CNContainerEvent, ContainerNetworkInfo)
-			assert.Equal(iface, vnic.interfaceName())
+			assert.Equal(iface, vnic.InterfaceName())
 		}
 	}
 
@@ -295,7 +295,7 @@ func TestCNContainer_Base(t *testing.T) {
 			assert.Equal(cInfo.SubnetID, subnetID)
 			assert.Equal(cInfo.CNContainerEvent, ContainerNetworkInfo)
 		}
-		iface = vnic.interfaceName()
+		iface = vnic.InterfaceName()
 		assert.NotEqual(iface, "")
 		assert.Nil(dockerRunVerify(vnicCfg2.VnicIP.String(), vnicCfg2.VnicIP,
 			vnicCfg2.VnicMAC, cInfo.SubnetID))
@@ -310,7 +310,7 @@ func TestCNContainer_Base(t *testing.T) {
 		if assert.NotNil(cInfo) {
 			assert.Equal(cInfo.SubnetID, subnetID)
 			assert.Equal(cInfo.CNContainerEvent, ContainerNetworkInfo)
-			assert.Equal(iface, vnic.interfaceName())
+			assert.Equal(iface, vnic.InterfaceName())
 		}
 	}
 

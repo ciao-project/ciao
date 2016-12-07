@@ -693,9 +693,9 @@ func newCNVnic(cfg *VnicConfig, id string) (*Vnic, error) {
 
 	switch cfg.VnicRole {
 	case TenantVM:
-		vnic, err = newVnic(id)
+		vnic, err = NewVnic(id)
 	case TenantContainer:
-		vnic, err = newContainerVnic(id)
+		vnic, err = NewContainerVnic(id)
 	}
 	if err != nil {
 		return nil, NewAPIError(err.Error())
@@ -971,20 +971,20 @@ func createAndEnableBridge(bridge *Bridge, gre *GreTunEP) error {
 
 //Physically create the VNIC and attach it to the bridge
 func createAndEnableVnic(vnic *Vnic, bridge *Bridge) error {
-	if err := vnic.create(); err != nil {
+	if err := vnic.Create(); err != nil {
 		return fmt.Errorf("VNIC creation failed %s %s", vnic.GlobalID, err.Error())
 	}
-	if err := vnic.setHardwareAddr(*vnic.MACAddr); err != nil {
+	if err := vnic.SetHardwareAddr(*vnic.MACAddr); err != nil {
 		return fmt.Errorf("VNIC Set MAC Address %s %s", vnic.GlobalID, err.Error())
 	}
-	if err := vnic.setMTU(vnic.MTU); err != nil {
+	if err := vnic.SetMTU(vnic.MTU); err != nil {
 		return fmt.Errorf("VNIC Set MTU Address %s %s", vnic.GlobalID, err.Error())
 	}
-	if err := vnic.attach(bridge); err != nil {
+	if err := vnic.Attach(bridge); err != nil {
 		return fmt.Errorf("VNIC attach failed %s %s %s", vnic.GlobalID, bridge.GlobalID, err.Error())
 	}
 	vnic.BridgeID = bridge.LinkName
-	if err := vnic.enable(); err != nil {
+	if err := vnic.Enable(); err != nil {
 		return fmt.Errorf("VNIC enable failed %s %s %s", vnic.GlobalID, bridge.GlobalID, err.Error())
 	}
 	return nil
@@ -1048,7 +1048,7 @@ func (cn *ComputeNode) deleteVnicInternal(vnic *Vnic, vLink *linkInfo) (err erro
 	if err != nil {
 		return NewFatalError(vnic.GlobalID + err.Error())
 	}
-	err = vnic.destroy()
+	err = vnic.Destroy()
 	if err != nil {
 		return NewFatalError(err.Error())
 	}
@@ -1107,7 +1107,7 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 	var brDeleteMsg *SsntpEventInfo
 
 	alias := genCnVnicAliases(cfg)
-	vnic, err := newVnic(alias.vnic)
+	vnic, err := NewVnic(alias.vnic)
 	if err != nil {
 		return nil, NewAPIError(err.Error())
 	}
