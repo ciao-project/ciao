@@ -377,7 +377,14 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 		label = server.Server.Name
 	}
 
-	instances, err := c.startWorkload(server.Server.Flavor, tenant, nInstances, label, volumes)
+	w := types.WorkloadRequest{
+		WorkloadID: server.Server.Flavor,
+		TenantID:   tenant,
+		Instances:  nInstances,
+		TraceLabel: label,
+		Volumes:    volumes,
+	}
+	instances, err := c.startWorkload(w)
 	if err != nil {
 		return server, err
 	}

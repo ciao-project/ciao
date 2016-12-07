@@ -107,7 +107,12 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1, "", noVolumes)
+		w := types.WorkloadRequest{
+			WorkloadID: wls[0].ID,
+			TenantID:   tuuid.String(),
+			Instances:  1,
+		}
+		_, err = ctl.startWorkload(w)
 		if err != nil {
 			b.Error(err)
 		}
@@ -142,7 +147,12 @@ func BenchmarkStart1000Workload(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1000, "", noVolumes)
+		w := types.WorkloadRequest{
+			WorkloadID: wls[0].ID,
+			TenantID:   tuuid.String(),
+			Instances:  1000,
+		}
+		_, err = ctl.startWorkload(w)
 		if err != nil {
 			b.Error(err)
 		}
@@ -166,7 +176,7 @@ func BenchmarkNewConfig(b *testing.B) {
 	id := uuid.Generate()
 
 	b.ResetTimer()
-	noVolumes = []storage.BlockDevice{}
+	noVolumes := []storage.BlockDevice{}
 	for n := 0; n < b.N; n++ {
 		_, err := newConfig(ctl, wls[0], id.String(), tenant.ID, noVolumes)
 		if err != nil {
@@ -194,7 +204,12 @@ func TestTenantWithinBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 1, "", noVolumes)
+	w := types.WorkloadRequest{
+		WorkloadID: wls[0].ID,
+		TenantID:   tenant.ID,
+		Instances:  1,
+	}
+	_, err = ctl.startWorkload(w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +236,12 @@ func TestTenantOutOfBounds(t *testing.T) {
 	}
 
 	/* try to send 2 workload start commands */
-	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 2, "", noVolumes)
+	w := types.WorkloadRequest{
+		WorkloadID: wls[0].ID,
+		TenantID:   tenant.ID,
+		Instances:  2,
+	}
+	_, err = ctl.startWorkload(w)
 	if err == nil {
 		t.Errorf("Not tracking limits correctly")
 	}
@@ -922,7 +942,13 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	clientCh := client.AddCmdChan(ssntp.START)
 	serverCh := server.AddCmdChan(ssntp.START)
 
-	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, 1, "testtrace1", noVolumes)
+	w := types.WorkloadRequest{
+		WorkloadID: wls[0].ID,
+		TenantID:   tenant.ID,
+		Instances:  1,
+		TraceLabel: "testtrace",
+	}
+	instances, err := ctl.startWorkload(w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -972,7 +998,12 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	client.StartFail = fail
 	client.StartFailReason = reason
 
-	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, num, "", noVolumes)
+	w := types.WorkloadRequest{
+		WorkloadID: wls[0].ID,
+		TenantID:   tenant.ID,
+		Instances:  num,
+	}
+	instances, err := ctl.startWorkload(w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1027,7 +1058,12 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	instanceCh := make(chan []*types.Instance)
 
 	go func() {
-		instances, err := ctl.startWorkload(wls[0].ID, newTenant, 1, "", noVolumes)
+		w := types.WorkloadRequest{
+			WorkloadID: wls[0].ID,
+			TenantID:   newTenant,
+			Instances:  1,
+		}
+		instances, err := ctl.startWorkload(w)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1774,7 +1810,6 @@ func TestMapAddressNoPool(t *testing.T) {
 	}
 }
 
-var noVolumes []storage.BlockDevice
 var testClients []*testutil.SsntpTestClient
 var ctl *controller
 var server *testutil.SsntpTestServer
