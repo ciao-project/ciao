@@ -496,7 +496,7 @@ func (cmd *poolListCommand) parseArgs(args []string) []string {
 
 // change this command to return different output depending
 // on the privilege level of user. Check privilege, then
-// if not privileged, build non-priviledged URL.
+// if not privileged, build non-privileged URL.
 func (cmd *poolListCommand) run(args []string) error {
 	var pools types.ListPoolsResponse
 
