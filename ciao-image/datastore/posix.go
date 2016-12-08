@@ -67,3 +67,15 @@ func (p *Posix) Delete(ID string) error {
 
 	return err
 }
+
+// GetImageSize obtains the image size from the underlying filesystem
+func (p *Posix) GetImageSize(ID string) (uint64, error) {
+	imageName := path.Join(p.MountPoint, ID)
+
+	fi, err := os.Stat(imageName)
+	imageSize := uint64(fi.Size())
+	if err != nil {
+		return 0, fmt.Errorf("Error getting image size: %v", err)
+	}
+	return imageSize, nil
+}

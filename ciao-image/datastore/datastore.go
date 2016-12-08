@@ -84,6 +84,7 @@ type Image struct {
 	Name       string
 	CreateTime time.Time
 	Type       Type
+	Size       uint64
 }
 
 // DataStore is the image data storage interface.
@@ -111,4 +112,5 @@ type MetaDataStore interface {
 type RawDataStore interface {
 	Write(ID string, body io.Reader) error
 	Delete(ID string) error
+	GetImageSize(ID string) (uint64, error)
 }

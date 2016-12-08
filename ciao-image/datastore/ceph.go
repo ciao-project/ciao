@@ -78,3 +78,12 @@ func (c *Ceph) Delete(ID string) error {
 	}
 	return nil
 }
+
+// GetImageSize returns the size, in bytes, of the block device
+func (c *Ceph) GetImageSize(ID string) (uint64, error) {
+	imageSize, err := c.BlockDriver.GetBlockDeviceSize(ID)
+	if err != nil {
+		return 0, fmt.Errorf("Error getting image size: %v", err)
+	}
+	return imageSize, nil
+}
