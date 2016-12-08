@@ -181,10 +181,14 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 	if err == nil {
 		img.State = Active
 	}
+
 	s.ImageMap.Lock()
 	defer s.ImageMap.Unlock()
+	metaDsErr := s.metaDs.Write(img)
 
-	err = s.metaDs.Write(img)
+	if err == nil && metaDsErr != nil {
+		err = metaDsErr
+	}
 
 	return err
 }
