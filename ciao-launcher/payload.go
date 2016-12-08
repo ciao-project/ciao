@@ -59,7 +59,7 @@ func printCloudinit(data *payloads.Start) {
 	glog.Infof("Disk image UUID:      %v", start.ImageUUID)
 	glog.Infof("FW Type:              %v", start.FWType)
 	glog.Infof("VM Type:              %v", start.VMType)
-	glog.Infof("TennantUUID:          %v", start.TenantUUID)
+	glog.Infof("TenantUUID:          %v", start.TenantUUID)
 	net := &start.Networking
 	glog.Infof("VnicMAC:              %v", net.VnicMAC)
 	glog.Infof("VnicIP:               %v", net.PrivateIP)
@@ -187,7 +187,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 		VnicIP:      vnicIP,
 		ConcIP:      strings.TrimSpace(net.ConcentratorIP),
 		SubnetIP:    strings.TrimSpace(net.Subnet),
-		TennantUUID: strings.TrimSpace(start.TenantUUID),
+		TenantUUID:  strings.TrimSpace(start.TenantUUID),
 		ConcUUID:    strings.TrimSpace(net.ConcentratorUUID),
 		VnicUUID:    strings.TrimSpace(net.VnicUUID),
 		SSHPort:     sshPort,

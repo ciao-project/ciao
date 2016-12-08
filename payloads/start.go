@@ -162,7 +162,7 @@ type NetworkResources struct {
 
 // StartCmd contains the information needed to start a new instance.
 type StartCmd struct {
-	// TenantUUID is the UUID of the tennant to which the new instance will
+	// TenantUUID is the UUID of the tenant to which the new instance will
 	// belong.
 	TenantUUID string `yaml:"tenant_uuid"`
 

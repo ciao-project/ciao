@@ -17,7 +17,7 @@
 package payloads
 
 // TenantAddedEvent is populated by ciao-launcher whenever it creates
-// or removes a local tunnel for a tennant on a CN.  This information is
+// or removes a local tunnel for a tenant on a CN.  This information is
 // sent to a CNCI instance, via the scheduler.  The cnci-agent then does
 // its magic.
 type TenantAddedEvent struct {
@@ -27,7 +27,7 @@ type TenantAddedEvent struct {
 	// The IP address of the CN on which the originating agent runs.
 	AgentIP string `yaml:"agent_ip"`
 
-	// The UUID of the tennant.
+	// The UUID of the tenant.
 	TenantUUID string `yaml:"tenant_uuid"`
 
 	// The subnet of the Tenant.
