@@ -48,6 +48,31 @@ func TestCreateBlockDevice(t *testing.T) {
 	}
 }
 
+// Test creating a sized ceph backed block device.
+//
+// TestCreateSizedBlockDevice creates a block device of a fixed size, checking
+// for errors and then checks that the size is a expected.
+func TestCreateSizedBlockDevice(t *testing.T) {
+	device, err := driver.CreateBlockDevice("", "", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockSize, err := driver.GetBlockDeviceSize(device.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if blockSize != 1*1024*1024*1024 {
+		t.Fatalf("Unexpected block size (%v): expected: %v got: %v", device.ID, 1*1024*1024*1024, blockSize)
+	}
+
+	err = driver.DeleteBlockDevice(device.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // Check copying a ceph backed block device works
 //
 // TestCopyBlockDevice creates a block device containing some random data,
