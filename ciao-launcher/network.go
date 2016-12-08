@@ -203,7 +203,7 @@ func createCNVnicCfg(cfg *vmConfig) (*libsnnet.VnicConfig, error) {
 		SubnetKey:  int(subnetKey),
 		VnicID:     cfg.VnicUUID,
 		InstanceID: cfg.Instance,
-		TenantID:   cfg.TennantUUID,
+		TenantID:   cfg.TenantUUID,
 		SubnetID:   cfg.SubnetIP,
 		ConcID:     cfg.ConcUUID}, nil
 }
@@ -222,7 +222,7 @@ func createCNCIVnicCfg(cfg *vmConfig) (*libsnnet.VnicConfig, error) {
 		VnicMAC:    mac,
 		VnicID:     cfg.VnicUUID,
 		InstanceID: cfg.Instance,
-		TenantID:   cfg.TennantUUID}, nil
+		TenantID:   cfg.TenantUUID}, nil
 }
 
 func createVnicCfg(cfg *vmConfig) (*libsnnet.VnicConfig, error) {

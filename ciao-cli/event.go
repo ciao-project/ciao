@@ -53,7 +53,7 @@ The template passed to the -f option operates on a
 
 []struct {
 	Timestamp time.Time // Event timestamp
-	TenantID  string    // UUID of the tennant that generated this event
+	TenantID  string    // UUID of the tenant that generated this event
 	EventType string    // Type of event, e.g., info, warn, error.
 	Message   string    // Event message
 }

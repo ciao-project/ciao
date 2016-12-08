@@ -42,7 +42,7 @@ type vmConfig struct {
 	VnicIP      string
 	ConcIP      string
 	SubnetIP    string
-	TennantUUID string
+	TenantUUID  string
 	ConcUUID    string
 	VnicUUID    string
 	SSHPort     int
