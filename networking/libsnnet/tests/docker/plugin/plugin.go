@@ -29,11 +29,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/boltdb/bolt"
 	"github.com/docker/libnetwork/drivers/remote/api"
 	ipamapi "github.com/docker/libnetwork/ipams/remote/api"
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -72,16 +72,16 @@ func init() {
 func sendResponse(resp interface{}, w http.ResponseWriter) {
 	rb, err := json.Marshal(resp)
 	if err != nil {
-		glog.Errorf("unable to marshal response %v", err)
+		libsnnet.Logger.Errorf("unable to marshal response %v", err)
 	}
-	glog.Infof("Sending response := %v, %v", resp, err)
+	libsnnet.Logger.Infof("Sending response := %v, %v", resp, err)
 	fmt.Fprintf(w, "%s", rb)
 	return
 }
 
 func getBody(r *http.Request) ([]byte, error) {
 	body, err := ioutil.ReadAll(r.Body)
-	glog.Infof("URL [%s] Body [%s] Error [%v]", r.URL.Path[1:], string(body), err)
+	libsnnet.Logger.Infof("URL [%s] Body [%s] Error [%v]", r.URL.Path[1:], string(body), err)
 	return body, err
 }
 
@@ -149,14 +149,14 @@ func handlerCreateNetwork(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := dbAdd("nwMap", req.NetworkID, nwMap.m[req.NetworkID]); err != nil {
-		glog.Errorf("Unable to update db %v", err)
+		libsnnet.Logger.Errorf("Unable to update db %v", err)
 	}
 
 	//This will be done in the SDN controller before the API is invoked
 	cmd := "ip"
 	args := []string{"link", "add", bridge, "type", "bridge"}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error CreateNetwork: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -165,7 +165,7 @@ func handlerCreateNetwork(w http.ResponseWriter, r *http.Request) {
 
 	args = []string{"link", "set", bridge, "up"}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error CreateNetwork: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -192,7 +192,7 @@ func handlerDeleteNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	glog.Infof("Delete Network := %v", req.NetworkID)
+	libsnnet.Logger.Infof("Delete Network := %v", req.NetworkID)
 
 	//This would have already been done in the SDN controller
 	//Remove the UUID to bridge mapping in cache and in the
@@ -201,14 +201,14 @@ func handlerDeleteNetwork(w http.ResponseWriter, r *http.Request) {
 	bridge := nwMap.m[req.NetworkID].Bridge
 	delete(nwMap.m, req.NetworkID)
 	if err := dbDelete("nwMap", req.NetworkID); err != nil {
-		glog.Errorf("Unable to update db %v", err)
+		libsnnet.Logger.Errorf("Unable to update db %v", err)
 	}
 	nwMap.Unlock()
 
 	cmd := "ip"
 	args := []string{"link", "del", bridge}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error DeleteNetwork: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -274,10 +274,10 @@ func handlerCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := dbAdd("epMap", req.EndpointID, epMap.m[req.EndpointID]); err != nil {
-		glog.Errorf("Unable to update db %v", err)
+		libsnnet.Logger.Errorf("Unable to update db %v", err)
 	}
 	if err := dbAdd("global", "counter", counter); err != nil {
-		glog.Errorf("Unable to update db %v", err)
+		libsnnet.Logger.Errorf("Unable to update db %v", err)
 	}
 	epMap.Unlock()
 
@@ -288,7 +288,7 @@ func handlerCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 		"peer", "name", cVeth}
 
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error EndPointCreate: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -297,7 +297,7 @@ func handlerCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	args = []string{"link", "set", hVeth, "mtu", "1400"}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error EndPointCreate: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -306,7 +306,7 @@ func handlerCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	args = []string{"link", "set", cVeth, "mtu", "1400", "addr", req.Interface.MacAddress}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error EndPointCreate: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -315,7 +315,7 @@ func handlerCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	args = []string{"link", "set", hVeth, "alias", hVeth + "_" + cVeth}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error EndPointCreate: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -324,7 +324,7 @@ func handlerCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	args = []string{"link", "set", hVeth, "master", bridge}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error EndPointCreate: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -333,7 +333,7 @@ func handlerCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	args = []string{"link", "set", hVeth, "up"}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error EndPointCreate: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -364,7 +364,7 @@ func handlerDeleteEndpoint(w http.ResponseWriter, r *http.Request) {
 	m := epMap.m[req.EndpointID]
 	delete(epMap.m, req.EndpointID)
 	if err := dbDelete("epMap", req.EndpointID); err != nil {
-		glog.Errorf("Unable to update db %v", err)
+		libsnnet.Logger.Errorf("Unable to update db %v", err)
 	}
 	epMap.Unlock()
 
@@ -374,7 +374,7 @@ func handlerDeleteEndpoint(w http.ResponseWriter, r *http.Request) {
 	cmd := "ip"
 	args := []string{"link", "del", m.Hveth}
 	if err := exec.Command(cmd, args...).Run(); err != nil {
-		glog.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
+		libsnnet.Logger.Infof("ERROR: [%v] [%v] [%v] ", cmd, args, err)
 		resp.Err = fmt.Sprintf("Error EndPointDelete: [%v] [%v] [%v]",
 			cmd, args, err)
 		sendResponse(resp, w)
@@ -518,7 +518,7 @@ func handlerRevokeExternalConnectivity(w http.ResponseWriter, r *http.Request) {
 
 func ipamGetCapabilities(w http.ResponseWriter, r *http.Request) {
 	if _, err := getBody(r); err != nil {
-		glog.Infof("ipamGetCapabilities: unable to get request body [%v]", err)
+		libsnnet.Logger.Infof("ipamGetCapabilities: unable to get request body [%v]", err)
 	}
 	resp := ipamapi.GetCapabilityResponse{RequiresMACAddress: true}
 	sendResponse(resp, w)
@@ -527,7 +527,7 @@ func ipamGetCapabilities(w http.ResponseWriter, r *http.Request) {
 func ipamGetDefaultAddressSpaces(w http.ResponseWriter, r *http.Request) {
 	resp := ipamapi.GetAddressSpacesResponse{}
 	if _, err := getBody(r); err != nil {
-		glog.Infof("ipamGetDefaultAddressSpaces: unable to get request body [%v]", err)
+		libsnnet.Logger.Infof("ipamGetDefaultAddressSpaces: unable to get request body [%v]", err)
 	}
 
 	resp.GlobalDefaultAddressSpace = ""
@@ -627,9 +627,9 @@ func ipamReleaseAddress(w http.ResponseWriter, r *http.Request) {
 
 func dbTableInit(tables []string) (err error) {
 
-	glog.Infof("dbInit Tables := %v", tables)
+	libsnnet.Logger.Infof("dbInit Tables := %v", tables)
 	for i, v := range tables {
-		glog.Infof("table[%v] := %v, %v", i, v, []byte(v))
+		libsnnet.Logger.Infof("table[%v] := %v, %v", i, v, []byte(v))
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -643,7 +643,7 @@ func dbTableInit(tables []string) (err error) {
 	})
 
 	if err != nil {
-		glog.Errorf("Table creation error %v", err)
+		libsnnet.Logger.Errorf("Table creation error %v", err)
 	}
 
 	return err
@@ -655,7 +655,7 @@ func dbAdd(table string, key string, value interface{}) (err error) {
 		var v bytes.Buffer
 
 		if err := gob.NewEncoder(&v).Encode(value); err != nil {
-			glog.Errorf("Encode Error: %v %v", err, value)
+			libsnnet.Logger.Errorf("Encode Error: %v %v", err, value)
 			return err
 		}
 
@@ -709,7 +709,7 @@ func dbGet(table string, key string) (value interface{}, err error) {
 
 		v := bytes.NewReader(val)
 		if err := gob.NewDecoder(v).Decode(value); err != nil {
-			glog.Errorf("Decode Error: %v %v %v", table, key, err)
+			libsnnet.Logger.Errorf("Decode Error: %v %v %v", table, key, err)
 			return err
 		}
 
@@ -738,7 +738,7 @@ func initDb() error {
 
 	c, err := dbGet("global", "counter")
 	if err != nil {
-		glog.Errorf("dbGet failed %v", err)
+		libsnnet.Logger.Errorf("dbGet failed %v", err)
 		counter = 100
 	} else {
 		var ok bool
@@ -758,7 +758,7 @@ func initDb() error {
 				return fmt.Errorf("Decode Error: %v %v %v", string(k), string(v), err)
 			}
 			nwMap.m[string(k)] = nVal
-			glog.Infof("nwMap key=%v, value=%v\n", string(k), nVal)
+			libsnnet.Logger.Infof("nwMap key=%v, value=%v\n", string(k), nVal)
 			return nil
 		})
 		return err
@@ -778,7 +778,7 @@ func initDb() error {
 				return fmt.Errorf("Decode Error: %v %v %v", string(k), string(v), err)
 			}
 			epMap.m[string(k)] = eVal
-			glog.Infof("epMap key=%v, value=%v\n", string(k), eVal)
+			libsnnet.Logger.Infof("epMap key=%v, value=%v\n", string(k), eVal)
 			return nil
 		})
 		return err
@@ -791,11 +791,11 @@ func main() {
 	flag.Parse()
 
 	if err := initDb(); err != nil {
-		glog.Fatalf("db init failed, quitting [%v]", err)
+		libsnnet.Logger.Errorf("db init failed, quitting [%v]", err)
 	}
 	defer func() {
 		err := db.Close()
-		glog.Errorf("unable to close database [%v]", err)
+		libsnnet.Logger.Errorf("unable to close database [%v]", err)
 	}()
 
 	r := mux.NewRouter()
@@ -823,6 +823,6 @@ func main() {
 	r.HandleFunc("/", handler)
 	err := http.ListenAndServe("127.0.0.1:9999", r)
 	if err != nil {
-		glog.Errorf("docker plugin http server failed, [%v]", err)
+		libsnnet.Logger.Errorf("docker plugin http server failed, [%v]", err)
 	}
 }
