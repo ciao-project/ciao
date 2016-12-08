@@ -19,6 +19,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/01org/ciao/clogger/gloginterface"
+	"github.com/01org/ciao/database"
 	"github.com/01org/ciao/openstack/image"
 )
 
@@ -68,6 +70,8 @@ type ImageStore struct {
 func (s *ImageStore) Init(rawDs RawDataStore, metaDs MetaDataStore) error {
 	s.metaDs = metaDs
 	s.rawDs = rawDs
+
+	database.Logger = gloginterface.CiaoGlogLogger{}
 
 	return nil
 }
