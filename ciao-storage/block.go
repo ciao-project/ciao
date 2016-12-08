@@ -34,6 +34,7 @@ type BlockDriver interface {
 	UnmapVolumeFromNode(volumeUUID string) error
 	GetVolumeMapping() (map[string][]string, error)
 	CopyBlockDevice(string) (BlockDevice, error)
+	GetBlockDeviceSize(volumeUUID string) (uint64, error)
 }
 
 // BlockDevice contains information about a block devices.

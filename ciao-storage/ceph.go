@@ -143,6 +143,29 @@ func (d CephDriver) DeleteBlockDeviceSnapshot(volumeUUID string, snapshotID stri
 	return nil
 }
 
+// GetBlockDeviceSize returns the number of bytes used by the block device
+func (d CephDriver) GetBlockDeviceSize(volumeUUID string) (uint64, error) {
+	args := append(d.getCredentials(), "info", "--format", "json", volumeUUID)
+	cmd := exec.Command("rbd", args...)
+	data, err := cmd.Output()
+	if err != nil {
+		if err, ok := err.(*exec.ExitError); ok {
+			return 0, fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, err.Stderr)
+		}
+		return 0, fmt.Errorf("Error when running: %v: %v", cmd.Args, err)
+	}
+
+	infoData := struct {
+		Size uint64 `json:"size"`
+	}{}
+	err = json.Unmarshal([]byte(data), &infoData)
+	if err != nil {
+		return 0, fmt.Errorf("Unable to parse output from rbd info: %v", err)
+	}
+
+	return infoData.Size, nil
+}
+
 func (d CephDriver) getCredentials() []string {
 	args := make([]string, 0, 8)
 	if d.ID != "" {
