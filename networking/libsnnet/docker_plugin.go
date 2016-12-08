@@ -745,6 +745,8 @@ func DockerHandler(d *DockerPlugin,
 
 //NewDockerPlugin instantiates a new Docker Plugin instance
 func NewDockerPlugin() *DockerPlugin {
+	database.Logger = Logger
+
 	return &DockerPlugin{
 		DbProvider: database.NewBoltDBProvider(),
 	}

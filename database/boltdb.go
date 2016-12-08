@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/golang/glog"
 )
 
 // BoltDB database structure
@@ -92,7 +91,7 @@ func (db *BoltDB) DbTableRebuild(table DbTable) error {
 			if err := gob.NewDecoder(vr).Decode(val); err != nil {
 				return fmt.Errorf("Decode Error: %v %v %v", string(k), string(v), err)
 			}
-			glog.Infof("%v key=%v, value=%v\n", table, string(k), val)
+			Logger.Infof("%v key=%v, value=%v\n", table, string(k), val)
 
 			return table.Add(string(k), val)
 		})
@@ -104,9 +103,9 @@ func (db *BoltDB) DbTableRebuild(table DbTable) error {
 // DbTablesInit initializes list of tables in Bolt
 func (db *BoltDB) DbTablesInit(tables []string) (err error) {
 
-	glog.Info("dbInit Tables")
+	Logger.Infof("dbInit Tables")
 	for i, table := range tables {
-		glog.Infof("table[%v] := %v, %v", i, table, []byte(table))
+		Logger.Infof("table[%v] := %v, %v", i, table, []byte(table))
 	}
 
 	err = db.DB.Update(func(tx *bolt.Tx) error {
@@ -120,7 +119,7 @@ func (db *BoltDB) DbTablesInit(tables []string) (err error) {
 	})
 
 	if err != nil {
-		glog.Errorf("Table creation error %v", err)
+		Logger.Errorf("Table creation error %v", err)
 	}
 
 	return err
@@ -133,7 +132,7 @@ func (db *BoltDB) DbAdd(table string, key string, value interface{}) (err error)
 		var v bytes.Buffer
 
 		if err := gob.NewEncoder(&v).Encode(value); err != nil {
-			glog.Errorf("Encode Error: %v %v", err, value)
+			Logger.Errorf("Encode Error: %v %v", err, value)
 			return err
 		}
 
