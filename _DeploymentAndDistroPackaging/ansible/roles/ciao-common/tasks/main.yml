@@ -42,16 +42,14 @@
   - name: Ensure {{ bindir }} exists
     file: path={{ bindir }} state=directory
 
-  - block:
-      - include: install_clearlinux.yml
-        when: ansible_os_family == "Clear linux software for intel architecture"
+  - include: install_clearlinux.yml
+    when: ansible_os_family == "Clear linux software for intel architecture"
 
-      - include: install_ubuntu.yml
-        when: ansible_os_family == "Debian"
+  - include: install_ubuntu.yml
+    when: ansible_os_family == "Debian"
 
-      - include: install_fedora.yml
-        when: ansible_os_family == "RedHat"
-    when: not ciao_dev
+  - include: install_fedora.yml
+    when: ansible_os_family == "RedHat"
 
   - include: ceph.yml
     when: not skip_ceph
