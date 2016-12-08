@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/clogger/gloginterface"
+	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
@@ -630,6 +631,8 @@ func main() {
 	if simulate == false && getLock() != nil {
 		os.Exit(1)
 	}
+
+	libsnnet.Logger = gloginterface.CiaoGlogLogger{}
 
 	if err := initLogger(); err != nil {
 		log.Fatalf("Unable to initialise logs: %v", err)

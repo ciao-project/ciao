@@ -33,7 +33,6 @@ import (
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/libnetwork/drivers/remote/api"
 	ipamapi "github.com/docker/libnetwork/ipams/remote/api"
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -237,14 +236,14 @@ type DockerPlugin struct {
 
 func sendResponse(resp interface{}, w http.ResponseWriter) {
 	rb, err := json.Marshal(resp)
-	glog.Infof("Sending response := %v, %v", resp, err)
+	Logger.Infof("Sending response := %v, %v", resp, err)
 	fmt.Fprintf(w, "%s", rb)
 	return
 }
 
 func getBody(r *http.Request) ([]byte, error) {
 	body, err := ioutil.ReadAll(r.Body)
-	glog.Infof("URL [%s] Body [%s] Error [%v]", r.URL.Path[1:], string(body), err)
+	Logger.Infof("URL [%s] Body [%s] Error [%v]", r.URL.Path[1:], string(body), err)
 	return body, err
 }
 
@@ -313,7 +312,7 @@ func handlerCreateNetwork(d *DockerPlugin, w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := d.DbAdd(tableNetworkMap, req.NetworkID, d.DockerNwMap.m[req.NetworkID]); err != nil {
-		glog.Errorf("Unable to update db %v", err)
+		Logger.Errorf("Unable to update db %v", err)
 	}
 
 	sendResponse(resp, w)
@@ -336,7 +335,7 @@ func handlerDeleteNetwork(d *DockerPlugin, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	glog.Infof("Delete Network := %v", req.NetworkID)
+	Logger.Infof("Delete Network := %v", req.NetworkID)
 
 	/* Actual network delete would have already been done in ciao
 	   Remove the UUID to bridge mapping in cache and in the
@@ -346,7 +345,7 @@ func handlerDeleteNetwork(d *DockerPlugin, w http.ResponseWriter, r *http.Reques
 	bridge := d.DockerNwMap.m[req.NetworkID].Bridge
 	delete(d.DockerNwMap.m, req.NetworkID)
 	if err := d.DbDelete(tableNetworkMap, req.NetworkID); err != nil {
-		glog.Errorf("Unable to update db %v %v", bridge, err)
+		Logger.Errorf("Unable to update db %v %v", bridge, err)
 	}
 	d.DockerNwMap.Unlock()
 
@@ -449,7 +448,7 @@ func handlerCreateEndpoint(d *DockerPlugin, w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := d.DbAdd(tableEndPointMap, req.EndpointID, d.DockerEpMap.m[req.EndpointID]); err != nil {
-		glog.Errorf("Unable to update db %v", err)
+		Logger.Errorf("Unable to update db %v", err)
 	}
 
 	sendResponse(resp, w)
@@ -476,7 +475,7 @@ func handlerDeleteEndpoint(d *DockerPlugin, w http.ResponseWriter, r *http.Reque
 	//ID := d.DockerEpMap.m[req.EndpointID].ID
 	delete(d.DockerEpMap.m, req.EndpointID)
 	if err := d.DbDelete(tableEndPointMap, req.EndpointID); err != nil {
-		glog.Errorf("Unable to update db %v", err)
+		Logger.Errorf("Unable to update db %v", err)
 	}
 	d.DockerEpMap.Unlock()
 
@@ -487,9 +486,9 @@ func handlerDeleteEndpoint(d *DockerPlugin, w http.ResponseWriter, r *http.Reque
 		vnic, err := NewContainerVnic(ID)
 		if err != nil {
 			if err := vnic.GetDevice(); err != nil {
-				glog.Errorf("Link has not been deleted %v", err)
+				Logger.Errorf("Link has not been deleted %v", err)
 				if err := vnic.Destroy(); err != nil {
-					glog.Errorf("Unable to delete link %v", err)
+					Logger.Errorf("Unable to delete link %v", err)
 				}
 			}
 		}
@@ -746,6 +745,8 @@ func DockerHandler(d *DockerPlugin,
 
 //NewDockerPlugin instantiates a new Docker Plugin instance
 func NewDockerPlugin() *DockerPlugin {
+	database.Logger = Logger
+
 	return &DockerPlugin{
 		DbProvider: database.NewBoltDBProvider(),
 	}
@@ -842,10 +843,10 @@ func (d *DockerPlugin) Start() error {
 
 	d.wg.Add(1)
 	go func() {
-		glog.Infof("Starting HTTP Server")
+		Logger.Infof("Starting HTTP Server")
 		err := d.Server.Serve(d.listener)
 		if err != nil {
-			glog.Errorf("Unable to start HTTP Server [%v]", err)
+			Logger.Errorf("Unable to start HTTP Server [%v]", err)
 		}
 		d.wg.Done()
 	}()
@@ -863,7 +864,7 @@ func (d *DockerPlugin) Stop() error {
 		return fmt.Errorf("Unable to shutdown http server: %v", err)
 	}
 	d.wg.Wait()
-	glog.Info("Docker plugin has shut down")
+	Logger.Infof("Docker plugin has shut down")
 	return nil
 }
 

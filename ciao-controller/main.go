@@ -38,6 +38,7 @@ import (
 	image "github.com/01org/ciao/ciao-image/client"
 	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/clogger/gloginterface"
+	"github.com/01org/ciao/database"
 	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/openstack/compute"
 	osIdentity "github.com/01org/ciao/openstack/identity"
@@ -157,6 +158,8 @@ func main() {
 	if *cephID == "" {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
+
+	database.Logger = gloginterface.CiaoGlogLogger{}
 
 	logger := gloginterface.CiaoGlogLogger{}
 	osprepare.Bootstrap(context.TODO(), logger)

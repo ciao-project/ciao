@@ -32,6 +32,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/01org/ciao/clogger/gloginterface"
+	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 
@@ -425,6 +427,8 @@ func main() {
 	}
 
 	flag.Parse()
+
+	libsnnet.Logger = gloginterface.CiaoGlogLogger{}
 
 	if err := initLogger(); err != nil {
 		log.Fatalf("Unable to initialise logs: %v", err)
