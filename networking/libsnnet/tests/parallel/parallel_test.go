@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -545,4 +546,10 @@ func TestDockerNetNone_Serial(t *testing.T) {
 //Test is expected to pass
 func TestDockerNetDocker_Serial(t *testing.T) {
 	DockerSerial(netDockerDefault, t)
+}
+
+func TestMain(m *testing.M) {
+	libsnnet.Logger = gloginterface.CiaoGlogLogger{}
+
+	os.Exit(m.Run())
 }

@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/networking/libsnnet"
 )
 
@@ -67,6 +68,8 @@ func main() {
 	cnciIDIn := flag.String("cnciuuid", "cnciuuid", "CNCI UUID")
 
 	flag.Parse()
+
+	libsnnet.Logger = gloginterface.CiaoGlogLogger{}
 
 	cnci := &libsnnet.Cnci{
 		ID: *cnciIDIn,

@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/networking/libsnnet"
 )
 
@@ -120,6 +121,8 @@ func main() {
 	cnIDIn := flag.String("cnuuid", "cnuuid", "CN UUID")
 
 	flag.Parse()
+
+	libsnnet.Logger = gloginterface.CiaoGlogLogger{}
 
 	cn, err := initCn(*nwIn, *cnIDIn)
 	if err != nil {

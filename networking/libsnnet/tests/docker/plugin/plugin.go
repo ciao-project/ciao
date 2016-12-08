@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/boltdb/bolt"
@@ -789,6 +790,8 @@ func initDb() error {
 
 func main() {
 	flag.Parse()
+
+	libsnnet.Logger = gloginterface.CiaoGlogLogger{}
 
 	if err := initDb(); err != nil {
 		libsnnet.Logger.Errorf("db init failed, quitting [%v]", err)
