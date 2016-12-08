@@ -102,6 +102,7 @@ trap ctrl_c INT
 function ctrl_c() {
     echo "Trapped CTRL-C, performing cleanup"
     cleanup
+    exit 1
 }
 
 usage="$(basename "$0") [--download] The script will download dependencies if needed. Specifying --download will force download the dependencies even if they are cached locally"
