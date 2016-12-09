@@ -97,6 +97,11 @@ func (cmd *imageAddCommand) run(args []string) error {
 		return errors.New("Missing required -file parameter")
 	}
 
+	_, err := os.Stat(cmd.file)
+	if err != nil {
+		fatalf("Could not open %s [%s]\n", cmd.file, err)
+	}
+
 	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
 	if err != nil {
 		fatalf("Could not get Image service client [%s]\n", err)
