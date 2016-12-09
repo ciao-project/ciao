@@ -17,7 +17,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"sync"
@@ -30,6 +32,8 @@ import (
 	"github.com/01org/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
+
+var testInstancesDir string
 
 var standardCfg = vmConfig{
 	Cpus:       2,
@@ -198,7 +202,7 @@ func (v *instanceTestState) setStatus(status bool) {
 }
 
 func (v *instanceTestState) cleanUpInstance() {
-	_ = os.RemoveAll(path.Join(instancesDir, v.instance))
+	_ = os.RemoveAll(path.Join(testInstancesDir, v.instance))
 }
 
 func (v *instanceTestState) verifyStatsUpdate(t *testing.T, cmd interface{}) {
@@ -311,7 +315,7 @@ func (v *instanceTestState) ClusterConfiguration() (payloads.Configure, error) {
 }
 
 func cleanupShutdownFail(t *testing.T, instance string, doneCh chan struct{}, ovsCh chan interface{}, wg *sync.WaitGroup) {
-	_ = os.RemoveAll(path.Join(instancesDir, instance))
+	_ = os.RemoveAll(path.Join(testInstancesDir, instance))
 
 	shutdownInstanceLoop(doneCh, ovsCh, wg, t)
 	t.FailNow()
@@ -470,7 +474,7 @@ func TestStartInstanceLoop(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	_ = startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
+	_ = startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{}, testInstancesDir)
 	ok := state.expectStatsUpdate(t, ovsCh)
 	shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 	if !ok {
@@ -498,7 +502,8 @@ func TestDeleteInstanceLoop(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
+	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state,
+		&storage.NoopDriver{}, testInstancesDir)
 
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
@@ -532,7 +537,8 @@ func TestStopNotRunning(t *testing.T) {
 	cfg := &vmConfig{}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
+	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state,
+		&storage.NoopDriver{}, testInstancesDir)
 
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
@@ -578,7 +584,8 @@ func startVMWithCFG(t *testing.T, wg *sync.WaitGroup, cfg *vmConfig, connect boo
 		connect:    connect,
 	}
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
-	cmdCh := startInstanceWithVM(state.instance, cfg, wg, doneCh, state.ac, ovsCh, state, &storage.NoopDriver{})
+	cmdCh := startInstanceWithVM(state.instance, cfg, wg, doneCh, state.ac, ovsCh, state,
+		&storage.NoopDriver{}, testInstancesDir)
 	if !state.expectStatsUpdate(t, ovsCh) {
 		shutdownInstanceLoop(doneCh, ovsCh, wg, t)
 		t.FailNow()
@@ -625,7 +632,7 @@ func TestDeleteNoConnect(t *testing.T) {
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, false, false)
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		_ = os.RemoveAll(path.Join(instancesDir, cfg.Instance))
+		_ = os.RemoveAll(path.Join(testInstancesDir, cfg.Instance))
 		close(doneCh)
 		t.FailNow()
 	}
@@ -651,7 +658,7 @@ func TestLoopShutdownWithRunningInstance(t *testing.T) {
 	// We need to remove the instance manually to have a clean setup for the
 	// subsequent tests.
 
-	_ = os.RemoveAll(path.Join(instancesDir, cfg.Instance))
+	_ = os.RemoveAll(path.Join(testInstancesDir, cfg.Instance))
 }
 
 // Check we can restart an instance
@@ -676,7 +683,8 @@ func TestRestart(t *testing.T) {
 	}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
+	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state,
+		&storage.NoopDriver{}, testInstancesDir)
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
 		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
@@ -713,7 +721,8 @@ func TestRestartFail(t *testing.T) {
 	}
 	cmdWrapCh := make(chan *cmdWrapper)
 	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state, &storage.NoopDriver{})
+	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state,
+		&storage.NoopDriver{}, testInstancesDir)
 	ok := state.expectStatsUpdate(t, ovsCh)
 	if !ok {
 		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
@@ -1120,4 +1129,16 @@ func TestDetachNonexistingVolumeFromInstance(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	var err error
+	testInstancesDir, err = ioutil.TempDir("", "instances")
+	if err != nil {
+		panic(fmt.Sprintf("Unable to create instances dir: %v", err))
+	}
+	exit := m.Run()
+	_ = os.RemoveAll(testInstancesDir)
+	os.Exit(exit)
 }
