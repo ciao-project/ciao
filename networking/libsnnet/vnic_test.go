@@ -184,6 +184,52 @@ func TestVnicContainer_GetDevice(t *testing.T) {
 	performVnicOps(true, assert, vnic)
 }
 
+//Test ability to attach to an existing VNIC
+//
+//Tests the ability to attach to an existing
+//VNIC and perform all VNIC operations on it
+//
+//Test is expected to pass
+func TestVnic_GetDeviceByName(t *testing.T) {
+	assert := assert.New(t)
+	vnic1, _ := NewVnic("testvnic")
+	vnic1.LinkName = "testiface"
+
+	assert.Nil(vnic1.Create())
+	vnic, _ := NewVnic("testvnic")
+
+	assert.Nil(vnic.GetDeviceByName("testiface"))
+	assert.NotEqual(vnic.InterfaceName(), "")
+	assert.Equal(vnic.InterfaceName(), vnic1.InterfaceName())
+	assert.NotEqual(vnic1.PeerName(), "")
+	assert.Equal(vnic1.PeerName(), vnic.PeerName())
+
+	performVnicOps(true, assert, vnic)
+}
+
+//Test ability to attach to an existing Container VNIC
+//
+//Tests the ability to attach to an existing
+//VNIC and perform all VNIC operations on it
+//
+//Test is expected to pass
+func TestVnicContainer_GetDeviceByName(t *testing.T) {
+	assert := assert.New(t)
+
+	vnic1, err := NewContainerVnic("testvnic")
+	assert.Nil(err)
+	vnic1.LinkName = "testiface"
+
+	err = vnic1.Create()
+	assert.Nil(err)
+
+	vnic, err := NewContainerVnic("testvnic")
+	assert.Nil(err)
+
+	assert.Nil(vnic.GetDeviceByName("testiface"))
+	performVnicOps(true, assert, vnic)
+}
+
 //Tests VNIC attach to a bridge
 //
 //Tests all interactions between VNIC and Bridge
