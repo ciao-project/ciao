@@ -17,6 +17,7 @@
 package libsnnet
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"syscall"
@@ -69,10 +70,12 @@ func (v *Vnic) PeerName() string {
 	if strings.HasPrefix(v.LinkName, prefixVnicHost) {
 		return strings.Replace(v.LinkName, prefixVnicHost, prefixVnicCont, 1)
 	}
+
 	if strings.HasPrefix(v.LinkName, prefixVnicCont) {
 		return strings.Replace(v.LinkName, prefixVnicCont, prefixVnicHost, 1)
 	}
-	return ""
+
+	return fmt.Sprintf("%s_peer", v.LinkName)
 }
 
 // GetDevice is used to associate with an existing VNIC provided it satisfies
@@ -387,14 +390,8 @@ func (v *Vnic) SetHardwareAddr(addr net.HardwareAddr) error {
 		/* Set by QEMU. */
 	case TenantContainer:
 		/* Need to set the MAC on the container side */
-		peerVeth := &netlink.Veth{
-			LinkAttrs: netlink.LinkAttrs{
-				Name: v.PeerName(),
-			},
-			PeerName: v.LinkName,
-		}
-		if err := netlink.LinkSetHardwareAddr(peerVeth, addr); err != nil {
-			return netError(v, "link set peer mtu %v", err)
+		if err := netlink.LinkSetHardwareAddr(v.Link, addr); err != nil {
+			return netError(v, "link set hardware addr %v", err)
 		}
 	}
 

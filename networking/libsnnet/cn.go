@@ -974,7 +974,12 @@ func createAndEnableVnic(vnic *Vnic, bridge *Bridge) error {
 	if err := vnic.Create(); err != nil {
 		return fmt.Errorf("VNIC creation failed %s %s", vnic.GlobalID, err.Error())
 	}
-	if err := vnic.SetHardwareAddr(*vnic.MACAddr); err != nil {
+
+	vnicPeer, err := initializeVnicPeer(vnic)
+	if err != nil {
+		return fmt.Errorf("VNIC Initialize Peer %s %s", vnic.GlobalID, err.Error())
+	}
+	if err := vnicPeer.SetHardwareAddr(*vnic.MACAddr); err != nil {
 		return fmt.Errorf("VNIC Set MAC Address %s %s", vnic.GlobalID, err.Error())
 	}
 	if err := vnic.SetMTU(vnic.MTU); err != nil {
@@ -988,6 +993,34 @@ func createAndEnableVnic(vnic *Vnic, bridge *Bridge) error {
 		return fmt.Errorf("VNIC enable failed %s %s %s", vnic.GlobalID, bridge.GlobalID, err.Error())
 	}
 	return nil
+}
+
+func initializeVnicPeer(vnic *Vnic) (*Vnic, error) {
+	switch vnic.Role {
+	case TenantVM:
+		return vnic, nil
+	case TenantContainer:
+		vnicPeer, err := NewContainerVnic(vnic.GlobalID)
+		if err != nil {
+			return nil, err
+		}
+		vnicPeer.LinkName = vnic.PeerName()
+
+		vnicPeer.Link = &netlink.Veth{
+			LinkAttrs: netlink.LinkAttrs{
+				Name: vnic.PeerName(),
+			},
+			PeerName: vnic.LinkName,
+		}
+
+		if err := vnicPeer.GetDeviceByName(vnicPeer.LinkName); err != nil {
+			return nil, err
+		}
+
+		return vnicPeer, nil
+	}
+
+	return nil, fmt.Errorf("Unknown VNIC tenant type")
 }
 
 func apiCancelled(cancel chan interface{}) bool {
