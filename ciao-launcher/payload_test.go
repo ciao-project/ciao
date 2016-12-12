@@ -163,6 +163,13 @@ start:
 	},
 }
 
+// Verify the parseAttachVolumePayload function.
+//
+// The function is passed one valid payload and two invalid payloads.
+//
+// No error should be returned for the valid payload and the returned instance
+// and volume UUIDs should match what is in the payload.  Errors should be
+// returned for the invalid payloads.
 func TestParseAttachVolumePayload(t *testing.T) {
 	instance, volume, err := parseAttachVolumePayload([]byte(testutil.AttachVolumeYaml))
 	if err != nil {
@@ -183,6 +190,13 @@ func TestParseAttachVolumePayload(t *testing.T) {
 	}
 }
 
+// Verify the parseDetachVolumePayload function.
+//
+// The function is passed one valid payload and two invalid payloads.
+//
+// No error should be returned for the valid payload and the returned instance
+// and volume UUIDs should match what is in the payload.  Errors should be
+// returned for the invalid payloads.
 func TestParseDetachVolumePayload(t *testing.T) {
 	instance, volume, err := parseDetachVolumePayload([]byte(testutil.DetachVolumeYaml))
 	if err != nil {
@@ -203,6 +217,13 @@ func TestParseDetachVolumePayload(t *testing.T) {
 	}
 }
 
+// Verify the parseStartPayload function.
+//
+// The function is passed one valid payload and a number of invalid payloads.
+//
+// No error should be returned for the valid payload.  The resulting vmConfig
+// structure should match the handcrafted structure associated with the
+// payload.  The invalid payloads should fail to parse.
 func TestParseStartPayload(t *testing.T) {
 	for i, st := range startTests {
 		cfg, err := parseStartPayload([]byte(st.payload))
@@ -234,6 +255,17 @@ func compareNetEvents(t *testing.T, ev *libsnnet.SsntpEventInfo, eventData *payl
 	}
 }
 
+// Verify that the generateNetEventPayload parses payloads correctly.
+//
+// Two valid payloads are passed to generateNetEventPayload, the first
+// representing a payloads.EventTenantAdded event, the second a
+// payloads.EventTenantRemoved event.  Finally, an event with an invalid
+// id is parsed.
+//
+// Both valid payloads should be parsed correctly and the resulting
+// payloads data structures should have the correct contents.  An
+// error should be generated when parsing the payload with the invalid
+// event id.
 func TestGenerateNetEventPayload(t *testing.T) {
 	ev := &libsnnet.SsntpEventInfo{
 		Event:     libsnnet.SsntpTunAdd,
@@ -279,6 +311,12 @@ func TestGenerateNetEventPayload(t *testing.T) {
 	}
 }
 
+// Check that parseRestartPayload works correctly.
+//
+// Parse a valid restart payload.
+//
+// The payload should parse without any error and the instance UUID in the
+// resulting payloads data structure should be as expected.
 func TestParseRestartPayload(t *testing.T) {
 	instance, err := parseRestartPayload([]byte(testutil.RestartYaml))
 	if err != nil {
@@ -290,6 +328,12 @@ func TestParseRestartPayload(t *testing.T) {
 	}
 }
 
+// Check that parseDeletePayload works correctly.
+//
+// Parse a valid delete payload.
+//
+// The payload should parse without any error and the instance UUID in the
+// resulting payloads data structure should be as expected.
 func TestParseDeletePayload(t *testing.T) {
 	instance, err := parseDeletePayload([]byte(testutil.DeleteYaml))
 	if err != nil {
@@ -301,6 +345,12 @@ func TestParseDeletePayload(t *testing.T) {
 	}
 }
 
+// Check that parseStopPayload works correctly.
+//
+// Parse a valid stop payload.
+//
+// The payload should parse without any error and the instance UUID in the
+// resulting payloads data structure should be as expected.
 func TestParseStopPayload(t *testing.T) {
 	instance, err := parseStopPayload([]byte(testutil.StopYaml))
 	if err != nil {

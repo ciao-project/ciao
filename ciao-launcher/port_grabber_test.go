@@ -21,6 +21,16 @@ import (
 	"testing"
 )
 
+// Test the port grabbing and release code
+//
+// Grab all the available ports concurrently, check that they are all
+// allocated and then release all the ports concurrently.
+//
+// All ports should be grabbed correctly, all ports should be reported
+// to be allocated, i.e., uiPortGrabber.grabPort should return 0, and
+// all ports should be released correctly.  At the end of the test the
+// size of uiPortGrabber.free should equal the maximum number of ports
+// available.
 func TestPortGrabber(t *testing.T) {
 	ports := make([]int, portGrabberMax-portGrabberStart)
 

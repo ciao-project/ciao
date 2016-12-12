@@ -33,6 +33,16 @@ func (i *inspector) imageInfo(imagePath string) (int, error) {
 	return 10, nil
 }
 
+// Test GetMinImageSize function
+//
+// Call getMinImageSize 10 times in parallel with the same path.  Call again
+// with the same old path but setting an error.  Call getMinSize 1 more time
+// with the error set but with a new path.
+//
+// The first 10 calls should succeed.  The 11th call with the error set should
+// also succeed as the size for the path is already cached.  The final function
+// call should fail as we have arranged for imageInfo to return an error and
+// we are calling getMinImageSize on a new path.
 func TestGetMinImageSize(t *testing.T) {
 	in := &inspector{}
 	var wg sync.WaitGroup

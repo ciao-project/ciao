@@ -101,6 +101,15 @@ var statsTest = []struct {
 	},
 }
 
+// Verify the smaps parser
+//
+// This test passes a number of different test files to the parseProcSmaps
+// function.  Some of the files are valid and some are invalid.  Finally,
+// it calls parseProcSmaps on an invalid path.
+//
+// parseProcSmaps should correctly parse the valid smaps files and return
+// an error when asked to parse the invalid files.  The attempt to call
+// parseProcSmaps on the invalid path should fail.
 func TestParseProcSmaps(t *testing.T) {
 	for _, tst := range smapsTest {
 		f, err := ioutil.TempFile("", "process_stats_test")
@@ -136,6 +145,15 @@ func TestParseProcSmaps(t *testing.T) {
 	}
 }
 
+// Verify the proc parser
+//
+// This test passes a number of different test files to the parseProcStat
+// function.  Some of the files are valid and some are invalid.  Finally,
+// it calls parseProcStat on an invalid path.
+//
+// parseProcStat should correctly parse the valid stat files and return
+// an error when asked to parse the invalid files.  The attempt to call
+// parseProcStat on the invalid path should fail.
 func TestParseProcStat(t *testing.T) {
 	for _, tst := range statsTest {
 		f, err := ioutil.TempFile("", "process_stats_test")

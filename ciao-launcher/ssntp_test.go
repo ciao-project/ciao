@@ -79,6 +79,14 @@ func (v *ssntpTestState) ClusterConfiguration() (payloads.Configure, error) {
 	return payloads.Configure{}, nil
 }
 
+// Verify the behaviour the ConnectNotify and DisconnectNotify methods
+//
+// Call ConnectNotify and wait for the statusCmd command on the cmdCh.
+// Call DisconnectNotify.
+//
+// After ConnectNotify is callled the status of the ssntpConn should change
+// and a statusCmd command should be received on the cmdCh channel.  Calling
+// DisconnectNotify should change to status.
 func TestAgentClientConnectDisconnectNotify(t *testing.T) {
 	state := &ssntpTestState{}
 	cmdCh := make(chan *cmdWrapper)
@@ -111,18 +119,33 @@ func TestAgentClientConnectDisconnectNotify(t *testing.T) {
 	}
 }
 
+// Test the StatusNotify function
+//
+// We just call the method which at the moment is a NOOP.
+//
+// StatusNotify should not crash.
 func TestAgentClientStatusNotify(t *testing.T) {
 	state := &ssntpTestState{}
 	ac := agentClient{conn: state}
 	ac.StatusNotify(ssntp.CONNECTED, nil)
 }
 
+// Test the EventNotify function
+//
+// We just call the method which at the moment is a NOOP.
+//
+// EventNotify should not crash.
 func TestAgentClientEventNotify(t *testing.T) {
 	state := &ssntpTestState{}
 	ac := agentClient{conn: state}
 	ac.EventNotify(ssntp.TenantAdded, nil)
 }
 
+// Test the ErrorNotify function
+//
+// We just call the method which at the moment is a NOOP.
+//
+// ErrorNotify should not crash.
 func TestAgentClientErrorNotify(t *testing.T) {
 	state := &ssntpTestState{}
 	ac := agentClient{conn: state}
@@ -142,6 +165,14 @@ func checkErrorPayload(t *testing.T, ac *agentClient, state *ssntpTestState, cmd
 	}
 }
 
+// Verify that the agentClient correctly processes ssntp.START
+//
+// Send the ssntp.START command to the agent client with a valid payload,
+// then send another ssntp.START command with an invalid payload.
+//
+// The command with the valid payload should be processed correctly and a
+// insStartCmd should be received on the agent's cmdCh.  The second
+// command with the invalid payload should result in a call to state.SendError.
 func TestAgentClientStart(t *testing.T) {
 	state := &ssntpTestState{}
 	cmdCh := make(chan *cmdWrapper)
@@ -173,6 +204,14 @@ func TestAgentClientStart(t *testing.T) {
 	checkErrorPayload(t, &ac, state, ssntp.START, ssntp.StartFailure)
 }
 
+// Verify that the agentClient correctly processes ssntp.RESTART
+//
+// Send the ssntp.RESTART command to the agent client with a valid payload,
+// then send another ssntp.RESTART command with an invalid payload.
+//
+// The command with the valid payload should be processed correctly and a
+// insRestartCmd should be received on the agent's cmdCh.  The second
+// command with the invalid payload should result in a call to state.SendError.
 func TestAgentClientRestart(t *testing.T) {
 	state := &ssntpTestState{}
 	cmdCh := make(chan *cmdWrapper)
@@ -204,6 +243,14 @@ func TestAgentClientRestart(t *testing.T) {
 	checkErrorPayload(t, &ac, state, ssntp.RESTART, ssntp.RestartFailure)
 }
 
+// Verify that the agentClient correctly processes ssntp.STOP
+//
+// Send the ssntp.STOP command to the agent client with a valid payload,
+// then send another ssntp.STOP command with an invalid payload.
+//
+// The command with the valid payload should be processed correctly and a
+// insStopCmd should be received on the agent's cmdCh.  The second
+// command with the invalid payload should result in a call to state.SendError.
 func TestAgentClientStop(t *testing.T) {
 	state := &ssntpTestState{}
 	cmdCh := make(chan *cmdWrapper)
@@ -235,6 +282,14 @@ func TestAgentClientStop(t *testing.T) {
 	checkErrorPayload(t, &ac, state, ssntp.STOP, ssntp.StopFailure)
 }
 
+// Verify that the agentClient correctly processes ssntp.DELETE
+//
+// Send the ssntp.DELETE command to the agent client with a valid payload,
+// then send another ssntp.DELETE command with an invalid payload.
+//
+// The command with the valid payload should be processed correctly and a
+// insDeleteCmd should be received on the agent's cmdCh.  The second
+// command with the invalid payload should result in a call to state.SendError.
 func TestAgentClientDelete(t *testing.T) {
 	state := &ssntpTestState{}
 	cmdCh := make(chan *cmdWrapper)
@@ -266,6 +321,14 @@ func TestAgentClientDelete(t *testing.T) {
 	checkErrorPayload(t, &ac, state, ssntp.DELETE, ssntp.DeleteFailure)
 }
 
+// Verify that the agentClient correctly processes ssntp.AttachVolume
+//
+// Send the ssntp.AttachVolume command to the agent client with a valid payload,
+// then send another ssntp.AttachVolume command with an invalid payload.
+//
+// The command with the valid payload should be processed correctly and a
+// insAttachVolumeCmd should be received on the agent's cmdCh.  The second
+// command with the invalid payload should result in a call to state.SendError.
 func TestAgentAttachVolume(t *testing.T) {
 	state := &ssntpTestState{}
 	cmdCh := make(chan *cmdWrapper)
@@ -297,6 +360,14 @@ func TestAgentAttachVolume(t *testing.T) {
 	checkErrorPayload(t, &ac, state, ssntp.AttachVolume, ssntp.AttachVolumeFailure)
 }
 
+// Verify that the agentClient correctly processes ssntp.DetachVolume
+//
+// Send the ssntp.DetachVolume command to the agent client with a valid payload,
+// then send another ssntp.DetachVolume command with an invalid payload.
+//
+// The command with the valid payload should be processed correctly and a
+// insDetachVolumeCmd should be received on the agent's cmdCh.  The second
+// command with the invalid payload should result in a call to state.SendError.
 func TestAgentDetachVolume(t *testing.T) {
 	state := &ssntpTestState{}
 	cmdCh := make(chan *cmdWrapper)
