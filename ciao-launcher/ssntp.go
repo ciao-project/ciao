@@ -31,6 +31,9 @@ type cmdWrapper struct {
 }
 type statusCmd struct{}
 
+// serverConn is an abstract interface representing a connection to
+// a server.  It contains methods to connect to the server and to
+// send information to the server, such as commands or events.
 type serverConn interface {
 	SendError(error ssntp.Error, payload []byte) (int, error)
 	SendEvent(event ssntp.Event, payload []byte) (int, error)
@@ -45,6 +48,8 @@ type serverConn interface {
 	ClusterConfiguration() (payloads.Configure, error)
 }
 
+// ssntpConn is a concrete implementation of serverConn.  It represents
+// a connection to an SSNTP server, i.e., the scheduler.
 type ssntpConn struct {
 	sync.RWMutex
 	ssntp.Client
@@ -63,6 +68,10 @@ func (s *ssntpConn) setStatus(status bool) {
 	s.Unlock()
 }
 
+// agentClient is a structure that serves two purposes.  It holds contains
+// a serverConn object and so can be used to send commands to an SSNTP
+// server.  It also implements the ssntp.ClientNotifier interface and so
+// can be passed to serverConn.Dial.
 type agentClient struct {
 	conn  serverConn
 	cmdCh chan *cmdWrapper
