@@ -91,6 +91,10 @@ func (s dockerTestStorage) CopyBlockDevice(volumeUUID string) (storage.BlockDevi
 	return storage.BlockDevice{}, nil
 }
 
+func (s dockerTestStorage) GetBlockDeviceSize(volumeUUID string) (uint64, error) {
+	return 0, nil
+}
+
 // Checks that the logic of the code that mounts and unmounts ceph volumes in
 // docker containers.
 //

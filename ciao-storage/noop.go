@@ -56,6 +56,11 @@ func (d *NoopDriver) DeleteBlockDeviceSnapshot(volumeUUID string, snapshotID str
 	return nil
 }
 
+// GetBlockDeviceSize pretends to return the number of bytes used by the block device
+func (d *NoopDriver) GetBlockDeviceSize(volumeUUID string) (uint64, error) {
+	return 0, nil
+}
+
 // MapVolumeToNode pretends to map a volume to a local device on a node.
 func (d *NoopDriver) MapVolumeToNode(volumeUUID string) (string, error) {
 	dNum := atomic.AddInt64(&d.deviceNum, 1)

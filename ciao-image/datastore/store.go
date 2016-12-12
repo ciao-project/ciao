@@ -180,6 +180,12 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 		if err != nil {
 			img.State = Killed
 		}
+
+		img.Size, err = s.rawDs.GetImageSize(ID)
+		if err != nil {
+			img.State = Killed
+			return err
+		}
 	}
 
 	if err == nil {

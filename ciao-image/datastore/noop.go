@@ -32,6 +32,11 @@ func (n *Noop) Delete(id string) error {
 	return nil
 }
 
+// GetImageSize is the noop image implementation of image size querying
+func (n *Noop) GetImageSize(ID string) (uint64, error) {
+	return 0, nil
+}
+
 // Get is the noop image metadata get an image implementation.
 // It drops data.
 func (n *Noop) Get(id string) (Image, error) {

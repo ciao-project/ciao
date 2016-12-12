@@ -76,6 +76,7 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultR
 	}
 
 	glog.Infof("Image %v created", id)
+	size := int(i.Size)
 	return image.DefaultResponse{
 		Status:     image.Queued,
 		CreatedAt:  i.CreateTime,
@@ -89,10 +90,12 @@ func (is ImageService) CreateImage(req image.CreateImageRequest) (image.DefaultR
 		File:       fmt.Sprintf("/v2/images/%s/file", i.ID),
 		Schema:     "/v2/schemas/image",
 		Name:       &i.Name,
+		Size:       &size,
 	}, nil
 }
 
 func createImageResponse(img imageDatastore.Image) (image.DefaultResponse, error) {
+	size := int(img.Size)
 	return image.DefaultResponse{
 		Status:     img.State.Status(),
 		CreatedAt:  img.CreateTime,
@@ -106,6 +109,7 @@ func createImageResponse(img imageDatastore.Image) (image.DefaultResponse, error
 		File:       fmt.Sprintf("/v2/images/%s/file", img.ID),
 		Schema:     "/v2/schemas/image",
 		Name:       &img.Name,
+		Size:       &size,
 	}, nil
 }
 
