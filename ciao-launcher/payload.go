@@ -176,6 +176,11 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 				UUID:     storage.ID,
 				Bootable: storage.Bootable,
 			})
+		} else {
+			/* See github issue #972:
+			   A storage.ID == "" implies an auto-created-by-launcher
+			   local disk.  This is not yet supported. */
+			return nil, &payloadError{err, payloads.InvalidData}
 		}
 	}
 
