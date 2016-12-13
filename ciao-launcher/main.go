@@ -106,153 +106,7 @@ const (
 	resourcePeriod = 30
 )
 
-type cmdWrapper struct {
-	instance string
-	cmd      interface{}
-}
-type statusCmd struct{}
-
-type serverConn interface {
-	SendError(error ssntp.Error, payload []byte) (int, error)
-	SendEvent(event ssntp.Event, payload []byte) (int, error)
-	Dial(config *ssntp.Config, ntf ssntp.ClientNotifier) error
-	SendStatus(status ssntp.Status, payload []byte) (int, error)
-	SendCommand(cmd ssntp.Command, payload []byte) (int, error)
-	Role() ssntp.Role
-	UUID() string
-	Close()
-	isConnected() bool
-	setStatus(status bool)
-	ClusterConfiguration() (payloads.Configure, error)
-}
-
-type ssntpConn struct {
-	sync.RWMutex
-	ssntp.Client
-	connected bool
-}
-
-func (s *ssntpConn) isConnected() bool {
-	s.RLock()
-	defer s.RUnlock()
-	return s.connected
-}
-
-func (s *ssntpConn) setStatus(status bool) {
-	s.Lock()
-	s.connected = status
-	s.Unlock()
-}
-
-type agentClient struct {
-	conn  serverConn
-	cmdCh chan *cmdWrapper
-}
-
-func (client *agentClient) DisconnectNotify() {
-	client.conn.setStatus(false)
-	glog.Warning("disconnected")
-}
-
-func (client *agentClient) ConnectNotify() {
-	client.conn.setStatus(true)
-	client.cmdCh <- &cmdWrapper{"", &statusCmd{}}
-	glog.Info("connected")
-}
-
-func (client *agentClient) StatusNotify(status ssntp.Status, frame *ssntp.Frame) {
-	glog.Infof("STATUS %s", status)
-}
-
-func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) {
-	payload := frame.Payload
-
-	switch cmd {
-	case ssntp.START:
-		start, cn, md := splitYaml(payload)
-		cfg, payloadErr := parseStartPayload(start)
-		if payloadErr != nil {
-			startError := &startError{
-				payloadErr.err,
-				payloads.StartFailureReason(payloadErr.code),
-			}
-			startError.send(client.conn, "")
-			glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{cfg.Instance, &insStartCmd{cn, md, frame, cfg, time.Now()}}
-	case ssntp.RESTART:
-		instance, payloadErr := parseRestartPayload(payload)
-		if payloadErr != nil {
-			restartError := &restartError{
-				payloadErr.err,
-				payloads.RestartFailureReason(payloadErr.code),
-			}
-			restartError.send(client.conn, "")
-			glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{instance, &insRestartCmd{}}
-	case ssntp.STOP:
-		instance, payloadErr := parseStopPayload(payload)
-		if payloadErr != nil {
-			stopError := &stopError{
-				payloadErr.err,
-				payloads.StopFailureReason(payloadErr.code),
-			}
-			stopError.send(client.conn, "")
-			glog.Errorf("Unable to parse YAML: %s", payloadErr)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{instance, &insStopCmd{}}
-	case ssntp.DELETE:
-		instance, payloadErr := parseDeletePayload(payload)
-		if payloadErr != nil {
-			deleteError := &deleteError{
-				payloadErr.err,
-				payloads.DeleteFailureReason(payloadErr.code),
-			}
-			deleteError.send(client.conn, "")
-			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{instance, &insDeleteCmd{}}
-	case ssntp.AttachVolume:
-		instance, volume, payloadErr := parseAttachVolumePayload(payload)
-		if payloadErr != nil {
-			attachVolumeError := &attachVolumeError{
-				payloadErr.err,
-				payloads.AttachVolumeFailureReason(payloadErr.code),
-			}
-			attachVolumeError.send(client.conn, "", "")
-			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{instance, &insAttachVolumeCmd{volume}}
-	case ssntp.DetachVolume:
-		instance, volume, payloadErr := parseDetachVolumePayload(payload)
-		if payloadErr != nil {
-			detachVolumeError := &detachVolumeError{
-				payloadErr.err,
-				payloads.DetachVolumeFailureReason(payloadErr.code),
-			}
-			detachVolumeError.send(client.conn, "", "")
-			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{instance, &insDetachVolumeCmd{volume}}
-	}
-}
-
-func (client *agentClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
-	glog.Infof("EVENT %s", event)
-}
-
-func (client *agentClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
-	glog.Infof("ERROR %d", err)
-}
-
-func (client *agentClient) installLauncherDeps(doneCh chan struct{}) {
+func installLauncherDeps(role ssntp.Role, doneCh chan struct{}) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	ch := make(chan error)
@@ -263,7 +117,6 @@ func (client *agentClient) installLauncherDeps(doneCh chan struct{}) {
 
 		launcherDeps := osprepare.NewPackageRequirements()
 
-		role := client.conn.Role()
 		if role.IsNetAgent() {
 			launcherDeps.Append(launcherNetNodeDeps)
 		}
@@ -463,7 +316,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		}
 		printClusterConfig()
 
-		client.installLauncherDeps(doneCh)
+		installLauncherDeps(client.conn.Role(), doneCh)
 
 		err = startNetwork(doneCh)
 		if err != nil {

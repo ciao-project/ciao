@@ -37,6 +37,10 @@ func init() {
 	imagesMap.images = make(map[string]*imageStats)
 }
 
+type imageInspector interface {
+	imageInfo(imagePath string) (int, error)
+}
+
 // Originally this was supposed to be a generic
 // feature which could be used by any virtualisation technology.  However, since
 // we currently only support QEMU and docker and docker doesn't have a way to
@@ -44,7 +48,7 @@ func init() {
 // qemu parameter.  In the future we might add imageInfo back to the virtualiser
 // interface.
 
-func getMinImageSize(vm *qemuV, imagePath string) (minSizeMB int, err error) {
+func getMinImageSize(vm imageInspector, imagePath string) (minSizeMB int, err error) {
 	imagesMap.Lock()
 	info := imagesMap.images[imagePath]
 	if info == nil {

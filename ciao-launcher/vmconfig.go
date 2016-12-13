@@ -75,7 +75,7 @@ func (cfg *vmConfig) save(instanceDir string) error {
 	cfgFile, err := os.OpenFile(cfgFilePath, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		glog.Errorf("Unable to create state file %v", err)
-		panic(err)
+		return err
 	}
 
 	enc := gob.NewEncoder(cfgFile)

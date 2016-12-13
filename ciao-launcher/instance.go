@@ -411,7 +411,8 @@ DONE:
 }
 
 func startInstanceWithVM(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh chan struct{},
-	ac *agentClient, ovsCh chan<- interface{}, vm virtualizer, storageDriver storage.BlockDriver) chan<- interface{} {
+	ac *agentClient, ovsCh chan<- interface{}, vm virtualizer, storageDriver storage.BlockDriver,
+	instancesDir string) chan<- interface{} {
 	id := &instanceData{
 		cmdCh:         make(chan interface{}),
 		instance:      instance,
@@ -445,5 +446,6 @@ func startInstance(instance string, cfg *vmConfig, wg *sync.WaitGroup, doneCh ch
 	} else {
 		vm = &qemuV{}
 	}
-	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm, storageDriver)
+	return startInstanceWithVM(instance, cfg, wg, doneCh, ac, ovsCh, vm, storageDriver,
+		instancesDir)
 }

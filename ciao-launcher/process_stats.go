@@ -27,7 +27,11 @@ import (
 )
 
 func computeProcessMemUsage(pid int) int {
-	smapsPath := path.Join("/proc", fmt.Sprintf("%d", pid), "smaps")
+	mapsPath := path.Join("/proc", fmt.Sprintf("%d", pid), "smaps")
+	return parseProcSmaps(mapsPath)
+}
+
+func parseProcSmaps(smapsPath string) int {
 	smaps, err := os.Open(smapsPath)
 	if err != nil {
 		if glog.V(1) {
@@ -57,6 +61,10 @@ func computeProcessMemUsage(pid int) int {
 
 func computeProcessCPUTime(pid int) int64 {
 	statPath := path.Join("/proc", fmt.Sprintf("%d", pid), "stat")
+	return parseProcStat(statPath)
+}
+
+func parseProcStat(statPath string) int64 {
 	stat, err := os.Open(statPath)
 	if err != nil {
 		if glog.V(1) {
