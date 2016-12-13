@@ -160,7 +160,7 @@ func (d *docker) downloadBackingImage() error {
 	}
 
 	if err != nil && err != io.EOF {
-		glog.Errorf("Unable to download image %v\n", err)
+		glog.Errorf("Unable to download image : %v\n", err)
 		return err
 	}
 

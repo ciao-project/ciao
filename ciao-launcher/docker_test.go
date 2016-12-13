@@ -17,13 +17,26 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
+	"reflect"
 	"testing"
 
+	"golang.org/x/net/context"
+
 	storage "github.com/01org/ciao/ciao-storage"
+	"github.com/01org/ciao/testutil"
+
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/engine-api/client"
+	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/container"
+	"github.com/docker/engine-api/types/network"
 )
 
 type dockerTestMounter struct {
@@ -93,6 +106,60 @@ func (s dockerTestStorage) CopyBlockDevice(volumeUUID string) (storage.BlockDevi
 
 func (s dockerTestStorage) GetBlockDeviceSize(volumeUUID string) (uint64, error) {
 	return 0, nil
+}
+
+type dockerTestClient struct {
+	err               error
+	images            []types.Image
+	imagePullProgress bytes.Buffer
+	config            *container.Config
+	hostConfig        *container.HostConfig
+	networkConfig     *network.NetworkingConfig
+}
+
+func (d *dockerTestClient) ImageList(context.Context, types.ImageListOptions) ([]types.Image, error) {
+	if d.err != nil {
+		return nil, d.err
+	}
+
+	return d.images, nil
+}
+
+func (d *dockerTestClient) ImagePull(context.Context, types.ImagePullOptions,
+	client.RequestPrivilegeFunc) (io.ReadCloser, error) {
+	if d.err != nil {
+		return nil, d.err
+	}
+
+	return ioutil.NopCloser(&d.imagePullProgress), nil
+}
+
+func (d *dockerTestClient) ContainerCreate(ctx context.Context, config *container.Config,
+	hostConfig *container.HostConfig, networkConfig *network.NetworkingConfig,
+	instance string) (types.ContainerCreateResponse, error) {
+	if d.err != nil {
+		return types.ContainerCreateResponse{}, d.err
+	}
+	d.config = config
+	d.hostConfig = hostConfig
+	d.networkConfig = networkConfig
+	return types.ContainerCreateResponse{ID: testutil.InstanceUUID}, nil
+}
+
+func (d *dockerTestClient) ContainerRemove(context.Context, types.ContainerRemoveOptions) error {
+	return d.err
+}
+
+func (d *dockerTestClient) ContainerStart(context.Context, string) error {
+	return nil
+}
+
+func (d *dockerTestClient) ContainerInspectWithRaw(context.Context, string, bool) (types.ContainerJSON, []byte, error) {
+	return types.ContainerJSON{}, nil, nil
+}
+
+func (d *dockerTestClient) ContainerStats(context.Context, string, bool) (io.ReadCloser, error) {
+	return nil, nil
 }
 
 // Checks that the logic of the code that mounts and unmounts ceph volumes in
@@ -224,5 +291,186 @@ func TestDockerBadMount(t *testing.T) {
 
 	if len(mounts) != 0 {
 		t.Fatal("mounts not cleaned up correctly")
+	}
+}
+
+// Check that the docker.checkBackingImage works correctly
+//
+// We call checkBackingImage 3 times.  Each time checkBackingImage calls
+// containerManager.ImageList.  The first call to ImageList returns an
+// empty list of images, the second returns an error and the third returns
+// no error and a slice of images.
+//
+// The first call should fail with errImageNotFound, the second with the
+// error we create and the third should succeed.
+func TestDockerCheckBackingImage(t *testing.T) {
+	tc := &dockerTestClient{}
+	d := &docker{cfg: &vmConfig{}, cli: tc}
+	err := d.checkBackingImage()
+	if err != errImageNotFound {
+		t.Errorf("Expected image not found error")
+	}
+
+	tc.err = fmt.Errorf("ImageList fail forced")
+	err = d.checkBackingImage()
+	if err == nil {
+		t.Errorf("Expected checkBackingImage to fail")
+	}
+
+	tc.err = nil
+	tc.images = make([]types.Image, 1)
+	err = d.checkBackingImage()
+	if err != nil {
+		t.Errorf("Expected checkBackingImage to succeeded but it failed with : %v", err)
+	}
+}
+
+// Check that docker.downloaBackingImage works correctly.
+//
+// We call downloadBackingImage 4 times.  The first time we provide it with some
+// valid progress information via containerManager.downloadImage, the second
+// time we provide progress information that contains an error, the third time
+// we force downloadImage to return an error and the fourth time downloadImage
+// doesn't return any errors but also doesn't return any progress buffers.
+//
+// The first and last call to downloadBackingImage should succeed.  The second
+// and third should fail.
+func TestDockerDownloadBackingImage(t *testing.T) {
+	tc := &dockerTestClient{}
+	d := &docker{cfg: &vmConfig{}, cli: tc}
+
+	var msg jsonmessage.JSONMessage
+	enc := json.NewEncoder(&tc.imagePullProgress)
+	for i := 0; i < 5; i++ {
+		if err := enc.Encode(&msg); err != nil {
+			t.Fatalf("Failed to encode JSONMessage : %v", err)
+		}
+	}
+
+	err := d.downloadBackingImage()
+	if err != nil {
+		t.Errorf("Failed to download backing image : %v", err)
+	}
+
+	tc.imagePullProgress.Reset()
+	msg.Error = &jsonmessage.JSONError{
+		Code:    1,
+		Message: "Forced error retrieving image",
+	}
+	if err := enc.Encode(&msg); err != nil {
+		t.Fatalf("Failed to encode JSONMessage : %v", err)
+	}
+	err = d.downloadBackingImage()
+	if err == nil {
+		t.Errorf("Error expected downloading backing image")
+	}
+
+	tc.err = fmt.Errorf("Force failing of downloading backing image")
+	err = d.downloadBackingImage()
+	if err == nil {
+		t.Errorf("Error expected downloading backing image")
+	}
+
+	// TODO:  Need to decide if this is the correct behaviour.  Here we
+	// are testing the case where we get no progress information from the
+	// docker daemon.  We currently treat this as success but this might
+	// not be correct. As there are no docs it's hard to know.
+
+	tc.imagePullProgress.Reset()
+	tc.err = nil
+	err = d.downloadBackingImage()
+	if err != nil {
+		t.Errorf("Error downloading image with no progress : %v", err)
+	}
+}
+
+// Check that docker.deleteImage works correctly.
+//
+// We call deleteImage 3 times, the first time with a blank dockerID,
+// the second time with a non blank docker ID, and the third time,
+// we arrange for containerManager.ContainerRemove to fail.
+//
+// The first two calls to docker.deleteImage should succeed, the third
+// should fail.
+func TestDockerDeleteImage(t *testing.T) {
+	tc := &dockerTestClient{}
+	d := &docker{cfg: &vmConfig{}, cli: tc}
+
+	err := d.deleteImage()
+	if err != nil {
+		t.Errorf("Unable to Delete Image : %v", err)
+	}
+
+	d.dockerID = testutil.InstanceUUID
+	err = d.deleteImage()
+	if err != nil {
+		t.Errorf("Unable to Delete Image : %v", err)
+	}
+
+	tc.err = fmt.Errorf("Forcing failure of Container Remove")
+	err = d.deleteImage()
+	if err == nil {
+		t.Errorf("deleteImage was expected to fail")
+	}
+}
+
+// Verify that docker.createImage works as expected.
+//
+// This test is not yet fully complete.  It calls createImage with a
+// sample user data that contains a single command and some meta data
+// that contains a host name.
+//
+// The call to createImage should succeed, the hostname and the command
+// to execute should be successfully extracted and the id of the new
+// container should be stored in the docker-id file.
+func TestDockerCreateImage(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "ciao-docker-tests")
+	if err != nil {
+		t.Fatal("Unable to create temporary directory")
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+	tc := &dockerTestClient{}
+	d := &docker{instanceDir: tmpDir, cfg: &vmConfig{}, cli: tc}
+
+	const cmd = `["touch", "/etc/bootdone"]`
+	const ud = `
+runcmd:
+ - ` + cmd + `
+`
+	const md = `
+{
+  "uuid": "ciao",
+  "hostname": "ciao"
+}
+`
+	err = d.createImage("", []byte(ud), []byte(md))
+	if err != nil {
+		t.Errorf("Unable to create image : %v", err)
+	}
+
+	if tc.config.Hostname != "ciao" {
+		t.Errorf("Unexpected hostname.  Expected ciao found %s", tc.config.Hostname)
+	}
+
+	if reflect.DeepEqual(tc.config.Cmd, cmd) {
+		t.Errorf("Unexpected command.  Expected %s found %s", cmd, tc.config.Cmd)
+	}
+
+	if d.dockerID != testutil.InstanceUUID {
+		t.Errorf("Incorrect container ID %s expected, found %s",
+			testutil.InstanceUUID, d.dockerID)
+	}
+
+	readID, err := ioutil.ReadFile(path.Join(tmpDir, "docker-id"))
+	if err != nil {
+		t.Fatalf("Unable to read docker-id file : %v", err)
+	}
+
+	readIDstr := string(bytes.TrimSpace(readID))
+	if readIDstr != testutil.InstanceUUID {
+		t.Errorf("Incorrect container ID read from docker-id file %s expected, found %s",
+			testutil.InstanceUUID, readIDstr)
 	}
 }
