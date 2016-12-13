@@ -44,11 +44,6 @@ import (
 
 const volumesDir = "volumes"
 
-var dockerClient struct {
-	sync.Mutex
-	cli *client.Client
-}
-
 type dockerMounter struct{}
 
 func (m dockerMounter) Mount(source, destination string) error {
@@ -67,7 +62,7 @@ type docker struct {
 	prevSampleTime time.Time
 	storageDriver  storage.BlockDriver
 	mount          mounter
-	cli            *client.Client
+	cli            containerManager
 }
 
 type mounter interface {
@@ -165,7 +160,7 @@ func (d *docker) downloadBackingImage() error {
 	}
 
 	if err != nil && err != io.EOF {
-		glog.Errorf("Unable to download image %v\n", err)
+		glog.Errorf("Unable to download image : %v\n", err)
 		return err
 	}
 
