@@ -16,6 +16,7 @@ package storage
 
 import (
 	"fmt"
+	"strings"
 	"sync/atomic"
 
 	"github.com/01org/ciao/ssntp/uuid"
@@ -33,7 +34,7 @@ func (d *NoopDriver) CreateBlockDevice(volumeUUID string, image string, size int
 
 // CreateBlockDeviceFromSnapshot pretends to create a block device snapshot
 func (d *NoopDriver) CreateBlockDeviceFromSnapshot(volumeUUID string, snapshotID string) (BlockDevice, error) {
-	return BlockDevice{ID: uuid.Generate().String()}, nil
+	return BlockDevice{ID: uuid.Generate().String() + "@" + uuid.Generate().String()}, nil
 }
 
 // CreateBlockDeviceSnapshot pretends to create a block device snapshot
@@ -78,7 +79,18 @@ func (d *NoopDriver) GetVolumeMapping() (map[string][]string, error) {
 	return nil, nil
 }
 
-// IsValidSnapshotUUID pretends a uuid is a valid snapshot uuid
+// IsValidSnapshotUUID checks for the Ciao standard snapshot uuid form of
+// {UUID}@{UUID}
 func (d *NoopDriver) IsValidSnapshotUUID(snapshotUUID string) error {
+	UUIDs := strings.Split(snapshotUUID, "@")
+	if len(UUIDs) != 2 {
+		return fmt.Errorf("missing '@'")
+	}
+	_, e1 := uuid.Parse(UUIDs[0])
+	_, e2 := uuid.Parse(UUIDs[1])
+	if e1 != nil || e2 != nil {
+		return fmt.Errorf("uuid not of form \"{UUID}@{UUID}\"")
+	}
+
 	return nil
 }
