@@ -17,6 +17,7 @@
 package libsnnet
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"syscall"
@@ -69,10 +70,12 @@ func (v *Vnic) PeerName() string {
 	if strings.HasPrefix(v.LinkName, prefixVnicHost) {
 		return strings.Replace(v.LinkName, prefixVnicHost, prefixVnicCont, 1)
 	}
+
 	if strings.HasPrefix(v.LinkName, prefixVnicCont) {
 		return strings.Replace(v.LinkName, prefixVnicCont, prefixVnicHost, 1)
 	}
-	return ""
+
+	return fmt.Sprintf("%s_peer", v.LinkName)
 }
 
 // GetDevice is used to associate with an existing VNIC provided it satisfies
@@ -114,6 +117,46 @@ func (v *Vnic) GetDevice() error {
 		v.Link = vl
 	default:
 		return netError(v, " invalid or unsupported VNIC type %v", v.GlobalID)
+	}
+
+	return nil
+}
+
+// GetDeviceByName is used to associate with an existing VNIC relying on its
+// link name instead of its alias. Returns error if the VNIC does not exist
+func (v *Vnic) GetDeviceByName(linkName string) error {
+
+	link, err := netlink.LinkByName(linkName)
+	if err != nil {
+		return netError(v, "get device interface does not exist: %v", linkName)
+	}
+
+	switch v.Role {
+	case TenantVM:
+		vl, ok := link.(*netlink.GenericLink)
+		if !ok {
+			return netError(v, "get device incorrect interface type %v %v", linkName, link.Type())
+		}
+
+		// TODO: Why do both tun and tap interfaces return the type tun
+		if link.Type() != "tun" {
+			return netError(v, "get device incorrect interface type %v %v", linkName, link.Type())
+		}
+
+		if flags := uint(link.Attrs().Flags); (flags & syscall.IFF_TAP) == 0 {
+			return netError(v, "get device incorrect interface type %v %v", linkName, link)
+		}
+		v.LinkName = vl.Name
+		v.Link = vl
+	case TenantContainer:
+		vl, ok := link.(*netlink.Veth)
+		if !ok {
+			return netError(v, "get device incorrect interface type %v %v", linkName, link.Type())
+		}
+		v.LinkName = vl.Name
+		v.Link = vl
+	default:
+		return netError(v, " invalid or unsupported VNIC type %v", linkName)
 	}
 
 	return nil
@@ -347,14 +390,8 @@ func (v *Vnic) SetHardwareAddr(addr net.HardwareAddr) error {
 		/* Set by QEMU. */
 	case TenantContainer:
 		/* Need to set the MAC on the container side */
-		peerVeth := &netlink.Veth{
-			LinkAttrs: netlink.LinkAttrs{
-				Name: v.PeerName(),
-			},
-			PeerName: v.LinkName,
-		}
-		if err := netlink.LinkSetHardwareAddr(peerVeth, addr); err != nil {
-			return netError(v, "link set peer mtu %v", err)
+		if err := netlink.LinkSetHardwareAddr(v.Link, addr); err != nil {
+			return netError(v, "link set hardware addr %v", err)
 		}
 	}
 
