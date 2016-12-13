@@ -440,12 +440,24 @@ func addWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, 
 		return errorResponse(err), err
 	}
 
-	err = c.CreateWorkload(req)
+	wl, err := c.CreateWorkload(req)
 	if err != nil {
 		return errorResponse(err), err
 	}
 
-	return Response{http.StatusNoContent, nil}, nil
+	ref := fmt.Sprintf("%s/workloads/%s", c.URL, wl.ID)
+
+	link := types.Link{
+		Rel:  "self",
+		Href: ref,
+	}
+
+	resp := types.WorkloadResponse{
+		Workload: wl,
+		Link:     link,
+	}
+
+	return Response{http.StatusCreated, resp}, nil
 }
 
 // Service is an interface which must be implemented by the ciao API context.
@@ -459,7 +471,7 @@ type Service interface {
 	ListMappedAddresses(tenantID *string) []types.MappedIP
 	MapAddress(poolName *string, instanceID string) error
 	UnMapAddress(ID string) error
-	CreateWorkload(req types.Workload) error
+	CreateWorkload(req types.Workload) (types.Workload, error)
 }
 
 // Context is used to provide the services and current URL to the handlers.

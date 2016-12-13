@@ -291,11 +291,18 @@ func (cmd *workloadCreateCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	if resp.StatusCode != http.StatusNoContent {
+	if resp.StatusCode != http.StatusCreated {
 		fatalf("Workload creation failed: %s", resp.Status)
 	}
 
-	fmt.Printf("Created new workload: %s\n", opt.Description)
+	var workload types.WorkloadResponse
+
+	err = unmarshalHTTPResponse(resp, &workload)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	fmt.Printf("Created new workload: %s\n", workload.Workload.ID)
 
 	return nil
 }

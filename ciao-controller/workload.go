@@ -116,10 +116,10 @@ func validateWorkloadRequest(req types.Workload) error {
 	return nil
 }
 
-func (c *controller) CreateWorkload(req types.Workload) error {
+func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) {
 	err := validateWorkloadRequest(req)
 	if err != nil {
-		return err
+		return req, err
 	}
 
 	// create a workload storage resource for this new workload.
@@ -128,7 +128,7 @@ func (c *controller) CreateWorkload(req types.Workload) error {
 		// uuid4.
 		_, err = uuid.Parse(req.ImageID)
 		if err != nil {
-			return err
+			return req, err
 		}
 
 		storage := types.StorageResource{
@@ -144,5 +144,6 @@ func (c *controller) CreateWorkload(req types.Workload) error {
 
 	req.ID = uuid.Generate().String()
 
-	return c.ds.AddWorkload(req)
+	err = c.ds.AddWorkload(req)
+	return req, err
 }

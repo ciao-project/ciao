@@ -80,6 +80,13 @@ type Workload struct {
 	Storage     *StorageResource             `json:"storage"`
 }
 
+// WorkloadResponse will be returned from /workloads apis
+// It provides details on the workload, and references for the client.
+type WorkloadResponse struct {
+	Workload Workload `json:"workload"`
+	Link     Link     `json:"link"`
+}
+
 // Instance contains information about an instance of a workload.
 type Instance struct {
 	ID          string              `json:"instance_id"`
