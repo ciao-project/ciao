@@ -48,7 +48,7 @@ var tests = []test{
 		"",
 		"application/text",
 		http.StatusOK,
-		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"}]`,
+		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"}]`,
 	},
 	{
 		"GET",
@@ -139,6 +139,15 @@ var tests = []test{
 		"application/x.ciao.v1.pools",
 		http.StatusNoContent,
 		"null",
+	},
+	{
+		"POST",
+		"/workloads",
+		addWorkload,
+		`{"id":"","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_id":"73a86d7e-93c0-480e-9c41-ab42f69b7799","image_name":"","config":"this will totally work!","defaults":[]}`,
+		"application/x.ciao.v1.workloads",
+		http.StatusCreated,
+		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_id":"73a86d7e-93c0-480e-9c41-ab42f69b7799","image_name":"","config":"this will totally work!","defaults":[],"storage":null},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
 	},
 }
 
@@ -243,6 +252,11 @@ func (ts testCiaoService) MapAddress(name *string, instanceID string) error {
 
 func (ts testCiaoService) UnMapAddress(string) error {
 	return nil
+}
+
+func (ts testCiaoService) CreateWorkload(req types.Workload) (types.Workload, error) {
+	req.ID = "ba58f471-0735-4773-9550-188e2d012941"
+	return req, nil
 }
 
 func TestResponse(t *testing.T) {

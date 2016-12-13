@@ -15,6 +15,8 @@
 package datastore
 
 import (
+	"fmt"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -953,4 +955,87 @@ func TestSQLiteDBInstanceStats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestSQLiteDBUpdateWorkload(t *testing.T) {
+	testConfig := `
+---
+#cloud-config
+users:
+  - name: demouser
+    gecos: CIAO Demo User
+    lock-passwd: false
+    passwd: $6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDerQfD+qkb0V0XdQs8SBWqy4sQmqYFP96n/kI4Cq162w4UE8pTxy0ozAPldOvBJjljMvgaNKSAddknkhGcrNUvvJsUcZFm2qkafi32WyBdGFvIc45A+8O7vsxPXgHEsS9E3ylEALXAC3D0eX7pPtRiAbasLlY+VcACRqr3bPDSZTfpCmIkV2334uZD9iwOvTVeR+FjGDqsfju4DyzoAIqpPasE0+wk4Vbog7osP+qvn1gj5kQyusmr62+t0wx+bs2dF5QemksnFOswUrv9PGLhZgSMmDQrRYuvEfIAC7IdN/hfjTn0OokzljBiuWQ4WIIba/7xTYLVujJV65qH3heaSMxJJD7eH9QZs9RdbbdTXMFuJFsHV2OF6wZRp18tTNZZJMqiHZZSndC5WP1WrUo3Au/9a+ighSaOiVddHsPG07C/TOEnr3IrwU7c9yIHeeRFHmcQs9K0+n9XtrmrQxDQ9/mLkfje80Ko25VJ/QpAQPzCKh2KfQ4RD+/PxBUScx/lHIHOIhTSCh57ic629zWgk0coSQDi4MKSa5guDr3cuDvt4RihGviDM6V68ewsl0gh6Z9c0Hw7hU0vky4oxak5AiySiPz0FtsOnAzIL0UON+yMuKzrJgLjTKodwLQ0wlBXu43cD+P8VXwQYeqNSzfrhBnHqsrMf4lTLtc7kDDTcw== ciao@ciao
+...
+	`
+	cpus := payloads.RequestedResource{
+		Type:      payloads.VCPUs,
+		Value:     2,
+		Mandatory: false,
+	}
+
+	mem := payloads.RequestedResource{
+		Type:      payloads.MemMB,
+		Value:     512,
+		Mandatory: false,
+	}
+
+	disk := payloads.RequestedResource{
+		Type:      payloads.DiskMB,
+		Value:     1024,
+		Mandatory: false,
+	}
+
+	storage := types.StorageResource{
+		ID:         "",
+		Persistent: true,
+		Size:       20,
+	}
+
+	w := types.Workload{
+		ID:          uuid.Generate().String(),
+		Description: "testWorkload",
+		FWType:      string(payloads.EFI),
+		VMType:      payloads.QEMU,
+		ImageID:     uuid.Generate().String(),
+		ImageName:   "",
+		Config:      testConfig,
+		Defaults:    []payloads.RequestedResource{cpus, mem, disk},
+		Storage:     &storage,
+	}
+
+	wl := workload{
+		Workload: w,
+		filename: fmt.Sprintf("%s_config.yaml", w.ID),
+	}
+
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// file will be added, so we will want to remove it.
+	filename := fmt.Sprintf("%s/%s", *workloadsPath, wl.filename)
+	defer os.Remove(filename)
+
+	err = db.updateWorkload(wl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wl2, err := db.getWorkloadNoCache(wl.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(wl, *wl2) {
+		fmt.Fprintf(os.Stderr, "got %v\n", wl2)
+		fmt.Fprintf(os.Stderr, "expected %v\n", wl)
+		t.Fatal("Expected workload equality")
+	}
+
+	db.disconnect()
 }

@@ -17,16 +17,27 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 
+	"github.com/01org/ciao/ciao-controller/api"
+	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/openstack/compute"
+	"github.com/01org/ciao/payloads"
+
+	"gopkg.in/yaml.v2"
 )
 
 var workloadCommand = &command{
 	SubCommands: map[string]subCommand{
-		"list": new(workloadListCommand),
+		"list":   new(workloadListCommand),
+		"create": new(workloadCreateCommand),
 	},
 }
 
@@ -101,5 +112,197 @@ func (cmd *workloadListCommand) run(args []string) error {
 		fmt.Printf("\tName: %s\n\tUUID:%s\n\tImage UUID: %s\n\tCPUs: %d\n\tMemory: %d MB\n",
 			flavor.Name, flavor.ID, flavor.Disk, flavor.Vcpus, flavor.RAM)
 	}
+	return nil
+}
+
+type workloadCreateCommand struct {
+	Flag     flag.FlagSet
+	yamlFile string
+}
+
+func (cmd *workloadCreateCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.yamlFile, "yaml", "", "filename for yaml which describes the workload")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *workloadCreateCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] workload create [flags]
+
+Create a new workload
+
+The create flags are:
+
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func getCiaoWorkloadsResource() (string, error) {
+	return getCiaoResource("workloads", api.WorkloadsV1)
+}
+
+type source struct {
+	Type types.SourceType `json:"service"`
+	ID   string           `json:"id"`
+}
+
+type disk struct {
+	ID         *string `yaml:"volume_id"`
+	Size       int     `yaml:"size"`
+	Bootable   bool    `yaml:"bootable"`
+	Source     *source `yaml:"source"`
+	Persistent bool    `yaml:"persistent"`
+}
+
+type defaultResources struct {
+	VCPUs  int `yaml:"vcpus"`
+	MemMB  int `yaml:"mem_mb"`
+	DiskMB int `yaml:"disk_mb"`
+}
+
+// we currently only use the first disk due to lack of support
+// in types.Workload for multiple storage resources.
+type workloadOptions struct {
+	Description     string           `yaml:"description"`
+	VMType          string           `yaml:"vm_type"`
+	FWType          string           `yaml:"fw_type"`
+	ImageName       string           `yaml:"image_name"`
+	ImageID         string           `yaml:"image_id"`
+	Defaults        defaultResources `yaml:"defaults"`
+	CloudConfigFile string           `yaml:"cloud_init"`
+	Disks           []disk           `yaml:"disks"`
+}
+
+func optToReq(opt workloadOptions, req *types.Workload) error {
+	b, err := ioutil.ReadFile(opt.CloudConfigFile)
+	if err != nil {
+		return err
+	}
+
+	config := string(b)
+
+	// this is where you'd validate that the options make
+	// sense.
+	req.Description = opt.Description
+	req.VMType = payloads.Hypervisor(opt.VMType)
+	req.FWType = opt.FWType
+	req.ImageName = opt.ImageName
+	req.ImageID = opt.ImageID
+	req.Config = config
+
+	for _, disk := range opt.Disks {
+		res := types.StorageResource{
+			Size:       disk.Size,
+			Bootable:   disk.Bootable,
+			Persistent: disk.Persistent,
+		}
+
+		if disk.ID != nil {
+			res.ID = *disk.ID
+		} else if disk.Size == 0 {
+			// source had better exist.
+			if disk.Source == nil {
+				return errors.New("Invalid workload yaml: disk source may not be nil")
+			}
+
+			res.SourceType = disk.Source.Type
+			res.SourceID = disk.Source.ID
+		} else {
+			if disk.Bootable == true {
+				// you may not request a bootable drive
+				// from an empty source
+				return errors.New("Invalid workload yaml: empty disk source may not be bootable")
+			}
+
+			res.SourceType = types.Empty
+		}
+
+		// due to the fact that types.Workload only supports
+		// one StorageResource, we have to do this for now.
+		req.Storage = &res
+		break
+	}
+
+	// all default resources are required.
+	defaults := opt.Defaults
+
+	r := payloads.RequestedResource{
+		Type:  payloads.VCPUs,
+		Value: defaults.VCPUs,
+	}
+	req.Defaults = append(req.Defaults, r)
+
+	r = payloads.RequestedResource{
+		Type:  payloads.MemMB,
+		Value: defaults.MemMB,
+	}
+	req.Defaults = append(req.Defaults, r)
+
+	r = payloads.RequestedResource{
+		Type:  payloads.DiskMB,
+		Value: defaults.DiskMB,
+	}
+	req.Defaults = append(req.Defaults, r)
+
+	return nil
+}
+
+func (cmd *workloadCreateCommand) run(args []string) error {
+	var opt workloadOptions
+	var req types.Workload
+
+	if cmd.yamlFile == "" {
+		cmd.usage()
+	}
+
+	f, err := ioutil.ReadFile(cmd.yamlFile)
+	if err != nil {
+		fatalf("Unable to read workload config file: %s\n", err)
+	}
+
+	err = yaml.Unmarshal(f, &opt)
+	if err != nil {
+		fatalf("Config file invalid: %s\n", err)
+	}
+
+	err = optToReq(opt, &req)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	body := bytes.NewReader(b)
+
+	url, err := getCiaoWorkloadsResource()
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	ver := api.WorkloadsV1
+
+	resp, err := sendCiaoRequest("POST", url, nil, body, &ver)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		fatalf("Workload creation failed: %s", resp.Status)
+	}
+
+	var workload types.WorkloadResponse
+
+	err = unmarshalHTTPResponse(resp, &workload)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	fmt.Printf("Created new workload: %s\n", workload.Workload.ID)
+
 	return nil
 }
