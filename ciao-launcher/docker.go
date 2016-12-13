@@ -44,11 +44,6 @@ import (
 
 const volumesDir = "volumes"
 
-var dockerClient struct {
-	sync.Mutex
-	cli *client.Client
-}
-
 type dockerMounter struct{}
 
 func (m dockerMounter) Mount(source, destination string) error {
