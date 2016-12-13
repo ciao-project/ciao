@@ -67,7 +67,7 @@ type docker struct {
 	prevSampleTime time.Time
 	storageDriver  storage.BlockDriver
 	mount          mounter
-	cli            *client.Client
+	cli            containerManager
 }
 
 type mounter interface {
