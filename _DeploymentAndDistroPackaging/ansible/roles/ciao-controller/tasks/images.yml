@@ -23,8 +23,6 @@
       validate_certs: no
       force: no
     with_items:
-      - url: "{{ ovmf_url }}"
-        dest: images/OVMF.fd
       - url: "{{ fedora_cloud_image_url }}"
         dest: images/{{ fedora_cloud_image }}
       - url: "{{ clear_cloud_image_url }}"
