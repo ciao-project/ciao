@@ -107,7 +107,12 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1, false, "")
+		w := types.WorkloadRequest{
+			WorkloadID: wls[0].ID,
+			TenantID:   tuuid.String(),
+			Instances:  1,
+		}
+		_, err = ctl.startWorkload(w)
 		if err != nil {
 			b.Error(err)
 		}
@@ -142,7 +147,12 @@ func BenchmarkStart1000Workload(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = ctl.startWorkload(wls[0].ID, tuuid.String(), 1000, false, "")
+		w := types.WorkloadRequest{
+			WorkloadID: wls[0].ID,
+			TenantID:   tuuid.String(),
+			Instances:  1000,
+		}
+		_, err = ctl.startWorkload(w)
 		if err != nil {
 			b.Error(err)
 		}
@@ -166,8 +176,9 @@ func BenchmarkNewConfig(b *testing.B) {
 	id := uuid.Generate()
 
 	b.ResetTimer()
+	noVolumes := []storage.BlockDevice{}
 	for n := 0; n < b.N; n++ {
-		_, err := newConfig(ctl, wls[0], id.String(), tenant.ID)
+		_, err := newConfig(ctl, wls[0], id.String(), tenant.ID, noVolumes)
 		if err != nil {
 			b.Error(err)
 		}
@@ -193,7 +204,12 @@ func TestTenantWithinBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 1, false, "")
+	w := types.WorkloadRequest{
+		WorkloadID: wls[0].ID,
+		TenantID:   tenant.ID,
+		Instances:  1,
+	}
+	_, err = ctl.startWorkload(w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +236,12 @@ func TestTenantOutOfBounds(t *testing.T) {
 	}
 
 	/* try to send 2 workload start commands */
-	_, err = ctl.startWorkload(wls[0].ID, tenant.ID, 2, false, "")
+	w := types.WorkloadRequest{
+		WorkloadID: wls[0].ID,
+		TenantID:   tenant.ID,
+		Instances:  2,
+	}
+	_, err = ctl.startWorkload(w)
 	if err == nil {
 		t.Errorf("Not tracking limits correctly")
 	}
@@ -921,7 +942,13 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	clientCh := client.AddCmdChan(ssntp.START)
 	serverCh := server.AddCmdChan(ssntp.START)
 
-	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, 1, true, "testtrace1")
+	w := types.WorkloadRequest{
+		WorkloadID: wls[0].ID,
+		TenantID:   tenant.ID,
+		Instances:  1,
+		TraceLabel: "testtrace",
+	}
+	instances, err := ctl.startWorkload(w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -971,7 +998,12 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	client.StartFail = fail
 	client.StartFailReason = reason
 
-	instances, err := ctl.startWorkload(wls[0].ID, tenant.ID, num, false, "")
+	w := types.WorkloadRequest{
+		WorkloadID: wls[0].ID,
+		TenantID:   tenant.ID,
+		Instances:  num,
+	}
+	instances, err := ctl.startWorkload(w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1026,7 +1058,12 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	instanceCh := make(chan []*types.Instance)
 
 	go func() {
-		instances, err := ctl.startWorkload(wls[0].ID, newTenant, 1, false, "")
+		w := types.WorkloadRequest{
+			WorkloadID: wls[0].ID,
+			TenantID:   newTenant,
+			Instances:  1,
+		}
+		instances, err := ctl.startWorkload(w)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1100,21 +1137,15 @@ func TestGetStorageForVolume(t *testing.T) {
 	defer ctl.DeleteBlockDevice(sourceVolume.ID)
 
 	// a temporary in memory filesystem?
-	s := &types.StorageResource{
+	s := types.StorageResource{
 		ID:         "",
 		Bootable:   true,
-		Persistent: true,
+		Ephemeral:  false,
 		SourceType: types.VolumeService,
 		SourceID:   sourceVolume.ID,
 	}
 
-	wl := &types.Workload{
-		ID:      "validID",
-		ImageID: uuid.Generate().String(),
-		Storage: s,
-	}
-
-	pl, err := getStorage(ctl, wl, tenant.ID, "")
+	pl, err := getStorage(ctl, s, tenant.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1157,21 +1188,15 @@ func TestGetStorageForImage(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// a temporary in memory filesystem?
-	s := &types.StorageResource{
+	s := types.StorageResource{
 		ID:         "",
 		Bootable:   true,
-		Persistent: true,
+		Ephemeral:  false,
 		SourceType: types.ImageService,
 		SourceID:   filepath.Base(tmpfile.Name()),
 	}
 
-	wl := &types.Workload{
-		ID:      "validID",
-		ImageID: filepath.Base(tmpfile.Name()),
-		Storage: s,
-	}
-
-	pl, err := getStorage(ctl, wl, tenant.ID, "")
+	pl, err := getStorage(ctl, s, tenant.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1184,7 +1209,7 @@ func TestGetStorageForImage(t *testing.T) {
 		t.Errorf("bootable flag not correct")
 	}
 
-	if pl.Ephemeral != true {
+	if pl.Ephemeral != false {
 		t.Errorf("ephemeral flag not correct")
 	}
 
@@ -1228,7 +1253,7 @@ func TestStorageConfig(t *testing.T) {
 	s := &types.StorageResource{
 		ID:         "",
 		Bootable:   true,
-		Persistent: true,
+		Ephemeral:  false,
 		SourceType: types.ImageService,
 		SourceID:   info.Name(),
 	}
@@ -1237,7 +1262,8 @@ func TestStorageConfig(t *testing.T) {
 
 	id := uuid.Generate()
 
-	_, err = newConfig(ctl, wls[0], id.String(), tenant.ID)
+	noVolumes := []storage.BlockDevice{}
+	_, err = newConfig(ctl, wls[0], id.String(), tenant.ID, noVolumes)
 	if err != nil {
 		t.Fatal(err)
 	}

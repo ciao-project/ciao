@@ -990,9 +990,9 @@ users:
 	}
 
 	storage := types.StorageResource{
-		ID:         "",
-		Persistent: true,
-		Size:       20,
+		ID:        "",
+		Ephemeral: false,
+		Size:      20,
 	}
 
 	w := types.Workload{

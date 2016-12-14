@@ -83,13 +83,15 @@ func newSsntpSchedulerServer() *ssntpSchedulerServer {
 }
 
 type nodeStat struct {
-	mutex      sync.Mutex
-	status     ssntp.Status
-	uuid       string
-	memTotalMB int
-	memAvailMB int
-	load       int
-	cpus       int
+	mutex       sync.Mutex
+	status      ssntp.Status
+	uuid        string
+	memTotalMB  int
+	memAvailMB  int
+	diskTotalMB int
+	diskAvailMB int
+	load        int
+	cpus        int
 }
 
 type controllerStatus uint8
@@ -372,9 +374,13 @@ func (sched *ssntpSchedulerServer) updateNodeStat(node *nodeStat, status ssntp.S
 		}
 		node.memTotalMB = stats.MemTotalMB
 		node.memAvailMB = stats.MemAvailableMB
+		node.diskTotalMB = stats.DiskTotalMB
+		node.diskAvailMB = stats.DiskAvailableMB
 		node.load = stats.Load
 		node.cpus = stats.CpusOnline
-		//TODO pull in other types of payloads.Ready struct data
+
+		//any changes to the payloads.Ready struct should be
+		//accompanied by a change here
 	}
 }
 
@@ -413,6 +419,7 @@ func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status
 type workResources struct {
 	instanceUUID string
 	memReqMB     int
+	diskReqMB    int
 	networkNode  int
 }
 
@@ -432,9 +439,19 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 		// etc...
 	}
 
+	// volumes
+	for _, volume := range work.Start.Storage {
+		if volume.Local {
+			workload.diskReqMB += volume.Size * 1024
+		}
+	}
+
 	// validate the found resources
 	if workload.memReqMB <= 0 {
 		return workload, fmt.Errorf("invalid start payload resource demand: mem_mb (%d) <= 0, must be > 0", workload.memReqMB)
+	}
+	if workload.diskReqMB < 0 {
+		return workload, fmt.Errorf("invalid start payload local disk demand: disk MB (%d) < 0, must be >= 0", workload.diskReqMB)
 	}
 	if workload.networkNode != 0 && workload.networkNode != 1 {
 		return workload, fmt.Errorf("invalid start payload resource demand: network_node (%d) is not 0 or 1", workload.networkNode)
@@ -448,9 +465,11 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 
 // Check resource demands are satisfiable by the referenced, locked nodeStat object
 func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workResources) bool {
-	// simple scheduling policy == first memory fit
+	// simple scheduling policy == first fit
 	if node.memAvailMB >= workload.memReqMB &&
+		node.diskAvailMB >= workload.diskReqMB &&
 		node.status == ssntp.READY {
+
 		return true
 	}
 	return false
@@ -1076,18 +1095,23 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 	}
 }
 
-func configSchedulerServer() (sched *ssntpSchedulerServer) {
+func initLogger() error {
 	logDirFlag := flag.Lookup("log_dir")
 	if logDirFlag == nil {
-		glog.Errorf("log_dir does not exist")
+		return fmt.Errorf("log_dir does not exist")
 	}
 	if logDirFlag.Value.String() == "" {
-		logDirFlag.Value.Set(logDir)
+		if err := logDirFlag.Value.Set(logDir); err != nil {
+			return err
+		}
 	}
 	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
-		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
+		return fmt.Errorf("Unable to create log directory (%s) %v", logDir, err)
 	}
+	return nil
+}
 
+func configSchedulerServer() (sched *ssntpSchedulerServer) {
 	setLimits()
 
 	sched = newSsntpSchedulerServer()
@@ -1109,6 +1133,14 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 
 func main() {
 	flag.Parse()
+
+	if err := initLogger(); err != nil {
+		fmt.Printf("Unable to initialise logs: %v", err)
+		return
+	}
+
+	glog.Info("Starting Scheduler")
+
 	logger := gloginterface.CiaoGlogLogger{}
 	osprepare.Bootstrap(context.TODO(), logger)
 	osprepare.InstallDeps(context.TODO(), schedDeps, logger)

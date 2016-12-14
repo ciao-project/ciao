@@ -133,7 +133,7 @@ func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) 
 
 		storage := types.StorageResource{
 			Bootable:   true,
-			Persistent: false,
+			Ephemeral:  true,
 			SourceType: types.ImageService,
 			SourceID:   req.ImageID,
 		}

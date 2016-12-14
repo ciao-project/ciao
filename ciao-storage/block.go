@@ -35,9 +35,17 @@ type BlockDriver interface {
 	GetVolumeMapping() (map[string][]string, error)
 	CopyBlockDevice(string) (BlockDevice, error)
 	GetBlockDeviceSize(volumeUUID string) (uint64, error)
+	IsValidSnapshotUUID(string) error
 }
 
-// BlockDevice contains information about a block devices.
+// BlockDevice contains information about a block device
 type BlockDevice struct {
-	ID string
+	ID        string // device UUID
+	Bootable  bool   // hypervisor hint, Cinder relic
+	BootIndex int    // boot order 0..N
+	Ephemeral bool   // delete on termination
+	Local     bool   // local (ephemeral) or volume service backed
+	Swap      bool   // linux swap device (attempt swapon via cloudinit)
+	Tag       string // arbitrary text identifier
+	Size      int    // gigabyte size for autocreation
 }

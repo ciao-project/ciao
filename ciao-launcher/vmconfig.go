@@ -96,6 +96,14 @@ func (cfg *vmConfig) findVolume(UUID string) *volumeConfig {
 	}
 	return nil
 }
+func (cfg *vmConfig) haveBootableVolume() bool {
+	for _, vol := range cfg.Volumes {
+		if vol.Bootable {
+			return true
+		}
+	}
+	return false
+}
 
 func (cfg *vmConfig) removeVolume(UUID string) {
 	for i := range cfg.Volumes {

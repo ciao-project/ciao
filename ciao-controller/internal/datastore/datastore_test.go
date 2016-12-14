@@ -1699,7 +1699,12 @@ func TestCreateStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false, false)
+	volume := payloads.StorageResource{
+		ID:        data.ID,
+		Ephemeral: false,
+		Bootable:  false,
+	}
+	_, err = ds.CreateStorageAttachment(instance.ID, volume)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1756,7 +1761,12 @@ func TestUpdateStorageAttachmentExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false, false)
+	volume := payloads.StorageResource{
+		ID:        data.ID,
+		Ephemeral: false,
+		Bootable:  false,
+	}
+	_, err = ds.CreateStorageAttachment(instance.ID, volume)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1863,7 +1873,12 @@ func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false, false)
+	volume := payloads.StorageResource{
+		ID:        data.ID,
+		Ephemeral: false,
+		Bootable:  false,
+	}
+	_, err = ds.CreateStorageAttachment(instance.ID, volume)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1913,7 +1928,12 @@ func TestGetStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false, false)
+	volume := payloads.StorageResource{
+		ID:        data.ID,
+		Ephemeral: false,
+		Bootable:  false,
+	}
+	_, err = ds.CreateStorageAttachment(instance.ID, volume)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2008,7 +2028,12 @@ func TestDeleteStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false, false)
+	volume := payloads.StorageResource{
+		ID:        data.ID,
+		Ephemeral: false,
+		Bootable:  false,
+	}
+	_, err = ds.CreateStorageAttachment(instance.ID, volume)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2070,7 +2095,12 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false, false)
+	volume := payloads.StorageResource{
+		ID:        data.ID,
+		Ephemeral: false,
+		Bootable:  false,
+	}
+	_, err = ds.CreateStorageAttachment(instance.ID, volume)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2137,7 +2167,12 @@ func TestGetVolumeAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ds.CreateStorageAttachment(instance.ID, data.ID, false, false)
+	volume := payloads.StorageResource{
+		ID:        data.ID,
+		Ephemeral: false,
+		Bootable:  false,
+	}
+	_, err = ds.CreateStorageAttachment(instance.ID, volume)
 	if err != nil {
 		t.Fatal(err)
 	}

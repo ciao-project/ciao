@@ -149,11 +149,11 @@ type source struct {
 }
 
 type disk struct {
-	ID         *string `yaml:"volume_id"`
-	Size       int     `yaml:"size"`
-	Bootable   bool    `yaml:"bootable"`
-	Source     *source `yaml:"source"`
-	Persistent bool    `yaml:"persistent"`
+	ID        *string `yaml:"volume_id"`
+	Size      int     `yaml:"size"`
+	Bootable  bool    `yaml:"bootable"`
+	Source    *source `yaml:"source"`
+	Ephemeral bool    `yaml:"ephemeral"`
 }
 
 type defaultResources struct {
@@ -194,9 +194,9 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 
 	for _, disk := range opt.Disks {
 		res := types.StorageResource{
-			Size:       disk.Size,
-			Bootable:   disk.Bootable,
-			Persistent: disk.Persistent,
+			Size:      disk.Size,
+			Bootable:  disk.Bootable,
+			Ephemeral: disk.Ephemeral,
 		}
 
 		if disk.ID != nil {

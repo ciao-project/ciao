@@ -106,8 +106,8 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	}
 
 	if cfg.Image == "" {
-		if len(cfg.Volumes) == 0 || !cfg.Volumes[0].Bootable {
-			err = fmt.Errorf("No backing image specified")
+		if !cfg.haveBootableVolume() {
+			err = fmt.Errorf("No backing image and no bootable volumes specified")
 			return nil, &startError{err, payloads.InvalidData}
 		}
 	}

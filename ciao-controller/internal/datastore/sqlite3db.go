@@ -242,10 +242,11 @@ func (d workloadStorage) Init() error {
 		workload_id string,
 		volume_id string,
 		bootable int,
-		persistent int,
+		ephemeral int,
 		size integer,
 		source_type string,
 		source_id string,
+		tag string,
 		foreign key(workload_id) references workloads(id),
 		foreign key(volume_id) references block_data(id),
 		PRIMARY KEY(workload_id, volume_id)
@@ -264,12 +265,13 @@ func (d workloadStorage) Populate() error {
 		workloadID := line[0]
 		volumeID := line[1]
 		bootable := line[2]
-		persistent := line[3]
+		ephemeral := line[3]
 		size := line[4]
 		sourceType := line[5]
 		sourceID := line[6]
+		tag := line[7]
 
-		err = d.ds.create(d.name, workloadID, volumeID, bootable, persistent, size, sourceType, sourceID)
+		err = d.ds.create(d.name, workloadID, volumeID, bootable, ephemeral, size, sourceType, sourceID, tag)
 		if err != nil {
 			glog.V(2).Info("could not add workload storage", err)
 		}
@@ -1034,14 +1036,14 @@ func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resourc
 
 // lock must be held by caller
 func (ds *sqliteDB) createWorkloadStorage(tx *sql.Tx, workloadID string, storage types.StorageResource) error {
-	_, err := tx.Exec("INSERT INTO workload_storage (workload_id, volume_id, bootable, persistent, size, source_type, source_id) VALUES (?, ?, ?, ?, ?, ?, ?)", workloadID, storage.ID, storage.Bootable, storage.Persistent, storage.Size, string(storage.SourceType), storage.SourceID)
+	_, err := tx.Exec("INSERT INTO workload_storage (workload_id, volume_id, bootable, ephemeral, size, source_type, source_id, tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", workloadID, storage.ID, storage.Bootable, storage.Ephemeral, storage.Size, string(storage.SourceType), storage.SourceID, storage.Tag)
 
 	return err
 }
 
 func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
-	query := `SELECT volume_id, bootable, persistent, size,
-			 source_type, source_id
+	query := `SELECT volume_id, bootable, ephemeral, size,
+			 source_type, source_id, tag
 		  FROM 	workload_storage
 		  WHERE workload_id = ?`
 
@@ -1050,7 +1052,7 @@ func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error
 	var r types.StorageResource
 	var sourceType string
 
-	err := row.Scan(&r.ID, &r.Bootable, &r.Persistent, &r.Size, &sourceType, &r.SourceID)
+	err := row.Scan(&r.ID, &r.Bootable, &r.Ephemeral, &r.Size, &sourceType, &r.SourceID, &r.Tag)
 
 	if err != nil {
 		if err == sql.ErrNoRows {

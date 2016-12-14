@@ -48,10 +48,10 @@ type StorageResource struct {
 	// Bootable indicates whether should the resource be used for booting
 	Bootable bool `json:"bootable"`
 
-	// Persistent indicates whether the storage is temporary
+	// Ephemeral indicates whether the storage is temporary
 	// TBD: do we bother to save info about temp storage?
 	//      does it count against quota?
-	Persistent bool `json:"persistent"`
+	Ephemeral bool `json:"ephemeral"`
 
 	// Size is the size of the storage to be created if new.
 	Size int `json:"size"`
@@ -64,6 +64,9 @@ type StorageResource struct {
 	// SourceID represents the ID of either the image or the volume
 	// that the storage resource is based on.
 	SourceID string `json:"source_id"`
+
+	// Tag is a piece of abitrary search/sort identifier text
+	Tag string
 }
 
 // Workload contains resource and configuration information for a user
@@ -85,6 +88,16 @@ type Workload struct {
 type WorkloadResponse struct {
 	Workload Workload `json:"workload"`
 	Link     Link     `json:"link"`
+}
+
+// WorkloadRequest contains resource and configuration for a user
+// workload.
+type WorkloadRequest struct {
+	WorkloadID string
+	TenantID   string
+	Instances  int
+	TraceLabel string
+	Volumes    []storage.BlockDevice
 }
 
 // Instance contains information about an instance of a workload.

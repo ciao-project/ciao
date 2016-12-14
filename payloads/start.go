@@ -86,17 +86,35 @@ const (
 	Docker = "docker"
 )
 
-// StorageResources represents a requested storage resource for a workload.
-type StorageResources struct {
+// StorageResource represents a requested storage resource for a workload.
+type StorageResource struct {
 	// ID is passed to the Block Driver to operate on the resource
-	ID string `yaml:"id"`
+	ID string `yaml:"id,omitempty"`
 
 	// Bootable indicates that this is a bootable storage device.
-	Bootable bool `yaml:"boot"`
+	Bootable bool `yaml:"boot,omitempty"`
+
+	// BootIndex hints to the hypervisor a bootable disk order among
+	// multple storage resources
+	BootIndex int `yaml:"boot_index,omitempty"`
 
 	// Ephemeral indicates whether this storage should only last as long as
 	// the instance
-	Ephemeral bool `yaml:"ephemeral"`
+	Ephemeral bool `yaml:"ephemeral,omitempty"`
+
+	// Local indicates if the storage resource is local (ephemeral,
+	// auto-created by launcher implied) or backed by the volume service
+	Local bool `yaml:"local,omitempty"`
+
+	// Swap optionally indicates the storage resource is intended for
+	// use as a linux swap device (attempt swapon via cloud-init
+	Swap bool `yaml:"swap,omitempty"`
+
+	// Tag is an arbitrary text identifier
+	Tag string `yaml:"tag,omitempty"`
+
+	// Size is the requested size for an auto-created storage resource
+	Size int `yaml:"size,omitempty"`
 }
 
 // RequestedResource is used to specify an individual resource contained within
@@ -202,7 +220,7 @@ type StartCmd struct {
 
 	// Storage contains all the information required to attach or boot
 	// from storage for the new instance.
-	Storage StorageResources `yaml:"storage,omitempty"`
+	Storage []StorageResource `yaml:"storage,omitempty"`
 }
 
 // Start represents the unmarshalled version of the contents of a SSNTP START

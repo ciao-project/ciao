@@ -130,20 +130,21 @@ func (c *controller) confirmTenant(tenantID string) error {
 	return nil
 }
 
-func (c *controller) startWorkload(workloadID string, tenantID string, instances int, trace bool, label string) ([]*types.Instance, error) {
+func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, error) {
+
 	var e error
 
 	if instances <= 0 {
 		return nil, errors.New("Missing number of instances to start")
 	}
 
-	wl, err := c.ds.GetWorkload(workloadID)
+	wl, err := c.ds.GetWorkload(w.WorkloadID)
 	if err != nil {
 		return nil, err
 	}
 
 	if !isCNCIWorkload(wl) {
-		err := c.confirmTenant(tenantID)
+		err := c.confirmTenant(w.TenantID)
 		if err != nil {
 			return nil, err
 		}
@@ -151,9 +152,9 @@ func (c *controller) startWorkload(workloadID string, tenantID string, instances
 
 	var newInstances []*types.Instance
 
-	for i := 0; i < instances; i++ {
+	for i := 0; i < w.Instances; i++ {
 		startTime := time.Now()
-		instance, err := newInstance(c, tenantID, wl)
+		instance, err := newInstance(c, w.TenantID, wl, w.Volumes)
 		if err != nil {
 			glog.V(2).Info("error newInstance")
 			e = err
@@ -172,10 +173,10 @@ func (c *controller) startWorkload(workloadID string, tenantID string, instances
 			}
 
 			newInstances = append(newInstances, &instance.Instance)
-			if trace == false {
+			if w.TraceLabel == "" {
 				go c.client.StartWorkload(instance.newConfig.config)
 			} else {
-				go c.client.StartTracedWorkload(instance.newConfig.config, instance.startTime, label)
+				go c.client.StartTracedWorkload(instance.newConfig.config, instance.startTime, w.TraceLabel)
 			}
 		} else {
 			instance.Clean()
@@ -202,7 +203,12 @@ func (c *controller) launchCNCI(tenantID string) error {
 
 	c.ds.AddTenantChan(ch, tenantID)
 
-	_, err = c.startWorkload(workloadID, tenantID, 1, false, "")
+	w := types.WorkloadRequest{
+		WorkloadID: workloadID,
+		TenantID:   tenantID,
+		Instances:  1,
+	}
+	_, err = c.startWorkload(w)
 	if err != nil {
 		return err
 	}

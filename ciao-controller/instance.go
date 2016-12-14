@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
@@ -55,10 +56,12 @@ func isCNCIWorkload(workload *types.Workload) bool {
 	return false
 }
 
-func newInstance(ctl *controller, tenantID string, workload *types.Workload) (*instance, error) {
+func newInstance(ctl *controller, tenantID string, workload *types.Workload,
+	volumes []storage.BlockDevice) (*instance, error) {
+
 	id := uuid.Generate()
 
-	config, err := newConfig(ctl, workload, id.String(), tenantID)
+	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +96,17 @@ func (i *instance) Add() error {
 	} else {
 		ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
 	}
-	storage := i.newConfig.sc.Start.Storage
-	if (storage != payloads.StorageResources{}) {
-		_, err := ds.CreateStorageAttachment(i.Instance.ID, storage.ID, storage.Ephemeral, storage.Bootable)
+	for _, volume := range i.newConfig.sc.Start.Storage {
+		if volume.ID == "" && volume.Local {
+			// these are launcher auto-created ephemeral
+			continue
+		}
+		_, err := ds.GetBlockDevice(volume.ID)
+		if err != nil {
+			return fmt.Errorf("Invalid block device mapping.  %s already in use", volume.ID)
+		}
+
+		_, err = ds.CreateStorageAttachment(i.Instance.ID, volume)
 		if err != nil {
 			glog.Error(err)
 		}
@@ -153,12 +164,32 @@ func (c *config) GetResources() map[string]int {
 	return resources
 }
 
-func getStorage(c *controller, wl *types.Workload, tenant string, instanceID string) (payloads.StorageResources, error) {
-	s := wl.Storage
+func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s types.StorageResource) (payloads.StorageResource, error) {
+	// don't you need to add support for indicating whether
+	// a block device is bootable.
+	data := types.BlockData{
+		BlockDevice: device,
+		Size:        s.Size,
+		CreateTime:  time.Now(),
+		TenantID:    tenant,
+		Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
+		Description: s.Tag,
+	}
+
+	err := c.ds.AddBlockDevice(data)
+	if err != nil {
+		c.DeleteBlockDevice(device.ID)
+		return payloads.StorageResource{}, err
+	}
+
+	return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable, Ephemeral: s.Ephemeral}, nil
+}
+
+func getStorage(c *controller, s types.StorageResource, tenant string, instanceID string) (payloads.StorageResource, error) {
 
 	// storage already exists, use preexisting definition.
 	if s.ID != "" {
-		return payloads.StorageResources{ID: s.ID, Bootable: s.Bootable}, nil
+		return payloads.StorageResource{ID: s.ID, Bootable: s.Bootable}, nil
 	}
 
 	// new storage.
@@ -191,80 +222,46 @@ func getStorage(c *controller, wl *types.Workload, tenant string, instanceID str
 		device, err := c.CreateBlockDeviceFromSnapshot(s.SourceID, "ciao-image")
 		if err != nil {
 			glog.Errorf("Unable to get block device for image: %v", err)
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
-		// don't you need to add support for indicating whether
-		// a block device is bootable.
-		data := types.BlockData{
-			BlockDevice: device,
-			Size:        s.Size,
-			CreateTime:  time.Now(),
-			TenantID:    tenant,
-			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
-		}
+		return addBlockDevice(c, tenant, instanceID, device, s)
 
-		err = c.ds.AddBlockDevice(data)
-		if err != nil {
-			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResources{}, err
-		}
-
-		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable, Ephemeral: true}, nil
 	case types.VolumeService:
 		device, err := c.CopyBlockDevice(s.SourceID)
 		if err != nil {
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
-		// don't you need to add support for indicating whether
-		// a block device is bootable.
-		data := types.BlockData{
-			BlockDevice: device,
-			Size:        s.Size,
-			CreateTime:  time.Now(),
-			TenantID:    tenant,
-			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
-		}
-
-		err = c.ds.AddBlockDevice(data)
-		if err != nil {
-			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResources{}, err
-		}
-
-		return payloads.StorageResources{ID: data.ID, Bootable: s.Bootable}, nil
+		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	case types.Empty:
 		device, err := c.CreateBlockDevice("", "", s.Size)
 		if err != nil {
-			return payloads.StorageResources{}, err
+			return payloads.StorageResource{}, err
 		}
 
-		// don't you need to add support for indicating whether
-		// a block device is bootable.
-		data := types.BlockData{
-			BlockDevice: device,
-			Size:        s.Size,
-			CreateTime:  time.Now(),
-			TenantID:    tenant,
-			Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
-		}
-
-		err = c.ds.AddBlockDevice(data)
-		if err != nil {
-			c.DeleteBlockDevice(device.ID)
-			return payloads.StorageResources{}, err
-		}
-
-		return payloads.StorageResources{ID: data.ID, Bootable: false}, nil
-
+		return addBlockDevice(c, tenant, instanceID, device, s)
 	}
 
-	return payloads.StorageResources{}, errors.New("Unsupported workload storage variant in getStorage()")
+	return payloads.StorageResource{}, errors.New("Unsupported workload storage variant in getStorage()")
 }
 
-func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string) (config, error) {
+func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s types.StorageResource) {
+	s.ID = volume.ID
+	s.Bootable = volume.Bootable
+	s.Ephemeral = volume.Ephemeral
+	s.Size = volume.Size
+	s.SourceType = ""
+	s.SourceID = ""
+	s.Tag = volume.Tag
+
+	return
+}
+
+func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
+	volumes []storage.BlockDevice) (config, error) {
+
 	type UserData struct {
 		UUID     string `json:"uuid"`
 		Hostname string `json:"hostname"`
@@ -286,7 +283,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	config.cnci = isCNCIWorkload(wl)
 
 	var networking payloads.NetworkResources
-	var storage payloads.StorageResources
+	var storage []payloads.StorageResource
 
 	// do we ever need to save the vnic uuid?
 	networking.VnicUUID = uuid.Generate().String()
@@ -318,6 +315,42 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		// set the hostname and uuid for userdata
 		userData.UUID = instanceID
 		userData.Hostname = instanceID
+
+		// handle storage resources for just this instance
+		for _, volume := range volumes {
+			instanceStorage := payloads.StorageResource{
+				ID:        volume.ID,
+				Bootable:  volume.Bootable,
+				Ephemeral: volume.Ephemeral,
+				Local:     volume.Local,
+				Swap:      volume.Swap,
+				BootIndex: volume.BootIndex,
+				Tag:       volume.Tag,
+				Size:      volume.Size,
+			}
+
+			// controller created (as opposed to launcher
+			// created) instance storage (workload storage is later)
+			if volume.ID == "" && !volume.Local {
+				// auto-create empty
+				device, err := ctl.CreateBlockDevice("", "", volume.Size)
+				if err != nil {
+					return config, err
+				}
+
+				instanceStorage.ID = device.ID
+				s := controllerStorageResourceFromPayload(instanceStorage)
+				_, err = addBlockDevice(ctl, tenantID, instanceID, device, s)
+				if err != nil {
+					return config, err
+				}
+			} /* else {
+				// volume.ID != "": launcher will attach pre-existing volume
+				// volume.Local: launcher will create ephemeral volume
+			} */
+
+			storage = append(storage, instanceStorage)
+		}
 	} else {
 		networking.VnicMAC = tenant.CNCIMAC
 
@@ -325,12 +358,14 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		userData.UUID = instanceID
 		userData.Hostname = "cnci-" + tenantID
 	}
-	// handle storage resources
+
+	// handle storage resources in workload definition
 	if wl.Storage != nil {
-		storage, err = getStorage(ctl, wl, tenantID, instanceID)
+		workloadStorage, err := getStorage(ctl, *wl.Storage, tenantID, instanceID)
 		if err != nil {
 			return config, err
 		}
+		storage = append(storage, workloadStorage)
 	}
 
 	// hardcode persistence until changes can be made to workload

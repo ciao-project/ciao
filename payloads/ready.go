@@ -44,6 +44,9 @@ type Ready struct {
 	// Number of CPUs present in the CN/NN.  Derived from the number of
 	// cpu[0-9]+ entries in /proc/stat.
 	CpusOnline int `yaml:"cpus_online"`
+
+	// Any changes to this struct should be accompanied by a change to
+	// the ciao-scheduler/scheduler.go:updateNodeStat() function
 }
 
 // Init initialises the Ready structure.

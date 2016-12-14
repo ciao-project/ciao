@@ -134,7 +134,7 @@ type ServerDetails struct {
 // Servers represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/servers/detail response.  It contains information about a
 // set of instances within a ciao cluster.
-// http://developer.openstack.org/api-ref-compute-v2.1.html#listServersDetailed
+// http://developer.openstack.org/api-ref/compute/?expanded=list-servers-detailed-detail
 // BUG - TotalServers is not specified by the openstack api. We are going
 // to pretend it is for now.
 type Servers struct {
@@ -196,6 +196,49 @@ type FlavorDetails struct {
 	Vcpus                  int    `json:"vcpus"`
 }
 
+// BlockDeviceMappingV2 represents an optional block_device_mapping_v2
+// object within a /v2.1/{tenant}/servers request POST to "Create Server"
+// array of block_device_mapping_v2 objects.
+// NOTE: the OpenStack api-ref currently indicates in text that this is an
+// object not an array, but given the implementation/usage it is clearly in
+// fact an array.  Also volume size and uuid are not documented in the API
+// reference, but logically must be included.
+type BlockDeviceMappingV2 struct {
+	// DeviceName: the name the hypervisor should assign to the block
+	// device, eg: "vda"
+	DeviceName string `json:"device_name,omitempty"`
+
+	// SourceType: blank, snapshot, volume, or image
+	SourceType string `json:"source_type"`
+
+	// DestinationType: optional flag to indicate whether the block
+	// device is backed locally or from the volume service
+	DestinationType string `json:"destination_type,omitempty"`
+
+	// DeleteOnTermination: optional flag to indicate the volume should
+	// autodelete upon termination of the instance
+	DeleteOnTermination bool `json:"delete_on_termination,omitempty"`
+
+	// GuestFormat: optionally format a created volume as "swap" or
+	// leave "ephemeral" (unformatted) for any use by the instance
+	GuestFormat string `json:"guest_format,omitempty"`
+
+	// BootIndex: hint to hypervisor for boot order among multiple
+	// bootable devices, eg: floppy, cdrom, disk.  Default "none".
+	// Disable booting via negative number or "none"
+	BootIndex string `json:"boot_index"`
+
+	// Tag: optional arbitrary text identifier for the block device, useful
+	// for human identification or programmatic searching/sorting
+	Tag string `json:"tag,omitempty"`
+
+	// UUID: the volume/image/snapshot to attach
+	UUID string `json:"uuid,omitempty"`
+
+	// VolumeSize: integer number of gigabytes for ephemeral or swap
+	VolumeSize int `json:"volume_size,omitempty"`
+}
+
 // Flavor represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/flavors/{flavor} response.  It contains information about a
 // specific flavour.
@@ -224,12 +267,13 @@ func NewComputeFlavorsDetails() (flavors FlavorsDetails) {
 // one or more instances.
 type CreateServerRequest struct {
 	Server struct {
-		ID           string `json:"id"`
-		Name         string `json:"name"`
-		Image        string `json:"imageRef"`
-		Flavor       string `json:"flavorRef"`
-		MaxInstances int    `json:"max_count"`
-		MinInstances int    `json:"min_count"`
+		ID                  string                 `json:"id"`
+		Name                string                 `json:"name"`
+		Image               string                 `json:"imageRef"`
+		Flavor              string                 `json:"flavorRef"`
+		MaxInstances        int                    `json:"max_count"`
+		MinInstances        int                    `json:"min_count"`
+		BlockDeviceMappings []BlockDeviceMappingV2 `json:"block_device_mapping_v2,omitempty"`
 	} `json:"server"`
 }
 
