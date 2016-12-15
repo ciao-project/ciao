@@ -77,12 +77,12 @@ runcmd:
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
  - echo "GOPATH={{.GoPath}}" >> /etc/environment
  - echo "PATH=$PATH:/usr/local/go/bin:{{$.GoPath}}/bin"  >> /etc/environment
- - {{template "PROXIES" .}}wget https://storage.googleapis.com/golang/go1.7.3.linux-amd64.tar.gz -O /tmp/go1.7.3.linux-amd64.tar.gz
+ - {{template "PROXIES" .}}wget https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz -O /tmp/go1.7.4.linux-amd64.tar.gz
  - {{template "CHECK" .}}
  - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
- - tar -C /usr/local -xzf /tmp/go1.7.3.linux-amd64.tar.gz
+ - tar -C /usr/local -xzf /tmp/go1.7.4.linux-amd64.tar.gz
  - {{template "CHECK" .}}
- - rm /tmp/go1.7.3.linux-amd64.tar.gz
+ - rm /tmp/go1.7.4.linux-amd64.tar.gz
 
  - groupadd docker
  - sudo gpasswd -a {{.User}} docker
