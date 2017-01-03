@@ -21,15 +21,15 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"text/template"
 
-	"strings"
-
 	"github.com/01org/ciao/templateutils"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
-	"github.com/rackspace/gophercloud/openstack/imageservice/v2/images"
-	"github.com/rackspace/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/imagedata"
+	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
+	"github.com/gophercloud/gophercloud/pagination"
 )
 
 var imageCommand = &command{
@@ -311,7 +311,7 @@ func uploadTenantImage(username, password, tenant, image, filename string) error
 	}
 	defer file.Close()
 
-	res := images.Upload(client, image, file)
+	res := imagedata.Upload(client, image, file)
 	if res.Err != nil {
 		fatalf("Could not upload %s [%s]", filename, res.Err)
 	}
@@ -325,7 +325,7 @@ func dumpImage(i *images.Image) {
 	fmt.Printf("\tStatus           [%s]\n", i.Status)
 	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)
 	fmt.Printf("\tTags             %v\n", i.Tags)
-	fmt.Printf("\tCreatedDate      [%s]\n", i.CreatedDate)
+	fmt.Printf("\tCreatedAt        [%s]\n", i.CreatedAt)
 }
 
 func imageServiceClient(username, password, tenant string) (*gophercloud.ServiceClient, error) {

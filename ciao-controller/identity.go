@@ -17,10 +17,10 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
 )
 
 type identity struct {
@@ -47,9 +47,9 @@ func newIdentityClient(config identityConfig) (*identity, error) {
 		return nil, err
 	}
 
-	v3client := openstack.NewIdentityV3(provider)
-	if v3client == nil {
-		return nil, errors.New("Unable to get keystone V3 client")
+	v3client, err := openstack.NewIdentityV3(provider, gophercloud.EndpointOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get keystone V3 client : %v", err)
 	}
 
 	id := &identity{

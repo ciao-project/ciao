@@ -20,10 +20,10 @@ import (
 
 	"github.com/01org/ciao/service"
 	"github.com/golang/glog"
+	"github.com/gophercloud/gophercloud"
+	v3tokens "github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
-	"github.com/rackspace/gophercloud"
-	v3tokens "github.com/rackspace/gophercloud/openstack/identity/v3/tokens"
 )
 
 // Project holds project information extracted from the keystone response.

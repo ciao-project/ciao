@@ -26,8 +26,8 @@ import (
 
 	"github.com/01org/ciao/service"
 	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/gophercloud/gophercloud"
 	"github.com/gorilla/mux"
-	"github.com/rackspace/gophercloud"
 )
 
 // APIPort is the standard OpenStack Image port

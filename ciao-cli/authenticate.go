@@ -20,8 +20,8 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
 )
 
 func newAuthenticatedClient(opt gophercloud.AuthOptions) (*gophercloud.ProviderClient, error) {
