@@ -25,7 +25,10 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"golang.org/x/net/context"
 
@@ -119,6 +122,7 @@ type dockerTestClient struct {
 	config            *container.Config
 	hostConfig        *container.HostConfig
 	networkConfig     *network.NetworkingConfig
+	containerWaitCh   chan struct{}
 }
 
 func (d *dockerTestClient) ImageList(context.Context, types.ImageListOptions) ([]types.Image, error) {
@@ -151,7 +155,14 @@ func (d *dockerTestClient) ContainerCreate(ctx context.Context, config *containe
 }
 
 func (d *dockerTestClient) ContainerRemove(context.Context, types.ContainerRemoveOptions) error {
-	return d.err
+	if d.err != nil {
+		return d.err
+	}
+	d.config = nil
+	d.hostConfig = nil
+	d.networkConfig = nil
+
+	return nil
 }
 
 func (d *dockerTestClient) ContainerStart(context.Context, string) error {
@@ -159,11 +170,50 @@ func (d *dockerTestClient) ContainerStart(context.Context, string) error {
 }
 
 func (d *dockerTestClient) ContainerInspectWithRaw(context.Context, string, bool) (types.ContainerJSON, []byte, error) {
-	return types.ContainerJSON{}, nil, nil
+	i := int64(10000000)
+	return types.ContainerJSON{ContainerJSONBase: &types.ContainerJSONBase{SizeRootFs: &i}}, nil, nil
+}
+
+func (d *dockerTestClient) ContainerInspect(context.Context, string) (types.ContainerJSON, error) {
+	return types.ContainerJSON{
+		ContainerJSONBase: &types.ContainerJSONBase{
+			State: &types.ContainerState{
+				Running: true,
+			},
+		},
+	}, nil
 }
 
 func (d *dockerTestClient) ContainerStats(context.Context, string, bool) (io.ReadCloser, error) {
-	return nil, nil
+	var buf bytes.Buffer
+
+	buf.WriteString(`
+{
+  "cpu_stats" : {
+    "cpu_usage" : {
+      "total_usage" : 100000000
+    }
+  },
+  "memory_stats" : {
+     "usage" : 104857600
+  }
+}`)
+
+	return ioutil.NopCloser(&buf), nil
+}
+
+func (d *dockerTestClient) ContainerKill(context.Context, string, string) error {
+	close(d.containerWaitCh)
+	return nil
+}
+
+func (d *dockerTestClient) ContainerWait(ctx context.Context, id string) (int, error) {
+	select {
+	case <-d.containerWaitCh:
+	case <-ctx.Done():
+	}
+
+	return 0, nil
 }
 
 // Checks that the logic of the code that mounts and unmounts ceph volumes in
@@ -420,13 +470,14 @@ func TestDockerDeleteImage(t *testing.T) {
 
 // Verify that docker.createImage works as expected.
 //
-// This test is not yet fully complete.  It calls createImage with a
-// sample user data that contains a single command and some meta data
-// that contains a host name.
+// The test calls createImage with a sample user data that contains a single
+// command and some meta data that contains a host name.  The container is
+// deleted after it has been successfully created.
 //
 // The call to createImage should succeed, the hostname and the command
 // to execute should be successfully extracted and the id of the new
-// container should be stored in the docker-id file.
+// container should be stored in the docker-id file.  The container should
+// be deleted without error.
 func TestDockerCreateImage(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "ciao-docker-tests")
 	if err != nil {
@@ -451,7 +502,7 @@ runcmd:
 `
 	err = d.createImage("", []byte(ud), []byte(md))
 	if err != nil {
-		t.Errorf("Unable to create image : %v", err)
+		t.Fatalf("Unable to create image : %v", err)
 	}
 
 	if tc.config.Hostname != "ciao" {
@@ -469,12 +520,271 @@ runcmd:
 
 	readID, err := ioutil.ReadFile(path.Join(tmpDir, "docker-id"))
 	if err != nil {
-		t.Fatalf("Unable to read docker-id file : %v", err)
+		t.Errorf("Unable to read docker-id file : %v", err)
 	}
 
 	readIDstr := string(bytes.TrimSpace(readID))
 	if readIDstr != testutil.InstanceUUID {
 		t.Errorf("Incorrect container ID read from docker-id file %s expected, found %s",
 			testutil.InstanceUUID, readIDstr)
+	}
+
+	err = d.deleteImage()
+	if err != nil {
+		t.Errorf("Unable to delete container : %v", err)
+	}
+}
+
+// Verify that docker.createImage handles errors gracefully
+//
+// The test calls createImage twice.  The first time it arranges for
+// ContainerCreate to fail. The second time it specifies an invalid
+// temporary directory, so the docker-id file does not get written.
+//
+// Both calls to createImage should fail and no containers should be
+// created.
+func TestDockerCreateImageFail(t *testing.T) {
+	tc := &dockerTestClient{err: fmt.Errorf("ContainerCreate failure forced")}
+	d := &docker{instanceDir: "/tmp/i/dont/exist", cfg: &vmConfig{}, cli: tc}
+
+	for i := 0; i < 2; i++ {
+		if err := d.createImage("", nil, nil); err == nil {
+			t.Errorf("createImage should have failed")
+		}
+
+		if tc.config != nil || tc.hostConfig != nil || tc.networkConfig != nil ||
+			d.dockerID != "" {
+			t.Errorf("dockerTestClient status not clean")
+		}
+		tc.err = nil
+	}
+}
+
+// Verify that docker.createImage handles volumes correctly
+//
+// The test calls createImage with two pre-configured volumes.  It checks that
+// the directories in which the volumes are to be mounted have been created and
+// then tries to create an image with a bootable volume.
+//
+// The first call to createImage should succeed and directories should be created
+// for each volume.  The second call to createImage should fail as it's not
+// possible to create an image with a bootable volume.
+func TestDockerCreateImageWithVolumes(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "ciao-docker-tests")
+	if err != nil {
+		t.Fatal("Unable to create temporary directory")
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+	tc := &dockerTestClient{}
+	d := &docker{
+		instanceDir: tmpDir,
+		cli:         tc,
+		cfg: &vmConfig{
+			Volumes: []volumeConfig{
+				{UUID: "92a1e4fa-8448-4260-adb1-4d2dd816cc7c"},
+				{UUID: "5ce2c5bf-58d9-4573-b433-05550b945866"},
+			},
+		}}
+
+	if err := d.createImage("", nil, nil); err != nil {
+		t.Fatalf("Unable to create image : %v", err)
+	}
+
+	for _, vol := range tc.hostConfig.Binds {
+		volInfo := strings.Split(vol, ":")
+		fi, err := os.Stat(volInfo[0])
+		if err != nil {
+			t.Errorf("Unable to retrieve information about volume directory : %v", err)
+			continue
+		}
+		if !fi.IsDir() {
+			t.Errorf("%s is not a directory", vol)
+		}
+	}
+
+	err = d.deleteImage()
+	if err != nil {
+		t.Errorf("Unable to delete container : %v", err)
+	}
+
+	d.cfg.Volumes[0].Bootable = true
+	if err = d.createImage("", nil, nil); err == nil {
+		t.Fatalf("Attempt to create image with a bootable volume should fail")
+	}
+}
+
+// Check createImage processes memory, cpu and IP resources correctly
+//
+// Create an image with memory, CPU and IP resources.  Delete the image.
+//
+// The image is correctly created, the resources are computed/allocated correctly,
+// and the image is deleted correctly.
+func TestDockerCreateImageWithResources(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "ciao-docker-tests")
+	if err != nil {
+		t.Fatal("Unable to create temporary directory")
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+	tc := &dockerTestClient{}
+	d := &docker{instanceDir: tmpDir, cli: tc,
+		cfg: &vmConfig{
+			Mem:     10,
+			Cpus:    2,
+			VnicMAC: testutil.VNICMAC,
+			VnicIP:  testutil.AgentIP,
+		}}
+
+	if err := d.createImage("bridge", nil, nil); err != nil {
+		t.Fatalf("Unable to create image : %v", err)
+	}
+
+	if tc.hostConfig.Memory != int64(1024*1024*d.cfg.Mem) {
+		t.Errorf("Wrong memory value %d ", tc.hostConfig.Memory)
+	}
+
+	if tc.hostConfig.CPUQuota != int64(d.cfg.Cpus)*tc.hostConfig.CPUPeriod {
+		t.Errorf("Wrong CPU Quota %d ", d.cfg.Cpus)
+	}
+
+	if tc.networkConfig.EndpointsConfig["bridge"].IPAMConfig.IPv4Address !=
+		testutil.AgentIP {
+		t.Errorf("Wrong IP address %s ",
+			tc.networkConfig.EndpointsConfig["bridge"].IPAMConfig.IPv4Address)
+	}
+
+	err = d.deleteImage()
+	if err != nil {
+		t.Errorf("Unable to delete container : %v", err)
+	}
+}
+
+// Checks the monitorVM function works correctly.
+//
+// This test creates a new instance, calls monitor VM, waits for the connected
+// channel to be closed and then sends the stop command to the container.
+//
+// The instance should be created correctly, the connected channel should be
+// closed and the closedChannel should be closed after we send the virtualizerStopCmd.
+func TestDockerMonitorVM(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "ciao-docker-tests")
+	if err != nil {
+		t.Fatal("Unable to create temporary directory")
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	tc := &dockerTestClient{containerWaitCh: make(chan struct{})}
+	d := &docker{instanceDir: tmpDir, dockerID: testutil.InstanceUUID, cfg: &vmConfig{}, cli: tc}
+
+	err = d.createImage("", nil, nil)
+	if err != nil {
+		t.Fatalf("Unable to create image : %v", err)
+	}
+
+	defer func() {
+		if d.deleteImage() != nil {
+			t.Errorf("Unable to delete container : %v", err)
+		}
+	}()
+
+	// Force monitorVM to re-read instance-ID
+
+	d.dockerID = ""
+
+	closedCh := make(chan struct{})
+	connectedCh := make(chan struct{})
+
+	var wg sync.WaitGroup
+
+	dockerCh := d.monitorVM(closedCh, connectedCh, &wg, false)
+
+	select {
+	case <-connectedCh:
+	case <-closedCh:
+		t.Errorf("Failed to connect to container")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to connect to container")
+	}
+
+	dockerCh <- virtualizerStopCmd{}
+
+	select {
+	case <-closedCh:
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to connect to container")
+	}
+
+	wg.Wait()
+}
+
+// Check that closing the dockerChannel quits the monitor routine.
+//
+// This test calls monitorVM, waits for the connectedCh channel to be closed and
+// then closes the dockerCh channel returned by monitorVM, simulating a launcher
+// exit.
+//
+// The connectedCh should be closed as expected.  The closedCh channel should then
+// be closed after the test function has closed the dockerCh channel.
+func TestDockerMonitorVMClose(t *testing.T) {
+	tc := &dockerTestClient{containerWaitCh: make(chan struct{})}
+	d := &docker{dockerID: testutil.InstanceUUID, cfg: &vmConfig{}, cli: tc}
+
+	closedCh := make(chan struct{})
+	connectedCh := make(chan struct{})
+
+	var wg sync.WaitGroup
+
+	dockerCh := d.monitorVM(closedCh, connectedCh, &wg, false)
+
+	select {
+	case <-connectedCh:
+	case <-closedCh:
+		t.Errorf("Failed to connect to container")
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to connect to container")
+	}
+
+	close(dockerCh)
+
+	select {
+	case <-closedCh:
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to connect to container")
+	}
+
+	wg.Wait()
+}
+
+// Check container statistics are computed correctly.
+//
+// Call the stats method twice.  The second call is required to retrieve cpu stats.
+//
+// The stats method should return the statistics provisioned in the dockerTestClient
+// ContainerInspectWithRaw and ContainerStats methods.
+func TestDockerStats(t *testing.T) {
+	tc := &dockerTestClient{}
+	d := &docker{dockerID: testutil.InstanceUUID, cfg: &vmConfig{}, cli: tc, prevCPUTime: -1}
+
+	disk, mem, cpu := d.stats()
+	if mem != 100 {
+		t.Errorf("Expected memory usage of 100.  Got %d", mem)
+	}
+
+	if disk != 10 {
+		t.Errorf("Expected disk usage of 10.  Got %d", disk)
+	}
+
+	if cpu != -1 {
+		t.Errorf("Expected cpu usage of -1.  Got %d", cpu)
+	}
+
+	_, _, cpu = d.stats()
+	if cpu != 0 {
+		t.Errorf("Expected cpu usage of 0.  Got %d", cpu)
 	}
 }

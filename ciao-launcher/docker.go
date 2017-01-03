@@ -321,6 +321,7 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 	err = ioutil.WriteFile(idPath, []byte(resp.ID), 0600)
 	if err != nil {
 		glog.Errorf("Unable to store docker container ID %v", err)
+		_ = dockerDeleteContainer(d.cli, resp.ID, d.cfg.Instance)
 		return err
 	}
 
@@ -333,6 +334,19 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 	return nil
 }
 
+func dockerDeleteContainer(cli containerManager, dockerID, instanceUUID string) error {
+	err := cli.ContainerRemove(context.Background(),
+		types.ContainerRemoveOptions{
+			ContainerID: dockerID,
+			Force:       true})
+	if err != nil {
+		glog.Warningf("Unable to delete docker instance %s:%s err %v",
+			instanceUUID, dockerID, err)
+	}
+
+	return err
+}
+
 func (d *docker) deleteImage() error {
 	if d.dockerID == "" {
 		return nil
@@ -343,17 +357,7 @@ func (d *docker) deleteImage() error {
 		return err
 	}
 
-	err = d.cli.ContainerRemove(context.Background(),
-		types.ContainerRemoveOptions{
-			ContainerID: d.dockerID,
-			Force:       true})
-	if err != nil {
-		glog.Warningf("Unable to delete docker instance %s:%s err %v",
-			d.cfg.Instance, d.dockerID, err)
-		return err
-	}
-
-	return nil
+	return dockerDeleteContainer(d.cli, d.dockerID, d.cfg.Instance)
 }
 
 func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
@@ -378,7 +382,7 @@ func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
 	return nil
 }
 
-func dockerCommandLoop(cli *client.Client, dockerChannel chan interface{}, instance, dockerID string) {
+func dockerCommandLoop(cli containerManager, dockerChannel chan interface{}, instance, dockerID string) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	lostContainerCh := make(chan struct{})
 	go func() {
@@ -420,8 +424,9 @@ DONE:
 	glog.Infof("Docker Instance %s:%s shut down", instance, dockerID)
 }
 
-func dockerConnect(dockerChannel chan interface{}, instance, dockerID string, closedCh chan struct{},
-	connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) {
+func dockerConnect(cli containerManager, dockerChannel chan interface{}, instance,
+	dockerID string, closedCh chan struct{}, connectedCh chan struct{},
+	wg *sync.WaitGroup, boot bool) {
 
 	defer func() {
 		if closedCh != nil {
@@ -430,11 +435,6 @@ func dockerConnect(dockerChannel chan interface{}, instance, dockerID string, cl
 		glog.Infof("Monitor function for %s exitting", instance)
 		wg.Done()
 	}()
-
-	cli, err := getDockerClient()
-	if err != nil {
-		return
-	}
 
 	// BUG(markus): Need a way to cancel this.  Can't do this until we have contexts
 
@@ -470,7 +470,7 @@ func (d *docker) monitorVM(closedCh chan struct{}, connectedCh chan struct{},
 	}
 	dockerChannel := make(chan interface{})
 	wg.Add(1)
-	go dockerConnect(dockerChannel, d.cfg.Instance, d.dockerID, closedCh, connectedCh, wg, boot)
+	go dockerConnect(d.cli, dockerChannel, d.cfg.Instance, d.dockerID, closedCh, connectedCh, wg, boot)
 	return dockerChannel
 }
 
