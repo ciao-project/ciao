@@ -25,11 +25,11 @@ import (
 	"time"
 
 	"github.com/01org/ciao/templateutils"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
-	"github.com/rackspace/gophercloud/openstack/blockstorage/v2/extensions/volumeactions"
-	"github.com/rackspace/gophercloud/openstack/blockstorage/v2/volumes"
-	"github.com/rackspace/gophercloud/pagination"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
+	"github.com/gophercloud/gophercloud/pagination"
 )
 
 var volumeCommand = &command{
@@ -138,9 +138,7 @@ type byCreatedAt []volumes.Volume
 func (ss byCreatedAt) Len() int      { return len(ss) }
 func (ss byCreatedAt) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
 func (ss byCreatedAt) Less(i, j int) bool {
-	it, _ := time.Parse(time.RFC3339, ss[i].CreatedAt)
-	jt, _ := time.Parse(time.RFC3339, ss[j].CreatedAt)
-	return it.Before(jt)
+	return time.Time(ss[i].CreatedAt).Before(time.Time(ss[j].CreatedAt))
 }
 
 func (cmd *volumeListCommand) run(args []string) error {
@@ -426,7 +424,7 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 		fatalf("Could not get volume service client [%s]\n", err)
 	}
 
-	err = volumeactions.Detach(client, cmd.volume).ExtractErr()
+	err = volumeactions.Detach(client, cmd.volume, volumeactions.DetachOpts{}).ExtractErr()
 	if err == nil {
 		fmt.Printf("Detached volume: %s\n", cmd.volume)
 	}

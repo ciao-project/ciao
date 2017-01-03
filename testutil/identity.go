@@ -20,8 +20,8 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"github.com/gophercloud/gophercloud"
 	"github.com/gorilla/mux"
-	"github.com/rackspace/gophercloud"
 )
 
 // ComputeAPIPort is the compute service port the testutil identity service will use by default

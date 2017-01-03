@@ -15,16 +15,15 @@
 package identity
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/01org/ciao/testutil"
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gorilla/mux"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
 )
 
 var validServices = []ValidService{
@@ -80,9 +79,9 @@ func getIdentityClient(endpoint string) (*gophercloud.ServiceClient, error) {
 		return nil, err
 	}
 
-	v3client := openstack.NewIdentityV3(provider)
-	if v3client == nil {
-		return nil, errors.New("Unable to get keystone V3 client")
+	v3client, err := openstack.NewIdentityV3(provider, gophercloud.EndpointOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get keystone V3 client : %v", err)
 	}
 
 	return v3client, nil

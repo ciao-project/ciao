@@ -19,11 +19,11 @@ package main
 import (
 	"fmt"
 
+	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
-	"github.com/rackspace/gophercloud/openstack/identity/v3/tokens"
 )
 
 // Project represents a tenant UUID and friendly name.
@@ -112,8 +112,13 @@ func (r getResult) extractProject() (string, error) {
 }
 
 func getScopedToken(username string, password string, projectScope string) (string, string, string, error) {
-	var scope *tokens.Scope
-
+	tokenOpt := tokens.AuthOptions{
+		IdentityEndpoint: *identityURL + "/v3/",
+		Username:         username,
+		Password:         password,
+		DomainID:         "default",
+		AllowReauth:      true,
+	}
 	opt := gophercloud.AuthOptions{
 		IdentityEndpoint: *identityURL + "/v3/",
 		Username:         username,
@@ -127,20 +132,18 @@ func getScopedToken(username string, password string, projectScope string) (stri
 		return "", "", "", errors.Wrap(err, "Failed to create an AuthenticatedClient")
 	}
 
-	client := openstack.NewIdentityV3(provider)
-	if client == nil {
-		return "", "", "", errors.Wrap(err, "something went wrong")
+	client, err := openstack.NewIdentityV3(provider, gophercloud.EndpointOpts{})
+	if err != nil {
+		errorf("unable to create ServiceClient : %v", err)
+		return "", "", "", nil
 	}
 
-	scope = nil
 	if projectScope != "" {
-		scope = &tokens.Scope{
-			ProjectName: projectScope,
-			DomainName:  "default",
-		}
+		tokenOpt.Scope.ProjectName = projectScope
+		tokenOpt.Scope.DomainName = "default"
 	}
 
-	token, err := tokens.Create(client, opt, scope).Extract()
+	token, err := tokens.Create(client, &tokenOpt).Extract()
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "Could not extract token")
 	}
