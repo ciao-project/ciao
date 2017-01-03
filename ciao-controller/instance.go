@@ -359,8 +359,8 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		userData.Hostname = "cnci-" + tenantID
 	}
 
-	// handle storage resources in workload definition
-	if wl.Storage != nil {
+	// if no instance volumes specified, use those in workload
+	if len(volumes) == 0 && wl.Storage != nil {
 		workloadStorage, err := getStorage(ctl, *wl.Storage, tenantID, instanceID)
 		if err != nil {
 			return config, err
