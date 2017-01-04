@@ -854,12 +854,12 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 		},
 	})
 
-	datastore, err := ds.sqliteConnect(transientURI, persistentURI, pSQLLiteConfig)
+	db, err := ds.sqliteConnect(transientURI, persistentURI, pSQLLiteConfig)
 	if err != nil {
 		return err
 	}
 
-	ds.db = datastore
+	ds.db = db
 	ds.dbName = persistentURI
 
 	sql.Register(persistentURI, &sqlite3.SQLiteDriver{
@@ -870,12 +870,12 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 		},
 	})
 
-	datastore, err = ds.sqliteConnect(persistentURI, transientURI, pSQLLiteConfig)
+	tdb, err := ds.sqliteConnect(persistentURI, transientURI, pSQLLiteConfig)
 	if err != nil {
 		return err
 	}
 
-	ds.tdb = datastore
+	ds.tdb = tdb
 	ds.tdbName = transientURI
 
 	return err
