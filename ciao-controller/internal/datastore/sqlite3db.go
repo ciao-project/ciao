@@ -1872,7 +1872,7 @@ func (ds *sqliteDB) addUsage(instanceID string, usage map[string]int) error {
 	return nil
 }
 
-func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) error {
+func (ds *sqliteDB) addNodeStat(stat payloads.Stat) error {
 	datastore := ds.getTableDB("node_statistics")
 
 	ds.tdbLock.Lock()
@@ -1897,7 +1897,7 @@ func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) error {
 	return err
 }
 
-func (ds *sqliteDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID string) error {
+func (ds *sqliteDB) addInstanceStats(stats []payloads.InstanceStat, nodeID string) error {
 	datastore := ds.getTableDB("instance_statistics")
 
 	ds.tdbLock.Lock()

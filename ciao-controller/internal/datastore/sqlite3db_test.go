@@ -946,7 +946,7 @@ func TestSQLiteDBInstanceStats(t *testing.T) {
 
 	nodeID := uuid.Generate().String()
 
-	err = db.addInstanceStatsDB(stats, nodeID)
+	err = db.addInstanceStats(stats, nodeID)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -217,7 +217,7 @@ func (db *MemoryDB) removeInstance(instanceID string) error {
 	return nil
 }
 
-func (db *MemoryDB) addNodeStatDB(stat payloads.Stat) error {
+func (db *MemoryDB) addNodeStat(stat payloads.Stat) error {
 	return nil
 }
 
@@ -225,7 +225,7 @@ func (db *MemoryDB) getNodeSummary() ([]*types.NodeSummary, error) {
 	return nil, nil
 }
 
-func (db *MemoryDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID string) error {
+func (db *MemoryDB) addInstanceStats(stats []payloads.InstanceStat, nodeID string) error {
 	return nil
 }
 

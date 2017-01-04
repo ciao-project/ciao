@@ -112,9 +112,9 @@ type persistentStore interface {
 	removeInstance(instanceID string) (err error)
 
 	// interfaces related to statistics
-	addNodeStatDB(stat payloads.Stat) (err error)
+	addNodeStat(stat payloads.Stat) (err error)
 	getNodeSummary() (Summary []*types.NodeSummary, err error)
-	addInstanceStatsDB(stats []payloads.InstanceStat, nodeID string) (err error)
+	addInstanceStats(stats []payloads.InstanceStat, nodeID string) (err error)
 	addFrameStat(stat payloads.FrameTrace) (err error)
 	getBatchFrameSummary() (stats []types.BatchFrameSummary, err error)
 	getBatchFrameStatistics(label string) (stats []types.BatchFrameStat, err error)
@@ -1221,7 +1221,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 
 	ds.nodeLastStatLock.Unlock()
 
-	return ds.db.addNodeStatDB(stat)
+	return ds.db.addNodeStat(stat)
 }
 
 var tenantUsagePeriodMinutes float64 = 5
@@ -1363,7 +1363,7 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 		ds.updateStorageAttachments(stat.InstanceUUID, stat.Volumes)
 	}
 
-	return ds.db.addInstanceStatsDB(stats, nodeID)
+	return ds.db.addInstanceStats(stats, nodeID)
 }
 
 // GetTenantCNCISummary retrieves information about a given CNCI id, or all CNCIs
