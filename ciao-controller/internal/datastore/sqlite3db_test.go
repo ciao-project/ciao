@@ -126,7 +126,7 @@ func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
 	}
 
 	// make sure our query works.
-	tenant, err := db.getTenantNoCache(data.TenantID)
+	tenant, err := db.getTenant(data.TenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -724,7 +724,7 @@ func TestSQLiteDBGetAllWorkloads(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := db.getWorkloadsNoCache()
+	wls, err := db.getWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -734,7 +734,7 @@ func TestSQLiteDBGetAllWorkloads(t *testing.T) {
 	}
 
 	for _, wl := range wls {
-		wl2, err := db.getWorkloadNoCache(wl.ID)
+		wl2, err := db.getWorkload(wl.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -755,7 +755,7 @@ func createTestTenant(db persistentStore, t *testing.T) *tenant {
 		t.Fatal(err)
 	}
 
-	tn, err := db.getTenantNoCache(tid)
+	tn, err := db.getTenant(tid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -775,7 +775,7 @@ func TestSQLiteDBTestTenants(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tns, err := db.getTenantsNoCache()
+	tns, err := db.getTenants()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -787,7 +787,7 @@ func TestSQLiteDBTestTenants(t *testing.T) {
 	_ = createTestTenant(db, t)
 	_ = createTestTenant(db, t)
 
-	tns, err = db.getTenantsNoCache()
+	tns, err = db.getTenants()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -797,7 +797,7 @@ func TestSQLiteDBTestTenants(t *testing.T) {
 	}
 
 	for _, tn := range tns {
-		tn2, err := db.getTenantNoCache(tn.ID)
+		tn2, err := db.getTenant(tn.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1026,7 +1026,7 @@ users:
 		t.Fatal(err)
 	}
 
-	wl2, err := db.getWorkloadNoCache(wl.ID)
+	wl2, err := db.getWorkload(wl.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

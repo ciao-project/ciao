@@ -93,15 +93,15 @@ type persistentStore interface {
 
 	// interfaces related to workloads
 	getCNCIWorkloadID() (id string, err error)
-	getWorkloadNoCache(id string) (*workload, error)
-	getWorkloadsNoCache() ([]*workload, error)
+	getWorkload(id string) (*workload, error)
+	getWorkloads() ([]*workload, error)
 	updateWorkload(wl workload) error
 
 	// interfaces related to tenants
 	addLimit(tenantID string, resourceID int, limit int) (err error)
 	addTenant(id string, MAC string) (err error)
-	getTenantNoCache(id string) (t *tenant, err error)
-	getTenantsNoCache() ([]*tenant, error)
+	getTenant(id string) (t *tenant, err error)
+	getTenants() ([]*tenant, error)
 	updateTenant(t *tenant) (err error)
 	releaseTenantIP(tenantID string, subnetInt int, rest int) (err error)
 	claimTenantIP(tenantID string, subnetInt int, rest int) (err error)
@@ -432,7 +432,7 @@ func (ds *Datastore) getTenant(id string) (*tenant, error) {
 		return t, nil
 	}
 
-	return ds.db.getTenantNoCache(id)
+	return ds.db.getTenant(id)
 }
 
 // GetTenant returns details about a tenant referenced by the uuid
@@ -477,7 +477,7 @@ func (ds *Datastore) getWorkload(id string) (*workload, error) {
 		return wl, nil
 	}
 
-	return ds.db.getWorkloadNoCache(id)
+	return ds.db.getWorkload(id)
 }
 
 // GetWorkload returns details about a specific workload referenced by id
@@ -504,7 +504,7 @@ func (ds *Datastore) getWorkloads() ([]*workload, error) {
 	}
 	ds.workloadsLock.RUnlock()
 
-	return ds.db.getWorkloadsNoCache()
+	return ds.db.getWorkloads()
 }
 
 // GetWorkloads returns all known tenant workloads
@@ -630,7 +630,7 @@ func (ds *Datastore) getTenants() ([]*tenant, error) {
 
 	ds.tenantsLock.RUnlock()
 
-	return ds.db.getTenantsNoCache()
+	return ds.db.getTenants()
 }
 
 // GetAllTenants returns all the tenants from the datastore.

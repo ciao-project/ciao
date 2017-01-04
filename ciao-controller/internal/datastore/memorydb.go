@@ -134,7 +134,7 @@ func (db *MemoryDB) getCNCIWorkloadID() (string, error) {
 	return "", fmt.Errorf("CNCI not found")
 }
 
-func (db *MemoryDB) getWorkloadNoCache(id string) (*workload, error) {
+func (db *MemoryDB) getWorkload(id string) (*workload, error) {
 	workload, ok := db.workloads[id]
 	if !ok {
 		return nil, fmt.Errorf("Workload %s not found", id)
@@ -142,7 +142,7 @@ func (db *MemoryDB) getWorkloadNoCache(id string) (*workload, error) {
 	return workload, nil
 }
 
-func (db *MemoryDB) getWorkloadsNoCache() ([]*workload, error) {
+func (db *MemoryDB) getWorkloads() ([]*workload, error) {
 	var workloads []*workload
 	for _, wl := range db.workloads {
 		workloads = append(workloads, wl)
@@ -168,7 +168,7 @@ func (db *MemoryDB) addTenant(id string, MAC string) error {
 	return nil
 }
 
-func (db *MemoryDB) getTenantNoCache(id string) (*tenant, error) {
+func (db *MemoryDB) getTenant(id string) (*tenant, error) {
 	tenant, ok := db.tenants[id]
 	if !ok {
 		return nil, fmt.Errorf("Tenant %s not found", id)
@@ -176,7 +176,7 @@ func (db *MemoryDB) getTenantNoCache(id string) (*tenant, error) {
 	return tenant, nil
 }
 
-func (db *MemoryDB) getTenantsNoCache() ([]*tenant, error) {
+func (db *MemoryDB) getTenants() ([]*tenant, error) {
 	var tenants []*tenant
 	for _, t := range db.tenants {
 		tenants = append(tenants, t)

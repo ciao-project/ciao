@@ -942,7 +942,7 @@ func (ds *sqliteDB) getCNCIWorkloadID() (string, error) {
 	return ID, nil
 }
 
-func (ds *sqliteDB) getConfigNoCache(ID string) (string, error) {
+func (ds *sqliteDB) getConfig(ID string) (string, error) {
 	var configFile string
 
 	db := ds.getTableDB("workload_template")
@@ -1155,7 +1155,7 @@ func (ds *sqliteDB) addTenant(ID string, MAC string) error {
 	return err
 }
 
-func (ds *sqliteDB) getTenantNoCache(ID string) (*tenant, error) {
+func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 	query := `SELECT	tenants.id,
 				tenants.name,
 				tenants.cnci_id,
@@ -1205,7 +1205,7 @@ func (ds *sqliteDB) getTenantNoCache(ID string) (*tenant, error) {
 	return t, err
 }
 
-func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
+func (ds *sqliteDB) getWorkload(id string) (*workload, error) {
 	datastore := ds.db
 
 	query := `SELECT id,
@@ -1232,7 +1232,7 @@ func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
 
 	work.VMType = payloads.Hypervisor(VMType)
 
-	work.Config, err = ds.getConfigNoCache(id)
+	work.Config, err = ds.getConfig(id)
 	if err != nil {
 		return nil, err
 	}
@@ -1250,7 +1250,7 @@ func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
 	return work, nil
 }
 
-func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
+func (ds *sqliteDB) getWorkloads() ([]*workload, error) {
 	var workloads []*workload
 
 	datastore := ds.db
@@ -1281,7 +1281,7 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 			return nil, err
 		}
 
-		wl.Config, err = ds.getConfigNoCache(wl.ID)
+		wl.Config, err = ds.getConfig(wl.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -1309,7 +1309,7 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 func (ds *sqliteDB) updateWorkload(w workload) error {
 	db := ds.getTableDB("workload_template")
 
-	workloads, err := ds.getWorkloadsNoCache()
+	workloads, err := ds.getWorkloads()
 	if err != nil {
 		return err
 	}
@@ -1402,7 +1402,7 @@ func (ds *sqliteDB) updateTenant(t *tenant) error {
 	return err
 }
 
-func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
+func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	var tenants []*tenant
 
 	datastore := ds.getTableDB("tenants")
