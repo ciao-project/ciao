@@ -123,3 +123,19 @@ For host:       ciao-ctl.intel.com
 For IP:         192.168.1.118
 Private key:    RSA PRIVATE KEY
 ```
+
+## Dealing with certificate issues
+
+### Role mismatches
+
+Ciao cluster certificates implement a role base access control (RBAC) system of
+cluster membership.  If a ciao cluster client attempts access using a
+certificate whose embedded role does not match the SSNTP client connection
+indicated role, the access will be disallowed.  The cluster logs will show
+a message, eg:
+```
+Wrong certificate or missing/mismatched role OID
+```
+If this is observed, insure your client certificates are created with the
+correct roles as indicated above, and your client binaries are run with
+configuration using the correct certificate.
