@@ -139,3 +139,23 @@ Wrong certificate or missing/mismatched role OID
 If this is observed, insure your client certificates are created with the
 correct roles as indicated above, and your client binaries are run with
 configuration using the correct certificate.
+
+### Certificate signed by unknown authority
+
+Ciao cluster certificates are signed by a common certificate authority
+(CA).  The above documentation example creates a trust anchor CA with
+the ```-anchor```, but you can also use a pre-existing one via the
+```-anchor-cert``` option.
+
+Either way, for ciao components to correctly operate, the CA's
+certificate must be in the system trust store on each host running a
+ciao component.  If it is not, you will see cluster log messages, eg:
+```
+x509: certificate signed by unknown authority
+```
+and the cluster will not form.
+
+Depending on your linux distribution, golang runtime, and local IT
+policies, the correct way to add your cluster's CA certificate to
+your cluster systems' trust stores will vary.  Consult your applicable
+documentation.
