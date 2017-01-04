@@ -1799,7 +1799,7 @@ func (ds *sqliteDB) addInstance(instance *types.Instance) error {
 	return ds.addUsage(instance.ID, instance.Usage)
 }
 
-func (ds *sqliteDB) removeInstance(instanceID string) error {
+func (ds *sqliteDB) deleteInstance(instanceID string) error {
 	datastore := ds.getTableDB("instances")
 
 	ds.dbLock.Lock()
@@ -2414,7 +2414,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 	return devices, nil
 }
 
-func (ds *sqliteDB) createBlockData(data types.BlockData) error {
+func (ds *sqliteDB) addBlockData(data types.BlockData) error {
 	ds.dbLock.Lock()
 	err := ds.create("block_data", data.ID, data.TenantID, data.Size, string(data.State), data.CreateTime.Format(time.RFC3339Nano), data.Name, data.Description)
 	ds.dbLock.Unlock()
@@ -2471,7 +2471,7 @@ func (ds *sqliteDB) deleteBlockData(ID string) error {
 	return err
 }
 
-func (ds *sqliteDB) createStorageAttachment(a types.StorageAttachment) error {
+func (ds *sqliteDB) addStorageAttachment(a types.StorageAttachment) error {
 	datastore := ds.getTableDB("attachments")
 
 	ds.dbLock.Lock()
@@ -2554,7 +2554,7 @@ func (ds *sqliteDB) deleteStorageAttachment(ID string) error {
 }
 
 // this is here just for readability.
-func (ds *sqliteDB) createPool(pool types.Pool) error {
+func (ds *sqliteDB) addPool(pool types.Pool) error {
 	return ds.updatePool(pool)
 }
 
@@ -2851,7 +2851,7 @@ func (ds *sqliteDB) getPoolAddresses(poolID string) ([]types.ExternalIP, error) 
 	return IPs, nil
 }
 
-func (ds *sqliteDB) createMappedIP(m types.MappedIP) error {
+func (ds *sqliteDB) addMappedIP(m types.MappedIP) error {
 	datastore := ds.getTableDB("mapped_ips")
 
 	ds.dbLock.Lock()

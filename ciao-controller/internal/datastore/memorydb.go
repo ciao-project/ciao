@@ -213,7 +213,7 @@ func (db *MemoryDB) addInstance(instance *types.Instance) error {
 	return nil
 }
 
-func (db *MemoryDB) removeInstance(instanceID string) error {
+func (db *MemoryDB) deleteInstance(instanceID string) error {
 	return nil
 }
 
@@ -249,7 +249,7 @@ func (db *MemoryDB) getAllBlockData() (map[string]types.BlockData, error) {
 	return db.blockDevices, nil
 }
 
-func (db *MemoryDB) createBlockData(data types.BlockData) error {
+func (db *MemoryDB) addBlockData(data types.BlockData) error {
 	return nil
 }
 
@@ -265,7 +265,7 @@ func (db *MemoryDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 	return nil, nil
 }
 
-func (db *MemoryDB) createStorageAttachment(a types.StorageAttachment) error {
+func (db *MemoryDB) addStorageAttachment(a types.StorageAttachment) error {
 	return nil
 }
 
@@ -277,7 +277,7 @@ func (db *MemoryDB) deleteStorageAttachment(ID string) error {
 	return nil
 }
 
-func (db *MemoryDB) createPool(pool types.Pool) error {
+func (db *MemoryDB) addPool(pool types.Pool) error {
 	return nil
 }
 
@@ -293,7 +293,7 @@ func (db *MemoryDB) getAllPools() map[string]types.Pool {
 	return make(map[string]types.Pool)
 }
 
-func (db *MemoryDB) createMappedIP(m types.MappedIP) error {
+func (db *MemoryDB) addMappedIP(m types.MappedIP) error {
 	return nil
 }
 
