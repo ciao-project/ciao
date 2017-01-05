@@ -33,6 +33,9 @@ type containerManager interface {
 		*network.NetworkingConfig, string) (types.ContainerCreateResponse, error)
 	ContainerRemove(context.Context, types.ContainerRemoveOptions) error
 	ContainerStart(context.Context, string) error
+	ContainerInspect(context.Context, string) (types.ContainerJSON, error)
 	ContainerInspectWithRaw(context.Context, string, bool) (types.ContainerJSON, []byte, error)
 	ContainerStats(context.Context, string, bool) (io.ReadCloser, error)
+	ContainerKill(context.Context, string, string) error
+	ContainerWait(context.Context, string) (int, error)
 }
