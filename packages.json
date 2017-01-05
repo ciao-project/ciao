@@ -56,7 +56,7 @@
 	},
 	"github.com/mattn/go-sqlite3": {
 		"url": "https://github.com/mattn/go-sqlite3.git",
-		"version": "467f50b",
+		"version": "6f2749a",
 		"license": "MIT + Public domain"
 	},
 	"github.com/mitchellh/mapstructure": {
