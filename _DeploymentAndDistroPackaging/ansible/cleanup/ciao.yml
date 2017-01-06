@@ -67,6 +67,7 @@
       with_items:
         - ciao-network.service
         - ciao-compute.service
+        - ciao-launcher.service
         - docker.service
         - docker-cor.service
       ignore_errors: yes
@@ -76,6 +77,7 @@
       with_items:
         - /etc/systemd/system/ciao-network.service
         - /etc/systemd/system/ciao-compute.service
+        - /etc/systemd/system/ciao-launcher.service
 
     - name: Remove CIAO files
       file: path={{ item }} state=absent

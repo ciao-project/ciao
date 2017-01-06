@@ -13,28 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-galaxy_info:
-  author: Alberto Murillo
-  description: Ansible role to install the network node for a CIAO cluster
-  company: Intel
-
-  issue_tracker_url: https://github.com/01org/ciao
-
-  license: Apache
-
-  min_ansible_version: 2.1
-
-  platforms:
-  - name: Ubuntu
-    versions:
-      - xenial
-  - name: ClearLinux
-
-  galaxy_tags:
-    - ubuntu
-    - xenial
-    - clearlinux
-    - ciao
-
-dependencies:
-  - ciao-common
+# Name of the compute node agent key
+agent_key: cert-CNAgent-localhost.pem

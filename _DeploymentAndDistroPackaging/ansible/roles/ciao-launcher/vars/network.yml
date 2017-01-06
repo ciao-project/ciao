@@ -13,5 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - include: install.yml
-  - include: startservices.yml
+# Name of the network node agent key
+agent_key: cert-NetworkingAgent-localhost.pem
