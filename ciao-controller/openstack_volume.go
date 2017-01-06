@@ -52,7 +52,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	// no limits checking for now.
 	if req.ImageRef != nil {
 		// create bootable volume
-		bd, err = c.CreateBlockDevice("", *req.ImageRef, req.Size)
+		bd, err = c.CreateBlockDeviceFromSnapshot(*req.ImageRef, "ciao-image")
 	} else if req.SourceVolID != nil {
 		// copy existing volume
 		bd, err = c.CopyBlockDevice(*req.SourceVolID)
