@@ -91,7 +91,7 @@
 	},
 	"gopkg.in/yaml.v2": {
 		"url": "https://gopkg.in/yaml.v2",
-		"version": "a83829b",
-		"license": "LGPL v3.0 + MIT"
+		"version": "a5b47d3",
+		"license": "Apache v2.0"
 	}
 }
