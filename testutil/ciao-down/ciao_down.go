@@ -30,6 +30,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func init() {
@@ -255,6 +256,36 @@ func connect(ctx context.Context, errCh chan error) {
 	if err != nil {
 		errCh <- fmt.Errorf("Unable to locate ssh binary")
 		return
+	}
+
+	if !vmStarted(ctx, ws.instanceDir) {
+		errCh <- fmt.Errorf("VM is not running.  Try ciao-down start")
+		return
+	}
+
+	if !sshReady(ctx) {
+		fmt.Printf("Waiting for VM to boot ")
+	DONE:
+		for {
+			select {
+			case <-time.After(time.Second):
+			case <-ctx.Done():
+				errCh <- fmt.Errorf("Cancelled")
+				return
+			}
+
+			if !vmStarted(ctx, ws.instanceDir) {
+				errCh <- fmt.Errorf("VM is not running.  Try ciao-down start")
+				return
+			}
+
+			if sshReady(ctx) {
+				break DONE
+			}
+
+			fmt.Print(".")
+		}
+		fmt.Println()
 	}
 
 	err = syscall.Exec(path, []string{path,
