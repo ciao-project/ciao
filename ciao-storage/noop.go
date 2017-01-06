@@ -29,7 +29,7 @@ type NoopDriver struct {
 
 // CreateBlockDevice pretends to create a block device.
 func (d *NoopDriver) CreateBlockDevice(volumeUUID string, image string, size int) (BlockDevice, error) {
-	return BlockDevice{ID: uuid.Generate().String()}, nil
+	return BlockDevice{ID: uuid.Generate().String(), Size: size}, nil
 }
 
 // CreateBlockDeviceFromSnapshot pretends to create a block device snapshot
