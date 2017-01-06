@@ -87,7 +87,7 @@ func checkBootedVolume(ctx context.Context, t *testing.T, tenant, instanceID str
 	volumeID := instance.Volumes[0]
 	vol, err := bat.GetVolume(ctx, tenant, volumeID)
 	if err != nil {
-		t.Fatalf("Failed to retrieve volume information for %s",
+		t.Fatalf("Failed to retrieve volume information for %s: %v",
 			volumeID, err)
 	}
 
@@ -276,7 +276,7 @@ func TestAddListDelete(t *testing.T) {
 		if vol.Size != 1 || vol.Name != fmt.Sprintf("%d", i+1) ||
 			vol.Description != fmt.Sprintf("%d description", i+1) {
 			t.Fatalf("Incorrect meta data for %s: size %d, name %s, description %s",
-				vol.Size, vol.Name, vol.Description)
+				vol.ID, vol.Size, vol.Name, vol.Description)
 		}
 
 		if vol.Status != "available" {
