@@ -71,7 +71,6 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	// you should modify BlockData to include a "bootable" flag.
 	data := types.BlockData{
 		BlockDevice: bd,
-		Size:        req.Size,
 		CreateTime:  time.Now(),
 		TenantID:    tenant,
 		State:       types.Available,

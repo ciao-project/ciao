@@ -169,7 +169,6 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 	// a block device is bootable.
 	data := types.BlockData{
 		BlockDevice: device,
-		Size:        s.Size,
 		CreateTime:  time.Now(),
 		TenantID:    tenant,
 		Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
