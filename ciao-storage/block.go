@@ -47,5 +47,5 @@ type BlockDevice struct {
 	Local     bool   // local (ephemeral) or volume service backed
 	Swap      bool   // linux swap device (attempt swapon via cloudinit)
 	Tag       string // arbitrary text identifier
-	Size      int    // gigabyte size for autocreation
+	Size      int    // size in GiB
 }

@@ -32,6 +32,22 @@ type CephDriver struct {
 	ID string
 }
 
+func (d CephDriver) getBlockDeviceSizeGiB(volumeUUID string) (int, error) {
+	bytes, err := d.GetBlockDeviceSize(volumeUUID)
+
+	if err != nil {
+		return 0, err
+	}
+
+	// When converting to GiB round up unless we've got a multiple of 1GiB
+	res := bytes / (1024 * 1024 * 1024)
+	rem := bytes % (1024 * 1024 * 1024)
+	if rem == 0 {
+		return int(res), nil
+	}
+	return int(res + 1), nil
+}
+
 // CreateBlockDevice will create a rbd image in the ceph cluster.
 func (d CephDriver) CreateBlockDevice(volumeUUID string, imagePath string, size int) (BlockDevice, error) {
 	if volumeUUID == "" {
@@ -61,7 +77,7 @@ func (d CephDriver) CreateBlockDevice(volumeUUID string, imagePath string, size 
 		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 
-	return BlockDevice{ID: volumeUUID}, nil
+	return BlockDevice{ID: volumeUUID, Size: size}, nil
 }
 
 // CreateBlockDeviceFromSnapshot will create a block device derived from the previously created snapshot.
@@ -77,7 +93,13 @@ func (d CephDriver) CreateBlockDeviceFromSnapshot(volumeUUID string, snapshotID 
 		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 
-	return BlockDevice{ID: ID}, nil
+	size, err := d.getBlockDeviceSizeGiB(volumeUUID)
+	if err != nil {
+		d.DeleteBlockDevice(volumeUUID)
+		return BlockDevice{}, fmt.Errorf("Error when querying block device size: %v", err)
+	}
+
+	return BlockDevice{ID: ID, Size: size}, nil
 }
 
 // CreateBlockDeviceSnapshot creates and protects the snapshot with the provided name
@@ -113,7 +135,13 @@ func (d CephDriver) CopyBlockDevice(volumeUUID string) (BlockDevice, error) {
 		return BlockDevice{}, fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
 	}
 
-	return BlockDevice{ID: ID}, nil
+	size, err := d.getBlockDeviceSizeGiB(volumeUUID)
+	if err != nil {
+		d.DeleteBlockDevice(volumeUUID)
+		return BlockDevice{}, fmt.Errorf("Error when querying block device size: %v", err)
+	}
+
+	return BlockDevice{ID: ID, Size: size}, nil
 }
 
 // DeleteBlockDevice will remove a rbd image from the ceph cluster.
