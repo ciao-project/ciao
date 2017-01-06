@@ -174,7 +174,7 @@ func BenchmarkGetTenantNoCache(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = ds.db.getTenantNoCache(tuuid)
+		_, err = ds.db.getTenant(tuuid)
 		if err != nil {
 			b.Error(err)
 		}

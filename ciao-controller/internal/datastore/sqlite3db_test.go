@@ -74,7 +74,7 @@ func TestSQLiteDBGetTenantDevices(t *testing.T) {
 		CreateTime:  time.Now(),
 	}
 
-	err = db.createBlockData(data)
+	err = db.addBlockData(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,13 +120,13 @@ func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
 		CreateTime:  time.Now(),
 	}
 
-	err = db.createBlockData(data)
+	err = db.addBlockData(data)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// make sure our query works.
-	tenant, err := db.getTenantNoCache(data.TenantID)
+	tenant, err := db.getTenant(data.TenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestSQLiteDBGetAllBlockData(t *testing.T) {
 		CreateTime:  time.Now(),
 	}
 
-	err = db.createBlockData(data)
+	err = db.addBlockData(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestSQLiteDBDeleteBlockData(t *testing.T) {
 		CreateTime:  time.Now(),
 	}
 
-	err = db.createBlockData(data)
+	err = db.addBlockData(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +233,7 @@ func TestSQLiteDBGetAllStorageAttachments(t *testing.T) {
 		Ephemeral:  false,
 	}
 
-	err = db.createStorageAttachment(a)
+	err = db.addStorageAttachment(a)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestSQLiteDBGetAllStorageAttachments(t *testing.T) {
 		Ephemeral:  true,
 	}
 
-	err = db.createStorageAttachment(b)
+	err = db.addStorageAttachment(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +307,7 @@ func TestCreatePool(t *testing.T) {
 		Name: "test",
 	}
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,7 +336,7 @@ func TestUpdatePool(t *testing.T) {
 		Name: "test",
 	}
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -373,7 +373,7 @@ func TestDeletePool(t *testing.T) {
 		Name: "test",
 	}
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,7 +417,7 @@ func TestCreateSubnet(t *testing.T) {
 		Name: "test",
 	}
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -474,7 +474,7 @@ func TestDeleteSubnet(t *testing.T) {
 
 	pool.Subnets = append(pool.Subnets, subnet)
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -521,7 +521,7 @@ func TestCreateAddress(t *testing.T) {
 
 	pool.IPs = append(pool.IPs, IP)
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -562,7 +562,7 @@ func TestDeleteAddress(t *testing.T) {
 
 	pool.IPs = append(pool.IPs, IP)
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -620,7 +620,7 @@ func TestCreateMappedIP(t *testing.T) {
 		Name: "test",
 	}
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -635,7 +635,7 @@ func TestCreateMappedIP(t *testing.T) {
 		PoolName:   pool.Name,
 	}
 
-	err = db.createMappedIP(m)
+	err = db.addMappedIP(m)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -678,7 +678,7 @@ func TestDeleteMappedIP(t *testing.T) {
 		Name: "test",
 	}
 
-	err = db.createPool(pool)
+	err = db.addPool(pool)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -693,7 +693,7 @@ func TestDeleteMappedIP(t *testing.T) {
 		PoolName:   pool.Name,
 	}
 
-	err = db.createMappedIP(m)
+	err = db.addMappedIP(m)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -724,7 +724,7 @@ func TestSQLiteDBGetAllWorkloads(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := db.getWorkloadsNoCache()
+	wls, err := db.getWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -734,7 +734,7 @@ func TestSQLiteDBGetAllWorkloads(t *testing.T) {
 	}
 
 	for _, wl := range wls {
-		wl2, err := db.getWorkloadNoCache(wl.ID)
+		wl2, err := db.getWorkload(wl.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -755,7 +755,7 @@ func createTestTenant(db persistentStore, t *testing.T) *tenant {
 		t.Fatal(err)
 	}
 
-	tn, err := db.getTenantNoCache(tid)
+	tn, err := db.getTenant(tid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -775,7 +775,7 @@ func TestSQLiteDBTestTenants(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tns, err := db.getTenantsNoCache()
+	tns, err := db.getTenants()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -787,7 +787,7 @@ func TestSQLiteDBTestTenants(t *testing.T) {
 	_ = createTestTenant(db, t)
 	_ = createTestTenant(db, t)
 
-	tns, err = db.getTenantsNoCache()
+	tns, err = db.getTenants()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -797,7 +797,7 @@ func TestSQLiteDBTestTenants(t *testing.T) {
 	}
 
 	for _, tn := range tns {
-		tn2, err := db.getTenantNoCache(tn.ID)
+		tn2, err := db.getTenant(tn.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -946,7 +946,7 @@ func TestSQLiteDBInstanceStats(t *testing.T) {
 
 	nodeID := uuid.Generate().String()
 
-	err = db.addInstanceStatsDB(stats, nodeID)
+	err = db.addInstanceStats(stats, nodeID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1026,7 +1026,7 @@ users:
 		t.Fatal(err)
 	}
 
-	wl2, err := db.getWorkloadNoCache(wl.ID)
+	wl2, err := db.getWorkload(wl.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -134,7 +134,7 @@ func (db *MemoryDB) getCNCIWorkloadID() (string, error) {
 	return "", fmt.Errorf("CNCI not found")
 }
 
-func (db *MemoryDB) getWorkloadNoCache(id string) (*workload, error) {
+func (db *MemoryDB) getWorkload(id string) (*workload, error) {
 	workload, ok := db.workloads[id]
 	if !ok {
 		return nil, fmt.Errorf("Workload %s not found", id)
@@ -142,7 +142,7 @@ func (db *MemoryDB) getWorkloadNoCache(id string) (*workload, error) {
 	return workload, nil
 }
 
-func (db *MemoryDB) getWorkloadsNoCache() ([]*workload, error) {
+func (db *MemoryDB) getWorkloads() ([]*workload, error) {
 	var workloads []*workload
 	for _, wl := range db.workloads {
 		workloads = append(workloads, wl)
@@ -168,7 +168,7 @@ func (db *MemoryDB) addTenant(id string, MAC string) error {
 	return nil
 }
 
-func (db *MemoryDB) getTenantNoCache(id string) (*tenant, error) {
+func (db *MemoryDB) getTenant(id string) (*tenant, error) {
 	tenant, ok := db.tenants[id]
 	if !ok {
 		return nil, fmt.Errorf("Tenant %s not found", id)
@@ -176,7 +176,7 @@ func (db *MemoryDB) getTenantNoCache(id string) (*tenant, error) {
 	return tenant, nil
 }
 
-func (db *MemoryDB) getTenantsNoCache() ([]*tenant, error) {
+func (db *MemoryDB) getTenants() ([]*tenant, error) {
 	var tenants []*tenant
 	for _, t := range db.tenants {
 		tenants = append(tenants, t)
@@ -213,11 +213,11 @@ func (db *MemoryDB) addInstance(instance *types.Instance) error {
 	return nil
 }
 
-func (db *MemoryDB) removeInstance(instanceID string) error {
+func (db *MemoryDB) deleteInstance(instanceID string) error {
 	return nil
 }
 
-func (db *MemoryDB) addNodeStatDB(stat payloads.Stat) error {
+func (db *MemoryDB) addNodeStat(stat payloads.Stat) error {
 	return nil
 }
 
@@ -225,7 +225,7 @@ func (db *MemoryDB) getNodeSummary() ([]*types.NodeSummary, error) {
 	return nil, nil
 }
 
-func (db *MemoryDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID string) error {
+func (db *MemoryDB) addInstanceStats(stats []payloads.InstanceStat, nodeID string) error {
 	return nil
 }
 
@@ -249,7 +249,7 @@ func (db *MemoryDB) getAllBlockData() (map[string]types.BlockData, error) {
 	return db.blockDevices, nil
 }
 
-func (db *MemoryDB) createBlockData(data types.BlockData) error {
+func (db *MemoryDB) addBlockData(data types.BlockData) error {
 	return nil
 }
 
@@ -265,7 +265,7 @@ func (db *MemoryDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 	return nil, nil
 }
 
-func (db *MemoryDB) createStorageAttachment(a types.StorageAttachment) error {
+func (db *MemoryDB) addStorageAttachment(a types.StorageAttachment) error {
 	return nil
 }
 
@@ -277,7 +277,7 @@ func (db *MemoryDB) deleteStorageAttachment(ID string) error {
 	return nil
 }
 
-func (db *MemoryDB) createPool(pool types.Pool) error {
+func (db *MemoryDB) addPool(pool types.Pool) error {
 	return nil
 }
 
@@ -293,7 +293,7 @@ func (db *MemoryDB) getAllPools() map[string]types.Pool {
 	return make(map[string]types.Pool)
 }
 
-func (db *MemoryDB) createMappedIP(m types.MappedIP) error {
+func (db *MemoryDB) addMappedIP(m types.MappedIP) error {
 	return nil
 }
 

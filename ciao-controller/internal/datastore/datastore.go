@@ -93,15 +93,15 @@ type persistentStore interface {
 
 	// interfaces related to workloads
 	getCNCIWorkloadID() (id string, err error)
-	getWorkloadNoCache(id string) (*workload, error)
-	getWorkloadsNoCache() ([]*workload, error)
+	getWorkload(id string) (*workload, error)
+	getWorkloads() ([]*workload, error)
 	updateWorkload(wl workload) error
 
 	// interfaces related to tenants
 	addLimit(tenantID string, resourceID int, limit int) (err error)
 	addTenant(id string, MAC string) (err error)
-	getTenantNoCache(id string) (t *tenant, err error)
-	getTenantsNoCache() ([]*tenant, error)
+	getTenant(id string) (t *tenant, err error)
+	getTenants() ([]*tenant, error)
 	updateTenant(t *tenant) (err error)
 	releaseTenantIP(tenantID string, subnetInt int, rest int) (err error)
 	claimTenantIP(tenantID string, subnetInt int, rest int) (err error)
@@ -109,12 +109,12 @@ type persistentStore interface {
 	// interfaces related to instances
 	getInstances() (instances []*types.Instance, err error)
 	addInstance(instance *types.Instance) (err error)
-	removeInstance(instanceID string) (err error)
+	deleteInstance(instanceID string) (err error)
 
 	// interfaces related to statistics
-	addNodeStatDB(stat payloads.Stat) (err error)
+	addNodeStat(stat payloads.Stat) (err error)
 	getNodeSummary() (Summary []*types.NodeSummary, err error)
-	addInstanceStatsDB(stats []payloads.InstanceStat, nodeID string) (err error)
+	addInstanceStats(stats []payloads.InstanceStat, nodeID string) (err error)
 	addFrameStat(stat payloads.FrameTrace) (err error)
 	getBatchFrameSummary() (stats []types.BatchFrameSummary, err error)
 	getBatchFrameStatistics(label string) (stats []types.BatchFrameStat, err error)
@@ -122,21 +122,21 @@ type persistentStore interface {
 	// storage interfaces
 	getWorkloadStorage(ID string) (*types.StorageResource, error)
 	getAllBlockData() (map[string]types.BlockData, error)
-	createBlockData(data types.BlockData) error
+	addBlockData(data types.BlockData) error
 	updateBlockData(data types.BlockData) error
 	deleteBlockData(string) error
 	getTenantDevices(tenantID string) (map[string]types.BlockData, error)
-	createStorageAttachment(a types.StorageAttachment) error
+	addStorageAttachment(a types.StorageAttachment) error
 	getAllStorageAttachments() (map[string]types.StorageAttachment, error)
 	deleteStorageAttachment(ID string) error
 
 	// external IP interfaces
-	createPool(pool types.Pool) error
+	addPool(pool types.Pool) error
 	updatePool(pool types.Pool) error
 	getAllPools() map[string]types.Pool
 	deletePool(ID string) error
 
-	createMappedIP(m types.MappedIP) error
+	addMappedIP(m types.MappedIP) error
 	deleteMappedIP(ID string) error
 	getMappedIPs() map[string]types.MappedIP
 }
@@ -432,7 +432,7 @@ func (ds *Datastore) getTenant(id string) (*tenant, error) {
 		return t, nil
 	}
 
-	return ds.db.getTenantNoCache(id)
+	return ds.db.getTenant(id)
 }
 
 // GetTenant returns details about a tenant referenced by the uuid
@@ -477,7 +477,7 @@ func (ds *Datastore) getWorkload(id string) (*workload, error) {
 		return wl, nil
 	}
 
-	return ds.db.getWorkloadNoCache(id)
+	return ds.db.getWorkload(id)
 }
 
 // GetWorkload returns details about a specific workload referenced by id
@@ -504,7 +504,7 @@ func (ds *Datastore) getWorkloads() ([]*workload, error) {
 	}
 	ds.workloadsLock.RUnlock()
 
-	return ds.db.getWorkloadsNoCache()
+	return ds.db.getWorkloads()
 }
 
 // GetWorkloads returns all known tenant workloads
@@ -630,7 +630,7 @@ func (ds *Datastore) getTenants() ([]*tenant, error) {
 
 	ds.tenantsLock.RUnlock()
 
-	return ds.db.getTenantsNoCache()
+	return ds.db.getTenants()
 }
 
 // GetAllTenants returns all the tenants from the datastore.
@@ -1093,7 +1093,7 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 		ds.nodesLock.Unlock()
 	}
 
-	err := ds.db.removeInstance(i.ID)
+	err := ds.db.deleteInstance(i.ID)
 	if err != nil {
 		glog.V(2).Info("deleteInstance: ", err)
 	}
@@ -1221,7 +1221,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 
 	ds.nodeLastStatLock.Unlock()
 
-	return ds.db.addNodeStatDB(stat)
+	return ds.db.addNodeStat(stat)
 }
 
 var tenantUsagePeriodMinutes float64 = 5
@@ -1363,7 +1363,7 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 		ds.updateStorageAttachments(stat.InstanceUUID, stat.Volumes)
 	}
 
-	return ds.db.addInstanceStatsDB(stats, nodeID)
+	return ds.db.addInstanceStats(stats, nodeID)
 }
 
 // GetTenantCNCISummary retrieves information about a given CNCI id, or all CNCIs
@@ -1470,7 +1470,7 @@ func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 
 	// store persistently
 	if !update {
-		go ds.db.createBlockData(device)
+		go ds.db.addBlockData(device)
 	} else {
 		go ds.db.updateBlockData(device)
 	}
@@ -1570,7 +1570,7 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, volume payloads.
 		Boot:       volume.Bootable,
 	}
 
-	err := ds.db.createStorageAttachment(a)
+	err := ds.db.addStorageAttachment(a)
 	if err != nil {
 		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
 	}
@@ -1643,7 +1643,7 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 			ds.instanceVolumes[key] = a.ID
 
 			// not sure what to do with an error here.
-			err := ds.db.createStorageAttachment(a)
+			err := ds.db.addStorageAttachment(a)
 			if err != nil {
 				glog.Warning(err)
 				continue
@@ -1877,7 +1877,7 @@ func (ds *Datastore) AddPool(pool types.Pool) error {
 	}
 
 	ds.pools[pool.ID] = pool
-	err := ds.db.createPool(pool)
+	err := ds.db.addPool(pool)
 
 	ds.poolsLock.Unlock()
 
@@ -2193,7 +2193,7 @@ func (ds *Datastore) MapExternalIP(poolID string, instanceID string) (types.Mapp
 
 				pool.Free--
 
-				err = ds.db.createMappedIP(m)
+				err = ds.db.addMappedIP(m)
 				if err != nil {
 					return types.MappedIP{}, err
 				}
@@ -2225,7 +2225,7 @@ func (ds *Datastore) MapExternalIP(poolID string, instanceID string) (types.Mapp
 
 			pool.Free--
 
-			err = ds.db.createMappedIP(m)
+			err = ds.db.addMappedIP(m)
 			if err != nil {
 				return types.MappedIP{}, err
 			}

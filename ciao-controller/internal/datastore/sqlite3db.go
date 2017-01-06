@@ -854,12 +854,12 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 		},
 	})
 
-	datastore, err := ds.sqliteConnect(transientURI, persistentURI, pSQLLiteConfig)
+	db, err := ds.sqliteConnect(transientURI, persistentURI, pSQLLiteConfig)
 	if err != nil {
 		return err
 	}
 
-	ds.db = datastore
+	ds.db = db
 	ds.dbName = persistentURI
 
 	sql.Register(persistentURI, &sqlite3.SQLiteDriver{
@@ -870,12 +870,12 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 		},
 	})
 
-	datastore, err = ds.sqliteConnect(persistentURI, transientURI, pSQLLiteConfig)
+	tdb, err := ds.sqliteConnect(persistentURI, transientURI, pSQLLiteConfig)
 	if err != nil {
 		return err
 	}
 
-	ds.tdb = datastore
+	ds.tdb = tdb
 	ds.tdbName = transientURI
 
 	return err
@@ -942,7 +942,7 @@ func (ds *sqliteDB) getCNCIWorkloadID() (string, error) {
 	return ID, nil
 }
 
-func (ds *sqliteDB) getConfigNoCache(ID string) (string, error) {
+func (ds *sqliteDB) getConfig(ID string) (string, error) {
 	var configFile string
 
 	db := ds.getTableDB("workload_template")
@@ -1155,7 +1155,7 @@ func (ds *sqliteDB) addTenant(ID string, MAC string) error {
 	return err
 }
 
-func (ds *sqliteDB) getTenantNoCache(ID string) (*tenant, error) {
+func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 	query := `SELECT	tenants.id,
 				tenants.name,
 				tenants.cnci_id,
@@ -1205,7 +1205,7 @@ func (ds *sqliteDB) getTenantNoCache(ID string) (*tenant, error) {
 	return t, err
 }
 
-func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
+func (ds *sqliteDB) getWorkload(id string) (*workload, error) {
 	datastore := ds.db
 
 	query := `SELECT id,
@@ -1232,7 +1232,7 @@ func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
 
 	work.VMType = payloads.Hypervisor(VMType)
 
-	work.Config, err = ds.getConfigNoCache(id)
+	work.Config, err = ds.getConfig(id)
 	if err != nil {
 		return nil, err
 	}
@@ -1250,7 +1250,7 @@ func (ds *sqliteDB) getWorkloadNoCache(id string) (*workload, error) {
 	return work, nil
 }
 
-func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
+func (ds *sqliteDB) getWorkloads() ([]*workload, error) {
 	var workloads []*workload
 
 	datastore := ds.db
@@ -1281,7 +1281,7 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 			return nil, err
 		}
 
-		wl.Config, err = ds.getConfigNoCache(wl.ID)
+		wl.Config, err = ds.getConfig(wl.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -1309,7 +1309,7 @@ func (ds *sqliteDB) getWorkloadsNoCache() ([]*workload, error) {
 func (ds *sqliteDB) updateWorkload(w workload) error {
 	db := ds.getTableDB("workload_template")
 
-	workloads, err := ds.getWorkloadsNoCache()
+	workloads, err := ds.getWorkloads()
 	if err != nil {
 		return err
 	}
@@ -1402,7 +1402,7 @@ func (ds *sqliteDB) updateTenant(t *tenant) error {
 	return err
 }
 
-func (ds *sqliteDB) getTenantsNoCache() ([]*tenant, error) {
+func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	var tenants []*tenant
 
 	datastore := ds.getTableDB("tenants")
@@ -1799,7 +1799,7 @@ func (ds *sqliteDB) addInstance(instance *types.Instance) error {
 	return ds.addUsage(instance.ID, instance.Usage)
 }
 
-func (ds *sqliteDB) removeInstance(instanceID string) error {
+func (ds *sqliteDB) deleteInstance(instanceID string) error {
 	datastore := ds.getTableDB("instances")
 
 	ds.dbLock.Lock()
@@ -1872,7 +1872,7 @@ func (ds *sqliteDB) addUsage(instanceID string, usage map[string]int) error {
 	return nil
 }
 
-func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) error {
+func (ds *sqliteDB) addNodeStat(stat payloads.Stat) error {
 	datastore := ds.getTableDB("node_statistics")
 
 	ds.tdbLock.Lock()
@@ -1897,7 +1897,7 @@ func (ds *sqliteDB) addNodeStatDB(stat payloads.Stat) error {
 	return err
 }
 
-func (ds *sqliteDB) addInstanceStatsDB(stats []payloads.InstanceStat, nodeID string) error {
+func (ds *sqliteDB) addInstanceStats(stats []payloads.InstanceStat, nodeID string) error {
 	datastore := ds.getTableDB("instance_statistics")
 
 	ds.tdbLock.Lock()
@@ -2414,7 +2414,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 	return devices, nil
 }
 
-func (ds *sqliteDB) createBlockData(data types.BlockData) error {
+func (ds *sqliteDB) addBlockData(data types.BlockData) error {
 	ds.dbLock.Lock()
 	err := ds.create("block_data", data.ID, data.TenantID, data.Size, string(data.State), data.CreateTime.Format(time.RFC3339Nano), data.Name, data.Description)
 	ds.dbLock.Unlock()
@@ -2471,7 +2471,7 @@ func (ds *sqliteDB) deleteBlockData(ID string) error {
 	return err
 }
 
-func (ds *sqliteDB) createStorageAttachment(a types.StorageAttachment) error {
+func (ds *sqliteDB) addStorageAttachment(a types.StorageAttachment) error {
 	datastore := ds.getTableDB("attachments")
 
 	ds.dbLock.Lock()
@@ -2554,7 +2554,7 @@ func (ds *sqliteDB) deleteStorageAttachment(ID string) error {
 }
 
 // this is here just for readability.
-func (ds *sqliteDB) createPool(pool types.Pool) error {
+func (ds *sqliteDB) addPool(pool types.Pool) error {
 	return ds.updatePool(pool)
 }
 
@@ -2851,7 +2851,7 @@ func (ds *sqliteDB) getPoolAddresses(poolID string) ([]types.ExternalIP, error) 
 	return IPs, nil
 }
 
-func (ds *sqliteDB) createMappedIP(m types.MappedIP) error {
+func (ds *sqliteDB) addMappedIP(m types.MappedIP) error {
 	datastore := ds.getTableDB("mapped_ips")
 
 	ds.dbLock.Lock()
