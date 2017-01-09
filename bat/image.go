@@ -115,6 +115,23 @@ func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (
 	return img, nil
 }
 
+// AddRandomImage uploads a new image of the desired size using random data.
+// The caller can supply a number of pieces of meta data about the image via
+// the options parameter.  It is implemented by calling ciao-cli image add.  On
+// success the function returns the entire meta data of the newly updated image
+// that includes the caller supplied meta data and the meta data added by the
+// image service.  An error will be returned if the following environment
+// variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_ADMIN_USERNAME,
+// CIAO_ADMIN_PASSWORD.
+func AddRandomImage(ctx context.Context, tenant string, size int, options *ImageOptions) (*Image, error) {
+	path, err := CreateRandomFile(size)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create random file : %v", err)
+	}
+	defer func() { _ = os.Remove(path) }()
+	return AddImage(ctx, tenant, path, options)
+}
+
 // DeleteImage deletes an image from the image service.  It is implemented
 // by calling ciao-cli image delete.  An error will be returned if the following
 // environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
