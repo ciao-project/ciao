@@ -14,5 +14,5 @@
 // limitations under the License.
 //
 
-// storage_bat is a placeholder package for storage related BAT tests.
-package storage_bat
+// Package storagebat is a placeholder package for storage related BAT tests.
+package storagebat

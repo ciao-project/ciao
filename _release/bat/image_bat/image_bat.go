@@ -14,5 +14,5 @@
 // limitations under the License.
 //
 
-// image_bat is a placeholder package for the image service BAT tests.
-package image_bat
+// Package imagebat is a placeholder package for the image service BAT tests.
+package imagebat

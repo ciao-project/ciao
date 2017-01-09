@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package image_bat
+package imagebat
 
 import (
 	"context"
