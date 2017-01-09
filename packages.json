@@ -6,7 +6,7 @@
 	},
 	"github.com/boltdb/bolt": {
 		"url": "https://github.com/boltdb/bolt.git",
-		"version": "144418e",
+		"version": "a705895",
 		"license": "MIT"
 	},
 	"github.com/coreos/go-iptables": {
