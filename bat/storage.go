@@ -77,7 +77,7 @@ func AddVolume(ctx context.Context, tenant, source, sourceType string,
 		if source == "" {
 			panic("sourceType supplied but source is empty")
 		}
-		args = append(args, "--source-type", sourceType)
+		args = append(args, "--source_type", sourceType)
 	}
 
 	if source != "" {

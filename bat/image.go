@@ -115,6 +115,23 @@ func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (
 	return img, nil
 }
 
+// AddRandomImage uploads a new image of the desired size using random data.
+// The caller can supply a number of pieces of meta data about the image via
+// the options parameter.  It is implemented by calling ciao-cli image add.  On
+// success the function returns the entire meta data of the newly updated image
+// that includes the caller supplied meta data and the meta data added by the
+// image service.  An error will be returned if the following environment
+// variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_ADMIN_USERNAME,
+// CIAO_ADMIN_PASSWORD.
+func AddRandomImage(ctx context.Context, tenant string, size int, options *ImageOptions) (*Image, error) {
+	path, err := CreateRandomFile(size)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create random file : %v", err)
+	}
+	defer func() { _ = os.Remove(path) }()
+	return AddImage(ctx, tenant, path, options)
+}
+
 // DeleteImage deletes an image from the image service.  It is implemented
 // by calling ciao-cli image delete.  An error will be returned if the following
 // environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
@@ -192,7 +209,7 @@ func UploadImage(ctx context.Context, tenant, ID, path string) error {
 
 // CreateRandomFile creates a file of the desired size with random data
 // returning the path.
-func CreateRandomFile(sizeMB int) (path string, err error) {
+func CreateRandomFile(sizeMiB int) (path string, err error) {
 	var f *os.File
 	f, err = ioutil.TempFile("/tmp", "ciao-random-")
 	if err != nil {
@@ -205,7 +222,7 @@ func CreateRandomFile(sizeMB int) (path string, err error) {
 		}
 	}()
 
-	b := make([]byte, sizeMB*1000000)
+	b := make([]byte, sizeMiB*1024*1024)
 	_, err = rand.Read(b)
 	if err != nil {
 		return

@@ -17,6 +17,7 @@ package storage_bat
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -86,7 +87,7 @@ func checkBootedVolume(ctx context.Context, t *testing.T, tenant, instanceID str
 	volumeID := instance.Volumes[0]
 	vol, err := bat.GetVolume(ctx, tenant, volumeID)
 	if err != nil {
-		t.Fatalf("Failed to retrieve volume information for %s",
+		t.Fatalf("Failed to retrieve volume information for %s: %v",
 			volumeID, err)
 	}
 
@@ -275,7 +276,7 @@ func TestAddListDelete(t *testing.T) {
 		if vol.Size != 1 || vol.Name != fmt.Sprintf("%d", i+1) ||
 			vol.Description != fmt.Sprintf("%d description", i+1) {
 			t.Fatalf("Incorrect meta data for %s: size %d, name %s, description %s",
-				vol.Size, vol.Name, vol.Description)
+				vol.ID, vol.Size, vol.Name, vol.Description)
 		}
 
 		if vol.Status != "available" {
@@ -632,5 +633,93 @@ func TestAttachToStoppedInstance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to attach volume %s to instance %s : %v",
 			volumeID, instanceID, err)
+	}
+}
+
+// Check that volumes created from image work.
+//
+// Create a volume from an image and check that the sizes match.
+//
+// The created volume should be the same size as the image to the nearest GiB
+// rounded up.
+func TestCreateVolumeFromImage(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	options := bat.ImageOptions{
+		Name: "test-image",
+	}
+
+	image, err := bat.AddRandomImage(ctx, "", 10, &options)
+	if err != nil {
+		t.Fatalf("Unable to add image %v", err)
+	}
+
+	volumeUUID, err := bat.AddVolume(ctx, "", image.ID, "image", &bat.VolumeOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	volume, err := bat.GetVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if volume.Size != int(math.Ceil(float64(image.SizeBytes)/(1024*1024*1024))) {
+		t.Errorf("Expected created volume same as image size: %v bytes vs %v GiB", image.SizeBytes, volume.Size)
+	}
+
+	err = bat.DeleteVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = bat.DeleteImage(ctx, "", image.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Check that volumes created from volumes work.
+//
+// Create a volume from another volume and check that the sizes match.
+//
+// The created volume should be the same size as the source volume.
+func TestCreateVolumeFromVolume(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	sourceVolumeUUID, err := bat.AddVolume(ctx, "", "", "", &bat.VolumeOptions{Size: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sourceVolume, err := bat.GetVolume(ctx, "", sourceVolumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	volumeUUID, err := bat.AddVolume(ctx, "", sourceVolumeUUID, "volume", &bat.VolumeOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	volume, err := bat.GetVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if volume.Size != sourceVolume.Size {
+		t.Errorf("Expected volume sizes to match after clone: %v GiB vs %v", volume.Size, sourceVolume.Size)
+	}
+
+	err = bat.DeleteVolume(ctx, "", sourceVolumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = bat.DeleteVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Error(err)
 	}
 }

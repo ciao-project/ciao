@@ -18,8 +18,6 @@ package image_bat
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -28,15 +26,6 @@ import (
 )
 
 const standardTimeout = time.Second * 300
-
-func addRandomImage(ctx context.Context, tenant string, size int, options *bat.ImageOptions) (*bat.Image, error) {
-	path, err := bat.CreateRandomFile(size)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to create random file : %v", err)
-	}
-	defer func() { _ = os.Remove(path) }()
-	return bat.AddImage(ctx, tenant, path, options)
-}
 
 // Add a new image, check it's listed and delete it
 //
@@ -59,7 +48,7 @@ func TestAddShowDelete(t *testing.T) {
 	options := bat.ImageOptions{
 		Name: name,
 	}
-	img, err := addRandomImage(ctx, "", 10, &options)
+	img, err := bat.AddRandomImage(ctx, "", 10, &options)
 	if err != nil {
 		t.Fatalf("Unable to add image %v", err)
 	}
@@ -124,7 +113,7 @@ func TestImageList(t *testing.T) {
 	options := bat.ImageOptions{
 		Name: name,
 	}
-	img, err := addRandomImage(ctx, "", 10, &options)
+	img, err := bat.AddRandomImage(ctx, "", 10, &options)
 	if err != nil {
 		t.Fatalf("Unable to add image %v", err)
 	}
