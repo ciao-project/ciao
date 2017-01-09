@@ -209,7 +209,7 @@ func UploadImage(ctx context.Context, tenant, ID, path string) error {
 
 // CreateRandomFile creates a file of the desired size with random data
 // returning the path.
-func CreateRandomFile(sizeMB int) (path string, err error) {
+func CreateRandomFile(sizeMiB int) (path string, err error) {
 	var f *os.File
 	f, err = ioutil.TempFile("/tmp", "ciao-random-")
 	if err != nil {
@@ -222,7 +222,7 @@ func CreateRandomFile(sizeMB int) (path string, err error) {
 		}
 	}()
 
-	b := make([]byte, sizeMB*1000000)
+	b := make([]byte, sizeMiB*1024*1024)
 	_, err = rand.Read(b)
 	if err != nil {
 		return
