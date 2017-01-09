@@ -646,20 +646,18 @@ func TestCreateVolumeFromImage(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()
 
-	images, err := bat.GetImages(ctx, "")
-	if err != nil {
-		t.Fatal(err)
+	options := bat.ImageOptions{
+		Name: "test-image",
 	}
 
-	var imageUUID string
-	var image *bat.Image
-	for imageUUID, image = range images {
-		break
+	image, err := bat.AddRandomImage(ctx, "", 10, &options)
+	if err != nil {
+		t.Fatalf("Unable to add image %v", err)
 	}
 
-	volumeUUID, err := bat.AddVolume(ctx, "", imageUUID, "image", &bat.VolumeOptions{})
+	volumeUUID, err := bat.AddVolume(ctx, "", image.ID, "image", &bat.VolumeOptions{})
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	volume, err := bat.GetVolume(ctx, "", volumeUUID)
@@ -672,6 +670,11 @@ func TestCreateVolumeFromImage(t *testing.T) {
 	}
 
 	err = bat.DeleteVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = bat.DeleteImage(ctx, "", image.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
