@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+  - include: install.yml
+
   - name: Create directories required by ciao
     file: path={{ item }} state=directory owner=ciao group=ciao
     with_items:
@@ -32,15 +34,6 @@
 
   - name: Ensure {{ bindir }} exists
     file: path={{ bindir }} state=directory
-
-  - include: install_clearlinux.yml
-    when: ansible_os_family == "Clear linux software for intel architecture"
-
-  - include: install_ubuntu.yml
-    when: ansible_os_family == "Debian"
-
-  - include: install_fedora.yml
-    when: ansible_os_family == "RedHat"
 
   - include: ceph.yml
     when: not skip_ceph

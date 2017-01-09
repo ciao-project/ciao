@@ -123,7 +123,7 @@
             - qemu-system-x86
             - psmisc
             - docker-engine
-            - ciao
+            - ciao-common
 
         - name: Uninstall dependencies (Fedora)
           command: dnf autoremove -y
@@ -136,7 +136,7 @@
         - qemu-system-x86
         - psmisc
         - docker.io
-        - ciao
+        - ciao-common
       when: ansible_os_family == "Debian"
 
     - block:
