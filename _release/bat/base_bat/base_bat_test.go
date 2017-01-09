@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package base_bat
+package basebat
 
 import (
 	"context"
@@ -47,7 +47,7 @@ func TestGetTenants(t *testing.T) {
 //
 // Retrieve the cluster status.
 //
-// Cluster status is retrived successfully, the cluster contains more than one
+// Cluster status is retrieved successfully, the cluster contains more than one
 // node and all nodes are ready.
 func TestGetClusterStatus(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
@@ -215,7 +215,7 @@ func TestGetCNCIs(t *testing.T) {
 // valid.  Finally, delete the instances.
 //
 // Instances should be created and scheduled.  Information about the
-// instances should be sucessfully retrieved and this information should
+// instances should be successfully retrieved and this information should
 // contain valid fields.
 func TestGetAllInstances(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
@@ -312,7 +312,7 @@ func TestDeleteAllInstances(t *testing.T) {
 }
 
 // TestMain ensures that all instances have been deleted when the tests finish.
-// The individual tests do try to clean up after themsevles but there's always
+// The individual tests do try to clean up after themselves but there's always
 // the chance that a bug somewhere in ciao could lead to something not getting
 // deleted.
 func TestMain(m *testing.M) {

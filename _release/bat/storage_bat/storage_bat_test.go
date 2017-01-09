@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage_bat
+package storagebat
 
 import (
 	"context"
@@ -109,7 +109,7 @@ func checkBootedVolume(ctx context.Context, t *testing.T, tenant, instanceID str
 // ciao-cli, retrieve information about the volume, delete the instance and
 // check that the volume has also been deleted.
 //
-// The instance should be created succesfully.  It should have one volume attached.
+// The instance should be created successfully.  It should have one volume attached.
 // The status of the volume should be in-use.  The volume should be deleted with
 // the instance.
 func TestBootFromVolume(t *testing.T) {
@@ -146,7 +146,7 @@ func TestBootFromVolume(t *testing.T) {
 // Boot a VM which has no data volumes attached and stop the instance.  Check
 // the status of the bootable volume.  Delete the instance.
 //
-// The instance should be created succesfully.  It should have one volume attached.
+// The instance should be created successfully.  It should have one volume attached.
 // The status of the volume should be in-use.
 func TestStoppedInstance(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
@@ -593,8 +593,8 @@ func TestDoubleAttach(t *testing.T) {
 // Boot a VM which has no data volumes attached and stop the instance.  Create
 // and attach a volume.  Delete the instance and the volume.
 //
-// The instance should be created and stopped succesfully.  The volume should be
-// created and attached succesfully.  The volume and instance should be deleted
+// The instance should be created and stopped successfully.  The volume should be
+// created and attached successfully.  The volume and instance should be deleted
 // without error.
 func TestAttachToStoppedInstance(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
