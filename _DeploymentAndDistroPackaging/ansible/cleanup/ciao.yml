@@ -105,13 +105,6 @@
         - /usr/local/bin/ciao-cert
         - /usr/local/bin/ciao-cnci-agent
 
-    - name: Remove CIAO user
-      user:
-        name: ciao
-        state: absent
-        remove: yes
-      when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
-
     - name: Remove OBS repository (Ubuntu)
       apt_repository:
         repo: deb http://download.opensuse.org/repositories/home:/clearlinux:/preview:/ciao/xUbuntu_16.04/ /

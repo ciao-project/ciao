@@ -13,15 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create ciao user
-    user:
-      name: ciao
-      comment: CIAO user
-      createhome: no
-      shell: /usr/sbin/nologin
-      system: yes
-    when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
-
   - name: Create directories required by ciao
     file: path={{ item }} state=directory owner=ciao group=ciao
     with_items:
