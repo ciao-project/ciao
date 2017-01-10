@@ -1,3 +1,4 @@
+*.swp
 *~
 _DeploymentAndDistroPackaging/ansible/admin-ciaorc
 _DeploymentAndDistroPackaging/ansible/ceph/
