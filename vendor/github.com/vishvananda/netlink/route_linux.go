@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/vishvananda/netlink/nl"
+	"github.com/vishvananda/netns"
 )
 
 // RtAttr is shared so it is in netlink_linux.go
@@ -152,7 +153,7 @@ func (h *Handle) routeHandle(route *Route, req *nl.NetlinkRequest, msg *nl.RtMsg
 				} else {
 					gw = nl.NewRtAttr(syscall.RTA_GATEWAY, []byte(nh.Gw.To16()))
 				}
-				gwData := gw.Serialize()
+				gwData = gw.Serialize()
 				rtnh.Len += uint16(len(gwData))
 			}
 			buf = append(buf, rtnh.Serialize()...)
@@ -282,14 +283,20 @@ func (h *Handle) RouteListFiltered(family int, filter *Route, filterMask uint64)
 				continue
 			case filterMask&RT_FILTER_SRC != 0 && !route.Src.Equal(filter.Src):
 				continue
-			case filterMask&RT_FILTER_DST != 0 && filter.Dst != nil:
-				if route.Dst == nil {
-					continue
-				}
-				aMaskLen, aMaskBits := route.Dst.Mask.Size()
-				bMaskLen, bMaskBits := filter.Dst.Mask.Size()
-				if !(route.Dst.IP.Equal(filter.Dst.IP) && aMaskLen == bMaskLen && aMaskBits == bMaskBits) {
-					continue
+			case filterMask&RT_FILTER_DST != 0:
+				if filter.Dst == nil {
+					if route.Dst != nil {
+						continue
+					}
+				} else {
+					if route.Dst == nil {
+						continue
+					}
+					aMaskLen, aMaskBits := route.Dst.Mask.Size()
+					bMaskLen, bMaskBits := filter.Dst.Mask.Size()
+					if !(route.Dst.IP.Equal(filter.Dst.IP) && aMaskLen == bMaskLen && aMaskBits == bMaskBits) {
+						continue
+					}
 				}
 			}
 		}
@@ -421,7 +428,17 @@ func (h *Handle) RouteGet(destination net.IP) ([]Route, error) {
 // RouteSubscribe takes a chan down which notifications will be sent
 // when routes are added or deleted. Close the 'done' chan to stop subscription.
 func RouteSubscribe(ch chan<- RouteUpdate, done <-chan struct{}) error {
-	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_IPV4_ROUTE, syscall.RTNLGRP_IPV6_ROUTE)
+	return routeSubscribeAt(netns.None(), netns.None(), ch, done)
+}
+
+// RouteSubscribeAt works like RouteSubscribe plus it allows the caller
+// to choose the network namespace in which to subscribe (ns).
+func RouteSubscribeAt(ns netns.NsHandle, ch chan<- RouteUpdate, done <-chan struct{}) error {
+	return routeSubscribeAt(ns, netns.None(), ch, done)
+}
+
+func routeSubscribeAt(newNs, curNs netns.NsHandle, ch chan<- RouteUpdate, done <-chan struct{}) error {
+	s, err := nl.SubscribeAt(newNs, curNs, syscall.NETLINK_ROUTE, syscall.RTNLGRP_IPV4_ROUTE, syscall.RTNLGRP_IPV6_ROUTE)
 	if err != nil {
 		return err
 	}
