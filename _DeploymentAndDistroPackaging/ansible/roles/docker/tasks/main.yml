@@ -23,4 +23,4 @@
   when: ansible_os_family == "Clear linux software for intel architecture"
 
 - name: Start docker daemon
-  service: name={{ docker_service }} enabled=yes state=started
+  systemd: name={{ docker_service }} enabled=yes state=started

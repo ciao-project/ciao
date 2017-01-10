@@ -39,12 +39,13 @@
         - ciao-keystone
 
     - name: Stop and disable services
-      service: name={{ item }} state=stopped enabled=no
+      systemd: name={{ item }} state=stopped enabled=no
       with_items:
         - docker-keystone.service
         - docker-ciao-webui.service
         - ciao-controller.service
         - ciao-scheduler.service
+      ignore_errors: yes
 
     - name: Remove Files
       file: name={{ item }} state=absent
@@ -60,10 +61,8 @@
 - hosts: controllers:computes:networks
   become: yes
   tasks:
-    # In ansible 2.2.0 we can drop ignore errors since it will not fail
-    # when the services does not exist.
     - name: Stop services
-      service: name={{ item }} enabled=no state=stopped
+      systemd: name={{ item }} enabled=no state=stopped
       with_items:
         - ciao-network.service
         - ciao-compute.service
@@ -105,13 +104,6 @@
         - /usr/local/bin/ciao-cert
         - /usr/local/bin/ciao-cnci-agent
 
-    - name: Remove CIAO user
-      user:
-        name: ciao
-        state: absent
-        remove: yes
-      when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
-
     - name: Remove OBS repository (Ubuntu)
       apt_repository:
         repo: deb http://download.opensuse.org/repositories/home:/clearlinux:/preview:/ciao/xUbuntu_16.04/ /
@@ -130,7 +122,7 @@
             - qemu-system-x86
             - psmisc
             - docker-engine
-            - ciao
+            - ciao-common
 
         - name: Uninstall dependencies (Fedora)
           command: dnf autoremove -y
@@ -143,7 +135,7 @@
         - qemu-system-x86
         - psmisc
         - docker.io
-        - ciao
+        - ciao-common
       when: ansible_os_family == "Debian"
 
     - block:

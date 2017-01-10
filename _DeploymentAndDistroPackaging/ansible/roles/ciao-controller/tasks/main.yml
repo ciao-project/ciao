@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - include: build.yml
-    become: no
+  - include: install.yml
 
   - include: images.yml
     become: no
@@ -42,8 +41,6 @@
       - /var/lib/ciao/data/controller/workloads
       - /var/lib/ciao/data/controller/tables
       - /var/lib/ciao/data/image
-
-  - include: install.yml
 
   - include: certificates.yml
 

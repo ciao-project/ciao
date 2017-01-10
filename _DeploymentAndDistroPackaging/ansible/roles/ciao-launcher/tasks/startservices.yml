@@ -16,10 +16,9 @@
   - name: Create ciao-launcher unit
     template: src=ciao-launcher.service.j2 dest=/etc/systemd/system/ciao-launcher.service
     notify:
-      - reload systemd config
       - restart launcher
 
   - meta: flush_handlers
 
   - name: Ensure ciao-launcher service is running
-    service: name=ciao-launcher.service enabled=yes state=started
+    systemd: name=ciao-launcher.service enabled=yes state=started

@@ -14,7 +14,7 @@
 # limitations under the License.
 
   - name: restart scheduler
-    service: name=ciao-scheduler.service enabled=yes state=restarted
+    systemd: name=ciao-scheduler.service enabled=yes state=restarted daemon-reload=yes
 
   - name: restart controller
-    service: name=ciao-controller.service enabled=yes state=restarted
+    systemd: name=ciao-controller.service enabled=yes state=restarted daemon-reload=yes
