@@ -27,17 +27,27 @@ import (
 )
 
 const templateFunctionHelp = `
-ciao-cli adds three new functions to Go's template language
+ciao-cli adds some new functions to Go's template language
 
 - tojson outputs the specified object in json format, e.g., {{tojson .}}
 - filter operates on an slice or array of structures.  It allows the caller
   to filter the input array based on the value of a single field.
   The function returns a slice containing only the objects that satisfy the
   filter, e.g.
-    
+
   ciao-cli image list -f '{{$x := filter . "Protected" "true"}}{{len $x}}'
-   
+
   outputs the number of protected images maintained by the image service.
+- filterContains operates along the same lines as filter, but returns
+  substring matches
+
+  ciao-cli workload list -f '{{$x := filterContains . "Name" "Cloud"}}{{range $x}}{{.ID}}{{end}}'
+
+  outputs the IDs of the workloads which have Cloud in their name.
+- filterHasPrefix along the same lines as filter, but returns prefix matches
+- filterHasSuffix along the same lines as filter, but returns suffix matches
+- filterFolded along the same lines as filter, but  returns matches based
+  on equality under Unicode case-folding
 - select operates on a slice of structs.  It outputs the value of a specified
   field for each struct on a new line , e.g.,
 
@@ -45,9 +55,13 @@ ciao-cli adds three new functions to Go's template language
 `
 
 var funcMap = template.FuncMap{
-	"filter": filterByField,
-	"tojson": toJSON,
-	"select": selectField,
+	"filter":          filterByField,
+	"filterContains":  filterByContains,
+	"filterHasPrefix": filterByHasPrefix,
+	"filterHasSuffix": filterByHasSuffix,
+	"filterFolded":    filterByFolded,
+	"tojson":          toJSON,
+	"select":          selectField,
 }
 
 func findField(fieldPath []string, v reflect.Value) reflect.Value {
@@ -61,7 +75,7 @@ func findField(fieldPath []string, v reflect.Value) reflect.Value {
 	return f
 }
 
-func filterByField(obj interface{}, field, val string) (retval interface{}) {
+func filterField(obj interface{}, field, val string, cmp func(string, string) bool) (retval interface{}) {
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -86,13 +100,36 @@ func filterByField(obj interface{}, field, val string) (retval interface{}) {
 		f := findField(fieldPath, v)
 
 		strVal := fmt.Sprintf("%v", f.Interface())
-		if strVal == val {
+		if cmp(strVal, val) {
 			filtered = reflect.Append(filtered, list.Index(i))
 		}
 	}
 
 	retval = filtered.Interface()
 	return
+
+}
+
+func filterByField(obj interface{}, field, val string) (retval interface{}) {
+	return filterField(obj, field, val, func(a, b string) bool {
+		return a == b
+	})
+}
+
+func filterByContains(obj interface{}, field, val string) (retval interface{}) {
+	return filterField(obj, field, val, strings.Contains)
+}
+
+func filterByFolded(obj interface{}, field, val string) (retval interface{}) {
+	return filterField(obj, field, val, strings.EqualFold)
+}
+
+func filterByHasPrefix(obj interface{}, field, val string) (retval interface{}) {
+	return filterField(obj, field, val, strings.HasPrefix)
+}
+
+func filterByHasSuffix(obj interface{}, field, val string) (retval interface{}) {
+	return filterField(obj, field, val, strings.HasSuffix)
 }
 
 func selectField(obj interface{}, field string) string {
