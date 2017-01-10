@@ -14,4 +14,4 @@
 # limitations under the License.
 
   - name: restart launcher
-    service: name=ciao-launcher.service enabled=yes state=restarted
+    systemd: name=ciao-launcher.service enabled=yes state=restarted daemon-reload=yes

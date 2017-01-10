@@ -39,12 +39,13 @@
         - ciao-keystone
 
     - name: Stop and disable services
-      service: name={{ item }} state=stopped enabled=no
+      systemd: name={{ item }} state=stopped enabled=no
       with_items:
         - docker-keystone.service
         - docker-ciao-webui.service
         - ciao-controller.service
         - ciao-scheduler.service
+      ignore_errors: yes
 
     - name: Remove Files
       file: name={{ item }} state=absent
@@ -60,10 +61,8 @@
 - hosts: controllers:computes:networks
   become: yes
   tasks:
-    # In ansible 2.2.0 we can drop ignore errors since it will not fail
-    # when the services does not exist.
     - name: Stop services
-      service: name={{ item }} enabled=no state=stopped
+      systemd: name={{ item }} enabled=no state=stopped
       with_items:
         - ciao-network.service
         - ciao-compute.service
