@@ -80,7 +80,7 @@ type Workload struct {
 	ImageName   string                       `json:"image_name"`
 	Config      string                       `json:"config"`
 	Defaults    []payloads.RequestedResource `json:"defaults"`
-	Storage     *StorageResource             `json:"storage"`
+	Storage     []StorageResource            `json:"storage"`
 }
 
 // WorkloadResponse will be returned from /workloads apis

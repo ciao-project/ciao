@@ -1250,7 +1250,7 @@ func TestStorageConfig(t *testing.T) {
 	}
 
 	// a temporary in memory filesystem?
-	s := &types.StorageResource{
+	s := types.StorageResource{
 		ID:         "",
 		Bootable:   true,
 		Ephemeral:  false,
@@ -1258,7 +1258,7 @@ func TestStorageConfig(t *testing.T) {
 		SourceID:   info.Name(),
 	}
 
-	wls[0].Storage = s
+	wls[0].Storage = []types.StorageResource{s}
 
 	id := uuid.Generate()
 
@@ -1268,7 +1268,7 @@ func TestStorageConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls[0].Storage = nil
+	wls[0].Storage = []types.StorageResource{}
 }
 
 func createTestVolume(tenantID string, size int, t *testing.T) string {

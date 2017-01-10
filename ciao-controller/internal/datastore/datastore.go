@@ -120,7 +120,7 @@ type persistentStore interface {
 	getBatchFrameStatistics(label string) (stats []types.BatchFrameStat, err error)
 
 	// storage interfaces
-	getWorkloadStorage(ID string) (*types.StorageResource, error)
+	getWorkloadStorage(ID string) ([]types.StorageResource, error)
 	getAllBlockData() (map[string]types.BlockData, error)
 	addBlockData(data types.BlockData) error
 	updateBlockData(data types.BlockData) error

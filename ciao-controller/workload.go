@@ -40,33 +40,35 @@ func validateContainerWorkload(req types.Workload) error {
 }
 
 func validateWorkloadStorage(req types.Workload) error {
-	// you may not request a sized volume unless it's empty.
-	if req.Storage.Size > 0 && req.Storage.SourceType != types.Empty {
-		return types.ErrBadRequest
-	}
-
-	// you may not request a bootable empty volume.
-	if req.Storage.Bootable && req.Storage.SourceType == types.Empty {
-		return types.ErrBadRequest
-	}
-
-	if req.Storage.ID != "" {
-		// validate that the id is at least valid
-		// uuid4.
-		_, err := uuid.Parse(req.Storage.ID)
-		if err != nil {
+	for i := range req.Storage {
+		// you may not request a sized volume unless it's empty.
+		if req.Storage[i].Size > 0 && req.Storage[i].SourceType != types.Empty {
 			return types.ErrBadRequest
 		}
-	} else {
-		if req.Storage.SourceType == types.Empty {
-			// you many not use a source ID with empty.
-			if req.Storage.SourceID != "" {
+
+		// you may not request a bootable empty volume.
+		if req.Storage[i].Bootable && req.Storage[i].SourceType == types.Empty {
+			return types.ErrBadRequest
+		}
+
+		if req.Storage[i].ID != "" {
+			// validate that the id is at least valid
+			// uuid4.
+			_, err := uuid.Parse(req.Storage[i].ID)
+			if err != nil {
 				return types.ErrBadRequest
 			}
 		} else {
-			// you must specify an ID with volume/image
-			if req.Storage.SourceID == "" {
-				return types.ErrBadRequest
+			if req.Storage[i].SourceType == types.Empty {
+				// you many not use a source ID with empty.
+				if req.Storage[i].SourceID != "" {
+					return types.ErrBadRequest
+				}
+			} else {
+				// you must specify an ID with volume/image
+				if req.Storage[i].SourceID == "" {
+					return types.ErrBadRequest
+				}
 			}
 		}
 	}
@@ -106,7 +108,7 @@ func validateWorkloadRequest(req types.Workload) error {
 		return types.ErrBadRequest
 	}
 
-	if req.Storage != nil {
+	if len(req.Storage) > 0 {
 		err := validateWorkloadStorage(req)
 		if err != nil {
 			return err
@@ -139,7 +141,7 @@ func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) 
 		}
 
 		req.ImageID = ""
-		req.Storage = &storage
+		req.Storage = append(req.Storage, storage)
 	}
 
 	req.ID = uuid.Generate().String()

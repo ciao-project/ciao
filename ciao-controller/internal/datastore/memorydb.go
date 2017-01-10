@@ -241,8 +241,8 @@ func (db *MemoryDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 	return nil, nil
 }
 
-func (db *MemoryDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
-	return nil, nil
+func (db *MemoryDB) getWorkloadStorage(ID string) ([]types.StorageResource, error) {
+	return []types.StorageResource{}, nil
 }
 
 func (db *MemoryDB) getAllBlockData() (map[string]types.BlockData, error) {
