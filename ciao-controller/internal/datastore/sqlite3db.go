@@ -327,9 +327,6 @@ func (d tenantData) Populate() error {
 		id := line[0]
 		name := line[1]
 		mac := line[2]
-		if err != nil {
-			glog.V(2).Info("could not add tenant: ", err)
-		}
 
 		err = d.ds.create(d.name, id, name, "", mac, "")
 		if err != nil {
