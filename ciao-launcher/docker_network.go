@@ -38,7 +38,7 @@ func createDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet.S
 	dockerNetworkLock.Lock()
 	defer dockerNetworkLock.Unlock()
 	vnic, event, info, err := cnNet.CreateVnic(vnicCfg)
-	if info.CNContainerEvent != libsnnet.ContainerNetworkAdd || err != nil {
+	if err != nil || info.CNContainerEvent != libsnnet.ContainerNetworkAdd {
 		return vnic, event, info, err
 	}
 
