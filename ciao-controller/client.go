@@ -71,10 +71,13 @@ func (client *ssntpClient) CommandNotify(command ssntp.Command, frame *ssntp.Fra
 		stats.Init()
 		err := yaml.Unmarshal(payload, &stats)
 		if err != nil {
-			glog.Warning("error unmarshalling temp stat")
+			glog.Warningf("Error unmarshalling STATS: %v", err)
 			return
 		}
-		client.ctl.ds.HandleStats(stats)
+		err = client.ctl.ds.HandleStats(stats)
+		if err != nil {
+			glog.Warningf("Error updating stats in datastore: %v", err)
+		}
 	}
 	glog.V(1).Info(string(payload))
 }
@@ -104,19 +107,19 @@ func (client *ssntpClient) unassignEvent(payload []byte) {
 	var event payloads.EventPublicIPUnassigned
 	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
-		glog.Warning(err)
+		glog.Warningf("Error unmarshalling EventPublicIPUnassigned: %v", err)
 		return
 	}
 
 	i, err := client.ctl.ds.GetInstance(event.UnassignedIP.InstanceUUID)
 	if err != nil {
-		glog.Warning(err)
+		glog.Warningf("Error getting instance from datastore: %v", err)
 		return
 	}
 
 	err = client.ctl.ds.UnMapExternalIP(event.UnassignedIP.PublicIP)
 	if err != nil {
-		glog.Warning(err)
+		glog.Warning("Error unmapping external IP: %v", err)
 		return
 	}
 
@@ -128,13 +131,13 @@ func (client *ssntpClient) assignEvent(payload []byte) {
 	var event payloads.EventPublicIPAssigned
 	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
-		glog.Warning(err)
+		glog.Warningf("Error unmarshalling EventPublicIPAssigned: %v", err)
 		return
 	}
 
 	i, err := client.ctl.ds.GetInstance(event.AssignedIP.InstanceUUID)
 	if err != nil {
-		glog.Warning(err)
+		glog.Warningf("Error getting instance from datastore: %v", err)
 		return
 	}
 
@@ -146,7 +149,7 @@ func (client *ssntpClient) unassignError(payload []byte) {
 	var failure payloads.ErrorPublicIPFailure
 	err := yaml.Unmarshal(payload, &failure)
 	if err != nil {
-		glog.Warning("Error unmarshalling ErrorPublicIPFailure")
+		glog.Warning("Error unmarshalling ErrorPublicIPFailure: %v", err)
 		return
 	}
 
@@ -167,34 +170,44 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 		var event payloads.EventInstanceDeleted
 		err := yaml.Unmarshal(payload, &event)
 		if err != nil {
-			glog.Warning("Error unmarshalling InstanceDeleted")
+			glog.Warning("Error unmarshalling InstanceDeleted: %v")
 			return
 		}
 		client.deleteEphemeralStorage(event.InstanceDeleted.InstanceUUID)
-		client.ctl.ds.DeleteInstance(event.InstanceDeleted.InstanceUUID)
+		err = client.ctl.ds.DeleteInstance(event.InstanceDeleted.InstanceUUID)
+		if err != nil {
+			glog.Warningf("Error deleting instance from datastore: %v", err)
+		}
+
 	case ssntp.ConcentratorInstanceAdded:
 		var event payloads.EventConcentratorInstanceAdded
 		err := yaml.Unmarshal(payload, &event)
 		if err != nil {
-			glog.Warning(err)
+			glog.Warning("Error unmarshalling EventConcentratorInstanceAdded: %v", err)
 			return
 		}
 		newCNCI := event.CNCIAdded
-		client.ctl.ds.AddCNCIIP(newCNCI.ConcentratorMAC, newCNCI.ConcentratorIP)
+		err = client.ctl.ds.AddCNCIIP(newCNCI.ConcentratorMAC, newCNCI.ConcentratorIP)
+		if err != nil {
+			glog.Warningf("Error adding CNCI IP to datastore: %v", err)
+		}
 	case ssntp.TraceReport:
 		var trace payloads.Trace
 		err := yaml.Unmarshal(payload, &trace)
 		if err != nil {
-			glog.Warning("error unmarshalling TraceReport")
+			glog.Warningf("Error unmarshalling TraceReport: %v", err)
 			return
 		}
-		client.ctl.ds.HandleTraceReport(trace)
+		err = client.ctl.ds.HandleTraceReport(trace)
+		if err != nil {
+			glog.Warningf("Error updating trace report in datastore: %v", err)
+		}
 
 	case ssntp.NodeConnected:
 		var nodeConnected payloads.NodeConnected
 		err := yaml.Unmarshal(payload, &nodeConnected)
 		if err != nil {
-			glog.Warning("error unmarshalling NodeConnected")
+			glog.Warningf("Error unmarshalling NodeConnected: %v", err)
 			return
 		}
 		glog.Infof("Node %s connected", nodeConnected.Connected.NodeUUID)
@@ -203,7 +216,7 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 		var nodeDisconnected payloads.NodeDisconnected
 		err := yaml.Unmarshal(payload, &nodeDisconnected)
 		if err != nil {
-			glog.Warning("error unmarshalling NodeDisconnected")
+			glog.Warningf("Error unmarshalling NodeDisconnected: %v", err)
 			return
 		}
 
@@ -230,31 +243,40 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 		var failure payloads.ErrorStartFailure
 		err := yaml.Unmarshal(payload, &failure)
 		if err != nil {
-			glog.Warning("Error unmarshalling StartFailure")
+			glog.Warningf("Error unmarshalling StartFailure: %v", err)
 			return
 		}
-		client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason)
+		err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason)
+		if err != nil {
+			glog.Warningf("Error adding StartFailure to datastore: %v", err)
+		}
 	case ssntp.StopFailure:
 		var failure payloads.ErrorStopFailure
 		err := yaml.Unmarshal(payload, &failure)
 		if err != nil {
-			glog.Warning("Error unmarshalling StopFailure")
+			glog.Warningf("Error unmarshalling StopFailure: %v", err)
 			return
 		}
 		client.ctl.ds.StopFailure(failure.InstanceUUID, failure.Reason)
+		if err != nil {
+			glog.Warningf("Error adding StopFailure to datastore: %v", err)
+		}
 	case ssntp.RestartFailure:
 		var failure payloads.ErrorRestartFailure
 		err := yaml.Unmarshal(payload, &failure)
 		if err != nil {
-			glog.Warning("Error unmarshalling RestartFailure")
+			glog.Warning("Error unmarshalling RestartFailure: %v", err)
 			return
 		}
-		client.ctl.ds.RestartFailure(failure.InstanceUUID, failure.Reason)
+		err = client.ctl.ds.RestartFailure(failure.InstanceUUID, failure.Reason)
+		if err != nil {
+			glog.Warningf("Error adding RestartFailure to datastore: %v", err)
+		}
 	case ssntp.AttachVolumeFailure:
 		var failure payloads.ErrorAttachVolumeFailure
 		err := yaml.Unmarshal(payload, &failure)
 		if err != nil {
-			glog.Warning("Error unmarshalling AttachVolumeFailure")
+			glog.Warningf("Error unmarshalling AttachVolumeFailure: %v", err)
 			return
 		}
 		client.ctl.ds.AttachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
@@ -263,7 +285,7 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 		var failure payloads.ErrorDetachVolumeFailure
 		err := yaml.Unmarshal(payload, &failure)
 		if err != nil {
-			glog.Warning("Error unmarshalling DetachVolumeFailure")
+			glog.Warningf("Error unmarshalling DetachVolumeFailure: %v", err)
 			return
 		}
 		client.ctl.ds.DetachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
@@ -272,13 +294,13 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 		var failure payloads.ErrorPublicIPFailure
 		err := yaml.Unmarshal(payload, &failure)
 		if err != nil {
-			glog.Warning("Error unmarshalling ErrorPublicIPFailure")
+			glog.Warningf("Error unmarshalling ErrorPublicIPFailure:: %v", err)
 			return
 		}
 
 		err = client.ctl.ds.UnMapExternalIP(failure.PublicIP)
 		if err != nil {
-			glog.Warning(err)
+			glog.Warningf("Error unmapping external IP: %v", err)
 		}
 
 		msg := fmt.Sprintf("Failed to map %s to %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
