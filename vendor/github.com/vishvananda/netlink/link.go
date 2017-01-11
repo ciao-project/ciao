@@ -26,11 +26,50 @@ type LinkAttrs struct {
 	Name         string
 	HardwareAddr net.HardwareAddr
 	Flags        net.Flags
+	RawFlags     uint32
 	ParentIndex  int         // index of the parent link device
 	MasterIndex  int         // must be the index of a bridge
 	Namespace    interface{} // nil | NsPid | NsFd
 	Alias        string
 	Statistics   *LinkStatistics
+	Promisc      int
+	Xdp          *LinkXdp
+	EncapType    string
+	Protinfo     *Protinfo
+	OperState    LinkOperState
+}
+
+// LinkOperState represents the values of the IFLA_OPERSTATE link
+// attribute, which contains the RFC2863 state of the interface.
+type LinkOperState uint8
+
+const (
+	OperUnknown        = iota // Status can't be determined.
+	OperNotPresent            // Some component is missing.
+	OperDown                  // Down.
+	OperLowerLayerDown        // Down due to state of lower layer.
+	OperTesting               // In some test mode.
+	OperDormant               // Not up but pending an external event.
+	OperUp                    // Up, ready to send packets.
+)
+
+func (s LinkOperState) String() string {
+	switch s {
+	case OperNotPresent:
+		return "not-present"
+	case OperDown:
+		return "down"
+	case OperLowerLayerDown:
+		return "lower-layer-down"
+	case OperTesting:
+		return "testing"
+	case OperDormant:
+		return "dormant"
+	case OperUp:
+		return "up"
+	default:
+		return "unknown"
+	}
 }
 
 // NewLinkAttrs returns LinkAttrs structure filled with default values
@@ -67,6 +106,11 @@ type LinkStatistics struct {
 	TxWindowErrors    uint32
 	RxCompressed      uint32
 	TxCompressed      uint32
+}
+
+type LinkXdp struct {
+	Fd       int
+	Attached bool
 }
 
 // Device links cannot be created via netlink. These links
@@ -171,11 +215,13 @@ func (macvtap Macvtap) Type() string {
 }
 
 type TuntapMode uint16
+type TuntapFlag uint16
 
 // Tuntap links created via /dev/tun/tap, but can be destroyed via netlink
 type Tuntap struct {
 	LinkAttrs
-	Mode TuntapMode
+	Mode  TuntapMode
+	Flags TuntapFlag
 }
 
 func (tuntap *Tuntap) Attrs() *LinkAttrs {
@@ -251,6 +297,7 @@ type IPVlanMode uint16
 const (
 	IPVLAN_MODE_L2 IPVlanMode = iota
 	IPVLAN_MODE_L3
+	IPVLAN_MODE_L3S
 	IPVLAN_MODE_MAX
 )
 
@@ -289,31 +336,31 @@ func StringToBondMode(s string) BondMode {
 
 // Possible BondMode
 const (
-	BOND_MODE_802_3AD BondMode = iota
-	BOND_MODE_BALANCE_RR
+	BOND_MODE_BALANCE_RR BondMode = iota
 	BOND_MODE_ACTIVE_BACKUP
 	BOND_MODE_BALANCE_XOR
 	BOND_MODE_BROADCAST
+	BOND_MODE_802_3AD
 	BOND_MODE_BALANCE_TLB
 	BOND_MODE_BALANCE_ALB
 	BOND_MODE_UNKNOWN
 )
 
 var bondModeToString = map[BondMode]string{
-	BOND_MODE_802_3AD:       "802.3ad",
 	BOND_MODE_BALANCE_RR:    "balance-rr",
 	BOND_MODE_ACTIVE_BACKUP: "active-backup",
 	BOND_MODE_BALANCE_XOR:   "balance-xor",
 	BOND_MODE_BROADCAST:     "broadcast",
+	BOND_MODE_802_3AD:       "802.3ad",
 	BOND_MODE_BALANCE_TLB:   "balance-tlb",
 	BOND_MODE_BALANCE_ALB:   "balance-alb",
 }
 var StringToBondModeMap = map[string]BondMode{
-	"802.3ad":       BOND_MODE_802_3AD,
 	"balance-rr":    BOND_MODE_BALANCE_RR,
 	"active-backup": BOND_MODE_ACTIVE_BACKUP,
 	"balance-xor":   BOND_MODE_BALANCE_XOR,
 	"broadcast":     BOND_MODE_BROADCAST,
+	"802.3ad":       BOND_MODE_802_3AD,
 	"balance-tlb":   BOND_MODE_BALANCE_TLB,
 	"balance-alb":   BOND_MODE_BALANCE_ALB,
 }
@@ -575,6 +622,54 @@ func (gretap *Gretap) Attrs() *LinkAttrs {
 
 func (gretap *Gretap) Type() string {
 	return "gretap"
+}
+
+type Iptun struct {
+	LinkAttrs
+	Ttl      uint8
+	Tos      uint8
+	PMtuDisc uint8
+	Link     uint32
+	Local    net.IP
+	Remote   net.IP
+}
+
+func (iptun *Iptun) Attrs() *LinkAttrs {
+	return &iptun.LinkAttrs
+}
+
+func (iptun *Iptun) Type() string {
+	return "ipip"
+}
+
+type Vti struct {
+	LinkAttrs
+	IKey   uint32
+	OKey   uint32
+	Link   uint32
+	Local  net.IP
+	Remote net.IP
+}
+
+func (vti *Vti) Attrs() *LinkAttrs {
+	return &vti.LinkAttrs
+}
+
+func (iptun *Vti) Type() string {
+	return "vti"
+}
+
+type Vrf struct {
+	LinkAttrs
+	Table uint32
+}
+
+func (vrf *Vrf) Attrs() *LinkAttrs {
+	return &vrf.LinkAttrs
+}
+
+func (vrf *Vrf) Type() string {
+	return "vrf"
 }
 
 // iproute2 supported devices;

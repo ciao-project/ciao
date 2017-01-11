@@ -76,12 +76,12 @@
 	},
 	"github.com/vishvananda/netlink": {
 		"url": "https://github.com/vishvananda/netlink.git",
-		"version": "293adec",
+		"version": "1890b34",
 		"license": "Apache v2.0"
 	},
 	"github.com/vishvananda/netns": {
 		"url": "https://github.com/vishvananda/netns.git",
-		"version": "8ba1072",
+		"version": "2c9454e",
 		"license": "Apache v2.0"
 	},
 	"golang.org/x/net": {

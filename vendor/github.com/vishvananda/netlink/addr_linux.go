@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/vishvananda/netlink/nl"
+	"github.com/vishvananda/netns"
 )
 
 // IFA_FLAGS is a u32 attribute.
@@ -55,17 +56,27 @@ func (h *Handle) addrHandle(link Link, addr *Addr, req *nl.NetlinkRequest) error
 	msg.Prefixlen = uint8(prefixlen)
 	req.AddData(msg)
 
-	var addrData []byte
+	var localAddrData []byte
 	if family == FAMILY_V4 {
-		addrData = addr.IP.To4()
+		localAddrData = addr.IP.To4()
 	} else {
-		addrData = addr.IP.To16()
+		localAddrData = addr.IP.To16()
 	}
 
-	localData := nl.NewRtAttr(syscall.IFA_LOCAL, addrData)
+	localData := nl.NewRtAttr(syscall.IFA_LOCAL, localAddrData)
 	req.AddData(localData)
+	var peerAddrData []byte
+	if addr.Peer != nil {
+		if family == FAMILY_V4 {
+			peerAddrData = addr.Peer.IP.To4()
+		} else {
+			peerAddrData = addr.Peer.IP.To16()
+		}
+	} else {
+		peerAddrData = localAddrData
+	}
 
-	addressData := nl.NewRtAttr(syscall.IFA_ADDRESS, addrData)
+	addressData := nl.NewRtAttr(syscall.IFA_ADDRESS, peerAddrData)
 	req.AddData(addressData)
 
 	if addr.Flags != 0 {
@@ -160,11 +171,13 @@ func parseAddr(m []byte) (addr Addr, family, index int, err error) {
 				IP:   attr.Value,
 				Mask: net.CIDRMask(int(msg.Prefixlen), 8*len(attr.Value)),
 			}
+			addr.Peer = dst
 		case syscall.IFA_LOCAL:
 			local = &net.IPNet{
 				IP:   attr.Value,
 				Mask: net.CIDRMask(int(msg.Prefixlen), 8*len(attr.Value)),
 			}
+			addr.IPNet = local
 		case syscall.IFA_LABEL:
 			addr.Label = string(attr.Value[:len(attr.Value)-1])
 		case IFA_FLAGS:
@@ -192,7 +205,17 @@ type AddrUpdate struct {
 // AddrSubscribe takes a chan down which notifications will be sent
 // when addresses change.  Close the 'done' chan to stop subscription.
 func AddrSubscribe(ch chan<- AddrUpdate, done <-chan struct{}) error {
-	s, err := nl.Subscribe(syscall.NETLINK_ROUTE, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR)
+	return addrSubscribe(netns.None(), netns.None(), ch, done)
+}
+
+// AddrSubscribeAt works like AddrSubscribe plus it allows the caller
+// to choose the network namespace in which to subscribe (ns).
+func AddrSubscribeAt(ns netns.NsHandle, ch chan<- AddrUpdate, done <-chan struct{}) error {
+	return addrSubscribe(ns, netns.None(), ch, done)
+}
+
+func addrSubscribe(newNs, curNs netns.NsHandle, ch chan<- AddrUpdate, done <-chan struct{}) error {
+	s, err := nl.SubscribeAt(newNs, curNs, syscall.NETLINK_ROUTE, syscall.RTNLGRP_IPV4_IFADDR, syscall.RTNLGRP_IPV6_IFADDR)
 	if err != nil {
 		return err
 	}
