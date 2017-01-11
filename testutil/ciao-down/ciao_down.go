@@ -26,9 +26,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
+	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -53,15 +56,45 @@ func vmFlags(fs *flag.FlagSet, memGB, CPUs *int) {
 	fs.IntVar(CPUs, "cpus", *CPUs, "VCPUs assignged to VM")
 }
 
-func prepareFlags() (memGB int, CPUs int, debug bool, err error) {
+func checkDirectory(dir string) error {
+	if dir == "" {
+		return nil
+	}
+
+	if !path.IsAbs(dir) {
+		return fmt.Errorf("%s is not an absolute path", dir)
+	}
+
+	fi, err := os.Stat(dir)
+	if err != nil {
+		return fmt.Errorf("Unable to stat %s : %v", dir, err)
+	}
+
+	if !fi.IsDir() {
+		return fmt.Errorf("%s is not a directory", dir)
+	}
+
+	return nil
+}
+
+func prepareFlags() (memGB int, CPUs int, debug bool, uiPath string, err error) {
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGB, &CPUs)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
+	fs.StringVar(&uiPath, "ui-path", "", "Host path of cloned ciao-webui repo")
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return -1, -1, false, err
+		return -1, -1, false, "", err
 	}
 
-	return memGB, CPUs, debug, nil
+	if err := checkDirectory(uiPath); err != nil {
+		return -1, -1, false, "", err
+	}
+
+	if uiPath != "" {
+		uiPath = filepath.Clean(uiPath)
+	}
+
+	return memGB, CPUs, debug, uiPath, nil
 }
 
 func startFlags() (memGB int, CPUs int, err error) {
@@ -90,7 +123,7 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	fmt.Println("Checking environment")
 
-	memGB, CPUs, debug, err := prepareFlags()
+	memGB, CPUs, debug, uiPath, err := prepareFlags()
 	if err != nil {
 		errCh <- err
 		return
@@ -116,6 +149,14 @@ func prepare(ctx context.Context, errCh chan error) {
 		errCh <- fmt.Errorf("unable to create cache dir: %v", err)
 		return
 	}
+
+	err = ioutil.WriteFile(path.Join(ws.instanceDir, "ui_path.txt"),
+		[]byte(uiPath), 0600)
+	if err != nil {
+		errCh <- fmt.Errorf("Unable to write ui_path.txt : %v", err)
+		return
+	}
+	ws.UIPath = uiPath
 
 	err = prepareSSHKeys(ctx, ws)
 	if err != nil {

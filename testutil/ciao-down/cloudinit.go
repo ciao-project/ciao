@@ -30,6 +30,7 @@ curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
 #cloud-config
 mounts:
  - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L", "0", "0"]
+{{if len .UIPath }} - [hostui, {{.UIPath}}, 9p, "trans=virtio,version=9p2000.L", "0", "0"]{{end}}
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
@@ -47,6 +48,13 @@ write_files:
      printf "\n"
      printf "cd {{.GoPath}}/src/github.com/01org/ciao/testutil/singlevm\n"
      printf "./setup.sh\n"
+     printf "\n"
+     printf "To start the web-ui:\n"
+     printf "\n"
+     printf "cd {{if len .UIPath}}{{.UIPath}}{{else}}/home/{{.User}}/ciao-webui{{end}}\n"
+     printf "./deploy.sh production --config_file=/home/{{.User}}/local/webui_config.json\n"
+     printf "\n"
+     printf "Point your host's browser at https://localhost:3000"
    path: /etc/update-motd.d/10-ciao-help-text
    permissions: '0755'
  - content: |
@@ -56,6 +64,7 @@ write_files:
 runcmd:
  - echo "127.0.0.1 singlevm" >> /etc/hosts
  - mount hostgo
+{{if len .UIPath }} - mount hostui{{end}}
  - chown {{.User}}:{{.User}} /home/{{.User}}
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
@@ -76,7 +85,7 @@ runcmd:
 
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
  - echo "GOPATH={{.GoPath}}" >> /etc/environment
- - echo "PATH=$PATH:/usr/local/go/bin:{{$.GoPath}}/bin"  >> /etc/environment
+ - echo "PATH=$PATH:/usr/local/go/bin:{{$.GoPath}}/bin:/usr/local/nodejs/bin"  >> /etc/environment
  - {{template "PROXIES" .}}wget https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz -O /tmp/go1.7.4.linux-amd64.tar.gz
  - {{template "CHECK" .}}
  - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
@@ -110,6 +119,10 @@ runcmd:
  - {{template "PROXIES" .}}apt-get install gcc -y
  - {{template "CHECK" .}}
 
+ - curl -X PUT -d "Installing Make" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install make -y
+ - {{template "CHECK" .}}
+
  - curl -X PUT -d "Installing QEMU" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get install qemu-system-x86 -y
  - {{template "CHECK" .}}
@@ -126,6 +139,13 @@ runcmd:
  - {{template "PROXIES" .}}apt-get install python-openstackclient -y
  - {{template "CHECK" .}}
 
+ - curl -X PUT -d "Updating NodeJS sources" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
+ - {{template "CHECK" .}}
+ - curl -X PUT -d "Installing NodeJS" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install nodejs -y
+ - {{template "CHECK" .}}
+
  - curl -X PUT -d "Auto removing unused components" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}}apt-get auto-remove -y
  - {{template "CHECK" .}}
@@ -139,6 +159,24 @@ runcmd:
  - {{template "CHECK" .}}
 
  - chown {{.User}}:{{.User}} -R {{.GoPath}}
+
+ - curl -X PUT -d "Retrieving ciao-webui " 10.0.2.2:{{.HTTPServerPort}}
+{{ if len .UIPath }}
+ - cd {{.UIPath}}
+ - git status || sudo -u {{.User}} {{template "PROXIES" .}} git clone https://github.com/01org/ciao-webui.git .
+ - {{template "CHECK" .}}
+{{else }}
+ - cd /home/{{.User}}
+ - sudo -u {{.User}} {{template "PROXIES" .}} git clone https://github.com/01org/ciao-webui.git
+ - {{template "CHECK" .}}
+{{end}}
+
+{{if len .HTTPProxy}} - sudo -u {{.User}} npm config set proxy {{.HTTPProxy}}{{end}}
+{{if len .NodeHTTPSProxy}} - sudo -u {{.User}} npm config set https-proxy {{.NodeHTTPSProxy}}{{end}}
+
+ - mkdir -p /usr/local/nodejs
+ - chown {{.User}}:{{.User}} /usr/local/nodejs
+ - sudo -u {{.User}} npm config set prefix '/usr/local/nodejs'
 
  - curl -X PUT -d "Pulling ceph/demo" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "PROXIES" .}} docker pull ceph/demo

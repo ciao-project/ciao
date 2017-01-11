@@ -53,11 +53,19 @@ func bootVM(ctx context.Context, ws *workspace, memGB, CPUs int) error {
 		"-drive", fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage),
 		"-drive", fmt.Sprintf("file=%s,if=virtio,media=cdrom", isoPath),
 		"-daemonize", "-enable-kvm", "-cpu", "host",
-		"-net", "user,hostfwd=tcp::10022-:22", "-net", "nic,model=virtio",
+		"-net", "user,hostfwd=tcp::10022-:22,hostfwd=tcp::3000-:3000",
+		"-net", "nic,model=virtio",
 		"-fsdev", fsdevParam,
 		"-device", "virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=hostgo",
-		"-display", "none", "-vga", "none",
 	}
+	if ws.UIPath != "" {
+		fsdevParam := fmt.Sprintf("local,security_model=passthrough,id=fsdev1,path=%s",
+			ws.UIPath)
+		args = append(args, "-fsdev", fsdevParam)
+		args = append(args, "-device", "virtio-9p-pci,id=fs1,fsdev=fsdev1,mount_tag=hostui")
+	}
+	args = append(args, "-display", "none", "-vga", "none")
+
 	output, err := qemu.LaunchCustomQemu(ctx, "", args, nil, nil)
 	if err != nil {
 		return fmt.Errorf("Failed to launch qemu : %v, %s", err, output)
