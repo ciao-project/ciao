@@ -60,7 +60,7 @@ type test struct {
 var tests = []test{
 	{fmt.Sprintf("/v2/%s/volumes", testutil.ComputeUser), "/v2/{tenant}/volumes", validServices, validAdmins, 200},
 	{"/v2.1/tenants", "/v2.1/tenants", validServices, validAdmins, 200},
-	{"/v2.1/tenants", "/v2.1/tenants", validServices, invalidAdmins, 401},
+	{"/v2.1/tenants", "/v2.1/tenants", validServices, invalidAdmins, 200},
 	{fmt.Sprintf("/v2/%s/volumes", testutil.ComputeUser), "/v2/{tenant}/volumes", invalidServices, invalidAdmins, 401},
 	{fmt.Sprintf("/v2/%s/volumes", testutil.ComputeUser), "/v2/{tenant}/volumes", anyOldComputeServices, invalidAdmins, 200},
 	{fmt.Sprintf("/v2/%s/volumes", "unknowntenantid"), "/v2/{tenant}/volumes", validServices, invalidAdmins, 401},

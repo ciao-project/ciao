@@ -205,71 +205,66 @@ func validateProjectRole(client *gophercloud.ServiceClient, token string, projec
 	return false
 }
 
-func (h Handler) tenantToken(r *http.Request, tenant string) bool {
-	token := r.Header["X-Auth-Token"]
-	if token == nil {
-		return false
-	}
-
-	/* TODO Caching or PKI */
-	for _, s := range h.ValidServices {
-		if validateService(h.Client, token[0], tenant, s.ServiceType, s.ServiceName) == true {
-			return true
-		}
-
-	}
-
-	for _, s := range h.ValidServices {
-		if validateService(h.Client, token[0], tenant, s.ServiceType, "") == true {
-			return true
-		}
-
-	}
-
-	return false
-}
-
-func (h Handler) adminToken(r *http.Request) bool {
-	token := r.Header["X-Auth-Token"]
-	if token == nil {
-		return false
-	}
+// checkToken verifies that given the token, the request is performed as
+// a valid admin and that such token is consistent with the services
+// attempted to be used in the received request
+func (h Handler) checkToken(r *http.Request, tenant string, token string) bool {
 
 	/* TODO Caching or PKI */
 	for _, a := range h.ValidAdmins {
-		if validateProjectRole(h.Client, token[0], a.Project, a.Role) == true {
+		if validateProjectRole(h.Client, token, a.Project, a.Role) == true {
 			return true
 		}
 	}
 
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
+	for _, s := range h.ValidServices {
+		if validateService(h.Client, token, tenant, s.ServiceType, s.ServiceName) == true {
+			return true
+		} else if validateService(h.Client, token, tenant, s.ServiceType, "") == true {
+			return true
+		}
+
+	}
+
 	glog.V(2).Infof("Invalid token for [%s]", tenant)
 	return false
 }
 
 func (h Handler) validateToken(r *http.Request) bool {
+
+	token := r.Header["X-Auth-Token"]
+	if len(token) == 0 {
+		return false
+	}
+
 	vars := mux.Vars(r)
-	tenant := vars["tenant"]
+	tenantFromVars := vars["tenant"]
 
-	glog.V(2).Infof("Token validation for [%s]", tenant)
+	// tenant may not exists on vars due to API endpoints URI lacking of
+	// tenantID (such as the image service), for this case we need to
+	// retrieve tenant from the given X-Auth-Token.
+	res := v3tokens.Get(h.Client, token[0])
+	result := getResult{res}
+	p, err := result.extractProject()
+	if err != nil {
+		glog.V(2).Infof("Unable to retrieve tenant from token [%s]", token)
+		return false
+	}
+	tenantFromToken := p.ID
 
-	// We do not want to unconditionally check for an admin token, this is inefficient.
-	// We check for an admin token iff:
-	// - We do not have a tenant variable
-	// - We do have one but it does not match the token
-
-	/* If we don't have a tenant parameter, are we admin ? */
-	if tenant == "" {
-		return h.adminToken(r)
+	if tenantFromVars == "" {
+		glog.V(2).Infof("Token validation for [%s]", tenantFromToken)
+		return h.checkToken(r, tenantFromToken, token[0])
+	}
+	// verify that tenant from token is consistent with the tenant
+	// obtained from the URI endpoint request
+	if tenantFromVars != tenantFromToken {
+		glog.Errorf("expected tenant %v, got %v\n", tenantFromToken, tenantFromVars)
+		return false
 	}
 
-	/* If we have a tenant parameter that does not match the token are we admin ? */
-	if h.tenantToken(r, tenant) == false {
-		return h.adminToken(r)
-	}
-
-	return true
+	glog.V(2).Infof("Token validation for [%s]", tenantFromVars)
+	return h.checkToken(r, tenantFromVars, token[0])
 }
 
 // ValidService defines service name and type of the api service
