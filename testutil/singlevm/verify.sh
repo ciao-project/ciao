@@ -44,7 +44,7 @@ function checkForNetworkArtifacts() {
 }
 
 function rebootCNCI {
-	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" <<-EOF
+	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" cloud-admin@"$ssh_ip" <<-EOF
 	sudo reboot now
 	EOF
 
@@ -53,7 +53,7 @@ function rebootCNCI {
 	exitOnError $?  "Unable to ping CNCI after restart"
 
 	#Dump the tables for visual verification
-	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" <<-EOF
+	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" cloud-admin@"$ssh_ip" <<-EOF
 	sudo iptables-save
 	sudo ip l
 	sudo ip a
@@ -71,7 +71,7 @@ function checkExtIPConnectivity {
     ping -w 90 -c 3 $testip
     ping_result=$?
     #Make sure we are able to reach the VM
-    test_hostname=`ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$testip" hostname`
+    test_hostname=`ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$testip" hostname -s`
     sudo ip route del 203.0.113.0/24 dev ciaovlan
 
     exitOnError $ping_result "Unable to ping external IP"
@@ -87,15 +87,17 @@ function checkExtIPConnectivity {
 
 #There are too many failsafes in the CNCI. Hence just disable iptables utility to trigger failure
 #This also ensures that the CNCI is always left in a consistent state (sans the permission)
+# this function to be run on the CNCI
 function triggerIPTablesFailure {
-	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" <<-EOF
+	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" cloud-admin@"$ssh_ip" <<-EOF
 	sudo chmod -x /usr/bin/iptables
 	EOF
 }
 
 #Restore the iptables so that the cluster is usable
+# this function to be run on the CNCI
 function restoreIPTables {
-	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" <<-EOF
+	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" cloud-admin@"$ssh_ip" <<-EOF
 	sudo chmod +x /usr/bin/iptables
 	EOF
 }
@@ -197,10 +199,10 @@ function deleteExternalIPPool() {
 # Read cluster env variables
 . $ciao_bin/demo.sh
 
-"$ciao_gobin"/ciao-cli workload list
+vm_wlid=$("$ciao_gobin"/ciao-cli workload list -f='{{if gt (len .) 0}}{{(index . 0).ID}}{{end}}')
 exitOnError $?  "Unable to list workloads"
 
-"$ciao_gobin"/ciao-cli instance add --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 --instances=2
+"$ciao_gobin"/ciao-cli instance add --workload=$vm_wlid --instances=2
 exitOnError $?  "Unable to launch VMs"
 
 "$ciao_gobin"/ciao-cli instance list
@@ -209,7 +211,9 @@ exitOnError $? "Unable to list instances"
 #Launch containers
 #Pre-cache the image to reduce the start latency
 sudo docker pull debian
-"$ciao_gobin"/ciao-cli instance add --workload=ca957444-fa46-11e5-94f9-38607786d9ec --instances=1
+debian_wlid=$("$ciao_gobin"/ciao-cli workload list -f='{{$x := filter . "Name" "Debian latest test container"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
+echo "Starting workload $debian_wlid"
+"$ciao_gobin"/ciao-cli instance add --workload=$debian_wlid --instances=1
 exitOnError $? "Unable to launch containers"
 
 sleep 5
@@ -220,7 +224,7 @@ exitOnError $? "Unable to list instances"
 container_1=`sudo docker ps -q -l`
 container_1_ip=`sudo docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $container_1`
 
-"$ciao_gobin"/ciao-cli instance add --workload=ca957444-fa46-11e5-94f9-38607786d9ec --instances=1
+"$ciao_gobin"/ciao-cli instance add --workload=$debian_wlid --instances=1
 exitOnError $?  "Unable to launch containers"
 sleep 5
 
@@ -238,7 +242,7 @@ retry=0
 until [ $retry -ge 6 ]
 do
 	ssh_ip=""
-	ssh_ip=$("$ciao_gobin"/ciao-cli instance list --workload=e35ed972-c46c-4aad-a1e7-ef103ae079a2 -f='{{if gt (len .) 0}}{{(index . 0).SSHIP}}{{end}}')
+	ssh_ip=$("$ciao_gobin"/ciao-cli instance list --workload=$vm_wlid -f='{{if gt (len .) 0}}{{(index . 0).SSHIP}}{{end}}')
 
 	if [ "$ssh_ip" == "" ] 
 	then
@@ -249,7 +253,6 @@ do
 	fi
 
 	ssh_check=$(head -1 < /dev/tcp/"$ssh_ip"/33002)
-	echo "$ssh_check"
 
 	echo "Attempting to ssh to: $ssh_ip"
 
