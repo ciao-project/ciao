@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -57,12 +58,14 @@ type workspace struct {
 	Home           string
 	HTTPProxy      string
 	HTTPSProxy     string
+	NodeHTTPSProxy string
 	NoProxy        string
 	User           string
 	PublicKey      string
 	HTTPServerPort int
 	GitUserName    string
 	GitEmail       string
+	UIPath         string
 	ciaoDir        string
 	instanceDir    string
 	keyPath        string
@@ -116,7 +119,30 @@ func prepareSSHKeys(ctx context.Context, ws *workspace) error {
 	return nil
 }
 
+func getProxy(upper, lower string) (string, error) {
+	proxy := os.Getenv(upper)
+	if proxy == "" {
+		proxy = os.Getenv(lower)
+	}
+
+	if proxy == "" {
+		return "", nil
+	}
+
+	if proxy[len(proxy)-1] == '/' {
+		proxy = proxy[:len(proxy)-1]
+	}
+
+	proxyURL, err := url.Parse(proxy)
+	if err != nil {
+		return "", fmt.Errorf("Failed to parse %s : %v", proxy, err)
+	}
+	return proxyURL.String(), nil
+}
+
 func prepareEnv(ctx context.Context) (*workspace, error) {
+	var err error
+
 	ws := &workspace{HTTPServerPort: 8080}
 	ws.GoPath = os.Getenv("GOPATH")
 	if ws.GoPath == "" {
@@ -131,14 +157,20 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 		return nil, fmt.Errorf("USER is not defined")
 	}
 
-	ws.HTTPProxy = os.Getenv("HTTP_PROXY")
-	if ws.HTTPProxy == "" {
-		ws.HTTPProxy = os.Getenv("http_proxy")
+	ws.HTTPProxy, err = getProxy("HTTP_PROXY", "http_proxy")
+	if err != nil {
+		return nil, err
 	}
 
-	ws.HTTPSProxy = os.Getenv("HTTPS_PROXY")
-	if ws.HTTPSProxy == "" {
-		ws.HTTPSProxy = os.Getenv("https_proxy")
+	ws.HTTPSProxy, err = getProxy("HTTPS_PROXY", "https_proxy")
+	if err != nil {
+		return nil, err
+	}
+
+	if ws.HTTPSProxy != "" {
+		u, _ := url.Parse(ws.HTTPSProxy)
+		u.Scheme = "http"
+		ws.NodeHTTPSProxy = u.String()
 	}
 
 	ws.NoProxy = os.Getenv("no_proxy")
@@ -155,6 +187,11 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	data, err = exec.Command("git", "config", "--global", "user.email").Output()
 	if err == nil {
 		ws.GitEmail = strings.TrimSpace(string(data))
+	}
+
+	data, err = ioutil.ReadFile(path.Join(ws.instanceDir, "ui_path.txt"))
+	if err == nil {
+		ws.UIPath = string(data)
 	}
 
 	return ws, nil

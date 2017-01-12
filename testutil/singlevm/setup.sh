@@ -9,6 +9,8 @@ ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
 keystone_key="$ciao_bin"/keystone_key.pem
 keystone_cert="$ciao_bin"/keystone_cert.pem
+ui_key=ui_key.pem
+ui_cert=ui_cert.pem
 workload_sshkey="$ciao_bin"/testkey
 ciao_pki_path=/etc/pki/ciao
 export no_proxy=$no_proxy,$ciao_vlan_ip,$ciao_host
@@ -28,12 +30,15 @@ fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 download=0
 conf_file="$ciao_bin"/configuration.yaml
+webui_conf_file="$ciao_bin"/webui_config.json
 ciao_username=csr
 ciao_password=hello
 ciao_admin_username=admin
 ciao_admin_password=giveciaoatry
 ciao_demo_username=demo
 ciao_demo_password=hello
+compute_api_port=8774
+storage_api_port=8776
 keystone_public_port=5000
 keystone_admin_port=35357
 mysql_data_dir="${ciao_bin}"/mysql
@@ -161,6 +166,69 @@ configure:
 EOF
 ) > $conf_file
 
+echo "Generating webui configuration file $webui_conf_file"
+(
+cat <<-EOF
+{
+    "production": {
+        "controller": {
+            "host": "${ciao_host}",
+            "port": "${compute_api_port}",
+            "protocol": "https"
+        },
+        "storage":{
+            "host": "${ciao_host}",
+            "port": "${storage_api_port}",
+            "protocol": "https"
+        },
+        "keystone": {
+            "host": "${ciao_host}",
+            "port": "${keystone_admin_port}",
+            "protocol": "https",
+            "uri": "/v3/auth/tokens"
+        },
+        "ui": {
+            "protocol": "https",
+            "certificates": {
+                "key": "${ciao_pki_path}/${ui_key}",
+                "cert": "${ciao_pki_path}/${ui_cert}",
+                "passphrase": "",
+                "trusted": []
+            }
+        }
+    },
+    "development": {
+        "controller": {
+            "host": "${ciao_host}",
+            "port": "${compute_api_port}",
+            "protocol": "https"
+        },
+        "storage":{
+            "host": "${ciao_host}",
+            "port": "${storage_api_port}",
+            "protocol": "https"
+        },
+        "keystone": {
+            "host": "${ciao_host}",
+            "port": "${keystone_admin_port}",
+            "protocol": "https",
+            "uri": "/v3/auth/tokens"
+        },
+        "ui": {
+            "protocol": "https",
+            "certificates": {
+                "key": "${ciao_pki_path}/${ui_key}",
+                "cert": "${ciao_pki_path}/${ui_cert}",
+                "passphrase": "",
+                "trusted": []
+            }
+        }
+    }
+}
+EOF
+) > $webui_conf_file
+
+
 sudo mkdir -p ${ciao_dir}/images
 if [ ! -d ${ciao_dir}/images ]
 then
@@ -244,6 +312,13 @@ sudo install -m 0644 -t "$ciao_pki_path" \
     "$ciao_bin"/"cert-Controller-""$ciao_host"".pem"
 sudo install -m 0644 -t "$ciao_pki_path" \
     "$ciao_bin"/"CAcert-""$ciao_host"".pem"
+
+if [ ! -f ${ciao_pki_path}/${ui_cert} ] || [ ! -f ${ciao_pki_path}/${ui_key} ]; then
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+	    -keyout ${ciao_bin}/${ui_key} -out ${ciao_bin}/${ui_cert} \
+	    -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=localhost"
+    sudo install -m 0644 -t "$ciao_pki_path" ${ciao_bin}/${ui_cert} ${ciao_bin}/${ui_key}
+fi
 
 #Update system's trusted certificates
 cacert_prog_ubuntu=$(type -p update-ca-certificates)
