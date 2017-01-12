@@ -279,8 +279,10 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			glog.Warningf("Error unmarshalling AttachVolumeFailure: %v", err)
 			return
 		}
-		client.ctl.ds.AttachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
-
+		err = client.ctl.ds.AttachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
+		if err != nil {
+			glog.Warningf("Error handling AttachVolumeFailure in datastore: %v", err)
+		}
 	case ssntp.DetachVolumeFailure:
 		var failure payloads.ErrorDetachVolumeFailure
 		err := yaml.Unmarshal(payload, &failure)
@@ -288,8 +290,11 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 			glog.Warningf("Error unmarshalling DetachVolumeFailure: %v", err)
 			return
 		}
-		client.ctl.ds.DetachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
 
+		err = client.ctl.ds.DetachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
+		if err != nil {
+			glog.Warningf("Error handling DetachVolumeFailure in datastore: %v", err)
+		}
 	case ssntp.AssignPublicIPFailure:
 		var failure payloads.ErrorPublicIPFailure
 		err := yaml.Unmarshal(payload, &failure)

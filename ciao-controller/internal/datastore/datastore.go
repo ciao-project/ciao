@@ -1010,49 +1010,62 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 // AttachVolumeFailure will clean up after a failure to attach a volume.
 // The volume state will be changed back to available, and an error message
 // will be logged.
-func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, reason payloads.AttachVolumeFailureReason) {
+func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, reason payloads.AttachVolumeFailureReason) error {
 	// update the block data to reflect correct state
 	data, err := ds.GetBlockDevice(volumeID)
-	if err == nil {
-		data.State = types.Available
-		_ = ds.UpdateBlockDevice(data)
+	if err != nil {
+		return errors.Wrapf(err, "error getting block device for volume (%v)", volumeID)
+	}
+
+	data.State = types.Available
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
 	}
 
 	// get owner of this instance
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
-		return
+		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
 	msg := fmt.Sprintf("Attach Volume Failure %s to %s: %s", volumeID, instanceID, reason.String())
 
 	ds.db.logEvent(i.TenantID, string(userError), msg)
+
+	return nil
 }
 
 // DetachVolumeFailure will clean up after a failure to detach a volume.
 // The volume state will be changed back to available, and an error message
 // will be logged.
-func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, reason payloads.DetachVolumeFailureReason) {
+func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, reason payloads.DetachVolumeFailureReason) error {
 	// update the block data to reflect correct state
 	data, err := ds.GetBlockDevice(volumeID)
+	if err != nil {
+		return errors.Wrapf(err, "error getting block device for volume (%v)", volumeID)
+	}
 
 	// because controller wouldn't allow a detach if state
 	// wasn't initially InUse, we can blindly set this back
 	// to InUse.
-	if err == nil {
-		data.State = types.InUse
-		_ = ds.UpdateBlockDevice(data)
+
+	data.State = types.InUse
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
 	}
 
 	// get owner of this instance
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
-		return
+		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
 	msg := fmt.Sprintf("Detach Volume Failure %s from %s: %s", volumeID, instanceID, reason.String())
 
 	ds.db.logEvent(i.TenantID, string(userError), msg)
+	return nil
 }
 
 func (ds *Datastore) deleteInstance(instanceID string) (string, error) {

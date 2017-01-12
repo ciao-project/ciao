@@ -1420,7 +1420,10 @@ func TestDetachVolumeFailure(t *testing.T) {
 	}
 
 	// pretend we got a failure to attach.
-	ds.DetachVolumeFailure(instance.ID, data.ID, payloads.DetachVolumeNotAttached)
+	err = ds.DetachVolumeFailure(instance.ID, data.ID, payloads.DetachVolumeNotAttached)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// make sure state has been switched to InUse again.
 	bd, err := ds.GetBlockDevice(data.ID)
