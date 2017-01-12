@@ -174,12 +174,12 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		return nil, errors.New("Missing number of instances to start")
 	}
 
-	wl, err := c.ds.GetWorkload(w.WorkloadID)
+	wl, err := c.ds.GetWorkload(w.TenantID, w.WorkloadID)
 	if err != nil {
 		return nil, err
 	}
 
-	if !isCNCIWorkload(wl) {
+	if !isCNCIWorkload(&wl) {
 		err := c.confirmTenant(w.TenantID)
 		if err != nil {
 			return nil, err
@@ -190,7 +190,7 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 
 	for i := 0; i < w.Instances; i++ {
 		startTime := time.Now()
-		instance, err := newInstance(c, w.TenantID, wl, w.Volumes)
+		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes)
 		if err != nil {
 			glog.V(2).Info("error newInstance")
 			e = err

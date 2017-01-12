@@ -47,7 +47,6 @@ type Config struct {
 	DBBackend         persistentStore
 	PersistentURI     string
 	TransientURI      string
-	InitTablesPath    string
 	InitWorkloadsPath string
 }
 
@@ -59,17 +58,13 @@ const (
 	userError userEventType = "error"
 )
 
-type workload struct {
-	types.Workload
-	filename string
-}
-
 type tenant struct {
 	types.Tenant
 	network   map[int]map[int]bool
 	subnets   []int
 	instances map[string]*types.Instance
 	devices   map[string]types.BlockData
+	workloads []types.Workload
 }
 
 type node struct {
@@ -92,10 +87,7 @@ type persistentStore interface {
 	getEventLog() (logEntries []*types.LogEntry, err error)
 
 	// interfaces related to workloads
-	getCNCIWorkloadID() (id string, err error)
-	getWorkload(id string) (*workload, error)
-	getWorkloads() ([]*workload, error)
-	updateWorkload(wl workload) error
+	updateWorkload(wl types.Workload) error
 
 	// interfaces related to tenants
 	addLimit(tenantID string, resourceID int, limit int) (err error)
@@ -157,9 +149,7 @@ type Datastore struct {
 	tenants     map[string]*tenant
 	tenantsLock *sync.RWMutex
 
-	workloads      map[string]*workload
-	workloadsLock  *sync.RWMutex
-	cnciWorkloadID string
+	cnciWorkload types.Workload
 
 	nodes     map[string]*node
 	nodesLock *sync.RWMutex
@@ -233,6 +223,9 @@ func (ds *Datastore) Init(config Config) error {
 	ds.instanceLastStat = make(map[string]types.CiaoServerStats)
 	ds.instanceLastStatLock = &sync.RWMutex{}
 
+	// generate the CNCI workload
+	ds.generateCNCIWorkload()
+
 	// warning, do not use the tenant cache to get
 	// networking information right now.  that is not
 	// updated, just the resources
@@ -260,24 +253,6 @@ func (ds *Datastore) Init(config Config) error {
 	}
 	for i := range tenants {
 		ds.tenants[tenants[i].ID] = tenants[i]
-	}
-
-	// cache the workloads into a map so that we can
-	// quickly index
-	ds.workloadsLock = &sync.RWMutex{}
-	ds.workloads = make(map[string]*workload)
-	workloads, err := ds.getWorkloads()
-	if err != nil {
-		return errors.Wrap(err, "error getting workloads from database")
-	}
-
-	for i := range workloads {
-		ds.workloads[workloads[i].ID] = workloads[i]
-	}
-
-	ds.cnciWorkloadID, err = ds.db.getCNCIWorkloadID()
-	if err != nil {
-		return errors.Wrap(err, "error getting CNCI workload from database")
 	}
 
 	ds.nodesLock = &sync.RWMutex{}
@@ -448,85 +423,85 @@ func (ds *Datastore) GetTenant(id string) (*types.Tenant, error) {
 // AddWorkload is used to add a new workload to the datastore.
 // Both cache and persistent store are updated.
 func (ds *Datastore) AddWorkload(w types.Workload) error {
-	ds.workloadsLock.Lock()
-	defer ds.workloadsLock.Unlock()
+	ds.tenantsLock.Lock()
+	defer ds.tenantsLock.Unlock()
 
-	wl := workload{
-		Workload: w,
-		filename: fmt.Sprintf("%s_config.yaml", w.ID),
+	tenant, ok := ds.tenants[w.TenantID]
+	if !ok {
+		return ErrNoTenant
 	}
 
-	err := ds.db.updateWorkload(wl)
+	err := ds.db.updateWorkload(w)
 	if err != nil {
-		return errors.Wrapf(err, "error updating workload (%v) in database", wl.ID)
+		return errors.Wrapf(err, "error updating workload (%v) in database", w.ID)
 	}
 
 	// cache it.
-	ds.workloads[wl.ID] = &wl
+	ds.tenants[w.TenantID].workloads = append(tenant.workloads, w)
 
 	return nil
 }
 
-func (ds *Datastore) getWorkload(id string) (*workload, error) {
-	// check the cache first
-	ds.workloadsLock.RLock()
-	wl := ds.workloads[id]
-	ds.workloadsLock.RUnlock()
-
-	if wl != nil {
-		return wl, nil
-	}
-
-	wl, err := ds.db.getWorkload(id)
-	return wl, errors.Wrapf(err, "error getting workload (%v) from database", id)
-}
-
 // GetWorkload returns details about a specific workload referenced by id
-func (ds *Datastore) GetWorkload(id string) (*types.Workload, error) {
-	wl, err := ds.getWorkload(id)
-	if err != nil {
-		return nil, err
+func (ds *Datastore) GetWorkload(tenantID string, ID string) (types.Workload, error) {
+	if ID == ds.cnciWorkload.ID {
+		return ds.cnciWorkload, nil
 	}
 
-	return &wl.Workload, nil
+	ds.tenantsLock.RLock()
+	defer ds.tenantsLock.RUnlock()
+
+	// get any public workloads. These are part of our
+	// dummy tenant "public".
+	public, ok := ds.tenants["public"]
+	if ok {
+		for _, wl := range public.workloads {
+			if wl.ID == ID {
+				return wl, nil
+			}
+		}
+	}
+
+	tenant, ok := ds.tenants[tenantID]
+	if !ok {
+		return types.Workload{}, ErrNoTenant
+	}
+
+	for _, wl := range tenant.workloads {
+		if wl.ID == ID {
+			return wl, nil
+		}
+	}
+
+	return types.Workload{}, types.ErrWorkloadNotFound
 }
 
-func (ds *Datastore) getWorkloads() ([]*workload, error) {
-	var workloads []*workload
+// GetWorkloads retrieves the list of workloads for a particular tenant.
+// if there are any public workloads, they will be included in the returned list.
+func (ds *Datastore) GetWorkloads(tenantID string) ([]types.Workload, error) {
+	var workloads []types.Workload
 
 	// check the cache first
-	ds.workloadsLock.RLock()
-	if len(ds.workloads) > 0 {
-		for _, wl := range ds.workloads {
+	ds.tenantsLock.RLock()
+	defer ds.tenantsLock.RUnlock()
+
+	// get any public workloads. These are part of our
+	// dummy tenant "public".
+	public, ok := ds.tenants["public"]
+	if ok {
+		for _, wl := range public.workloads {
 			workloads = append(workloads, wl)
 		}
-		ds.workloadsLock.RUnlock()
+	}
+
+	// if there isn't a tenant here, it isn't necessarily an
+	// error.
+	tenant, ok := ds.tenants[tenantID]
+	if !ok {
 		return workloads, nil
 	}
-	ds.workloadsLock.RUnlock()
 
-	workloads, err := ds.db.getWorkloads()
-	return workloads, errors.Wrapf(err, "error getting workloads from database")
-}
-
-// GetWorkloads returns all known tenant workloads
-func (ds *Datastore) GetWorkloads() ([]*types.Workload, error) {
-	var workloads []*types.Workload
-
-	// yes, we have loop through all the workloads twice
-	// now.  We can revisit this later if it proves to
-	// be something we should optimize, but for now I
-	// think it'd be better to reuse the code.
-	wls, err := ds.getWorkloads()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(wls) > 0 {
-		for _, wl := range wls {
-			workloads = append(workloads, &wl.Workload)
-		}
-	}
+	workloads = append(workloads, tenant.workloads...)
 
 	return workloads, nil
 }
@@ -1424,11 +1399,11 @@ func (ds *Datastore) GetTenantCNCISummary(cnci string) ([]types.TenantCNCI, erro
 // GetCNCIWorkloadID returns the UUID of the workload template
 // for the CNCI workload
 func (ds *Datastore) GetCNCIWorkloadID() (string, error) {
-	if ds.cnciWorkloadID == "" {
+	if ds.cnciWorkload.ID == "" {
 		return "", errors.New("No CNCI Workload in datastore")
 	}
 
-	return ds.cnciWorkloadID, nil
+	return ds.cnciWorkload.ID, nil
 }
 
 // GetNodeSummary provides a summary the state and count of instances running per node.
@@ -2294,4 +2269,56 @@ func (ds *Datastore) UnMapExternalIP(address string) error {
 	ds.pools[pool.ID] = pool
 
 	return nil
+}
+
+func (ds *Datastore) generateCNCIWorkload() {
+	// generate the CNCI workload.
+	config := `---
+#cloud-config
+users:
+  - name: cloud-admin
+    gecos: CIAO Cloud Admin
+    lock-passwd: false
+    passwd: $6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.
+    sudo: ALL=(ALL) NOPASSWD:ALL
+...
+`
+	cpus := payloads.RequestedResource{
+		Type:      payloads.VCPUs,
+		Value:     4,
+		Mandatory: false,
+	}
+
+	mem := payloads.RequestedResource{
+		Type:      payloads.MemMB,
+		Value:     128,
+		Mandatory: false,
+	}
+
+	network := payloads.RequestedResource{
+		Type:      payloads.NetworkNode,
+		Value:     1,
+		Mandatory: true,
+	}
+
+	storage := types.StorageResource{
+		ID:         "",
+		Bootable:   true,
+		Ephemeral:  false,
+		SourceType: types.ImageService,
+		SourceID:   "4e16e743-265a-4bf2-9fd1-57ada0b28904",
+	}
+
+	wl := types.Workload{
+		ID:          uuid.Generate().String(),
+		Description: "CNCI",
+		FWType:      string(payloads.EFI),
+		VMType:      payloads.QEMU,
+		Config:      config,
+		Defaults:    []payloads.RequestedResource{cpus, mem, network},
+		Storage:     []types.StorageResource{storage},
+	}
+
+	// for now we have a single global cnci workload.
+	ds.cnciWorkload = wl
 }

@@ -124,7 +124,6 @@ func main() {
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:" + *persistentDatastoreLocation,
 		TransientURI:      "file:" + *transientDatastoreLocation,
-		InitTablesPath:    *tablesInitPath,
 		InitWorkloadsPath: *workloadsPath,
 	}
 

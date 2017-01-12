@@ -43,7 +43,7 @@ func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
 	return
 }
 
-func addTestInstance(tenant *types.Tenant, workload *types.Workload) (instance *types.Instance, err error) {
+func addTestInstance(tenant *types.Tenant, workload types.Workload) (instance *types.Instance, err error) {
 	id := uuid.Generate()
 
 	ip, err := ds.AllocateTenantIP(tenant.ID)
@@ -79,6 +79,54 @@ func addTestInstance(tenant *types.Tenant, workload *types.Workload) (instance *
 	return
 }
 
+func addTestWorkload(tenantID string) error {
+	testConfig := `
+---
+#cloud-config
+users:
+  - name: demouser
+    gecos: CIAO Demo User
+    lock-passwd: false
+    passwd: $6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDerQfD+qkb0V0XdQs8SBWqy4sQmqYFP96n/kI4Cq162w4UE8pTxy0ozAPldOvBJjljMvgaNKSAddknkhGcrNUvvJsUcZFm2qkafi32WyBdGFvIc45A+8O7vsxPXgHEsS9E3ylEALXAC3D0eX7pPtRiAbasLlY+VcACRqr3bPDSZTfpCmIkV2334uZD9iwOvTVeR+FjGDqsfju4DyzoAIqpPasE0+wk4Vbog7osP+qvn1gj5kQyusmr62+t0wx+bs2dF5QemksnFOswUrv9PGLhZgSMmDQrRYuvEfIAC7IdN/hfjTn0OokzljBiuWQ4WIIba/7xTYLVujJV65qH3heaSMxJJD7eH9QZs9RdbbdTXMFuJFsHV2OF6wZRp18tTNZZJMqiHZZSndC5WP1WrUo3Au/9a+ighSaOiVddHsPG07C/TOEnr3IrwU7c9yIHeeRFHmcQs9K0+n9XtrmrQxDQ9/mLkfje80Ko25VJ/QpAQPzCKh2KfQ4RD+/PxBUScx/lHIHOIhTSCh57ic629zWgk0coSQDi4MKSa5guDr3cuDvt4RihGviDM6V68ewsl0gh6Z9c0Hw7hU0vky4oxak5AiySiPz0FtsOnAzIL0UON+yMuKzrJgLjTKodwLQ0wlBXu43cD+P8VXwQYeqNSzfrhBnHqsrMf4lTLtc7kDDTcw== ciao@ciao
+...
+	`
+	cpus := payloads.RequestedResource{
+		Type:      payloads.VCPUs,
+		Value:     2,
+		Mandatory: false,
+	}
+
+	mem := payloads.RequestedResource{
+		Type:      payloads.MemMB,
+		Value:     512,
+		Mandatory: false,
+	}
+
+	storage := types.StorageResource{
+		ID:        "",
+		Ephemeral: true,
+		Size:      20,
+	}
+
+	wl := types.Workload{
+		ID:          uuid.Generate().String(),
+		TenantID:    tenantID,
+		Description: "testWorkload",
+		FWType:      string(payloads.EFI),
+		VMType:      payloads.QEMU,
+		ImageID:     uuid.Generate().String(),
+		ImageName:   "",
+		Config:      testConfig,
+		Defaults:    []payloads.RequestedResource{cpus, mem},
+		Storage:     []types.StorageResource{storage},
+	}
+
+	return ds.AddWorkload(wl)
+}
+
 func addTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
@@ -96,6 +144,9 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 	if err != nil {
 		return
 	}
+
+	// add a new workload
+	err = addTestWorkload(tuuid.String())
 	return
 }
 
@@ -105,7 +156,7 @@ func addTestInstanceStats(t *testing.T) ([]*types.Instance, payloads.Stat) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,24 +273,13 @@ func TestTenantCreate(t *testing.T) {
 	}
 }
 
-func TestGetWorkloads(t *testing.T) {
-	wls, err := ds.getWorkloads()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("No Workloads Found")
-	}
-}
-
 func TestAddInstance(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +300,7 @@ func TestDeleteInstanceResources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +370,7 @@ func TestDeleteInstanceNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +436,7 @@ func TestGetAllInstances(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -431,7 +471,7 @@ func TestGetAllInstancesFromTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -513,7 +553,7 @@ func TestHandleStats(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +627,7 @@ func TestGetInstanceLastStats(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -650,7 +690,7 @@ func TestGetNodeLastStats(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -913,7 +953,7 @@ func TestAllocateTenantIP(t *testing.T) {
 }
 
 func TestGetCNCIWorkloadID(t *testing.T) {
-	_, err := ds.db.getCNCIWorkloadID()
+	_, err := ds.GetCNCIWorkloadID()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1165,54 +1205,13 @@ func TestAddTenantChan(t *testing.T) {
 	}
 }
 
-func TestGetWorkload(t *testing.T) {
-	wls, err := ds.GetWorkloads()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wl, err := ds.GetWorkload(wls[0].ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if wl != wls[0] {
-		t.Fatal("Did not get correct workload")
-	}
-
-	// clear cache to exercise sql
-	// clear out of cache to exercise sql
-	ds.workloadsLock.Lock()
-	delete(ds.workloads, wl.ID)
-	ds.workloadsLock.Unlock()
-
-	wl2, err := ds.GetWorkload(wls[0].ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if wl2.ID != wl.ID {
-		t.Fatal("Did not get correct workload from db")
-	}
-
-	// put it back in the cache
-	work, err := ds.getWorkload(wl.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ds.workloadsLock.Lock()
-	ds.workloads[wl.ID] = work
-	ds.workloadsLock.Unlock()
-}
-
 func TestRestartFailure(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1236,7 +1235,7 @@ func TestStopFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1260,7 +1259,7 @@ func TestStartFailureFullCloud(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1328,7 +1327,7 @@ func TestAttachVolumeFailure(t *testing.T) {
 	}
 
 	// add test instances
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(newTenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1384,7 +1383,7 @@ func TestDetachVolumeFailure(t *testing.T) {
 	}
 
 	// add test instances
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(newTenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1680,7 +1679,7 @@ func TestCreateStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1738,7 +1737,7 @@ func TestUpdateStorageAttachmentExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1802,7 +1801,7 @@ func TestUpdateStorageAttachmentNotExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1845,7 +1844,7 @@ func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1899,7 +1898,7 @@ func TestGetStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1955,7 +1954,7 @@ func TestGetStorageAttachmentError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1997,7 +1996,7 @@ func TestDeleteStorageAttachment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2063,7 +2062,7 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2134,7 +2133,7 @@ func TestGetVolumeAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2460,7 +2459,7 @@ func TestDeleteExternalSubnet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2539,7 +2538,7 @@ func TestDeleteExternalIPs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2605,7 +2604,7 @@ func TestMapIPs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2690,7 +2689,7 @@ func TestGetMappedIPs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ds.GetWorkloads()
+	wls, err := ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2744,7 +2743,6 @@ func TestGetMappedIPs(t *testing.T) {
 
 var ds *Datastore
 
-var tablesInitPath = flag.String("tables_init_path", "../../tables", "path to csv files")
 var workloadsPath = flag.String("workloads_path", "../../workloads", "path to yaml files")
 
 func TestMain(m *testing.M) {
@@ -2756,7 +2754,6 @@ func TestMain(m *testing.M) {
 		DBBackend:         &MemoryDB{},
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
 		TransientURI:      "file:memdb2?mode=memory&cache=shared",
-		InitTablesPath:    *tablesInitPath,
 		InitWorkloadsPath: *workloadsPath,
 	}
 

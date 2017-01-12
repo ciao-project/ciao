@@ -58,7 +58,6 @@ func isCNCIWorkload(workload *types.Workload) bool {
 
 func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 	volumes []storage.BlockDevice) (*instance, error) {
-
 	id := uuid.Generate()
 
 	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes)
@@ -185,7 +184,6 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 }
 
 func getStorage(c *controller, s types.StorageResource, tenant string, instanceID string) (payloads.StorageResource, error) {
-
 	// storage already exists, use preexisting definition.
 	if s.ID != "" {
 		return payloads.StorageResource{ID: s.ID, Bootable: s.Bootable}, nil

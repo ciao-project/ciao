@@ -31,7 +31,7 @@ import (
 )
 
 func instanceToServer(ctl *controller, instance *types.Instance) (compute.ServerDetails, error) {
-	workload, err := ctl.ds.GetWorkload(instance.WorkloadID)
+	workload, err := ctl.ds.GetWorkload(instance.TenantID, instance.WorkloadID)
 	if err != nil {
 		return compute.ServerDetails{}, err
 	}
@@ -526,8 +526,7 @@ func (c *controller) StopServer(tenant string, ID string) error {
 func (c *controller) ListFlavors(tenant string) (compute.Flavors, error) {
 	flavors := compute.NewComputeFlavors()
 
-	// we are ignoring tenant for now
-	workloads, err := c.ds.GetWorkloads()
+	workloads, err := c.ds.GetWorkloads(tenant)
 	if err != nil {
 		return flavors, err
 	}
@@ -548,7 +547,7 @@ func (c *controller) ListFlavors(tenant string) (compute.Flavors, error) {
 	return flavors, nil
 }
 
-func buildFlavorDetails(workload *types.Workload) (compute.FlavorDetails, error) {
+func buildFlavorDetails(workload types.Workload) (compute.FlavorDetails, error) {
 	var details compute.FlavorDetails
 
 	defaults := workload.Defaults
@@ -576,9 +575,7 @@ func buildFlavorDetails(workload *types.Workload) (compute.FlavorDetails, error)
 func (c *controller) ListFlavorsDetail(tenant string) (compute.FlavorsDetails, error) {
 	flavors := compute.NewComputeFlavorsDetails()
 
-	// we ignore tenant for now
-
-	workloads, err := c.ds.GetWorkloads()
+	workloads, err := c.ds.GetWorkloads(tenant)
 	if err != nil {
 		return flavors, err
 	}
@@ -598,7 +595,7 @@ func (c *controller) ListFlavorsDetail(tenant string) (compute.FlavorsDetails, e
 func (c *controller) ShowFlavorDetails(tenant string, flavorID string) (compute.Flavor, error) {
 	var flavor compute.Flavor
 
-	workload, err := c.ds.GetWorkload(flavorID)
+	workload, err := c.ds.GetWorkload(tenant, flavorID)
 	if err != nil {
 		return flavor, err
 	}
