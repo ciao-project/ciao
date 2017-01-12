@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"text/template"
 )
@@ -48,6 +49,13 @@ ciao-cli adds some new functions to Go's template language
 - filterHasSuffix along the same lines as filter, but returns suffix matches
 - filterFolded along the same lines as filter, but  returns matches based
   on equality under Unicode case-folding
+- filterRegexp along the same lines as filter, but  returns matches based
+  on regular expression matching
+
+  ciao-cli workload list -f '{{$x := filterRegexp . "Name" "^Docker[ a-zA-z]*latest$"}}{{range $x}}{{println .ID .Name}}{{end}}'
+
+  outputs the IDs of the workloads which have Docker prefix and latest suffix
+  in their name.
 - select operates on a slice of structs.  It outputs the value of a specified
   field for each struct on a new line , e.g.,
 
@@ -60,6 +68,7 @@ var funcMap = template.FuncMap{
 	"filterHasPrefix": filterByHasPrefix,
 	"filterHasSuffix": filterByHasSuffix,
 	"filterFolded":    filterByFolded,
+	"filterRegexp":    filterByRegexp,
 	"tojson":          toJSON,
 	"select":          selectField,
 }
@@ -130,6 +139,16 @@ func filterByHasPrefix(obj interface{}, field, val string) (retval interface{}) 
 
 func filterByHasSuffix(obj interface{}, field, val string) (retval interface{}) {
 	return filterField(obj, field, val, strings.HasSuffix)
+}
+
+func filterByRegexp(obj interface{}, field, val string) (retval interface{}) {
+	return filterField(obj, field, val, func(a, b string) bool {
+		matched, err := regexp.MatchString(b, a)
+		if err != nil {
+			fatalf("Invalid regexp: %v", err)
+		}
+		return matched
+	})
 }
 
 func selectField(obj interface{}, field string) string {
