@@ -191,6 +191,7 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 	req.ImageName = opt.ImageName
 	req.ImageID = opt.ImageID
 	req.Config = config
+	req.Storage = []types.StorageResource{}
 
 	for _, disk := range opt.Disks {
 		res := types.StorageResource{
@@ -219,10 +220,7 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 			res.SourceType = types.Empty
 		}
 
-		// due to the fact that types.Workload only supports
-		// one StorageResource, we have to do this for now.
-		req.Storage = &res
-		break
+		req.Storage = append(req.Storage, res)
 	}
 
 	// all default resources are required.

@@ -1000,7 +1000,7 @@ users:
 		ImageName:   "",
 		Config:      testConfig,
 		Defaults:    []payloads.RequestedResource{cpus, mem, disk},
-		Storage:     &storage,
+		Storage:     []types.StorageResource{storage},
 	}
 
 	wl := workload{

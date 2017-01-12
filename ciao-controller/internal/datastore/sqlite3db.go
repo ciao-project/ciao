@@ -248,8 +248,7 @@ func (d workloadStorage) Init() error {
 		source_id string,
 		tag string,
 		foreign key(workload_id) references workloads(id),
-		foreign key(volume_id) references block_data(id),
-		PRIMARY KEY(workload_id, volume_id)
+		foreign key(volume_id) references block_data(id)
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -1035,36 +1034,38 @@ func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resourc
 }
 
 // lock must be held by caller
-func (ds *sqliteDB) createWorkloadStorage(tx *sql.Tx, workloadID string, storage types.StorageResource) error {
+func (ds *sqliteDB) createWorkloadStorage(tx *sql.Tx, workloadID string, storage *types.StorageResource) error {
 	_, err := tx.Exec("INSERT INTO workload_storage (workload_id, volume_id, bootable, ephemeral, size, source_type, source_id, tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", workloadID, storage.ID, storage.Bootable, storage.Ephemeral, storage.Size, string(storage.SourceType), storage.SourceID, storage.Tag)
 
 	return err
 }
 
-func (ds *sqliteDB) getWorkloadStorage(ID string) (*types.StorageResource, error) {
+func (ds *sqliteDB) getWorkloadStorage(ID string) ([]types.StorageResource, error) {
 	query := `SELECT volume_id, bootable, ephemeral, size,
 			 source_type, source_id, tag
 		  FROM 	workload_storage
 		  WHERE workload_id = ?`
 
-	row := ds.db.QueryRow(query, ID)
-
-	var r types.StorageResource
-	var sourceType string
-
-	err := row.Scan(&r.ID, &r.Bootable, &r.Ephemeral, &r.Size, &sourceType, &r.SourceID, &r.Tag)
-
+	rows, err := ds.db.Query(query, ID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			// not an error, it's just not there.
-			err = nil
-		}
-
 		return nil, err
 	}
-	r.SourceType = types.SourceType(sourceType)
+	defer rows.Close()
 
-	return &r, nil
+	res := []types.StorageResource{}
+	var sourceType string
+
+	for rows.Next() {
+		var r types.StorageResource
+		err := rows.Scan(&r.ID, &r.Bootable, &r.Ephemeral, &r.Size, &sourceType, &r.SourceID, &r.Tag)
+
+		if err != nil {
+			return []types.StorageResource{}, err
+		}
+		r.SourceType = types.SourceType(sourceType)
+		res = append(res, r)
+	}
+	return res, nil
 }
 
 func (ds *sqliteDB) addLimit(tenantID string, resourceID int, limit int) error {
@@ -1346,11 +1347,13 @@ func (ds *sqliteDB) updateWorkload(w workload) error {
 		}
 
 		// add in any workload storage resources
-		if w.Storage != nil {
-			err := ds.createWorkloadStorage(tx, w.ID, *w.Storage)
-			if err != nil {
-				tx.Rollback()
-				return err
+		if len(w.Storage) > 0 {
+			for i := range w.Storage {
+				err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
 			}
 		}
 

@@ -359,12 +359,14 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	}
 
 	// handle storage resources in workload definition
-	if wl.Storage != nil {
-		workloadStorage, err := getStorage(ctl, *wl.Storage, tenantID, instanceID)
-		if err != nil {
-			return config, err
+	if len(wl.Storage) > 0 {
+		for i := range wl.Storage {
+			workloadStorage, err := getStorage(ctl, wl.Storage[i], tenantID, instanceID)
+			if err != nil {
+				return config, err
+			}
+			storage = append(storage, workloadStorage)
 		}
-		storage = append(storage, workloadStorage)
 	}
 
 	// hardcode persistence until changes can be made to workload
