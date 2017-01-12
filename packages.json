@@ -69,6 +69,11 @@
 		"version": "v0.1.0",
 		"license": "Apache v2.0"
 	},
+	"github.com/pkg/errors": {
+		"url": "https://github.com/pkg/errors.git",
+		"version": "248dadf",
+		"license": "BSD (2-clause)"
+	},
 	"github.com/rackspace/gophercloud": {
 		"url": "https://github.com/rackspace/gophercloud.git",
 		"version": "1f02c2b",
