@@ -22,7 +22,6 @@ package datastore
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -33,6 +32,7 @@ import (
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 )
 
 // custom errors
@@ -219,7 +219,7 @@ func (ds *Datastore) Init(config Config) error {
 
 	err := ps.init(config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error initialising persistent store")
 	}
 
 	ds.db = ps
@@ -245,20 +245,21 @@ func (ds *Datastore) Init(config Config) error {
 
 	instances, err := ds.db.getInstances()
 	if err != nil {
-		glog.Warning(err)
-	} else {
-		for i := range instances {
-			ds.instances[instances[i].ID] = instances[i]
-		}
+		return errors.Wrap(err, "error getting instances from database")
+	}
+
+	for i := range instances {
+		ds.instances[instances[i].ID] = instances[i]
 	}
 
 	// cache our current tenants into a map that we can
 	// quickly index
 	tenants, err := ds.getTenants()
-	if err == nil {
-		for i := range tenants {
-			ds.tenants[tenants[i].ID] = tenants[i]
-		}
+	if err != nil {
+		return errors.Wrap(err, "error getting tenants from database")
+	}
+	for i := range tenants {
+		ds.tenants[tenants[i].ID] = tenants[i]
 	}
 
 	// cache the workloads into a map so that we can
@@ -267,16 +268,16 @@ func (ds *Datastore) Init(config Config) error {
 	ds.workloads = make(map[string]*workload)
 	workloads, err := ds.getWorkloads()
 	if err != nil {
-		glog.Warning(err)
-	} else {
-		for i := range workloads {
-			ds.workloads[workloads[i].ID] = workloads[i]
-		}
+		return errors.Wrap(err, "error getting workloads from database")
+	}
+
+	for i := range workloads {
+		ds.workloads[workloads[i].ID] = workloads[i]
 	}
 
 	ds.cnciWorkloadID, err = ds.db.getCNCIWorkloadID()
 	if err != nil {
-		glog.Warning(err)
+		return errors.Wrap(err, "error getting CNCI workload from database")
 	}
 
 	ds.nodesLock = &sync.RWMutex{}
@@ -302,14 +303,14 @@ func (ds *Datastore) Init(config Config) error {
 
 	ds.blockDevices, err = ds.db.getAllBlockData()
 	if err != nil {
-		glog.Warning(err)
+		return errors.Wrap(err, "error getting block devices from database")
 	}
 
 	ds.bdLock = &sync.RWMutex{}
 
 	ds.attachments, err = ds.db.getAllStorageAttachments()
 	if err != nil {
-		glog.Warning(err)
+		return errors.Wrap(err, "error getting storage attachments from database")
 	}
 
 	ds.instanceVolumes = make(map[attachment]string)
@@ -327,7 +328,7 @@ func (ds *Datastore) Init(config Config) error {
 
 	ds.initExternalIPs()
 
-	return err
+	return nil
 }
 
 // Exit will disconnect the backing database.
@@ -1009,49 +1010,62 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 // AttachVolumeFailure will clean up after a failure to attach a volume.
 // The volume state will be changed back to available, and an error message
 // will be logged.
-func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, reason payloads.AttachVolumeFailureReason) {
+func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, reason payloads.AttachVolumeFailureReason) error {
 	// update the block data to reflect correct state
 	data, err := ds.GetBlockDevice(volumeID)
-	if err == nil {
-		data.State = types.Available
-		_ = ds.UpdateBlockDevice(data)
+	if err != nil {
+		return errors.Wrapf(err, "error getting block device for volume (%v)", volumeID)
+	}
+
+	data.State = types.Available
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
 	}
 
 	// get owner of this instance
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
-		return
+		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
 	msg := fmt.Sprintf("Attach Volume Failure %s to %s: %s", volumeID, instanceID, reason.String())
 
 	ds.db.logEvent(i.TenantID, string(userError), msg)
+
+	return nil
 }
 
 // DetachVolumeFailure will clean up after a failure to detach a volume.
 // The volume state will be changed back to available, and an error message
 // will be logged.
-func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, reason payloads.DetachVolumeFailureReason) {
+func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, reason payloads.DetachVolumeFailureReason) error {
 	// update the block data to reflect correct state
 	data, err := ds.GetBlockDevice(volumeID)
+	if err != nil {
+		return errors.Wrapf(err, "error getting block device for volume (%v)", volumeID)
+	}
 
 	// because controller wouldn't allow a detach if state
 	// wasn't initially InUse, we can blindly set this back
 	// to InUse.
-	if err == nil {
-		data.State = types.InUse
-		_ = ds.UpdateBlockDevice(data)
+
+	data.State = types.InUse
+	err = ds.UpdateBlockDevice(data)
+	if err != nil {
+		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
 	}
 
 	// get owner of this instance
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
-		return
+		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
 	msg := fmt.Sprintf("Detach Volume Failure %s from %s: %s", volumeID, instanceID, reason.String())
 
 	ds.db.logEvent(i.TenantID, string(userError), msg)
+	return nil
 }
 
 func (ds *Datastore) deleteInstance(instanceID string) (string, error) {

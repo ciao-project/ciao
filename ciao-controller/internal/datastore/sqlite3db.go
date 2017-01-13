@@ -79,8 +79,13 @@ func (d namedData) DB() *sql.DB {
 	return d.db
 }
 
+// ReadCsv will return nil without an error if the file does not exist
 func (d namedData) ReadCsv() ([][]string, error) {
 	f, err := os.Open(fmt.Sprintf("%s/%s.csv", d.ds.tableInitPath, d.name))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -327,9 +332,6 @@ func (d tenantData) Populate() error {
 		id := line[0]
 		name := line[1]
 		mac := line[2]
-		if err != nil {
-			glog.V(2).Info("could not add tenant: ", err)
-		}
 
 		err = d.ds.create(d.name, id, name, "", mac, "")
 		if err != nil {
@@ -803,10 +805,12 @@ func (ds *sqliteDB) init(config Config) error {
 	}
 
 	for _, table := range ds.tables {
-		// Populate failures are not fatal, because it could just mean
-		// there's no initial data to populate
-		_ = table.Populate()
+		err = table.Populate()
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 

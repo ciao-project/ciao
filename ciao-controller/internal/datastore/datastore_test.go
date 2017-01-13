@@ -19,7 +19,6 @@ package datastore
 import (
 	"database/sql"
 	"encoding/binary"
-	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -359,7 +358,7 @@ func TestDeleteInstanceNetwork(t *testing.T) {
 
 	ipBytes := ip.To4()
 	if ipBytes == nil {
-		t.Fatal(errors.New("Unable to convert ip to bytes"))
+		t.Fatal("Unable to convert ip to bytes")
 	}
 
 	subnetInt := binary.BigEndian.Uint16(ipBytes[1:3])
@@ -887,7 +886,7 @@ func TestAllocateTenantIP(t *testing.T) {
 
 	ipBytes := ip.To4()
 	if ipBytes == nil {
-		t.Fatal(errors.New("Unable to convert ip to bytes"))
+		t.Fatal("Unable to convert ip to bytes")
 	}
 
 	subnetInt := int(binary.BigEndian.Uint16(ipBytes[1:3]))
@@ -1097,7 +1096,7 @@ func TestReleaseTenantIP(t *testing.T) {
 	}
 	ipBytes := ip.To4()
 	if ipBytes == nil {
-		t.Fatal(errors.New("Unable to convert ip to bytes"))
+		t.Fatal("Unable to convert ip to bytes")
 	}
 	subnetInt := binary.BigEndian.Uint16(ipBytes[1:3])
 
@@ -1421,7 +1420,10 @@ func TestDetachVolumeFailure(t *testing.T) {
 	}
 
 	// pretend we got a failure to attach.
-	ds.DetachVolumeFailure(instance.ID, data.ID, payloads.DetachVolumeNotAttached)
+	err = ds.DetachVolumeFailure(instance.ID, data.ID, payloads.DetachVolumeNotAttached)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// make sure state has been switched to InUse again.
 	bd, err := ds.GetBlockDevice(data.ID)
