@@ -495,7 +495,7 @@ func (d *docker) computeInstanceDiskspace() int {
 		return -1
 	}
 
-	return int(*con.SizeRootFs / 1000000)
+	return int(*con.SizeRootFs / (1024 * 1024))
 }
 
 func (d *docker) stats() (disk, memory, cpu int) {

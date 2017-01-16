@@ -87,9 +87,9 @@ func (q *qemuV) init(cfg *vmConfig, instanceDir string) {
 }
 
 func extractImageInfo(r io.Reader) int {
-	imageSizeMB := -1
+	imageSizeMiB := -1
 	scanner := bufio.NewScanner(r)
-	for scanner.Scan() && imageSizeMB == -1 {
+	for scanner.Scan() && imageSizeMiB == -1 {
 		line := scanner.Text()
 		matches := virtualSizeRegexp.FindStringSubmatch(line)
 		if matches == nil {
@@ -109,20 +109,20 @@ func extractImageInfo(r io.Reader) int {
 			break
 		}
 
-		size := sizeInBytes / (1000 * 1000)
+		size := sizeInBytes / (1024 * 1024)
 		if size > int64((^uint(0))>>1) {
-			glog.Warningf("Unexpectedly large disk size found: %d MB",
+			glog.Warningf("Unexpectedly large disk size found: %d MiB",
 				size)
 			break
 		}
 
-		imageSizeMB = int(size)
-		if int64(imageSizeMB)*1000*1000 < sizeInBytes {
-			imageSizeMB++
+		imageSizeMiB = int(size)
+		if int64(imageSizeMiB)*1024*1024 < sizeInBytes {
+			imageSizeMiB++
 		}
 	}
 
-	return imageSizeMB
+	return imageSizeMiB
 }
 
 func (q *qemuV) imageInfo(imagePath string) (int, error) {
@@ -683,7 +683,7 @@ func (q *qemuV) computeInstanceDiskspace(instanceDir string) int {
 	if err != nil {
 		return -1
 	}
-	return int(fi.Size() / 1000000)
+	return int(fi.Size() / (1024 * 1024))
 }
 
 func (q *qemuV) stats() (disk, memory, cpu int) {
