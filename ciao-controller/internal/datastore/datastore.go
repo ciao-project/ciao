@@ -1615,7 +1615,7 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, volume payloads.
 }
 
 // GetStorageAttachments returns a list of volumes associated with this instance.
-func (ds *Datastore) GetStorageAttachments(instanceID string) ([]types.StorageAttachment, error) {
+func (ds *Datastore) GetStorageAttachments(instanceID string) []types.StorageAttachment {
 	var links []types.StorageAttachment
 
 	ds.attachLock.RLock()
@@ -1626,7 +1626,7 @@ func (ds *Datastore) GetStorageAttachments(instanceID string) ([]types.StorageAt
 	}
 	ds.attachLock.RUnlock()
 
-	return links, nil
+	return links
 }
 
 func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []string) {

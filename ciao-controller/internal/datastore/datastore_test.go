@@ -1705,10 +1705,7 @@ func TestCreateStorageAttachment(t *testing.T) {
 	}
 
 	// get the attachments associated with this instance
-	a1, err := ds.GetStorageAttachments(instance.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	a1 := ds.GetStorageAttachments(instance.ID)
 
 	if len(a1) != 1 {
 		t.Fatal(err)
@@ -1766,10 +1763,7 @@ func TestUpdateStorageAttachmentExisting(t *testing.T) {
 	}
 
 	// get the attachments associated with this instance
-	a1, err := ds.GetStorageAttachments(instance.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	a1 := ds.GetStorageAttachments(instance.ID)
 
 	if len(a1) != 1 {
 		t.Fatal(err)

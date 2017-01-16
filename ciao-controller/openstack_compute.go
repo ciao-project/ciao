@@ -38,10 +38,7 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 
 	var volumes []string
 
-	instance.Attachments, err = ctl.ds.GetStorageAttachments(instance.ID)
-	if err != nil {
-		return compute.ServerDetails{}, err
-	}
+	instance.Attachments = ctl.ds.GetStorageAttachments(instance.ID)
 
 	for _, vol := range instance.Attachments {
 		volumes = append(volumes, vol.BlockID)
