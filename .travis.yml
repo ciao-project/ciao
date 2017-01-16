@@ -77,6 +77,7 @@ script:
    # API Documentation is automated by swagger, every PR will verify the documentation can be generated
    # verify ciao-controller api documentation can be generated with swagger
    - go get golang.org/x/sys/unix
+   - go get github.com/gorilla/context
    - go get github.com/yvasiyarov/swagger
    - $GOPATH/bin/swagger  -apiPackage=github.com/01org/ciao/ciao-controller -mainApiFile=github.com/01org/ciao/ciao-controller/main.go -format=markdown -contentsTable=false -models=false -vendoringPath $HOME/gopath/src/github.com/01org/ciao/vendor
    # Test ansible playbooks
