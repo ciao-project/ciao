@@ -44,14 +44,9 @@
 		"version": "23def4e",
 		"license": "Apache v2.0"
 	},
-	"github.com/gorilla/context": {
-		"url": "https://github.com/gorilla/context.git",
-		"version": "1ea2538",
-		"license": "BSD (3 clause)"
-	},
 	"github.com/gorilla/mux": {
 		"url": "https://github.com/gorilla/mux.git",
-		"version": "0eeaf83",
+		"version": "757bef9",
 		"license": "BSD (3 clause)"
 	},
 	"github.com/mattn/go-sqlite3": {
