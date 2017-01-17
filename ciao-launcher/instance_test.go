@@ -303,6 +303,7 @@ func (v *instanceTestState) deleteInstance(t *testing.T, ovsCh chan interface{},
 				t.Errorf("Invalid monitor command found %t, expected virtualizerStopCmd", monCmd)
 				return false
 			}
+			close(v.monitorClosedCh)
 		case <-time.After(time.Second):
 			t.Error("Timed out waiting for ovsStatsUpdateCmd")
 			return false
