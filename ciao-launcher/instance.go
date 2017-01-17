@@ -223,6 +223,11 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	if id.monitorCh != nil {
 		glog.Infof("Powerdown %s before deleting", id.instance)
 		id.monitorCh <- virtualizerStopCmd{}
+		select {
+		case <-id.monitorCloseCh:
+		case <-time.After(time.Second * 10):
+			glog.Warningf("Timeout (10s) waiting for virtualizer to terminate")
+		}
 		id.vm.lostVM()
 	}
 
