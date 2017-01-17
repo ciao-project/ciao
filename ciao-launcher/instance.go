@@ -349,12 +349,19 @@ func (id *instanceData) unmapVolumes() {
 
 	for _, v := range id.cfg.Volumes {
 
-		// UnmapVolumeFromNode might fail if it's mapped to multiple
-		// instances on the same node.  We don't treat this as an
-		// error for now.
+		// Only try and unmap volumes that were explicitly mapped
+		// when they were attached.
+		if !v.UnmapRequired {
+			glog.Infof("Skipping unmapping volume: %v", v.UUID)
+			continue
+		}
 
+		// UnmapVolumeFromNode might fail if it's mapped to multiple
+		// instances on the same node.  Log as a warning for now.
 		if err := id.storageDriver.UnmapVolumeFromNode(v.UUID); err == nil {
 			glog.Infof("Unmapping volume %s", v.UUID)
+		} else {
+			glog.Warningf("Error unmapping volume: %v", err)
 		}
 	}
 }

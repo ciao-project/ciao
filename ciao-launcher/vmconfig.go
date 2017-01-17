@@ -25,8 +25,9 @@ import (
 )
 
 type volumeConfig struct {
-	UUID     string
-	Bootable bool
+	UUID          string
+	Bootable      bool
+	UnmapRequired bool
 }
 
 type vmConfig struct {
