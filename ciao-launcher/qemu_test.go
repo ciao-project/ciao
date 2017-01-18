@@ -101,7 +101,7 @@ func TestExtractImageInfo(t *testing.T) {
 	}{
 		{
 			"imageInfoTestGood",
-			908,
+			865,
 			imageInfoTestGood,
 		},
 		{

@@ -775,8 +775,8 @@ func TestDockerStats(t *testing.T) {
 		t.Errorf("Expected memory usage of 100.  Got %d", mem)
 	}
 
-	if disk != 10 {
-		t.Errorf("Expected disk usage of 10.  Got %d", disk)
+	if disk != 9 {
+		t.Errorf("Expected disk usage of 9.  Got %d", disk)
 	}
 
 	if cpu != -1 {
