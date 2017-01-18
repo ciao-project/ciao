@@ -193,6 +193,7 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 	req.Config = config
 	req.Storage = []types.StorageResource{}
 
+	bootableCount := 0
 	for _, disk := range opt.Disks {
 		res := types.StorageResource{
 			Size:      disk.Size,
@@ -214,6 +215,14 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 
 			res.SourceType = disk.Source.Type
 			res.SourceID = disk.Source.ID
+
+			if res.SourceID != "" && res.SourceType == types.Empty {
+				return errors.New("Invalid workload yaml: when specifying a source ID a type must also be specified")
+			}
+
+			if res.SourceType != types.Empty && res.SourceID == "" {
+				return errors.New("Invalid workload yaml: when specifying a source type other than empty an id must also be specified")
+			}
 		} else {
 			if disk.Bootable == true {
 				// you may not request a bootable drive
@@ -224,7 +233,15 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 			res.SourceType = types.Empty
 		}
 
+		if disk.Bootable {
+			bootableCount++
+		}
+
 		req.Storage = append(req.Storage, res)
+	}
+
+	if req.VMType == payloads.QEMU && bootableCount == 0 {
+		return errors.New("Invalid workload yaml: no bootable disks specified for a VM")
 	}
 
 	// all default resources are required.
