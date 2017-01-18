@@ -75,16 +75,9 @@ func validateWorkloadStorage(req types.Workload) error {
 				return types.ErrBadRequest
 			}
 		} else {
-			if req.Storage[i].SourceType == types.Empty {
-				// you many not use a source ID with empty.
-				if req.Storage[i].SourceID != "" {
-					return types.ErrBadRequest
-				}
-			} else {
-				// you must specify an ID with volume/image
-				if req.Storage[i].SourceID == "" {
-					return types.ErrBadRequest
-				}
+			// you may only use no source id with empty type
+			if req.Storage[i].SourceType != types.Empty {
+				return types.ErrBadRequest
 			}
 		}
 
