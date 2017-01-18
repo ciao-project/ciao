@@ -144,8 +144,8 @@ func getCiaoWorkloadsResource() (string, error) {
 }
 
 type source struct {
-	Type types.SourceType `json:"service"`
-	ID   string           `json:"id"`
+	Type types.SourceType `yaml:"service"`
+	ID   string           `yaml:"id"`
 }
 
 type disk struct {
