@@ -200,6 +200,10 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 			Ephemeral: disk.Ephemeral,
 		}
 
+		if disk.Source != nil && disk.Source.Type == "" {
+			disk.Source.Type = types.Empty
+		}
+
 		if disk.ID != nil {
 			res.ID = *disk.ID
 		} else if disk.Size == 0 {
