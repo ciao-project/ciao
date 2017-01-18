@@ -350,7 +350,7 @@ func (ds *Datastore) AddTenantChan(c chan bool, tenantID string) {
 func (ds *Datastore) AddLimit(tenantID string, resourceID int, limit int) error {
 	err := ds.db.addLimit(tenantID, resourceID, limit)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error adding limit to database")
 	}
 
 	// update cache
@@ -370,14 +370,14 @@ func (ds *Datastore) AddLimit(tenantID string, resourceID int, limit int) error 
 
 	ds.tenantsLock.Unlock()
 
-	return err
+	return nil
 }
 
 func newHardwareAddr() (net.HardwareAddr, error) {
 	buf := make([]byte, 6)
 	_, err := rand.Read(buf)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading random data")
 	}
 
 	// vnic creation seems to require not just the
@@ -401,26 +401,24 @@ func newHardwareAddr() (net.HardwareAddr, error) {
 func (ds *Datastore) AddTenant(id string) (*types.Tenant, error) {
 	hw, err := newHardwareAddr()
 	if err != nil {
-		glog.V(2).Info("error creating mac address", err)
-		return nil, err
+		return nil, errors.Wrap(err, "error creating MAC address")
 	}
 
 	err = ds.db.addTenant(id, hw.String())
 	if err != nil {
-		glog.V(2).Info("error adding tenant", err)
-		return nil, err
+		return nil, errors.Wrapf(err, "error adding tenant (%v) to database", id)
 	}
 
 	t, err := ds.getTenant(id)
 	if err != nil || t == nil {
-		glog.V(2).Info(err, " unable to get tenant: ", id)
+		return nil, err
 	}
 
 	ds.tenantsLock.Lock()
 	ds.tenants[id] = t
 	ds.tenantsLock.Unlock()
 
-	return &t.Tenant, err
+	return &t.Tenant, nil
 }
 
 func (ds *Datastore) getTenant(id string) (*tenant, error) {
@@ -433,7 +431,8 @@ func (ds *Datastore) getTenant(id string) (*tenant, error) {
 		return t, nil
 	}
 
-	return ds.db.getTenant(id)
+	t, err := ds.db.getTenant(id)
+	return t, errors.Wrapf(err, "error getting tenant (%v) from database", id)
 }
 
 // GetTenant returns details about a tenant referenced by the uuid
@@ -459,7 +458,7 @@ func (ds *Datastore) AddWorkload(w types.Workload) error {
 
 	err := ds.db.updateWorkload(wl)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error updating workload (%v) in database", wl.ID)
 	}
 
 	// cache it.
@@ -478,7 +477,8 @@ func (ds *Datastore) getWorkload(id string) (*workload, error) {
 		return wl, nil
 	}
 
-	return ds.db.getWorkload(id)
+	wl, err := ds.db.getWorkload(id)
+	return wl, errors.Wrapf(err, "error getting workload (%v) from database", id)
 }
 
 // GetWorkload returns details about a specific workload referenced by id
@@ -505,7 +505,8 @@ func (ds *Datastore) getWorkloads() ([]*workload, error) {
 	}
 	ds.workloadsLock.RUnlock()
 
-	return ds.db.getWorkloads()
+	workloads, err := ds.db.getWorkloads()
+	return workloads, errors.Wrapf(err, "error getting workloads from database")
 }
 
 // GetWorkloads returns all known tenant workloads
@@ -555,7 +556,6 @@ func (ds *Datastore) AddCNCIIP(cnciMAC string, ip string) error {
 
 	ds.tenantsLock.Unlock()
 
-	// not sure what to do about an error
 	err := ds.db.updateTenant(tenant)
 
 	ds.cnciAddedLock.Lock()
@@ -571,7 +571,7 @@ func (ds *Datastore) AddCNCIIP(cnciMAC string, ip string) error {
 		c <- true
 	}
 
-	return err
+	return errors.Wrap(err, "error updating tenant in database")
 }
 
 // AddTenantCNCI will associate a new CNCI instance with a specific tenant.
@@ -610,7 +610,7 @@ func (ds *Datastore) removeTenantCNCI(tenantID string) error {
 
 	ds.tenantsLock.Unlock()
 
-	return ds.db.updateTenant(tenant)
+	return errors.Wrap(ds.db.updateTenant(tenant), "error updating tenant in database")
 }
 
 func (ds *Datastore) getTenants() ([]*tenant, error) {
@@ -631,7 +631,8 @@ func (ds *Datastore) getTenants() ([]*tenant, error) {
 
 	ds.tenantsLock.RUnlock()
 
-	return ds.db.getTenants()
+	tenants, err := ds.db.getTenants()
+	return tenants, errors.Wrap(err, "error getting tenants from database")
 }
 
 // GetAllTenants returns all the tenants from the datastore.
@@ -643,7 +644,6 @@ func (ds *Datastore) GetAllTenants() ([]*types.Tenant, error) {
 	// numbers of tenants. I'd rather reuse the code
 	// than make this more efficient at this point.
 	ts, err := ds.getTenants()
-
 	if err != nil {
 		return nil, err
 	}
@@ -908,7 +908,7 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFailureReason) error {
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
 	msg := fmt.Sprintf("Restart Failure %s: %s", instanceID, reason.String())
@@ -921,7 +921,7 @@ func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFa
 func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureReason) error {
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
 	msg := fmt.Sprintf("Stop Failure %s: %s", instanceID, reason.String())
@@ -956,9 +956,6 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		glog.Warning("CNCI ", instanceID, " Failed to start")
 
 		err := ds.removeTenantCNCI(tenantID)
-		if err != nil {
-			glog.Warning(err)
-		}
 
 		msg := fmt.Sprintf("CNCI Start Failure %s: %s", instanceID, reason.String())
 		ds.db.logEvent(tenantID, string(userError), msg)
@@ -976,12 +973,12 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 			c <- false
 		}
 
-		return err
+		return errors.Wrap(err, "error removing CNCI for tenant")
 	}
 
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
 	switch reason {
@@ -1107,14 +1104,17 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 		ds.nodesLock.Unlock()
 	}
 
-	err := ds.db.deleteInstance(i.ID)
-	if err != nil {
-		glog.V(2).Info("deleteInstance: ", err)
+	var err error
+	if tmpErr := ds.db.deleteInstance(i.ID); tmpErr != nil {
+		glog.Warningf("error deleting instance (%v): %v", i.ID, err)
+		err = errors.Wrapf(tmpErr, "error deleting instance from database (%v)", i.ID)
 	}
 
-	err = ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
-	if err != nil {
-		glog.V(2).Info("deleteInstance: ", err)
+	if tmpErr := ds.ReleaseTenantIP(i.TenantID, i.IPAddress); tmpErr != nil {
+		glog.Warningf("error releasing IP for instance (%v): %v", i.ID, err)
+		if err == nil {
+			err = errors.Wrapf(err, "error releasing IP for instance (%v)", i.ID)
+		}
 	}
 
 	ds.updateStorageAttachments(instanceID, nil)
@@ -1126,7 +1126,7 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 func (ds *Datastore) DeleteInstance(instanceID string) error {
 	tenantID, err := ds.deleteInstance(instanceID)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error deleting instance")
 	}
 
 	msg := fmt.Sprintf("Deleted Instance %s", instanceID)
@@ -1154,21 +1154,23 @@ func (ds *Datastore) HandleStats(stat payloads.Stat) error {
 		ds.addNodeStat(stat)
 	}
 
-	return ds.addInstanceStats(stat.Instances, stat.NodeUUID)
+	return errors.Wrapf(ds.addInstanceStats(stat.Instances, stat.NodeUUID), "error updating stats")
 }
 
 // HandleTraceReport stores the provided trace data in the datastore.
 func (ds *Datastore) HandleTraceReport(trace payloads.Trace) error {
+	var err error
 	for index := range trace.Frames {
 		i := trace.Frames[index]
 
-		err := ds.db.addFrameStat(i)
-		if err != nil {
-			glog.Warning(err)
+		if tmpErr := ds.db.addFrameStat(i); tmpErr != nil {
+			if err == nil {
+				err = errors.Wrapf(tmpErr, "error adding stats to database")
+			}
 		}
 	}
 
-	return nil
+	return err
 }
 
 // GetInstanceLastStats retrieves the last instances stats received for this node.
@@ -1235,7 +1237,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 
 	ds.nodeLastStatLock.Unlock()
 
-	return ds.db.addNodeStat(stat)
+	return errors.Wrap(ds.db.addNodeStat(stat), "error adding node stats to database")
 }
 
 var tenantUsagePeriodMinutes float64 = 5
@@ -1377,7 +1379,7 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 		ds.updateStorageAttachments(stat.InstanceUUID, stat.Volumes)
 	}
 
-	return ds.db.addInstanceStats(stats, nodeID)
+	return errors.Wrapf(ds.db.addInstanceStats(stats, nodeID), "error adding instance stats to database")
 }
 
 // GetTenantCNCISummary retrieves information about a given CNCI id, or all CNCIs
@@ -1565,7 +1567,7 @@ func (ds *Datastore) UpdateBlockDevice(data types.BlockData) error {
 		return ErrNoBlockData
 	}
 
-	return ds.AddBlockDevice(data)
+	return errors.Wrapf(ds.AddBlockDevice(data), "error updating block device (%v)", data.ID)
 }
 
 // CreateStorageAttachment will associate an instance with a block device in
@@ -1586,21 +1588,21 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, volume payloads.
 
 	err := ds.db.addStorageAttachment(a)
 	if err != nil {
-		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
+		return types.StorageAttachment{}, errors.Wrap(err, "error adding storage attachment to database")
 	}
 
 	// ensure that the volume is marked in use as we have created an attachment
 	bd, err := ds.GetBlockDevice(volume.ID)
 	if err != nil {
 		ds.db.deleteStorageAttachment(a.ID)
-		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
+		return types.StorageAttachment{}, errors.Wrapf(err, "error fetching block device (%v)", volume.ID)
 	}
 
 	bd.State = types.InUse
 	err = ds.UpdateBlockDevice(bd)
 	if err != nil {
 		ds.db.deleteStorageAttachment(a.ID)
-		return types.StorageAttachment{}, fmt.Errorf("error creating storage attachment: %v", err)
+		return types.StorageAttachment{}, errors.Wrapf(err, "error updating block device (%v)", volume.ID)
 	}
 
 	// add it to our links map
@@ -1613,7 +1615,7 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, volume payloads.
 }
 
 // GetStorageAttachments returns a list of volumes associated with this instance.
-func (ds *Datastore) GetStorageAttachments(instanceID string) ([]types.StorageAttachment, error) {
+func (ds *Datastore) GetStorageAttachments(instanceID string) []types.StorageAttachment {
 	var links []types.StorageAttachment
 
 	ds.attachLock.RLock()
@@ -1624,11 +1626,10 @@ func (ds *Datastore) GetStorageAttachments(instanceID string) ([]types.StorageAt
 	}
 	ds.attachLock.RUnlock()
 
-	return links, nil
+	return links
 }
 
 func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []string) {
-
 	m := make(map[string]bool)
 
 	// this for handy searching.
@@ -1659,14 +1660,14 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 			// not sure what to do with an error here.
 			err := ds.db.addStorageAttachment(a)
 			if err != nil {
-				glog.Warning(err)
+				glog.Warningf("error adding storage attachment to database: %v", err)
 				continue
 			}
 
 			// update the state of the volume.
 			bd, err := ds.GetBlockDevice(v)
 			if err != nil {
-				glog.Warning(err)
+				glog.Warningf("error fetching block device (%v): %v", v, err)
 				// well, maybe we should add it, it obviously
 				// exists.
 				continue
@@ -1675,7 +1676,7 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 			bd.State = types.InUse
 			err = ds.UpdateBlockDevice(bd)
 			if err != nil {
-				glog.Warning(err)
+				glog.Warningf("error updating block device (%v): %v", v, err)
 			}
 		}
 	}
@@ -1688,7 +1689,7 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 		if a.InstanceID == instanceID && !m[a.BlockID] {
 			bd, err := ds.GetBlockDevice(a.BlockID)
 			if err != nil {
-				glog.Warning(err)
+				glog.Warningf("error fetching block device (%v): %v", a.BlockID, err)
 				continue
 			}
 
@@ -1696,7 +1697,7 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 			bd.State = types.Available
 			err = ds.UpdateBlockDevice(bd)
 			if err != nil {
-				glog.Warning(err)
+				glog.Warningf("error updating block device (%v): %v", a.BlockID, err)
 			}
 
 			// delete the attachment.
@@ -1760,7 +1761,7 @@ func (ds *Datastore) DeleteStorageAttachment(ID string) error {
 		return ErrNoStorageAttachment
 	}
 
-	return ds.db.deleteStorageAttachment(ID)
+	return errors.Wrapf(ds.db.deleteStorageAttachment(ID), "error deleting storage attachment (%v) from database", ID)
 }
 
 // GetVolumeAttachments will return a list of attachments associated with
@@ -1854,7 +1855,7 @@ func (ds *Datastore) AddPool(pool types.Pool) error {
 			_, newSubnet, err := net.ParseCIDR(subnet.CIDR)
 			if err != nil {
 				ds.poolsLock.Unlock()
-				return err
+				return errors.Wrapf(err, "unable to parse subnet CIDR (%v)", subnet.CIDR)
 			}
 
 			if ds.isDuplicateSubnet(newSubnet) {
@@ -1900,7 +1901,7 @@ func (ds *Datastore) AddPool(pool types.Pool) error {
 		ds.DeletePool(pool.ID)
 	}
 
-	return err
+	return errors.Wrap(err, "error adding pool to database")
 }
 
 // DeletePool will delete an unused pool from our datastore.
@@ -1921,7 +1922,7 @@ func (ds *Datastore) DeletePool(ID string) error {
 	// delete from persistent store
 	err := ds.db.deletePool(ID)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error deleting pool (%v) from database", ID)
 	}
 
 	// delete all subnets
@@ -1937,7 +1938,7 @@ func (ds *Datastore) DeletePool(ID string) error {
 	// delete the whole pool
 	delete(ds.pools, ID)
 
-	return err
+	return nil
 }
 
 // AddExternalSubnet will add a new subnet to an existing pool.
@@ -1949,7 +1950,7 @@ func (ds *Datastore) AddExternalSubnet(poolID string, subnet string) error {
 
 	_, ipNet, err := net.ParseCIDR(subnet)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "unable to parse subnet CIDR (%v)", subnet)
 	}
 
 	ds.poolsLock.Lock()
@@ -1974,7 +1975,7 @@ func (ds *Datastore) AddExternalSubnet(poolID string, subnet string) error {
 
 	err = ds.db.updatePool(p)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error updating pool in database")
 	}
 
 	// we are committed now.
@@ -2018,7 +2019,7 @@ func (ds *Datastore) AddExternalIPs(poolID string, IPs []string) error {
 	// update persistent store.
 	err := ds.db.updatePool(p)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error updating pool in database")
 	}
 
 	// update cache.
@@ -2048,7 +2049,7 @@ func (ds *Datastore) DeleteSubnet(poolID string, subnetID string) error {
 		// this path will be taken only once.
 		IP, ipNet, err := net.ParseCIDR(sub.CIDR)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "unable to parse subnet CIDR (%v)", sub.CIDR)
 		}
 
 		// check each address in this subnet is not mapped.
@@ -2067,7 +2068,7 @@ func (ds *Datastore) DeleteSubnet(poolID string, subnetID string) error {
 
 		err = ds.db.updatePool(p)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error updating pool in database")
 		}
 
 		delete(ds.externalSubnets, sub.CIDR)
@@ -2107,7 +2108,7 @@ func (ds *Datastore) DeleteExternalIP(poolID string, addrID string) error {
 
 		err := ds.db.updatePool(p)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error updating pool in database")
 		}
 
 		delete(ds.externalIPs, extIP.Address)
@@ -2166,7 +2167,7 @@ func (ds *Datastore) MapExternalIP(poolID string, instanceID string) (types.Mapp
 
 	instance, err := ds.GetInstance(instanceID)
 	if err != nil {
-		return m, err
+		return m, errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
 	ds.poolsLock.Lock()
@@ -2185,7 +2186,7 @@ func (ds *Datastore) MapExternalIP(poolID string, instanceID string) (types.Mapp
 	for _, sub := range pool.Subnets {
 		IP, ipNet, err := net.ParseCIDR(sub.CIDR)
 		if err != nil {
-			return m, err
+			return m, errors.Wrapf(err, "error parsing subnet CIDR (%v)", sub.CIDR)
 		}
 
 		initIP := IP.Mask(ipNet.Mask)
@@ -2209,13 +2210,13 @@ func (ds *Datastore) MapExternalIP(poolID string, instanceID string) (types.Mapp
 
 				err = ds.db.addMappedIP(m)
 				if err != nil {
-					return types.MappedIP{}, err
+					return types.MappedIP{}, errors.Wrap(err, "error adding IP mapping to database")
 				}
 				ds.mappedIPs[IP.String()] = m
 
 				err = ds.db.updatePool(pool)
 				if err != nil {
-					return types.MappedIP{}, err
+					return types.MappedIP{}, errors.Wrap(err, "error updating pool in database")
 				}
 
 				ds.pools[poolID] = pool
@@ -2241,13 +2242,13 @@ func (ds *Datastore) MapExternalIP(poolID string, instanceID string) (types.Mapp
 
 			err = ds.db.addMappedIP(m)
 			if err != nil {
-				return types.MappedIP{}, err
+				return types.MappedIP{}, errors.Wrap(err, "error adding IP mapping to database")
 			}
 			ds.mappedIPs[IP.Address] = m
 
 			err = ds.db.updatePool(pool)
 			if err != nil {
-				return types.MappedIP{}, err
+				return types.MappedIP{}, errors.Wrap(err, "error updating pool in database")
 			}
 
 			ds.pools[poolID] = pool
@@ -2257,7 +2258,7 @@ func (ds *Datastore) MapExternalIP(poolID string, instanceID string) (types.Mapp
 	}
 
 	// if you got here you are out of luck. But you never should.
-	glog.Errorf("Pool reports %d free addresses but none found\n", pool.Free)
+	glog.Warningf("Pool reports %d free addresses but none found", pool.Free)
 	return m, types.ErrPoolEmpty
 }
 
@@ -2281,13 +2282,13 @@ func (ds *Datastore) UnMapExternalIP(address string) error {
 
 	err := ds.db.deleteMappedIP(m.ID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error deleting IP mapping from database")
 	}
 	delete(ds.mappedIPs, address)
 
 	err = ds.db.updatePool(pool)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error updating pool in database")
 	}
 
 	ds.pools[pool.ID] = pool

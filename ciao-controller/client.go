@@ -83,7 +83,7 @@ func (client *ssntpClient) CommandNotify(command ssntp.Command, frame *ssntp.Fra
 }
 
 func (client *ssntpClient) deleteEphemeralStorage(instanceID string) {
-	attachments, _ := client.ctl.ds.GetStorageAttachments(instanceID)
+	attachments := client.ctl.ds.GetStorageAttachments(instanceID)
 	for _, attachment := range attachments {
 		if !attachment.Ephemeral {
 			continue
