@@ -17,13 +17,12 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/01org/ciao/database"
 	"github.com/01org/ciao/payloads"
-	"github.com/golang/glog"
+	"github.com/pkg/errors"
 )
 
 // cnciDatabase
@@ -78,7 +77,7 @@ func (d *SubnetMap) NewElement() interface{} {
 func (d *SubnetMap) Add(k string, v interface{}) error {
 	val, ok := v.(*payloads.TenantAddedEvent)
 	if !ok {
-		return fmt.Errorf("Invalid value type %t", v)
+		return errors.Errorf("Invalid value type %t", v)
 	}
 	d.m[k] = val
 	return nil
@@ -109,7 +108,7 @@ func (d *PublicIPMap) NewElement() interface{} {
 func (d *PublicIPMap) Add(k string, v interface{}) error {
 	val, ok := v.(*payloads.PublicIPCommand)
 	if !ok {
-		return fmt.Errorf("Invalid value type %t", v)
+		return errors.Errorf("Invalid value type %t", v)
 	}
 	d.m[k] = val
 	return nil
@@ -122,13 +121,13 @@ func dbInit() (*cnciDatabase, error) {
 	db.PublicIPMap.m = make(map[string]*payloads.PublicIPCommand)
 
 	if err := db.DbInit(dbCfg.DataDir, dbCfg.DbFile); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "db init: %v, %v", dbCfg.DataDir, dbCfg.DbFile)
 	}
 	if err := db.DbTableRebuild(&db.SubnetMap); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "subnetMap")
 	}
 	if err := db.DbTableRebuild(&db.PublicIPMap); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "publicIPMap")
 	}
 	return db, nil
 }
@@ -141,7 +140,7 @@ func dbInit() (*cnciDatabase, error) {
 //CNCI instance. Hence if a particular network command fails
 //assuming it passes consistency checks, then on the restart of
 //the CNCI the command may succeed.
-func dbProcessCommand(db *cnciDatabase, cmd interface{}) {
+func dbProcessCommand(db *cnciDatabase, cmd interface{}) error {
 
 	switch netCmd := cmd.(type) {
 
@@ -152,13 +151,11 @@ func dbProcessCommand(db *cnciDatabase, cmd interface{}) {
 		db.SubnetMap.Lock()
 		defer db.SubnetMap.Unlock()
 
-		glog.Infof("database: Tenant Added %v", c)
-
 		key := c.AgentUUID + c.TenantSubnet
 		db.SubnetMap.m[key] = c
 
 		if err := db.DbAdd(tableSubnetMap, key, db.SubnetMap.m[key]); err != nil {
-			glog.Errorf("Unable to update db %v", err)
+			return errors.Wrapf(err, "add tenant to db: %v", c)
 		}
 
 	case *payloads.EventTenantRemoved:
@@ -168,13 +165,11 @@ func dbProcessCommand(db *cnciDatabase, cmd interface{}) {
 		db.SubnetMap.Lock()
 		defer db.SubnetMap.Unlock()
 
-		glog.Infof("database: Tenant Removed %v", c)
-
 		key := c.AgentUUID + c.TenantSubnet
 		delete(db.SubnetMap.m, key)
 
 		if err := db.DbDelete(tableSubnetMap, key); err != nil {
-			glog.Errorf("Unable to update db %v", err)
+			return errors.Wrapf(err, "delete tenant from db: %v", c)
 		}
 
 	case *payloads.CommandAssignPublicIP:
@@ -183,13 +178,11 @@ func dbProcessCommand(db *cnciDatabase, cmd interface{}) {
 		db.PublicIPMap.Lock()
 		defer db.PublicIPMap.Unlock()
 
-		glog.Infof("database: Assign IP %v", c)
-
 		key := c.PublicIP
 		db.PublicIPMap.m[key] = c
 
 		if err := db.DbAdd(tablePublicIPMap, key, db.PublicIPMap.m[key]); err != nil {
-			glog.Errorf("Unable to update db %v", err)
+			return errors.Wrapf(err, "add Public IP to db: %v", c)
 		}
 
 	case *payloads.CommandReleasePublicIP:
@@ -199,17 +192,17 @@ func dbProcessCommand(db *cnciDatabase, cmd interface{}) {
 		db.PublicIPMap.Lock()
 		defer db.PublicIPMap.Unlock()
 
-		glog.Infof("database: Release IP %v", c)
-
 		key := c.PublicIP
 		delete(db.PublicIPMap.m, key)
 
 		if err := db.DbDelete(tablePublicIPMap, key); err != nil {
-			glog.Errorf("Unable to update db %v", err)
+			return errors.Wrapf(err, "delete Public IP from db: %v", c)
 		}
 
 	default:
-		glog.Errorf("Processing unknown command %v", netCmd)
+		return errors.Errorf("unknown command: %v", netCmd)
 
 	}
+
+	return nil
 }
