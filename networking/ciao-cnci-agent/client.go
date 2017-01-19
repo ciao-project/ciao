@@ -92,6 +92,7 @@ func (s *ssntpConn) setStatus(status bool) {
 
 type agentClient struct {
 	ssntpConn
+	db    *cnciDatabase
 	cmdCh chan *cmdWrapper
 	netCh chan struct{} //Used to signal physical network changes
 }
@@ -190,6 +191,7 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			c := &netCmd.TenantRemoved
 			glog.Infof("Processing: CiaoEventTenantRemoved %v", c)
 			err := delRemoteSubnet(c)
+
 			if err != nil {
 				glog.Errorf("Error Processing: CiaoEventTenantRemoved %v", err)
 			}
@@ -261,6 +263,8 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 				return
 			}
 			glog.Infof("EVENT: ssntp.AssignPublicIP %v", assignIP)
+
+			dbProcessCommand(client.db, &assignIP)
 			client.cmdCh <- &cmdWrapper{&assignIP}
 		}(payload)
 
@@ -275,6 +279,8 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 				return
 			}
 			glog.Infof("EVENT: ssntp.ReleasePublicIP %s", releaseIP)
+
+			dbProcessCommand(client.db, &releaseIP)
 			client.cmdCh <- &cmdWrapper{&releaseIP}
 		}(payload)
 
@@ -299,6 +305,7 @@ func (client *agentClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 			}
 			glog.Infof("EVENT: ssntp.TenantAdded %s", tenantAdded)
 
+			dbProcessCommand(client.db, &tenantAdded)
 			client.cmdCh <- &cmdWrapper{&tenantAdded}
 		}(payload)
 
@@ -313,6 +320,8 @@ func (client *agentClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 				return
 			}
 			glog.Infof("EVENT: ssntp.TenantRemoved %s", tenantRemoved)
+
+			dbProcessCommand(client.db, &tenantRemoved)
 			client.cmdCh <- &cmdWrapper{&tenantRemoved}
 		}(payload)
 
@@ -321,7 +330,7 @@ func (client *agentClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 	}
 }
 
-func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
+func connectToServer(db *cnciDatabase, doneCh chan struct{}, statusCh chan struct{}) {
 
 	defer func() {
 		statusCh <- struct{}{}
@@ -329,7 +338,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 
 	cfg := &ssntp.Config{UUID: agentUUID, URI: serverURL, CAcert: serverCertPath, Cert: clientCertPath,
 		Log: ssntp.Log}
-	client := &agentClient{cmdCh: make(chan *cmdWrapper)}
+	client := &agentClient{db: db, cmdCh: make(chan *cmdWrapper)}
 
 	dialCh := make(chan error)
 
@@ -420,6 +429,39 @@ func discoverUUID() (string, error) {
 	return metaData.UUID, nil
 }
 
+//Rebuild network state from database
+func rebuildNetworkState(db *cnciDatabase) error {
+	var lastError error
+	if db == nil {
+		return nil
+	}
+
+	db.SubnetMap.Lock()
+	defer db.SubnetMap.Unlock()
+	db.PublicIPMap.Lock()
+	defer db.PublicIPMap.Unlock()
+
+	for key, subnet := range db.SubnetMap.m {
+		glog.Infof("Key: %v Subnet: %v", key, subnet)
+		err := addRemoteSubnet(subnet)
+		if err != nil {
+			lastError = err
+			glog.Errorf("rebuildNetworkState: %v", err)
+		}
+	}
+
+	for key, publicIP := range db.PublicIPMap.m {
+		glog.Infof("Key: %v PublicIP: %v", key, publicIP)
+		err := assignPubIP(publicIP)
+		if err != nil {
+			lastError = err
+			glog.Errorf("rebuildNetworkState: %v", err)
+		}
+	}
+
+	return lastError
+}
+
 func main() {
 
 	if getLock() != nil {
@@ -460,10 +502,22 @@ func main() {
 	//TODO: Wait till the node gets an IP address before we kick this off
 	//TODO: Add a IP address change notifier to handle potential IP address change
 	if err := initNetwork(signalCh); err != nil {
-		glog.Fatalf("Unable to setup network. %s", err.Error())
+		glog.Fatalf("Unable to setup network. %v", err)
 	}
 
-	go connectToServer(doneCh, statusCh)
+	//Recover the state from the database and then
+	//recreate the CNCI state by replaying the commands
+	//Has to be done prior to accepting commands over the network
+	db, err := dbInit()
+	if err != nil {
+		glog.Fatalf("Unable to setup database. %v", err)
+	}
+
+	if err := rebuildNetworkState(db); err != nil {
+		glog.Errorf("Unable to rebuild network state. %v", err)
+	}
+
+	go connectToServer(db, doneCh, statusCh)
 
 	//Prime the watchdog
 	go func() {
