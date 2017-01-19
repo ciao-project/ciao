@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
@@ -501,7 +502,7 @@ func Routes(config Config) *mux.Router {
 	route := r.Handle("/", Handler{context, listResources})
 	route.Methods("GET")
 
-	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, listResources})
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}", Handler{context, listResources})
 	route.Methods("GET")
 
 	matchContent := fmt.Sprintf("application/(%s|json)", PoolsV1)
@@ -510,7 +511,7 @@ func Routes(config Config) *mux.Router {
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/pools", Handler{context, listPools})
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}", Handler{context, listPools})
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
@@ -518,23 +519,23 @@ func Routes(config Config) *mux.Router {
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/pools/{pool:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, showPool})
+	route = r.Handle("/pools/{pool:"+uuid.UUIDRegex+"}", Handler{context, showPool})
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/pools/{pool:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, deletePool})
+	route = r.Handle("/pools/{pool:"+uuid.UUIDRegex+"}", Handler{context, deletePool})
 	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/pools/{pool:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, addToPool})
+	route = r.Handle("/pools/{pool:"+uuid.UUIDRegex+"}", Handler{context, addToPool})
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/pools/{pool:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/subnets/{subnet:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, deleteSubnet})
+	route = r.Handle("/pools/{pool:"+uuid.UUIDRegex+"}/subnets/{subnet:"+uuid.UUIDRegex+"}", Handler{context, deleteSubnet})
 	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/pools/{pool:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/external-ips/{ip_id:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, deleteExternalIP})
+	route = r.Handle("/pools/{pool:"+uuid.UUIDRegex+"}/external-ips/{ip_id:"+uuid.UUIDRegex+"}", Handler{context, deleteExternalIP})
 	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
@@ -545,7 +546,7 @@ func Routes(config Config) *mux.Router {
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/external-ips", Handler{context, listMappedIPs})
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/external-ips", Handler{context, listMappedIPs})
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
@@ -553,15 +554,15 @@ func Routes(config Config) *mux.Router {
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/external-ips", Handler{context, mapExternalIP})
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/external-ips", Handler{context, mapExternalIP})
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/external-ips/{mapping_id:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, unmapExternalIP})
+	route = r.Handle("/external-ips/{mapping_id:"+uuid.UUIDRegex+"}", Handler{context, unmapExternalIP})
 	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/external-ips/{mapping_id:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}", Handler{context, unmapExternalIP})
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/external-ips/{mapping_id:"+uuid.UUIDRegex+"}", Handler{context, unmapExternalIP})
 	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
