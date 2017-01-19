@@ -175,6 +175,62 @@ type workloadOptions struct {
 	Disks           []disk           `yaml:"disks"`
 }
 
+func optToReqStorage(opt workloadOptions) ([]types.StorageResource, error) {
+	storage := make([]types.StorageResource, 0)
+	bootableCount := 0
+	for _, disk := range opt.Disks {
+		res := types.StorageResource{
+			Size:      disk.Size,
+			Bootable:  disk.Bootable,
+			Ephemeral: disk.Ephemeral,
+		}
+
+		if disk.Source != nil && disk.Source.Type == "" {
+			disk.Source.Type = types.Empty
+		}
+
+		if disk.ID != nil {
+			res.ID = *disk.ID
+		} else if disk.Size == 0 {
+			// source had better exist.
+			if disk.Source == nil {
+				return nil, errors.New("Invalid workload yaml: disk source may not be nil")
+			}
+
+			res.SourceType = disk.Source.Type
+			res.SourceID = disk.Source.ID
+
+			if res.SourceID != "" && res.SourceType == types.Empty {
+				return nil, errors.New("Invalid workload yaml: when specifying a source ID a type must also be specified")
+			}
+
+			if res.SourceType != types.Empty && res.SourceID == "" {
+				return nil, errors.New("Invalid workload yaml: when specifying a source type other than empty an id must also be specified")
+			}
+		} else {
+			if disk.Bootable == true {
+				// you may not request a bootable drive
+				// from an empty source
+				return nil, errors.New("Invalid workload yaml: empty disk source may not be bootable")
+			}
+
+			res.SourceType = types.Empty
+		}
+
+		if disk.Bootable {
+			bootableCount++
+		}
+
+		storage = append(storage, res)
+	}
+
+	if payloads.Hypervisor(opt.VMType) == payloads.QEMU && bootableCount == 0 {
+		return nil, errors.New("Invalid workload yaml: no bootable disks specified for a VM")
+	}
+
+	return storage, nil
+}
+
 func optToReq(opt workloadOptions, req *types.Workload) error {
 	b, err := ioutil.ReadFile(opt.CloudConfigFile)
 	if err != nil {
@@ -191,36 +247,10 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 	req.ImageName = opt.ImageName
 	req.ImageID = opt.ImageID
 	req.Config = config
-	req.Storage = []types.StorageResource{}
+	req.Storage, err = optToReqStorage(opt)
 
-	for _, disk := range opt.Disks {
-		res := types.StorageResource{
-			Size:      disk.Size,
-			Bootable:  disk.Bootable,
-			Ephemeral: disk.Ephemeral,
-		}
-
-		if disk.ID != nil {
-			res.ID = *disk.ID
-		} else if disk.Size == 0 {
-			// source had better exist.
-			if disk.Source == nil {
-				return errors.New("Invalid workload yaml: disk source may not be nil")
-			}
-
-			res.SourceType = disk.Source.Type
-			res.SourceID = disk.Source.ID
-		} else {
-			if disk.Bootable == true {
-				// you may not request a bootable drive
-				// from an empty source
-				return errors.New("Invalid workload yaml: empty disk source may not be bootable")
-			}
-
-			res.SourceType = types.Empty
-		}
-
-		req.Storage = append(req.Storage, res)
+	if err != nil {
+		return err
 	}
 
 	// all default resources are required.

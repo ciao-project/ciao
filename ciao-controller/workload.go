@@ -26,6 +26,11 @@ func validateVMWorkload(req types.Workload) error {
 		return types.ErrBadRequest
 	}
 
+	// Must have storage for VMs
+	if len(req.Storage) == 0 {
+		return types.ErrBadRequest
+	}
+
 	return nil
 }
 
@@ -40,7 +45,13 @@ func validateContainerWorkload(req types.Workload) error {
 }
 
 func validateWorkloadStorage(req types.Workload) error {
+	bootableCount := 0
 	for i := range req.Storage {
+		// check that a workload type is specified
+		if req.Storage[i].SourceType == "" {
+			return types.ErrBadRequest
+		}
+
 		// you may not request a sized volume unless it's empty.
 		if req.Storage[i].Size > 0 && req.Storage[i].SourceType != types.Empty {
 			return types.ErrBadRequest
@@ -58,19 +69,26 @@ func validateWorkloadStorage(req types.Workload) error {
 			if err != nil {
 				return types.ErrBadRequest
 			}
+
+			// If we have an ID we must have a type to get it from
+			if req.Storage[i].SourceType != types.Empty {
+				return types.ErrBadRequest
+			}
 		} else {
-			if req.Storage[i].SourceType == types.Empty {
-				// you many not use a source ID with empty.
-				if req.Storage[i].SourceID != "" {
-					return types.ErrBadRequest
-				}
-			} else {
-				// you must specify an ID with volume/image
-				if req.Storage[i].SourceID == "" {
-					return types.ErrBadRequest
-				}
+			// you may only use no source id with empty type
+			if req.Storage[i].SourceType != types.Empty {
+				return types.ErrBadRequest
 			}
 		}
+
+		if req.Storage[i].Bootable {
+			bootableCount++
+		}
+	}
+
+	// must be at least one bootable volume
+	if req.VMType == payloads.QEMU && bootableCount == 0 {
+		return types.ErrBadRequest
 	}
 
 	return nil
