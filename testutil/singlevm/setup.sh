@@ -267,6 +267,14 @@ done
 
 set -o nounset
 
+echo "Generating workload ssh key $workload_sshkey"
+rm -f "$workload_sshkey" "$workload_sshkey".pub
+ssh-keygen -f "$workload_sshkey" -t rsa -N ''
+test_sshkey=$(< "$workload_sshkey".pub)
+chmod 600 "$workload_sshkey".pub
+#Note: Password is set to ciao
+test_passwd='$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.'
+
 echo "Generating configuration file $conf_file"
 (
 cat <<-EOF
@@ -280,6 +288,11 @@ configure:
     compute_cert: $keystone_key
     identity_user: ${ciao_username}
     identity_password: ${ciao_password}
+    cnci_vcpus: 4
+    cnci_mem: 128
+    cnci_disk: 128
+    admin_ssh_key: ${test_sshkey}
+    admin_password: ${test_passwd}
   image_service:
     type: glance
     url: https://${ciao_host}
@@ -485,14 +498,6 @@ else
     exit 1
 fi
 
-#Over ride the cloud-init configuration
-echo "Generating workload ssh key $workload_sshkey"
-rm -f "$workload_sshkey" "$workload_sshkey".pub
-ssh-keygen -f "$workload_sshkey" -t rsa -N ''
-test_sshkey=$(< "$workload_sshkey".pub)
-chmod 600 "$workload_sshkey".pub
-#Note: Password is set to ciao
-test_passwd='$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.'
 
 #Create controller dirs
 echo "Making ciao workloads dir: ${ciao_ctl_dir}/workloads"

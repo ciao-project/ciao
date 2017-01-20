@@ -30,7 +30,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"sync"
 
 	"github.com/01org/ciao/ciao-controller/api"
@@ -45,7 +44,6 @@ import (
 	osimage "github.com/01org/ciao/openstack/image"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/testutil"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
@@ -67,7 +65,6 @@ type controller struct {
 	tenantReadinessLock sync.Mutex
 }
 
-var singleMachine = flag.Bool("single", false, "Enable single machine test")
 var cert = flag.String("cert", "", "Client certificate")
 var caCert = flag.String("cacert", "", "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
@@ -91,6 +88,14 @@ var logDir = "/var/lib/ciao/logs/controller"
 var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
 
 var cephID = flag.String("ceph_id", "", "ceph client id")
+
+var cnciVCPUs = 4
+var cnciMem = 2048
+var cnciDisk = 2048
+var adminSSHKey = ""
+
+// default password set to "ciao"
+var adminPassword = "$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO."
 
 func init() {
 	flag.Parse()
@@ -166,34 +171,31 @@ func main() {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
 
+	if clusterConfig.Configure.Controller.CNCIVcpus != 0 {
+		cnciVCPUs = clusterConfig.Configure.Controller.CNCIVcpus
+	}
+
+	if clusterConfig.Configure.Controller.CNCIMem != 0 {
+		cnciMem = clusterConfig.Configure.Controller.CNCIMem
+	}
+
+	if clusterConfig.Configure.Controller.CNCIDisk != 0 {
+		cnciDisk = clusterConfig.Configure.Controller.CNCIDisk
+	}
+
+	adminSSHKey = clusterConfig.Configure.Controller.AdminSSHKey
+
+	if clusterConfig.Configure.Controller.AdminPassword != "" {
+		adminPassword = clusterConfig.Configure.Controller.AdminPassword
+	}
+
+	ctl.ds.GenerateCNCIWorkload(cnciVCPUs, cnciMem, cnciDisk, adminSSHKey, adminPassword)
+
 	database.Logger = gloginterface.CiaoGlogLogger{}
 
 	logger := gloginterface.CiaoGlogLogger{}
 	osprepare.Bootstrap(context.TODO(), logger)
 	osprepare.InstallDeps(context.TODO(), controllerDeps, logger)
-
-	if *singleMachine {
-		hostname, _ := os.Hostname()
-		volumeURL := "https://" + hostname + ":" + strconv.Itoa(volumeAPIPort)
-		imageURL := "https://" + hostname + ":" + strconv.Itoa(imageAPIPort)
-		computeURL := "https://" + hostname + ":" + strconv.Itoa(computeAPIPort)
-		testIdentityConfig := testutil.IdentityConfig{
-			VolumeURL:  volumeURL,
-			ImageURL:   imageURL,
-			ComputeURL: computeURL,
-			ProjectID:  "f452bbc7-5076-44d5-922c-3b9d2ce1503f",
-		}
-
-		id := testutil.StartIdentityServer(testIdentityConfig)
-		defer id.Close()
-		identityURL = id.URL
-		glog.Errorf("========================")
-		glog.Errorf("Identity URL: %s", id.URL)
-		glog.Errorf("Please")
-		glog.Errorf("export CIAO_IDENTITY=%s", id.URL)
-		glog.Errorf("========================")
-		glog.Flush()
-	}
 
 	idConfig := identityConfig{
 		endpoint:        identityURL,

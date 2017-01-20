@@ -223,9 +223,6 @@ func (ds *Datastore) Init(config Config) error {
 	ds.instanceLastStat = make(map[string]types.CiaoServerStats)
 	ds.instanceLastStatLock = &sync.RWMutex{}
 
-	// generate the CNCI workload
-	ds.generateCNCIWorkload()
-
 	// warning, do not use the tenant cache to get
 	// networking information right now.  that is not
 	// updated, just the resources
@@ -2271,7 +2268,9 @@ func (ds *Datastore) UnMapExternalIP(address string) error {
 	return nil
 }
 
-func (ds *Datastore) generateCNCIWorkload() {
+// GenerateCNCIWorkload is used to create a workload definition for the CNCI.
+// This function should be called prior to any workload launch.
+func (ds *Datastore) GenerateCNCIWorkload(vcpus int, memMB int, diskMB int, key string, password string) {
 	// generate the CNCI workload.
 	config := `---
 #cloud-config
@@ -2279,19 +2278,21 @@ users:
   - name: cloud-admin
     gecos: CIAO Cloud Admin
     lock-passwd: false
-    passwd: $6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.
+    passwd: ` + password + `
     sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+    - ` + key + `
 ...
 `
 	cpus := payloads.RequestedResource{
 		Type:      payloads.VCPUs,
-		Value:     4,
+		Value:     vcpus,
 		Mandatory: false,
 	}
 
 	mem := payloads.RequestedResource{
 		Type:      payloads.MemMB,
-		Value:     128,
+		Value:     memMB,
 		Mandatory: false,
 	}
 

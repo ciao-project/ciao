@@ -381,6 +381,11 @@ const ConfigureYaml = `configure:
     compute_cert: ` + HTTPSKey + `
     identity_user: ` + IdentityUser + `
     identity_password: ` + IdentityPassword + `
+    cnci_vcpus: 0
+    cnci_mem: 0
+    cnci_disk: 0
+    admin_ssh_key: ""
+    admin_password: ""
   launcher:
     compute_net:
     - ` + ComputeNet + `
