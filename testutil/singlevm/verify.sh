@@ -43,6 +43,48 @@ function checkForNetworkArtifacts() {
 	fi
 }
 
+function rebootCNCI {
+	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" <<-EOF
+	sudo reboot now
+	EOF
+
+	#Now wait for it to come back up
+	ping -w 90 -c 3 $ssh_ip
+	exitOnError $?  "Unable to ping CNCI after restart"
+
+	#Dump the tables for visual verification
+	ssh -T -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$ssh_ip" <<-EOF
+	sudo iptables-save
+	sudo ip l
+	sudo ip a
+	EOF
+
+	echo "Rebooted the CNCI"
+}
+
+function checkExtIPConnectivity {
+    #We checked the event before calling this, so the mapping should exist
+    testip=`"$ciao_gobin"/ciao-cli external-ip list -f '{{with index . 0}}{{.ExternalIP}}{{end}}'`
+    test_instance=`"$ciao_gobin"/ciao-cli instance list -f '{{with index . 0}}{{.ID}}{{end}}'`
+
+    sudo ip route add 203.0.113.0/24 dev ciaovlan
+    ping -w 90 -c 3 $testip
+    ping_result=$?
+    #Make sure we are able to reach the VM
+    test_hostname=`ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$testip" hostname`
+    sudo ip route del 203.0.113.0/24 dev ciaovlan
+
+    exitOnError $ping_result "Unable to ping external IP"
+
+    if [ "$test_hostname" == "$test_instance" ]
+    then
+	    echo "SSH connectivity using external IP verified"
+    else
+	    echo "FATAL ERROR: Unable to ssh via external IP"
+	    exit 1
+    fi
+}
+
 #There are too many failsafes in the CNCI. Hence just disable iptables utility to trigger failure
 #This also ensures that the CNCI is always left in a consistent state (sans the permission)
 function triggerIPTablesFailure {
@@ -230,7 +272,7 @@ fi
 
 #Check docker networking
 echo "Checking Docker Networking"
-sudo docker exec $container_2 /bin/ping -c 3 $container_1_ip
+sudo docker exec $container_2 /bin/ping -w 90 -c 3 $container_1_ip
 
 exitOnError $?  "Unable to ping across containers"
 echo "Container connectivity verified"
@@ -252,26 +294,12 @@ checkEventStatus $event_counter "Mapped"
 "$ciao_gobin"/ciao-cli event list
 "$ciao_gobin"/ciao-cli external-ip list
 
-#We checked the event, so the mapping should exist
-testip=`"$ciao_gobin"/ciao-cli external-ip list -f '{{with index . 0}}{{.ExternalIP}}{{end}}'`
-test_instance=`"$ciao_gobin"/ciao-cli instance list -f '{{with index . 0}}{{.ID}}{{end}}'`
+checkExtIPConnectivity
 
-sudo ip route add 203.0.113.0/24 dev ciaovlan
-ping -c 3 $testip
-ping_result=$?
-#Make sure we are able to reach the VM
-test_hostname=`ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$CIAO_SSH_KEY" demouser@"$testip" hostname`
-sudo ip route del 203.0.113.0/24 dev ciaovlan
-
-exitOnError $ping_result "Unable to ping external IP"
-
-if [ "$test_hostname" == "$test_instance" ]
-then
-	echo "SSH connectivity using external IP verified"
-else
-	echo "FATAL ERROR: Unable to ssh via external IP"
-	exit 1
-fi
+#Check that the CNCI retains state after reboot
+#If state has been restored, the Ext IP should be reachable
+rebootCNCI
+checkExtIPConnectivity
 
 "$ciao_gobin"/ciao-cli external-ip unmap -address $testip
 

@@ -26,6 +26,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 
 	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
@@ -48,7 +49,7 @@ func initNetwork(cancelCh <-chan os.Signal) error {
 	if computeNet != "" {
 		_, cnet, _ := net.ParseCIDR(computeNet)
 		if cnet == nil {
-			return fmt.Errorf("Unable to Parse CIDR :" + computeNet)
+			return errors.Errorf("unable to Parse CIDR :" + computeNet)
 		}
 		cnci.ComputeNet = []net.IPNet{*cnet}
 	}
@@ -56,7 +57,7 @@ func initNetwork(cancelCh <-chan os.Signal) error {
 	if mgmtNet != "" {
 		_, mnet, _ := net.ParseCIDR(mgmtNet)
 		if mnet == nil {
-			return fmt.Errorf("Unable to Parse CIDR :" + mgmtNet)
+			return errors.Errorf("unable to Parse CIDR :" + mgmtNet)
 		}
 		cnci.ManagementNet = []net.IPNet{*mnet}
 	}
@@ -72,13 +73,11 @@ func initNetwork(cancelCh <-chan os.Signal) error {
 		select {
 		case <-time.After(time.Duration(d) * time.Second):
 		case <-cancelCh:
-			glog.Infof("cnci.Init network cancelled %s", err.Error())
-			return fmt.Errorf("cnci.Init cancelled")
+			return errors.Wrapf(err, "cancelled")
 		}
 	}
 	if err != nil {
-		glog.Errorf("cnci.Init network failed %s", err.Error())
-		return err
+		return errors.Wrapf(err, "network init failed")
 	}
 
 	gCnci = cnci
@@ -86,7 +85,7 @@ func initNetwork(cancelCh <-chan os.Signal) error {
 	if enableNetwork {
 		fw, err := libsnnet.InitFirewall(gCnci.ComputeLink[0].Attrs().Name)
 		if err != nil {
-			glog.Errorf("Firewall initialize failed %v", err)
+			glog.Errorf("Firewall initialize failed %v", err) //Explicit ignore
 		}
 		gFw = fw
 	}
@@ -100,12 +99,12 @@ func unmarshallSubnetParams(cmd *payloads.TenantAddedEvent) (*net.IPNet, int, ne
 
 	_, snet, err := net.ParseCIDR(cmd.TenantSubnet)
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("Invalid Remote subnet %s", err.Error())
+		return nil, 0, nil, errors.Wrapf(err, "invalid Remote subnet")
 	}
 
 	cIP := net.ParseIP(cmd.AgentIP)
 	if cIP == nil {
-		return nil, 0, nil, fmt.Errorf("Invalid CN IP %s", cmd.ConcentratorIP)
+		return nil, 0, nil, errors.Wrapf(err, "invalid CN IP %s", cmd.ConcentratorIP)
 	}
 
 	//TODO
@@ -114,7 +113,7 @@ func unmarshallSubnetParams(cmd *payloads.TenantAddedEvent) (*net.IPNet, int, ne
 	key := int(binary.LittleEndian.Uint32(snet.IP))
 	subnetKey := cmd.SubnetKey
 	if key != subnetKey {
-		return nil, 0, nil, fmt.Errorf("Invalid Subnet Key %s %x", cmd.TenantSubnet, cmd.SubnetKey)
+		return nil, 0, nil, errors.Wrapf(err, "invalid subnet key %s %x", cmd.TenantSubnet, cmd.SubnetKey)
 	}
 
 	return snet, subnetKey, cIP, nil
@@ -151,20 +150,20 @@ func natSSHSubnet(action libsnnet.FwAction, subnet net.IPNet, intIf string, extI
 
 	err := gFw.ExtFwding(action, extIf, intIf)
 	if err != nil {
-		return fmt.Errorf("Error: NAT %v failed %v", action, err)
+		return errors.Wrapf(err, "nat %v", action)
 	}
 
 	ips := genIPsInSubnet(subnet)
 	for _, ip := range ips {
 		extPort, err := libsnnet.DebugSSHPortForIP(ip)
 		if err != nil {
-			return fmt.Errorf("Error: ssh fwd %v failed %v", action, err)
+			return errors.Wrapf(err, "ssh fwd %v", action)
 		}
 		glog.Infof("ssh fwd IP[%s] Port[%d] %d %d", ip, extPort, ip[2], ip[3])
 
 		err = gFw.ExtPortAccess(action, "tcp", extIf, extPort, ip, 22)
 		if err != nil {
-			return fmt.Errorf("Error: ssh fwd %v failed %v", action, err)
+			return errors.Wrapf(err, "ssh fwd %v", action)
 		}
 	}
 	return nil
@@ -174,8 +173,7 @@ func addRemoteSubnet(cmd *payloads.TenantAddedEvent) error {
 	rs, tk, rip, err := unmarshallSubnetParams(cmd)
 
 	if err != nil {
-		glog.Errorf("cnci.AddRemoteSubnet invalid params %s %x %s %s", rs, tk, rip, err)
-		return err
+		return errors.Wrapf(err, "invalid params %s %x %s", rs, tk, rip)
 	}
 
 	if !enableNetwork {
@@ -183,8 +181,7 @@ func addRemoteSubnet(cmd *payloads.TenantAddedEvent) error {
 	}
 	bridge, err := gCnci.AddRemoteSubnet(*rs, tk, rip)
 	if err != nil {
-		glog.Errorf("cnci.AddRemoteSubnet failed %s %x %s %s", rs, tk, rip, err)
-		return err
+		return errors.Wrapf(err, "add remote subnet %s %x %s", rs, tk, rip)
 	}
 
 	glog.Infof("cnci.AddRemoteSubnet success %s %x %s", rs, tk, rip, err)
@@ -192,10 +189,9 @@ func addRemoteSubnet(cmd *payloads.TenantAddedEvent) error {
 	if enableNATssh && bridge != "" {
 		err = natSSHSubnet(libsnnet.FwEnable, *rs, bridge, gCnci.ComputeLink[0].Attrs().Name)
 		if err != nil {
-			glog.Errorf("enable ssh nat failed %s %x %s %s", rs, tk, bridge, err)
-			return err
+			return errors.Wrapf(err, "enable ssh nat %s %x %s", rs, tk, bridge)
 		}
-		glog.Infof("cnci.AddRemoteSubnet ssh nat success %s %x %s", rs, tk, bridge, err)
+		glog.Infof("cnci.AddRemoteSubnet ssh nat success %s %x %s", rs, tk, bridge)
 	}
 	return nil
 }
@@ -204,8 +200,7 @@ func delRemoteSubnet(cmd *payloads.TenantAddedEvent) error {
 	rs, tk, rip, err := unmarshallSubnetParams(cmd)
 
 	if err != nil {
-		glog.Errorf("cnci.delRemoteSubnet invalid params %s %x %s %s", rs, tk, rip, err)
-		return err
+		return errors.Wrapf(err, "invalid params %s %x %s", rs, tk, rip)
 	}
 
 	if !enableNetwork {
@@ -214,7 +209,7 @@ func delRemoteSubnet(cmd *payloads.TenantAddedEvent) error {
 
 	err = gCnci.DelRemoteSubnet(*rs, tk, rip)
 	if err != nil {
-		glog.Errorf("cnci.DelRemoteSubnet failed %s %x %s %s", rs, tk, rip, err)
+		glog.Errorf("delete remote subnet %s %x %s %s", rs, tk, rip, err)
 		return err
 	}
 	glog.Infof("cnci.DelRemoteSubnet success %s %x %s", rs, tk, rip, err)
@@ -223,11 +218,10 @@ func delRemoteSubnet(cmd *payloads.TenantAddedEvent) error {
 	if enableNATssh {
 		err = natSshSubnet(libsnnet.FwDisable, *rs, bridge, gCnci.ComputeLink[0].Attrs().Name)
 		if err != nil {
-			glog.Errorf("disable ssh nat failed %s %x %s %s", rs, tk, bridge, err)
-			return err
+			return errors.Errorf(err, "disable ssh nat failed %s %x %s", rs, tk, bridge)
 		}
 	}
-	glog.Infof("cnci.DelRemoteSubnet ssh success %s %x %s", rs, tk, bridge, err)
+	glog.Infof("cnci.DelRemoteSubnet ssh success %s %x %s", rs, tk, bridge)
 	*/
 
 	return nil
@@ -244,8 +238,7 @@ func cnciAddedMarshal(agentUUID string) ([]byte, error) {
 	evt.ConcentratorMAC = gCnci.ComputeLink[0].Attrs().HardwareAddr.String()
 
 	if evt.ConcentratorIP == "<nil>" || evt.ConcentratorMAC == "" {
-		glog.Errorf("cnci.cnciAddedMarshal invalid physical configuration")
-		return nil, fmt.Errorf("cnci.cnciAddedMarshal invalid physical configuration")
+		return nil, errors.Errorf("invalid physical configuration")
 	}
 
 	glog.Infoln("cnciAdded Event ", cnciAdded)
@@ -300,17 +293,17 @@ func publicIPFailureMarshal(reason payloads.PublicIPFailureReason, cmd *payloads
 func sendNetworkError(client *ssntpConn, errorType ssntp.Error, errorInfo interface{}) error {
 
 	if !client.isConnected() {
-		return fmt.Errorf("Unable to send %s %v", errorType, errorInfo)
+		return errors.Errorf("unable to send %s %v", errorType, errorInfo)
 	}
 
 	payload, err := generateNetErrorPayload(errorType, errorInfo)
 	if err != nil {
-		return fmt.Errorf("Unable parse ssntpError %s %v", err, errorInfo)
+		return errors.Wrapf(err, "unable parse ssntpError %v", errorInfo)
 	}
 
 	n, err := client.SendError(errorType, payload)
 	if err != nil {
-		return fmt.Errorf("Unable to send %s %s %v %d", err.Error(), errorType, errorInfo, n)
+		return errors.Wrapf(err, "unable to send %s %v %d", errorType, errorInfo, n)
 	}
 
 	return nil
@@ -321,17 +314,17 @@ func generateNetErrorPayload(errorType ssntp.Error, errorInfo interface{}) ([]by
 	case ssntp.AssignPublicIPFailure:
 		cmd, ok := errorInfo.(*payloads.PublicIPCommand)
 		if !ok {
-			return nil, fmt.Errorf("PublicIPAssign Invalid errorInfo [%T] %v", errorInfo, errorInfo)
+			return nil, errors.Errorf("invalid errorInfo [%T] %v", errorInfo, errorInfo)
 		}
 		return publicIPFailureMarshal(payloads.PublicIPAssignFailure, cmd)
 	case ssntp.UnassignPublicIPFailure:
 		cmd, ok := errorInfo.(*payloads.PublicIPCommand)
 		if !ok {
-			return nil, fmt.Errorf("PublicIPUnassign Invalid errorInfo [%T] %v", errorInfo, errorInfo)
+			return nil, errors.Errorf("invalid errorInfo [%T] %v", errorInfo, errorInfo)
 		}
 		return publicIPFailureMarshal(payloads.PublicIPReleaseFailure, cmd)
 	default:
-		return nil, fmt.Errorf("Unsupported ssntpErrorInfo type: %v", errorType)
+		return nil, errors.Errorf("unsupported ssntpErrorInfo type: %v", errorType)
 	}
 
 }
@@ -339,17 +332,17 @@ func generateNetErrorPayload(errorType ssntp.Error, errorInfo interface{}) ([]by
 func sendNetworkEvent(client *ssntpConn, eventType ssntp.Event, eventInfo interface{}) error {
 
 	if !client.isConnected() {
-		return fmt.Errorf("Unable to send %s %v", eventType, eventInfo)
+		return errors.Errorf("unable to send %s %v", eventType, eventInfo)
 	}
 
 	payload, err := generateNetEventPayload(eventType, eventInfo, client.UUID())
 	if err != nil {
-		return fmt.Errorf("Unable parse ssntpEvent %s %v", err, eventInfo)
+		return errors.Wrapf(err, "unable parse ssntpEvent %v", eventInfo)
 	}
 
 	n, err := client.SendEvent(eventType, payload)
 	if err != nil {
-		return fmt.Errorf("Unable to send %s %s %v %d", err.Error(), eventType, eventInfo, n)
+		return errors.Wrapf(err, "unable to send %v %d", eventType, eventInfo, n)
 	}
 
 	return nil
@@ -365,18 +358,18 @@ func generateNetEventPayload(eventType ssntp.Event, eventInfo interface{}, agent
 		glog.Infof("generating publicIP Assigned Event Payload %v", eventInfo)
 		cmd, ok := eventInfo.(*payloads.PublicIPCommand)
 		if !ok {
-			return nil, fmt.Errorf("PublicIPAssigned Invalid eventInfo [%T] %v", eventInfo, eventInfo)
+			return nil, errors.Errorf("invalid eventInfo [%T] %v", eventInfo, eventInfo)
 		}
 		return publicIPAssignedMarshal(cmd)
 	case ssntp.PublicIPUnassigned:
 		glog.Infof("generating publicIP Unassigned Event Payload %v", eventInfo)
 		cmd, ok := eventInfo.(*payloads.PublicIPCommand)
 		if !ok {
-			return nil, fmt.Errorf("PublicIPUnassigned Invalid eventInfo [%T] %v", eventInfo, eventInfo)
+			return nil, errors.Errorf("invalid eventInfo [%T] %v", eventInfo, eventInfo)
 		}
 		return publicIPUnassignedMarshal(cmd)
 	default:
-		return nil, fmt.Errorf("Unsupported ssntpEventInfo type: %v", eventType)
+		return nil, errors.Errorf("unsupported ssntpEventInfo type: %v", eventType)
 	}
 
 }
@@ -388,9 +381,9 @@ func unmarshallPubIP(cmd *payloads.PublicIPCommand) (net.IP, net.IP, error) {
 
 	switch {
 	case prIP == nil:
-		return nil, nil, fmt.Errorf("invalid private IP %v", cmd.PrivateIP)
+		return nil, nil, errors.Errorf("invalid private IP %v", cmd.PrivateIP)
 	case puIP == nil:
-		return nil, nil, fmt.Errorf("invalid public IP %v", cmd.PublicIP)
+		return nil, nil, errors.Errorf("invalid public IP %v", cmd.PublicIP)
 	}
 
 	return prIP, puIP, nil
@@ -401,28 +394,20 @@ func assignPubIP(cmd *payloads.PublicIPCommand) error {
 
 	prIP, puIP, err := unmarshallPubIP(cmd)
 	if err != nil {
-		return fmt.Errorf("cnci.assignPubIP invalid params %v %v", err, cmd)
+		return errors.Wrapf(err, "invalid params %v", cmd)
 	}
 
 	err = gFw.PublicIPAccess(libsnnet.FwEnable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
-	if err != nil {
-		return fmt.Errorf("%v", err)
-	}
-
-	return nil
+	return errors.Wrapf(err, "assign ip")
 }
 
 func releasePubIP(cmd *payloads.PublicIPCommand) error {
 
 	prIP, puIP, err := unmarshallPubIP(cmd)
 	if err != nil {
-		return fmt.Errorf("cnci.releasePubIP invalid params %v %v", err, cmd)
+		return fmt.Errorf("invalid params %v %v", err, cmd)
 	}
 
 	err = gFw.PublicIPAccess(libsnnet.FwDisable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
-	if err != nil {
-		return fmt.Errorf("%v", err)
-	}
-
-	return nil
+	return errors.Wrapf(err, "release ip")
 }

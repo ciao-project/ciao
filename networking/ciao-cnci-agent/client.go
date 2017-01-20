@@ -19,7 +19,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -36,6 +35,7 @@ import (
 	"github.com/01org/ciao/networking/libsnnet"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/pkg/errors"
 
 	"github.com/golang/glog"
 )
@@ -92,6 +92,7 @@ func (s *ssntpConn) setStatus(status bool) {
 
 type agentClient struct {
 	ssntpConn
+	db    *cnciDatabase
 	cmdCh chan *cmdWrapper
 	netCh chan struct{} //Used to signal physical network changes
 }
@@ -112,29 +113,26 @@ func (client *agentClient) StatusNotify(status ssntp.Status, frame *ssntp.Frame)
 }
 
 func (client *agentClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
-	glog.Infof("ERROR %d", err)
+	glog.Infof("ERROR %v", err)
 }
 
 func getLock() error {
 	err := os.MkdirAll(lockDir, 0777)
 	if err != nil {
-		glog.Errorf("Unable to create lockdir %s", lockDir)
-		return err
+		return errors.Wrapf(err, "unable to create lockdir %s", lockDir)
 	}
 
 	/* We're going to let the OS close and unlock this fd */
 	lockPath := path.Join(lockDir, lockFile)
 	fd, err := syscall.Open(lockPath, syscall.O_CREAT, syscall.S_IWUSR|syscall.S_IRUSR)
 	if err != nil {
-		glog.Errorf("Unable to open lock file %v", err)
-		return err
+		return errors.Wrapf(err, "unable to open lock file %v", lockPath)
 	}
 
 	syscall.CloseOnExec(fd)
 
 	if syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB) != nil {
-		glog.Error("CNCI Agent is already running.  Exitting.")
-		return fmt.Errorf("Unable to lock file %s", lockPath)
+		errors.Wrapf(err, "cnci agent is already running. Exiting.")
 	}
 
 	return nil
@@ -144,18 +142,18 @@ func getLock() error {
 func initLogger() error {
 	logDirFlag := flag.Lookup("log_dir")
 	if logDirFlag == nil {
-		return fmt.Errorf("log_dir does not exist")
+		return errors.Errorf("log_dir does not exist")
 	}
 
 	if logDirFlag.Value.String() == "" {
 		err := logDirFlag.Value.Set(logDir)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "logger init")
 		}
 	}
 
 	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
-		return fmt.Errorf("Unable to create log directory (%s) %v", logDir, err)
+		return errors.Wrapf(err, "unable to create log directory (%s)", logDir)
 	}
 
 	return nil
@@ -163,8 +161,8 @@ func initLogger() error {
 
 func createMandatoryDirs() error {
 	if err := os.MkdirAll(interfacesDir, 0755); err != nil {
-		return fmt.Errorf("Unable to create interfaces directory (%s) %v",
-			interfacesDir, err)
+		return errors.Wrapf(err, "unable to create interfaces directory (%s)",
+			interfacesDir)
 	}
 	return nil
 }
@@ -180,7 +178,7 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			glog.Infof("Processing: CiaoEventTenantAdded %v", c)
 			err := addRemoteSubnet(c)
 			if err != nil {
-				glog.Errorf("Error Processing: CiaoEventTenantAdded %v", err)
+				glog.Errorf("Error Processing: CiaoEventTenantAdded %+v", err)
 			}
 		}(cmd)
 
@@ -190,8 +188,9 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			c := &netCmd.TenantRemoved
 			glog.Infof("Processing: CiaoEventTenantRemoved %v", c)
 			err := delRemoteSubnet(c)
+
 			if err != nil {
-				glog.Errorf("Error Processing: CiaoEventTenantRemoved %v", err)
+				glog.Errorf("Error Processing: CiaoEventTenantRemoved %+v", err)
 			}
 		}(cmd)
 
@@ -202,14 +201,14 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			glog.Infof("Processing: CiaoCommandAssignPublicIP %v", c)
 			err := assignPubIP(c)
 			if err != nil {
-				glog.Errorf("Error Processing: CiaoCommandAssignPublicIP %v", err)
+				glog.Errorf("Error Processing: CiaoCommandAssignPublicIP %+v", err)
 				err = sendNetworkError(client, ssntp.AssignPublicIPFailure, c)
 			} else {
 				err = sendNetworkEvent(client, ssntp.PublicIPAssigned, c)
 			}
 
 			if err != nil {
-				glog.Errorf("Unable to send event : %v", err)
+				glog.Errorf("Unable to send event : %+v", err)
 			}
 		}(cmd)
 
@@ -220,14 +219,14 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			glog.Infof("Processing: CiaoCommandReleasePublicIP %v", c)
 			err := releasePubIP(c)
 			if err != nil {
-				glog.Errorf("Error Processing: CiaoCommandReleasePublicIP %v", c)
+				glog.Errorf("Error Processing: CiaoCommandReleasePublicIP %+v", c)
 				err = sendNetworkError(client, ssntp.UnassignPublicIPFailure, c)
 			} else {
 				err = sendNetworkEvent(client, ssntp.PublicIPUnassigned, c)
 			}
 
 			if err != nil {
-				glog.Errorf("Unable to send event : %v", err)
+				glog.Errorf("Unable to send event : %+v", err)
 			}
 		}(cmd)
 
@@ -237,7 +236,7 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 		glog.Infof("Processing: status connected")
 		err := sendNetworkEvent(client, ssntp.ConcentratorInstanceAdded, nil)
 		if err != nil {
-			glog.Errorf("Unable to register : %v", err)
+			glog.Errorf("Unable to register : %+v", err)
 		}
 
 	default:
@@ -261,6 +260,12 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 				return
 			}
 			glog.Infof("EVENT: ssntp.AssignPublicIP %v", assignIP)
+
+			err = dbProcessCommand(client.db, &assignIP)
+			if err != nil {
+				glog.Errorf("unable to save state %+v", err)
+			}
+
 			client.cmdCh <- &cmdWrapper{&assignIP}
 		}(payload)
 
@@ -275,6 +280,12 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 				return
 			}
 			glog.Infof("EVENT: ssntp.ReleasePublicIP %s", releaseIP)
+
+			err = dbProcessCommand(client.db, &releaseIP)
+			if err != nil {
+				glog.Errorf("unable to save state %+v", err)
+			}
+
 			client.cmdCh <- &cmdWrapper{&releaseIP}
 		}(payload)
 
@@ -299,6 +310,11 @@ func (client *agentClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 			}
 			glog.Infof("EVENT: ssntp.TenantAdded %s", tenantAdded)
 
+			err = dbProcessCommand(client.db, &tenantAdded)
+			if err != nil {
+				glog.Errorf("unable to save state %+v", err)
+			}
+
 			client.cmdCh <- &cmdWrapper{&tenantAdded}
 		}(payload)
 
@@ -313,6 +329,12 @@ func (client *agentClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 				return
 			}
 			glog.Infof("EVENT: ssntp.TenantRemoved %s", tenantRemoved)
+
+			err = dbProcessCommand(client.db, &tenantRemoved)
+			if err != nil {
+				glog.Errorf("unable to save state %+v", err)
+			}
+
 			client.cmdCh <- &cmdWrapper{&tenantRemoved}
 		}(payload)
 
@@ -321,7 +343,7 @@ func (client *agentClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 	}
 }
 
-func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
+func connectToServer(db *cnciDatabase, doneCh chan struct{}, statusCh chan struct{}) {
 
 	defer func() {
 		statusCh <- struct{}{}
@@ -329,7 +351,7 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 
 	cfg := &ssntp.Config{UUID: agentUUID, URI: serverURL, CAcert: serverCertPath, Cert: clientCertPath,
 		Log: ssntp.Log}
-	client := &agentClient{cmdCh: make(chan *cmdWrapper)}
+	client := &agentClient{db: db, cmdCh: make(chan *cmdWrapper)}
 
 	dialCh := make(chan error)
 
@@ -407,17 +429,49 @@ func discoverUUID() (string, error) {
 
 	payload, err := ioutil.ReadFile("/media/openstack/latest/meta_data.json")
 	if err != nil {
-		glog.Errorf("Unable to read /media/openstack/latest/meta_data.json %v", err)
-		return "", err
+		return "", errors.Wrapf(err, "Unable to read /media/openstack/latest/meta_data.json %v")
 	}
 
 	metaData := &CloudInitJSON{}
 	err = json.Unmarshal(payload, metaData)
 	if err != nil {
-		glog.Errorf("Unable to read UUID from /media/openstack/latest/meta_data.json %v", err)
+		return "", errors.Wrapf(err, "Unable to read UUID from /media/openstack/latest/meta_data.json")
 	}
 
 	return metaData.UUID, nil
+}
+
+//Rebuild network state from database
+func rebuildNetworkState(db *cnciDatabase) error {
+	var lastError error
+	if db == nil {
+		return nil
+	}
+
+	db.SubnetMap.Lock()
+	defer db.SubnetMap.Unlock()
+	db.PublicIPMap.Lock()
+	defer db.PublicIPMap.Unlock()
+
+	for key, subnet := range db.SubnetMap.m {
+		glog.Infof("Key: %v Subnet: %v", key, subnet)
+		err := addRemoteSubnet(subnet)
+		if err != nil {
+			lastError = err
+			glog.Errorf("rebuildNetworkState: %v", err)
+		}
+	}
+
+	for key, publicIP := range db.PublicIPMap.m {
+		glog.Infof("Key: %v PublicIP: %v", key, publicIP)
+		err := assignPubIP(publicIP)
+		if err != nil {
+			lastError = err
+			glog.Errorf("rebuildNetworkState: %v", err)
+		}
+	}
+
+	return errors.Wrapf(lastError, "rebuild network state")
 }
 
 func main() {
@@ -431,17 +485,17 @@ func main() {
 	libsnnet.Logger = gloginterface.CiaoGlogLogger{}
 
 	if err := initLogger(); err != nil {
-		log.Fatalf("Unable to initialise logs: %v", err)
+		log.Fatalf("Unable to initialise logs: %+v", err)
 	}
 
 	glog.Info("Starting CNCI Agent")
 
 	if err := createMandatoryDirs(); err != nil {
-		glog.Fatalf("Unable to create mandatory dirs: %v", err)
+		glog.Fatalf("Unable to create mandatory dirs: %+v", err)
 	}
 
 	if err := discoverScheduler(); err != nil {
-		glog.Fatalf("Unable to auto discover scheduler: %v", err)
+		glog.Fatalf("Unable to auto discover scheduler: %+v", err)
 	}
 	glog.Errorf("Scheduler address %v", serverURL)
 
@@ -460,10 +514,22 @@ func main() {
 	//TODO: Wait till the node gets an IP address before we kick this off
 	//TODO: Add a IP address change notifier to handle potential IP address change
 	if err := initNetwork(signalCh); err != nil {
-		glog.Fatalf("Unable to setup network. %s", err.Error())
+		glog.Fatalf("Unable to setup network. %+v", err)
 	}
 
-	go connectToServer(doneCh, statusCh)
+	//Recover the state from the database and then
+	//recreate the CNCI state by replaying the commands
+	//Has to be done prior to accepting commands over the network
+	db, err := dbInit()
+	if err != nil {
+		glog.Fatalf("Unable to setup database. %+v", err)
+	}
+
+	if err := rebuildNetworkState(db); err != nil {
+		glog.Errorf("Unable to rebuild network state. %+v", err)
+	}
+
+	go connectToServer(db, doneCh, statusCh)
 
 	//Prime the watchdog
 	go func() {
