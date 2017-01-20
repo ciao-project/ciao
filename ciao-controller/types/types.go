@@ -671,3 +671,10 @@ type MapIPRequest struct {
 	PoolName   *string `json:"pool_name"`
 	InstanceID string  `json:"instance_id"`
 }
+
+// QuotaDetails holds information for updating and querying quotas
+type QuotaDetails struct {
+	Name  string
+	Value int
+	Usage int
+}
