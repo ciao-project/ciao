@@ -50,14 +50,21 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type tenantConfirmMemo struct {
+	ch  chan struct{}
+	err error
+}
+
 type controller struct {
 	storage.BlockDriver
 
-	client controllerClient
-	ds     *datastore.Datastore
-	id     *identity
-	image  image.Client
-	apiURL string
+	client              controllerClient
+	ds                  *datastore.Datastore
+	id                  *identity
+	image               image.Client
+	apiURL              string
+	tenantReadiness     map[string]*tenantConfirmMemo
+	tenantReadinessLock sync.Mutex
 }
 
 var singleMachine = flag.Bool("single", false, "Enable single machine test")
@@ -109,6 +116,7 @@ func main() {
 	var err error
 
 	ctl := new(controller)
+	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
 
 	ctl.image = image.Client{MountPoint: *imagesPath}
