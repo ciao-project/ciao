@@ -1822,6 +1822,7 @@ func TestMain(m *testing.M) {
 	server = testutil.StartTestServer()
 
 	ctl = new(controller)
+	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
 
 	ctl.BlockDriver = func() storage.BlockDriver {

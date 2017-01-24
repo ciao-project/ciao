@@ -94,7 +94,7 @@ func (c *controller) deleteInstance(instanceID string) error {
 	return nil
 }
 
-func (c *controller) confirmTenant(tenantID string) error {
+func (c *controller) confirmTenantRaw(tenantID string) error {
 	tenant, err := c.ds.GetTenant(tenantID)
 	if err != nil {
 		return err
@@ -128,6 +128,42 @@ func (c *controller) confirmTenant(tenantID string) error {
 	}
 
 	return nil
+}
+
+func (c *controller) confirmTenant(tenantID string) error {
+	c.tenantReadinessLock.Lock()
+	memo := c.tenantReadiness[tenantID]
+	if memo != nil {
+
+		// Someone else has already or is in the process of confirming
+		// this tenant.  We need to wait until memo.ch is closed before
+		// continuing.
+
+		c.tenantReadinessLock.Unlock()
+		<-memo.ch
+		if memo.err != nil {
+			return memo.err
+		}
+
+		// If we get here we know that confirmTenantRaw has already
+		// been successfully called for this tenant during the life
+		// time of this controller invocation.
+
+		return nil
+	}
+
+	ch := make(chan struct{})
+	c.tenantReadiness[tenantID] = &tenantConfirmMemo{ch: ch}
+	c.tenantReadinessLock.Unlock()
+	err := c.confirmTenantRaw(tenantID)
+	if err != nil {
+		c.tenantReadinessLock.Lock()
+		c.tenantReadiness[tenantID].err = err
+		delete(c.tenantReadiness, tenantID)
+		c.tenantReadinessLock.Unlock()
+	}
+	close(ch)
+	return err
 }
 
 func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, error) {
