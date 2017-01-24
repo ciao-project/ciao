@@ -301,3 +301,11 @@ func (db *MemoryDB) updateWorkload(wl types.Workload) error {
 	tenant.workloads = append(tenant.workloads, wl)
 	return nil
 }
+
+func (db *MemoryDB) updateQuotas(tenantID string, qds []types.QuotaDetails) error {
+	return nil
+}
+
+func (db *MemoryDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
+	return []types.QuotaDetails{}, nil
+}

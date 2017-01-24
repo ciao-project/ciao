@@ -1006,3 +1006,109 @@ users:
 
 	db.disconnect()
 }
+
+func findQuota(qds []types.QuotaDetails, name string, value int) bool {
+	for _, qd := range qds {
+		if qd.Name == name && qd.Value == value {
+			return true
+		}
+	}
+
+	return false
+}
+
+func TestSQLiteDBAddQuotas(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	qds, err := db.getQuotas("test-tenand-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(qds) != 0 {
+		t.Fatalf("Expected zero quota entries: got %d", len(qds))
+	}
+
+	err = db.updateQuotas("test-tenant-id", []types.QuotaDetails{{Name: "test-quota-name", Value: 10}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	qds, err = db.getQuotas("test-tenant-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !findQuota(qds, "test-quota-name", 10) {
+		t.Fatal("Added quota not found")
+	}
+
+	err = db.updateQuotas("test-tenant-id", []types.QuotaDetails{{Name: "test-quota-name-2", Value: 20}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	qds, err = db.getQuotas("test-tenant-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(qds) != 2 {
+		t.Fatalf("Expected 2 quotas: got %d", len(qds))
+	}
+
+	if !findQuota(qds, "test-quota-name-2", 20) {
+		t.Fatal("Added quota not found")
+	}
+}
+
+func TestSQLiteDBUpdateQuotas(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	qds, err := db.getQuotas("test-tenand-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(qds) != 0 {
+		t.Fatalf("Expected zero quota entries: got %d", len(qds))
+	}
+
+	err = db.updateQuotas("test-tenant-id", []types.QuotaDetails{{Name: "test-quota-name", Value: 10}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	qds, err = db.getQuotas("test-tenant-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !findQuota(qds, "test-quota-name", 10) {
+		t.Fatal("Added quota not found")
+	}
+
+	err = db.updateQuotas("test-tenant-id", []types.QuotaDetails{{Name: "test-quota-name", Value: 20}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	qds, err = db.getQuotas("test-tenant-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(qds) != 1 {
+		t.Fatalf("Expected 1 quotas: got %d", len(qds))
+	}
+
+	if !findQuota(qds, "test-quota-name", 20) {
+		t.Fatal("Added quota not found")
+	}
+}
