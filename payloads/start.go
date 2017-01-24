@@ -76,6 +76,23 @@ const (
 	// a network node (ie: only relevant when resource NetworkNode has
 	// value true.
 	PhysicalNetwork = "physical_network"
+
+	// Instance is used to indicate that this requested resource is an instance.
+	Instance = "instance"
+
+	// Volume is used to indicate that the requested resource is a volume.
+	Volume = "volume"
+
+	// Image is used to indicate that the requested resource is an image.
+	Image = "image"
+
+	// ExternalIP is used to indicate the the requested resource is an
+	// externally accessible IP address.
+	ExternalIP = "external_ip"
+
+	// SharedDiskGiB is used for shared storage across the cluster used for
+	// storing volume and images. (Measured in GiB)
+	SharedDiskGiB = "shared_disk_gib"
 )
 
 const (
