@@ -39,8 +39,6 @@ start:
        value: 2
      - type: mem_mb
        value: 370
-     - type: disk_mb
-       value: 8000
   instance_uuid: d7d86208-b46c-4465-9018-ee14087d415f
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f
   fw_type: legacy
@@ -59,7 +57,6 @@ start:
 		&vmConfig{
 			Cpus:       2,
 			Mem:        370,
-			Disk:       8000,
 			Instance:   "d7d86208-b46c-4465-9018-ee14087d415f",
 			Legacy:     true,
 			VnicMAC:    "02:00:e6:f5:af:f9",
@@ -90,8 +87,6 @@ start:
        value: 2
      - type: mem_mb
        value: 370
-     - type: disk_mb
-       value: 8000
   instance_uuid: imnotvalid
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f
   fw_type: legacy
@@ -116,8 +111,6 @@ start:
        value: 2
      - type: mem_mb
        value: 370
-     - type: disk_mb
-       value: 8000
   instance_uuid: d7d86208-b46c-4465-9018-ee14087d415f
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f
   fw_type: imnotvalid
@@ -142,8 +135,6 @@ start:
        value: 2
      - type: mem_mb
        value: 370
-     - type: disk_mb
-       value: 8000
   instance_uuid: d7d86208-b46c-4465-9018-ee14087d415f
   vm_type: askajajlsj
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f

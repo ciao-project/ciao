@@ -979,12 +979,6 @@ users:
 		Mandatory: false,
 	}
 
-	disk := payloads.RequestedResource{
-		Type:      payloads.DiskMB,
-		Value:     1024,
-		Mandatory: false,
-	}
-
 	storage := types.StorageResource{
 		ID:        "",
 		Ephemeral: false,
@@ -999,7 +993,7 @@ users:
 		ImageID:     uuid.Generate().String(),
 		ImageName:   "",
 		Config:      testConfig,
-		Defaults:    []payloads.RequestedResource{cpus, mem, disk},
+		Defaults:    []payloads.RequestedResource{cpus, mem},
 		Storage:     []types.StorageResource{storage},
 	}
 

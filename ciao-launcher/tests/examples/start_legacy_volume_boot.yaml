@@ -5,8 +5,6 @@ start:
        value: 2
      - type: mem_mb
        value: 370
-     - type: disk_mb
-       value: 8000
   instance_uuid: d7d86208-b46c-4465-9018-ee14087d415f
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f
   fw_type: legacy

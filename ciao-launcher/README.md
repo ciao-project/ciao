@@ -174,10 +174,6 @@ Actually, this is sort of an odd situation as the START command partially succee
 ciao-launcher returns an error code, but the instance has been created and could be booted a
 later stage via RESTART.
 
-If the user specifies a size for disk_mb that is smaller than the virtual size of the
-backing image, launcher ignores the user specified value and creates an image for the
-instance whose virtual size matches that size of the chosen backing image.
-
 ciao-launcher only supports persistent instances at the moment.  Any VM instances created
 by the START command are persistent, i.e., the persistence YAML field is currently
 ignored.
