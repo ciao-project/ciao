@@ -99,14 +99,13 @@ disks:
 Valid values for the source `service` field are `image` or `volume`
 
 Workload definitions must also contain default values for resources
-that the workload will need to use when it runs. There are three resources
+that the workload will need to use when it runs. There are two resources
 which must be specified:
 
 ```
 defaults:
     vcpus: 2
     mem_mb: 512
-    disk_mb: 1024
 ```
 
 Finally, the filename for the cloud config file must be included in the
