@@ -25,7 +25,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -34,6 +33,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/api"
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
+	"github.com/01org/ciao/ciao-controller/internal/quotas"
 	image "github.com/01org/ciao/ciao-image/client"
 	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/clogger/gloginterface"
@@ -46,6 +46,7 @@ import (
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 type tenantConfirmMemo struct {
@@ -63,6 +64,7 @@ type controller struct {
 	apiURL              string
 	tenantReadiness     map[string]*tenantConfirmMemo
 	tenantReadinessLock sync.Mutex
+	qs                  *quotas.Quotas
 }
 
 var cert = flag.String("cert", "", "Client certificate")
@@ -97,6 +99,26 @@ var adminSSHKey = ""
 // default password set to "ciao"
 var adminPassword = "$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO."
 
+func populateQuotasFromDatastore(qs *quotas.Quotas, ds *datastore.Datastore) error {
+	ts, err := ds.GetAllTenants()
+	if err != nil {
+		return errors.Wrap(err, "error getting tenants")
+	}
+
+	for _, t := range ts {
+
+		qds, err := ds.GetQuotas(t.ID)
+		if err != nil {
+			return errors.Wrapf(err, "error getting quotas for tenant %s", t.ID)
+		}
+		qs.Update(t.ID, qds)
+	}
+
+	// TODO: Need to import current usage from datastore too.
+
+	return nil
+}
+
 func init() {
 	flag.Parse()
 
@@ -123,7 +145,7 @@ func main() {
 	ctl := new(controller)
 	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
-
+	ctl.qs = new(quotas.Quotas)
 	ctl.image = image.Client{MountPoint: *imagesPath}
 
 	dsConfig := datastore.Config{
@@ -137,6 +159,9 @@ func main() {
 		glog.Fatalf("unable to Init datastore: %s", err)
 		return
 	}
+
+	ctl.qs.Init()
+	populateQuotasFromDatastore(ctl.qs, ctl.ds)
 
 	config := &ssntp.Config{
 		URI:    *serverURL,
@@ -235,6 +260,7 @@ func main() {
 	go ctl.startCiaoService()
 
 	wg.Wait()
+	ctl.qs.Shutdown()
 	ctl.ds.Exit()
 	ctl.client.Disconnect()
 }
