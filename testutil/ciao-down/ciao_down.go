@@ -117,8 +117,14 @@ func downloadProgress(p progress) {
 }
 
 func prepare(ctx context.Context, errCh chan error) {
+	var err error
+
+	defer func() {
+		errCh <- err
+	}()
+
 	if !hostSupportsNestedKVM() {
-		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
+		err = fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
 
@@ -126,19 +132,17 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	memGB, CPUs, debug, uiPath, runCmd, err := prepareFlags()
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	ws, err := prepareEnv(ctx)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {
-		errCh <- fmt.Errorf("instance already exists")
+		err = fmt.Errorf("instance already exists")
 		return
 	}
 
@@ -147,52 +151,46 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	err = os.MkdirAll(ws.instanceDir, 0755)
 	if err != nil {
-		errCh <- fmt.Errorf("unable to create cache dir: %v", err)
+		err = fmt.Errorf("unable to create cache dir: %v", err)
 		return
 	}
+
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(ws.instanceDir)
+		}
+	}()
 
 	err = ioutil.WriteFile(path.Join(ws.instanceDir, "ui_path.txt"),
 		[]byte(uiPath), 0600)
 	if err != nil {
-		errCh <- fmt.Errorf("Unable to write ui_path.txt : %v", err)
+		err = fmt.Errorf("Unable to write ui_path.txt : %v", err)
 		return
 	}
 	ws.UIPath = uiPath
 
 	err = prepareSSHKeys(ctx, ws)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	err = prepareRunCmd(ws, runCmd)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
-	failed := true
-	defer func() {
-		if failed {
-			_ = os.RemoveAll(ws.instanceDir)
-		}
-	}()
-
 	qcowPath, err := downloadUbuntu(ctx, ws.ciaoDir, downloadProgress)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	err = buildISOImage(ctx, ws.instanceDir, ws, debug)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	err = createRootfs(ctx, qcowPath, ws.instanceDir)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
@@ -200,17 +198,13 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	err = bootVM(ctx, ws, memGB, CPUs)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	err = manageInstallation(ctx, ws.instanceDir, ws)
 	if err != nil {
-		errCh <- err
 		return
 	}
-	errCh <- nil
-	failed = false
 	fmt.Println("VM successfully created!")
 	fmt.Println("Type ciao-down connect to start using it.")
 }
