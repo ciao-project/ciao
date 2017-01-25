@@ -734,3 +734,13 @@ func (qd *QuotaDetails) UnmarshalJSON(data []byte) error {
 	qd.Usage, _ = strconv.Atoi(tmp.Usage)
 	return nil
 }
+
+// QuotaUpdateRequest holds the layout for updating quota API
+type QuotaUpdateRequest struct {
+	Quotas []QuotaDetails `json:"quotas"`
+}
+
+// QuotaListResponse holds the layout for returning quotas in the API
+type QuotaListResponse struct {
+	Quotas []QuotaDetails `json:"quotas"`
+}
