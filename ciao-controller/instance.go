@@ -174,6 +174,16 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 		Description: s.Tag,
 	}
 
+	res := <-c.qs.Consume(tenant,
+		payloads.RequestedResource{Type: payloads.Volume, Value: 1},
+		payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: device.Size})
+
+	if !res.Allowed() {
+		c.DeleteBlockDevice(device.ID)
+		c.qs.Release(tenant, res.Resources()...)
+		return payloads.StorageResource{}, fmt.Errorf("Error creating volume: %s", res.Reason())
+	}
+
 	err := c.ds.AddBlockDevice(data)
 	if err != nil {
 		c.DeleteBlockDevice(device.ID)

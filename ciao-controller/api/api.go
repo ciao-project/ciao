@@ -505,7 +505,6 @@ func listQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response, e
 	}
 
 	var resp types.QuotaListResponse
-
 	resp.Quotas = c.ListQuotas(tenantID)
 
 	return Response{http.StatusOK, resp}, nil
@@ -531,7 +530,10 @@ func updateQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 		return errorResponse(err), err
 	}
 
-	return Response{http.StatusCreated, nil}, nil
+	var resp types.QuotaListResponse
+	resp.Quotas = c.ListQuotas(tenantID)
+
+	return Response{http.StatusCreated, resp}, nil
 }
 
 // Service is an interface which must be implemented by the ciao API context.

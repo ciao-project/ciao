@@ -14,7 +14,13 @@
 
 package main
 
-import "github.com/01org/ciao/ciao-controller/types"
+import (
+	"github.com/01org/ciao/ciao-controller/internal/datastore"
+	"github.com/01org/ciao/ciao-controller/internal/quotas"
+	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
+	"github.com/pkg/errors"
+)
 
 func (c *controller) UpdateQuotas(tenantID string, qds []types.QuotaDetails) error {
 	err := c.ds.UpdateQuotas(tenantID, qds)
@@ -27,4 +33,41 @@ func (c *controller) UpdateQuotas(tenantID string, qds []types.QuotaDetails) err
 
 func (c *controller) ListQuotas(tenantID string) []types.QuotaDetails {
 	return c.qs.DumpQuotas(tenantID)
+}
+
+func populateQuotasFromDatastore(qs *quotas.Quotas, ds *datastore.Datastore) error {
+	ts, err := ds.GetAllTenants()
+	if err != nil {
+		return errors.Wrap(err, "error getting tenants")
+	}
+
+	for _, t := range ts {
+		// Populate quotas/limits from datastore
+		qds, err := ds.GetQuotas(t.ID)
+		if err != nil {
+			return errors.Wrapf(err, "error getting quotas for tenant %s", t.ID)
+		}
+		qs.Update(t.ID, qds)
+
+		// Populate volume usage
+		// TODO: populate instance usage
+		// TODO: populate image usage
+		// TODO: populate external IP usage
+		bds, err := ds.GetBlockDevices(t.ID)
+		if err != nil {
+			return errors.Wrapf(err, "error getting block devices for tenant %s", t.ID)
+		}
+		var size, count int
+		for _, bd := range bds {
+			size += bd.Size
+			count++
+		}
+
+		// With initial population we disregard the result of consumption
+		<-qs.Consume(t.ID,
+			payloads.RequestedResource{Type: payloads.Volume, Value: count},
+			payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: size})
+	}
+
+	return nil
 }

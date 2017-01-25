@@ -92,6 +92,10 @@ func (client *ssntpClient) deleteEphemeralStorage(instanceID string) {
 		if err != nil {
 			glog.Warningf("Error deleting attachment from datastore: %v", err)
 		}
+		bd, err := client.ctl.ds.GetBlockDevice(attachment.BlockID)
+		if err != nil {
+			glog.Warningf("Unable to get block device: %v", err)
+		}
 		err = client.ctl.ds.DeleteBlockDevice(attachment.BlockID)
 		if err != nil {
 			glog.Warningf("Error deleting block device from datastore: %v", err)
@@ -100,6 +104,9 @@ func (client *ssntpClient) deleteEphemeralStorage(instanceID string) {
 		if err != nil {
 			glog.Warningf("Error deleting block device: %v", err)
 		}
+		client.ctl.qs.Release(bd.TenantID,
+			payloads.RequestedResource{Type: payloads.Volume, Value: 1},
+			payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: bd.Size})
 	}
 }
 

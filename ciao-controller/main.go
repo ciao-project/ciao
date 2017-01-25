@@ -99,26 +99,6 @@ var adminSSHKey = ""
 // default password set to "ciao"
 var adminPassword = "$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO."
 
-func populateQuotasFromDatastore(qs *quotas.Quotas, ds *datastore.Datastore) error {
-	ts, err := ds.GetAllTenants()
-	if err != nil {
-		return errors.Wrap(err, "error getting tenants")
-	}
-
-	for _, t := range ts {
-
-		qds, err := ds.GetQuotas(t.ID)
-		if err != nil {
-			return errors.Wrapf(err, "error getting quotas for tenant %s", t.ID)
-		}
-		qs.Update(t.ID, qds)
-	}
-
-	// TODO: Need to import current usage from datastore too.
-
-	return nil
-}
-
 func init() {
 	flag.Parse()
 
