@@ -43,12 +43,10 @@ const imageTemplateDesc = `struct {
 
 var imageCommand = &command{
 	SubCommands: map[string]subCommand{
-		"add":      new(imageAddCommand),
-		"show":     new(imageShowCommand),
-		"list":     new(imageListCommand),
-		"download": new(imageDownloadCommand),
-		"delete":   new(imageDeleteCommand),
-		"modify":   new(imageModifyCommand),
+		"add":    new(imageAddCommand),
+		"show":   new(imageShowCommand),
+		"list":   new(imageListCommand),
+		"delete": new(imageDeleteCommand),
 	},
 }
 
