@@ -77,24 +77,25 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func prepareFlags() (memGB int, CPUs int, debug bool, uiPath string, err error) {
+func prepareFlags() (memGB int, CPUs int, debug bool, uiPath, runCmd string, err error) {
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGB, &CPUs)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
 	fs.StringVar(&uiPath, "ui-path", "", "Host path of cloned ciao-webui repo")
+	fs.StringVar(&runCmd, "runcmd", "", "Path to a file containing additional commands to execute when preparing the VM")
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return -1, -1, false, "", err
+		return -1, -1, false, "", "", err
 	}
 
 	if err := checkDirectory(uiPath); err != nil {
-		return -1, -1, false, "", err
+		return -1, -1, false, "", "", err
 	}
 
 	if uiPath != "" {
 		uiPath = filepath.Clean(uiPath)
 	}
 
-	return memGB, CPUs, debug, uiPath, nil
+	return memGB, CPUs, debug, uiPath, runCmd, nil
 }
 
 func startFlags() (memGB int, CPUs int, err error) {
@@ -123,7 +124,7 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	fmt.Println("Checking environment")
 
-	memGB, CPUs, debug, uiPath, err := prepareFlags()
+	memGB, CPUs, debug, uiPath, runCmd, err := prepareFlags()
 	if err != nil {
 		errCh <- err
 		return
@@ -159,6 +160,12 @@ func prepare(ctx context.Context, errCh chan error) {
 	ws.UIPath = uiPath
 
 	err = prepareSSHKeys(ctx, ws)
+	if err != nil {
+		errCh <- err
+		return
+	}
+
+	err = prepareRunCmd(ws, runCmd)
 	if err != nil {
 		errCh <- err
 		return
