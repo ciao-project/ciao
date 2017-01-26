@@ -178,11 +178,13 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 	if s.rawDs != nil {
 		err = s.rawDs.Write(ID, body)
 		if err != nil {
+			database.Logger.Errorf("Could not write image: %v", err)
 			img.State = Killed
 		}
 
 		img.Size, err = s.rawDs.GetImageSize(ID)
 		if err != nil {
+			database.Logger.Errorf("Could not get image size: %v", err)
 			img.State = Killed
 			return err
 		}
@@ -197,6 +199,7 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 	metaDsErr := s.metaDs.Write(img)
 
 	if err == nil && metaDsErr != nil {
+		database.Logger.Errorf("Could not write meta data: %v", metaDsErr)
 		err = metaDsErr
 	}
 
