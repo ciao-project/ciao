@@ -2,21 +2,23 @@
 
 Developing cluster software is complicated if you must actually run a whole cluster on a set of physical machines.  This begs for a development environment that is self contained and can be run without any setup.  
 
-The goal for the ciao development environment that 
-- Required very minimal setup by the user
+The goals for the Ciao development environment are that it:
+
+- Requires very minimal setup by the user
 - Does not affect the user's development system in any manner (i.e. the user can keep the firewall rules, selinux setup,... intact)
-- Support a modes that allow running on powerful workstations to less powerful laptops
-- Provide the ability to validate all code changes the user made against the Ciao release criterion
+- Supports modes that allow it to run on a range of devices from powerful workstations to less powerful laptops
+- Provides the ability to validate all code changes the user makes against the Ciao release criterion
 
-This page documents a way to set up an entire Ciao cluster inside a single machine.  This cluster-in-a-machine mode is ideal for developers that desire the ability to build Ciao from sources, make changes and perform quick end to end functional integration testing without requiring multiple machines/VM's or creating a custom networking environment or maintaining a bevy of physical machines and a physical network.
+This page documents a way to set up an entire Ciao cluster inside a single machine.  This cluster-in-a-machine mode is ideal for developers that desire the ability to build Ciao from sources, make changes and perform quick end to end functional integration testing without requiring multiple machines/VM's, creating a custom networking environment or maintaining a bevy of physical machines and a physical network.
 
-We support two modes of operation
+We support two modes of operation:
+
 - ciao-down mode: Where a virtual machine is automatically created and launched, and the virtual cluster is setup and tested within the virtual machine
 - bare metal mode: Where the virtual cluster is setup on the host machine itself
 
-The ciao-down mode is the preferred mode of development on systems that have the resources and CPU capabilities needed, as it fully isolates the ciao virtual cluster. The ciao-down mode also does not require any change to the user's network firewall setup. Ciao down mode required VT-x nesting to be supported by the host.
+The ciao-down mode is the preferred mode of development on systems that have the resources and CPU capabilities needed, as it fully isolates the Ciao virtual cluster and sets up an environment in which Ciao is known to work seamlessly. In addition, the ciao-down mode does not require any changes to the user's network firewall setup. However, ciao-down mode does require VT-x nesting to be supported by the host.
 
-The bare metal mode is the highest performance mode, but may require some network firewall modification. It also uses less resources and can run on machines whose CPU's do not support VT-x nesting.
+The bare metal mode is the highest performance mode, but may require some network firewall modification. It also uses less resources and can run on machines whose CPUs do not support VT-x nesting.
 
 In both modes Ciao is configured in a special all in one development mode where cluster nodes have dual roles (i.e launcher can be a Network Node and a Compute Node at the same time)
 
@@ -32,7 +34,7 @@ In the text below **machine** refers to the ciao-down VM in the case of the ciao
       7. Machine Local DHCP Server
       ...
 
-The machine acts as the ciao compute node, network node, ciao-controller, ciao-scheduler and also hosts the ciao-webui as well as other openstack and dhcp services.
+The machine acts as the Ciao compute node, network node, ciao-controller, ciao-scheduler and also hosts the ciao-webui as well as other openstack and dhcp services.
 
 ## Graphical Overview
 
@@ -42,31 +44,31 @@ As you can see below the Cluster runs on a isolated virtual network resident ins
 Hence the cluster is invisible outside the machine and completely self contained.
 
 ```
-
-   _____________________________________________________________________________________
-  |                                                                                     |
-  |                                                                                     |
-  |                                                                                     |
-  |                                                        [Tenant VMs]    [CNCI VMs]   |
-  |                                                           |  |  |         ||        |
-  |                                           Tenant Bridges ----------       ||        |
-  |                                                                 |         ||        |
-  |                                                                 |         ||        |
-  |    [scheduler]  [controller] [keystone] [CN+NN Launcher]        |         ||        |
-  |          ||        ||          ||           ||                  |         ||        |
-  |          ||        ||          ||           ||                  |         ||        |
-  |          ||        ||          ||           ||                  |         ||        |
-  |          ||        ||          ||           ||                  |         ||        |
-  |          ||        ||          ||           ||                  |         ||        |
-  |          ||        ||          ||           ||      [DHCP/DNS   |         ||        |
-  |          ||        ||          ||           ||        Server]   |         ||        |
-  |          ||        ||          ||           ||           ||     |         ||        |
-  |      --------------------------------------------------------------------------     |                            
-  |                      Host Local Network Bridge + macvlan (ciao_eth, ciaovlan)       |
-  |                                                                                     |
-  |                                                                                     |
-  | ____________________________________________________________________________________|
-
+   
+   ___________________________________________________________________________________________________ 
+  |   		                                                                                      |
+  |   		                                                                                      |
+  |   		                                                                                      |
+  |   		                                                         [Tenant VMs]    [CNCI VMs]   |
+  |   		                                                            |  |  |         ||        |
+  |   		                                            Tenant Bridges ----------       ||        |
+  |   		                                                                  |         ||        |
+  |   		                                                                  |         ||        |
+  |    	 [ciao-webui] [scheduler] [controller] [keystone] [CN+NN Launcher]        |         ||        |
+  |          ||             ||       ||          ||           ||                  |         ||        |
+  |          ||             ||       ||          ||           ||                  |         ||        |
+  |          ||             ||       ||          ||           ||                  |         ||        |
+  |          ||             ||       ||          ||           ||                  |         ||        |
+  |          ||             ||       ||          ||           ||                  |         ||        |
+  |          ||             ||       ||          ||           ||      [DHCP/DNS   |         ||        |
+  |          ||             ||       ||          ||           ||        Server]   |         ||        |
+  |          ||             ||       ||          ||           ||           ||     |         ||        |
+  |      ----------------------------------------------------------------------------------------     |              
+  |   		                       Host Local Network Bridge + macvlan (ciao_eth, ciaovlan)       |
+  |   		                                                                                      |
+  |   		                                                                                      |
+  |___________________________________________________________________________________________________|
+                                                                                                       
                                 Development Machine
 
 ```
@@ -75,7 +77,7 @@ Hence the cluster is invisible outside the machine and completely self contained
 
 # Cluster External Network Access
 
-If you desire to provide external network connectivity to the workloads then the host needs to act as gateway to the internet. The host needs to enable ipv4 forwarding and ensure all traffic exiting the cluster via the host is NATed.
+If you desire to provide external network connectivity to the workloads then the host needs to act as gateway to the Internet. The host needs to enable ipv4 forwarding and ensure all traffic exiting the cluster via the host is NATed.
 
 This assumes the host has a single network interface. For multi homed systems, the setup is more complicated and needs appropriate routing setup which is outside the scope of this document. If you have a custom firewall configuration, you will need set things up appropriately.
 
@@ -92,6 +94,8 @@ On the host install the latest release of go for your distribution
 
 > NOTE: Go version 1.7 or later is required for Ciao. Ciao will not work with older version of Go. Hence it is best you download and install the latest version of Go if you distro is not on Go 1.7.
 
+You should also ensure that your GOPATH environment variable is set.
+
 
 # Getting Started with ciao-down
 ciao-down is a small utility for setting up a VM that contains
@@ -100,7 +104,7 @@ installed on your machine is:
 
 - Go 1.7 or greater
 
-Then simply type
+Once Go is installed you simply need to type
 
 ```
 go get github.com/01org/ciao/testutil/ciao-down
@@ -120,6 +124,39 @@ $GOPATH/bin/ciao-down connect
 
 Your host's GOPATH is mounted inside the VM. Thus you can edit your
 the ciao code on your host machine and test in Single VM.
+
+
+## Proxies
+
+One of the nice things about using ciao-down is that it is proxy aware.
+When you run ciao-down prepare, ciao-down looks in its environment for
+proxy variables such as http_proxy, https_proxy and no_proxy.  If it
+finds them it ensures that these proxies are correctly configured for
+all the software that it installs and uses inside the VM, e.g., apt, docker,
+npm, wget, ciao-cli.  So if your development machine is sitting
+behind a proxy, ensure you have your proxy environment variables set
+before running ciao-down.
+
+## Ciao-webui
+
+Ciao has a webui called ciao-webui (https://github.com/01org/ciao-webui).
+When ciao-down prepare is run, ciao-down downloads the source code for
+the ciao-webui and all the development tools needed to build it.  By
+default, ciao-down stores the code for the web-ui in ~/ciao-webui.
+
+If you wish to actively work on the sources of ciao-webui you can ask
+ciao-down prepare to mount a host directory containing the webui sources
+into the VM.  This is done using the -ui-path option of ciao-down prepare.
+For example
+
+```
+ciao-down prepare --ui-path $HOME/src/ciao-webui
+```
+
+would mount the $HOME/src/ciao-webui directory inside the VM at the
+same location as the directory appears on your host.  You can then
+modify the ciao-webui code on your host and build inside the VM.
+
 
 For more details and full set of capabilities of ciao-down see the full [ciao-down documentation ](https://github.com/01org/ciao/blob/master/testutil/ciao-down/README.md) 
 
@@ -197,6 +234,28 @@ To check everything is working try the following command
 ciao-cli workload list
 ```
 
+# Running ciao-webui
+
+The easiest way to develop and run the ciao-webui is inside a VM built by ciao-down.
+Not only does ciao-down download the web-ui code for you but it also downloads and
+configures all of the dependencies needed to develop the ciao-webui, such as npm.
+
+To run the webui in a ciao-down VM simply execute the following commands
+
+```
+cd ~/ciao-webui
+./deploy.sh production --config_file=$HOME/local/webui_config.json
+```
+
+And then point your host's browser at https://localhost:3000.  The
+certificate used by the web-ui inside ciao-down is self signed so you
+will need to accept the certificate in your browser before you can view
+the web-ui.
+
+Ciao-down configures an account for you to use.  The user name is 'csr'
+and the password is 'hello'.  Enter these credentials in the login screen
+to start managing your cluster.
+
 # Running the BAT tests
 
 The ciao project includes a set of acceptance tests that must pass before each release is made.  The tests perform various tasks such as listing workloads, creating and deleting instances, etc.  These tests can be run inside the machine
@@ -205,7 +264,7 @@ The ciao project includes a set of acceptance tests that must pass before each r
 # Source the demo.sh file if you have not already done so
 . ~/local/demo.sh
 cd $GOPATH/src/github.com/01org/ciao/_release/bat
-go test -v ./...
+test-cases -v ./...
 ```
 
 For more information on the BAT tests please see the [README](https://github.com/01org/ciao/blob/master/_release/bat/README.md).
