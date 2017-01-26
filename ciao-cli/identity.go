@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
 	"github.com/rackspace/gophercloud/openstack/identity/v3/tokens"
@@ -123,14 +124,12 @@ func getScopedToken(username string, password string, projectScope string) (stri
 
 	provider, err := newAuthenticatedClient(opt)
 	if err != nil {
-		errorf("Failed to create an AuthenticatedClient")
-		return "", "", "", nil
+		return "", "", "", errors.Wrap(err, "Failed to create an AuthenticatedClient")
 	}
 
 	client := openstack.NewIdentityV3(provider)
 	if client == nil {
-		errorf("something went wrong")
-		return "", "", "", nil
+		return "", "", "", errors.Wrap(err, "something went wrong")
 	}
 
 	scope = nil
@@ -143,22 +142,19 @@ func getScopedToken(username string, password string, projectScope string) (stri
 
 	token, err := tokens.Create(client, opt, scope).Extract()
 	if err != nil {
-		errorf("Could not extract token %s\n", err)
-		return "", "", "", nil
+		return "", "", "", errors.Wrap(err, "Could not extract token")
 	}
 
 	r := tokens.Get(client, token.ID)
 	result := getResult{r}
 	tenantID, err := result.extractProject()
 	if err != nil {
-		errorf("Could not extract tenant ID %s\n", err)
-		return "", "", "", nil
+		return "", "", "", errors.Wrap(err, "Could not extract tenant ID")
 	}
 
 	userID, err := result.extractUserID()
 	if err != nil {
-		errorf("Could not extract user ID %s\n", err)
-		return "", "", "", nil
+		return "", "", "", errors.Wrap(err, "Could not extract user ID")
 	}
 
 	infof("Got token %s for tenant %s, user %s (%s, %s, %s)\n", token.ID, tenantID, userID, username, password, projectScope)
