@@ -332,11 +332,24 @@ if [ x"$cacert_prog_ubuntu" != x ] && [ -x "$cacert_prog_ubuntu" ]; then
     # Do it a second time with nothing new to make it clean out the old
     sudo "$cacert_prog_ubuntu" --fresh
 elif [ x"$cacert_prog_fedora" != x ] && [ -x "$cacert_prog_fedora" ]; then
-    cacert_dir=/etc/pki/ca-trust/source/anchors/
+    cacert_dir_fedora=/etc/pki/ca-trust/source/anchors/
+    cacert_dir_archlinux=/etc/ca-certificates/trust-source/anchors
+    cacert_dir=""
+
+    if [ -d "$cacert_dir_fedora" ]; then
+	cacert_dir=$cacert_dir_fedora
+    elif [ -d "$cacert_dir_archlinux" ]; then
+	cacert_dir=$cacert_dir_archlinux
+    fi
+    
     if [ -d "$cacert_dir" ]; then
         sudo install -m 0644 -t "$cacert_dir" "$keystone_cert"
         sudo install -m 0644 -t "$cacert_dir" "$CIAO_CA_CERT_FILE"
         sudo "$cacert_prog_fedora" extract
+    else
+	echo "Unable to add keystone's CA certificate to your system's trusted \
+             store!"
+	exit 1
     fi
 else
     echo "Unable to add keystone's CA certificate to your system's trusted \
