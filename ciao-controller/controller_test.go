@@ -28,6 +28,7 @@ import (
 	"time"
 
 	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
+	"github.com/01org/ciao/ciao-controller/internal/quotas"
 	"github.com/01org/ciao/ciao-controller/types"
 	image "github.com/01org/ciao/ciao-image/client"
 	"github.com/01org/ciao/ciao-storage"
@@ -1877,6 +1878,7 @@ func TestMain(m *testing.M) {
 	ctl = new(controller)
 	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
+	ctl.qs = new(quotas.Quotas)
 
 	ctl.BlockDriver = func() storage.BlockDriver {
 		return &storage.NoopDriver{}
@@ -1908,6 +1910,7 @@ func TestMain(m *testing.M) {
 		os.RemoveAll(dir)
 		os.Exit(1)
 	}
+	ctl.qs.Init()
 
 	config := &ssntp.Config{
 		URI:    "localhost",
@@ -1950,6 +1953,7 @@ func TestMain(m *testing.M) {
 
 	ctl.client.Disconnect()
 	ctl.ds.Exit()
+	ctl.qs.Shutdown()
 	id.Close()
 	server.Shutdown()
 	f.Close()
