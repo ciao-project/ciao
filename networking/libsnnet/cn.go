@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/go-iptables/iptables"
 	"github.com/vishvananda/netlink"
 )
 
@@ -178,6 +179,8 @@ type ComputeNode struct {
 	//simultaneously certain netlink calls suffer higher latencies
 	APITimeout time.Duration
 
+	*iptables.IPTables
+
 	*cnTopology
 	apiThrottleSem chan int
 }
@@ -291,6 +294,12 @@ func (cn *ComputeNode) Init() error {
 	}
 
 	cn.cnTopology = newCnTopology()
+
+	ipt, err := iptables.New()
+	if err != nil {
+		return fmt.Errorf("Unable to setup iptables %v", err)
+	}
+	cn.IPTables = ipt
 
 	return nil
 }
@@ -862,6 +871,14 @@ func (cn *ComputeNode) createVnicInternal(cfg *VnicConfig) (*Vnic, *SsntpEventIn
 	bLink.index = bridge.Link.Index
 	gLink.index = gre.Link.Index
 
+	//iptables -A FORWARD -p all -i "$bridge" -j ACCEPT
+	err = cn.AppendUnique("filter", "FORWARD",
+		"-p", "all", "-i", bridge.LinkName, "-j", "ACCEPT")
+
+	if err != nil {
+		return nil, brCreateMsg, nil, NewFatalError(err.Error())
+	}
+
 	if err := createAndEnableVnic(vnic, bridge); err != nil {
 		return nil, brCreateMsg, nil, NewFatalError(err.Error())
 	}
@@ -1206,7 +1223,15 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 
 	bLink, present := cn.linkMap[alias.bridge]
 	if present {
-		err := cn.deleteBridgeInternal(bridge, bLink, brDeleteMsg)
+		//Make forward progress even on error
+		err := cn.Delete("filter", "FORWARD",
+			"-p", "all", "-i", bridge.LinkName, "-j", "ACCEPT")
+
+		if err != nil {
+			fmt.Printf("Unable to delete firewall rule %v", err)
+		}
+
+		err = cn.deleteBridgeInternal(bridge, bLink, brDeleteMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -1214,6 +1239,7 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 		if _, err := cn.dbUpdate(alias.bridge, "", dbDelBr); err != nil {
 			return nil, NewFatalError("db del br " + err.Error())
 		}
+
 	} else {
 		return nil, NewFatalError(fmt.Sprintf("bridge not present %s", bridge.GlobalID))
 	}
