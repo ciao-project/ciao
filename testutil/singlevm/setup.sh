@@ -1,7 +1,7 @@
 #!/bin/bash
 ciao_host=$(hostname)
 ciao_ip=$(hostname -i)
-ciao_interface=ciao_eth
+ciao_bridge=ciao_br
 ciao_vlan_ip=198.51.100.1
 ciao_vlan_subnet=${ciao_vlan_ip}/24
 ciao_vlan_brdcast=198.51.100.255
@@ -483,14 +483,15 @@ fi
 
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
-    sudo ip link del "$ciao_interface"
-    sudo ip link add name "$ciao_interface" type bridge
-    sudo ip link add link "$ciao_interface" name ciaovlan type macvlan mode bridge
+    sudo ip link del "$ciao_bridge"
+    sudo ip link add name "$ciao_bridge" type bridge
+    sudo iptables -A FORWARD -p all -i "$ciao_bridge" -j ACCEPT
+    sudo ip link add link "$ciao_bridge" name ciaovlan type macvlan mode bridge
     sudo ip addr add "$ciao_vlan_subnet" brd "$ciao_vlan_brdcast" dev ciaovlan
     sudo ip link set dev ciaovlan up
     sudo ip -d link show ciaovlan
-    sudo ip link set dev "$ciao_interface" up
-    sudo ip -d link show "$ciao_interface"
+    sudo ip link set dev "$ciao_bridge" up
+    sudo ip -d link show "$ciao_bridge"
 else
     echo 'ip command is not supported'
 fi
