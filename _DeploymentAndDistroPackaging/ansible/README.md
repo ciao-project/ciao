@@ -92,12 +92,6 @@ in the CNCI image by using the `losetup` command. Because we need to access
 To learn more about the Docker options used, please refer to the
 [Docker documentation](https://docs.docker.com/engine/reference/commandline/run/).
 
-### Default guest ssh public key
-the `group_vars/all` file contains a default public ssh-key which is used
-to access the guest VMs ciao launches. We strongly encourage the user to
-change the content of the `ciao_guest_key` variable for a known ssh-key,
-otherwise the guests won't be accessible using the default value.
-
 ### A note on docker hostname resolution
 This playbook uses docker containers to start the [identity service](https://hub.docker.com/r/clearlinux/keystone/) and [ciao-webui](https://hub.docker.com/r/clearlinux/ciao-webui/).
 
