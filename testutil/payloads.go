@@ -406,6 +406,11 @@ disk_total_mb: 500000
 disk_available_mb: 256000
 load: 0
 cpus_online: 4
+networks:
+- ip: 192.168.1.1
+  mac: 02:00:15:03:6f:49
+- ip: 10.168.1.1
+  mac: 02:00:8c:ba:f9:45
 `
 
 // PartialReadyYaml is a sample minimal node READY ssntp.Status payload for test cases
