@@ -187,7 +187,7 @@ func (s *ImageStore) UploadImage(tenant, ID string, body io.Reader) error {
 		if err != nil {
 			Logger.Errorf("Could not get image size: %v", err)
 			img.State = Killed
-			return err
+			_ = s.rawDs.Delete(ID)
 		}
 	}
 
