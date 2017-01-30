@@ -71,6 +71,11 @@ const (
 	// ComputeNode indicates that a resource struct specifies whether the
 	// command in which it is embedded applies to a compute node.
 	ComputeNode = "compute_node"
+
+	// PhysicalNetwork indicates a resource is specifying an network on
+	// a network node (ie: only relevant when resource NetworkNode has
+	// value true.
+	PhysicalNetwork = "physical_network"
 )
 
 const (
