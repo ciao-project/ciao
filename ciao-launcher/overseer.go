@@ -247,6 +247,10 @@ func (ovs *overseer) sendReadyStatusCommand(cns *cnStats) {
 	s.Load = cns.load
 	s.CpusOnline = cns.cpusOnline
 	s.DiskTotalMB, s.DiskAvailableMB = cns.totalDiskMB, cns.availableDiskMB
+	s.Networks = make([]payloads.NetworkStat, len(nicInfo))
+	for i, nic := range nicInfo {
+		s.Networks[i] = *nic
+	}
 
 	payload, err := yaml.Marshal(&s)
 	if err != nil {
