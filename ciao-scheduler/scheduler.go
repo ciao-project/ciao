@@ -93,6 +93,7 @@ type nodeStat struct {
 	load        int
 	cpus        int
 	isNetNode   bool
+	networks    []payloads.NetworkStat
 }
 
 type controllerStatus uint8
@@ -381,6 +382,7 @@ func (sched *ssntpSchedulerServer) updateNodeStat(node *nodeStat, status ssntp.S
 		node.diskAvailMB = stats.DiskAvailableMB
 		node.load = stats.Load
 		node.cpus = stats.CpusOnline
+		node.networks = stats.Networks
 
 		//any changes to the payloads.Ready struct should be
 		//accompanied by a change here
