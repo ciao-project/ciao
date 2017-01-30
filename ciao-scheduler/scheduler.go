@@ -92,6 +92,7 @@ type nodeStat struct {
 	diskAvailMB int
 	load        int
 	cpus        int
+	isNetNode   bool
 }
 
 type controllerStatus uint8
@@ -256,6 +257,7 @@ func connectComputeNode(sched *ssntpSchedulerServer, uuid string) {
 	var node nodeStat
 	node.status = ssntp.CONNECTED
 	node.uuid = uuid
+	node.isNetNode = false
 	sched.cnList = append(sched.cnList, &node)
 	sched.cnMap[uuid] = &node
 
@@ -307,6 +309,7 @@ func connectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 	var node nodeStat
 	node.status = ssntp.CONNECTED
 	node.uuid = uuid
+	node.isNetNode = true
 	sched.nnMap[uuid] = &node
 
 	sched.sendNodeConnectedEvents(uuid, payloads.NetworkNode)
@@ -420,7 +423,7 @@ type workResources struct {
 	instanceUUID string
 	memReqMB     int
 	diskReqMB    int
-	networkNode  int
+	networkNode  bool
 }
 
 func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (workload workResources, err error) {
@@ -433,7 +436,19 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 
 		// network node
 		if work.Start.RequestedResources[idx].Type == payloads.NetworkNode {
-			workload.networkNode = work.Start.RequestedResources[idx].Value
+			wantsNetworkNode := work.Start.RequestedResources[idx].Value
+
+			// validate input: requested resource values are always integers
+			if wantsNetworkNode != 0 && wantsNetworkNode != 1 {
+				return workload, fmt.Errorf("invalid start payload resource demand: network_node (%d) is not 0 or 1", wantsNetworkNode)
+			}
+
+			// convert to more natural bool for local struct
+			if wantsNetworkNode == 1 {
+				workload.networkNode = true
+			} else { //wantsNetworkNode == 0
+				workload.networkNode = false
+			}
 		}
 
 		// etc...
@@ -452,9 +467,6 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 	}
 	if workload.diskReqMB < 0 {
 		return workload, fmt.Errorf("invalid start payload local disk demand: disk MB (%d) < 0, must be >= 0", workload.diskReqMB)
-	}
-	if workload.networkNode != 0 && workload.networkNode != 1 {
-		return workload, fmt.Errorf("invalid start payload resource demand: network_node (%d) is not 0 or 1", workload.networkNode)
 	}
 
 	// note the uuid
@@ -697,10 +709,10 @@ func startWorkload(sched *ssntpSchedulerServer, controllerUUID string, payload [
 
 	var targetNode *nodeStat
 
-	if workload.networkNode == 0 {
-		targetNode = pickComputeNode(sched, controllerUUID, &workload)
-	} else { //workload.network_node == 1
+	if workload.networkNode {
 		targetNode = sched.pickNetworkNode(controllerUUID, &workload)
+	} else { //workload.network_node == false
+		targetNode = pickComputeNode(sched, controllerUUID, &workload)
 	}
 
 	if targetNode != nil {
