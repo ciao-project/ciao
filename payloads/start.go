@@ -123,6 +123,9 @@ type RequestedResource struct {
 	// Value specifies the integer value associated with that resource.
 	Value int `yaml:"value"`
 
+	// ValueString is an optional string format value instead of integer
+	ValueString string `yaml:"value_string,omitempty"`
+
 	// Mandatory indicates whether a resource is mandatory or not.
 	Mandatory bool `yaml:"mandatory"`
 }
