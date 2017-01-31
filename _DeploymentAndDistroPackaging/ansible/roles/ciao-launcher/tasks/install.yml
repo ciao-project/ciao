@@ -36,3 +36,6 @@
       - CAcert-{{ ciao_controller_fqdn }}.pem
       - "{{ agent_key }}"
     notify: restart launcher
+
+  - name: Copy OVMF firmware
+    copy: src=images/OVMF.fd dest=/usr/share/qemu/OVMF.fd
