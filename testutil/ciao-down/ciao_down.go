@@ -77,24 +77,25 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func prepareFlags() (memGB int, CPUs int, debug bool, uiPath string, err error) {
+func prepareFlags() (memGB int, CPUs int, debug bool, uiPath, runCmd string, err error) {
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGB, &CPUs)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
 	fs.StringVar(&uiPath, "ui-path", "", "Host path of cloned ciao-webui repo")
+	fs.StringVar(&runCmd, "runcmd", "", "Path to a file containing additional commands to execute when preparing the VM")
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return -1, -1, false, "", err
+		return -1, -1, false, "", "", err
 	}
 
 	if err := checkDirectory(uiPath); err != nil {
-		return -1, -1, false, "", err
+		return -1, -1, false, "", "", err
 	}
 
 	if uiPath != "" {
 		uiPath = filepath.Clean(uiPath)
 	}
 
-	return memGB, CPUs, debug, uiPath, nil
+	return memGB, CPUs, debug, uiPath, runCmd, nil
 }
 
 func startFlags() (memGB int, CPUs int, err error) {
@@ -116,28 +117,32 @@ func downloadProgress(p progress) {
 }
 
 func prepare(ctx context.Context, errCh chan error) {
+	var err error
+
+	defer func() {
+		errCh <- err
+	}()
+
 	if !hostSupportsNestedKVM() {
-		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
+		err = fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
 
 	fmt.Println("Checking environment")
 
-	memGB, CPUs, debug, uiPath, err := prepareFlags()
+	memGB, CPUs, debug, uiPath, runCmd, err := prepareFlags()
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	ws, err := prepareEnv(ctx)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {
-		errCh <- fmt.Errorf("instance already exists")
+		err = fmt.Errorf("instance already exists")
 		return
 	}
 
@@ -146,46 +151,46 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	err = os.MkdirAll(ws.instanceDir, 0755)
 	if err != nil {
-		errCh <- fmt.Errorf("unable to create cache dir: %v", err)
+		err = fmt.Errorf("unable to create cache dir: %v", err)
 		return
 	}
+
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(ws.instanceDir)
+		}
+	}()
 
 	err = ioutil.WriteFile(path.Join(ws.instanceDir, "ui_path.txt"),
 		[]byte(uiPath), 0600)
 	if err != nil {
-		errCh <- fmt.Errorf("Unable to write ui_path.txt : %v", err)
+		err = fmt.Errorf("Unable to write ui_path.txt : %v", err)
 		return
 	}
 	ws.UIPath = uiPath
 
 	err = prepareSSHKeys(ctx, ws)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
-	failed := true
-	defer func() {
-		if failed {
-			_ = os.RemoveAll(ws.instanceDir)
-		}
-	}()
+	err = prepareRunCmd(ws, runCmd)
+	if err != nil {
+		return
+	}
 
 	qcowPath, err := downloadUbuntu(ctx, ws.ciaoDir, downloadProgress)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	err = buildISOImage(ctx, ws.instanceDir, ws, debug)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	err = createRootfs(ctx, qcowPath, ws.instanceDir)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
@@ -193,17 +198,13 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	err = bootVM(ctx, ws, memGB, CPUs)
 	if err != nil {
-		errCh <- err
 		return
 	}
 
 	err = manageInstallation(ctx, ws.instanceDir, ws)
 	if err != nil {
-		errCh <- err
 		return
 	}
-	errCh <- nil
-	failed = false
 	fmt.Println("VM successfully created!")
 	fmt.Println("Type ciao-down connect to start using it.")
 }

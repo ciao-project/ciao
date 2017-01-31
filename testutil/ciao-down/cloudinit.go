@@ -213,6 +213,7 @@ runcmd:
  - sudo -u {{.User}} git config --global user.email {{.GitEmail}}
  - {{template "CHECK" .}}
 {{end}}
+%s
  - curl -X PUT -d "FINISHED" 10.0.2.2:{{.HTTPServerPort}}
 
 users:

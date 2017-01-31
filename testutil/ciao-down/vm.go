@@ -198,6 +198,7 @@ func manageInstallation(ctx context.Context, instanceDir string, ws *workspace) 
 		if qemuShutdown {
 			ctx, cancelFn := context.WithTimeout(context.Background(), time.Second)
 			_ = qmp.ExecuteQuit(ctx)
+			<-disconnectedCh
 			cancelFn()
 		}
 		qmp.Shutdown()

@@ -66,6 +66,7 @@ type workspace struct {
 	GitUserName    string
 	GitEmail       string
 	UIPath         string
+	RunCmd         string
 	ciaoDir        string
 	instanceDir    string
 	keyPath        string
@@ -116,6 +117,35 @@ func prepareSSHKeys(ctx context.Context, ws *workspace) error {
 	}
 
 	ws.PublicKey = string(publicKey)
+	return nil
+}
+
+func prepareRunCmd(ws *workspace, runCmd string) error {
+	if runCmd == "" {
+		return nil
+	}
+
+	runCmdData, err := ioutil.ReadFile(runCmd)
+	if err != nil {
+		return fmt.Errorf("Unable to read %s : %v", runCmd, err)
+	}
+
+	buf := bytes.NewBuffer(runCmdData)
+	found := false
+	line, err := buf.ReadString('\n')
+	for err == nil {
+		if strings.TrimSpace(line) == "run_cmd:" {
+			found = true
+			break
+		}
+		line, err = buf.ReadString('\n')
+	}
+
+	if !found {
+		return fmt.Errorf("No commands found in %s", runCmd)
+	}
+
+	ws.RunCmd = buf.String()
 	return nil
 }
 
@@ -236,7 +266,8 @@ func createCloudInitISO(ctx context.Context, instanceDir string, userData, metaD
 }
 
 func buildISOImage(ctx context.Context, instanceDir string, ws *workspace, debug bool) error {
-	udt := template.Must(template.New("user-data").Parse(userDataTemplate))
+	tmpl := fmt.Sprintf(userDataTemplate, ws.RunCmd)
+	udt := template.Must(template.New("user-data").Parse(tmpl))
 	var udBuf bytes.Buffer
 	err := udt.Execute(&udBuf, ws)
 	if err != nil {
