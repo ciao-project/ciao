@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+  - name: Create CIAO user
+    user:
+      name: ciao
+      comment: CIAO user
+      createhome: no
+      system: yes
+
   - name: Create directories required by ciao
     file: path={{ item }} state=directory owner=ciao group=ciao
     with_items:
