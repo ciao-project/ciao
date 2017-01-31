@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+  - include_vars: "{{ ansible_os_family.split(' ') | first }}.yml"
+
   - name: Create CIAO user
     user:
       name: ciao
