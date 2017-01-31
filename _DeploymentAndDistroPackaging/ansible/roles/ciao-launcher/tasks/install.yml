@@ -13,17 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Install ciao-launcher
-    package: name=ciao-launcher state=present
-    when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
-
   - name: Copy CIAO Binaries
-    copy: src={{ gopath }}/bin/{{ item }} dest={{ bindir }}/{{ item }} mode=755
+    copy: src={{ gopath }}/bin/{{ item }} dest=/usr/local/bin/{{ item }} mode=755
     with_items:
-      - ciao-cert
       - ciao-cli
       - ciao-launcher
-    when: ciao_dev
     notify: restart launcher
 
   - name: Copy ciao certificates

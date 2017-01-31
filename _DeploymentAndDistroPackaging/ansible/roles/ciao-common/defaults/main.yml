@@ -13,10 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Set to true to install ciao from the master branch.
-# otherwise it will be installed from the OS packages
-ciao_dev: False
-
 # golang GOPATH
 gopath: /tmp/go
 
