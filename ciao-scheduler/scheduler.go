@@ -426,19 +426,24 @@ type workResources struct {
 	memReqMB     int
 	diskReqMB    int
 	networkNode  bool
+	physNets     []string
 }
 
 func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (workload workResources, err error) {
 	// loop the array to find resources
 	for idx := range work.Start.RequestedResources {
+		reqType := work.Start.RequestedResources[idx].Type
+		reqValue := work.Start.RequestedResources[idx].Value
+		reqString := work.Start.RequestedResources[idx].ValueString
+
 		// memory:
-		if work.Start.RequestedResources[idx].Type == payloads.MemMB {
-			workload.memReqMB = work.Start.RequestedResources[idx].Value
+		if reqType == payloads.MemMB {
+			workload.memReqMB = reqValue
 		}
 
 		// network node
-		if work.Start.RequestedResources[idx].Type == payloads.NetworkNode {
-			wantsNetworkNode := work.Start.RequestedResources[idx].Value
+		if reqType == payloads.NetworkNode {
+			wantsNetworkNode := reqValue
 
 			// validate input: requested resource values are always integers
 			if wantsNetworkNode != 0 && wantsNetworkNode != 1 {
@@ -450,6 +455,14 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 				workload.networkNode = true
 			} else { //wantsNetworkNode == 0
 				workload.networkNode = false
+			}
+
+		}
+
+		// network node physical networks
+		if workload.networkNode {
+			if reqType == payloads.PhysicalNetwork {
+				workload.physNets = append(workload.physNets, reqString)
 			}
 		}
 
@@ -477,12 +490,37 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 	return workload, nil
 }
 
+func networkDemandsSatisfied(node *nodeStat, workload *workResources) bool {
+	if !node.isNetNode {
+		return true
+	}
+
+	var matchedNetworksCount int
+	var requestedNetworksCount int
+
+	for _, requestedNetwork := range workload.physNets {
+		requestedNetworksCount++
+		for _, availableNetwork := range node.networks {
+			if requestedNetwork == availableNetwork.NodeIP {
+				matchedNetworksCount++
+				break
+			}
+		}
+	}
+	if requestedNetworksCount != matchedNetworksCount {
+		return false
+	}
+
+	return true
+}
+
 // Check resource demands are satisfiable by the referenced, locked nodeStat object
 func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workResources) bool {
 	// simple scheduling policy == first fit
 	if node.memAvailMB >= workload.memReqMB &&
 		node.diskAvailMB >= workload.diskReqMB &&
-		node.status == ssntp.READY {
+		node.status == ssntp.READY &&
+		networkDemandsSatisfied(node, workload) {
 
 		return true
 	}
