@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
+	"github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/internal/quotas"
 	"github.com/01org/ciao/ciao-controller/types"
 	image "github.com/01org/ciao/ciao-image/client"

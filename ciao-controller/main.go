@@ -32,7 +32,7 @@ import (
 	"sync"
 
 	"github.com/01org/ciao/ciao-controller/api"
-	datastore "github.com/01org/ciao/ciao-controller/internal/datastore"
+	"github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/internal/quotas"
 	image "github.com/01org/ciao/ciao-image/client"
 	storage "github.com/01org/ciao/ciao-storage"
