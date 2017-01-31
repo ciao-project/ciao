@@ -64,10 +64,6 @@ const (
 	// in MBs
 	MemMB = "mem_mb"
 
-	// DiskMB indicates that a resource struct specifies a quantity of disk
-	// space in MBs
-	DiskMB = "disk_mb"
-
 	// NetworkNode indicates that a resource struct specifies whether the
 	// command in which it is embedded applies to a network node.
 	NetworkNode = "network_node"

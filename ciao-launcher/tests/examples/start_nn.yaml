@@ -8,8 +8,6 @@ start:
        value: 2
      - type: mem_mb
        value: 256
-     - type: disk_mb
-       value: 80000
      - type: network_node
        value: 1
   instance_uuid: 67d86208-b46c-4465-0000-fe14087d415f

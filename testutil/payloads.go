@@ -132,16 +132,11 @@ const StartYaml = `start:
   - type: mem_mb
     value: 4096
     mandatory: true
-  - type: disk_mb
-    value: 10000
-    mandatory: true
   estimated_resources:
   - type: vcpus
     value: 1
   - type: mem_mb
     value: 128
-  - type: disk_mb
-    value: 4096
   networking:
     vnic_mac: ""
     vnic_uuid: ""
@@ -217,16 +212,11 @@ const RestartYaml = `restart:
   - type: mem_mb
     value: 4096
     mandatory: true
-  - type: disk_mb
-    value: 10000
-    mandatory: true
   estimated_resources:
   - type: vcpus
     value: 1
   - type: mem_mb
     value: 128
-  - type: disk_mb
-    value: 4096
   networking:
     vnic_mac: ""
     vnic_uuid: ""

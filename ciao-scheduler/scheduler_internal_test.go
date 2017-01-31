@@ -136,14 +136,8 @@ func createStartWorkload(vCpus int, memMB int, diskMB int) *payloads.Start {
 		Value:     memMB,
 		Mandatory: true,
 	}
-	reqDisk := payloads.RequestedResource{
-		Type:      "disk_mb",
-		Value:     diskMB,
-		Mandatory: true,
-	}
 	work.Start.RequestedResources = append(work.Start.RequestedResources, reqVcpus)
 	work.Start.RequestedResources = append(work.Start.RequestedResources, reqMem)
-	work.Start.RequestedResources = append(work.Start.RequestedResources, reqDisk)
 
 	//TODO: add EstimatedResources
 

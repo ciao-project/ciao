@@ -4,7 +4,6 @@ fw_type: legacy
 defaults:
     vcpus: 2
     mem_mb: 512
-    disk_mb: 1024
 cloud_init: "fedora_vm.yaml"
 disks:
 - source:

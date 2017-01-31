@@ -146,7 +146,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	}
 	legacy := fwType == payloads.Legacy
 
-	var disk, cpus, mem int
+	var cpus, mem int
 	var networkNode bool
 	container, image, err := parseVMTtype(start)
 	if err != nil {
@@ -159,8 +159,6 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 			cpus = start.RequestedResources[i].Value
 		case payloads.MemMB:
 			mem = start.RequestedResources[i].Value
-		case payloads.DiskMB:
-			disk = start.RequestedResources[i].Value
 		case payloads.NetworkNode:
 			networkNode = start.RequestedResources[i].Value != 0
 		}
@@ -186,7 +184,6 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 
 	return &vmConfig{Cpus: cpus,
 		Mem:         mem,
-		Disk:        disk,
 		Instance:    instance,
 		Image:       image,
 		Legacy:      legacy,

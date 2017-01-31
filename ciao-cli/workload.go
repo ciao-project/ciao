@@ -157,9 +157,8 @@ type disk struct {
 }
 
 type defaultResources struct {
-	VCPUs  int `yaml:"vcpus"`
-	MemMB  int `yaml:"mem_mb"`
-	DiskMB int `yaml:"disk_mb"`
+	VCPUs int `yaml:"vcpus"`
+	MemMB int `yaml:"mem_mb"`
 }
 
 // we currently only use the first disk due to lack of support
@@ -265,12 +264,6 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 	r = payloads.RequestedResource{
 		Type:  payloads.MemMB,
 		Value: defaults.MemMB,
-	}
-	req.Defaults = append(req.Defaults, r)
-
-	r = payloads.RequestedResource{
-		Type:  payloads.DiskMB,
-		Value: defaults.DiskMB,
 	}
 	req.Defaults = append(req.Defaults, r)
 
