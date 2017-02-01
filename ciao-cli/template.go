@@ -246,27 +246,6 @@ func generateStruct(buf io.Writer, dummy reflect.Type) {
 	}
 }
 
-// This function is not currently used.  The idea was to annotate
-// types with their user defined typenames, if such names existed.
-// This would allow users to know whether they could invoke
-// methods on those types.  Unfortunately, I couldn't figure out
-// a nice way of displaying this information, so it's disabled for
-// now.
-func getFullTypeName(typ reflect.Type) string {
-	if typ.Name() == "" {
-		return ""
-	}
-	pkg := typ.PkgPath()
-	if pkg != "" {
-		li := strings.LastIndex(pkg, "/")
-		if li != -1 {
-			pkg = pkg[li+1:]
-		}
-		pkg = fmt.Sprintf("%s.", pkg)
-	}
-	return fmt.Sprintf("%s%s", pkg, typ.Name())
-}
-
 func generateUsage(buf io.Writer, dummy reflect.Type, tag string) {
 	kind := dummy.Kind()
 	if ignoreKind(kind) {
