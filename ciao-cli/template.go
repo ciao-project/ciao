@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/format"
+	"io"
 	"os"
 	"reflect"
 	"regexp"
@@ -212,4 +214,121 @@ func createTemplate(name, tmplSrc string) *template.Template {
 	}
 
 	return t
+}
+
+func exportedFields(typ reflect.Type) bool {
+	var i int
+	for i = 0; i < typ.NumField(); i++ {
+		if typ.Field(i).PkgPath == "" {
+			break
+		}
+	}
+
+	return i < typ.NumField()
+}
+
+func ignoreKind(kind reflect.Kind) bool {
+	return (kind == reflect.Chan) || (kind == reflect.Invalid)
+}
+
+func generateStruct(buf io.Writer, dummy reflect.Type) {
+	for i := 0; i < dummy.NumField(); i++ {
+		field := dummy.Field(i)
+		if field.PkgPath != "" || ignoreKind(field.Type.Kind()) {
+			continue
+		}
+		fmt.Fprintf(buf, "%s ", field.Name)
+		tag := ""
+		if field.Tag != "" {
+			tag = fmt.Sprintf("`%s`", field.Tag)
+		}
+		generateUsage(buf, field.Type, tag)
+	}
+}
+
+// This function is not currently used.  The idea was to annotate
+// types with their user defined typenames, if such names existed.
+// This would allow users to know whether they could invoke
+// methods on those types.  Unfortunately, I couldn't figure out
+// a nice way of displaying this information, so it's disabled for
+// now.
+func getFullTypeName(typ reflect.Type) string {
+	if typ.Name() == "" {
+		return ""
+	}
+	pkg := typ.PkgPath()
+	if pkg != "" {
+		li := strings.LastIndex(pkg, "/")
+		if li != -1 {
+			pkg = pkg[li+1:]
+		}
+		pkg = fmt.Sprintf("%s.", pkg)
+	}
+	return fmt.Sprintf("%s%s", pkg, typ.Name())
+}
+
+func generateUsage(buf io.Writer, dummy reflect.Type, tag string) {
+	kind := dummy.Kind()
+	if ignoreKind(kind) {
+		return
+	}
+
+	switch kind {
+	case reflect.Struct:
+		if exportedFields(dummy) {
+			fmt.Fprintf(buf, "struct {\n")
+			generateStruct(buf, dummy)
+			fmt.Fprintf(buf, "}%s\n", tag)
+		} else if dummy.Name() != "" {
+			fmt.Fprintf(buf, "%s%s\n", dummy.String(), tag)
+		} else {
+			fmt.Fprintf(buf, "struct {\n}%s\n", tag)
+		}
+	case reflect.Slice:
+		fmt.Fprintf(buf, "[]")
+		generateUsage(buf, dummy.Elem(), tag)
+	case reflect.Array:
+		fmt.Fprintf(buf, "[%d]", dummy.Len())
+		generateUsage(buf, dummy.Elem(), tag)
+	case reflect.Map:
+		fmt.Fprintf(buf, "map[%s]", dummy.Key().String())
+		generateUsage(buf, dummy.Elem(), tag)
+	default:
+		fmt.Fprintf(buf, "%s%s\n", dummy.String(), tag)
+	}
+}
+
+func formatType(buf *bytes.Buffer, unformattedType []byte) {
+	const typePrefix = "type x "
+	source := bytes.NewBufferString(typePrefix)
+	_, _ = source.Write(unformattedType)
+	formattedType, err := format.Source(source.Bytes())
+	if err != nil {
+		panic(fmt.Errorf("generateIndentedUsage created invalid Go code: %v", err))
+	}
+	_, _ = buf.Write(formattedType[len(typePrefix):])
+}
+
+func generateIndentedUsage(buf *bytes.Buffer, dummy interface{}) {
+	var source bytes.Buffer
+	generateUsage(&source, reflect.TypeOf(dummy), "")
+	formatType(buf, source.Bytes())
+}
+
+func generateUsageUndecorated(dummy interface{}) string {
+	var buf bytes.Buffer
+	generateIndentedUsage(&buf, dummy)
+	return buf.String()
+}
+
+func generateUsageDecorated(flag string, dummy interface{}) string {
+	var buf bytes.Buffer
+
+	fmt.Fprintf(&buf,
+		"The template passed to the -%s option operates on a\n\n",
+		flag)
+
+	generateIndentedUsage(&buf, dummy)
+	fmt.Fprintf(&buf, templateFunctionHelp)
+	return buf.String()
 }
