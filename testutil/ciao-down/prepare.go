@@ -71,6 +71,7 @@ type workspace struct {
 	instanceDir    string
 	keyPath        string
 	publicKeyPath  string
+	vmType         string
 }
 
 func installDeps(ctx context.Context) {
@@ -224,6 +225,13 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 		ws.UIPath = string(data)
 	}
 
+	data, err = ioutil.ReadFile(path.Join(ws.instanceDir, "vmtype.txt"))
+	if err == nil {
+		ws.vmType = string(data)
+	} else {
+		ws.vmType = CIAO
+	}
+
 	return ws, nil
 }
 
@@ -266,7 +274,12 @@ func createCloudInitISO(ctx context.Context, instanceDir string, userData, metaD
 }
 
 func buildISOImage(ctx context.Context, instanceDir string, ws *workspace, debug bool) error {
-	tmpl := fmt.Sprintf(userDataTemplate, ws.RunCmd)
+	var tmpl string
+	if ws.vmType == CLEARCONTAINERS {
+		tmpl = fmt.Sprintf(ccUserDataTemplate, ws.RunCmd)
+	} else {
+		tmpl = fmt.Sprintf(userDataTemplate, ws.RunCmd)
+	}
 	udt := template.Must(template.New("user-data").Parse(tmpl))
 	var udBuf bytes.Buffer
 	err := udt.Execute(&udBuf, ws)

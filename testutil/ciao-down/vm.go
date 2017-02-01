@@ -53,11 +53,16 @@ func bootVM(ctx context.Context, ws *workspace, memGB, CPUs int) error {
 		"-drive", fmt.Sprintf("file=%s,if=virtio,aio=threads,format=qcow2", vmImage),
 		"-drive", fmt.Sprintf("file=%s,if=virtio,media=cdrom", isoPath),
 		"-daemonize", "-enable-kvm", "-cpu", "host",
-		"-net", "user,hostfwd=tcp::10022-:22,hostfwd=tcp::3000-:3000",
 		"-net", "nic,model=virtio",
 		"-fsdev", fsdevParam,
 		"-device", "virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=hostgo",
 	}
+	if ws.vmType == CIAO {
+		args = append(args, "-net", "user,hostfwd=tcp::10022-:22,hostfwd=tcp::3000-:3000")
+	} else {
+		args = append(args, "-net", "user,hostfwd=tcp::10022-:22")
+	}
+
 	if ws.UIPath != "" {
 		fsdevParam := fmt.Sprintf("local,security_model=passthrough,id=fsdev1,path=%s",
 			ws.UIPath)
