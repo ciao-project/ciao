@@ -30,17 +30,6 @@ import (
 	"github.com/rackspace/gophercloud/pagination"
 )
 
-const imageTemplateDesc = `struct {
-	Name             string   // Image name
-	SizeBytes        int      // Size of image in bytes
-	ID               string   // Image UUID
-	Status           string   // Image status.  Can be queued or active
-	CreatedDate      string   // Image creation date
-	LastUpdate       string   // Timestamp of last update
-	File             string   // Image path
-	Schema           string   // Path to json schema
-}`
-
 var imageCommand = &command{
 	SubCommands: map[string]subCommand{
 		"add":    new(imageAddCommand),
@@ -67,12 +56,7 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a 
-
-%s
-`, imageTemplateDesc)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", images.Image{}))
 	os.Exit(2)
 }
 
@@ -142,12 +126,7 @@ func (cmd *imageShowCommand) usage(...string) {
 Show images
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a 
-
-%s
-`, imageTemplateDesc)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", images.Image{}))
 	os.Exit(2)
 }
 
@@ -197,12 +176,12 @@ List images
 	fmt.Fprintf(os.Stderr, `
 The template passed to the -f option operates on a 
 
-[]%s
+%s
 
 As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
-`, imageTemplateDesc)
+`, generateUsageUndecorated([]images.Image{}))
 	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }

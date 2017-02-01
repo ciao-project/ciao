@@ -43,15 +43,8 @@ func (cmd *traceListCommand) usage(...string) {
 List all trace label
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on
-
-[]struct {
-	Label     string // Trace label
-	Instances int    // Number of instances created with this label
-}
-`)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s",
+		generateUsageDecorated("f", types.CiaoTracesSummary{}.Summaries))
 	os.Exit(2)
 }
 
@@ -105,22 +98,8 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on
-
-struct {
-	NumInstances             int     // Number of instances started
-	TotalElapsed             float64 // Total time to start all instances
-	AverageElapsed           float64 // Average instance start time
-	AverageControllerElapsed float64 // Average time spent in controller starting an instance
-	AverageLauncherElapsed   float64 // Average time spent in launcher starting an instance
-	AverageSchedulerElapsed  float64 // Average time spent in scheduler starting an instance
-	VarianceController       float64 // Controller start time variance
-	VarianceLauncher         float64 // Launcher start time variance
-	VarianceScheduler        float64 // Scheduler start time variance
-}
-`)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s",
+		generateUsageDecorated("f", types.CiaoTraceData{}.Summary))
 	os.Exit(2)
 }
 

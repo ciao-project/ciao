@@ -31,40 +31,6 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 )
 
-const (
-	externalSubnetDesc = `struct {
-	ID	string			// ID of the external subnet
-	CIDR	string			// CIDR representation of the subnet
-}`
-	externalIPDesc = `struct {
-	ID	string			// ID of the external IP
-	Address	string			// the IPv4 Address
-}`
-	poolTemplateDesc = `struct {
-	ID       string                 // ID of the pool (Admin only)
-	Name     string                 // Name of the pool
-	TotalIPs int                    // Total IPs in pool (Admin only)
-	Free	 int                    // Total Free IPs in pool (Admin only)
-}`
-	poolShowTemplateDesc = `struct {
-	ID	string			// ID of the pool
-	Name	string			// name of the pool
-	Free	int			// Total free IPs in pool
-	TotalIPs int			// Total IPs in pool
-	Subnets []ExternalSubnet	// Subnets in this pool
-	IPs	[]ExternalIP		// Individual IPs in this pool
-}`
-	externalIPTemplate = `struct {
-	ID		string		// ID of the mapped IP
-	ExternalIP 	string		// External IP address
-	InternalIP	string		// Internal IP address
-	InstanceID	string		// ID of the instance that is mapped (Admin only)
-	TenantID	string		// ID of the tenant (Admin only)
-	PoolID		string		// ID of the allocation pool (Admin only)
-	PoolName	string		// Name of the allocation pool (Admin only)
-}`
-)
-
 func getCiaoExternalIPsResource() (string, string, error) {
 	url, err := getCiaoResource("external-ips", api.ExternalIPsV1)
 	return url, api.ExternalIPsV1, err
@@ -193,13 +159,7 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a
-
-[]%s
-`, externalIPTemplate)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", []types.MappedIP{}))
 	os.Exit(2)
 }
 
@@ -477,13 +437,8 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a
-
-[]%s
-`, poolTemplateDesc)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
-
+	fmt.Fprintf(os.Stderr, "\n%s",
+		generateUsageDecorated("f", types.ListPoolsResponse{}.Pools))
 	os.Exit(2)
 }
 
@@ -566,24 +521,7 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a
-
-%s
-`, poolShowTemplateDesc)
-	fmt.Fprintf(os.Stderr, `
-The externalSubnets are described by
-
-%s
-`, externalSubnetDesc)
-
-	fmt.Fprintf(os.Stderr, `
-The externalIPs are described by
-
-%s
-`, externalIPDesc)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
-
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", types.Pool{}))
 	os.Exit(2)
 }
 

@@ -48,17 +48,8 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a 
-
-[]struct {
-	Timestamp time.Time // Event timestamp
-	TenantID  string    // UUID of the tenant that generated this event
-	EventType string    // Type of event, e.g., info, warn, error.
-	Message   string    // Event message
-}
-`)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s",
+		generateUsageDecorated("f", types.CiaoEvents{}.Events))
 	os.Exit(2)
 }
 
