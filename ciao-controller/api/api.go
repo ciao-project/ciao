@@ -42,6 +42,8 @@ const (
 
 	// TenantsV1 is the content-type string for v1 of our tenants resource
 	TenantsV1 = "x.ciao.tenants.v1"
+	// ClusterConfigV1 is the content-type string for v1 of our cluster configuration resource
+	ClusterConfigV1 = "x.ciao.cluster-config.v1"
 )
 
 // HTTPErrorData represents the HTTP response body for
@@ -210,6 +212,18 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 	}
 
 	links = append(links, link)
+
+	// we support the "configuration" resource (privileged tenant only)
+	link = types.APILink{
+		Rel:        "configuration",
+		Version:    ClusterConfigV1,
+		MinVersion: ClusterConfigV1,
+	}
+
+	if !ok {
+		link.Href = fmt.Sprintf("%s/configuration", c.URL)
+		links = append(links, link)
+	}
 
 	return Response{http.StatusOK, links}, nil
 }
@@ -585,6 +599,20 @@ func updateQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusCreated, resp}, nil
 }
 
+// updateConfig implements the response for a configuration update
+// API call, checks for valid input, correct call permissions (only admin
+// can perform this request) and test new configuration value previous to
+// perform the change.
+func updateConfig(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	return Response{http.StatusNotImplemented, "not Implemented"}, nil
+}
+
+// showConfig implements the response for a configuration show
+// API call, checks that call was performed by the admin
+func showConfig(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	return Response{http.StatusNotImplemented, "not Implemented"}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -736,5 +764,15 @@ func Routes(config Config) *mux.Router {
 	route.Methods("PUT")
 	route.HeadersRegexp("Content-Type", matchContent)
 
+	// configuration
+	matchContent = fmt.Sprintf("application/(%s|json)", ClusterConfigV1)
+
+	route = r.Handle("/configuration", Handler{context, showConfig, true})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/configuration", Handler{context, updateConfig, true})
+	route.Methods("PUT")
+	route.HeadersRegexp("Content-Type", matchContent)
 	return r
 }
