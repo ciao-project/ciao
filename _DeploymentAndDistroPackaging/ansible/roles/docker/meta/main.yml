@@ -27,7 +27,8 @@ galaxy_info:
   platforms:
   - name: Ubuntu
     versions:
-      - xenial
+      - Xenial
+      - Yakkety
   - name: Fedora
     versions:
       - 24
@@ -38,7 +39,6 @@ galaxy_info:
 
   galaxy_tags:
     - ubuntu
-    - xenial
     - clearlinux
     - fedora
     - docker
