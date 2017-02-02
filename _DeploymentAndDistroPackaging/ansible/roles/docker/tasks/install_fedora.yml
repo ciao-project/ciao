@@ -13,11 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+  - name: Remove unofficial Docker packages
+    dnf: name=docker state=absent
+
   - name: Install docker repository (Fedora)
     yum_repository:
       name: docker
       description: Docker Repository
-      baseurl: https://yum.dockerproject.org/repo/main/fedora/24/
+      baseurl: https://yum.dockerproject.org/repo/main/fedora/$releasever/
       state: present
       enabled: yes
       gpgkey: https://yum.dockerproject.org/gpg

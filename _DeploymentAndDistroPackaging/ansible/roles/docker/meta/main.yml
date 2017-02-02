@@ -31,6 +31,7 @@ galaxy_info:
   - name: Fedora
     versions:
       - 24
+      - 25
   - name: ClearLinux
     versions:
       - all
