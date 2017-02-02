@@ -217,23 +217,22 @@ func createTemplate(name, tmplSrc string) *template.Template {
 }
 
 func exportedFields(typ reflect.Type) bool {
-	var i int
-	for i = 0; i < typ.NumField(); i++ {
+	for i := 0; i < typ.NumField(); i++ {
 		if typ.Field(i).PkgPath == "" {
-			break
+			return true
 		}
 	}
 
-	return i < typ.NumField()
+	return false
 }
 
 func ignoreKind(kind reflect.Kind) bool {
 	return (kind == reflect.Chan) || (kind == reflect.Invalid)
 }
 
-func generateStruct(buf io.Writer, dummy reflect.Type) {
-	for i := 0; i < dummy.NumField(); i++ {
-		field := dummy.Field(i)
+func generateStruct(buf io.Writer, typ reflect.Type) {
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
 		if field.PkgPath != "" || ignoreKind(field.Type.Kind()) {
 			continue
 		}
@@ -246,34 +245,34 @@ func generateStruct(buf io.Writer, dummy reflect.Type) {
 	}
 }
 
-func generateUsage(buf io.Writer, dummy reflect.Type, tag string) {
-	kind := dummy.Kind()
+func generateUsage(buf io.Writer, typ reflect.Type, tag string) {
+	kind := typ.Kind()
 	if ignoreKind(kind) {
 		return
 	}
 
 	switch kind {
 	case reflect.Struct:
-		if exportedFields(dummy) {
+		if exportedFields(typ) {
 			fmt.Fprintf(buf, "struct {\n")
-			generateStruct(buf, dummy)
+			generateStruct(buf, typ)
 			fmt.Fprintf(buf, "}%s\n", tag)
-		} else if dummy.Name() != "" {
-			fmt.Fprintf(buf, "%s%s\n", dummy.String(), tag)
+		} else if typ.Name() != "" {
+			fmt.Fprintf(buf, "%s%s\n", typ.String(), tag)
 		} else {
 			fmt.Fprintf(buf, "struct {\n}%s\n", tag)
 		}
 	case reflect.Slice:
 		fmt.Fprintf(buf, "[]")
-		generateUsage(buf, dummy.Elem(), tag)
+		generateUsage(buf, typ.Elem(), tag)
 	case reflect.Array:
-		fmt.Fprintf(buf, "[%d]", dummy.Len())
-		generateUsage(buf, dummy.Elem(), tag)
+		fmt.Fprintf(buf, "[%d]", typ.Len())
+		generateUsage(buf, typ.Elem(), tag)
 	case reflect.Map:
-		fmt.Fprintf(buf, "map[%s]", dummy.Key().String())
-		generateUsage(buf, dummy.Elem(), tag)
+		fmt.Fprintf(buf, "map[%s]", typ.Key().String())
+		generateUsage(buf, typ.Elem(), tag)
 	default:
-		fmt.Fprintf(buf, "%s%s\n", dummy.String(), tag)
+		fmt.Fprintf(buf, "%s%s\n", typ.String(), tag)
 	}
 }
 
@@ -288,26 +287,26 @@ func formatType(buf *bytes.Buffer, unformattedType []byte) {
 	_, _ = buf.Write(formattedType[len(typePrefix):])
 }
 
-func generateIndentedUsage(buf *bytes.Buffer, dummy interface{}) {
+func generateIndentedUsage(buf *bytes.Buffer, i interface{}) {
 	var source bytes.Buffer
-	generateUsage(&source, reflect.TypeOf(dummy), "")
+	generateUsage(&source, reflect.TypeOf(i), "")
 	formatType(buf, source.Bytes())
 }
 
-func generateUsageUndecorated(dummy interface{}) string {
+func generateUsageUndecorated(i interface{}) string {
 	var buf bytes.Buffer
-	generateIndentedUsage(&buf, dummy)
+	generateIndentedUsage(&buf, i)
 	return buf.String()
 }
 
-func generateUsageDecorated(flag string, dummy interface{}) string {
+func generateUsageDecorated(flag string, i interface{}) string {
 	var buf bytes.Buffer
 
 	fmt.Fprintf(&buf,
 		"The template passed to the -%s option operates on a\n\n",
 		flag)
 
-	generateIndentedUsage(&buf, dummy)
+	generateIndentedUsage(&buf, i)
 	fmt.Fprintf(&buf, templateFunctionHelp)
 	return buf.String()
 }
