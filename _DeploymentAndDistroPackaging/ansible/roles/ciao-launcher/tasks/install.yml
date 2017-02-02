@@ -30,13 +30,6 @@
       - ciao-launcher
     notify: restart launcher
 
-  - name: Copy ciao certificates
-    copy: src={{ workdir }}/{{ item }} dest=/etc/pki/ciao/{{ item }} owner=ciao mode=400
-    with_items:
-      - CAcert-{{ ciao_controller_fqdn }}.pem
-      - "{{ agent_key }}"
-    notify: restart launcher
-
   - name: Get OVMF firmware
     become: no
     connection: local
@@ -45,7 +38,6 @@
       dest: "{{ workdir }}/OVMF.fd"
       validate_certs: no
       force: no
-
 
   - name: Copy OVMF firmware
     copy: src={{ workdir }}/OVMF.fd dest=/usr/share/qemu/OVMF.fd owner=root mode=644

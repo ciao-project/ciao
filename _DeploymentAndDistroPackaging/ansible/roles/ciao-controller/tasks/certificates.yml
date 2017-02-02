@@ -43,6 +43,8 @@
         creates: cert-CNCIAgent-localhost.pem
       - role: controller
         creates: cert-Controller-localhost.pem
+      - role: agent,netagent
+        creates: cert-CNAgent-NetworkingAgent-localhost.pem
 
   - name: Copy certificates
     copy: src={{ workdir }}/{{ item }} dest=/etc/pki/ciao/{{ item }} owner=ciao mode=400

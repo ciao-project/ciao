@@ -20,14 +20,10 @@ firmware_image_url | [OVMF.fd](https://download.clearlinux.org/image/OVMF.fd) | 
 file *ciao.yml*
 ```
 - hosts: computes
-  vars:
-    ciao_role: compute
   roles:
     - clearlinux.ciao-launcher
 
 - hosts: networks
-  vars:
-    ciao_role: network
   roles:
     - clearlinux.ciao-launcher
 ```
