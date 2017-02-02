@@ -28,7 +28,7 @@ We provide a ready-to-use
 [Docker container](https://hub.docker.com/r/clearlinux/ciao-deploy/).
 Simply download it and run your setup:
 
-    $ docker pull clarlinux/ciao-deploy
+    $ docker pull clearlinux/ciao-deploy
 
 ---
 
@@ -70,6 +70,7 @@ you would start the container as follows:
 $ docker run --privileged -v /path/to/your/.ssh/key:/root/.ssh/id_rsa \
              -v $(pwd):/root/ciao \
              -v /dev/:/dev/ \
+             --net=host \
              -it clearlinux/ciao-deploy
 ```
 
