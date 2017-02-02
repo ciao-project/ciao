@@ -25,34 +25,6 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 )
 
-const cnciTemplateDesc = `struct {
-	ID        string // UUID of network node
-	TenantID  string // UUID of tenant to which this CNCI pertains
-	IPv4      string // IP address of CNCI
-	Geography string // Physical location of the network node
-	Subnets   []struct {
-		Subnet string // Subnet used by the CNCI
-	}
-}
-`
-
-const computeTemplateDesc = `struct {
-	ID                    string // UUID of the compute node
-	Timestamp             time.Time
-	Status                string // Node status, e.g., READY, FULL
-	MemTotal              int    // Total amount of RAM on Compute Node in MB
-	MemAvailable          int    // Memory available on Compute Node in MB
-	DiskTotal             int    // Total amount of Disk Space on Compute Node in MB
-	DiskAvailable         int    // Disk Space available on Compute Node in MB
-	Load                  int    // Compute node load
-	OnlineCPUs            int    // Number of CPUs
-	TotalInstances        int    // Number of instances hosted by the Compute Node
-	TotalRunningInstances int    // Number of running instances
-	TotalPendingInstances int    // Number of pending instances
-	TotalPausedInstances  int    // Number of paused instances
-}
-`
-
 var nodeCommand = &command{
 	SubCommands: map[string]subCommand{
 		"list":   new(nodeListCommand),
@@ -82,12 +54,13 @@ The template passed to the -f option operates on one of the following types:
 
 --cnci
 
-[]%s
+%s
 
 --compute
 
-[]%s
-`, cnciTemplateDesc, computeTemplateDesc)
+%s`,
+		generateUsageUndecorated([]types.CiaoCNCI{}),
+		generateUsageUndecorated([]types.CiaoComputeNode{}))
 	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
@@ -197,18 +170,8 @@ func (cmd *nodeStatusCommand) usage(...string) {
 Show cluster status
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a
-
-struct {
-	TotalNodes            int
-	TotalNodesReady       int
-	TotalNodesFull        int
-	TotalNodesOffline     int
-	TotalNodesMaintenance int
-}
-`)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s",
+		generateUsageDecorated("f", types.CiaoClusterStatus{}.Status))
 	os.Exit(2)
 }
 
@@ -267,8 +230,7 @@ The template passed to the -f option operates on one of the following types:
 
 --cnci
 
-%s
-`, cnciTemplateDesc)
+%s`, generateUsageUndecorated(types.CiaoCNCI{}))
 	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }

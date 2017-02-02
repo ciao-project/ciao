@@ -35,30 +35,9 @@ import (
 )
 
 const (
-	osStart              = "os-start"
-	osStop               = "os-stop"
-	osDelete             = "os-delete"
-	instanceTemplateDesc = `struct {
-	HostID   string                               // ID of the host node
-	ID       string                               // Instance UUID
-	TenantID string                               // Tenant UUID
-	Flavor   struct {
-		ID string                             // Workload UUID
-	}
-	Image struct {
-		ID string                             // Backing image UUID
-	}
-	Status    string                              // Instance status
-	Addresses struct {
-		Private []struct {
-			Addr               string     // Instance IP address
-			OSEXTIPSMACMacAddr string     // Instance MAC address
-		}
-	}
-	SSHIP   string                                // Instance SSH IP address
-	SSHPort int                                   // Instance SSH Port
-	OsExtendedVolumesVolumesAttached []string     // list of attached volumes
-}`
+	osStart  = "os-start"
+	osStop   = "os-stop"
+	osDelete = "os-delete"
 )
 
 var instanceCommand = &command{
@@ -719,12 +698,7 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a 
-
-[]%s
-`, instanceTemplateDesc)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", []compute.ServerDetails{}))
 	os.Exit(2)
 }
 
@@ -852,13 +826,7 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a 
-
-%s
-`, instanceTemplateDesc)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", compute.ServerDetails{}))
 	os.Exit(2)
 }
 

@@ -53,23 +53,8 @@ List all workloads
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a 
-
-[]struct {
-	OSFLVDISABLEDDisabled  bool    // Not used
-	Disk                   string  // Backing images associated with workload
-	OSFLVEXTDATAEphemeral  int     // Not currently used
-	OsFlavorAccessIsPublic bool    // Indicates whether the workload is available to all tenants
-	ID                     string  // ID of the workload
-	Links                  []Link  // Not currently used
-	Name                   string  // Name of the workload
-	RAM                    int     // Amount of RAM allocated to instances of this workload 
-	Swap                   string  // Not currently used
-	Vcpus                  int     // Number of Vcpus allocated to instances of this workload 
-}
-`)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s",
+		generateUsageDecorated("f", compute.FlavorsDetails{}.Flavors))
 	os.Exit(2)
 }
 

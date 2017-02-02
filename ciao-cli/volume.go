@@ -30,17 +30,6 @@ import (
 	"github.com/rackspace/gophercloud/pagination"
 )
 
-const volumeTemplateDesc = `struct {
-	ID          string // Volume UUID
-	Size        int    // Volume Size in GB
-	TenantID    string // Tenant to which volume belongs
-	CreatedAt   string // Volume creation time
-	Name        string // Volume name
-	Description string // Volume description
-	Status      string // Volume status
-}
-`
-
 var volumeCommand = &command{
 	SubCommands: map[string]subCommand{
 		"add":    new(volumeAddCommand),
@@ -126,12 +115,11 @@ List all volumes
 	fmt.Fprintf(os.Stderr, `
 The template passed to the -f option operates on a 
 
-[]%s
-
+%s
 As volumes are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of volumes.
-`, volumeTemplateDesc)
+`, generateUsageUndecorated([]volumes.Volume{}))
 	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
@@ -206,12 +194,7 @@ Show information about a volume
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-The template passed to the -f option operates on a 
-
-%s
-`, volumeTemplateDesc)
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", volumes.Volume{}))
 	os.Exit(2)
 }
 
