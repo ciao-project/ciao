@@ -28,11 +28,13 @@ var metaDsTables = []string{"images"}
 var dbDir = "/tmp"
 var dbFile = "ciao-image.db"
 var testImageID = "12345678-1234-5678-1234-567812345678"
+var testTenantID = "34345678-1234-5678-1234-567812345345"
 
 func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
-		ID:    testImageID,
-		State: Created,
+		ID:       testImageID,
+		TenantID: testTenantID,
+		State:    Created,
 	}
 
 	imageStore := ImageStore{}
@@ -45,7 +47,7 @@ func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	// retrieve the entry
-	image, err := imageStore.GetImage(i.ID)
+	image, err := imageStore.GetImage(i.TenantID, i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,8 +59,9 @@ func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 
 func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
-		ID:    testImageID,
-		State: Created,
+		ID:       testImageID,
+		TenantID: testTenantID,
+		State:    Created,
 	}
 
 	imageStore := ImageStore{}
@@ -71,7 +74,7 @@ func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	// retrieve the entry
-	images, err := imageStore.GetAllImages()
+	images, err := imageStore.GetAllImages(i.TenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,8 +92,9 @@ func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 
 func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
-		ID:    testImageID,
-		State: Created,
+		ID:       testImageID,
+		TenantID: testTenantID,
+		State:    Created,
 	}
 
 	imageStore := ImageStore{}
@@ -103,14 +107,14 @@ func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	// delete the entry
-	err = imageStore.DeleteImage(i.ID)
+	err = imageStore.DeleteImage(i.TenantID, i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// now attempt to retrive the entry
 	if _, ok := m.(*Noop); !ok {
-		_, err = imageStore.GetImage(i.ID)
+		_, err = imageStore.GetImage(i.TenantID, i.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -119,8 +123,9 @@ func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 
 func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
-		ID:    testImageID,
-		State: Created,
+		ID:       testImageID,
+		TenantID: testTenantID,
+		State:    Created,
 	}
 
 	imageStore := ImageStore{}
@@ -133,7 +138,7 @@ func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
 	}
 
 	// Upload a string
-	err = imageStore.UploadImage(i.ID, strings.NewReader("Upload file"))
+	err = imageStore.UploadImage(i.TenantID, i.ID, strings.NewReader("Upload file"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +177,7 @@ func initMetaDs() *MetaDs {
 		DbDir:      dbDir,
 		DbFile:     dbFile,
 	}
-	metaDsTables := []string{"images"}
+	metaDsTables := []string{"public", "internal"}
 	_ = metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
 	_ = metaDs.DbTablesInit(metaDsTables)
 
