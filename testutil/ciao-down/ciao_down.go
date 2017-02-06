@@ -36,11 +36,18 @@ import (
 	"time"
 )
 
+// Different types of virtual development environments
+// we support.
+const (
+	CIAO            = "ciao"
+	CLEARCONTAINERS = "clearcontainers"
+)
+
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "%s [prepare|start|stop|quit|status|connect|delete]\n\n", os.Args[0])
-		fmt.Fprintln(os.Stderr, "- prepare : creates a new VM")
+		fmt.Fprintln(os.Stderr, "- prepare : creates a new VM for ciao or clear containers")
 		fmt.Fprintln(os.Stderr, "- start : boots a stopped VM")
 		fmt.Fprintln(os.Stderr, "- stop : cleanly powers down a running VM")
 		fmt.Fprintln(os.Stderr, "- quit : quits a running VM")
@@ -77,25 +84,32 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func prepareFlags() (memGB int, CPUs int, debug bool, uiPath, runCmd string, err error) {
+func prepareFlags() (memGB int, CPUs int, debug bool, uiPath, runCmd, vmType string, err error) {
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGB, &CPUs)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
 	fs.StringVar(&uiPath, "ui-path", "", "Host path of cloned ciao-webui repo")
 	fs.StringVar(&runCmd, "runcmd", "", "Path to a file containing additional commands to execute when preparing the VM")
+	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch. "+CIAO+" or "+CLEARCONTAINERS)
+
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return -1, -1, false, "", "", err
+		return -1, -1, false, "", "", "", err
 	}
 
 	if err := checkDirectory(uiPath); err != nil {
-		return -1, -1, false, "", "", err
+		return -1, -1, false, "", "", "", err
+	}
+
+	if vmType != CIAO && vmType != CLEARCONTAINERS {
+		err := fmt.Errorf("Unsupported vmType %s. Should be one of "+CIAO+"|"+CLEARCONTAINERS, vmType)
+		return -1, -1, false, "", "", "", err
 	}
 
 	if uiPath != "" {
 		uiPath = filepath.Clean(uiPath)
 	}
 
-	return memGB, CPUs, debug, uiPath, runCmd, nil
+	return memGB, CPUs, debug, uiPath, runCmd, vmType, nil
 }
 
 func startFlags() (memGB int, CPUs int, err error) {
@@ -116,6 +130,23 @@ func downloadProgress(p progress) {
 	}
 }
 
+func saveInstanceConfig(ws *workspace) error {
+	err := ioutil.WriteFile(path.Join(ws.instanceDir, "vmtype.txt"),
+		[]byte(ws.vmType), 0600)
+	if err != nil {
+		err = fmt.Errorf("Unable to write vmtype.txt : %v", err)
+		return err
+	}
+
+	err = ioutil.WriteFile(path.Join(ws.instanceDir, "ui_path.txt"),
+		[]byte(ws.UIPath), 0600)
+	if err != nil {
+		err = fmt.Errorf("Unable to write ui_path.txt : %v", err)
+		return err
+	}
+	return nil
+}
+
 func prepare(ctx context.Context, errCh chan error) {
 	var err error
 
@@ -130,7 +161,7 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	fmt.Println("Checking environment")
 
-	memGB, CPUs, debug, uiPath, runCmd, err := prepareFlags()
+	memGB, CPUs, debug, uiPath, runCmd, vmType, err := prepareFlags()
 	if err != nil {
 		return
 	}
@@ -161,13 +192,13 @@ func prepare(ctx context.Context, errCh chan error) {
 		}
 	}()
 
-	err = ioutil.WriteFile(path.Join(ws.instanceDir, "ui_path.txt"),
-		[]byte(uiPath), 0600)
+	ws.vmType = vmType
+	ws.UIPath = uiPath
+	err = saveInstanceConfig(ws)
 	if err != nil {
-		err = fmt.Errorf("Unable to write ui_path.txt : %v", err)
+		err = fmt.Errorf("Unable to save instance state : %v", err)
 		return
 	}
-	ws.UIPath = uiPath
 
 	err = prepareSSHKeys(ctx, ws)
 	if err != nil {

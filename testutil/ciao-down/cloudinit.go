@@ -232,3 +232,170 @@ const metaDataTemplate = `
   "hostname": "singlevm"
 }
 `
+
+/* TODO: For now create a new template for clear containers
+ * in the future we need this to be a more dynamic avoid
+ * duplication
+ */
+const ccUserDataTemplate = `
+{{- define "PROXIES" -}}
+{{if len .HTTPSProxy }}https_proxy={{.HTTPSProxy}} {{end -}}
+{{if len .HTTPProxy }}http_proxy={{.HTTPProxy}} {{end -}}
+{{end}}
+{{- define "CHECK" -}}
+if [ $? -eq 0 ] ; then ret="OK" ; else ret="FAIL" ; fi ; curl -X PUT -d $ret 10.0.2.2:{{.HTTPServerPort -}}
+{{end -}}
+{{- define "OK" -}}
+curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
+{{end -}}
+#cloud-config
+mounts:
+ - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L", "0", "0"]
+write_files:
+{{- if len $.HTTPProxy }}
+ - content: |
+     Acquire::http::Proxy "{{$.HTTPProxy}}";
+   path: /etc/apt/apt.conf
+ - content: |
+     [Service]
+     Environment="HTTP_PROXY={{$.HTTPProxy}}"{{if len .HTTPSProxy}} "HTTPS_PROXY={{.HTTPSProxy}}{{end}}"{{if len .NoProxy}} "NO_PROXY={{.NoProxy}},singlevm{{end}}"
+   path: /etc/systemd/system/docker.service.d/http-proxy.conf
+{{- end}}
+ - content: |
+     [Service]
+     ExecStart=
+     ExecStart=/usr/bin/dockerd -D --add-runtime cor=/usr/bin/cc-oci-runtime --default-runtime=cor
+   path: /etc/systemd/system/docker.service.d/clr-containers.conf
+ - content: |
+     #!/bin/sh
+     printf "\n"
+     printf "\n"
+     printf "Your go code is at {{.GoPath}}\n"
+     printf "You can also edit your code on your host system"
+     printf "\n"
+     printf "\n"
+   path: /etc/update-motd.d/10-ciao-help-text
+   permissions: '0755'
+ - content: |
+     deb https://apt.dockerproject.org/repo ubuntu-xenial main
+   path: /etc/apt/sources.list.d/docker.list
+
+runcmd:
+ - echo "127.0.0.1 singlevm" >> /etc/hosts
+ - mount hostgo
+ - chown {{.User}}:{{.User}} /home/{{.User}}
+ - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
+ - rm /etc/update-motd.d/90-updates-available
+ - rm /etc/legal
+ - curl -X PUT -d "Booting VM" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "OK" .}}
+{{if len $.HTTPProxy }}
+ - echo "HTTP_PROXY={{.HTTPProxy}}" >> /etc/environment
+ - echo "http_proxy={{.HTTPProxy}}" >> /etc/environment
+{{end -}}
+{{- if len $.HTTPSProxy }}
+ - echo "HTTPS_PROXY={{.HTTPSProxy}}" >> /etc/environment
+ - echo "https_proxy={{.HTTPSProxy}}" >> /etc/environment
+{{end}}
+{{- if or (len .HTTPSProxy) (len .HTTPProxy) }}
+ - echo no_proxy="{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm"  >> /etc/environment
+{{end}}
+
+ - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
+ - echo "GOPATH={{.GoPath}}" >> /etc/environment
+ - echo "PATH=$PATH:/usr/local/go/bin:{{$.GoPath}}/bin"  >> /etc/environment
+ - {{template "PROXIES" .}}wget https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz -O /tmp/go1.7.4.linux-amd64.tar.gz
+ - {{template "CHECK" .}}
+ - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
+ - tar -C /usr/local -xzf /tmp/go1.7.4.linux-amd64.tar.gz
+ - {{template "CHECK" .}}
+ - rm /tmp/go1.7.4.linux-amd64.tar.gz
+
+ - groupadd docker
+ - sudo gpasswd -a {{.User}} docker
+ - curl -X PUT -d "Installing apt-transport-https and ca-certificates" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install apt-transport-https ca-certificates
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Add docker GPG key" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Add Clear Containers OBS Repository " 10.0.2.2:{{.HTTPServerPort}}
+ - sudo sh -c "echo 'deb http://download.opensuse.org/repositories/home:/clearlinux:/preview:/clear-containers-2.1/xUbuntu_16.04/ /' >> /etc/apt/sources.list.d/cc-oci-runtime.list"
+ - {{template "PROXIES" .}}curl -fsSL http://download.opensuse.org/repositories/home:clearlinux:preview:clear-containers-2.1/xUbuntu_16.04/Release.key | sudo apt-key add -
+ - {{template "CHECK" .}}
+
+
+ - curl -X PUT -d "Retrieving updated list of packages" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get update
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Upgrading" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get upgrade -y
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Installing Clear Containers Runtime" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install cc-oci-runtime -y
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Installing Docker" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install docker-engine -y
+ - {{template "CHECK" .}}
+
+
+ - curl -X PUT -d "Start Clear Containers Runtime" 10.0.2.2:{{.HTTPServerPort}}
+ - sudo systemctl daemon-reload
+ - sudo systemctl restart docker
+ - sudo systemctl enable cc-proxy.socket
+ - sudo systemctl start cc-proxy.socket
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Installing GCC" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install gcc -y
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Installing Make" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install make -y
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Installing QEMU" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install qemu-system-x86 -y
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Installing xorriso" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get install xorriso -y
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Auto removing unused components" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "PROXIES" .}}apt-get auto-remove -y
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Installing Go development utils" 10.0.2.2:{{.HTTPServerPort}}
+ - sudo -u {{.User}} {{template "PROXIES" .}} GOPATH={{.GoPath}} /usr/local/go/bin/go get github.com/mattn/goveralls golang.org/x/tools/cmd/cover github.com/pierrre/gotestcover github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell github.com/01org/ciao/test-cases github.com/opencontainers/runc/libcontainer/configs
+ - {{template "CHECK" .}}
+
+ - chown {{.User}}:{{.User}} -R {{.GoPath}}
+
+{{if len .GitUserName}}
+ - curl -X PUT -d "Setting git user.name" 10.0.2.2:{{.HTTPServerPort}}
+ - sudo -u {{.User}} git config --global user.name "{{.GitUserName}}"
+ - {{template "CHECK" .}}
+{{end}}
+{{if len .GitEmail}}
+ - curl -X PUT -d "Setting git user.email" 10.0.2.2:{{.HTTPServerPort}}
+ - sudo -u {{.User}} git config --global user.email {{.GitEmail}}
+ - {{template "CHECK" .}}
+{{end}}
+%s
+ - curl -X PUT -d "FINISHED" 10.0.2.2:{{.HTTPServerPort}}
+
+users:
+  - name: {{.User}}
+    gecos: CIAO Demo User
+    lock-passwd: true
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+    - {{.PublicKey}}
+`
