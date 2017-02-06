@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -159,43 +158,13 @@ func (q *qemuV) imageInfo(imagePath string) (int, error) {
 }
 
 func createCloudInitISO(instanceDir, isoPath string, cfg *vmConfig, userData, metaData []byte) error {
-
-	configDrivePath := path.Join(instanceDir, "clr-cloud-init")
-	dataDirPath := path.Join(configDrivePath, "openstack", "latest")
-	metaDataPath := path.Join(dataDirPath, "meta_data.json")
-	userDataPath := path.Join(dataDirPath, "user_data")
-
-	defer func() {
-		_ = os.RemoveAll(configDrivePath)
-	}()
-
-	err := os.MkdirAll(dataDirPath, 0755)
-	if err != nil {
-		glog.Errorf("Unable to create config drive directory %s", dataDirPath)
-		return err
-	}
-
 	if len(metaData) == 0 {
 		defaultMeta := fmt.Sprintf("{\n  \"uuid\": %q,\n  \"hostname\": %[1]q\n}\n", cfg.Instance)
 		metaData = []byte(defaultMeta)
 	}
 
-	err = ioutil.WriteFile(metaDataPath, metaData, 0644)
-	if err != nil {
-		glog.Errorf("Unable to create %s", metaDataPath)
-		return err
-	}
-
-	err = ioutil.WriteFile(userDataPath, userData, 0644)
-	if err != nil {
-		glog.Errorf("Unable to create %s", userDataPath)
-		return err
-	}
-
-	cmd := exec.Command("xorriso", "-as", "mkisofs", "-R", "-V", "config-2", "-o", isoPath,
-		configDrivePath)
-	err = cmd.Run()
-	if err != nil {
+	if err := qemu.CreateCloudInitISO(context.TODO(), instanceDir, isoPath,
+		userData, metaData); err != nil {
 		glog.Errorf("Unable to create cloudinit iso image %v", err)
 		return err
 	}
