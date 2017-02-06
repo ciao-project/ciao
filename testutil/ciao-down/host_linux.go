@@ -16,76 +16,15 @@
 
 package main
 
-import (
-	"bufio"
-	"os"
-	"regexp"
-	"strconv"
-)
-
-// TODO: Copied from launcher
+import "github.com/01org/ciao/deviceinfo"
 
 func getOnlineCPUs() int {
-	cpuStatsRegexp := regexp.MustCompile(`^cpu[0-9]+.*$`)
-	file, err := os.Open("/proc/stat")
-	if err != nil {
-		return -1
-	}
-	defer func() {
-		_ = file.Close()
-	}()
-
-	scanner := bufio.NewScanner(file)
-	if !scanner.Scan() {
-		return -1
-	}
-
-	cpusOnline := 0
-	for scanner.Scan() && cpuStatsRegexp.MatchString(scanner.Text()) {
-		cpusOnline++
-	}
-
-	if cpusOnline == 0 {
-		return -1
-	}
-
-	return cpusOnline
+	return deviceinfo.GetOnlineCPUs()
 }
 
 func getTotalMemory() int {
-	memTotalRegexp := regexp.MustCompile(`MemTotal:\s+(\d+)`)
-	total := -1
-	file, err := os.Open("/proc/meminfo")
-	if err != nil {
-		return total
-	}
-	defer func() {
-		_ = file.Close()
-	}()
-
-	scanner := bufio.NewScanner(file)
-	if !scanner.Scan() {
-		return total
-	}
-
-	matches := memTotalRegexp.FindStringSubmatch(scanner.Text())
-	if matches == nil {
-		return total
-	}
-
-	parsedNum, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return total
-	}
-
-	if parsedNum >= 0 {
-		total = parsedNum / (1024 * 1024)
-	}
-
-	if total == 0 {
-		return -1
-	}
-
+	total, _ := deviceinfo.GetMemoryInfo()
+	total /= 1024
 	return total
 }
 

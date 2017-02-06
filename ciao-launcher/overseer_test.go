@@ -31,69 +31,23 @@ import (
 	"github.com/01org/ciao/ssntp"
 )
 
-const memInfoContents = `
-MemTotal:        1999368 kB
-MemFree:         1289644 kB
-MemAvailable:    1885704 kB
-Buffers:           38796 kB
-Cached:           543892 kB
-SwapCached:            0 kB
-Active:           456232 kB
-Inactive:         175996 kB
-Active(anon):      50128 kB
-Inactive(anon):     5396 kB
-Active(file):     406104 kB
-Inactive(file):   170600 kB
-Unevictable:           0 kB
-Mlocked:               0 kB
-SwapTotal:       2045948 kB
-SwapFree:        2045948 kB
-Dirty:                 0 kB
-Writeback:             0 kB
-AnonPages:         49580 kB
-Mapped:            62960 kB
-Shmem:              5988 kB
-Slab:              55396 kB
-SReclaimable:      40152 kB
-SUnreclaim:        15244 kB
-KernelStack:        2176 kB
-PageTables:         4196 kB
-NFS_Unstable:          0 kB
-Bounce:                0 kB
-WritebackTmp:          0 kB
-CommitLimit:     3045632 kB
-Committed_AS:     380776 kB
-VmallocTotal:   34359738367 kB
-VmallocUsed:           0 kB
-VmallocChunk:          0 kB
-HardwareCorrupted:     0 kB
-AnonHugePages:     16384 kB
-CmaTotal:              0 kB
-CmaFree:               0 kB
-HugePages_Total:       0
-HugePages_Free:        0
-HugePages_Rsvd:        0
-HugePages_Surp:        0
-Hugepagesize:       2048 kB
-DirectMap4k:       57280 kB
-DirectMap2M:     1990656 kB
-`
+type fakeDeviceInfo struct{}
 
-const loadAvgContents = `
-0.00 0.01 0.05 1/134 23379
-`
+func (fakeDeviceInfo) GetLoadAvg() int {
+	return 1
+}
 
-const statContents = `
-cpu  29164 292 87649 17177990 544 0 580 0 0 0
-cpu0 29164 292 87649 17177990 544 0 580 0 0 0
-intr 28478654 38 10 0 0 0 0 0 0 0 0 0 0 156 0 0 169437 0 0 0 163737 19303499 21210 29 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-ctxt 54009655
-btime 1465121906
-processes 55793
-procs_running 1
-procs_blocked 0
-softirq 2742553 2 1348123 34687 170653 103600 0 45 0 0 1085443
-`
+func (fakeDeviceInfo) GetFSInfo(path string) (total, available int) {
+	return 100 * 1000, 75 * 1000
+}
+
+func (fakeDeviceInfo) GetOnlineCPUs() int {
+	return 2
+}
+
+func (fakeDeviceInfo) GetMemoryInfo() (total, available int) {
+	return 16000, 8000
+}
 
 type overseerTestState struct {
 	t        *testing.T
@@ -173,43 +127,6 @@ func (v *overseerTestState) setStatus(status bool) {
 
 func (v *overseerTestState) ClusterConfiguration() (payloads.Configure, error) {
 	return payloads.Configure{}, nil
-}
-
-type procPaths struct {
-	procDir string
-	memInfo string
-	stat    string
-	loadavg string
-}
-
-func createGoodProcFiles() (*procPaths, error) {
-	procDir, err := ioutil.TempDir("", "overseer-proc-files")
-	if err != nil {
-		return nil, err
-	}
-	pp := &procPaths{
-		procDir: procDir,
-		memInfo: path.Join(procDir, "memInfo"),
-		stat:    path.Join(procDir, "stat"),
-		loadavg: path.Join(procDir, "loadavg"),
-	}
-
-	err = ioutil.WriteFile(pp.memInfo, []byte(memInfoContents), 0755)
-	if err != nil {
-		return nil, err
-	}
-
-	err = ioutil.WriteFile(pp.stat, []byte(statContents), 0755)
-	if err != nil {
-		return nil, err
-	}
-
-	err = ioutil.WriteFile(pp.loadavg, []byte(loadAvgContents), 0755)
-	if err != nil {
-		return nil, err
-	}
-
-	return pp, nil
 }
 
 func shutdownOverseer(ovsCh chan<- interface{}, state *overseerTestState) {
@@ -413,18 +330,12 @@ func TestStartStopOverseer(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	var wg sync.WaitGroup
 	state := &overseerTestState{t: t}
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*900,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 	close(ovsCh)
 	wg.Wait()
 }
@@ -445,12 +356,6 @@ func TestEmptyStats(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:       t,
@@ -459,7 +364,7 @@ func TestEmptyStats(t *testing.T) {
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Millisecond*300,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 
 	var stats *payloads.Stat
 	timer := time.After(time.Second)
@@ -497,12 +402,6 @@ func TestEmptyStatus(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:        t,
@@ -511,7 +410,7 @@ func TestEmptyStatus(t *testing.T) {
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 	select {
 	case ovsCh <- &ovsStatusCmd{}:
 	case <-time.After(time.Second):
@@ -558,12 +457,6 @@ func TestFullStatus(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:        t,
@@ -572,7 +465,7 @@ func TestFullStatus(t *testing.T) {
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 	select {
 	case ovsCh <- &ovsStatusCmd{}:
 	case <-time.After(time.Second):
@@ -618,12 +511,6 @@ func TestAddDelete(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:       t,
@@ -632,7 +519,7 @@ func TestAddDelete(t *testing.T) {
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 
 	_ = addInstance(t, ovsCh, state, false)
 	_, stats := getStatusStats(t, ovsCh, state)
@@ -668,12 +555,6 @@ func TestInitialInstance(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	createTestInstance(t, instancesDir)
 
 	var wg sync.WaitGroup
@@ -684,7 +565,7 @@ func TestInitialInstance(t *testing.T) {
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Millisecond*300,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 
 	timer := time.After(time.Second)
 	var stats *payloads.Stat
@@ -724,12 +605,6 @@ func TestGet(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t: t,
@@ -737,7 +612,7 @@ func TestGet(t *testing.T) {
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 
 	_ = addInstance(t, ovsCh, state, false)
 
@@ -788,12 +663,6 @@ func TestStatsStatus(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:        t,
@@ -803,7 +672,7 @@ func TestStatsStatus(t *testing.T) {
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 
 	ready, stats := getStatusStats(t, ovsCh, state)
 	if ready.NodeUUID != state.UUID() {
@@ -836,12 +705,6 @@ func TestStateChange(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(instancesDir) }()
 
-	pp, err := createGoodProcFiles()
-	if err != nil {
-		t.Fatalf("Unable to create proc files")
-	}
-	defer func() { _ = os.RemoveAll(pp.procDir) }()
-
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:       t,
@@ -850,7 +713,7 @@ func TestStateChange(t *testing.T) {
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
-		pp.memInfo, pp.stat, pp.loadavg)
+		fakeDeviceInfo{})
 
 	_ = addInstance(t, ovsCh, state, false)
 
