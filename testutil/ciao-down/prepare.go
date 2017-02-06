@@ -29,6 +29,7 @@ import (
 	"text/template"
 
 	"github.com/01org/ciao/osprepare"
+	"github.com/01org/ciao/qemu"
 )
 
 type logger struct{}
@@ -235,42 +236,9 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	return ws, nil
 }
 
-// TODO: Code copied from launcher.  Needs to be moved to qemu
-
 func createCloudInitISO(ctx context.Context, instanceDir string, userData, metaData []byte) error {
-	configDrivePath := path.Join(instanceDir, "clr-cloud-init")
-	dataDirPath := path.Join(configDrivePath, "openstack", "latest")
-	metaDataPath := path.Join(dataDirPath, "meta_data.json")
-	userDataPath := path.Join(dataDirPath, "user_data")
 	isoPath := path.Join(instanceDir, "config.iso")
-
-	defer func() {
-		_ = os.RemoveAll(configDrivePath)
-	}()
-
-	err := os.MkdirAll(dataDirPath, 0755)
-	if err != nil {
-		return fmt.Errorf("Unable to create config drive directory %s", dataDirPath)
-	}
-
-	err = ioutil.WriteFile(metaDataPath, metaData, 0644)
-	if err != nil {
-		return fmt.Errorf("Unable to create %s", metaDataPath)
-	}
-
-	err = ioutil.WriteFile(userDataPath, userData, 0644)
-	if err != nil {
-		return fmt.Errorf("Unable to create %s", userDataPath)
-	}
-
-	cmd := exec.CommandContext(ctx, "xorriso", "-as", "mkisofs", "-R", "-V", "config-2",
-		"-o", isoPath, configDrivePath)
-	err = cmd.Run()
-	if err != nil {
-		return fmt.Errorf("Unable to create cloudinit iso image %v", err)
-	}
-
-	return nil
+	return qemu.CreateCloudInitISO(ctx, instanceDir, isoPath, userData, metaData)
 }
 
 func buildISOImage(ctx context.Context, instanceDir string, ws *workspace, debug bool) error {
