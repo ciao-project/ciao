@@ -182,28 +182,28 @@ func TestPickComputeNode(t *testing.T) {
 	// no compute nodes
 	node := PickComputeNode(sched, "", &resources)
 	if node != nil {
-		t.Error("fount fit in empty node list")
+		t.Error("found compute fit in empty node list")
 	}
 
 	// 1st compute node, with little memory
 	spinUpComputeNodeVerySmall(sched, 1)
 	node = PickComputeNode(sched, "", &resources)
 	if node != nil {
-		t.Error("found fit when none should exist")
+		t.Error("found compute fit when none should exist")
 	}
 
 	// 2nd compute node, with little memory
 	spinUpComputeNodeVerySmall(sched, 2)
 	node = PickComputeNode(sched, "", &resources)
 	if node != nil {
-		t.Error("found fit when none should exist")
+		t.Error("found compute fit when none should exist")
 	}
 
 	// 3rd compute node, with a lot of memory
 	spinUpComputeNodeLarge(sched, 3)
 	node = PickComputeNode(sched, "", &resources)
 	if node == nil {
-		t.Error("found no fit when one should exist")
+		t.Error("found no compute fit when one should exist")
 	}
 
 	// 100 compute nodes := earlier 1 + 1 + 1 + now 97 more compute nodes
@@ -212,14 +212,14 @@ func TestPickComputeNode(t *testing.T) {
 	}
 	node = PickComputeNode(sched, "", &resources)
 	if node == nil {
-		t.Error("failed to fit in hundred node list")
+		t.Error("failed to fit in hundred compute node list")
 	}
 
-	// MRU set somewhere arbitrary
+	// compute MRU set somewhere arbitrary
 	sched.cnMRUIndex = 42
 	node = PickComputeNode(sched, "", &resources)
 	if node == nil {
-		t.Error("failed to find fit after MRU")
+		t.Error("failed to find compute fit after MRU")
 	}
 }
 
