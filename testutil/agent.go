@@ -610,10 +610,10 @@ func (client *SsntpTestClient) SendStatsCmd() {
 
 // SendStatus pushes an ssntp status frame from the SsntpTestClient with
 // the indicated total and available memory statistics
-func (client *SsntpTestClient) SendStatus(memTotal int, memAvail int) {
+func (client *SsntpTestClient) SendStatus(memTotal int, memAvail int, networks []payloads.NetworkStat) {
 	var result Result
 
-	payload := ReadyPayload(client.UUID, memTotal, memAvail)
+	payload := ReadyPayload(client.UUID, memTotal, memAvail, networks)
 
 	y, err := yaml.Marshal(payload)
 	if err != nil {

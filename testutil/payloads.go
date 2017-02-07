@@ -114,6 +114,33 @@ const AgentUUID = "4cb19522-1e18-439a-883a-f9b2a3a95f5e"
 // VolumeUUID is a node UUID for storage tests
 const VolumeUUID = "67d86208-b46c-4465-9018-e14187d4010"
 
+var computeNetwork001 = payloads.NetworkStat{
+	NodeIP:  "198.51.100.1",
+	NodeMAC: "02:00:aa:cb:84:41",
+}
+var computeNetwork002 = payloads.NetworkStat{
+	NodeIP:  "10.168.1.1",
+	NodeMAC: "02:00:8c:ba:f9:45",
+}
+var computeNetwork003 = payloads.NetworkStat{
+	NodeIP:  ComputeNet,
+	NodeMAC: "02:00:15:03:6f:49",
+}
+
+// PartialComputeNetworks is meant to represent a node with partial access to
+// compute networks in the testutil cluster
+var PartialComputeNetworks = []payloads.NetworkStat{
+	computeNetwork002,
+}
+
+// MultipleComputeNetworks is meant to represent a node with full access to
+// all compute networks in the testutil cluster
+var MultipleComputeNetworks = []payloads.NetworkStat{
+	computeNetwork001,
+	computeNetwork002,
+	computeNetwork003,
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 // StartYaml is a sample workload START ssntp.Command payload for test usage
@@ -166,6 +193,8 @@ const CNCIStartYaml = `start:
     - type: network_node
       value: 1
       mandatory: true
+    - type: physical_network
+      value_string: ` + ComputeNet + `
   networking:
     vnic_mac: ` + VNICMAC + `
     vnic_uuid: ` + VNICUUID + `
@@ -384,8 +413,8 @@ const NodeConnectedYaml = `node_connected:
 `
 
 // ReadyPayload is a helper to craft a mostly fixed ssntp.READY status
-// payload, with parameters to specify the source node uuid and memory metrics
-func ReadyPayload(uuid string, memTotal int, memAvail int) payloads.Ready {
+// payload, with parameters to specify the source node uuid and available resources
+func ReadyPayload(uuid string, memTotal int, memAvail int, networks []payloads.NetworkStat) payloads.Ready {
 	p := payloads.Ready{
 		NodeUUID:        uuid,
 		MemTotalMB:      memTotal,
@@ -394,6 +423,7 @@ func ReadyPayload(uuid string, memTotal int, memAvail int) payloads.Ready {
 		DiskAvailableMB: 256000,
 		Load:            0,
 		CpusOnline:      4,
+		Networks:        networks,
 	}
 	return p
 }
