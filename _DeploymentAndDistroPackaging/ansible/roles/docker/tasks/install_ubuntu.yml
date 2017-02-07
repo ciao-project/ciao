@@ -13,11 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+  - name: Remove unofficial Docker packages
+    apt: name=docker.io state=absent
+
   - name: Install CA certificates (Ubuntu)
     apt: name={{ item }} state=present
     with_items:
       - apt-transport-https
       - ca-certificates
+      - curl
+      - linux-image-extra-virtual
       - linux-image-extra-{{ ansible_kernel }}
 
   - name: Install docker repository GPG Key (Ubuntu)
@@ -28,7 +33,7 @@
 
   - name: Install docker repository (Ubuntu)
     apt_repository:
-      repo: "deb https://apt.dockerproject.org/repo ubuntu-xenial experimental"
+      repo: "deb https://apt.dockerproject.org/repo ubuntu-{{ ansible_distribution_release }} main"
       state: present
       filename: docker
 
