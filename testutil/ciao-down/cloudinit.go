@@ -72,20 +72,21 @@ runcmd:
  - curl -X PUT -d "Booting VM" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "OK" .}}
 {{if len $.HTTPProxy }}
- - echo "HTTP_PROXY={{.HTTPProxy}}" >> /etc/environment
- - echo "http_proxy={{.HTTPProxy}}" >> /etc/environment
+ - echo "HTTP_PROXY=\"{{.HTTPProxy}}\"" >> /etc/environment
+ - echo "http_proxy=\"{{.HTTPProxy}}\"" >> /etc/environment
 {{end -}}
 {{- if len $.HTTPSProxy }}
- - echo "HTTPS_PROXY={{.HTTPSProxy}}" >> /etc/environment
- - echo "https_proxy={{.HTTPSProxy}}" >> /etc/environment
+ - echo "HTTPS_PROXY=\"{{.HTTPSProxy}}\"" >> /etc/environment
+ - echo "https_proxy=\"{{.HTTPSProxy}}\"" >> /etc/environment
 {{end}}
 {{- if or (len .HTTPSProxy) (len .HTTPProxy) }}
- - echo no_proxy="{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm"  >> /etc/environment
+ - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm\""  >> /etc/environment
 {{end}}
 
+ - echo "GOPATH=\"{{.GoPath}}\"" >> /etc/environment
+ - echo "PATH=\"$PATH:/usr/local/go/bin:{{$.GoPath}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
+
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
- - echo "GOPATH={{.GoPath}}" >> /etc/environment
- - echo "PATH=$PATH:/usr/local/go/bin:{{$.GoPath}}/bin:/usr/local/nodejs/bin"  >> /etc/environment
  - {{template "PROXIES" .}}wget https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz -O /tmp/go1.7.4.linux-amd64.tar.gz
  - {{template "CHECK" .}}
  - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
@@ -290,20 +291,21 @@ runcmd:
  - curl -X PUT -d "Booting VM" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "OK" .}}
 {{if len $.HTTPProxy }}
- - echo "HTTP_PROXY={{.HTTPProxy}}" >> /etc/environment
- - echo "http_proxy={{.HTTPProxy}}" >> /etc/environment
+ - echo "HTTP_PROXY=\"{{.HTTPProxy}}\"" >> /etc/environment
+ - echo "http_proxy=\"{{.HTTPProxy}}\"" >> /etc/environment
 {{end -}}
 {{- if len $.HTTPSProxy }}
- - echo "HTTPS_PROXY={{.HTTPSProxy}}" >> /etc/environment
- - echo "https_proxy={{.HTTPSProxy}}" >> /etc/environment
+ - echo "HTTPS_PROXY=\"{{.HTTPSProxy}}\"" >> /etc/environment
+ - echo "https_proxy=\"{{.HTTPSProxy}}\"" >> /etc/environment
 {{end}}
 {{- if or (len .HTTPSProxy) (len .HTTPProxy) }}
- - echo no_proxy="{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm"  >> /etc/environment
+ - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm\""  >> /etc/environment
 {{end}}
 
+ - echo "GOPATH=\"{{.GoPath}}\"" >> /etc/environment
+ - echo "PATH=\"$PATH:/usr/local/go/bin:{{$.GoPath}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
+
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
- - echo "GOPATH={{.GoPath}}" >> /etc/environment
- - echo "PATH=$PATH:/usr/local/go/bin:{{$.GoPath}}/bin"  >> /etc/environment
  - {{template "PROXIES" .}}wget https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz -O /tmp/go1.7.4.linux-amd64.tar.gz
  - {{template "CHECK" .}}
  - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
