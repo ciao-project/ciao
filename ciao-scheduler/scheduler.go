@@ -723,7 +723,7 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 }
 
 // Find suitable net node, returning referenced to a locked nodeStat if found
-func (sched *ssntpSchedulerServer) pickNetworkNode(controllerUUID string, workload *workResources) (node *nodeStat) {
+func pickNetworkNode(sched *ssntpSchedulerServer, controllerUUID string, workload *workResources) (node *nodeStat) {
 	sched.nnMutex.RLock()
 	defer sched.nnMutex.RUnlock()
 
@@ -787,7 +787,7 @@ func startWorkload(sched *ssntpSchedulerServer, controllerUUID string, payload [
 	var targetNode *nodeStat
 
 	if workload.networkNode {
-		targetNode = sched.pickNetworkNode(controllerUUID, &workload)
+		targetNode = pickNetworkNode(sched, controllerUUID, &workload)
 	} else { //workload.network_node == false
 		targetNode = pickComputeNode(sched, controllerUUID, &workload)
 	}
