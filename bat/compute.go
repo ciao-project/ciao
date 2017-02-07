@@ -117,7 +117,7 @@ func RunCIAOCLI(ctx context.Context, tenant string, args []string) ([]byte, erro
 	}
 
 	if tenant != "" {
-		args = append([]string{"-tenant", tenant}, args...)
+		args = append([]string{"-tenant-id", tenant}, args...)
 	}
 
 	data, err := exec.CommandContext(ctx, "ciao-cli", args...).Output()
@@ -163,7 +163,7 @@ func RunCIAOCLIAsAdmin(ctx context.Context, tenant string, args []string) ([]byt
 	}
 
 	if tenant != "" {
-		args = append([]string{"-tenant", tenant}, args...)
+		args = append([]string{"-tenant-id", tenant}, args...)
 	}
 
 	env := os.Environ()
