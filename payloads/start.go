@@ -71,6 +71,11 @@ const (
 	// ComputeNode indicates that a resource struct specifies whether the
 	// command in which it is embedded applies to a compute node.
 	ComputeNode = "compute_node"
+
+	// PhysicalNetwork indicates a resource is specifying an network on
+	// a network node (ie: only relevant when resource NetworkNode has
+	// value true.
+	PhysicalNetwork = "physical_network"
 )
 
 const (
@@ -122,6 +127,9 @@ type RequestedResource struct {
 
 	// Value specifies the integer value associated with that resource.
 	Value int `yaml:"value"`
+
+	// ValueString is an optional string format value instead of integer
+	ValueString string `yaml:"value_string,omitempty"`
 
 	// Mandatory indicates whether a resource is mandatory or not.
 	Mandatory bool `yaml:"mandatory"`

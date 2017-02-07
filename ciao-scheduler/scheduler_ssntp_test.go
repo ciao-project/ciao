@@ -53,7 +53,7 @@ func TestSendAgentStatus(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		agent.SendStatus(163840, 163840)
+		agent.SendStatus(163840, 163840, testutil.PartialComputeNetworks)
 		wg.Done()
 	}()
 
@@ -82,7 +82,7 @@ func TestSendNetAgentStatus(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		netAgent.SendStatus(163840, 163840)
+		netAgent.SendStatus(163840, 163840, testutil.MultipleComputeNetworks)
 		wg.Done()
 	}()
 
