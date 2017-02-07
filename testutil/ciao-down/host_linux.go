@@ -32,11 +32,15 @@ func getMemAndCpus() (mem int, cpus int) {
 	cpus = getOnlineCPUs() / 2
 	if cpus < 0 {
 		cpus = 1
+	} else if cpus > 8 {
+		cpus = 8
 	}
 
 	mem = getTotalMemory() / 2
 	if mem < 0 {
 		mem = 1
+	} else if mem > 8 {
+		mem = 8
 	}
 
 	return mem, cpus
