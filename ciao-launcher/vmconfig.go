@@ -34,7 +34,7 @@ type vmConfig struct {
 	Mem         int
 	Disk        int
 	Instance    string
-	Image       string
+	DockerImage string
 	Legacy      bool
 	Container   bool
 	NetworkNode bool

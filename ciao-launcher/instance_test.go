@@ -36,19 +36,19 @@ import (
 var testInstancesDir string
 
 var standardCfg = vmConfig{
-	Cpus:       2,
-	Mem:        370,
-	Disk:       8000,
-	Instance:   "testInstance",
-	Image:      "testImage",
-	Legacy:     true,
-	VnicMAC:    "02:00:e6:f5:af:f9",
-	VnicIP:     "192.168.8.2",
-	ConcIP:     "192.168.42.21",
-	SubnetIP:   "192.168.8.0/21",
-	TenantUUID: "67d86208-000-4465-9018-fe14087d415f",
-	ConcUUID:   "67d86208-b46c-4465-0000-fe14087d415f",
-	VnicUUID:   "67d86208-b46c-0000-9018-fe14087d415f",
+	Cpus:        2,
+	Mem:         370,
+	Disk:        8000,
+	Instance:    "testInstance",
+	DockerImage: "testImage",
+	Legacy:      true,
+	VnicMAC:     "02:00:e6:f5:af:f9",
+	VnicIP:      "192.168.8.2",
+	ConcIP:      "192.168.42.21",
+	SubnetIP:    "192.168.8.0/21",
+	TenantUUID:  "67d86208-000-4465-9018-fe14087d415f",
+	ConcUUID:    "67d86208-b46c-4465-0000-fe14087d415f",
+	VnicUUID:    "67d86208-b46c-0000-9018-fe14087d415f",
 }
 
 // instanceTestState implements virtualizer and serverConn
@@ -68,17 +68,17 @@ type instanceTestState struct {
 	monitorClosedCh chan struct{}
 	failStartVM     bool
 	ac              *agentClient
+	cfg             *vmConfig
 }
 
 func (v *instanceTestState) init(cfg *vmConfig, instanceDir string) {
-
+	v.cfg = cfg
 }
 
-func (v *instanceTestState) checkBackingImage() error {
-	return nil
-}
-
-func (v *instanceTestState) downloadBackingImage() error {
+func (v *instanceTestState) ensureBackingImage() error {
+	if v.cfg.DockerImage == "" {
+		return fmt.Errorf("No image supplied")
+	}
 	return nil
 }
 
@@ -755,10 +755,10 @@ func TestRestartFail(t *testing.T) {
 func TestStartBadImage(t *testing.T) {
 	var wg sync.WaitGroup
 	cfg := standardCfg
-	cfg.Image = ""
+	cfg.DockerImage = ""
 
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, true)
-	if state.stf.Reason != payloads.InvalidData {
+	if state.stf.Reason != payloads.ImageFailure {
 		t.Errorf("Incorrect error returned. Reported %s, expected %s",
 			string(state.stf.Reason), string(payloads.ImageFailure))
 	}
@@ -789,10 +789,10 @@ func TestStartBadImage(t *testing.T) {
 func sendCommandDuringSuicide(t *testing.T, testCmd interface{}) *instanceTestState {
 	var wg sync.WaitGroup
 	cfg := standardCfg
-	cfg.Image = ""
+	cfg.DockerImage = ""
 
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, true)
-	if state.stf.Reason != payloads.InvalidData {
+	if state.stf.Reason != payloads.ImageFailure {
 		t.Errorf("Incorrect error returned. Reported %s, expected %s",
 			string(state.stf.Reason), string(payloads.ImageFailure))
 	}

@@ -46,11 +46,7 @@ func (s *simulation) init(cfg *vmConfig, instanceDir string) {
 	s.instanceDir = instanceDir
 }
 
-func (s *simulation) checkBackingImage() error {
-	return nil
-}
-
-func (s *simulation) downloadBackingImage() error {
+func (s *simulation) ensureBackingImage() error {
 	return nil
 }
 

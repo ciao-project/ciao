@@ -34,25 +34,6 @@ type startTimes struct {
 	runStamp          time.Time
 }
 
-func ensureBackingImage(vm virtualizer) error {
-
-	err := vm.checkBackingImage()
-	if err == errImageNotFound {
-		glog.Infof("Backing image not found.  Trying to download")
-		err = vm.downloadBackingImage()
-		if err != nil {
-			//BUG(markus): Need to change overseer state here to Downloading
-			glog.Errorf("Unable to download backing image: %v", err)
-			return err
-		}
-	} else if err != nil {
-		glog.Errorf("Backing image check failed")
-		return err
-	}
-
-	return nil
-}
-
 func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig, bridge string, userData, metaData []byte) (err error) {
 	err = os.MkdirAll(instanceDir, 0755)
 	if err != nil {
@@ -105,12 +86,12 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 		return nil, &startError{err, payloads.InstanceExists}
 	}
 
-	if cfg.Image == "" {
-		if !cfg.haveBootableVolume() {
-			err = fmt.Errorf("No backing image and no bootable volumes specified")
-			return nil, &startError{err, payloads.InvalidData}
-		}
+	err = vm.ensureBackingImage()
+	if err != nil {
+		return nil, &startError{err, payloads.ImageFailure}
 	}
+
+	st.backingImageCheck = time.Now()
 
 	if networking {
 		vnicCfg, err = createVnicCfg(cfg)
@@ -119,15 +100,6 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 			return nil, &startError{err, payloads.InvalidData}
 		}
 	}
-
-	if cfg.Image != "" {
-		err = ensureBackingImage(vm)
-		if err != nil {
-			return nil, &startError{err, payloads.ImageFailure}
-		}
-	}
-
-	st.backingImageCheck = time.Now()
 
 	if vnicCfg != nil {
 		vnicName, bridge, err = createVnic(conn, vnicCfg)

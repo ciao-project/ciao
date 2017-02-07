@@ -56,10 +56,10 @@ func printCloudinit(data *payloads.Start) {
 	glog.Info("cloud-init file content")
 	glog.Info("-----------------------")
 	glog.Infof("Instance UUID:        %v", start.InstanceUUID)
-	glog.Infof("Disk image UUID:      %v", start.ImageUUID)
+	glog.Infof("Docker image:         %v", start.DockerImage)
 	glog.Infof("FW Type:              %v", start.FWType)
 	glog.Infof("VM Type:              %v", start.VMType)
-	glog.Infof("TenantUUID:          %v", start.TenantUUID)
+	glog.Infof("TenantUUID:           %v", start.TenantUUID)
 	net := &start.Networking
 	glog.Infof("VnicMAC:              %v", net.VnicMAC)
 	glog.Infof("VnicIP:               %v", net.PrivateIP)
@@ -105,21 +105,13 @@ func computeSSHPort(networkNode bool, vnicIP string) int {
 	return port
 }
 
-func parseVMTtype(start *payloads.StartCmd) (container bool, image string, err error) {
+func parseVMTtype(start *payloads.StartCmd) (bool, error) {
 	vmType := start.VMType
 	if vmType != "" && vmType != payloads.QEMU && vmType != payloads.Docker {
-		err = fmt.Errorf("Invalid vmtype received: %s", vmType)
-		return
+		return false, fmt.Errorf("Invalid vmtype received: %s", vmType)
 	}
 
-	container = vmType == payloads.Docker
-	if container {
-		image = start.DockerImage
-	} else {
-		image = start.ImageUUID
-	}
-
-	return
+	return vmType == payloads.Docker, nil
 }
 
 func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
@@ -148,7 +140,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 
 	var cpus, mem int
 	var networkNode bool
-	container, image, err := parseVMTtype(start)
+	container, err := parseVMTtype(start)
 	if err != nil {
 		return nil, &payloadError{err, payloads.InvalidData}
 	}
@@ -185,7 +177,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	return &vmConfig{Cpus: cpus,
 		Mem:         mem,
 		Instance:    instance,
-		Image:       image,
+		DockerImage: start.DockerImage,
 		Legacy:      legacy,
 		Container:   container,
 		NetworkNode: networkNode,
