@@ -112,7 +112,7 @@ runcmd:
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Docker" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "PROXIES" .}}apt-get install docker-engine -y
+ - {{template "PROXIES" .}}apt-get install docker-engine=1.12.6-0~ubuntu-xenial -y
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing GCC" 10.0.2.2:{{.HTTPServerPort}}
