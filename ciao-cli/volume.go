@@ -28,9 +28,19 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumetenants"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
 	"github.com/gophercloud/gophercloud/pagination"
 )
+
+type customVolume volumes.Volume
+type customVolumeExt volumetenants.VolumeExt
+type extendedVolume struct {
+	customVolumeExt
+	customVolume
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
 
 var volumeCommand = &command{
 	SubCommands: map[string]subCommand{
@@ -96,7 +106,8 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		fatalf("Unknown source type [%s]\n", cmd.sourceType)
 	}
 
-	vol, err := volumes.Create(client, opts).Extract()
+	var vol customVolume
+	err = volumes.Create(client, opts).ExtractInto(&vol)
 	if err == nil {
 		fmt.Printf("Created new volume: %s\n", vol.ID)
 	}
@@ -133,12 +144,12 @@ func (cmd *volumeListCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-type byCreatedAt []volumes.Volume
+type byName []extendedVolume
 
-func (ss byCreatedAt) Len() int      { return len(ss) }
-func (ss byCreatedAt) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
-func (ss byCreatedAt) Less(i, j int) bool {
-	return time.Time(ss[i].CreatedAt).Before(time.Time(ss[j].CreatedAt))
+func (ss byName) Len() int      { return len(ss) }
+func (ss byName) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
+func (ss byName) Less(i, j int) bool {
+	return ss[i].Name < ss[j].Name
 }
 
 func (cmd *volumeListCommand) run(args []string) error {
@@ -157,9 +168,10 @@ func (cmd *volumeListCommand) run(args []string) error {
 
 	pager := volumes.List(client, volumes.ListOpts{})
 
-	sortedVolumes := []volumes.Volume{}
+	sortedVolumes := []extendedVolume{}
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
-		volumeList, err := volumes.ExtractVolumes(page)
+		volumeList := []extendedVolume{}
+		err := volumes.ExtractVolumesInto(page, &volumeList)
 		if err != nil {
 			errorf("Could not extract volume [%s]\n", err)
 		}
@@ -168,7 +180,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 
 		return false, nil
 	})
-	sort.Sort(byCreatedAt(sortedVolumes))
+	sort.Sort(byName(sortedVolumes))
 
 	if t != nil {
 		if err = t.Execute(os.Stdout, &sortedVolumes); err != nil {
@@ -179,7 +191,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 
 	for i, v := range sortedVolumes {
 		fmt.Printf("Volume #%d\n", i+1)
-		dumpVolume(&v)
+		dumpVolume(&v.customVolume)
 		fmt.Printf("\n")
 	}
 
@@ -223,17 +235,21 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		fatalf("Could not get volume service client [%s]\n", err)
 	}
 
-	volume, err := volumes.Get(client, cmd.volume).Extract()
+	volume := extendedVolume{}
+	err = volumes.Get(client, cmd.volume).ExtractInto(&volume)
 	if err != nil {
 		return err
 	}
+
+	volume.customVolume.CreatedAt = volume.CreatedAt
+	volume.customVolume.UpdatedAt = volume.UpdatedAt
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "volume-show", cmd.template,
 			&volume, nil)
 	}
 
-	dumpVolume(volume)
+	dumpVolume(&volume.customVolume)
 	return nil
 }
 
@@ -453,7 +469,7 @@ func storageServiceClient(username, password, tenant string) (*gophercloud.Servi
 	})
 }
 
-func dumpVolume(v *volumes.Volume) {
+func dumpVolume(v *customVolume) {
 	fmt.Printf("\tName             [%s]\n", v.Name)
 	fmt.Printf("\tSize             [%d GB]\n", v.Size)
 	fmt.Printf("\tUUID             [%s]\n", v.ID)

@@ -35,7 +35,7 @@ type VolumeOptions struct {
 type Volume struct {
 	VolumeOptions
 	ID        string
-	TenantID  string
+	TenantID  string `json:"os-vol-tenant-attr:tenant_id"`
 	CreatedAt string
 	Status    string
 }

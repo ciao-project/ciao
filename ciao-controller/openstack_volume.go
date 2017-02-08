@@ -356,7 +356,6 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 		vol.ID = data.ID
 		vol.Size = data.Size
 		vol.OSVolTenantAttr = data.TenantID
-		vol.CreatedAt = &data.CreateTime
 		vol.Bootable = strconv.FormatBool(data.Bootable)
 
 		if data.Name != "" {
