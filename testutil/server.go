@@ -190,11 +190,11 @@ func (server *SsntpTestServer) GetStatusChanResult(c chan Result, status ssntp.S
 }
 
 // SendResultAndDelStatusChan deletes an ssntp.Status from the SsntpTestServer status channel
-func (server *SsntpTestServer) SendResultAndDelStatusChan(error ssntp.Status, result Result) {
+func (server *SsntpTestServer) SendResultAndDelStatusChan(status ssntp.Status, result Result) {
 	server.StatusChansLock.Lock()
-	c, ok := server.StatusChans[error]
+	c, ok := server.StatusChans[status]
 	if ok {
-		delete(server.StatusChans, error)
+		delete(server.StatusChans, status)
 		server.StatusChansLock.Unlock()
 		c <- result
 		close(c)

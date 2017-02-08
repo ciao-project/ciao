@@ -112,7 +112,7 @@ type virtualizer interface {
 
 	// connected is called by the instance go routine to inform the virtualizer that
 	// the VM is running.  The virtualizer can used this notification to perform some
-	// bookeeping, for example determine the pid of the underlying process.  It may
+	// bookkeeping, for example determine the pid of the underlying process.  It may
 	// seem slightly odd that this function exists.  After all, it's a goroutine
 	// spawned by the monitorVM function that initially informs the instance go
 	// routine that the VM is connected. The problem is that all virtualizer methods
