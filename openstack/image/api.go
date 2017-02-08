@@ -195,7 +195,7 @@ type DefaultResponse struct {
 	Status          Status           `json:"status"`
 	ContainerFormat *ContainerFormat `json:"container_format"`
 	MinRAM          *int             `json:"min_ram"`
-	UpdatedAt       *time.Time       `json:"updated_at"`
+	UpdatedAt       *time.Time       `json:"updated_at,omitempty"`
 	Owner           *string          `json:"owner"`
 	MinDisk         *int             `json:"min_disk"`
 	Tags            []string         `json:"tags"`
