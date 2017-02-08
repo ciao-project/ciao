@@ -11,6 +11,9 @@ go:
 
 env:
     - COVERALLS_TOKEN=mwTn1pOFqEOUT13vylZNHq53NanoMznO7
+matrix:
+  allow_failures:
+  - go: tip
 
 go_import_path: github.com/01org/ciao
 
