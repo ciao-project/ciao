@@ -229,45 +229,6 @@ func GetAllTenants(ctx context.Context) ([]*Tenant, error) {
 	return tenants, nil
 }
 
-// GetAllWorkloads retrieves a list of all workloads in the cluster by calling
-// ciao-cli workload list.  An error will be returned if the following
-// environment variables are not set; CIAO_IDENTITY,  CIAO_CONTROLLER,
-// CIAO_USERNAME, CIAO_PASSWORD.
-func GetAllWorkloads(ctx context.Context, tenant string) ([]Workload, error) {
-	var workloads []Workload
-
-	args := []string{"workload", "list", "-f", "{{tojson .}}"}
-	err := RunCIAOCLIJS(ctx, tenant, args, &workloads)
-	if err != nil {
-		return nil, err
-	}
-
-	return workloads, nil
-}
-
-// GetWorkload will return a specific workload referenced by name.
-// An error will be returned if either no workloads exist in the cluster,
-// or if the specific workload does not exist. It inherits all error
-// conditions of GetAllWorkloads.
-func GetWorkload(ctx context.Context, tenant string, name string) (Workload, error) {
-	wls, err := GetAllWorkloads(ctx, tenant)
-	if err != nil {
-		return Workload{}, err
-	}
-
-	if len(wls) == 0 {
-		return Workload{}, fmt.Errorf("No workloads defined for tenant %s", tenant)
-	}
-
-	for _, w := range wls {
-		if w.Name == name {
-			return w, nil
-		}
-	}
-
-	return Workload{}, fmt.Errorf("No matching workload for %s", name)
-}
-
 // GetInstance returns an Instance structure that contains information
 // about a specific instance.  The informaion is retrieved by calling
 // ciao-cli show --instance.  An error will be returned if the following
