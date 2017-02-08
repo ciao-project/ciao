@@ -57,12 +57,10 @@ type insStartCmd struct {
 	cfg      *vmConfig
 	rcvStamp time.Time
 }
-type insRestartCmd struct{}
 type insDeleteCmd struct {
 	suicide bool
 	running ovsRunningState
 }
-type insStopCmd struct{}
 type insMonitorCmd struct{}
 
 type insAttachVolumeCmd struct {
@@ -139,59 +137,10 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 	}
 }
 
-func (id *instanceData) restartCommand(cmd *insRestartCmd) {
-	glog.Info("Found restart command")
-
-	if id.shuttingDown {
-		restartErr := &restartError{nil, payloads.RestartNoInstance}
-		glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
-		restartErr.send(id.ac.conn, id.instance)
-		return
-	}
-
-	if id.monitorCh != nil {
-		restartErr := &restartError{nil, payloads.RestartAlreadyRunning}
-		glog.Errorf("Unable to restart instance[%s]", string(restartErr.code))
-		restartErr.send(id.ac.conn, id.instance)
-		return
-	}
-
-	restartErr := processRestart(id.instanceDir, id.vm, id.ac.conn, id.cfg)
-
-	if restartErr != nil {
-		glog.Errorf("Unable to restart instance[%s]: %v", string(restartErr.code),
-			restartErr.err)
-		restartErr.send(id.ac.conn, id.instance)
-		return
-	}
-
-	id.connectedCh = make(chan struct{})
-	id.monitorCloseCh = make(chan struct{})
-	id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, false)
-}
-
 func (id *instanceData) monitorCommand(cmd *insMonitorCmd) {
 	id.connectedCh = make(chan struct{})
 	id.monitorCloseCh = make(chan struct{})
 	id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, true)
-}
-
-func (id *instanceData) stopCommand(cmd *insStopCmd) {
-	if id.shuttingDown {
-		stopErr := &stopError{nil, payloads.StopNoInstance}
-		glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
-		stopErr.send(id.ac.conn, id.instance)
-		return
-	}
-
-	if id.monitorCh == nil {
-		stopErr := &stopError{nil, payloads.StopAlreadyStopped}
-		glog.Errorf("Unable to stop instance[%s]", string(stopErr.code))
-		stopErr.send(id.ac.conn, id.instance)
-		return
-	}
-	glog.Infof("Powerdown %s", id.instance)
-	id.monitorCh <- virtualizerStopCmd{}
 }
 
 func (id *instanceData) sendInstanceDeletedEvent() {
@@ -315,12 +264,8 @@ func (id *instanceData) instanceCommand(cmd interface{}) bool {
 	case *insStartCmd:
 		id.rcvStamp = cmd.rcvStamp
 		id.startCommand(cmd)
-	case *insRestartCmd:
-		id.restartCommand(cmd)
 	case *insMonitorCmd:
 		id.monitorCommand(cmd)
-	case *insStopCmd:
-		id.stopCommand(cmd)
 	case *insAttachVolumeCmd:
 		id.attachVolumeCommand(cmd)
 	case *insDetachVolumeCmd:

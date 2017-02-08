@@ -149,18 +149,6 @@ func (ts *testServer) ErrorNotify(uuid string, err ssntp.Error, frame *ssntp.Fra
 		if err == nil {
 			e = &payload
 		}
-	case ssntp.StopFailure:
-		payload := payloads.ErrorStopFailure{}
-		err := yaml.Unmarshal(frame.Payload, &payload)
-		if err == nil {
-			e = &payload
-		}
-	case ssntp.RestartFailure:
-		payload := payloads.ErrorRestartFailure{}
-		err := yaml.Unmarshal(frame.Payload, &payload)
-		if err == nil {
-			e = &payload
-		}
 	case ssntp.DeleteFailure:
 		payload := payloads.ErrorDeleteFailure{}
 		err := yaml.Unmarshal(frame.Payload, &payload)
@@ -455,15 +443,6 @@ func serve(done chan os.Signal) {
 		http.HandleFunc("/start",
 			func(w http.ResponseWriter, r *http.Request) {
 				yamlCommand(w, r, ssntp.START)
-			})
-		http.HandleFunc("/stop",
-			func(w http.ResponseWriter, r *http.Request) {
-				yamlCommand(w, r, ssntp.STOP)
-			})
-
-		http.HandleFunc("/restart",
-			func(w http.ResponseWriter, r *http.Request) {
-				yamlCommand(w, r, ssntp.RESTART)
 			})
 		http.HandleFunc("/delete",
 			func(w http.ResponseWriter, r *http.Request) {

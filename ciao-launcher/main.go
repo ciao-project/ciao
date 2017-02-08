@@ -186,22 +186,6 @@ func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) 
 		}
 		delCmd = insCmd
 		delCmd.running = insState.running
-	case *insStopCmd:
-		target = insCmdChannel(cmd.instance, ovsCh)
-		if target == nil {
-			glog.Errorf("Instance %s does not exist", cmd.instance)
-			se := stopError{nil, payloads.StopNoInstance}
-			se.send(conn, cmd.instance)
-			return
-		}
-	case *insRestartCmd:
-		target = insCmdChannel(cmd.instance, ovsCh)
-		if target == nil {
-			glog.Errorf("Instance %s does not exist", cmd.instance)
-			re := restartError{nil, payloads.RestartNoInstance}
-			re.send(conn, cmd.instance)
-			return
-		}
 	default:
 		target = insCmdChannel(cmd.instance, ovsCh)
 	}

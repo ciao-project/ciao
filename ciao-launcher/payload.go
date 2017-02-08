@@ -201,22 +201,6 @@ func generateStartError(instance string, startErr *startError) (out []byte, err 
 	return yaml.Marshal(sf)
 }
 
-func generateStopError(instance string, stopErr *stopError) (out []byte, err error) {
-	sf := &payloads.ErrorStopFailure{
-		InstanceUUID: instance,
-		Reason:       stopErr.code,
-	}
-	return yaml.Marshal(sf)
-}
-
-func generateRestartError(instance string, restartErr *restartError) (out []byte, err error) {
-	rf := &payloads.ErrorRestartFailure{
-		InstanceUUID: instance,
-		Reason:       restartErr.code,
-	}
-	return yaml.Marshal(rf)
-}
-
 func generateDeleteError(instance string, deleteErr *deleteError) (out []byte, err error) {
 	df := &payloads.ErrorDeleteFailure{
 		InstanceUUID: instance,
@@ -272,22 +256,6 @@ func generateNetEventPayload(ssntpEvent *libsnnet.SsntpEventInfo, agentUUID stri
 	return yaml.Marshal(event)
 }
 
-func parseRestartPayload(data []byte) (string, *payloadError) {
-	var clouddata payloads.Restart
-
-	err := yaml.Unmarshal(data, &clouddata)
-	if err != nil {
-		return "", &payloadError{err, payloads.RestartInvalidPayload}
-	}
-
-	instance := strings.TrimSpace(clouddata.Restart.InstanceUUID)
-	if !uuidRegexp.MatchString(instance) {
-		err = fmt.Errorf("Invalid instance id received: %s", instance)
-		return "", &payloadError{err, payloads.RestartInvalidData}
-	}
-	return instance, nil
-}
-
 func parseDeletePayload(data []byte) (string, *payloadError) {
 	var clouddata payloads.Delete
 
@@ -300,23 +268,6 @@ func parseDeletePayload(data []byte) (string, *payloadError) {
 	if !uuidRegexp.MatchString(instance) {
 		err = fmt.Errorf("Invalid instance id received: %s", instance)
 		return "", &payloadError{err, payloads.DeleteInvalidData}
-	}
-	return instance, nil
-}
-
-func parseStopPayload(data []byte) (string, *payloadError) {
-	var clouddata payloads.Stop
-
-	err := yaml.Unmarshal(data, &clouddata)
-	if err != nil {
-		glog.Errorf("YAML error: %v", err)
-		return "", &payloadError{err, payloads.StopInvalidPayload}
-	}
-
-	instance := strings.TrimSpace(clouddata.Stop.InstanceUUID)
-	if !uuidRegexp.MatchString(instance) {
-		err = fmt.Errorf("Invalid instance id received: %s", instance)
-		return "", &payloadError{err, payloads.StopInvalidData}
 	}
 	return instance, nil
 }

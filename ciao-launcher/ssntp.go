@@ -109,30 +109,6 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 			return
 		}
 		client.cmdCh <- &cmdWrapper{cfg.Instance, &insStartCmd{cn, md, frame, cfg, time.Now()}}
-	case ssntp.RESTART:
-		instance, payloadErr := parseRestartPayload(payload)
-		if payloadErr != nil {
-			restartError := &restartError{
-				payloadErr.err,
-				payloads.RestartFailureReason(payloadErr.code),
-			}
-			restartError.send(client.conn, "")
-			glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{instance, &insRestartCmd{}}
-	case ssntp.STOP:
-		instance, payloadErr := parseStopPayload(payload)
-		if payloadErr != nil {
-			stopError := &stopError{
-				payloadErr.err,
-				payloads.StopFailureReason(payloadErr.code),
-			}
-			stopError.send(client.conn, "")
-			glog.Errorf("Unable to parse YAML: %s", payloadErr)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{instance, &insStopCmd{}}
 	case ssntp.DELETE:
 		instance, payloadErr := parseDeletePayload(payload)
 		if payloadErr != nil {

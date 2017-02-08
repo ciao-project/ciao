@@ -64,7 +64,7 @@ type virtualizer interface {
 	// deleted by the instance go routine.
 	deleteImage() error
 
-	// Boots a VM.  This method is called by both START and RESTART.
+	// Boots a VM.  This method is called by START
 	startVM(vnicName, ipAddress, cephID string) error
 
 	//BUG(markus): Need to use context rather than the monitor channel to

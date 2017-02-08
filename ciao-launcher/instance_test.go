@@ -56,10 +56,8 @@ type instanceTestState struct {
 	t               *testing.T
 	instance        string
 	statsArray      [3]int
-	sf              payloads.ErrorStopFailure
 	stf             payloads.ErrorStartFailure
 	df              payloads.ErrorDeleteFailure
-	rf              payloads.ErrorRestartFailure
 	avf             payloads.ErrorAttachVolumeFailure
 	dvf             payloads.ErrorDetachVolumeFailure
 	connect         bool
@@ -126,11 +124,6 @@ func (v *instanceTestState) lostVM() {
 
 func (v *instanceTestState) SendError(error ssntp.Error, payload []byte) (int, error) {
 	switch error {
-	case ssntp.StopFailure:
-		err := yaml.Unmarshal(payload, &v.sf)
-		if err != nil {
-			v.t.Fatalf("Failed to unmarshall stop error %v", err)
-		}
 	case ssntp.StartFailure:
 		err := yaml.Unmarshal(payload, &v.stf)
 		if err != nil {
@@ -140,11 +133,6 @@ func (v *instanceTestState) SendError(error ssntp.Error, payload []byte) (int, e
 		err := yaml.Unmarshal(payload, &v.df)
 		if err != nil {
 			v.t.Fatalf("Failed to unmarshall delete error %v", err)
-		}
-	case ssntp.RestartFailure:
-		err := yaml.Unmarshal(payload, &v.rf)
-		if err != nil {
-			v.t.Fatalf("Failed to unmarshall restart error %v", err)
 		}
 	case ssntp.AttachVolumeFailure:
 		err := yaml.Unmarshal(payload, &v.avf)
@@ -393,45 +381,6 @@ DONE:
 	return v.expectStatsUpdate(t, ovsCh)
 }
 
-func (v *instanceTestState) restartInstance(t *testing.T, ovsCh chan interface{},
-	cmdCh chan<- interface{}, errorOk bool) bool {
-
-	v.errorCh = make(chan struct{})
-	select {
-	case cmdCh <- &insRestartCmd{}:
-	case <-time.After(time.Second):
-		t.Error("Timed out sending Restart command")
-		return false
-	}
-
-	for {
-		select {
-		case <-v.errorCh:
-			v.errorCh = nil
-			if !errorOk {
-				t.Error("Restart command Failed")
-			}
-			return false
-		case ovsCmd := <-ovsCh:
-			switch stChange := ovsCmd.(type) {
-			case *ovsStateChange:
-				if stChange.state != ovsRunning {
-					t.Errorf("ovsRunning expected.  Found state %d", stChange.state)
-					return false
-				}
-				return true
-			case *ovsStatsUpdateCmd:
-			default:
-				t.Error("Unexpected commands received on ovsCh")
-				return false
-			}
-		case <-time.After(time.Second):
-			t.Error("Timed out waiting for ovsStatsUpdateCmd")
-			return false
-		}
-	}
-}
-
 func shutdownInstanceLoop(doneCh chan struct{}, ovsCh chan interface{}, wg *sync.WaitGroup,
 	t *testing.T) {
 	close(doneCh)
@@ -510,61 +459,6 @@ func TestDeleteInstanceLoop(t *testing.T) {
 	if !ok {
 		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 		t.FailNow()
-	}
-
-	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
-		t.FailNow()
-	}
-	wg.Wait()
-}
-
-// Check we cannot stop an instance that is not running.
-//
-// We start the instance loop and then try to stop the instance straight away.
-// When this fails we delete the instance.
-//
-//  We should receive a SSNTP stopErr and the instance loop should close.
-func TestStopNotRunning(t *testing.T) {
-	var wg sync.WaitGroup
-	doneCh := make(chan struct{})
-	ovsCh := make(chan interface{})
-	state := &instanceTestState{
-		t:          t,
-		instance:   "testInstance",
-		statsArray: [3]int{10, 128, 10},
-		errorCh:    make(chan struct{}),
-	}
-	cfg := &vmConfig{}
-	cmdWrapCh := make(chan *cmdWrapper)
-	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, cfg, &wg, doneCh, ac, ovsCh, state,
-		&storage.NoopDriver{}, testInstancesDir)
-
-	ok := state.expectStatsUpdate(t, ovsCh)
-	if !ok {
-		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
-		t.FailNow()
-	}
-
-	select {
-	case cmdCh <- &insStopCmd{}:
-	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
-		t.Fatal("Timed out sending Stop command")
-	}
-
-	select {
-	case <-state.errorCh:
-		state.errorCh = nil
-	case <-time.After(time.Second):
-		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
-		t.Fatal("Timed out waiting for error channel")
-	}
-
-	if state.sf.InstanceUUID != state.instance ||
-		state.sf.Reason != payloads.StopAlreadyStopped {
-		t.Error("Invalid Stop error returned")
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
@@ -660,86 +554,6 @@ func TestLoopShutdownWithRunningInstance(t *testing.T) {
 	// subsequent tests.
 
 	_ = os.RemoveAll(path.Join(testInstancesDir, cfg.Instance))
-}
-
-// Check we can restart an instance
-//
-// We start the instance loop and then try to restart an instance.  Our test virtualizer
-// closes the connected channel to indicate that the instance is running.  We then
-// check to see whether we receive the state change notification at which point we
-// close the doneCh.
-//
-// The instance should start correctly.  We should receive an error when attempting
-// to restart the instance.  The instanceLoop should quit cleanly.
-func TestRestart(t *testing.T) {
-	var wg sync.WaitGroup
-	cfg := standardCfg
-	doneCh := make(chan struct{})
-	ovsCh := make(chan interface{})
-	state := &instanceTestState{
-		t:          t,
-		instance:   "testInstance",
-		statsArray: [3]int{10, 128, 10},
-		connect:    true,
-	}
-	cmdWrapCh := make(chan *cmdWrapper)
-	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state,
-		&storage.NoopDriver{}, testInstancesDir)
-	ok := state.expectStatsUpdate(t, ovsCh)
-	if !ok {
-		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
-		t.FailNow()
-	}
-
-	if !state.restartInstance(t, ovsCh, cmdCh, false) {
-		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
-		t.FailNow()
-	}
-
-	shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
-}
-
-// Check we can handle a restart error
-//
-// We start the instanceLoop and then try to restart an instance.  This attempt
-// will fail as we've configured startVm to return an error.  We then shutdown
-// the instance loop.
-//
-// The instanceLoop should start correctly, the restartCommand should fail with
-// the correct error and the instanceLoop should close down cleanly.
-func TestRestartFail(t *testing.T) {
-	var wg sync.WaitGroup
-	cfg := standardCfg
-	doneCh := make(chan struct{})
-	ovsCh := make(chan interface{})
-	state := &instanceTestState{
-		t:           t,
-		instance:    "testInstance",
-		statsArray:  [3]int{10, 128, 10},
-		connect:     true,
-		failStartVM: true,
-	}
-	cmdWrapCh := make(chan *cmdWrapper)
-	ac := &agentClient{conn: state, cmdCh: cmdWrapCh}
-	cmdCh := startInstanceWithVM(state.instance, &cfg, &wg, doneCh, ac, ovsCh, state,
-		&storage.NoopDriver{}, testInstancesDir)
-	ok := state.expectStatsUpdate(t, ovsCh)
-	if !ok {
-		shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
-		t.FailNow()
-	}
-
-	if state.restartInstance(t, ovsCh, cmdCh, true) {
-		t.Error("Restart was expected to Fail")
-	}
-
-	if state.rf.Reason != payloads.RestartLaunchFailure {
-		t.Errorf("Invalid restart error found %s, expected %s",
-			state.rf.Reason, payloads.RestartLaunchFailure)
-	}
-
-	shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
 }
 
 // Check we get an error when starting an instance with an invalid image
@@ -856,42 +670,6 @@ func TestDeleteNoInstance(t *testing.T) {
 	if state.df.Reason != payloads.DeleteNoInstance {
 		t.Errorf("Incorrect error returned. Reported %s, expected %s",
 			string(state.df.Reason), string(payloads.DeleteNoInstance))
-	}
-}
-
-// Test restarting an instance that failed to start and is suiciding.
-//
-// We start the instance loop and then try to start an instance. This should cause
-// a suicide command to get sent to the acCmd channel.  We then send a restart
-// command to the instance.  This command should fail.  We then send the suicide
-// command received from the acCmd channel, which should succeed.
-//
-// The instanceLoop should start, the start command and the restart command
-// should fail.  The delete (suicide) should succeed and the loop should
-// exit.
-func TestRestartNoInstance(t *testing.T) {
-	state := sendCommandDuringSuicide(t, &insRestartCmd{})
-	if state.rf.Reason != payloads.RestartNoInstance {
-		t.Errorf("Incorrect error returned. Reported %s, expected %s",
-			string(state.rf.Reason), string(payloads.RestartNoInstance))
-	}
-}
-
-// Test stopping an instance that failed to start and is suiciding.
-//
-// We start the instance loop and then try to start an instance. This should cause
-// a suicide command to get sent to the acCmd channel.  We then send a stop
-// command to the instance.  This command should fail.  We then send the suicide
-// command received from the acCmd channel, which should succeed.
-//
-// The instanceLoop should start, the start command and the stop command
-// should fail.  The delete (suicide) should succeed and the loop should
-// exit.
-func TestStopNoInstance(t *testing.T) {
-	state := sendCommandDuringSuicide(t, &insStopCmd{})
-	if state.sf.Reason != payloads.StopNoInstance {
-		t.Errorf("Incorrect error returned. Reported %s, expected %s",
-			string(state.sf.Reason), string(payloads.StopNoInstance))
 	}
 }
 
