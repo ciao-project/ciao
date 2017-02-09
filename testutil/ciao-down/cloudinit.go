@@ -185,7 +185,7 @@ runcmd:
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Pulling clearlinux/keystone" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}} docker pull clearlinux/keystone
+ - {{template "ENV" .}} docker pull clearlinux/keystone:stable
  - {{template "CHECK" .}}
 
  - mkdir -p /home/{{.User}}/local
