@@ -26,6 +26,7 @@ package bat
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -68,41 +69,56 @@ type WorkloadOptions struct {
 // this function should output the yaml file for the workload definition
 func createWorkloadDefinition(filename string, opt WorkloadOptions) error {
 	// take the cloud config file and output it to a file.
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
 	y, err := yaml.Marshal(opt)
 	if err != nil {
 		return err
 	}
 
-	_, err = f.Write(y)
-	return err
+	return ioutil.WriteFile(filename, y, 0644)
 }
 
 // this function should output a cloud init file for the workload definition
 func createCloudConfig(filename string, config string) error {
 	// take the cloud config file and output it to a file.
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.WriteString(config)
-	return err
+	// convert string to bytes.
+	return ioutil.WriteFile(filename, []byte(config), 0644)
 }
 
-func createWorkload(ctx context.Context, tenant string, opt WorkloadOptions, config string, public bool) (string, error) {
-	// write out the cloud config.
-	err := createCloudConfig("config.yaml", config)
+func createWorkload(ctx context.Context, tenant string, opt WorkloadOptions, config string, public bool) (ID string, err error) {
+	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove("config.yaml")
+
+	// create temp dir for the yaml files
+	dir, err := ioutil.TempDir("", "ciao_bat")
+	if err != nil {
+		return "", err
+	}
+
+	// you have to call workload create from the same working dir
+	// as you have placed your yaml files, so change into that dir.
+	err = os.Chdir(dir)
+	if err != nil {
+		os.RemoveAll(dir)
+		return "", err
+	}
+
+	// change back to cwd and clean up temp dir on exit.
+	defer func() {
+		chdirErr := os.Chdir(cwd)
+		if err == nil {
+			err = chdirErr
+		}
+
+		os.RemoveAll(dir)
+	}()
+
+	// write out the cloud config.
+	err = createCloudConfig("config.yaml", config)
+	if err != nil {
+		return "", err
+	}
 
 	opt.CloudConfigFile = "config.yaml"
 
@@ -111,7 +127,6 @@ func createWorkload(ctx context.Context, tenant string, opt WorkloadOptions, con
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove("workload.yaml")
 
 	// send the workload create command to ciao-cli
 	args := []string{"workload", "create", "-yaml", "workload.yaml"}
