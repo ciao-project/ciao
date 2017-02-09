@@ -65,7 +65,7 @@ func createSpecificInstance(ctx context.Context, t *testing.T, tenant, workloadI
 func createVMInstance(ctx context.Context, t *testing.T, tenant string) string {
 	const testVMWorkload = "Fedora test VM"
 
-	w, err := bat.GetWorkload(ctx, tenant, testVMWorkload)
+	w, err := bat.GetWorkloadByName(ctx, tenant, testVMWorkload)
 	if err != nil {
 		t.Skip()
 	}
@@ -76,7 +76,7 @@ func createVMInstance(ctx context.Context, t *testing.T, tenant string) string {
 func createContainerInstance(ctx context.Context, t *testing.T, tenant string) string {
 	const testContainerWorkload = "Debian latest test container"
 
-	w, err := bat.GetWorkload(ctx, tenant, testContainerWorkload)
+	w, err := bat.GetWorkloadByName(ctx, tenant, testContainerWorkload)
 	if err != nil {
 		t.Skip()
 	}

@@ -103,22 +103,15 @@ func testCreateWorkload(t *testing.T, public bool) {
 		t.Fatal(err)
 	}
 
-	// now get all the workloads
-	wls, err := bat.GetAllWorkloads(ctx, "")
+	// now retrieve the workload from controller.
+	w, err := bat.GetWorkloadByID(ctx, "", ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for _, w := range wls {
-		if w.ID == ID {
-			if w.Name != opt.Description || w.CPUs != opt.Defaults.VCPUs || w.Mem != opt.Defaults.MemMB {
-				t.Fatalf("Workload not defined correctly")
-			}
-			return
-		}
+	if w.Name != opt.Description || w.CPUs != opt.Defaults.VCPUs || w.Mem != opt.Defaults.MemMB {
+		t.Fatalf("Workload not defined correctly")
 	}
-
-	t.Fatalf("New workload did not appear in workload list")
 }
 
 // TestCreateTenantWorkload will create a new private workload, then attempt to
