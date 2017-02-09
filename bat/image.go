@@ -49,7 +49,7 @@ type ImageOptions struct {
 // Image contains all the meta data for a single image
 type Image struct {
 	ImageOptions
-	SizeBytes   int
+	SizeBytes   int `json:"size"`
 	Status      string
 	Owner       string
 	Checksum    string
