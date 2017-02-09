@@ -27,7 +27,7 @@
   - name: Start keystone container
     docker_container:
       name: ciao-keystone
-      image: clearlinux/keystone
+      image: clearlinux/keystone:stable
       state: started
       privileged: True
       etc_hosts: "{{ etc_hosts }}"
