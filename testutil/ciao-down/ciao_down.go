@@ -325,14 +325,15 @@ func connect(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	path, err := exec.LookPath("ssh")
+	_, err = os.Stat(ws.instanceDir)
 	if err != nil {
-		errCh <- fmt.Errorf("Unable to locate ssh binary")
+		errCh <- fmt.Errorf("instance does not exist")
 		return
 	}
 
-	if !vmStarted(ctx, ws.instanceDir) {
-		errCh <- fmt.Errorf("VM is not running.  Try ciao-down start")
+	path, err := exec.LookPath("ssh")
+	if err != nil {
+		errCh <- fmt.Errorf("Unable to locate ssh binary")
 		return
 	}
 
@@ -344,11 +345,6 @@ func connect(ctx context.Context, errCh chan error) {
 			case <-time.After(time.Second):
 			case <-ctx.Done():
 				errCh <- fmt.Errorf("Cancelled")
-				return
-			}
-
-			if !vmStarted(ctx, ws.instanceDir) {
-				errCh <- fmt.Errorf("VM is not running.  Try ciao-down start")
 				return
 			}
 

@@ -563,7 +563,7 @@ sudo docker run -d -it --name keystone \
     -v "$ciao_bin"/post-keystone.sh:/usr/bin/post-keystone.sh \
     -v $mysql_data_dir:/var/lib/mysql \
     -v "$keystone_cert":/etc/nginx/ssl/keystone_cert.pem \
-    -v "$keystone_key":/etc/nginx/ssl/keystone_key.pem clearlinux/keystone
+    -v "$keystone_key":/etc/nginx/ssl/keystone_key.pem clearlinux/keystone:stable
 
 echo -n "Waiting up to $keystone_wait_time seconds for keystone identity" \
     "service to become available"

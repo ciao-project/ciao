@@ -126,27 +126,12 @@ func sshReady(ctx context.Context) bool {
 	return retval
 }
 
-func vmStarted(ctx context.Context, instanceDir string) bool {
-	socket := path.Join(instanceDir, "socket")
-	disconnectedCh := make(chan struct{})
-	qmp, _, err := qemu.QMPStart(ctx, socket, qemu.QMPConfig{}, disconnectedCh)
-	if err != nil {
-		return false
-	}
-	qmp.Shutdown()
-	return true
-}
-
 func statusVM(ctx context.Context, instanceDir, keyPath string) {
 	status := "ciao down"
 	ssh := "N/A"
-	if vmStarted(ctx, instanceDir) {
-		if sshReady(ctx) {
-			status = "ciao up"
-			ssh = fmt.Sprintf("ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i %s 127.0.0.1 -p %d", keyPath, 10022)
-		} else {
-			status = "ciao up (booting)"
-		}
+	if sshReady(ctx) {
+		status = "ciao up"
+		ssh = fmt.Sprintf("ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i %s 127.0.0.1 -p %d", keyPath, 10022)
 	}
 
 	w := new(tabwriter.Writer)
