@@ -40,6 +40,9 @@ users:
 const vmWorkloadImageName = "Fedora Cloud Base 24-1.2"
 
 func testCreateWorkload(t *testing.T, public bool) {
+	// until we support delete workload, we will explicitly skip this test.
+	t.Skip()
+
 	// we'll use empty string for now
 	tenant := ""
 
