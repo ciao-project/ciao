@@ -7,7 +7,6 @@ keystone_admin_password: adminUserPassword
 mysql_data: /var/lib/mysql
 
 # ciao-common: https://github.com/01org/ciao/tree/master/_DeploymentAndDistroPackaging/ansible/roles/ciao-common
-ciao_dev: False
 ciao_controller_fqdn: "{{ controller_fqdn }}"
 
 # ciao-controller: https://github.com/01org/ciao/tree/master/_DeploymentAndDistroPackaging/ansible/roles/ciao-controller

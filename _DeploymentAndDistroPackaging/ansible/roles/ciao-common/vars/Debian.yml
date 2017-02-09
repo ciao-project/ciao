@@ -13,14 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create GOPATH directory
-    file: name={{ gopath }} state=directory
+controller_deps:
+  - ceph-common
+  - qemu-utils
 
-  - name: Building CIAO
-    shell: go get -v github.com/01org/ciao/...
-    environment:
-      GOPATH: "{{ gopath }}"
-    register: build
-    changed_when:
-      - "build_wait.stderr is defined
-      - 'github.com/01org/ciao/' in build_wait.stderr"
+launcher_deps:
+  - psmisc
+  - qemu-system-x86
+  - xorriso

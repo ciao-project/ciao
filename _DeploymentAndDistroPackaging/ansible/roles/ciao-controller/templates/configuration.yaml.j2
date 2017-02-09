@@ -14,9 +14,9 @@ configure:
     ceph_id: {{ ceph_id }}
   launcher:
     compute_net:
-      {{ ciao_compute_subnets | to_nice_yaml }}
+      {{ ciao_compute_subnets | to_json | from_json | to_nice_yaml }}
     mgmt_net:
-      {{ ciao_mgmt_subnets | to_nice_yaml }}
+      {{ ciao_mgmt_subnets | to_json | from_json | to_nice_yaml }}
     disk_limit: true
     mem_limit: true
   identity_service:
