@@ -114,14 +114,22 @@ func testCreateWorkload(t *testing.T, public bool) {
 	}
 }
 
-// TestCreateTenantWorkload will create a new private workload, then attempt to
-// retrieve the workload information from the tenant's workload list.
+// Check that a tenant workload can be created.
+//
+// Create a tenant workload and confirm that the workload exists.
+//
+// The new workload should be visible to the tenant and contain
+// the correct resources and description.
 func TestCreateTenantWorkload(t *testing.T) {
 	testCreateWorkload(t, false)
 }
 
-// TestCreatePublicWorkload will create a new public workload, then attempt to
-// retrieve the workload information from a normal tenant's workload list.
+// Check that a public workload can be created.
+//
+// Create a public workload and confirm that the workload exists.
+//
+// The new public workload should be visible to the tenant and contain
+// the correct resources and description.
 func TestCreatePublicWorkload(t *testing.T) {
 	testCreateWorkload(t, true)
 }
