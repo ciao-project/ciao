@@ -39,8 +39,8 @@
         KEYSTONE_ADMIN_PASSWORD: "{{ keystone_admin_password }}"
       volumes:
         - "{{ mysql_data }}:/var/lib/mysql:rw"
-        - "/etc/keystone/ssl/keystone_key.pem:/etc/nginx/ssl/keystone_key.pem:ro"
-        - "/etc/keystone/ssl/keystone_cert.pem:/etc/nginx/ssl/keystone_cert.pem:ro"
+        - "/etc/pki/ciao/keystone_key.pem:/etc/nginx/ssl/keystone_key.pem:ro"
+        - "/etc/pki/ciao/keystone_cert.pem:/etc/nginx/ssl/keystone_cert.pem:ro"
 
   - name: Create openrc file
     become: no

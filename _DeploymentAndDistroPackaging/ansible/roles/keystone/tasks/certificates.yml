@@ -13,28 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create a local certificates directory if it does not exist
-    become: no
-    connection: local
-    file: path=certificates/keystone state=directory
-
   - name: Create self-signed SSL cert
     become: no
     connection: local
     command: >
-      openssl req -new -nodes -x509 -subj "/CN={{ keystone_fqdn }}" -days 365
-      -keyout certificates/keystone/keystone_key.pem
-      -out certificates/keystone/keystone_cert.pem -extensions v3_ca
+      openssl req -x509 -nodes -days 365 -newkey rsa:2048
+      -keyout {{ workdir }}/keystone_key.pem
+      -out {{ workdir }}/keystone_cert.pem
+      -subj "/CN={{ keystone_fqdn }}"
     args:
-      creates: certificates/keystone/keystone_key.pem
+      creates: "{{ workdir }}/keystone_cert.pem"
 
-  - name: Create /etc/keystone/ssl directory
-    file: path=/etc/keystone/ssl state=directory
+  - name: Create /etc/pki/ciao
+    file: name={{ item }} state=directory owner=root mode=755
+    with_items:
+      - /etc/pki
+      - /etc/pki/ciao
 
   - name: Copy keystone certificates
-    copy: src={{ item.src }} dest={{ item.dest }}
+    copy:
+      src: "{{ workdir }}/{{ item }}"
+      dest: "/etc/pki/ciao/{{ item }}"
+      mode: 600
     with_items:
-      - src: certificates/keystone/keystone_key.pem
-        dest: /etc/keystone/ssl/keystone_key.pem
-      - src: certificates/keystone/keystone_cert.pem
-        dest: /etc/keystone/ssl/keystone_cert.pem
+      - keystone_cert.pem
+      - keystone_key.pem
