@@ -13,11 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create a local certificates directory if it does not exist
-    become: no
-    connection: local
-    file: path=certificates/ciao state=directory
-
   - name: Create Scheduler key and CA certificate
     become: no
     connection: local
@@ -26,7 +21,7 @@
       -email={{ ciao_admin_email }} -organization="{{ ciao_cert_organization }}"
       -ip={{ ciao_controller_ip }} -host={{ ciao_controller_fqdn }} -verify
     args:
-      chdir: certificates/ciao
+      chdir: "{{ workdir }}"
       creates: CAcert-{{ ciao_controller_fqdn }}.pem
 
   - name: Create agent keys
@@ -37,7 +32,7 @@
       cert-Scheduler-{{ ciao_controller_fqdn }}.pem -email={{ ciao_admin_email }}
       --organization="{{ ciao_cert_organization }}" -host=localhost -verify
     args:
-      chdir: certificates/ciao
+      chdir: "{{ workdir }}"
       creates: "{{ item.creates }}"
     with_items:
       - role: agent
@@ -50,38 +45,20 @@
         creates: cert-Controller-localhost.pem
 
   - name: Copy certificates
-    copy: src=certificates/{{ item }} dest=/etc/pki/{{ item }}
+    copy: src={{ workdir }}/{{ item }} dest=/etc/pki/ciao/{{ item }} owner=ciao mode=400
     with_items:
-      - ciao/CAcert-{{ ciao_controller_fqdn }}.pem
-      - ciao/cert-Controller-localhost.pem
-      - ciao/cert-Scheduler-{{ ciao_controller_fqdn }}.pem
-      - keystone/keystone_cert.pem
-      - keystone/keystone_key.pem
+      - CAcert-{{ ciao_controller_fqdn }}.pem
+      - cert-Controller-localhost.pem
+      - cert-Scheduler-{{ ciao_controller_fqdn }}.pem
+      - keystone_cert.pem
+      - keystone_key.pem
 
-  - name: Install certificate (ClearLinux)
-    copy: src=certificates/keystone/keystone_cert.pem dest=/etc/ssl/certs
-    when: ansible_os_family == "Clear linux software for intel architecture"
+  - name: Install keystone certificate
+    copy:
+      src: "{{ workdir }}/keystone_cert.pem"
+      dest: "{{ keystone_cert }}"
 
-  - block:
-      - name: Install certificate (Ubuntu)
-        copy:
-          src: certificates/keystone/keystone_cert.pem
-          dest: /usr/local/share/ca-certificates/keystone_cert.crt
-
-      - name: Update CA certificates (Ubuntu)
-        command: update-ca-certificates
-        args:
-          creates: /etc/ssl/certs/keystone_cert.pem
-    when: ansible_os_family == "Debian"
-
-  - block:
-      - name: Install certificate (Fedora)
-        copy:
-          src: certificates/keystone/keystone_cert.pem
-          dest: /etc/pki/ca-trust/source/anchors/keystone_cert.pem
-
-      - name: Update CA trust (Fedora)
-        command: update-ca-trust
-        args:
-          creates: /etc/pki/tls/certs/keystone_cert.pem
-    when: ansible_os_family == "RedHat"
+  - name: Update CA certificates
+    command: "{{ cacert_prog }}"
+    args:
+      creates: "{{ cacert_creates }}"

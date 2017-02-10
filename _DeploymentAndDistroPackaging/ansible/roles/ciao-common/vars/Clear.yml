@@ -20,3 +20,7 @@ controller_deps:
 
 launcher_deps:
   - cloud-control
+
+keystone_cert: /etc/ssl/certs/keystone_cert.pem
+cacert_prog: None
+cacert_creates: /etc/ssl/certs/keystone_cert.pem

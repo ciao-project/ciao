@@ -4,8 +4,8 @@ configure:
     storage_uri: file:///etc/ciao/configuration.yaml
   controller:
     compute_port: 8774
-    compute_ca: /etc/pki/keystone/keystone_cert.pem
-    compute_cert: /etc/pki/keystone/keystone_key.pem
+    compute_ca: /etc/pki/ciao/keystone_cert.pem
+    compute_cert: /etc/pki/ciao/keystone_key.pem
     identity_user: {{ ciao_service_user }}
     identity_password: {{ ciao_service_password }}
     compute_fqdn: {{ ciao_controller_fqdn }}

@@ -31,7 +31,7 @@
     notify: restart launcher
 
   - name: Copy ciao certificates
-    copy: src=certificates/ciao/{{ item }} dest=/etc/pki/ciao/{{ item }}
+    copy: src={{ workdir }}/{{ item }} dest=/etc/pki/ciao/{{ item }} owner=ciao mode=400
     with_items:
       - CAcert-{{ ciao_controller_fqdn }}.pem
       - "{{ agent_key }}"

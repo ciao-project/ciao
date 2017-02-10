@@ -72,12 +72,12 @@
       file: path=/mnt/tmp/var/lib/ciao state=directory
 
     - name: Copy CA certificates to cnci image
-      shell: cp certificates/ciao/CAcert-* /mnt/tmp/var/lib/ciao/CAcert-server-localhost.pem
+      shell: cp {{ workdir }}/CAcert-* /mnt/tmp/var/lib/ciao/CAcert-server-localhost.pem
       args:
         creates: /mnt/tmp/var/lib/ciao/CAcert-server-localhost.pem
 
     - name: Copy CNCI Agent certificate
-      shell: cp certificates/ciao/cert-CNCIAgent-* /mnt/tmp/var/lib/ciao/cert-client-localhost.pem
+      shell: cp {{ workdir }}/cert-CNCIAgent-* /mnt/tmp/var/lib/ciao/cert-client-localhost.pem
       args:
         creates: /mnt/tmp/var/lib/ciao/cert-client-localhost.pem
 

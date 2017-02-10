@@ -21,3 +21,7 @@ launcher_deps:
   - psmisc
   - qemu-system-x86
   - xorriso
+
+keystone_cert: /etc/ssl/certs/keystone_cert.pem
+cacert_prog: update-ca-trust extract
+cacert_creates: /etc/pki/tls/certs/keystone_cert.pem

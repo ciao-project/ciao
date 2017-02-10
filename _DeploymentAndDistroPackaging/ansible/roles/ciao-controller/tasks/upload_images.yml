@@ -24,7 +24,7 @@
       CIAO_USERNAME: admin
       CIAO_PASSWORD: "{{ keystone_admin_password }}"
       CIAO_TENANT_NAME: admin
-      CIAO_CA_CERT_FILE: certificates/keystone/keystone_cert.pem
+      CIAO_CA_CERT_FILE: "{{ workdir }}/keystone_cert.pem"
 
   - name: Upload {{ image.name }}
     shell: "{{ gopath }}/bin/ciao-cli image add --file images/{{ image.file }} --name {{ image.name }} --id {{ image.id }}"
@@ -34,5 +34,5 @@
       CIAO_USERNAME: admin
       CIAO_PASSWORD: "{{ keystone_admin_password }}"
       CIAO_TENANT_NAME: admin
-      CIAO_CA_CERT_FILE: certificates/keystone/keystone_cert.pem
+      CIAO_CA_CERT_FILE: "{{ workdir }}/keystone_cert.pem"
     when: "imagerc.rc == 255"

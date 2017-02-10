@@ -13,21 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-  - name: Create a local certificates directory if it does not exist
-    connection: local
-    file: path=certificates/ciao state=directory
-
   - name: Create self-signed SSL cert
     connection: local
     command: >
       openssl req -new -nodes -x509 -subj "/CN={{ ciao_webui_fqdn }}" -days 365
-      -keyout certificates/ciao/ciao-webui-key.pem
-      -out certificates/ciao/ciao-webui-cert.pem -extensions v3_ca
+      -keyout {{ workdir }}/ciao-webui-key.pem
+      -out {{ workdir }}/ciao-webui-cert.pem -extensions v3_ca
     args:
-      creates: certificates/ciao/ciao-webui-key.pem
+      creates: "{{ workdir }}/ciao-webui-key.pem"
 
   - name: Copy certificates
-    copy: src=certificates/ciao/{{ item }} dest=/etc/pki/ciao/{{ item }}
+    copy: src={{ workdir }}/{{ item }} dest=/etc/pki/ciao/{{ item }} owner=root mode=400
     with_items:
       - ciao-webui-key.pem
       - ciao-webui-cert.pem
