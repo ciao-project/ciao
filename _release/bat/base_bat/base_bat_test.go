@@ -152,6 +152,66 @@ func TestStartAllWorkloads(t *testing.T) {
 	}
 }
 
+// Test restart and stop
+//
+// Starts a random instance and retrieves the instance's status. We then stop
+// the workload, assuming that it is running, restart it and delete it.
+//
+// The workload should be successfully started, stopped (if it's not running),
+// restarted, and finally deleted.
+func TestStopRestartInstance(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	instances, err := bat.StartRandomInstances(ctx, "", 1)
+	if err != nil {
+		t.Fatalf("Failed to launch instance: %v", err)
+	}
+
+	defer func() {
+		err := bat.DeleteInstance(ctx, "", instances[0])
+		if err != nil {
+			t.Errorf("Failed to delete instance %s: %v", instances[0], err)
+		}
+	}()
+
+	_, err = bat.WaitForInstancesLaunch(ctx, "", instances, false)
+	if err != nil {
+		t.Fatalf("Instance %s did not launch: %v", instances[0], err)
+	}
+
+	status, err := bat.RetrieveInstanceStatus(ctx, "", instances[0])
+	if err != nil {
+		t.Fatalf("Failed to retrieve instance %s status: %v", instances[0], err)
+	}
+
+	if status == "active" {
+		err = bat.StopInstanceAndWait(ctx, "", instances[0])
+		if err != nil {
+			t.Fatalf("Failed to stop instance %s : %v", instances[0], err)
+		}
+	}
+
+	err = bat.RestartInstance(ctx, "", instances[0])
+	if err != nil {
+		t.Fatalf("Failed to restart instance %s : %v", instances[0], err)
+	}
+
+	// If the instance exited after startup assume that this instance is a short
+	// lived container.  There's no need to wait for it to restart it may never
+	// transition to the restarted state if it starts and quits faster than launcher
+	// polls.
+
+	if status != "active" {
+		return
+	}
+
+	err = bat.RestartInstanceAndWait(ctx, "", instances[0])
+	if err != nil {
+		t.Errorf("Timed out restarting instance %s : %v", instances[0], err)
+	}
+}
+
 // Start a random workload, then get CNCI information
 //
 // Start a random workload and verify that there is at least one CNCI present, and that

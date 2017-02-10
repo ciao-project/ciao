@@ -360,6 +360,42 @@ func StopInstanceAndWait(ctx context.Context, tenant string, instance string) er
 	}
 }
 
+// RestartInstance restarts a ciao instance by invoking the ciao-cli instance restart
+// command.  An error will be returned if the following environment variables are not set;
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func RestartInstance(ctx context.Context, tenant string, instance string) error {
+	args := []string{"instance", "restart", "-instance", instance}
+	_, err := RunCIAOCLI(ctx, tenant, args)
+	return err
+}
+
+// RestartInstanceAndWait restarts a ciao instance by invoking the ciao-cli instance
+// restart command.   It then waits until the instance's status changes to active.
+// An error will be returned if the following environment variables are not set;
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func RestartInstanceAndWait(ctx context.Context, tenant string, instance string) error {
+	if err := RestartInstance(ctx, tenant, instance); err != nil {
+		return err
+	}
+	for {
+		status, err := RetrieveInstanceStatus(ctx, tenant, instance)
+		if err != nil {
+			return err
+		}
+
+		if status == "active" {
+			return nil
+		}
+
+		select {
+		case <-time.After(time.Second):
+			continue
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
 // DeleteInstance deletes a specific instance from the cluster.  It deletes
 // the instance using ciao-cli instance delete.  An error will be returned
 // if the following environment variables are not set; CIAO_IDENTITY,
