@@ -110,6 +110,134 @@ function ctrl_c() {
     exit 1
 }
 
+function createWorkloads() {
+	mkdir -p ${ciao_bin}/workload_examples
+	if [ ! -d ${ciao_bin}/workload_examples ]
+	then
+		echo "FATAL ERROR: Unable to create ${ciao_bin}/workload_examples"
+		exit 1
+
+	fi
+
+	sudo chmod 755 "$ciao_bin"/workload_examples
+
+	# create a VM test workload with ssh capability
+	echo "Generating VM cloud-init"
+	(
+	cat <<-EOF
+	---
+	#cloud-config
+	users:
+	  - name: demouser
+	    gecos: CIAO Demo User
+	    lock-passwd: false
+	    passwd: ${test_passwd}
+	    sudo: ALL=(ALL) NOPASSWD:ALL
+	    ssh-authorized-keys:
+	      - ${test_sshkey}
+	...
+	EOF
+	) > "$ciao_bin"/workload_examples/vm-test.yaml
+
+	# Get the image ID for the fedora cloud image
+	id=$(ciao-cli image list -f='{{$x := filter . "Name" "Fedora Cloud Base 24-1.2"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
+
+	# add 2 vm test workloads
+	echo "Generating Fedora VM test workload"
+	(
+	cat <<-EOF
+	description: "Fedora test VM"
+	vm_type: qemu
+	fw_type: legacy
+	defaults:
+	    vcpus: 2
+	    mem_mb: 128
+	    disk_mb: 80
+	cloud_init: "vm-test.yaml"
+	disks:
+	  - source:
+	       service: image
+	       id: "$id"
+	    ephemeral: true
+	    bootable: true
+	EOF
+	) > "$ciao_bin"/workload_examples/fedora_vm.yaml
+
+	# get the clear image id
+	clear_id=$(ciao-cli image list -f='{{$x := filter . "Name" "Clear Linux '"${LATEST}"'"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
+
+	# create a clear VM workload definition
+	echo "Creating Clear test workload"
+	(
+	cat <<-EOF
+	description: "Clear Linux test VM"
+	vm_type: qemu
+	fw_type: efi
+	defaults:
+	    vcpus: 2
+	    mem_mb: 128
+	    disk_mb: 80
+	cloud_init: "vm-test.yaml"
+	disks:
+	  - source:
+	       service: image
+	       id: "$clear_id"
+	    ephemeral: true
+	    bootable: true
+	EOF
+	) > "$ciao_bin"/workload_examples/clear_vm.yaml
+
+	# create a container test cloud init
+	echo "Creating Container cloud init"
+	(
+	cat <<-EOF
+	---
+	#cloud-config
+	runcmd:
+	    - [ /bin/bash, -c, "while true; do sleep 60; done" ]
+	...
+	EOF
+	) > "$ciao_bin"/workload_examples/container-test.yaml
+
+	# create a Debian container workload definition
+	echo "Creating Debian Container test workload"
+	(
+	cat <<-EOF
+	description: "Debian latest test container"
+	vm_type: docker
+	image_name: "debian:latest"
+	defaults:
+	  vcpus: 2
+	  mem_mb: 128
+	  disk_mb: 80
+	cloud_init: "container-test.yaml"
+	EOF
+	) > "$ciao_bin"/workload_examples/debian_latest.yaml
+
+	# create an Ubuntu container workload definition
+	echo "Creating Ubuntu Container test workload"
+	(
+	cat <<-EOF
+	description: "Ubuntu latest test container"
+	vm_type: docker
+	image_name: "ubuntu:latest"
+	defaults:
+	  vcpus: 2
+	  mem_mb: 128
+	  disk_mb: 80
+	cloud_init: "container-test.yaml"
+	EOF
+	) > "$ciao_bin"/workload_examples/ubuntu_latest.yaml
+
+	# store the new workloads into ciao
+	pushd "$ciao_bin"/workload_examples
+	"$ciao_gobin"/ciao-cli workload create -yaml fedora_vm.yaml
+	"$ciao_gobin"/ciao-cli workload create -yaml clear_vm.yaml
+	"$ciao_gobin"/ciao-cli workload create -yaml ubuntu_latest.yaml
+	"$ciao_gobin"/ciao-cli workload create -yaml debian_latest.yaml
+	popd
+}
+
 usage="$(basename "$0") [--download] The script will download dependencies if needed. Specifying --download will force download the dependencies even if they are cached locally"
 
 while :
@@ -139,6 +267,14 @@ done
 
 set -o nounset
 
+echo "Generating workload ssh key $workload_sshkey"
+rm -f "$workload_sshkey" "$workload_sshkey".pub
+ssh-keygen -f "$workload_sshkey" -t rsa -N ''
+test_sshkey=$(< "$workload_sshkey".pub)
+chmod 600 "$workload_sshkey".pub
+#Note: Password is set to ciao
+test_passwd='$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.'
+
 echo "Generating configuration file $conf_file"
 (
 cat <<-EOF
@@ -152,6 +288,11 @@ configure:
     compute_cert: $keystone_key
     identity_user: ${ciao_username}
     identity_password: ${ciao_password}
+    cnci_vcpus: 4
+    cnci_mem: 128
+    cnci_disk: 128
+    admin_ssh_key: ${test_sshkey}
+    admin_password: ${test_passwd}
   image_service:
     type: glance
     url: https://${ciao_host}
@@ -357,61 +498,15 @@ else
     exit 1
 fi
 
+
 #Create controller dirs
-
-sudo mkdir -p ${ciao_ctl_dir}/tables
-if [ ! -d ${ciao_ctl_dir}/tables ]
-then
-	echo "FATAL ERROR: Unable to create ${ciao_ctl_dir}/tables"
-	exit 1
-
-fi
-
+echo "Making ciao workloads dir: ${ciao_ctl_dir}/workloads"
 sudo mkdir -p ${ciao_ctl_dir}/workloads
 if [ ! -d ${ciao_ctl_dir}/workloads ]
 then
-	echo "FATAL ERROR: Unable to create ${ciao_ctl_dir}/workloads"
+	echo "FATAL ERROR: Unable to create ${ciao_ctl_dir}/workloads}"
 	exit 1
-
 fi
-
-#Copy the configuration
-cd "$ciao_bin"
-sudo cp -a "$ciao_src"/ciao-controller/tables ${ciao_ctl_dir}
-sudo cp -a "$ciao_src"/ciao-controller/workloads ${ciao_ctl_dir}
-
-#Over ride the configuration with test specific defaults
-sudo cp -f "$ciao_scripts"/workloads/* ${ciao_ctl_dir}/workloads
-sudo cp -f "$ciao_scripts"/tables/* ${ciao_ctl_dir}/tables
-
-#Over ride the cloud-init configuration
-echo "Generating workload ssh key $workload_sshkey"
-rm -f "$workload_sshkey" "$workload_sshkey".pub
-ssh-keygen -f "$workload_sshkey" -t rsa -N ''
-test_sshkey=$(< "$workload_sshkey".pub)
-chmod 600 "$workload_sshkey".pub
-#Note: Password is set to ciao
-test_passwd='$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.'
-
-workload_cloudinit=${ciao_ctl_dir}/workloads/test.yaml
-sudo echo "Generating workload cloud-init file $workload_cloudinit"
-(
-cat <<-EOF
----
-#cloud-config
-users:
-  - name: demouser
-    gecos: CIAO Demo User
-    lock-passwd: false
-    passwd: ${test_passwd}
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    ssh-authorized-keys:
-    - ${test_sshkey}
-...
-EOF
-) > $workload_cloudinit
-
-
 
 #Copy the launch scripts
 cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
@@ -463,9 +558,17 @@ qemu-img convert -f raw -O qcow2 "$ciao_cnci_image" "$ciao_cnci_image".qcow
 
 #Clear
 cd "$ciao_bin"
-LATEST=$(curl https://download.clearlinux.org/latest)
 
-if [ $download -eq 1 ] || [ ! -f clear-"${LATEST}"-cloud.img ] 
+if [ $download -eq 1 ]
+then
+	LATEST=$(curl https://download.clearlinux.org/latest)
+else
+	# replace this will a function that looks in ~local cache
+	# for the last version of clear to use.
+	LATEST="12620"
+fi
+
+if [ $download -eq 1 ] || [ ! -f clear-"${LATEST}"-cloud.img ]
 then
 	rm -f clear-"${LATEST}"-cloud.img.xz
 	rm -f clear-"${LATEST}"-cloud.img
@@ -634,6 +737,18 @@ if [ -f $fedora_cloud_image ]; then
         image add --file $fedora_cloud_image \
         --name "Fedora Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799
 fi
+
+echo ""
+echo "Creating public test workloads"
+echo "---------------------------------------------------------------------------------------"
+# become admin for now.
+ciao_user=$CIAO_USERNAME
+ciao_passwd=$CIAO_PASSWORD
+export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
+export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
+createWorkloads
+export CIAO_USERNAME=$ciao_user
+export CIAO_PASSWORD=$ciao_password
 
 echo "---------------------------------------------------------------------------------------"
 echo ""

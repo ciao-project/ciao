@@ -73,6 +73,7 @@ type StorageResource struct {
 // workload.
 type Workload struct {
 	ID          string                       `json:"id"`
+	TenantID    string                       `json:"-"`
 	Description string                       `json:"description"`
 	FWType      string                       `json:"fw_type"`
 	VMType      payloads.Hypervisor          `json:"vm_type"`
@@ -566,6 +567,9 @@ var (
 	// ErrInstanceMapped is returned when an instance cannot be deleted
 	// due to having an external IP assigned to it.
 	ErrInstanceMapped = errors.New("Unmap the external IP prior to deletion")
+
+	// ErrWorkloadNotFound is returned when a workload ID cannot be found
+	ErrWorkloadNotFound = errors.New("Workload not found")
 )
 
 // Link provides a url and relationship for a resource.

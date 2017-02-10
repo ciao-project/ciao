@@ -291,13 +291,18 @@ func errorResponse(err error) APIResponse {
 
 // endpoints
 func listAPIVersions(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	host, err := os.Hostname()
-	if err != nil {
-		return APIResponse{http.StatusInternalServerError, nil}, err
+	host := r.Host
+	var href string
+	if host == "" {
+		var err error
+		host, err = os.Hostname()
+		if err != nil {
+			return APIResponse{http.StatusInternalServerError, nil}, err
+		}
+		href = fmt.Sprintf("https://%s:%d/v2/", host, context.port)
+	} else {
+		href = fmt.Sprintf("https://%s/v2/", host)
 	}
-
-	// maybe we should just put href in context
-	href := fmt.Sprintf("https://%s:%d/v2/", host, context.port)
 
 	// TBD clean up this code
 	var resp Versions

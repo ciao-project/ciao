@@ -78,13 +78,13 @@ func testCreateServer(t *testing.T, n int) compute.Servers {
 	}
 
 	// get a valid workload ID
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if len(wls) == 0 {
-		t.Fatal("No valid workloads")
+		t.Fatalf("No valid workloads for tenant: %s\n", tenant.ID)
 	}
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers"
@@ -139,7 +139,7 @@ func TestCreateSingleServerInvalidToken(t *testing.T) {
 	}
 
 	// get a valid workload ID
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,12 @@ func TestListServerDetailsTenantInvalidToken(t *testing.T) {
 
 func testListServerDetailsWorkload(t *testing.T, httpExpectedStatus int, validToken bool) {
 	// get a valid workload ID
-	wls, err := ctl.ds.GetWorkloads()
+	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -530,7 +535,7 @@ func testListFlavors(t *testing.T, httpExpectedStatus int, data []byte, validTok
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors"
 
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -582,7 +587,7 @@ func testShowFlavorDetails(t *testing.T, httpExpectedStatus int, validToken bool
 
 	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/flavors/"
 
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

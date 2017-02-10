@@ -441,12 +441,29 @@ func addWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, 
 		return errorResponse(err), err
 	}
 
+	// we allow admin to create public workloads for any tenant. However,
+	// users scoped to a particular tenant may only create workloads
+	// for their own tenant.
+	vars := mux.Vars(r)
+	tenantID, ok := vars["tenant"]
+	if ok {
+		req.TenantID = tenantID
+	} else {
+		req.TenantID = "public"
+	}
+
 	wl, err := c.CreateWorkload(req)
 	if err != nil {
 		return errorResponse(err), err
 	}
 
-	ref := fmt.Sprintf("%s/workloads/%s", c.URL, wl.ID)
+	var ref string
+
+	if ok {
+		ref = fmt.Sprintf("%s/%s/workloads/%s", c.URL, tenantID, wl.ID)
+	} else {
+		ref = fmt.Sprintf("%s/workloads/%s", c.URL, wl.ID)
+	}
 
 	link := types.Link{
 		Rel:  "self",
@@ -570,6 +587,10 @@ func Routes(config Config) *mux.Router {
 	matchContent = fmt.Sprintf("application/(%s|json)", WorkloadsV1)
 
 	route = r.Handle("/workloads", Handler{context, addWorkload})
+	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/workloads", Handler{context, addWorkload})
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 	return r

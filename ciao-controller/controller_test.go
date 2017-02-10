@@ -38,6 +38,48 @@ import (
 	"github.com/01org/ciao/testutil"
 )
 
+func addTestWorkload(tenantID string) error {
+	testConfig := `
+---
+#cloud-config
+users:
+  - name: demouser
+    gecos: CIAO Demo User
+    lock-passwd: false
+    passwd: $6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO.
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDerQfD+qkb0V0XdQs8SBWqy4sQmqYFP96n/kI4Cq162w4UE8pTxy0ozAPldOvBJjljMvgaNKSAddknkhGcrNUvvJsUcZFm2qkafi32WyBdGFvIc45A+8O7vsxPXgHEsS9E3ylEALXAC3D0eX7pPtRiAbasLlY+VcACRqr3bPDSZTfpCmIkV2334uZD9iwOvTVeR+FjGDqsfju4DyzoAIqpPasE0+wk4Vbog7osP+qvn1gj5kQyusmr62+t0wx+bs2dF5QemksnFOswUrv9PGLhZgSMmDQrRYuvEfIAC7IdN/hfjTn0OokzljBiuWQ4WIIba/7xTYLVujJV65qH3heaSMxJJD7eH9QZs9RdbbdTXMFuJFsHV2OF6wZRp18tTNZZJMqiHZZSndC5WP1WrUo3Au/9a+ighSaOiVddHsPG07C/TOEnr3IrwU7c9yIHeeRFHmcQs9K0+n9XtrmrQxDQ9/mLkfje80Ko25VJ/QpAQPzCKh2KfQ4RD+/PxBUScx/lHIHOIhTSCh57ic629zWgk0coSQDi4MKSa5guDr3cuDvt4RihGviDM6V68ewsl0gh6Z9c0Hw7hU0vky4oxak5AiySiPz0FtsOnAzIL0UON+yMuKzrJgLjTKodwLQ0wlBXu43cD+P8VXwQYeqNSzfrhBnHqsrMf4lTLtc7kDDTcw== ciao@ciao
+...
+	`
+	cpus := payloads.RequestedResource{
+		Type:      payloads.VCPUs,
+		Value:     2,
+		Mandatory: false,
+	}
+
+	mem := payloads.RequestedResource{
+		Type:      payloads.MemMB,
+		Value:     512,
+		Mandatory: false,
+	}
+
+	wl := types.Workload{
+		ID:          uuid.Generate().String(),
+		TenantID:    tenantID,
+		Description: "testWorkload",
+		FWType:      string(payloads.EFI),
+		VMType:      payloads.QEMU,
+		ImageID:     uuid.Generate().String(),
+		ImageName:   "",
+		Config:      testConfig,
+		Defaults:    []payloads.RequestedResource{cpus, mem},
+		Storage:     nil,
+	}
+
+	return ctl.ds.AddWorkload(wl)
+}
+
 func addTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
@@ -55,6 +97,24 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 	if err != nil {
 		return
 	}
+
+	// give this tenant a workload to run.
+	err = addTestWorkload(tenant.ID)
+
+	return
+}
+
+func addTestTenantNoCNCI() (tenant *types.Tenant, err error) {
+	/* add a new tenant */
+	tuuid := uuid.Generate()
+	tenant, err = ctl.ds.AddTenant(tuuid.String())
+	if err != nil {
+		return
+	}
+
+	// give this tenant a workload to run.
+	err = addTestWorkload(tenant.ID)
+
 	return
 }
 
@@ -75,6 +135,8 @@ func addComputeTestTenant() (tenant *types.Tenant, err error) {
 	if err != nil {
 		return
 	}
+
+	err = addTestWorkload(tenant.ID)
 
 	return
 }
@@ -100,7 +162,7 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 	}
 
 	// get workload ID
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil || len(wls) == 0 {
 		b.Fatal(err)
 	}
@@ -140,7 +202,7 @@ func BenchmarkStart1000Workload(b *testing.B) {
 	}
 
 	// get workload ID
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil || len(wls) == 0 {
 		b.Fatal(err)
 	}
@@ -168,7 +230,7 @@ func BenchmarkNewConfig(b *testing.B) {
 	}
 
 	// get workload ID
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil || len(wls) == 0 {
 		b.Fatal(err)
 	}
@@ -178,7 +240,7 @@ func BenchmarkNewConfig(b *testing.B) {
 	b.ResetTimer()
 	noVolumes := []storage.BlockDevice{}
 	for n := 0; n < b.N; n++ {
-		_, err := newConfig(ctl, wls[0], id.String(), tenant.ID, noVolumes)
+		_, err := newConfig(ctl, &wls[0], id.String(), tenant.ID, noVolumes)
 		if err != nil {
 			b.Error(err)
 		}
@@ -199,7 +261,7 @@ func TestTenantWithinBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil || len(wls) == 0 {
 		t.Fatal(err)
 	}
@@ -230,7 +292,7 @@ func TestTenantOutOfBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil || len(wls) == 0 {
 		t.Fatal(err)
 	}
@@ -269,23 +331,6 @@ func TestStartWorkload(t *testing.T) {
 func TestStartTracedWorkload(t *testing.T) {
 	client := testStartTracedWorkload(t)
 	defer client.Shutdown()
-}
-
-func TestStartWorkloadLaunchCNCI(t *testing.T) {
-	netClient, instances := testStartWorkloadLaunchCNCI(t, 1)
-	defer netClient.Shutdown()
-
-	id := instances[0].TenantID
-
-	tenant, err := ctl.ds.GetTenant(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if tenant.CNCIIP == "" {
-		t.Fatal("CNCI Info not updated")
-	}
-
 }
 
 func sendTraceReportEvent(client *testutil.SsntpTestClient, t *testing.T) {
@@ -931,7 +976,7 @@ func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	// caller of TestStartTracedWorkload() owns doing the close
 	//defer client.Shutdown()
 
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -985,7 +1030,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	// caller of TestStartWorkload() owns doing the close
 	//defer client.Shutdown()
 
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1032,16 +1077,42 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 	return client, instances
 }
 
+func startTestWorkload(t *testing.T, instanceCh chan []*types.Instance, workloadID string, tenantID string, num int) {
+	w := types.WorkloadRequest{
+		WorkloadID: workloadID,
+		TenantID:   tenantID,
+		Instances:  num,
+	}
+	instances, err := ctl.startWorkload(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(instances) != num {
+		t.Fatalf("Wrong number of instances, expected %d, got %d", num, len(instances))
+	}
+
+	instanceCh <- instances
+}
+
 // NOTE: the caller is responsible for calling Shutdown() on the *SsntpTestClient
 func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClient, []*types.Instance) {
 	netClient, err := testutil.NewSsntpTestClientConnection("StartWorkloadLaunchCNCI", ssntp.NETAGENT, testutil.NetAgentUUID)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	tt, err := addTestTenantNoCNCI()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newTenant := tt.ID
+
 	// caller of testStartWorkloadLaunchCNCI() owns doing the close
 	//defer netClient.Shutdown()
 
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(newTenant)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1052,28 +1123,10 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	serverCmdCh := server.AddCmdChan(ssntp.START)
 	netClientCmdCh := netClient.AddCmdChan(ssntp.START)
 
-	newTenant := uuid.Generate().String() // random ~= new tenant and thus triggers start of a CNCI
-
 	// trigger the START command flow, and await results
 	instanceCh := make(chan []*types.Instance)
 
-	go func() {
-		w := types.WorkloadRequest{
-			WorkloadID: wls[0].ID,
-			TenantID:   newTenant,
-			Instances:  1,
-		}
-		instances, err := ctl.startWorkload(w)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(instances) != 1 {
-			t.Fatalf("Wrong number of instances, expected 1, got %d", len(instances))
-		}
-
-		instanceCh <- instances
-	}()
+	go startTestWorkload(t, instanceCh, newTenant, wls[0].ID, 1)
 
 	_, err = netClient.GetCmdChanResult(netClientCmdCh, ssntp.START)
 	if err != nil {
@@ -1233,7 +1286,7 @@ func TestStorageConfig(t *testing.T) {
 	}
 
 	// get workload ID
-	wls, err := ctl.ds.GetWorkloads()
+	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil || len(wls) == 0 {
 		t.Fatal(err)
 	}
@@ -1263,7 +1316,7 @@ func TestStorageConfig(t *testing.T) {
 	id := uuid.Generate()
 
 	noVolumes := []storage.BlockDevice{}
-	_, err = newConfig(ctl, wls[0], id.String(), tenant.ID, noVolumes)
+	_, err = newConfig(ctl, &wls[0], id.String(), tenant.ID, noVolumes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1846,7 +1899,6 @@ func TestMain(m *testing.M) {
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
 		TransientURI:      "file:memdb2?mode=memory&cache=shared",
-		InitTablesPath:    *tablesInitPath,
 		InitWorkloadsPath: *workloadsPath,
 	}
 

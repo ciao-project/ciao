@@ -32,7 +32,6 @@
       - /var/lib/ciao/data
       - /var/lib/ciao/data/controller
       - /var/lib/ciao/data/controller/workloads
-      - /var/lib/ciao/data/controller/tables
       - /var/lib/ciao/data/image
 
   - include: certificates.yml

@@ -34,7 +34,6 @@ func getPersistentStore() (persistentStore, error) {
 	config := Config{
 		PersistentURI:     "file:memdb" + string(dbCount) + "?mode=memory&cache=shared",
 		TransientURI:      "file:memdb" + string(dbCount+1) + "?mode=memory&cache=shared",
-		InitTablesPath:    *tablesInitPath,
 		InitWorkloadsPath: *workloadsPath,
 	}
 	err := ps.init(config)
@@ -714,32 +713,6 @@ func TestDeleteMappedIP(t *testing.T) {
 	}
 }
 
-func TestSQLiteDBGetAllWorkloads(t *testing.T) {
-	db, err := getPersistentStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wls, err := db.getWorkloads()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("Expected non-empty workload list")
-	}
-
-	for _, wl := range wls {
-		wl2, err := db.getWorkload(wl.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !reflect.DeepEqual(wl, wl2) {
-			t.Fatal("Expected workload equality")
-		}
-	}
-}
-
 func createTestTenant(db persistentStore, t *testing.T) *tenant {
 	tid := uuid.Generate().String()
 	thw, err := newHardwareAddr()
@@ -954,6 +927,13 @@ func TestSQLiteDBInstanceStats(t *testing.T) {
 }
 
 func TestSQLiteDBUpdateWorkload(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tn := createTestTenant(db, t)
+
 	testConfig := `
 ---
 #cloud-config
@@ -985,8 +965,9 @@ users:
 		Size:      20,
 	}
 
-	w := types.Workload{
+	wl := types.Workload{
 		ID:          uuid.Generate().String(),
+		TenantID:    tn.ID,
 		Description: "testWorkload",
 		FWType:      string(payloads.EFI),
 		VMType:      payloads.QEMU,
@@ -997,18 +978,8 @@ users:
 		Storage:     []types.StorageResource{storage},
 	}
 
-	wl := workload{
-		Workload: w,
-		filename: fmt.Sprintf("%s_config.yaml", w.ID),
-	}
-
-	db, err := getPersistentStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// file will be added, so we will want to remove it.
-	filename := fmt.Sprintf("%s/%s", *workloadsPath, wl.filename)
+	filename := fmt.Sprintf("%s/%s_config.yaml", *workloadsPath, wl.ID)
 	defer os.Remove(filename)
 
 	err = db.updateWorkload(wl)
@@ -1016,12 +987,18 @@ users:
 		t.Fatal(err)
 	}
 
-	wl2, err := db.getWorkload(wl.ID)
+	tenant, err := db.getTenant(tn.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(wl, *wl2) {
+	if len(tenant.workloads) != 1 {
+		t.Fatal("Expected a workload associated with tenant")
+	}
+
+	wl2 := tenant.workloads[0]
+
+	if !reflect.DeepEqual(wl, wl2) {
 		fmt.Fprintf(os.Stderr, "got %v\n", wl2)
 		fmt.Fprintf(os.Stderr, "expected %v\n", wl)
 		t.Fatal("Expected workload equality")
