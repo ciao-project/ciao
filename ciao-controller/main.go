@@ -225,10 +225,7 @@ func main() {
 	wg.Add(1)
 	go ctl.startImageService()
 
-	host := clusterConfig.Configure.Controller.ControllerFQDN
-	if host == "" {
-		host, _ = os.Hostname()
-	}
+	host, _ := os.Hostname()
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
 	wg.Add(1)

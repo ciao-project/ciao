@@ -69,7 +69,6 @@ type ConfigureController struct {
 	VolumePort       int    `yaml:"volume_port"`
 	ComputePort      int    `yaml:"compute_port"`
 	CiaoPort         int    `yaml:"ciao_port"`
-	ControllerFQDN   string `yaml:"compute_fqdn"`
 	HTTPSCACert      string `yaml:"compute_ca"`
 	HTTPSKey         string `yaml:"compute_cert"`
 	IdentityUser     string `yaml:"identity_user"`
