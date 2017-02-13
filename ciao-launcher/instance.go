@@ -117,9 +117,7 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 		glog.Errorf("Unable to start instance[%s]: %v", string(startErr.code), startErr.err)
 		startErr.send(id.ac.conn, id.instance)
 
-		if startErr.code == payloads.LaunchFailure {
-			id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
-		} else if startErr.code != payloads.InstanceExists {
+		if startErr.code != payloads.InstanceExists {
 			glog.Warningf("Unable to create VM instance: %s.  Killing it", id.instance)
 			killMe(id.instance, id.doneCh, id.ac, &id.instanceWg)
 			id.shuttingDown = true

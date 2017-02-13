@@ -130,11 +130,11 @@ func (r StartFailureReason) IsFatal() bool {
 		InvalidPayload,
 		InvalidData,
 		ImageFailure,
+		LaunchFailure,
 		NetworkFailure:
 		return true
 
-	case LaunchFailure,
-		AlreadyRunning,
+	case AlreadyRunning,
 		InstanceExists:
 		return false
 	}
