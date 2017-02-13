@@ -25,9 +25,12 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"sync"
@@ -225,9 +228,15 @@ func main() {
 	wg.Add(1)
 	go ctl.startImageService()
 
-	host := clusterConfig.Configure.Controller.ControllerFQDN
-	if host == "" {
-		host, _ = os.Hostname()
+	host, err := getControllerFQDNFromCert(*cert)
+	if err != nil {
+		glog.Infof("Unable to determine hostname from controller certificate %s: %s", *cert, err)
+
+		host, err = os.Hostname()
+		if err != nil {
+			glog.Fatal("Unable to determine hostname from OS: ", err)
+			return
+		}
 	}
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
@@ -285,4 +294,34 @@ func (c *controller) startCiaoService() error {
 	}
 
 	return nil
+}
+
+func getControllerFQDNFromCert(cert string) (string, error) {
+	bytesCert, err := ioutil.ReadFile(cert)
+	if err != nil {
+		return "", fmt.Errorf("couldn't read cert: %s", err)
+	}
+
+	blockCert, _ := pem.Decode(bytesCert)
+	if blockCert == nil {
+		return "", fmt.Errorf("couldn't decode cert")
+	}
+
+	parsedCert, err := x509.ParseCertificate(blockCert.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("couldn't parse cert: %s", err)
+	}
+
+	role := ssntp.GetRoleFromOIDs(parsedCert.UnknownExtKeyUsage)
+	if !role.IsController() {
+		return "", fmt.Errorf("expected certificate role ssntp.Controller, got role %s", role.String())
+	}
+
+	for _, host := range parsedCert.DNSNames {
+		if host != "" {
+			return host, nil
+		}
+	}
+
+	return "", fmt.Errorf("found no hostname in certificate")
 }

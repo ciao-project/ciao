@@ -377,7 +377,6 @@ const ConfigureYaml = `configure:
     volume_port: ` + VolumePort + `
     compute_port: ` + ComputePort + `
     ciao_port: ` + CiaoPort + `
-    compute_fqdn: ""
     compute_ca: ` + HTTPSCACert + `
     compute_cert: ` + HTTPSKey + `
     identity_user: ` + IdentityUser + `
