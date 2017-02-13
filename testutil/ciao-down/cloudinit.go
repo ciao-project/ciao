@@ -30,8 +30,8 @@ curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
 {{end -}}
 #cloud-config
 mounts:
- - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L", "0", "0"]
-{{if len .UIPath }} - [hostui, {{.UIPath}}, 9p, "trans=virtio,version=9p2000.L", "0", "0"]{{end}}
+ - [hostgo, {{.GoPath}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
+{{if len .UIPath }} - [hostui, {{.UIPath}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]{{end}}
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
@@ -253,7 +253,7 @@ curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
 {{end -}}
 #cloud-config
 mounts:
- - [hostgo, {{.GoPath}}, 9p, "trans=virtio,version=9p2000.L", "0", "0"]
+ - [hostgo, {{.GoPath}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
