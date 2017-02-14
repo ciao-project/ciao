@@ -34,7 +34,7 @@
       - /etc/pki/keystone
 
   - name: Create directories required by root
-    file: path=/etc/systemd/system state=directory owner=root group=root
+    file: path={{ item }} state=directory owner=root group=root
     with_items:
       - /etc/systemd
       - /etc/systemd/system
