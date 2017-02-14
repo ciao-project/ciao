@@ -35,9 +35,6 @@ mounts:
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
-     Acquire::http::Proxy "{{$.HTTPProxy}}";
-   path: /etc/apt/apt.conf
- - content: |
      [Service]
      Environment="HTTP_PROXY={{$.HTTPProxy}}"{{if len .HTTPSProxy}} "HTTPS_PROXY={{.HTTPSProxy}}{{end}}"{{if len .NoProxy}} "NO_PROXY={{.NoProxy}},singlevm{{end}}"
    path: /etc/systemd/system/docker.service.d/http-proxy.conf
@@ -61,6 +58,15 @@ write_files:
  - content: |
      deb https://apt.dockerproject.org/repo ubuntu-xenial main
    path: /etc/apt/sources.list.d/docker.list
+
+apt:
+{{- if len $.HTTPProxy }}
+  proxy: "{{$.HTTPProxy}}"
+{{- end}}
+{{- if len $.HTTPSProxy }}
+  https_proxy: "{{$.HTTPSProxy}}"
+{{- end}}
+package_upgrade: true
 
 runcmd:
  - echo "127.0.0.1 singlevm" >> /etc/hosts
@@ -107,10 +113,6 @@ runcmd:
 
  - curl -X PUT -d "Retrieving updated list of packages" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "ENV" .}}apt-get update
- - {{template "CHECK" .}}
-
- - curl -X PUT -d "Upgrading" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}apt-get upgrade -y
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Docker" 10.0.2.2:{{.HTTPServerPort}}
@@ -257,9 +259,6 @@ mounts:
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
-     Acquire::http::Proxy "{{$.HTTPProxy}}";
-   path: /etc/apt/apt.conf
- - content: |
      [Service]
      Environment="HTTP_PROXY={{$.HTTPProxy}}"{{if len .HTTPSProxy}} "HTTPS_PROXY={{.HTTPSProxy}}{{end}}"{{if len .NoProxy}} "NO_PROXY={{.NoProxy}},singlevm{{end}}"
    path: /etc/systemd/system/docker.service.d/http-proxy.conf
@@ -282,6 +281,15 @@ write_files:
  - content: |
      deb https://apt.dockerproject.org/repo ubuntu-xenial main
    path: /etc/apt/sources.list.d/docker.list
+
+apt:
+{{- if len $.HTTPProxy }}
+  proxy: "{{$.HTTPProxy}}"
+{{- end}}
+{{- if len $.HTTPSProxy }}
+  https_proxy: "{{$.HTTPSProxy}}"
+{{- end}}
+package_upgrade: true
 
 runcmd:
  - echo "127.0.0.1 singlevm" >> /etc/hosts
@@ -330,13 +338,8 @@ runcmd:
  - {{template "ENV" .}}curl -fsSL http://download.opensuse.org/repositories/home:clearlinux:preview:clear-containers-2.1/xUbuntu_16.04/Release.key | sudo apt-key add -
  - {{template "CHECK" .}}
 
-
  - curl -X PUT -d "Retrieving updated list of packages" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "ENV" .}}apt-get update
- - {{template "CHECK" .}}
-
- - curl -X PUT -d "Upgrading" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}apt-get upgrade -y
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Clear Containers Runtime" 10.0.2.2:{{.HTTPServerPort}}
