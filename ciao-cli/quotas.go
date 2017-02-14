@@ -71,6 +71,10 @@ func (cmd *quotasUpdateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *quotasUpdateCommand) run(args []string) error {
+	if !checkPrivilege() {
+		errorf("Updating quotas is only available for privileged users")
+	}
+
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
@@ -177,6 +181,9 @@ func (cmd *quotasListCommand) run(args []string) error {
 	if cmd.tenantID != "" {
 		url = fmt.Sprintf("%s/%s/quotas", url, cmd.tenantID)
 	} else {
+		if !checkPrivilege() {
+			errorf("Listing quotas for other tenants is for privileged users only")
+		}
 		url = fmt.Sprintf("%s/quotas", url)
 	}
 	ver := api.TenantsV1
