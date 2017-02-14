@@ -262,10 +262,15 @@ func (v *instanceTestState) expectStatsUpdate(t *testing.T, ovsCh <-chan interfa
 
 func (v *instanceTestState) deleteInstance(t *testing.T, ovsCh chan interface{},
 	cmdCh chan<- interface{}) bool {
+	return v.deleteInstanceEx(t, ovsCh, cmdCh, &insDeleteCmd{})
+}
+
+func (v *instanceTestState) deleteInstanceEx(t *testing.T, ovsCh chan interface{},
+	cmdCh chan<- interface{}, cmd *insDeleteCmd) bool {
 
 	v.errorCh = make(chan struct{})
 	select {
-	case cmdCh <- &insDeleteCmd{}:
+	case cmdCh <- cmd:
 	case <-time.After(time.Second):
 		t.Error("Timed out sending Stop command")
 		return false
@@ -678,12 +683,13 @@ func TestDeleteNoInstance(t *testing.T) {
 // We start the instance loop and then try to start an instance.  Our test virtualizer
 // closes the connected channel to indicate that the instance is running.  We then close
 // the monitorCloseCh channel informing the instanceLoop that the instance has dropped.
-// We then delete the instance.
+// This will cause a deleteCmd to appear on the state.ac.CmdCh.  We wait for the command
+// and then forward it to the instance.
 //
 // The instanceLoop and then instance should start correctly.  We should receive
-// a state change notification when we simulate the instances untimely demise.
-// The instance should then be deleted correctly and the instanceLoop should exit
-// cleanly.
+// a deleteCmd when we simulate the instances untimely demise.  After the command
+// has been forwarded the instance should then be deleted correctly and the
+// instanceLoop should exit cleanly.
 func TestLostInstance(t *testing.T) {
 	var wg sync.WaitGroup
 	cfg := standardCfg
@@ -691,15 +697,26 @@ func TestLostInstance(t *testing.T) {
 
 	close(state.monitorClosedCh)
 
-	if !waitForStateChange(t, ovsStopped, ovsCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
-	}
-
 	// This gets closed by the instanceLoop and so will become available
 	// in the deleteInstance select loop if we don't set it to nil.
 	state.monitorCh = nil
 
-	if !state.deleteInstance(t, ovsCh, cmdCh) {
+	timeout := time.After(time.Second * 5)
+	var cmd *cmdWrapper
+DONE:
+	for {
+		select {
+		case <-ovsCh:
+		case cmd = <-state.ac.cmdCh:
+			break DONE
+		case <-timeout:
+			t.Error("Timedout waiting for delete cmd")
+			shutdownInstanceLoop(doneCh, ovsCh, &wg, t)
+			t.FailNow()
+		}
+	}
+
+	if !state.deleteInstanceEx(t, ovsCh, cmdCh, cmd.cmd.(*insDeleteCmd)) {
 		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 

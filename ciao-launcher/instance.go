@@ -58,8 +58,9 @@ type insStartCmd struct {
 	rcvStamp time.Time
 }
 type insDeleteCmd struct {
-	suicide bool
-	running ovsRunningState
+	suicide         bool
+	skipDeleteEvent bool
+	running         ovsRunningState
 }
 type insMonitorCmd struct{}
 
@@ -92,10 +93,17 @@ There's always the possibility new commands will be received for the
 instance while it is waiting to be killed.  We'll just fail those.
 */
 
-func killMe(instance string, doneCh chan struct{}, ac *agentClient, wg *sync.WaitGroup) {
+func killMe(instance string, skipDeleteEvent bool, doneCh chan struct{},
+	ac *agentClient, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
-		cmd := &cmdWrapper{instance, &insDeleteCmd{suicide: true}}
+		cmd := &cmdWrapper{
+			instance,
+			&insDeleteCmd{
+				suicide:         true,
+				skipDeleteEvent: skipDeleteEvent,
+			},
+		}
 		select {
 		case ac.cmdCh <- cmd:
 		case <-doneCh:
@@ -119,7 +127,7 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 
 		if startErr.code != payloads.InstanceExists {
 			glog.Warningf("Unable to create VM instance: %s.  Killing it", id.instance)
-			killMe(id.instance, id.doneCh, id.ac, &id.instanceWg)
+			killMe(id.instance, true, id.doneCh, id.ac, &id.instanceWg)
 			id.shuttingDown = true
 		}
 		return
@@ -182,7 +190,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 
 	id.unmapVolumes()
 
-	if !cmd.suicide {
+	if !cmd.skipDeleteEvent {
 		id.sendInstanceDeletedEvent()
 		id.ovsCh <- &ovsStatusCmd{}
 	}
@@ -336,7 +344,8 @@ DONE:
 			id.statsTimer = nil
 			id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
 			id.st = nil
-			id.unmapVolumes()
+			killMe(id.instance, false, id.doneCh, id.ac, &id.instanceWg)
+			id.shuttingDown = true
 		case <-id.connectedCh:
 			id.logStartTrace()
 			id.connectedCh = nil
