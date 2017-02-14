@@ -150,6 +150,15 @@ var tests = []test{
 		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_id":"73a86d7e-93c0-480e-9c41-ab42f69b7799","image_name":"","config":"this will totally work!","defaults":[],"storage":null},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
 	},
 	{
+		"DELETE",
+		"/workloads/validID",
+		deleteWorkload,
+		"",
+		"application/x.ciao.v1.workloads",
+		http.StatusNoContent,
+		"null",
+	},
+	{
 		"GET",
 		"/tenants/test-tenant-id/quotas/",
 		listQuotas,
@@ -266,6 +275,10 @@ func (ts testCiaoService) UnMapAddress(string) error {
 func (ts testCiaoService) CreateWorkload(req types.Workload) (types.Workload, error) {
 	req.ID = "ba58f471-0735-4773-9550-188e2d012941"
 	return req, nil
+}
+
+func (ts testCiaoService) DeleteWorkload(tenant string, workload string) error {
+	return nil
 }
 
 func (ts testCiaoService) ListQuotas(tenantID string) []types.QuotaDetails {

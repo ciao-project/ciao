@@ -114,7 +114,7 @@ users:
 	wl := types.Workload{
 		ID:          uuid.Generate().String(),
 		TenantID:    tenantID,
-		Description: "testWorkload",
+		Description: fmt.Sprintf("Private workload for %s", tenantID),
 		FWType:      string(payloads.EFI),
 		VMType:      payloads.QEMU,
 		ImageID:     uuid.Generate().String(),
@@ -145,8 +145,8 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 		return
 	}
 
-	// add a new workload
 	err = addTestWorkload(tuuid.String())
+
 	return
 }
 
@@ -2736,6 +2736,40 @@ func TestGetMappedIPs(t *testing.T) {
 
 	// cleanup.
 	err = ds.DeletePool(pool.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDeleteWorkload(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	instance, err := addTestInstance(tenant, wls[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// attempt to delete this workload, should fail.
+	err = ds.DeleteWorkload(tenant.ID, wls[0].ID)
+	if err != types.ErrWorkloadInUse {
+		t.Fatal("Deleting an in use workload did not fail")
+	}
+
+	err = ds.DeleteInstance(instance.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// attempt to delete this workload, should pass
+	err = ds.DeleteWorkload(tenant.ID, wls[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}

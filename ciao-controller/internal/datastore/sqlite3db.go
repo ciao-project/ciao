@@ -831,8 +831,24 @@ func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resourc
 }
 
 // lock must be held by caller
+func (ds *sqliteDB) deleteWorkloadDefault(tx *sql.Tx, workloadID string) error {
+
+	_, err := tx.Exec("DELETE FROM workload_resources WHERE workload_id = ?", workloadID)
+
+	return err
+}
+
+// lock must be held by caller
 func (ds *sqliteDB) createWorkloadStorage(tx *sql.Tx, workloadID string, storage *types.StorageResource) error {
 	_, err := tx.Exec("INSERT INTO workload_storage (workload_id, volume_id, bootable, ephemeral, size, source_type, source_id, tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", workloadID, storage.ID, storage.Bootable, storage.Ephemeral, storage.Size, string(storage.SourceType), storage.SourceID, storage.Tag)
+
+	return err
+}
+
+// lock must be held by caller
+func (ds *sqliteDB) deleteWorkloadStorage(tx *sql.Tx, workloadID string) error {
+
+	_, err := tx.Exec("DELETE FROM workload_storage WHERE workload_id = ?", workloadID)
 
 	return err
 }
@@ -1133,6 +1149,47 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 		// update not supported yet.
 		tx.Rollback()
 		return errors.New("Workload Update not supported yet")
+	}
+
+	tx.Commit()
+	return nil
+}
+
+func (ds *sqliteDB) deleteWorkload(ID string) error {
+	db := ds.getTableDB("workload_template")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	err = ds.deleteWorkloadDefault(tx, ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = ds.deleteWorkloadStorage(tx, ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM workload_template WHERE id = ?", ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	filename := fmt.Sprintf("%s_config.yaml", ID)
+	path := filepath.Join(ds.workloadsPath, filename)
+	err = os.Remove(path)
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	tx.Commit()

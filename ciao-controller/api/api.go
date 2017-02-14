@@ -70,7 +70,8 @@ func errorResponse(err error) Response {
 	case types.ErrPoolNotFound,
 		types.ErrTenantNotFound,
 		types.ErrAddressNotFound,
-		types.ErrInstanceNotFound:
+		types.ErrInstanceNotFound,
+		types.ErrWorkloadNotFound:
 		return Response{http.StatusNotFound, nil}
 
 	case types.ErrQuota,
@@ -82,7 +83,8 @@ func errorResponse(err error) Response {
 		types.ErrInvalidPoolAddress,
 		types.ErrBadRequest,
 		types.ErrPoolEmpty,
-		types.ErrDuplicatePoolName:
+		types.ErrDuplicatePoolName,
+		types.ErrWorkloadInUse:
 		return Response{http.StatusForbidden, nil}
 
 	default:
@@ -496,6 +498,24 @@ func addWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, 
 	return Response{http.StatusCreated, resp}, nil
 }
 
+func deleteWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	ID := vars["workload_id"]
+
+	// if we have no tenant variable, then we are admin
+	tenantID, ok := vars["tenant"]
+	if !ok {
+		tenantID = "public"
+	}
+
+	err := c.DeleteWorkload(tenantID, ID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
 func listQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	tenantID, ok := vars["tenant"]
@@ -548,6 +568,7 @@ type Service interface {
 	MapAddress(poolName *string, instanceID string) error
 	UnMapAddress(ID string) error
 	CreateWorkload(req types.Workload) (types.Workload, error)
+	DeleteWorkload(tenantID string, workloadID string) error
 	ListQuotas(tenantID string) []types.QuotaDetails
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
 }
@@ -650,8 +671,16 @@ func Routes(config Config) *mux.Router {
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/workloads", Handler{context, addWorkload})
+	route = r.Handle("/workloads/{workload_id:"+uuid.UUIDRegex+"}", Handler{context, deleteWorkload})
+	route.Methods("DELETE")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/workloads", Handler{context, addWorkload})
 	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/workloads/{workload_id:"+uuid.UUIDRegex+"}", Handler{context, deleteWorkload})
+	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	// tenant quotas
