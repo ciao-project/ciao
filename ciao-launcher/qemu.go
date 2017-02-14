@@ -538,9 +538,15 @@ DONE:
 		}
 		switch cmd := cmd.(type) {
 		case virtualizerStopCmd:
-			err = q.ExecuteQuit(context.Background())
+			ctx, cancelFN := context.WithTimeout(context.Background(), time.Second*10)
+			err = q.ExecuteSystemPowerdown(ctx)
+			cancelFN()
 			if err != nil {
-				glog.Warningf("Failed to execute stop command: %v", err)
+				glog.Warningf("Failed to power down cleanly: %v", err)
+				err = q.ExecuteQuit(context.Background())
+				if err != nil {
+					glog.Warningf("Failed to execute quit instance: %v", err)
+				}
 			}
 		case virtualizerAttachCmd:
 			qmpAttach(cmd, q)

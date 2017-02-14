@@ -326,7 +326,7 @@ func TestGetAllInstances(t *testing.T) {
 // The instance should be started and scheduled, the DeleteAllInstances command should
 // succeed and GetAllInstances command should return 0 instances.
 func TestDeleteAllInstances(t *testing.T) {
-	const retryCount = 5
+	const retryCount = 15
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()

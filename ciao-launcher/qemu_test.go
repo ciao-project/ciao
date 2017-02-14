@@ -293,10 +293,13 @@ func TestQmpShutdown(t *testing.T) {
 		if !sc.Scan() {
 			t.Fatalf("power down command expected")
 		}
-		_, err := fmt.Fprintln(fd, `{ "return": {}}`)
+		_, err := fmt.Fprintln(fd, `{ "return": {}}
+{"timestamp": {"seconds": 1487084520, "microseconds": 332329}, "event": "SHUTDOWN"}
+		`)
 		if err != nil {
 			t.Fatalf("Unable to write to domain socket: %v", err)
 		}
+
 		return true
 	})
 }
