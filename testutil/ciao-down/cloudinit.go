@@ -273,7 +273,14 @@ write_files:
      printf "\n"
      printf "\n"
      printf "Your go code is at {{.GoPath}}\n"
-     printf "You can also edit your code on your host system"
+     printf "You can also edit your code on your host system \n"
+     printf "To build cc-oci-runtime from sources \n"
+     printf "git clone https://github.com/01org/cc-oci-runtime \n"
+     printf "cd cc-oci-runtime \n"
+     printf "./autogen.sh --with-cc-kernel=/usr/share/clear-containers/vmlinux.container --with-cc-image=/usr/share/clear-containers/clear-containers.img \n"
+     printf "make \n"
+     printf "make check \n"
+     printf "make install \n"
      printf "\n"
      printf "\n"
    path: /etc/update-motd.d/10-ciao-help-text
@@ -374,7 +381,11 @@ runcmd:
  - {{template "ENV" .}}apt-get install xorriso -y
  - {{template "CHECK" .}}
 
- - curl -X PUT -d "Auto removing unused components" 10.0.2.2:{{.HTTPServerPort}}
+ - curl -X PUT -d "Installing Clear Containers development tools" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "ENV" .}}apt-get install build-essential python zlib1g-dev libcap-ng-dev libglib2.0-dev libpixman-1-dev libattr1-dev libcap-dev autoconf libtool libjson-glib-dev uuid-dev check bats libdevmapper-dev file apt-utils wget valgrind lcov libmnl-dev cppcheck libtap-formatter-html-perl -y
+ - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Auto removing unused development components" 10.0.2.2:{{.HTTPServerPort}}
  - {{template "ENV" .}}apt-get auto-remove -y
  - {{template "CHECK" .}}
 
