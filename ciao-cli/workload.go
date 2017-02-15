@@ -38,6 +38,7 @@ var workloadCommand = &command{
 	SubCommands: map[string]subCommand{
 		"list":   new(workloadListCommand),
 		"create": new(workloadCreateCommand),
+		"delete": new(workloadDeleteCommand),
 	},
 }
 
@@ -309,6 +310,60 @@ func (cmd *workloadCreateCommand) run(args []string) error {
 	}
 
 	fmt.Printf("Created new workload: %s\n", workload.Workload.ID)
+
+	return nil
+}
+
+type workloadDeleteCommand struct {
+	Flag     flag.FlagSet
+	workload string
+}
+
+func (cmd *workloadDeleteCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] workload delete [flags]
+
+Deletes a given workload
+
+The delete flags are:
+
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *workloadDeleteCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.workload, "workload", "", "Workload UUID")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *workloadDeleteCommand) run(args []string) error {
+	if cmd.workload == "" {
+		cmd.usage()
+	}
+
+	url, err := getCiaoWorkloadsResource()
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	ver := api.WorkloadsV1
+
+	// you should do a get first and search for the workload,
+	// then use the href - but not with the currently used
+	// OpenStack API. Until we support GET with a ciao API,
+	// just hard code the path.
+	url = fmt.Sprintf("%s/%s", url, cmd.workload)
+
+	resp, err := sendCiaoRequest("DELETE", url, nil, nil, &ver)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		fatalf("Workload deletion failed: %s", resp.Status)
+	}
 
 	return nil
 }
