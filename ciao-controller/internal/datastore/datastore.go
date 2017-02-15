@@ -131,6 +131,10 @@ type persistentStore interface {
 	addMappedIP(m types.MappedIP) error
 	deleteMappedIP(ID string) error
 	getMappedIPs() map[string]types.MappedIP
+
+	// quotas
+	updateQuotas(tenantID string, qds []types.QuotaDetails) error
+	getQuotas(tenantID string) ([]types.QuotaDetails, error)
 }
 
 // Datastore provides context for the datastore package.
@@ -2322,4 +2326,14 @@ users:
 
 	// for now we have a single global cnci workload.
 	ds.cnciWorkload = wl
+}
+
+// GetQuotas returns the set of quotas from the database without any caching.
+func (ds *Datastore) GetQuotas(tenantID string) ([]types.QuotaDetails, error) {
+	return ds.db.getQuotas(tenantID)
+}
+
+// UpdateQuotas updates the quotas for a tenant in the database.
+func (ds *Datastore) UpdateQuotas(tenantID string, qds []types.QuotaDetails) error {
+	return ds.db.updateQuotas(tenantID, qds)
 }

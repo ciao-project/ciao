@@ -38,6 +38,9 @@ const (
 
 	// WorkloadsV1 is the content-type string for v1 of our workloads resource
 	WorkloadsV1 = "x.ciao.workloads.v1"
+
+	// TenantsV1 is the content-type string for v1 of our tenants resource
+	TenantsV1 = "x.ciao.tenants.v1"
 )
 
 // HTTPErrorData represents the HTTP response body for
@@ -176,6 +179,21 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 		link.Href = fmt.Sprintf("%s/workloads", c.URL)
 	} else {
 		link.Href = fmt.Sprintf("%s/%s/workloads", c.URL, tenantID)
+	}
+
+	links = append(links, link)
+
+	// for the "tenants" resource
+	link = types.APILink{
+		Rel:        "tenants",
+		Version:    TenantsV1,
+		MinVersion: TenantsV1,
+	}
+
+	if !ok {
+		link.Href = fmt.Sprintf("%s/tenants", c.URL)
+	} else {
+		link.Href = fmt.Sprintf("%s/%s/tenants", c.URL, tenantID)
 	}
 
 	links = append(links, link)
@@ -478,6 +496,46 @@ func addWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, 
 	return Response{http.StatusCreated, resp}, nil
 }
 
+func listQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenantID, ok := vars["tenant"]
+
+	if !ok {
+		tenantID = vars["for_tenant"]
+	}
+
+	var resp types.QuotaListResponse
+	resp.Quotas = c.ListQuotas(tenantID)
+
+	return Response{http.StatusOK, resp}, nil
+}
+
+func updateQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenantID := vars["for_tenant"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	var req types.QuotaUpdateRequest
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	err = c.UpdateQuotas(tenantID, req.Quotas)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	var resp types.QuotaListResponse
+	resp.Quotas = c.ListQuotas(tenantID)
+
+	return Response{http.StatusCreated, resp}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -490,6 +548,8 @@ type Service interface {
 	MapAddress(poolName *string, instanceID string) error
 	UnMapAddress(ID string) error
 	CreateWorkload(req types.Workload) (types.Workload, error)
+	ListQuotas(tenantID string) []types.QuotaDetails
+	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -593,5 +653,21 @@ func Routes(config Config) *mux.Router {
 	route = r.Handle("/{tenant:[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[8|9|aA|bB][a-f0-9]{3}-?[a-f0-9]{12}}/workloads", Handler{context, addWorkload})
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
+
+	// tenant quotas
+	matchContent = fmt.Sprintf("application/(%s|json)", TenantsV1)
+
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/tenants/quotas", Handler{context, listQuotas})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/tenants/{for_tenant:"+uuid.UUIDRegex+"}/quotas", Handler{context, listQuotas})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/tenants/{for_tenant:"+uuid.UUIDRegex+"}/quotas", Handler{context, updateQuotas})
+	route.Methods("PUT")
+	route.HeadersRegexp("Content-Type", matchContent)
+
 	return r
 }

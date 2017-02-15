@@ -17,7 +17,6 @@ package datastore
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -32,6 +31,7 @@ import (
 	"github.com/01org/ciao/payloads"
 	"github.com/golang/glog"
 	sqlite3 "github.com/mattn/go-sqlite3"
+	"github.com/pkg/errors"
 )
 
 type sqliteDB struct {
@@ -478,6 +478,22 @@ func (d mappedIPData) Init() error {
 	return d.ds.exec(d.db, cmd)
 }
 
+type quotaData struct {
+	namedData
+}
+
+func (d quotaData) Init() error {
+	cmd := `CREATE TABLE IF NOT EXISTS quotas
+		(
+			tenant_id string,
+			name string,
+			value int,
+			unique(tenant_id, name)
+		);`
+
+	return d.ds.exec(d.db, cmd)
+}
+
 func (ds *sqliteDB) exec(db *sql.DB, cmd string) error {
 	glog.V(2).Info("exec: ", cmd)
 
@@ -584,6 +600,7 @@ func (ds *sqliteDB) init(config Config) error {
 		subnetPoolData{namedData{ds: ds, name: "subnet_pool", db: ds.db}},
 		addressData{namedData{ds: ds, name: "address_pool", db: ds.db}},
 		mappedIPData{namedData{ds: ds, name: "mapped_ips", db: ds.db}},
+		quotaData{namedData{ds: ds, name: "quotas", db: ds.db}},
 	}
 
 	ds.workloadsPath = config.InitWorkloadsPath
@@ -2686,4 +2703,56 @@ func (ds *sqliteDB) getMappedIPs() map[string]types.MappedIP {
 	}
 
 	return IPs
+}
+
+func (ds *sqliteDB) updateQuotas(tenantID string, qds []types.QuotaDetails) error {
+	datastore := ds.getTableDB("quotas")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	tx, err := datastore.Begin()
+	if err != nil {
+		return errors.Wrap(err, "error starting transaction for quota update")
+	}
+
+	for i := range qds {
+		_, err = tx.Exec("REPLACE INTO quotas (tenant_id, name, value) VALUES (?, ?, ?)", tenantID, qds[i].Name, qds[i].Value)
+		if err != nil {
+			tx.Rollback()
+			return errors.Wrap(err, "error executing query for quota update")
+		}
+	}
+
+	tx.Commit()
+
+	return nil
+}
+
+func (ds *sqliteDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
+	query := `SELECT name, value from quotas WHERE tenant_id = ?`
+
+	db := ds.getTableDB("quotas")
+
+	rows, err := db.Query(query, tenantID)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting quotas from database")
+	}
+	defer rows.Close()
+
+	results := []types.QuotaDetails{}
+	for rows.Next() {
+		var name string
+		var value int
+
+		err = rows.Scan(&name, &value)
+		if err != nil {
+			return nil, errors.Wrap(err, "error reading quota row from database")
+		}
+
+		q := types.QuotaDetails{Name: name, Value: value}
+		results = append(results, q)
+	}
+
+	return results, nil
 }

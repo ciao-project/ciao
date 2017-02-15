@@ -17,7 +17,10 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/01org/ciao/ciao-storage"
@@ -670,4 +673,74 @@ type MappedIPShort struct {
 type MapIPRequest struct {
 	PoolName   *string `json:"pool_name"`
 	InstanceID string  `json:"instance_id"`
+}
+
+// QuotaDetails holds information for updating and querying quotas
+type QuotaDetails struct {
+	Name  string
+	Value int
+	Usage int
+}
+
+// MarshalJSON provides a custom marshaller for quota API
+func (qd *QuotaDetails) MarshalJSON() ([]byte, error) {
+	var v string
+	if qd.Value == -1 {
+		v = "unlimited"
+	} else {
+		v = strconv.Itoa(qd.Value)
+	}
+
+	if strings.Contains(qd.Name, "limit") {
+		return json.Marshal(&struct {
+			Name  string `json:"name"`
+			Value string `json:"value"`
+		}{
+			Name:  qd.Name,
+			Value: v,
+		})
+	}
+
+	return json.Marshal(&struct {
+		Name  string `json:"name"`
+		Value string `json:"value"`
+		Usage string `json:"usage"`
+	}{
+		Name:  qd.Name,
+		Value: v,
+		Usage: strconv.Itoa(qd.Usage),
+	})
+}
+
+// UnmarshalJSON provides a custom demarshaller for quota API
+func (qd *QuotaDetails) UnmarshalJSON(data []byte) error {
+	tmp := struct {
+		Name  string `json:"name"`
+		Value string `json:"value"`
+		Usage string `json:"usage"`
+	}{}
+
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+
+	qd.Name = tmp.Name
+	if tmp.Value == "unlimited" {
+		qd.Value = -1
+	} else {
+		qd.Value, _ = strconv.Atoi(tmp.Value)
+	}
+	qd.Usage, _ = strconv.Atoi(tmp.Usage)
+	return nil
+}
+
+// QuotaUpdateRequest holds the layout for updating quota API
+type QuotaUpdateRequest struct {
+	Quotas []QuotaDetails `json:"quotas"`
+}
+
+// QuotaListResponse holds the layout for returning quotas in the API
+type QuotaListResponse struct {
+	Quotas []QuotaDetails `json:"quotas"`
 }

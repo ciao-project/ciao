@@ -117,7 +117,7 @@ func RunCIAOCLI(ctx context.Context, tenant string, args []string) ([]byte, erro
 	}
 
 	if tenant != "" {
-		args = append([]string{"-tenant", tenant}, args...)
+		args = append([]string{"-tenant-id", tenant}, args...)
 	}
 
 	data, err := exec.CommandContext(ctx, "ciao-cli", args...).Output()
@@ -163,7 +163,7 @@ func RunCIAOCLIAsAdmin(ctx context.Context, tenant string, args []string) ([]byt
 	}
 
 	if tenant != "" {
-		args = append([]string{"-tenant", tenant}, args...)
+		args = append([]string{"-tenant-id", tenant}, args...)
 	}
 
 	env := os.Environ()
@@ -222,6 +222,21 @@ func GetAllTenants(ctx context.Context) ([]*Tenant, error) {
 
 	args := []string{"tenant", "list", "-all", "-f", "{{tojson .}}"}
 	err := RunCIAOCLIAsAdminJS(ctx, "", args, &tenants)
+	if err != nil {
+		return nil, err
+	}
+
+	return tenants, nil
+}
+
+// GetUserTenants retrieves a list of all the tenants the current user has
+// access to. An error will be returned if the following environment variables
+// are not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func GetUserTenants(ctx context.Context) ([]*Tenant, error) {
+	var tenants []*Tenant
+
+	args := []string{"tenant", "list", "-f", "{{tojson .}}"}
+	err := RunCIAOCLIJS(ctx, "", args, &tenants)
 	if err != nil {
 		return nil, err
 	}
