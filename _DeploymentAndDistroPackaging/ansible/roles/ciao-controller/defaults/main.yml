@@ -89,6 +89,3 @@ clear_cloud_image_url: https://download.clearlinux.org/releases/11960/clear/clea
 
 # Clearlinux cloud image file name
 clear_cloud_image: "{{ clear_cloud_image_url.split('/') | last | regex_replace('(.*).xz', '\\1') }}"
-
-# URL for OVMF firmware
-firmware_image_url: https://download.clearlinux.org/image/OVMF.fd
