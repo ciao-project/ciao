@@ -59,8 +59,8 @@ fi
 # Variables for ciao binaries
 export CIAO_DEMO_PATH="$ciao_bin"
 export CIAO_CONTROLLER="$ciao_host"
-export CIAO_USERNAME="$ciao_username"
-export CIAO_PASSWORD="$ciao_password"
+export CIAO_USERNAME="$ciao_demo_username"
+export CIAO_PASSWORD="$ciao_demo_password"
 export CIAO_ADMIN_USERNAME="$ciao_admin_username"
 export CIAO_ADMIN_PASSWORD="$ciao_admin_password"
 export CIAO_CA_CERT_FILE="$ciao_bin"/"CAcert-""$ciao_host"".pem"
@@ -717,6 +717,12 @@ while : ; do
     break
 done
 
+# become admin for now.
+ciao_user=$CIAO_USERNAME
+ciao_passwd=$CIAO_PASSWORD
+export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
+export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
+
 echo ""
 echo "Uploading test images to image service"
 echo "---------------------------------------------------------------------------------------"
@@ -741,11 +747,6 @@ fi
 echo ""
 echo "Creating public test workloads"
 echo "---------------------------------------------------------------------------------------"
-# become admin for now.
-ciao_user=$CIAO_USERNAME
-ciao_passwd=$CIAO_PASSWORD
-export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
-export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
 createWorkloads
 export CIAO_USERNAME=$ciao_user
 export CIAO_PASSWORD=$ciao_password
