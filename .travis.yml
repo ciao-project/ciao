@@ -6,7 +6,7 @@ services:
 
 go:
     - 1.7
-    - go1.8beta2
+    - 1.8
     - tip
 
 env:
