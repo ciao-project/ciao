@@ -31,8 +31,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const ciaoAPIPort = 8889
-
 // HTTPErrorData represents the HTTP response body for
 // a compute API request error.
 type HTTPErrorData struct {
@@ -65,47 +63,6 @@ func errorResponse(err error) APIResponse {
 	default:
 		return APIResponse{http.StatusInternalServerError, nil}
 	}
-}
-
-// APIHandler is a custom handler for the compute APIs.
-// This custom handler allows us to more cleanly return an error and response,
-// and pass some package level context into the handler.
-type APIHandler struct {
-	*controller
-	Handler     func(*controller, http.ResponseWriter, *http.Request) (APIResponse, error)
-	ContentType string
-}
-
-func (h APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.Handler(h.controller, w, r)
-	if err != nil {
-		data := HTTPErrorData{
-			Code:    resp.status,
-			Name:    http.StatusText(resp.status),
-			Message: err.Error(),
-		}
-
-		code := HTTPReturnErrorCode{
-			Error: data,
-		}
-
-		b, err := json.Marshal(code)
-		if err != nil {
-			http.Error(w, http.StatusText(resp.status), resp.status)
-		}
-
-		http.Error(w, string(b), resp.status)
-	}
-
-	b, err := json.Marshal(resp.response)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError),
-			http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", h.ContentType)
-	w.WriteHeader(resp.status)
-	w.Write(b)
 }
 
 type pagerFilterType uint8
