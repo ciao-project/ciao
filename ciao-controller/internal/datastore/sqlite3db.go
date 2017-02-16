@@ -299,15 +299,14 @@ func (d workloadResourceData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS workload_resources
 		(
 		workload_id varchar(32),
-		resource_id int,
+		resource_type string,
 		default_value int,
 		estimated_value int,
 		mandatory int,
-		foreign key(workload_id) references workload_template(id),
-		foreign key(resource_id) references resources(id)
+		foreign key(workload_id) references workload_template(id)
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS wlr_index
-		ON workload_resources(workload_id, resource_id);`
+		ON workload_resources(workload_id, resource_type);`
 
 	return d.ds.exec(d.db, cmd)
 }
@@ -761,10 +760,8 @@ func (ds *sqliteDB) getConfig(ID string) (string, error) {
 }
 
 func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource, error) {
-	query := `SELECT resources.name, default_value, mandatory FROM workload_resources
-		  JOIN resources
-		  ON workload_resources.resource_id=resources.id
-		  WHERE workload_id = ?`
+	query := `SELECT resource_type, default_value, mandatory FROM workload_resources
+	     WHERE workload_id = ? ORDER BY resource_type `
 
 	db := ds.getTableDB("workload_resources")
 
@@ -823,9 +820,9 @@ func (ds *sqliteDB) getResources(tx *sql.Tx) (map[string]int, error) {
 }
 
 // lock must be held by caller
-func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resourceID int, resource payloads.RequestedResource) error {
+func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resource payloads.RequestedResource) error {
 
-	_, err := tx.Exec("INSERT INTO workload_resources (workload_id, resource_id, default_value, estimated_value, mandatory) VALUES (?, ?, ?, ?, ?)", workloadID, resourceID, resource.Value, resource.Value, resource.Mandatory)
+	_, err := tx.Exec("INSERT INTO workload_resources (workload_id, resource_type, default_value, estimated_value, mandatory) VALUES (?, ?, ?, ?, ?)", workloadID, string(resource.Type), resource.Value, resource.Value, resource.Mandatory)
 
 	return err
 }
@@ -1086,18 +1083,12 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 		return err
 	}
 
-	resources, err := ds.getResources(tx)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
 	// if this is a new workload, put it in, otherwise just update.
 	_, ok := m[w.ID]
 	if !ok {
 		// add in workload resources
 		for _, d := range w.Defaults {
-			err := ds.createWorkloadDefault(tx, w.ID, resources[string(d.Type)], d)
+			err := ds.createWorkloadDefault(tx, w.ID, d)
 			if err != nil {
 				tx.Rollback()
 				return err
