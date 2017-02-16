@@ -794,32 +794,6 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 }
 
 // lock must be held by caller
-func (ds *sqliteDB) getResources(tx *sql.Tx) (map[string]int, error) {
-	m := make(map[string]int)
-
-	query := `SELECT id, name from resources`
-
-	rows, err := tx.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var id int
-		var name string
-		err := rows.Scan(&id, &name)
-		if err != nil {
-			return nil, err
-		}
-
-		m[name] = id
-	}
-
-	return m, nil
-}
-
-// lock must be held by caller
 func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resource payloads.RequestedResource) error {
 
 	_, err := tx.Exec("INSERT INTO workload_resources (workload_id, resource_type, default_value, estimated_value, mandatory) VALUES (?, ?, ?, ?, ?)", workloadID, string(resource.Type), resource.Value, resource.Value, resource.Mandatory)
