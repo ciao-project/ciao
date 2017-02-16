@@ -31,7 +31,6 @@
       - /var/lib/ciao/images
       - /etc/pki
       - /etc/pki/ciao
-      - /etc/pki/keystone
 
   - name: Create directories required by root
     file: path={{ item }} state=directory owner=root group=root

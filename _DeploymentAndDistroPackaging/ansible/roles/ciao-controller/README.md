@@ -28,7 +28,6 @@ secret_path | /etc/ceph/ceph.client.admin.keyring| Path to ceph user keyring
 cnci_image_url | [clear-8260-ciao-networking.img.xz](https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz) | URL for the latest ciao networking image
 clear_cloud_image_url | [clear-11960-cloud.img.xz](https://download.clearlinux.org/releases/11960/clear/clear-11960-cloud.img.xz) | URL for the latest clearlinux cloud image
 fedora_cloud_image_url | [Fedora-Cloud-Base-24-1.2.x86_64.qcow2](https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2) | URL for the latest fedora cloud image
-firmware_image_url | [OVMF.fd](https://download.clearlinux.org/image/OVMF.fd) | URL for OVMF firmware
 
 ## Dependencies
 * [ciao-common](../ciao-common)

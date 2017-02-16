@@ -7,7 +7,11 @@ Ansible role to install the compute or network node for a CIAO cluster
 * xorriso
 
 ## Role Variables
-The available variables for this roles are the variables from [ciao-common](../ciao-common)
+The available variables for this roles are the variables from [ciao-common](../ciao-common) plus the following:
+
+Variable  | Default Value | Description
+--------  | ------------- | -----------
+firmware_image_url | [OVMF.fd](https://download.clearlinux.org/image/OVMF.fd) | URL for OVMF firmware
 
 ## Dependencies
 * [ciao-common](../ciao-common)
@@ -16,14 +20,10 @@ The available variables for this roles are the variables from [ciao-common](../c
 file *ciao.yml*
 ```
 - hosts: computes
-  vars:
-    ciao_role: compute
   roles:
     - clearlinux.ciao-launcher
 
 - hosts: networks
-  vars:
-    ciao_role: network
   roles:
     - clearlinux.ciao-launcher
 ```

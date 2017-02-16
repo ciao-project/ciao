@@ -15,8 +15,6 @@
 
   - hosts: computes
     become: yes
-    vars:
-      ciao_role: compute
     roles:
       - docker
       - ciao-launcher
