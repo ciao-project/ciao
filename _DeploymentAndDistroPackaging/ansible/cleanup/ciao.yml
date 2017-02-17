@@ -67,8 +67,6 @@
         - ciao-network.service
         - ciao-compute.service
         - ciao-launcher.service
-        - docker.service
-        - docker-cor.service
       ignore_errors: yes
 
     - name: Remove CIAO Service files
@@ -121,7 +119,6 @@
             - xorriso
             - qemu-system-x86
             - psmisc
-            - docker-engine
             - ciao-common
 
         - name: Uninstall dependencies (Fedora)
@@ -134,7 +131,6 @@
         - xorriso
         - qemu-system-x86
         - psmisc
-        - docker.io
         - ciao-common
       when: ansible_os_family == "Debian"
 
@@ -144,10 +140,7 @@
           with_items:
             - cloud-control
             - kvm-host
-            - containers-basic
-            - kernel-container
             - storage-cluster
-            - storage-utils
           args:
             removes: /usr/share/clear/bundles/{{ item }}
       when: ansible_os_family == "Clear linux software for intel architecture"
