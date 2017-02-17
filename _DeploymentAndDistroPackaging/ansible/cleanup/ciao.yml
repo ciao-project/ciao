@@ -22,6 +22,7 @@
         - ../openrc
         - ../admin-ciaorc
         - ../demo-ciaorc
+        - ../bat-ciaorc
         - ../clouds.yaml
         - ../certificates
         - ../images/.cnci_ready
