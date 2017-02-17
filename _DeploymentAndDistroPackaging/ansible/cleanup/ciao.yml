@@ -17,15 +17,15 @@
   connection: local
   tasks:
     - name: Remove local files
-      local_action: file path={{ item }} state=absent
+      file: path={{ item }} state=absent
       with_items:
-        - ./openrc
-        - ./admin-ciaorc
-        - ./demo-ciaorc
-        - ./clouds.yaml
-        - ./certificates
-        - ./images/.cnci_ready
-        - ./fetch
+        - ../openrc
+        - ../admin-ciaorc
+        - ../demo-ciaorc
+        - ../clouds.yaml
+        - ../certificates
+        - ../images/.cnci_ready
+        - ../fetch
         - /tmp/go
 
 - hosts: controllers
