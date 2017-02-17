@@ -154,8 +154,10 @@ func RunCIAOCLIJS(ctx context.Context, tenant string, args []string, jsdata inte
 // RunCIAOCLIAsAdmin execs the ciao-cli command as the admin user with a set of
 // provided arguments.  The ciao-cli process will be killed if the context is
 // Done.  An error will be returned if the following environment are not set;
-// CIAO_IDENTITY,  CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
-// On success the data written to ciao-cli on stdout will be returned.
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.  In
+// environments with multiple admin tenants CIAO_ADMIN_TENANT_NAME will be used
+// to select the tenant.  On success the data written to ciao-cli on stdout will
+// be returned.
 func RunCIAOCLIAsAdmin(ctx context.Context, tenant string, args []string) ([]byte, error) {
 	vars := []string{"CIAO_IDENTITY", "CIAO_CONTROLLER", "CIAO_ADMIN_USERNAME", "CIAO_ADMIN_PASSWORD"}
 	if err := checkEnv(vars); err != nil {
@@ -170,7 +172,8 @@ func RunCIAOCLIAsAdmin(ctx context.Context, tenant string, args []string) ([]byt
 	envCopy := make([]string, 0, len(env))
 	for _, v := range env {
 		if !strings.HasPrefix(v, "CIAO_USERNAME=") &&
-			!strings.HasPrefix(v, "CIAO_PASSWORD=") {
+			!strings.HasPrefix(v, "CIAO_PASSWORD=") &&
+			!strings.HasPrefix(v, "CIAO_TENANT_NAME=") {
 			envCopy = append(envCopy, v)
 		}
 	}
@@ -178,6 +181,10 @@ func RunCIAOCLIAsAdmin(ctx context.Context, tenant string, args []string) ([]byt
 		os.Getenv("CIAO_ADMIN_USERNAME")))
 	envCopy = append(envCopy, fmt.Sprintf("CIAO_PASSWORD=%s",
 		os.Getenv("CIAO_ADMIN_PASSWORD")))
+	if adminTenantName, ok := os.LookupEnv("CIAO_ADMIN_TENANT_NAME"); ok {
+		envCopy = append(envCopy, fmt.Sprintf("CIAO_TENANT_NAME=%s",
+			adminTenantName))
+	}
 
 	cmd := exec.CommandContext(ctx, "ciao-cli", args...)
 	cmd.Env = envCopy
