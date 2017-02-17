@@ -39,3 +39,4 @@
 
   - name: Copy OVMF firmware
     copy: src=images/OVMF.fd dest=/usr/share/qemu/OVMF.fd
+    when: "'Clear linux' not in ansible_os_family"
