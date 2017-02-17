@@ -55,6 +55,35 @@
 - hosts: controllers
   become: yes
   tasks:
+    - block:
+        - name: List rbds
+          command: rbd ls
+          register: rbds
+          changed_when: false
+
+        - name: List snapshots
+          command: rbd snap ls {{ item }}
+          with_items: "{{ rbds.stdout_lines }}"
+          register: rbds_snaps
+          changed_when: false
+
+        - name: Unprotect snapshots
+          command: rbd snap unprotect {{ item.cmd[3] }}@ciao-image
+          with_items: "{{ rbds_snaps.results }}"
+          when: "{{ 'ciao-image' in item.stdout }}"
+          register: unprotect
+          changed_when: "unprotect.rc == 0"
+
+        - name: Remove snapshots
+          command: rbd snap purge {{ item.cmd[3] }}
+          with_items: "{{ rbds_snaps.results }}"
+          when: "{{ 'ciao-image' in item.stdout }}"
+
+        - name: Remove rbds
+          command: rbd rm {{ item }}
+          with_items: "{{ rbds.stdout_lines }}"
+      ignore_errors: yes
+
     - name: Stop docker containers
       docker_container: name={{ item }} state=absent
       ignore_errors: yes
