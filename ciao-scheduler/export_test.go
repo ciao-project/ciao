@@ -16,10 +16,6 @@
 
 package main
 
-type SsntpSchedulerServer ssntpSchedulerServer
-type NodeStat nodeStat
-type WorkResources workResources
-
 var PickComputeNode = pickComputeNode
 var PickNetworkNode = pickNetworkNode
 
@@ -30,5 +26,4 @@ var DisconnectComputeNode = disconnectComputeNode
 var ConnectNetworkNode = connectNetworkNode
 var DisconnectNetworkNode = disconnectNetworkNode
 
-var StartWorkload = startWorkload
 var GetWorkloadAgentUUID = getWorkloadAgentUUID
