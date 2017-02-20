@@ -254,6 +254,9 @@ func (client *ssntpClient) startFailure(payload []byte) {
 		glog.Warningf("Error unmarshalling StartFailure: %v", err)
 		return
 	}
+	if failure.Reason.IsFatal() {
+		client.deleteEphemeralStorage(failure.InstanceUUID)
+	}
 	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason)
 	if err != nil {
 		glog.Warningf("Error adding StartFailure to datastore: %v", err)
