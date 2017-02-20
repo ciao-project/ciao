@@ -32,6 +32,13 @@ import (
 	"github.com/01org/ciao/qemu"
 )
 
+// Download Parameters
+
+const (
+	friendlyNameParam = "name"
+	urlParam          = "url"
+)
+
 func bootVM(ctx context.Context, ws *workspace, memGB, CPUs int) error {
 	disconnectedCh := make(chan struct{})
 	socket := path.Join(ws.instanceDir, "socket")
@@ -141,7 +148,35 @@ func statusVM(ctx context.Context, instanceDir, keyPath string) {
 	w.Flush()
 }
 
-func startHTTPServer(listener net.Listener, errCh chan error) {
+func serveLocalFile(ctx context.Context, ciaoDir string, w http.ResponseWriter,
+	r *http.Request) {
+	params := r.URL.Query()
+	URL := params.Get(urlParam)
+
+	path, err := downloadFile(ctx, URL, ciaoDir, func(progress) {})
+	if err != nil {
+		// May not be the correct error code but the error message is only going
+		// to end up in cloud-init's logs.
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, err = io.Copy(w, f)
+	_ = f.Close()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to copy %s : %v", friendlyNameParam, err),
+			http.StatusInternalServerError)
+		return
+	}
+}
+
+func startHTTPServer(ctx context.Context, ciaoDir string, listener net.Listener,
+	errCh chan error) {
 	finished := false
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var b bytes.Buffer
@@ -163,6 +198,10 @@ func startHTTPServer(listener net.Listener, errCh chan error) {
 		}
 	})
 
+	http.HandleFunc("/download", func(w http.ResponseWriter, r *http.Request) {
+		serveLocalFile(ctx, ciaoDir, w, r)
+	})
+
 	server := &http.Server{}
 	go func() {
 		_ = server.Serve(listener)
@@ -174,7 +213,7 @@ func startHTTPServer(listener net.Listener, errCh chan error) {
 	}()
 }
 
-func manageInstallation(ctx context.Context, instanceDir string, ws *workspace) error {
+func manageInstallation(ctx context.Context, ciaoDir, instanceDir string, ws *workspace) error {
 	socket := path.Join(instanceDir, "socket")
 	disconnectedCh := make(chan struct{})
 
@@ -205,7 +244,7 @@ func manageInstallation(ctx context.Context, instanceDir string, ws *workspace) 
 	}
 
 	errCh := make(chan error)
-	startHTTPServer(listener, errCh)
+	startHTTPServer(ctx, ciaoDir, listener, errCh)
 	select {
 	case <-ctx.Done():
 		_ = listener.Close()
