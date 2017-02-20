@@ -54,7 +54,7 @@ func TestAddShowDelete(t *testing.T) {
 	}
 
 	if img.ID == "" || img.Name != name || img.Status != "active" ||
-		img.Visibility != "public" || img.Protected {
+		img.Visibility != "private" || img.Protected {
 		t.Errorf("Meta data of added image is incorrect")
 	}
 
@@ -132,7 +132,7 @@ func TestImageList(t *testing.T) {
 		foundNewImage = k == img.ID
 		if foundNewImage {
 			if newImg.ID == "" || newImg.Name != name || newImg.Status != "active" ||
-				newImg.Visibility != "public" || newImg.Protected {
+				newImg.Visibility != "private" || newImg.Protected {
 				t.Errorf("Meta data of added image is incorrect")
 			}
 			break
