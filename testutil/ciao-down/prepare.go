@@ -241,6 +241,18 @@ func createCloudInitISO(ctx context.Context, instanceDir string, userData, metaD
 	return qemu.CreateCloudInitISO(ctx, instanceDir, isoPath, userData, metaData)
 }
 
+func downloadFN(ws *workspace, URL, location string) string {
+	url := url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("10.0.2.2:%d", ws.HTTPServerPort),
+		Path:   "download",
+	}
+	q := url.Query()
+	q.Set(urlParam, URL)
+	url.RawQuery = q.Encode()
+	return fmt.Sprintf("wget %s -O %s", url.String(), location)
+}
+
 func buildISOImage(ctx context.Context, instanceDir string, ws *workspace, debug bool) error {
 	var tmpl string
 	if ws.vmType == CLEARCONTAINERS {
@@ -248,7 +260,12 @@ func buildISOImage(ctx context.Context, instanceDir string, ws *workspace, debug
 	} else {
 		tmpl = fmt.Sprintf(userDataTemplate, ws.RunCmd)
 	}
-	udt := template.Must(template.New("user-data").Parse(tmpl))
+
+	funcMap := template.FuncMap{
+		"download": downloadFN,
+	}
+
+	udt := template.Must(template.New("user-data").Funcs(funcMap).Parse(tmpl))
 	var udBuf bytes.Buffer
 	err := udt.Execute(&udBuf, ws)
 	if err != nil {
