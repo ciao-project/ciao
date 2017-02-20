@@ -82,9 +82,6 @@ func spinUpComputeNode(sched *ssntpSchedulerServer, ident int, RAM int) {
 func spinUpComputeNodeLarge(sched *ssntpSchedulerServer, ident int) {
 	spinUpComputeNode(sched, ident, 141312)
 }
-func spinUpComputeNodeSmall(sched *ssntpSchedulerServer, ident int) {
-	spinUpComputeNode(sched, ident, 16384)
-}
 func spinUpComputeNodeVerySmall(sched *ssntpSchedulerServer, ident int) {
 	spinUpComputeNode(sched, ident, 200)
 }
@@ -114,9 +111,6 @@ func spinUpNetworkNode(sched *ssntpSchedulerServer, ident int, RAM int, networks
 
 func spinUpNetworkNodeLarge(sched *ssntpSchedulerServer, ident int, networks []payloads.NetworkStat) {
 	spinUpNetworkNode(sched, ident, 141312, networks)
-}
-func spinUpNetworkNodeSmall(sched *ssntpSchedulerServer, ident int, networks []payloads.NetworkStat) {
-	spinUpNetworkNode(sched, ident, 16384, networks)
 }
 func spinUpNetworkNodeVerySmall(sched *ssntpSchedulerServer, ident int, networks []payloads.NetworkStat) {
 	spinUpNetworkNode(sched, ident, 200, networks)
