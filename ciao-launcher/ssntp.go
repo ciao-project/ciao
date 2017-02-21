@@ -110,7 +110,7 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 		}
 		client.cmdCh <- &cmdWrapper{cfg.Instance, &insStartCmd{cn, md, frame, cfg, time.Now()}}
 	case ssntp.DELETE:
-		instance, payloadErr := parseDeletePayload(payload)
+		instance, migration, payloadErr := parseDeletePayload(payload)
 		if payloadErr != nil {
 			deleteError := &deleteError{
 				payloadErr.err,
@@ -120,7 +120,7 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
 			return
 		}
-		client.cmdCh <- &cmdWrapper{instance, &insDeleteCmd{}}
+		client.cmdCh <- &cmdWrapper{instance, &insDeleteCmd{migration: migration}}
 	case ssntp.AttachVolume:
 		instance, volume, payloadErr := parseAttachVolumePayload(payload)
 		if payloadErr != nil {

@@ -279,6 +279,7 @@ reason: already_running
 const StopYaml = `stop:
   instance_uuid: ` + InstanceUUID + `
   workload_agent_uuid: ` + AgentUUID + `
+  migration: false
 `
 
 // StopFailureYaml is a sample workload StopFailure ssntp.Error payload for test cases
@@ -290,6 +291,7 @@ reason: already_stopped
 const DeleteYaml = `delete:
   instance_uuid: ` + InstanceUUID + `
   workload_agent_uuid: ` + AgentUUID + `
+  migration: false
 `
 
 // EvacuateYaml is a sample node EVACUATE ssntp.Command payload for test cases

@@ -309,12 +309,15 @@ func TestGenerateNetEventPayload(t *testing.T) {
 // The payload should parse without any error and the instance UUID in the
 // resulting payloads data structure should be as expected.
 func TestParseDeletePayload(t *testing.T) {
-	instance, err := parseDeletePayload([]byte(testutil.DeleteYaml))
+	instance, migration, err := parseDeletePayload([]byte(testutil.DeleteYaml))
 	if err != nil {
 		t.Fatalf("Failed to parse delete payload : %v", err.err)
 	}
 	if instance != testutil.InstanceUUID {
 		t.Errorf("Wrong instance UUID.  Expected %s found %s", instance,
 			testutil.InstanceUUID)
+	}
+	if migration {
+		t.Errorf("Expected migration to be false")
 	}
 }

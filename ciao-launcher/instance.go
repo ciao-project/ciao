@@ -61,6 +61,7 @@ type insDeleteCmd struct {
 	suicide         bool
 	skipDeleteEvent bool
 	running         ovsRunningState
+	migration       bool
 }
 type insMonitorCmd struct{}
 
@@ -93,7 +94,7 @@ There's always the possibility new commands will be received for the
 instance while it is waiting to be killed.  We'll just fail those.
 */
 
-func killMe(instance string, skipDeleteEvent bool, doneCh chan struct{},
+func killMe(instance string, skipDeleteEvent, migration bool, doneCh chan struct{},
 	ac *agentClient, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
@@ -102,6 +103,7 @@ func killMe(instance string, skipDeleteEvent bool, doneCh chan struct{},
 			&insDeleteCmd{
 				suicide:         true,
 				skipDeleteEvent: skipDeleteEvent,
+				migration:       migration,
 			},
 		}
 		select {
@@ -127,7 +129,7 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 
 		if startErr.code != payloads.InstanceExists {
 			glog.Warningf("Unable to create VM instance: %s.  Killing it", id.instance)
-			killMe(id.instance, true, id.doneCh, id.ac, &id.instanceWg)
+			killMe(id.instance, true, false, id.doneCh, id.ac, &id.instanceWg)
 			id.shuttingDown = true
 		}
 		return
@@ -149,7 +151,7 @@ func (id *instanceData) monitorCommand(cmd *insMonitorCmd) {
 	id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, true)
 }
 
-func (id *instanceData) sendInstanceDeletedEvent() {
+func (id *instanceData) sendInstanceDeletedEvent(migration bool) {
 	var event payloads.EventInstanceDeleted
 
 	event.InstanceDeleted.InstanceUUID = id.instance
@@ -160,7 +162,12 @@ func (id *instanceData) sendInstanceDeletedEvent() {
 		return
 	}
 
-	_, err = id.ac.conn.SendEvent(ssntp.InstanceDeleted, payload)
+	eventType := ssntp.InstanceDeleted
+	if migration {
+		eventType = ssntp.InstanceStopped
+	}
+
+	_, err = id.ac.conn.SendEvent(eventType, payload)
 	if err != nil {
 		glog.Errorf("Failed to send event command %v", err)
 		return
@@ -191,7 +198,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	id.unmapVolumes()
 
 	if !cmd.skipDeleteEvent {
-		id.sendInstanceDeletedEvent()
+		id.sendInstanceDeletedEvent(cmd.migration)
 		id.ovsCh <- &ovsStatusCmd{}
 	}
 	return true
@@ -344,7 +351,7 @@ DONE:
 			id.statsTimer = nil
 			id.ovsCh <- &ovsStateChange{id.instance, ovsStopped}
 			id.st = nil
-			killMe(id.instance, false, id.doneCh, id.ac, &id.instanceWg)
+			killMe(id.instance, false, true, id.doneCh, id.ac, &id.instanceWg)
 			id.shuttingDown = true
 		case <-id.connectedCh:
 			id.logStartTrace()

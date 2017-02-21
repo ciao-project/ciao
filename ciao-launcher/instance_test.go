@@ -60,9 +60,12 @@ type instanceTestState struct {
 	df              payloads.ErrorDeleteFailure
 	avf             payloads.ErrorAttachVolumeFailure
 	dvf             payloads.ErrorDetachVolumeFailure
+	deMigration     bool
+	de              payloads.EventInstanceDeleted
 	connect         bool
 	monitorCh       chan interface{}
 	errorCh         chan struct{}
+	eventCh         chan struct{}
 	monitorClosedCh chan struct{}
 	failStartVM     bool
 	ac              *agentClient
@@ -154,6 +157,25 @@ func (v *instanceTestState) SendError(error ssntp.Error, payload []byte) (int, e
 }
 
 func (v *instanceTestState) SendEvent(event ssntp.Event, payload []byte) (int, error) {
+	switch event {
+	case ssntp.InstanceDeleted:
+		v.deMigration = false
+		err := yaml.Unmarshal(payload, &v.de)
+		if err != nil {
+			v.t.Fatalf("Failed to unmarshall instanceDeleted event %v", err)
+		}
+	case ssntp.InstanceStopped:
+		v.deMigration = true
+		err := yaml.Unmarshal(payload, &v.de)
+		if err != nil {
+			v.t.Fatalf("Failed to unmarshall instanceDeleted event %v", err)
+		}
+	}
+
+	if v.eventCh != nil {
+		close(v.eventCh)
+	}
+
 	return 0, nil
 }
 
@@ -265,16 +287,9 @@ func (v *instanceTestState) deleteInstance(t *testing.T, ovsCh chan interface{},
 	return v.deleteInstanceEx(t, ovsCh, cmdCh, &insDeleteCmd{})
 }
 
-func (v *instanceTestState) deleteInstanceEx(t *testing.T, ovsCh chan interface{},
-	cmdCh chan<- interface{}, cmd *insDeleteCmd) bool {
-
-	v.errorCh = make(chan struct{})
-	select {
-	case cmdCh <- cmd:
-	case <-time.After(time.Second):
-		t.Error("Timed out sending Stop command")
-		return false
-	}
+func (v *instanceTestState) handleInstanceShutdown(t *testing.T, ovsCh chan interface{},
+	cmd *insDeleteCmd) bool {
+	statusReceived := false
 
 	for {
 		select {
@@ -285,11 +300,26 @@ func (v *instanceTestState) deleteInstanceEx(t *testing.T, ovsCh chan interface{
 		case ovsCmd := <-ovsCh:
 			switch ovsCmd.(type) {
 			case *ovsStatusCmd:
-				return true
+				statusReceived = true
+				if v.eventCh == nil {
+					return true
+				}
 			case *ovsStatsUpdateCmd:
 			default:
 				t.Error("Unexpected commands received on ovsCh")
 				return false
+			}
+		case <-v.eventCh:
+			v.eventCh = nil
+			if cmd.migration != v.deMigration {
+				t.Errorf("Incorrect delete event recevied")
+			}
+			if v.de.InstanceDeleted.InstanceUUID != v.instance {
+				t.Errorf("Delete event recevied for wrong instance.  Expected %s got %s",
+					v.instance, v.de.InstanceDeleted.InstanceUUID)
+			}
+			if statusReceived {
+				return true
 			}
 		case monCmd := <-v.monitorCh:
 			if _, stopCmd := monCmd.(virtualizerStopCmd); !stopCmd {
@@ -297,11 +327,29 @@ func (v *instanceTestState) deleteInstanceEx(t *testing.T, ovsCh chan interface{
 				return false
 			}
 			close(v.monitorClosedCh)
+			v.monitorCh = nil
 		case <-time.After(time.Second):
 			t.Error("Timed out waiting for ovsStatsUpdateCmd")
 			return false
 		}
 	}
+}
+
+func (v *instanceTestState) deleteInstanceEx(t *testing.T, ovsCh chan interface{},
+	cmdCh chan<- interface{}, cmd *insDeleteCmd) bool {
+
+	v.errorCh = make(chan struct{})
+	if !cmd.skipDeleteEvent {
+		v.eventCh = make(chan struct{})
+	}
+	select {
+	case cmdCh <- cmd:
+	case <-time.After(time.Second):
+		t.Error("Timed out sending Stop command")
+		return false
+	}
+
+	return v.handleInstanceShutdown(t, ovsCh, cmd)
 }
 
 func (v *instanceTestState) ClusterConfiguration() (payloads.Configure, error) {
@@ -747,6 +795,27 @@ func TestStartRunningInstance(t *testing.T) {
 	}
 
 	if !state.deleteInstance(t, ovsCh, cmdCh) {
+		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
+	}
+
+	wg.Wait()
+}
+
+// Check we the correct InstanceStopped event when migrating an instance.
+//
+// We start the instance loop and then try to start an instance.  Our test virtualizer
+// closes the connected channel to indicate that the instance is running.  We then
+// delete the instance setting the migration flag in the insDelCmd.
+//
+// The instanceLoop and then instance should start correctly.  The instance should
+// then be deleted correctly and the InstanceStopped ssntp event should be received.
+// The instanceLoop should exit cleanly.
+func TestMigrateInstance(t *testing.T) {
+	var wg sync.WaitGroup
+	cfg := standardCfg
+	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
+
+	if !state.deleteInstanceEx(t, ovsCh, cmdCh, &insDeleteCmd{migration: true}) {
 		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 

@@ -256,20 +256,20 @@ func generateNetEventPayload(ssntpEvent *libsnnet.SsntpEventInfo, agentUUID stri
 	return yaml.Marshal(event)
 }
 
-func parseDeletePayload(data []byte) (string, *payloadError) {
+func parseDeletePayload(data []byte) (string, bool, *payloadError) {
 	var clouddata payloads.Delete
 
 	err := yaml.Unmarshal(data, &clouddata)
 	if err != nil {
-		return "", &payloadError{err, payloads.DeleteInvalidPayload}
+		return "", false, &payloadError{err, payloads.DeleteInvalidPayload}
 	}
 
 	instance := strings.TrimSpace(clouddata.Delete.InstanceUUID)
 	if !uuidRegexp.MatchString(instance) {
 		err = fmt.Errorf("Invalid instance id received: %s", instance)
-		return "", &payloadError{err, payloads.DeleteInvalidData}
+		return "", false, &payloadError{err, payloads.DeleteInvalidData}
 	}
-	return instance, nil
+	return instance, clouddata.Delete.Migration, nil
 }
 
 func extractVolumeInfo(cmd *payloads.VolumeCmd, errString string) (string, string, *payloadError) {
