@@ -957,21 +957,8 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
-	switch reason {
-	case payloads.FullCloud,
-		payloads.FullComputeNode,
-		payloads.NoComputeNodes,
-		payloads.NoNetworkNodes,
-		payloads.InvalidPayload,
-		payloads.InvalidData,
-		payloads.ImageFailure,
-		payloads.NetworkFailure:
-
+	if reason.IsFatal() {
 		ds.deleteInstance(instanceID)
-
-	case payloads.LaunchFailure,
-		payloads.AlreadyRunning,
-		payloads.InstanceExists:
 	}
 
 	msg := fmt.Sprintf("Start Failure %s: %s", instanceID, reason.String())
