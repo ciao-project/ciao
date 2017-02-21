@@ -24,6 +24,7 @@ import (
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -110,6 +111,28 @@ func (client *ssntpClient) deleteEphemeralStorage(instanceID string) {
 	}
 }
 
+func (client *ssntpClient) releaseResources(instanceID string) error {
+	i, err := client.ctl.ds.GetInstance(instanceID)
+	if err != nil {
+		return errors.Wrapf(err, "error getting instance from datastore")
+	}
+
+	// CNCI resources are not quota tracked
+	if i.CNCI {
+		return nil
+	}
+
+	wl, err := client.ctl.ds.GetWorkload(i.TenantID, i.WorkloadID)
+	if err != nil {
+		return errors.Wrapf(err, "error getting workload for instance from datastore")
+	}
+
+	resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
+	resources = append(resources, wl.Defaults...)
+	client.ctl.qs.Release(i.TenantID, resources...)
+	return nil
+}
+
 func (client *ssntpClient) instanceDeleted(payload []byte) {
 	var event payloads.EventInstanceDeleted
 	err := yaml.Unmarshal(payload, &event)
@@ -118,6 +141,12 @@ func (client *ssntpClient) instanceDeleted(payload []byte) {
 		return
 	}
 	client.deleteEphemeralStorage(event.InstanceDeleted.InstanceUUID)
+
+	err = client.releaseResources(event.InstanceDeleted.InstanceUUID)
+	if err != nil {
+		glog.Warningf("Error when releasing resources for deleted instance: %v", err)
+	}
+
 	err = client.ctl.ds.DeleteInstance(event.InstanceDeleted.InstanceUUID)
 	if err != nil {
 		glog.Warningf("Error deleting instance from datastore: %v", err)
@@ -256,6 +285,10 @@ func (client *ssntpClient) startFailure(payload []byte) {
 	}
 	if failure.Reason.IsFatal() {
 		client.deleteEphemeralStorage(failure.InstanceUUID)
+		err = client.releaseResources(failure.InstanceUUID)
+		if err != nil {
+			glog.Warningf("Error when releasing resources for start failed instance: %v", err)
+		}
 	}
 	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason)
 	if err != nil {
