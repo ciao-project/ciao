@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/bin/ciao-controller --cacert=/etc/pki/ciao/CAcert-{{ ciao_controller_fqdn }}.pem \
                                    --cert=/etc/pki/ciao/cert-Controller-localhost.pem \
-                                   --logtostderr -v 2
+                                   --v 3
 Restart=always
 
 [Install]
