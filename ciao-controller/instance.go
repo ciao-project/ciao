@@ -119,9 +119,20 @@ func (i *instance) Add() error {
 }
 
 func (i *instance) Clean() error {
-	if i.CNCI == false {
-		i.ctl.ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
+	if i.CNCI {
+		// CNCI resources are not tracked by quota system
+		return nil
 	}
+
+	i.ctl.ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
+
+	wl, err := i.ctl.ds.GetWorkload(i.TenantID, i.WorkloadID)
+	if err != nil {
+		return errors.Wrap(err, "error getting workload from datastore")
+	}
+	resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
+	resources = append(resources, wl.Defaults...)
+	i.ctl.qs.Release(i.TenantID, resources...)
 
 	return nil
 }
@@ -152,7 +163,17 @@ func (i *instance) Allowed() (bool, error) {
 		}
 	}
 
-	return true, nil
+	wl, err := ds.GetWorkload(i.TenantID, i.WorkloadID)
+	if err != nil {
+		return true, errors.Wrap(err, "error getting workload from datastore")
+	}
+
+	resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
+	resources = append(resources, wl.Defaults...)
+	res := <-i.ctl.qs.Consume(i.TenantID, resources...)
+
+	// Cleanup on disallowed happens in Clean()
+	return res.Allowed(), nil
 }
 
 func (c *config) GetResources() map[string]int {
