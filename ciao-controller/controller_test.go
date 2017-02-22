@@ -1363,6 +1363,34 @@ func TestCreateVolume(t *testing.T) {
 	}
 }
 
+func TestCreateImageVolume(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	imageRef := "test-image-id"
+	req := block.RequestedVolume{
+		ImageRef: &imageRef,
+	}
+
+	vol, err := ctl.CreateVolume(tenant.ID, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm that we can retrieve the volume from
+	// the datastore.
+	bd, err := ctl.ds.GetBlockDevice(vol.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if bd.State != types.Available || bd.TenantID != tenant.ID || bd.Bootable == false {
+		t.Fatalf("incorrect volume information stored\n")
+	}
+}
+
 func TestDeleteVolume(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
