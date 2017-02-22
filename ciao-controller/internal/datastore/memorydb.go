@@ -33,9 +33,7 @@ type MemoryDB struct {
 	attachments     map[string]types.StorageAttachment
 	instanceVolumes map[attachment]string
 	logEntries      []*types.LogEntry
-	cnciWorkload    *types.Workload
 
-	tableInitPath string
 	workloadsPath string
 }
 
@@ -127,13 +125,6 @@ func (db *MemoryDB) clearLog() error {
 
 func (db *MemoryDB) getEventLog() ([]*types.LogEntry, error) {
 	return db.logEntries, nil
-}
-
-func (db *MemoryDB) getCNCIWorkloadID() (string, error) {
-	if db.cnciWorkload != nil {
-		return db.cnciWorkload.ID, nil
-	}
-	return "", fmt.Errorf("CNCI not found")
 }
 
 func (db *MemoryDB) addLimit(tenantID string, resourceID int, limit int) error {

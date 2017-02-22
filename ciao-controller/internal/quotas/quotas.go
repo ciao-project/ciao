@@ -30,7 +30,6 @@ type tenantData struct {
 	perInstanceVCPUs  int
 	perInstanceMemory int
 	perVolumeSize     int
-	perImageSize      int
 }
 
 // Quotas provides a quota and limit service
@@ -71,7 +70,6 @@ type result struct {
 	allowed   bool
 	reason    string
 	resources []payloads.RequestedResource
-	doneCh    chan struct{}
 }
 
 var supportedResources = [...]payloads.Resource{
