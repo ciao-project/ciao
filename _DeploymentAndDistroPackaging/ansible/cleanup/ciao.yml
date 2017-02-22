@@ -67,6 +67,18 @@
           register: rbds_snaps
           changed_when: false
 
+        - name: List childrens
+          command: rbd children {{ item.cmd[3] }}@ciao-image
+          with_items: "{{ rbds_snaps.results }}"
+          when: "{{ 'ciao-image' in item.stdout }}"
+          register: rbds_snaps_childs
+
+        - name: Remove childrens
+          command: "rbd rm {{ item[1] }}"
+          with_subelements:
+            - "{{ rbds_snaps_childs.results }}"
+            - stdout_lines
+
         - name: Unprotect snapshots
           command: rbd snap unprotect {{ item.cmd[3] }}@ciao-image
           with_items: "{{ rbds_snaps.results }}"
@@ -78,6 +90,11 @@
           command: rbd snap purge {{ item.cmd[3] }}
           with_items: "{{ rbds_snaps.results }}"
           when: "{{ 'ciao-image' in item.stdout }}"
+
+        - name: List remaining rbds
+          command: rbd ls
+          register: rbds
+          changed_when: false
 
         - name: Remove rbds
           command: rbd rm {{ item }}
