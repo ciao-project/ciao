@@ -17,13 +17,19 @@
 package basebat
 
 import (
+	"bytes"
 	"context"
 	"flag"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/01org/ciao/bat"
+	"golang.org/x/crypto/ssh"
+	"gopkg.in/yaml.v2"
 )
 
 const standardTimeout = time.Second * 300
@@ -309,6 +315,155 @@ func TestDeleteAllInstances(t *testing.T) {
 	if instancesFound != 0 {
 		t.Fatalf("0 instances expected.  Found %d", instancesFound)
 	}
+}
+
+//Launch and instance create form an image with a customized cloud init
+//creating the image, and workload
+
+func TestLaunchCustomeInstance(t *testing.T) {
+	//creating a new cirros image
+	const name = "cirros-image"
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	// TODO:  The only options currently supported by the image service are
+	// ID and Name.  This code needs to be updated when the image service's
+	// support for meta data improves.
+	options := bat.ImageOptions{
+		Name: name,
+	}
+	//downaload cirros image
+	ImageFile, err := os.Create("cirros-0.3.4-x86_64-disk.img")
+	if err != nil {
+		t.Fatalf("Error while creating image file %v", err)
+	}
+	defer ImageFile.Close()
+
+	resp, err := http.Get("http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img")
+	if err != nil {
+		t.Fatalf("Error while downloading image file %v", err)
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(ImageFile, resp.Body)
+
+	if err != nil {
+		t.Fatalf("Error while saving image file %v", err)
+	}
+
+	img, err := bat.AddImage(ctx, "", "cirros-0.3.4-x86_64-disk.img", &options)
+	if err != nil {
+		t.Fatalf("Unable to add image %v", err)
+	}
+
+	if img.ID == "" || img.Name != name || img.Status != "active" ||
+		img.Visibility != "public" || img.Protected {
+		t.Errorf("Meta data of added image is incorrect")
+	}
+	//get data to create workload yaml file
+	defaults := bat.DefaultResources{
+		VCPUs: 2,
+		MemMB: 128,
+	}
+
+	source := bat.Source{
+		Type: "image",
+		ID:   img.ID,
+	}
+	disk := bat.Disk{
+		Bootable:  true,
+		Source:    &source,
+		Ephemeral: true,
+	}
+
+	WL_opts := bat.WorkloadOptions{
+		Description:     "BAT VM Test",
+		VMType:          "qemu",
+		FWType:          "legacy",
+		Defaults:        defaults,
+		CloudConfigFile: "CirrosInit.yaml",
+		Disks:           []bat.Disk{disk},
+	}
+	y, err := yaml.Marshal(WL_opts)
+	if err != nil {
+		t.Fatalf("fail to read yaml file $v", err)
+	}
+	ioutil.WriteFile("CirrosWorkload.yaml", y, 0644)
+	ioutil.WriteFile("CirrosInit.yaml", []byte(vmCloudInit), 0644)
+
+	//create the workload
+	args := []string{"workload", "create", "-yaml", "CirrosWorkload.yaml"}
+	_, err = bat.RunCIAOCLIAsAdmin(ctx, "", args)
+	if err != nil {
+		t.Fatalf("Fail to create workload $v", err)
+	}
+	//Get ID of workload just created
+	CurWL, err := bat.GetWorkloadByName(ctx, "", WL_opts.Description)
+	if err != nil {
+		t.Fatalf("Can't find data for workload %v", err)
+	}
+	//Launch instance of that workload
+	instance, err := bat.LaunchInstances(ctx, "", CurWL.ID, 1)
+	if err != nil {
+		t.Fatalf("Fail to launch instance: $v", err)
+	}
+	_, err = bat.WaitForInstancesLaunch(ctx, "", instance, false)
+	if err != nil {
+		t.Errorf("Instance %s did not launch: %v", instance[0], err)
+	}
+	//Access the instances with the user and pasword specified in the could init file
+	config := &ssh.ClientConfig{
+		User: "ciaouser",
+		Auth: []ssh.AuthMethod{
+			ssh.Password("abc123"),
+		},
+	}
+	Template := `{{$x := filterContains . "Status" "active"}}{{range $x}}{{.SSHIP}}:{{.SSHPort}}{{end}}`
+	args_instance := []string{"instance", "list", "-f", Template}
+	InstanceIP, err := bat.RunCIAOCLIAsAdmin(ctx, "", args_instance)
+	if err != nil {
+		t.Fatalf("Fail to create get Instance's data $v", err)
+	}
+
+	client, err := ssh.Dial("tcp", InstanceIP, config)
+	if err != nil {
+		panic("Failed to dial: " + err.Error())
+	}
+	session, err := client.NewSession()
+	if err != nil {
+		panic("Failed to create session: " + err.Error())
+	}
+	defer session.Close()
+
+	var b bytes.Buffer
+	session.Stdout = &b
+	if err := session.Run("/usr/bin/whoami"); err != nil {
+		panic("Failed to run: " + err.Error())
+	}
+
+	//Delete cirros-0.3.4-x86_64-disk.img and yaml files
+	if _, err := os.Stat("CirrosWorkload.yaml"); err == nil {
+		os.Remove("CirrosWorkload.yaml")
+	}
+
+	if _, err := os.Stat("CirrosInit.yaml"); err == nil {
+		os.Remove("CirrosInit.yaml")
+	}
+	if _, err := os.Stat("cirros-0.3.4-x86_64-disk.img"); err == nil {
+		os.Remove("cirros-0.3.4-x86_64-disk.img")
+	}
+	//Delete all instances
+	_, err = bat.DeleteInstances(ctx, "", instance)
+	if err != nil {
+		t.Errorf("Failed to delete instance: %v", err)
+	}
+
+	//Delete Image
+	err = bat.DeleteImage(ctx, "", img.ID)
+	if err != nil {
+		t.Fatalf("Unable to delete image %v", err)
+	}
+
+	//Pending delete workload until function implemented
 }
 
 // TestMain ensures that all instances have been deleted when the tests finish.
