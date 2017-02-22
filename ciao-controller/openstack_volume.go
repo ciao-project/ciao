@@ -53,6 +53,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	if req.ImageRef != nil {
 		// create bootable volume
 		bd, err = c.CreateBlockDeviceFromSnapshot(*req.ImageRef, "ciao-image")
+		bd.Bootable = true
 	} else if req.SourceVolID != nil {
 		// copy existing volume
 		bd, err = c.CopyBlockDevice(*req.SourceVolID)
@@ -113,7 +114,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 		CreatedAt:   &data.CreateTime,
 		ID:          bd.ID,
 		Size:        data.Size,
-		Bootable:    strconv.FormatBool(req.ImageRef != nil),
+		Bootable:    strconv.FormatBool(data.Bootable),
 	}, nil
 }
 
