@@ -27,7 +27,7 @@
     file: path=/etc/ciao state=directory owner=ciao group=ciao
 
   - name: Create configuration file
-    template: dest=/etc/ciao/configuration.yaml src=configuration.yaml.j2 owner=ciao group=ciao
+    template: dest=/etc/ciao/configuration.yaml src=configuration.yaml.j2 owner=ciao group=ciao mode=0600
 
   - meta: flush_handlers
 
