@@ -307,7 +307,7 @@ func TestResponse(t *testing.T) {
 		req.Header.Set("Content-Type", tt.media)
 
 		rr := httptest.NewRecorder()
-		handler := Handler{context, tt.handler}
+		handler := Handler{context, tt.handler, false}
 
 		handler.ServeHTTP(rr, req)
 
