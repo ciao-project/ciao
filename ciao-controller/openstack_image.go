@@ -306,5 +306,6 @@ func (c *controller) startImageService() error {
 	// start service.
 	service := fmt.Sprintf(":%d", config.Port)
 	glog.Infof("Starting CIAO Image Service")
+	c.ready.Done()
 	return http.ListenAndServeTLS(service, config.HTTPSCACert, config.HTTPSKey, r)
 }

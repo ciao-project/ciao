@@ -35,6 +35,7 @@ import (
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/coreos/go-systemd/daemon"
 	"github.com/golang/glog"
 )
 
@@ -327,6 +328,8 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		defer shutdownNetwork()
 
 		ovsCh = startOverseer(&wg, client)
+		daemon.SdNotify(false, "READY=1")
+
 	case <-doneCh:
 		client.conn.Close()
 		<-dialCh

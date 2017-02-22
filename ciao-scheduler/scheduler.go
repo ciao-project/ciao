@@ -31,6 +31,7 @@ import (
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
+	"github.com/coreos/go-systemd/daemon"
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 )
@@ -1240,5 +1241,6 @@ func main() {
 		return
 	}
 
+	daemon.SdNotify(false, "READY=1")
 	sched.ssntp.Serve(sched.config, sched)
 }
