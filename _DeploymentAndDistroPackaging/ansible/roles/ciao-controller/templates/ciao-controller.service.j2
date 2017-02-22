@@ -7,6 +7,7 @@ Type=simple
 ExecStart=/usr/local/bin/ciao-controller --cacert=/etc/pki/ciao/CAcert-{{ ciao_controller_fqdn }}.pem \
                                    --cert=/etc/pki/ciao/cert-Controller-localhost.pem \
                                    --v 3
+User=ciao
 Restart=always
 
 [Install]
