@@ -450,6 +450,8 @@ func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 
 		result.Err = yaml.Unmarshal(payload, &traceEvent)
 	case ssntp.InstanceDeleted:
+		fallthrough
+	case ssntp.InstanceStopped:
 		var deleteEvent payloads.EventInstanceDeleted
 
 		result.Err = yaml.Unmarshal(payload, &deleteEvent)
@@ -696,6 +698,10 @@ func StartTestServer() *SsntpTestServer {
 			},
 			{ // all InstanceDeleted events go to all Controllers
 				Operand: ssntp.InstanceDeleted,
+				Dest:    ssntp.Controller,
+			},
+			{ // all InstanceDeleted events go to all Controllers
+				Operand: ssntp.InstanceStopped,
 				Dest:    ssntp.Controller,
 			},
 			{ // all ConcentratorInstanceAdded events go to all Controllers

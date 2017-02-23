@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -24,6 +25,8 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/openstack/compute"
@@ -505,26 +508,45 @@ func TestServerActionStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	serverCh := server.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.DELETE)
 
 	err = ctl.stopInstance(servers.Servers[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = server.GetCmdChanResult(serverCh, ssntp.STOP)
+	err = sendDeleteEvent(client, servers.Servers[0].ID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
-
-	sendStatsCmd(client, t)
-
-	time.Sleep(1 * time.Second)
+	_, err = server.GetCmdChanResult(serverCh, ssntp.DELETE)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action), true)
+}
+
+func sendDeleteEvent(client *testutil.SsntpTestClient, instanceUUID string, migration bool) error {
+	event := payloads.EventInstanceDeleted{
+		InstanceDeleted: payloads.InstanceDeletedEvent{
+			InstanceUUID: instanceUUID,
+		},
+	}
+	y, err := yaml.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("Unable to create InstanceStopped payload : %v", err)
+	}
+	clientEvtCh := wrappedClient.addEventChan(ssntp.InstanceStopped)
+	client.Ssntp.SendEvent(ssntp.InstanceStopped, y)
+	err = wrappedClient.getEventChan(clientEvtCh, ssntp.InstanceStopped)
+	if err != nil {
+		return fmt.Errorf("InstanceStopped event not received: %v", err)
+	}
+
+	return nil
 }
 
 func testListFlavors(t *testing.T, httpExpectedStatus int, data []byte, validToken bool) {

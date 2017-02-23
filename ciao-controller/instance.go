@@ -46,6 +46,11 @@ type instance struct {
 	startTime time.Time
 }
 
+type userData struct {
+	UUID     string `json:"uuid"`
+	Hostname string `json:"hostname"`
+}
+
 func isCNCIWorkload(workload *types.Workload) bool {
 	for r := range workload.Defaults {
 		if workload.Defaults[r].Type == payloads.NetworkNode {
@@ -72,6 +77,8 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		ID:         id.String(),
 		CNCI:       config.cnci,
 		IPAddress:  config.ip,
+		VnicUUID:   config.sc.Start.Networking.VnicUUID,
+		Subnet:     config.sc.Start.Networking.Subnet,
 		MACAddress: config.mac,
 		CreateTime: time.Now(),
 	}
@@ -261,12 +268,7 @@ func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s ty
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
 	volumes []storage.BlockDevice) (config, error) {
 
-	type UserData struct {
-		UUID     string `json:"uuid"`
-		Hostname string `json:"hostname"`
-	}
-
-	var userData UserData
+	var metaData userData
 	var config config
 
 	baseConfig := wl.Config
@@ -312,8 +314,8 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		networking.ConcentratorIP = tenant.CNCIIP
 
 		// set the hostname and uuid for userdata
-		userData.UUID = instanceID
-		userData.Hostname = instanceID
+		metaData.UUID = instanceID
+		metaData.Hostname = instanceID
 
 		// handle storage resources for just this instance
 		for _, volume := range volumes {
@@ -354,8 +356,8 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		networking.VnicMAC = tenant.CNCIMAC
 
 		// set the hostname and uuid for userdata
-		userData.UUID = instanceID
-		userData.Hostname = "cnci-" + tenantID
+		metaData.UUID = instanceID
+		metaData.Hostname = "cnci-" + tenantID
 	}
 
 	// handle storage resources in workload definition
@@ -398,7 +400,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		glog.Warning("error marshalling config: ", err)
 	}
 
-	b, err := json.MarshalIndent(userData, "", "\t")
+	b, err := json.MarshalIndent(metaData, "", "\t")
 	if err != nil {
 		glog.Warning("error marshalling user data: ", err)
 	}

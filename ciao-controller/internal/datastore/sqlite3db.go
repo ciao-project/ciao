@@ -121,6 +121,8 @@ func (d instanceData) Init() error {
 		tenant_id string,
 		workload_id string,
 		mac_address string,
+		vnic_uuid string,
+		subnet string,
 		ip string,
 		create_time DATETIME,
 		foreign key(tenant_id) references tenants(id),
@@ -1279,6 +1281,8 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 		latest.ssh_port as ssh_port,
 		IFNULL(latest.node_id, "Not Assigned") as node_id,
 		mac_address,
+		vnic_uuid,
+		subnet,
 		ip
 	FROM instances
 	LEFT JOIN latest
@@ -1298,7 +1302,7 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 
 		var sshPort sql.NullInt64
 
-		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &i.WorkloadID, &i.SSHIP, &sshPort, &i.NodeID, &i.MACAddress, &i.IPAddress)
+		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &i.WorkloadID, &i.SSHIP, &sshPort, &i.NodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
@@ -1356,6 +1360,8 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 		workload_id,
 		latest.node_id,
 		mac_address,
+		vnic_uuid,
+		subnet,
 		ip
 	FROM instances
 	LEFT JOIN latest
@@ -1379,7 +1385,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 
 		i := &types.Instance{}
 
-		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &sshIP, &sshPort, &i.WorkloadID, &nodeID, &i.MACAddress, &i.IPAddress)
+		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &sshIP, &sshPort, &i.WorkloadID, &nodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
@@ -1417,7 +1423,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 func (ds *sqliteDB) addInstance(instance *types.Instance) error {
 	ds.dbLock.Lock()
 
-	err := ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano))
+	err := ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.VnicUUID, instance.Subnet, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano))
 
 	ds.dbLock.Unlock()
 	return err

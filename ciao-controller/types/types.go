@@ -112,6 +112,8 @@ type Instance struct {
 	WorkloadID  string              `json:"workload_id"`
 	NodeID      string              `json:"node_id"`
 	MACAddress  string              `json:"mac_address"`
+	VnicUUID    string              `json:"vnic_uuid"`
+	Subnet      string              `json:"subnet"`
 	IPAddress   string              `json:"ip_address"`
 	SSHIP       string              `json:"ssh_ip"`
 	SSHPort     int                 `json:"ssh_port"`
