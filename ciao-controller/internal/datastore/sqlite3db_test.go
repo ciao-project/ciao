@@ -974,7 +974,7 @@ users:
 		ImageID:     uuid.Generate().String(),
 		ImageName:   "",
 		Config:      testConfig,
-		Defaults:    []payloads.RequestedResource{cpus, mem},
+		Defaults:    []payloads.RequestedResource{mem, cpus},
 		Storage:     []types.StorageResource{storage},
 	}
 
