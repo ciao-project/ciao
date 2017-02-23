@@ -30,7 +30,6 @@ import (
 	"github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/internal/quotas"
 	"github.com/01org/ciao/ciao-controller/types"
-	image "github.com/01org/ciao/ciao-image/client"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/payloads"
@@ -1235,7 +1234,7 @@ func TestGetStorageForImage(t *testing.T) {
 
 	// add fake image to images store
 	//
-	tmpfile, err := ioutil.TempFile(ctl.image.MountPoint, "testImage")
+	tmpfile, err := ioutil.TempFile("", "testImage")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1292,7 +1291,7 @@ func TestStorageConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tmpfile, err := ioutil.TempFile(ctl.image.MountPoint, "test-image")
+	tmpfile, err := ioutil.TempFile("", "test-image")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1895,8 +1894,6 @@ func TestMain(m *testing.M) {
 		os.RemoveAll(dir)
 		os.Exit(1)
 	}
-
-	ctl.image = image.Client{MountPoint: dir}
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",

@@ -236,7 +236,7 @@ func (c *controller) startImageService() error {
 	}
 
 	rawDs := &imageDatastore.Ceph{
-		ImageTempDir: c.image.MountPoint,
+		ImageTempDir: *imagesPath,
 		BlockDriver: storage.CephDriver{
 			ID: *cephID,
 		},
