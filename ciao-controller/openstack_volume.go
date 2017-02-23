@@ -53,6 +53,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	if req.ImageRef != nil {
 		// create bootable volume
 		bd, err = c.CreateBlockDeviceFromSnapshot(*req.ImageRef, "ciao-image")
+		bd.Bootable = true
 	} else if req.SourceVolID != nil {
 		// copy existing volume
 		bd, err = c.CopyBlockDevice(*req.SourceVolID)
@@ -113,7 +114,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 		CreatedAt:   &data.CreateTime,
 		ID:          bd.ID,
 		Size:        data.Size,
-		Bootable:    strconv.FormatBool(req.ImageRef != nil),
+		Bootable:    strconv.FormatBool(data.Bootable),
 	}, nil
 }
 
@@ -356,6 +357,7 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 		vol.Size = data.Size
 		vol.OSVolTenantAttr = data.TenantID
 		vol.CreatedAt = &data.CreateTime
+		vol.Bootable = strconv.FormatBool(data.Bootable)
 
 		if data.Name != "" {
 			vol.Name = &data.Name
@@ -403,6 +405,7 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.Volu
 	vol.Size = data.Size
 	vol.OSVolTenantAttr = data.TenantID
 	vol.CreatedAt = &data.CreateTime
+	vol.Bootable = strconv.FormatBool(data.Bootable)
 
 	if data.Name != "" {
 		vol.Name = &data.Name
