@@ -294,6 +294,14 @@ const DeleteYaml = `delete:
   migration: false
 `
 
+// MigrateYaml is a sample workload DELETE ssntp.Command payload for test cases
+// that indicates that an instance is to be migrated rather than deleted.
+const MigrateYaml = `delete:
+  instance_uuid: ` + InstanceUUID + `
+  workload_agent_uuid: ` + AgentUUID + `
+  migration: true
+`
+
 // EvacuateYaml is a sample node EVACUATE ssntp.Command payload for test cases
 const EvacuateYaml = `evacuate:
   workload_agent_uuid: ` + AgentUUID + `

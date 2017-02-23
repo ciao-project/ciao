@@ -660,8 +660,7 @@ func (client *SsntpTestClient) SendTrace() {
 	go client.SendResultAndDelEventChan(ssntp.TraceReport, result)
 }
 
-// SendDeleteEvent allows an SsntpTestClient to push an ssntp.InstanceDeleted event frame
-func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
+func (client *SsntpTestClient) sendDeleteEvent(uuid string, ev ssntp.Event) {
 	var result Result
 
 	evt := payloads.InstanceDeletedEvent{
@@ -676,13 +675,23 @@ func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
 	if err != nil {
 		result.Err = err
 	} else {
-		_, err = client.Ssntp.SendEvent(ssntp.InstanceDeleted, y)
+		_, err = client.Ssntp.SendEvent(ev, y)
 		if err != nil {
 			result.Err = err
 		}
 	}
 
-	go client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
+	go client.SendResultAndDelEventChan(ev, result)
+}
+
+// SendDeleteEvent allows an SsntpTestClient to push an ssntp.InstanceDeleted event frame
+func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
+	client.sendDeleteEvent(uuid, ssntp.InstanceDeleted)
+}
+
+// SendStopEvent allows an SsntpTestClient to push an ssntp.InstanceStopped event frame
+func (client *SsntpTestClient) SendStoppedEvent(uuid string) {
+	client.sendDeleteEvent(uuid, ssntp.InstanceStopped)
 }
 
 // SendTenantAddedEvent allows an SsntpTestClient to push an ssntp.TenantAdded event frame
