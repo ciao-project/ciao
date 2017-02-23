@@ -317,10 +317,16 @@ func TestDeleteAllInstances(t *testing.T) {
 	}
 }
 
-//Launch and instance create form an image with a customized cloud init
-//creating the image, and workload
+//Launch an instance created from an image with a customized cloud init
+//
+//Download cirros image, add it to the image service using a custome cloudinit file
+//create a workload, launch an instance of this workload and connect via SSH
+//using the custom user and password
+//
+//instance should accept connection with specified user and password and
+//reply with the user name
 
-func TestLaunchCustomeInstance(t *testing.T) {
+func TestLaunchCustomInstance(t *testing.T) {
 	//creating a new cirros image
 	const name = "cirros-image"
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
