@@ -33,6 +33,16 @@ import (
 )
 
 const standardTimeout = time.Second * 300
+const vmCloudInit = `---
+#cirros cloud-config
+users:
+  - name: ciaouser
+    geocos: CIAO Test User
+    lock-passwd: false
+    passwd: abc123
+    sudo: ALL=(ALL) NOPASSWD:ALL
+...
+`
 
 // Get all tenants
 //
@@ -381,7 +391,7 @@ func TestLaunchCustomInstance(t *testing.T) {
 		Ephemeral: true,
 	}
 
-	WL_opts := bat.WorkloadOptions{
+	WLopts := bat.WorkloadOptions{
 		Description:     "BAT VM Test",
 		VMType:          "qemu",
 		FWType:          "legacy",
@@ -389,9 +399,9 @@ func TestLaunchCustomInstance(t *testing.T) {
 		CloudConfigFile: "CirrosInit.yaml",
 		Disks:           []bat.Disk{disk},
 	}
-	y, err := yaml.Marshal(WL_opts)
+	y, err := yaml.Marshal(WLopts)
 	if err != nil {
-		t.Fatalf("fail to read yaml file $v", err)
+		t.Fatal("fail to read yaml file $v", err)
 	}
 	ioutil.WriteFile("CirrosWorkload.yaml", y, 0644)
 	ioutil.WriteFile("CirrosInit.yaml", []byte(vmCloudInit), 0644)
@@ -400,17 +410,18 @@ func TestLaunchCustomInstance(t *testing.T) {
 	args := []string{"workload", "create", "-yaml", "CirrosWorkload.yaml"}
 	_, err = bat.RunCIAOCLIAsAdmin(ctx, "", args)
 	if err != nil {
-		t.Fatalf("Fail to create workload $v", err)
+		t.Fatal("Fail to create workload $v", err)
+
 	}
 	//Get ID of workload just created
-	CurWL, err := bat.GetWorkloadByName(ctx, "", WL_opts.Description)
+	CurWL, err := bat.GetWorkloadByName(ctx, "", WLopts.Description)
 	if err != nil {
 		t.Fatalf("Can't find data for workload %v", err)
 	}
 	//Launch instance of that workload
 	instance, err := bat.LaunchInstances(ctx, "", CurWL.ID, 1)
 	if err != nil {
-		t.Fatalf("Fail to launch instance: $v", err)
+		t.Fatal("Fail to launch instance: $v", err)
 	}
 	_, err = bat.WaitForInstancesLaunch(ctx, "", instance, false)
 	if err != nil {
@@ -424,13 +435,13 @@ func TestLaunchCustomInstance(t *testing.T) {
 		},
 	}
 	Template := `{{$x := filterContains . "Status" "active"}}{{range $x}}{{.SSHIP}}:{{.SSHPort}}{{end}}`
-	args_instance := []string{"instance", "list", "-f", Template}
-	InstanceIP, err := bat.RunCIAOCLIAsAdmin(ctx, "", args_instance)
+	argsInstance := []string{"instance", "list", "-f", Template}
+	InstanceIP, err := bat.RunCIAOCLIAsAdmin(ctx, "", argsInstance)
 	if err != nil {
-		t.Fatalf("Fail to create get Instance's data $v", err)
+		t.Fatal("Fail to create get Instance's data $v", err)
 	}
 
-	client, err := ssh.Dial("tcp", InstanceIP, config)
+	client, err := ssh.Dial("tcp", string(InstanceIP[:]), config)
 	if err != nil {
 		panic("Failed to dial: " + err.Error())
 	}
