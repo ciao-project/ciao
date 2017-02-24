@@ -62,16 +62,15 @@ type Services struct {
 	Entries []ServiceEntry
 }
 
-type getResult struct {
-	v3tokens.GetResult
-}
+// GetResult adds behavior for supporting more token-information gathering
+type GetResult v3tokens.GetResult
 
-// extractProject
+// ExtractProject extracts project from token result structure
 // Ideally we would actually contribute this functionality
 // back to the gophercloud project, but for now we extend
 // their object to allow us to get project information out
 // of the response from the GET token validation request.
-func (r getResult) extractProject() (*Project, error) {
+func (r GetResult) ExtractProject() (*Project, error) {
 	if r.Err != nil {
 		glog.V(2).Info(r.Err)
 		return nil, r.Err
@@ -96,7 +95,7 @@ func (r getResult) extractProject() (*Project, error) {
 	}, nil
 }
 
-func (r getResult) extractServices() (*Services, error) {
+func (r GetResult) extractServices() (*Services, error) {
 	if r.Err != nil {
 		glog.V(2).Info(r.Err)
 		return nil, r.Err
@@ -122,7 +121,7 @@ func (r getResult) extractServices() (*Services, error) {
 // back to the gophercloud project, but for now we extend
 // their object to allow us to get project information out
 // of the response from the GET token validation request.
-func (r getResult) extractRoles() (*Roles, error) {
+func (r GetResult) extractRoles() (*Roles, error) {
 	if r.Err != nil {
 		glog.V(2).Info(r.Err)
 		return nil, r.Err
@@ -146,9 +145,9 @@ func (r getResult) extractRoles() (*Roles, error) {
 // validateServices
 // Validates that a given user belonging to a tenant
 // can access a service specified by its type and name.
-func validateService(tokenResult getResult, tenantID string, serviceType string, serviceName string) bool {
+func validateService(tokenResult GetResult, tenantID string, serviceType string, serviceName string) bool {
 
-	p, err := tokenResult.extractProject()
+	p, err := tokenResult.ExtractProject()
 	if err != nil {
 		return false
 	}
@@ -178,8 +177,8 @@ func validateService(tokenResult getResult, tenantID string, serviceType string,
 	return false
 }
 
-func validateProjectRole(tokenResult getResult, project string, role string) bool {
-	p, err := tokenResult.extractProject()
+func validateProjectRole(tokenResult GetResult, project string, role string) bool {
+	p, err := tokenResult.ExtractProject()
 	if err != nil {
 		return false
 	}
@@ -204,7 +203,7 @@ func validateProjectRole(tokenResult getResult, project string, role string) boo
 // checkToken verifies that given the token, the request is performed as
 // a valid admin and that such token is consistent with the services
 // attempted to be used in the received request
-func (h Handler) checkToken(r *http.Request, tenant string, tokenGetResult getResult) bool {
+func (h Handler) checkToken(r *http.Request, tenant string, tokenGetResult GetResult) bool {
 
 	/* TODO Caching or PKI */
 	for _, a := range h.ValidAdmins {
@@ -240,8 +239,8 @@ func (h Handler) validateToken(r *http.Request) bool {
 	// tenantID (such as the image service), for this case we need to
 	// retrieve tenant from the given X-Auth-Token.
 	res := v3tokens.Get(h.Client, token[0])
-	tokenResult := getResult{res}
-	p, err := tokenResult.extractProject()
+	tokenResult := GetResult(res)
+	p, err := tokenResult.ExtractProject()
 	if err != nil {
 		glog.V(2).Infof("Unable to retrieve tenant from token [%s]", token)
 		return false
