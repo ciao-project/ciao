@@ -141,6 +141,10 @@
         - /etc/pki/ciao
         - /etc/pki/keystone
         - /var/lib/ciao
+        - /tmp/lock/ciao
+        - /tmp/ciao-controller-stats.db
+        - /tmp/ciao-controller-stats.db-shm
+        - /tmp/ciao-controller-stats.db-wal
         # ClearLinux cers
         - /etc/ssl/certs/keystone_cert.pem
         # Ubuntu certs
