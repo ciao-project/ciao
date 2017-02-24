@@ -459,27 +459,10 @@ func TestLaunchCustomInstance(t *testing.T) {
 		panic("Failed to run: " + err.Error())
 	}
 
-	//Delete cirros-0.3.4-x86_64-disk.img and yaml files
-	if _, err := os.Stat("CirrosWorkload.yaml"); err == nil {
-		os.Remove("CirrosWorkload.yaml")
-	}
-
-	if _, err := os.Stat("CirrosInit.yaml"); err == nil {
-		os.Remove("CirrosInit.yaml")
-	}
-	if _, err := os.Stat("cirros-0.3.4-x86_64-disk.img"); err == nil {
-		os.Remove("cirros-0.3.4-x86_64-disk.img")
-	}
 	//Delete all instances
 	_, err = bat.DeleteInstances(ctx, "", instance)
 	if err != nil {
 		t.Errorf("Failed to delete instance: %v", err)
-	}
-
-	//Delete Image
-	err = bat.DeleteImage(ctx, "", img.ID)
-	if err != nil {
-		t.Fatalf("Unable to delete image %v", err)
 	}
 
 	//Pending delete workload until function implemented
