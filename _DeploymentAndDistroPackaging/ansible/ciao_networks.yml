@@ -15,7 +15,5 @@
 
   - hosts: networks
     become: yes
-    vars:
-      ciao_role: network
     roles:
       - ciao-launcher
