@@ -925,7 +925,7 @@ func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
 		}
 	}
 
-	sort.Sort(types.SortedComputeNodesByID(expected.Nodes))
+	sort.Sort(types.SortedNodesByID(expected.Nodes))
 
 	url := testutil.ComputeURL + "/v2.1/nodes"
 
@@ -935,7 +935,7 @@ func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
 		return
 	}
 
-	var result types.CiaoComputeNodes
+	var result types.CiaoNodes
 
 	err = json.Unmarshal(body, &result)
 	if err != nil {

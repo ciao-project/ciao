@@ -36,6 +36,8 @@ var nodeCommand = &command{
 type nodeListCommand struct {
 	Flag     flag.FlagSet
 	compute  bool
+	network  bool
+	all      bool
 	cnci     bool
 	nodeID   bool
 	template string
@@ -56,17 +58,29 @@ The template passed to the -f option operates on one of the following types:
 
 %s
 
+--network
+
+%s
+
 --compute
+
+%s
+
+--all
 
 %s`,
 		generateUsageUndecorated([]types.CiaoCNCI{}),
-		generateUsageUndecorated([]types.CiaoComputeNode{}))
+		generateUsageUndecorated([]types.CiaoNode{}),
+		generateUsageUndecorated([]types.CiaoNode{}),
+		generateUsageUndecorated([]types.CiaoNode{}))
 	fmt.Fprintln(os.Stderr, templateFunctionHelp)
 	os.Exit(2)
 }
 
 func (cmd *nodeListCommand) parseArgs(args []string) []string {
 	cmd.Flag.BoolVar(&cmd.compute, "compute", false, "List all compute nodes")
+	cmd.Flag.BoolVar(&cmd.network, "network", false, "List all network nodes")
+	cmd.Flag.BoolVar(&cmd.all, "all", false, "List all nodes")
 	cmd.Flag.BoolVar(&cmd.cnci, "cnci", false, "List all CNCIs")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
@@ -80,15 +94,94 @@ func (cmd *nodeListCommand) run(args []string) error {
 	if cmd.compute {
 		return listComputeNodes(t)
 	}
+	if cmd.network {
+		return listNetworkNodes(t)
+	}
 	if cmd.cnci {
 		return listCNCINodes(t)
+	}
+	if cmd.all {
+		return listNodes(t)
 	}
 	cmd.usage()
 	return nil
 }
 
 func listComputeNodes(t *template.Template) error {
-	var nodes types.CiaoComputeNodes
+	var nodes types.CiaoNodes
+
+	url := buildComputeURL("nodes/compute")
+
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	err = unmarshalHTTPResponse(resp, &nodes)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if t != nil {
+		if err := t.Execute(os.Stdout, &nodes.Nodes); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
+	}
+
+	for i, node := range nodes.Nodes {
+		fmt.Printf("Compute Node %d\n", i+1)
+		fmt.Printf("\tUUID: %s\n", node.ID)
+		fmt.Printf("\tStatus: %s\n", node.Status)
+		fmt.Printf("\tLoad: %d\n", node.Load)
+		fmt.Printf("\tAvailable/Total memory: %d/%d MB\n", node.MemAvailable, node.MemTotal)
+		fmt.Printf("\tAvailable/Total disk: %d/%d MB\n", node.DiskAvailable, node.DiskTotal)
+		fmt.Printf("\tTotal Instances: %d\n", node.TotalInstances)
+		fmt.Printf("\t\tRunning Instances: %d\n", node.TotalRunningInstances)
+		fmt.Printf("\t\tPending Instances: %d\n", node.TotalPendingInstances)
+		fmt.Printf("\t\tPaused Instances: %d\n", node.TotalPausedInstances)
+	}
+	return nil
+}
+func listNetworkNodes(t *template.Template) error {
+	var nodes types.CiaoNodes
+
+	url := buildComputeURL("nodes/network")
+
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	err = unmarshalHTTPResponse(resp, &nodes)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if t != nil {
+		if err := t.Execute(os.Stdout, &nodes.Nodes); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
+	}
+
+	for i, node := range nodes.Nodes {
+		fmt.Printf("Network Node %d\n", i+1)
+		fmt.Printf("\tUUID: %s\n", node.ID)
+		fmt.Printf("\tStatus: %s\n", node.Status)
+		fmt.Printf("\tLoad: %d\n", node.Load)
+		fmt.Printf("\tAvailable/Total memory: %d/%d MB\n", node.MemAvailable, node.MemTotal)
+		fmt.Printf("\tAvailable/Total disk: %d/%d MB\n", node.DiskAvailable, node.DiskTotal)
+		fmt.Printf("\tTotal Instances: %d\n", node.TotalInstances)
+		fmt.Printf("\t\tRunning Instances: %d\n", node.TotalRunningInstances)
+		fmt.Printf("\t\tPending Instances: %d\n", node.TotalPendingInstances)
+		fmt.Printf("\t\tPaused Instances: %d\n", node.TotalPausedInstances)
+	}
+	return nil
+}
+
+func listNodes(t *template.Template) error {
+	var nodes types.CiaoNodes
 
 	url := buildComputeURL("nodes")
 
@@ -110,7 +203,7 @@ func listComputeNodes(t *template.Template) error {
 	}
 
 	for i, node := range nodes.Nodes {
-		fmt.Printf("Compute Node %d\n", i+1)
+		fmt.Printf("Node %d\n", i+1)
 		fmt.Printf("\tUUID: %s\n", node.ID)
 		fmt.Printf("\tStatus: %s\n", node.Status)
 		fmt.Printf("\tLoad: %d\n", node.Load)

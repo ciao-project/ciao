@@ -159,6 +159,8 @@ func (client *ssntpClient) nodeConnected(payload []byte) {
 		return
 	}
 	glog.Infof("Node %s connected", nodeConnected.Connected.NodeUUID)
+
+	client.ctl.ds.AddNode(nodeConnected.Connected.NodeUUID, nodeConnected.Connected.NodeType)
 }
 
 func (client *ssntpClient) nodeDisconnected(payload []byte) {

@@ -32,6 +32,7 @@ import (
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -123,55 +124,75 @@ type controllerStat struct {
 	uuid   string
 }
 
-func (sched *ssntpSchedulerServer) sendNodeConnectionEvent(nodeUUID, controllerUUID string, nodeType payloads.Resource, connected bool) (int, error) {
-	/* connect */
+func prepareNodeConnectionEvent(nodeUUID string, nodeType payloads.Resource, connected bool) (b []byte, err error) {
+	event := payloads.NodeConnectedEvent{
+		NodeUUID: nodeUUID,
+		NodeType: nodeType,
+	}
+
 	if connected == true {
 		payload := payloads.NodeConnected{
-			Connected: payloads.NodeConnectedEvent{
-				NodeUUID: nodeUUID,
-				NodeType: nodeType,
-			},
+			Connected: event,
 		}
 
-		b, err := yaml.Marshal(&payload)
+		b, err = yaml.Marshal(&payload)
+	} else {
+		payload := payloads.NodeDisconnected{
+			Disconnected: event,
+		}
+
+		b, err = yaml.Marshal(&payload)
+	}
+
+	return
+}
+
+// The ssntp server implementation is expected to generate ssntp client
+// connect/disconnect events. This function sends to one controller a
+// connect event for each currently connected nodes.
+func (sched *ssntpSchedulerServer) sendDirectedNodeConnectionEvents(ctlUUID string) {
+	sched.cnMutex.RLock()
+	defer sched.cnMutex.RUnlock()
+	for _, node := range sched.cnList {
+		nodeUUID := node.uuid
+
+		b, err := prepareNodeConnectionEvent(nodeUUID, payloads.ComputeNode, true)
 		if err != nil {
-			return 0, err
+			errors.Wrap(err, "Node connection event lost")
+			continue
 		}
 
-		return sched.ssntp.SendEvent(controllerUUID, ssntp.NodeConnected, b)
+		sched.ssntp.SendEvent(ctlUUID, ssntp.NodeConnected, b)
 	}
 
-	/* disconnect */
-	payload := payloads.NodeDisconnected{
-		Disconnected: payloads.NodeConnectedEvent{
-			NodeUUID: nodeUUID,
-			NodeType: nodeType,
-		},
-	}
+	sched.nnMutex.RLock()
+	defer sched.nnMutex.RUnlock()
+	for _, node := range sched.nnList {
+		nodeUUID := node.uuid
 
-	b, err := yaml.Marshal(&payload)
+		b, err := prepareNodeConnectionEvent(nodeUUID, payloads.NetworkNode, true)
+		if err != nil {
+			errors.Wrap(err, "Node connection event lost")
+			continue
+		}
+
+		sched.ssntp.SendEvent(ctlUUID, ssntp.NodeConnected, b)
+	}
+}
+
+// The ssntp server implementation is expected to generate ssntp client
+// connect/disconnect events. This function sends them to all controllers.
+func (sched *ssntpSchedulerServer) sendNodeConnectionEvents(nodeUUID string, nodeType payloads.Resource, connected bool) {
+	b, err := prepareNodeConnectionEvent(nodeUUID, nodeType, connected)
 	if err != nil {
-		return 0, err
+		errors.Wrap(err, "Node connection event lost")
 	}
 
-	return sched.ssntp.SendEvent(controllerUUID, ssntp.NodeDisconnected, b)
-}
-
-func (sched *ssntpSchedulerServer) sendNodeConnectedEvents(nodeUUID string, nodeType payloads.Resource) {
 	sched.controllerMutex.RLock()
 	defer sched.controllerMutex.RUnlock()
 
-	for _, c := range sched.controllerMap {
-		sched.sendNodeConnectionEvent(nodeUUID, c.uuid, nodeType, true)
-	}
-}
-
-func (sched *ssntpSchedulerServer) sendNodeDisconnectedEvents(nodeUUID string, nodeType payloads.Resource) {
-	sched.controllerMutex.RLock()
-	defer sched.controllerMutex.RUnlock()
-
-	for _, c := range sched.controllerMap {
-		sched.sendNodeConnectionEvent(nodeUUID, c.uuid, nodeType, false)
+	for _, ctl := range sched.controllerMap {
+		sched.ssntp.SendEvent(ctl.uuid, ssntp.NodeConnected, b)
 	}
 }
 
@@ -183,6 +204,7 @@ func connectController(sched *ssntpSchedulerServer, uuid string) {
 
 	if sched.controllerMap[uuid] != nil {
 		glog.Warningf("Unexpected reconnect from controller %s\n", uuid)
+		sched.controllerMutex.Unlock()
 		return
 	}
 
@@ -200,7 +222,11 @@ func connectController(sched *ssntpSchedulerServer, uuid string) {
 		sched.controllerList = append(sched.controllerList, &controller)
 	}
 
-	sched.controllerMap[controller.uuid] = &controller
+	sched.controllerMap[uuid] = &controller
+
+	// In case launcher clients are already connected, generate a node
+	// connection event for all nodes.
+	sched.sendDirectedNodeConnectionEvents(uuid)
 }
 
 // Undo previous state additions for departed Controller
@@ -265,7 +291,7 @@ func connectComputeNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.cnList = append(sched.cnList, &node)
 	sched.cnMap[uuid] = &node
 
-	sched.sendNodeConnectedEvents(uuid, payloads.ComputeNode)
+	sched.sendNodeConnectionEvents(uuid, payloads.ComputeNode, true)
 }
 
 // Undo previous state additions for departed Compute Node
@@ -296,7 +322,7 @@ func disconnectComputeNode(sched *ssntpSchedulerServer, uuid string) {
 		sched.cnMRUIndex = -1
 	}
 
-	sched.sendNodeDisconnectedEvents(uuid, payloads.ComputeNode)
+	sched.sendNodeConnectionEvents(uuid, payloads.ComputeNode, false)
 }
 
 // Add state for newly connected Network Node
@@ -317,7 +343,7 @@ func connectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 	sched.nnList = append(sched.nnList, &node)
 	sched.nnMap[uuid] = &node
 
-	sched.sendNodeConnectedEvents(uuid, payloads.NetworkNode)
+	sched.sendNodeConnectionEvents(uuid, payloads.NetworkNode, true)
 }
 
 // Undo previous state additions for departed Network Node
@@ -348,8 +374,9 @@ func disconnectNetworkNode(sched *ssntpSchedulerServer, uuid string) {
 		sched.nnMRUIndex = -1
 	}
 
-	sched.sendNodeDisconnectedEvents(uuid, payloads.NetworkNode)
+	sched.sendNodeConnectionEvents(uuid, payloads.NetworkNode, false)
 }
+
 func (sched *ssntpSchedulerServer) ConnectNotify(uuid string, role ssntp.Role) {
 	if role.IsController() {
 		connectController(sched, uuid)

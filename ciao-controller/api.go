@@ -151,11 +151,11 @@ func pagerQueryParse(r *http.Request) (int, int, string) {
 
 type nodePager struct {
 	ctl   *controller
-	nodes []types.CiaoComputeNode
+	nodes []types.CiaoNode
 }
 
-func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, nodes []types.CiaoComputeNode, limit int, offset int) (types.CiaoComputeNodes, error) {
-	computeNodes := types.NewCiaoComputeNodes()
+func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, nodes []types.CiaoNode, limit int, offset int) (types.CiaoNodes, error) {
+	computeNodes := types.NewCiaoNodes()
 
 	pageLength := 0
 
@@ -177,11 +177,11 @@ func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, node
 	return computeNodes, nil
 }
 
-func (pager *nodePager) filter(filterType pagerFilterType, filter string, node types.CiaoComputeNode) bool {
+func (pager *nodePager) filter(filterType pagerFilterType, filter string, node types.CiaoNode) bool {
 	return false
 }
 
-func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *http.Request) (types.CiaoComputeNodes, error) {
+func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *http.Request) (types.CiaoNodes, error) {
 	limit, offset, lastSeen := pagerQueryParse(r)
 
 	if lastSeen == "" {
@@ -206,7 +206,7 @@ func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *h
 		}
 	}
 
-	return types.CiaoComputeNodes{}, fmt.Errorf("Item %s not found", lastSeen)
+	return types.CiaoNodes{}, fmt.Errorf("Item %s not found", lastSeen)
 }
 
 type nodeServerPager struct {
@@ -456,8 +456,38 @@ func listTenants(c *controller, w http.ResponseWriter, r *http.Request) (APIResp
 	return APIResponse{http.StatusOK, computeTenants}, nil
 }
 
-func listNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	computeNodes := c.ds.GetNodeLastStats()
+func trimComputeNodes(c *controller, nodeList types.CiaoNodes, targetRole ssntp.Role) (types.CiaoNodes, error) {
+	var trimmedNodes types.CiaoNodes
+
+	for _, node := range nodeList.Nodes {
+		n, err := c.ds.GetNode(node.ID)
+		if err != nil {
+			continue
+		}
+
+		if n.NodeRole.HasRole(targetRole) {
+			trimmedNodes.Nodes = append(trimmedNodes.Nodes, node)
+		}
+	}
+
+	sort.Sort(types.SortedNodesByID(trimmedNodes.Nodes))
+
+	return trimmedNodes, nil
+}
+
+func listSubsetOfNodes(c *controller, w http.ResponseWriter, r *http.Request, targetRole ssntp.Role) (APIResponse, error) {
+	allNodes := c.ds.GetNodeLastStats()
+
+	var subsetOfNodes types.CiaoNodes
+	if targetRole == ssntp.UNKNOWN {
+		subsetOfNodes = allNodes
+	} else {
+		trimmedNodes, err := trimComputeNodes(c, allNodes, targetRole)
+		if err != nil {
+			return errorResponse(err), err
+		}
+		subsetOfNodes = trimmedNodes
+	}
 
 	nodeSummary, err := c.ds.GetNodeSummary()
 	if err != nil {
@@ -465,27 +495,27 @@ func listNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIRespon
 	}
 
 	for _, node := range nodeSummary {
-		for i := range computeNodes.Nodes {
-			if computeNodes.Nodes[i].ID != node.NodeID {
+		for i := range subsetOfNodes.Nodes {
+			if subsetOfNodes.Nodes[i].ID != node.NodeID {
 				continue
 			}
 
-			computeNodes.Nodes[i].TotalInstances =
+			subsetOfNodes.Nodes[i].TotalInstances =
 				node.TotalInstances
-			computeNodes.Nodes[i].TotalRunningInstances =
+			subsetOfNodes.Nodes[i].TotalRunningInstances =
 				node.TotalRunningInstances
-			computeNodes.Nodes[i].TotalPendingInstances =
+			subsetOfNodes.Nodes[i].TotalPendingInstances =
 				node.TotalPendingInstances
-			computeNodes.Nodes[i].TotalPausedInstances =
+			subsetOfNodes.Nodes[i].TotalPausedInstances =
 				node.TotalPausedInstances
 		}
 	}
 
-	sort.Sort(types.SortedComputeNodesByID(computeNodes.Nodes))
+	sort.Sort(types.SortedNodesByID(subsetOfNodes.Nodes))
 
 	pager := nodePager{
 		ctl:   c,
-		nodes: computeNodes.Nodes,
+		nodes: subsetOfNodes.Nodes,
 	}
 
 	resp, err := pager.nextPage(none, "", r)
@@ -494,6 +524,18 @@ func listNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIRespon
 	}
 
 	return APIResponse{http.StatusOK, resp}, nil
+}
+
+func listComputeNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	return listSubsetOfNodes(c, w, r, ssntp.AGENT)
+}
+
+func listNetworkNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	return listSubsetOfNodes(c, w, r, ssntp.NETAGENT)
+}
+
+func listNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	return listSubsetOfNodes(c, w, r, ssntp.UNKNOWN)
 }
 
 func nodesSummary(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
