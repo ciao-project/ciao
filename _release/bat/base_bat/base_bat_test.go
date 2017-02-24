@@ -484,6 +484,12 @@ func TestLaunchCustomInstance(t *testing.T) {
 	//Pending delete workload until function implemented
 }
 
+//Cleanup process tu run after TestLaunchCustomInstance
+//
+//Delete the cirros***.img file downloaded, the yaml files for the image
+//created, the image and the instance
+//
+//all data created for the test is removed
 func deleteCustomData(ctx context.Context, ID string) {
 	_ = bat.DeleteImage(ctx, "", ID)
 	//Delete cirros-0.3.4-x86_64-disk.img and yaml files
