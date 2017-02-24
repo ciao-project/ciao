@@ -88,6 +88,7 @@ type persistentStore interface {
 
 	// interfaces related to workloads
 	updateWorkload(wl types.Workload) error
+	deleteWorkload(ID string) error
 
 	// interfaces related to tenants
 	addLimit(tenantID string, resourceID int, limit int) (err error)
@@ -441,6 +442,47 @@ func (ds *Datastore) AddWorkload(w types.Workload) error {
 	ds.tenants[w.TenantID].workloads = append(tenant.workloads, w)
 
 	return nil
+}
+
+// DeleteWorkload will delete an unused workload from the datastore.
+// workload ID out of the datastore.
+func (ds *Datastore) DeleteWorkload(tenantID string, workloadID string) error {
+	// make sure that this workload is not in use.
+	// always get from cache
+	ds.instancesLock.RLock()
+	defer ds.instancesLock.RUnlock()
+
+	if len(ds.instances) > 0 {
+		for _, val := range ds.instances {
+			if val.WorkloadID == workloadID {
+				// we can't go on.
+				return types.ErrWorkloadInUse
+			}
+		}
+	}
+
+	// workload is not being used, find it so we can delete it.
+	ds.tenantsLock.Lock()
+	defer ds.tenantsLock.Unlock()
+
+	t, ok := ds.tenants[tenantID]
+	if ok {
+		for i, wl := range t.workloads {
+			if wl.ID == workloadID {
+				// delete from persistent datastore.
+				err := ds.db.deleteWorkload(workloadID)
+				if err != nil {
+					return errors.Wrapf(err, "error deleting workload %v from database", wl.ID)
+				}
+
+				// delete from cache.
+				ds.tenants[tenantID].workloads = append(ds.tenants[tenantID].workloads[:i], ds.tenants[tenantID].workloads[i+1:]...)
+				return nil
+			}
+		}
+	}
+
+	return types.ErrWorkloadNotFound
 }
 
 // GetWorkload returns details about a specific workload referenced by id

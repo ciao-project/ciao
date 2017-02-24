@@ -151,6 +151,17 @@ func createWorkload(ctx context.Context, tenant string, opt WorkloadOptions, con
 	return strings.TrimSpace(s[1]), nil
 }
 
+func deleteWorkload(ctx context.Context, tenant string, workload string, public bool) (err error) {
+	args := []string{"workload", "delete", "-workload", workload}
+	if public {
+		_, err = RunCIAOCLIAsAdmin(ctx, tenant, args)
+	} else {
+		_, err = RunCIAOCLI(ctx, tenant, args)
+	}
+
+	return err
+}
+
 // CreatePublicWorkload will call ciao-cli as admin to create a workload.
 // It will first output the cloud init yaml file to the current working
 // directory. Then it will output the workload definition to the current
@@ -159,6 +170,16 @@ func createWorkload(ctx context.Context, tenant string, opt WorkloadOptions, con
 // created when it is done.
 func CreatePublicWorkload(ctx context.Context, tenant string, opt WorkloadOptions, config string) (string, error) {
 	return createWorkload(ctx, "", opt, config, true)
+}
+
+// DeletePublicWorkload will call ciao-cli as admin to delete a workload.
+func DeletePublicWorkload(ctx context.Context, workload string) error {
+	return deleteWorkload(ctx, "", workload, true)
+}
+
+// DeleteWorkload will call ciao-cli as a tenant to delete a workload.
+func DeleteWorkload(ctx context.Context, tenant string, workload string) error {
+	return deleteWorkload(ctx, tenant, workload, false)
 }
 
 // CreateWorkload will call ciao-cli to create a workload definition.

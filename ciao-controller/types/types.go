@@ -573,6 +573,9 @@ var (
 
 	// ErrWorkloadNotFound is returned when a workload ID cannot be found
 	ErrWorkloadNotFound = errors.New("Workload not found")
+
+	// ErrWorkloadInUse is returned by DeleteWorkload when an instance of a workload is still active.
+	ErrWorkloadInUse = errors.New("Workload definition still in use")
 )
 
 // Link provides a url and relationship for a resource.
