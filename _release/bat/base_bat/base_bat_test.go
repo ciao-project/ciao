@@ -445,18 +445,18 @@ func TestLaunchCustomInstance(t *testing.T) {
 
 	client, err := ssh.Dial("tcp", string(InstanceIP[:]), config)
 	if err != nil {
-		panic("Failed to dial: " + err.Error())
+		t.Fatal("Failed to dial: " + err.Error())
 	}
 	session, err := client.NewSession()
 	if err != nil {
-		panic("Failed to create session: " + err.Error())
+		t.Fatal("Failed to create session: " + err.Error())
 	}
 	defer session.Close()
 
 	var b bytes.Buffer
 	session.Stdout = &b
 	if err := session.Run("/usr/bin/whoami"); err != nil {
-		panic("Failed to run: " + err.Error())
+		t.Fatal("Failed to run: " + err.Error())
 	}
 
 	//Delete all instances
