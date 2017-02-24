@@ -371,6 +371,8 @@ func TestLaunchCustomInstance(t *testing.T) {
 		t.Fatalf("Unable to add image %v", err)
 	}
 
+	defer deleteCustomData(ctx, img.ID)
+
 	if img.ID == "" || img.Name != name || img.Status != "active" ||
 		img.Visibility != "public" || img.Protected {
 		t.Errorf("Meta data of added image is incorrect")
@@ -481,6 +483,22 @@ func TestLaunchCustomInstance(t *testing.T) {
 	}
 
 	//Pending delete workload until function implemented
+}
+
+func deleteCustomData(ctx context.Context, ID string) {
+	_ = bat.DeleteImage(ctx, "", ID)
+	//Delete cirros-0.3.4-x86_64-disk.img and yaml files
+	if _, err := os.Stat("CirrosWorkload.yaml"); err == nil {
+		os.Remove("CirrosWorkload.yaml")
+	}
+
+	if _, err := os.Stat("CirrosInit.yaml"); err == nil {
+		os.Remove("CirrosInit.yaml")
+	}
+	if _, err := os.Stat("cirros-0.3.4-x86_64-disk.img"); err == nil {
+		os.Remove("cirros-0.3.4-x86_64-disk.img")
+	}
+
 }
 
 // TestMain ensures that all instances have been deleted when the tests finish.
