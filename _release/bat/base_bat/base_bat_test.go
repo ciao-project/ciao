@@ -39,7 +39,7 @@ users:
   - name: ciaouser
     geocos: CIAO Test User
     lock-passwd: false
-    passwd: abc123
+    passwd: FrakbS}k0F5Xm0B
     sudo: ALL=(ALL) NOPASSWD:ALL
 ...
 `
@@ -348,17 +348,18 @@ func TestLaunchCustomInstance(t *testing.T) {
 		Name: name,
 	}
 	//downaload cirros image
+	resp, err := http.Get("http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img")
+	if err != nil {
+		t.Fatalf("Error while downloading image file %v", err)
+	}
+	defer resp.Body.Close()
+
 	ImageFile, err := os.Create("cirros-0.3.4-x86_64-disk.img")
 	if err != nil {
 		t.Fatalf("Error while creating image file %v", err)
 	}
 	defer ImageFile.Close()
 
-	resp, err := http.Get("http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img")
-	if err != nil {
-		t.Fatalf("Error while downloading image file %v", err)
-	}
-	defer resp.Body.Close()
 	_, err = io.Copy(ImageFile, resp.Body)
 
 	if err != nil {
@@ -432,7 +433,7 @@ func TestLaunchCustomInstance(t *testing.T) {
 	config := &ssh.ClientConfig{
 		User: "ciaouser",
 		Auth: []ssh.AuthMethod{
-			ssh.Password("abc123"),
+			ssh.Password("FrakbS}k0F5Xm0B"),
 		},
 	}
 	Template := `{{$x := filterContains . "Status" "active"}}{{range $x}}{{.SSHIP}}:{{.SSHPort}}{{end}}`
