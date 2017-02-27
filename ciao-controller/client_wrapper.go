@@ -125,6 +125,10 @@ func (client *ssntpClientWrapper) Disconnect() {
 	client.closeClientChans()
 }
 
+func (client *ssntpClientWrapper) UpdateConfig(newConfPyld []byte) error {
+	return client.realClient.UpdateConfig(newConfPyld)
+}
+
 func (client *ssntpClientWrapper) openClientChans() {
 	client.CmdChansLock.Lock()
 	client.CmdChans = make(map[ssntp.Command]chan struct{})

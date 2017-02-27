@@ -16,6 +16,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -600,17 +601,40 @@ func updateQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 }
 
 // updateConfig implements the response for a configuration update
-// API call, checks for valid input, correct call permissions (only admin
-// can perform this request) and test new configuration value previous to
-// perform the change.
+// API call, checks for valid input and test new configuration value
+// previous to perform the change.
 func updateConfig(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
-	return Response{http.StatusNotImplemented, "not Implemented"}, nil
+	cfgResponse := types.ConfigUpdateResponse{Response: ""}
+	var cfgReq types.ConfigRequest
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		cfgResponse.Response = fmt.Sprintf("Cannot read request: %s", err.Error())
+		return Response{http.StatusInternalServerError, cfgResponse}, errors.New(cfgResponse.Response)
+	}
+	err = json.Unmarshal(body, &cfgReq)
+	if err != nil {
+		cfgResponse.Response = fmt.Sprintf("Cannot decode request: %s", err.Error())
+		return Response{http.StatusInternalServerError, cfgResponse}, errors.New(cfgResponse.Response)
+	}
+	err = c.Service.UpdateClusterConfig(cfgReq)
+	if err != nil {
+		cfgResponse.Response = fmt.Sprintf("Unable to update configuration: %s", err.Error())
+		return Response{http.StatusInternalServerError, cfgResponse}, errors.New(cfgResponse.Response)
+	}
+	glog.Infof("Cluster config '%s' changed to '%s'\n", cfgReq.Element, cfgReq.Value)
+	cfgResponse.Response = fmt.Sprintf("Configuration update from '%s' to '%s' sent", cfgReq.Element, cfgReq.Value)
+	return Response{http.StatusOK, cfgResponse}, nil
 }
 
-// showConfig implements the response for a configuration show
-// API call, checks that call was performed by the admin
+// showConfig implements the response for a configuration show API call
 func showConfig(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
-	return Response{http.StatusNotImplemented, "not Implemented"}, nil
+	rsp := types.ConfigShowResponse{Configuration: ""}
+	cnf, err := c.Service.ShowClusterConfig()
+	if err != nil {
+		return Response{http.StatusInternalServerError, nil}, err
+	}
+	rsp.Configuration = cnf
+	return Response{http.StatusOK, rsp}, nil
 }
 
 // Service is an interface which must be implemented by the ciao API context.
@@ -629,6 +653,8 @@ type Service interface {
 	ShowWorkload(tenantID string, workloadID string) (types.Workload, error)
 	ListQuotas(tenantID string) []types.QuotaDetails
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
+	UpdateClusterConfig(newConf types.ConfigRequest) error
+	ShowClusterConfig() (string, error)
 }
 
 // Context is used to provide the services and current URL to the handlers.

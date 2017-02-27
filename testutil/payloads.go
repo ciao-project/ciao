@@ -414,6 +414,41 @@ const ConfigureYaml = `configure:
     url: ` + KeystoneURL + `
 `
 
+// ConfigureSanatizedYaml is a sample CONFIGURE ssntp.Command response for test cases
+const ConfigureSanatizedYaml = `configure:
+  scheduler:
+    storage_uri: ` + StorageURI + `
+  storage:
+    ceph_id: ` + ManagementID + `
+  controller:
+    volume_port: ` + VolumePort + `
+    compute_port: ` + ComputePort + `
+    ciao_port: ` + CiaoPort + `
+    compute_fqdn: ""
+    compute_ca: ` + HTTPSCACert + `
+    compute_cert: ` + HTTPSKey + `
+    identity_user: ` + IdentityUser + `
+    identity_password: ''
+    cnci_vcpus: 0
+    cnci_mem: 0
+    cnci_disk: 0
+    admin_ssh_key: ''
+    admin_password: ''
+  launcher:
+    compute_net:
+    - ` + ComputeNet + `
+    mgmt_net:
+    - ` + MgmtNet + `
+    disk_limit: false
+    mem_limit: false
+  image_service:
+    type: glance
+    url: ` + GlanceURL + `
+  identity_service:
+    type: keystone
+    url: ` + KeystoneURL + `
+`
+
 // DeleteFailureYaml is a sample workload DeleteFailure ssntp.Error payload for test cases
 const DeleteFailureYaml = `instance_uuid: ` + InstanceUUID + `
 reason: no_instance

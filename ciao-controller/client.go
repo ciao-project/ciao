@@ -44,6 +44,7 @@ type controllerClient interface {
 	attachVolume(volID string, instanceID string, nodeID string) error
 	detachVolume(volID string, instanceID string, nodeID string) error
 	ssntpClient() *ssntp.Client
+	UpdateConfig(newConfPyld []byte) error
 }
 
 type ssntpClient struct {
@@ -684,5 +685,10 @@ func (client *ssntpClient) unMapExternalIP(t types.Tenant, m types.MappedIP) err
 	glog.V(1).Info(string(y))
 
 	_, err = client.ssntp.SendCommand(ssntp.ReleasePublicIP, y)
+	return err
+}
+
+func (client *ssntpClient) UpdateConfig(newConfPyld []byte) error {
+	_, err := client.ssntp.SendCommand(ssntp.CONFIGURE, newConfPyld)
 	return err
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
 )
 
 type test struct {
@@ -313,6 +314,14 @@ func (ts testCiaoService) ListQuotas(tenantID string) []types.QuotaDetails {
 
 func (ts testCiaoService) UpdateQuotas(tenantID string, qds []types.QuotaDetails) error {
 	return nil
+}
+
+func (ts testCiaoService) UpdateClusterConfig(newConf types.ConfigRequest) error {
+	return nil
+}
+func (ts testCiaoService) ShowClusterConfig() (string, error) {
+	return testutil.ConfigureSanatizedYaml, nil
+
 }
 
 func TestResponse(t *testing.T) {
