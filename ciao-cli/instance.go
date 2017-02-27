@@ -519,9 +519,14 @@ func (cmd *instanceAddCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
+	if len(servers.Servers) < cmd.instances {
+		fmt.Println("Some instances failed to start - check the event log for details.")
+	}
+
 	for _, server := range servers.Servers {
 		fmt.Printf("Created new (pending) instance: %s\n", server.ID)
 	}
+
 	return nil
 }
 
