@@ -18,7 +18,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -28,6 +27,7 @@ import (
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -90,24 +90,28 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 
 func (i *instance) Add() error {
 	ds := i.ctl.ds
+	var err error
 	if i.CNCI == false {
-		ds.AddInstance(&i.Instance)
+		err = ds.AddInstance(&i.Instance)
 	} else {
-		ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
+		err = ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
+	}
+	if err != nil {
+		return errors.Wrapf(err, "Error creating instance in datastore")
 	}
 	for _, volume := range i.newConfig.sc.Start.Storage {
 		if volume.ID == "" && volume.Local {
 			// these are launcher auto-created ephemeral
 			continue
 		}
-		_, err := ds.GetBlockDevice(volume.ID)
+		_, err = ds.GetBlockDevice(volume.ID)
 		if err != nil {
 			return fmt.Errorf("Invalid block device mapping.  %s already in use", volume.ID)
 		}
 
 		_, err = ds.CreateStorageAttachment(i.Instance.ID, volume)
 		if err != nil {
-			glog.Error(err)
+			return errors.Wrap(err, "Error creating storage attachment")
 		}
 	}
 
