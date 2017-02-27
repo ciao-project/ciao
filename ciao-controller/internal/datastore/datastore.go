@@ -1475,6 +1475,11 @@ func (ds *Datastore) LogEvent(tenant string, msg string) {
 	ds.db.logEvent(tenant, string(userInfo), msg)
 }
 
+// LogError will add a message to the persistent event log as an error
+func (ds *Datastore) LogError(tenant string, msg string) {
+	ds.db.logEvent(tenant, string(userError), msg)
+}
+
 // AddBlockDevice will store information about new BlockData into
 // the datastore.
 func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
