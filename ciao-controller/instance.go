@@ -133,7 +133,7 @@ func (i *instance) Clean() error {
 	resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
 	resources = append(resources, wl.Defaults...)
 	i.ctl.qs.Release(i.TenantID, resources...)
-
+	i.ctl.deleteEphemeralStorage(i.ID)
 	return nil
 }
 
