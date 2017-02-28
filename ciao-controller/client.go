@@ -84,7 +84,10 @@ func (client *ssntpClient) CommandNotify(command ssntp.Command, frame *ssntp.Fra
 }
 
 func (client *ssntpClient) deleteEphemeralStorage(instanceID string) {
-	client.ctl.deleteEphemeralStorage(instanceID)
+	err := client.ctl.deleteEphemeralStorage(instanceID)
+	if err != nil {
+		glog.Warningf("Error deleting ephemeral storage for instance: %s: %v", instanceID, err)
+	}
 }
 
 func (client *ssntpClient) releaseResources(instanceID string) error {
