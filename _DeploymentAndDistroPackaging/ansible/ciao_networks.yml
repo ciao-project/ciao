@@ -16,4 +16,6 @@
   - hosts: networks
     become: yes
     roles:
+      - ciao-common
+      - ceph
       - ciao-launcher

@@ -108,6 +108,7 @@
       with_items:
         - ciao-webui
         - ciao-keystone
+        - ceph-demo
 
     - name: Stop and disable services
       systemd: name={{ item }} state=stopped enabled=no
