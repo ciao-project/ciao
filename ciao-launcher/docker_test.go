@@ -99,10 +99,6 @@ func (s dockerTestStorage) GetVolumeMapping() (map[string][]string, error) {
 	return nil, nil
 }
 
-func (s dockerTestStorage) cleanup() error {
-	return os.RemoveAll(s.root)
-}
-
 func (s dockerTestStorage) CopyBlockDevice(volumeUUID string) (storage.BlockDevice, error) {
 	return storage.BlockDevice{}, nil
 }

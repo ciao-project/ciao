@@ -37,10 +37,9 @@ import (
 )
 
 const (
-	qemuEfiFw  = "/usr/share/qemu/OVMF.fd"
-	seedImage  = "seed.iso"
-	imagesPath = "/var/lib/ciao/images"
-	vcTries    = 10
+	qemuEfiFw = "/usr/share/qemu/OVMF.fd"
+	seedImage = "seed.iso"
+	vcTries   = 10
 )
 
 type qmpGlogLogger struct{}

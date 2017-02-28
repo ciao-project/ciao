@@ -27,7 +27,6 @@ import (
 )
 
 type ssntpTestState struct {
-	t       *testing.T
 	status  bool
 	error   ssntp.Error
 	payload []byte

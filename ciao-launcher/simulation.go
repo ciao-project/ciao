@@ -25,7 +25,6 @@ import (
 )
 
 type simulation struct {
-	uuid        string
 	instanceDir string
 
 	closedCh    chan struct{}

@@ -211,18 +211,6 @@ func (v *instanceTestState) setStatus(status bool) {
 
 }
 
-func (v *instanceTestState) cleanUpInstance() {
-	_ = os.RemoveAll(path.Join(testInstancesDir, v.instance))
-}
-
-func (v *instanceTestState) verifyStatsUpdate(t *testing.T, cmd interface{}) {
-	stats := cmd.(*ovsStatsUpdateCmd)
-	if stats.diskUsageMB != v.statsArray[0] || stats.memoryUsageMB != v.statsArray[1] ||
-		stats.CPUUsage != v.statsArray[2] || stats.instance != v.instance {
-		t.Fatal("Incorrect statistics received")
-	}
-}
-
 func (v *instanceTestState) getStatsUpdate(t *testing.T, ovsCh <-chan interface{}) *ovsStatsUpdateCmd {
 	var cmd interface{}
 	select {
