@@ -24,8 +24,6 @@
 package bat
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -505,40 +503,30 @@ func WaitForInstancesLaunch(ctx context.Context, tenant string, instances []stri
 	}
 }
 
-func parseInstances(data []byte, num int) ([]string, error) {
-	instances := make([]string, num)
-	scanner := bufio.NewScanner(bytes.NewBuffer(data))
-	for i := 0; i < num; i++ {
-		if !scanner.Scan() {
-			return nil, fmt.Errorf(
-				"Missing instance UUID.  Found %d, expected %d", i, num)
-		}
-
-		line := scanner.Bytes()
-		colonIndex := bytes.LastIndexByte(line, ':')
-		if colonIndex == -1 || colonIndex+2 >= len(line) {
-			return nil, fmt.Errorf("Unable to determine UUID of new instance")
-		}
-		instances[i] = string(bytes.TrimSpace(line[colonIndex+2:]))
-	}
-
-	return instances, nil
-}
-
 // LaunchInstances launches num instances of the specified workload.  On success
-// the function returns a slice of UUIDs of the new instances.  The instances
-// are launched using ciao-cli instance add.  An error will be returned if the
-// following environment variables are not set; CIAO_IDENTITY,  CIAO_CONTROLLER,
-// CIAO_USERNAME, CIAO_PASSWORD.
+// the function returns a slice of UUIDs of the successfully launched instances.
+// If some instances failed to start then the error can be found in the event
+// log.  The instances are launched using ciao-cli instance add. If no instances
+// successfully launch then an error will be returned.  An error will be
+// returned if the following environment variables are not set; CIAO_IDENTITY,
+// CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
 func LaunchInstances(ctx context.Context, tenant string, workload string, num int) ([]string, error) {
+	template := `
+[
+{{- range $i, $val := .}}
+  {{- if $i }},{{end}}"{{$val.ID | js }}"
+{{- end }}
+]
+`
 	args := []string{"instance", "add", "--workload", workload,
-		"--instances", fmt.Sprintf("%d", num)}
-	data, err := RunCIAOCLI(ctx, tenant, args)
+		"--instances", fmt.Sprintf("%d", num), "-f", template}
+	var instances []string
+	err := RunCIAOCLIJS(ctx, tenant, args, &instances)
 	if err != nil {
 		return nil, err
 	}
 
-	return parseInstances(data, num)
+	return instances, nil
 }
 
 // StartRandomInstances starts a specified number of instances using
