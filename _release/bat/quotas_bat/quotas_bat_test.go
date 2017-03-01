@@ -125,6 +125,11 @@ func checkUsage(qds []bat.QuotaDetails, wl bat.Workload, count int) bool {
 		actualInstances == expectedInstances
 }
 
+func getContainerWorkload(ctx context.Context, tenantID string) (bat.Workload, error) {
+	const testContainerWorkload = "Debian latest test container"
+	return bat.GetWorkloadByName(ctx, tenantID, testContainerWorkload)
+}
+
 // Test reporting of instance usage
 //
 // Starts 3 copies of a workload and checks that the usage matches
@@ -146,15 +151,10 @@ func TestInstanceUsage(t *testing.T) {
 	}
 	tenantID := tenants[0].ID
 
-	wls, err := bat.GetAllWorkloads(ctx, "")
+	wl, err := getContainerWorkload(ctx, tenantID)
 	if err != nil {
-		t.Fatal(err)
+		t.Skip()
 	}
-	if len(wls) < 1 {
-		t.Fatal("Expected at least one workload")
-	}
-
-	wl := wls[0]
 
 	instances, err := bat.LaunchInstances(ctx, "", wl.ID, 3)
 	if err != nil {
@@ -191,16 +191,12 @@ func TestInstanceUsage(t *testing.T) {
 }
 
 // Workaround for https://github.com/01org/ciao/issues/1203
-func launchMultipleInstances(ctx context.Context, t *testing.T, count int) error {
-	wls, err := bat.GetAllWorkloads(ctx, "")
+func launchMultipleInstances(ctx context.Context, t *testing.T, tenantID string, count int) error {
+	wl, err := getContainerWorkload(ctx, tenantID)
 	if err != nil {
-		return err
-	}
-	if len(wls) < 1 {
-		t.Fatal("Expected at least one workload")
+		t.Skip()
 	}
 
-	wl := wls[0]
 	for i := 0; i < count; i++ {
 		instances, err := bat.LaunchInstances(ctx, "", wl.ID, 1)
 		if err != nil {
@@ -250,7 +246,7 @@ func TestInstanceLimited(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = launchMultipleInstances(ctx, t, 3)
+	err = launchMultipleInstances(ctx, t, tenantID, 3)
 	if err == nil {
 		t.Errorf("Expected launch of instances to fail")
 	}
@@ -297,16 +293,10 @@ func TestInstanceUsageAfterDenial(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wls, err := bat.GetAllWorkloads(ctx, "")
+	wl, err := getContainerWorkload(ctx, tenantID)
 	if err != nil {
-		t.Fatal(err)
+		t.Skip()
 	}
-
-	if len(wls) < 1 {
-		t.Fatal("Expected at least one workload")
-	}
-
-	wl := wls[0]
 
 	instances, err := bat.LaunchInstances(ctx, "", wl.ID, 1)
 	if err == nil {
