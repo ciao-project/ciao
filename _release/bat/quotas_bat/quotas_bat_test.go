@@ -265,3 +265,75 @@ func TestInstanceLimited(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// Try launching instance that is over quota and check usage
+//
+// Sets a quota that would deny the instance from being created and
+// then check the usage reflects the instance failed to start.
+//
+// Set an memory quota limit < workload usage. Try and create instance
+// of workload and check that instance launch fails and that the usage
+// reflects that.
+func TestInstanceUsageAfterDenial(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+	tenants, err := bat.GetUserTenants(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tenants) < 1 {
+		t.Fatal("Expected user to have access to at least one tenant")
+	}
+
+	tenantID := tenants[0].ID
+	origQuotas, err := bat.ListQuotas(ctx, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = bat.UpdateQuota(ctx, "", tenantID, "tenant-mem-quota", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := bat.GetAllWorkloads(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) < 1 {
+		t.Fatal("Expected at least one workload")
+	}
+
+	wl := wls[0]
+
+	instances, err := bat.LaunchInstances(ctx, "", wl.ID, 1)
+	if err == nil {
+		t.Error("Expected instance launch to be denied")
+	}
+
+	scheduled, err := bat.WaitForInstancesLaunch(ctx, "", instances, false)
+	if err != nil {
+		t.Error(err)
+	}
+
+	updatedQuotas, err := bat.ListQuotas(ctx, tenantID, "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !checkUsage(updatedQuotas, wl, 0) {
+		t.Error("Usage not recorded correctly")
+	}
+
+	err = restoreQuotas(ctx, tenantID, origQuotas, updatedQuotas)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = bat.DeleteInstances(ctx, "", scheduled)
+	if err != nil {
+		t.Error(err)
+	}
+}
