@@ -272,6 +272,15 @@ func (ds *Datastore) Init(config Config) error {
 			ds.nodes[i.NodeID] = n
 		}
 		ds.nodes[i.NodeID].instances[key] = i
+
+		// ds.tenants.instances should point to the same
+		// instances that we have in ds.instances, otherwise they
+		// will not get updated when we get new stats.
+
+		tenant := ds.tenants[i.TenantID]
+		if tenant != nil {
+			tenant.instances[i.ID] = i
+		}
 	}
 
 	ds.tenantUsage = make(map[string][]types.CiaoUsage)
@@ -298,6 +307,11 @@ func (ds *Datastore) Init(config Config) error {
 		}
 
 		ds.instanceVolumes[link] = key
+
+		instance := ds.instances[value.InstanceID]
+		if instance != nil {
+			instance.Attachments = append(instance.Attachments, value)
+		}
 	}
 
 	ds.attachLock = &sync.RWMutex{}
