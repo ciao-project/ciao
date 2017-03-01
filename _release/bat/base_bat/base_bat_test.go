@@ -405,8 +405,14 @@ func TestLaunchCustomInstance(t *testing.T) {
 	if err != nil {
 		t.Fatal("fail to read yaml file $v", err)
 	}
-	ioutil.WriteFile("CirrosWorkload.yaml", y, 0644)
-	ioutil.WriteFile("CirrosInit.yaml", []byte(vmCloudInit), 0644)
+	err := ioutil.WriteFile("CirrosWorkload.yaml", y, 0644)
+	if err != nil {
+		t.Fatal("fail trying to save yaml file $v", err)
+	}
+	err := ioutil.WriteFile("CirrosInit.yaml", []byte(vmCloudInit), 0644)
+	if err != nil {
+		t.Fatal("fail to read yaml file $v", err)
+	}
 
 	//create the workload
 	args := []string{"workload", "create", "-yaml", "CirrosWorkload.yaml"}
