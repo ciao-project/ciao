@@ -17,13 +17,12 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
-	"github.com/golang/glog"
+	"github.com/pkg/errors"
 )
 
 func (c *controller) evacuateNode(nodeID string) error {
@@ -167,7 +166,6 @@ func (c *controller) confirmTenant(tenantID string) error {
 }
 
 func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, error) {
-
 	var e error
 
 	if instances <= 0 {
@@ -188,23 +186,27 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 
 	var newInstances []*types.Instance
 
-	for i := 0; i < w.Instances; i++ {
+	for i := 0; i < w.Instances && e == nil; i++ {
 		startTime := time.Now()
 		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes)
 		if err != nil {
-			glog.V(2).Info("error newInstance")
-			e = err
+			e = errors.Wrap(err, "Error creating instance")
 			continue
 		}
 		instance.startTime = startTime
 
 		ok, err := instance.Allowed()
+		if err != nil {
+			instance.Clean()
+			e = errors.Wrap(err, "Error checking if instance allowed")
+			continue
+		}
+
 		if ok {
 			err = instance.Add()
 			if err != nil {
-				glog.V(2).Info("error adding instance")
 				instance.Clean()
-				e = err
+				e = errors.Wrap(err, "Error adding instance")
 				continue
 			}
 
@@ -216,13 +218,9 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 			}
 		} else {
 			instance.Clean()
-			if err != nil {
-				e = err
-				continue
-			} else {
-				// stop if we are over limits
-				return nil, errors.New("Over Tenant Limits")
-			}
+			// stop if we are over limits
+			e = errors.New("Over quota")
+			continue
 		}
 	}
 
