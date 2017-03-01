@@ -19,14 +19,29 @@ package basebat
 import (
 	"context"
 	"flag"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/01org/ciao/bat"
+	"gopkg.in/yaml.v2"
 )
 
 const standardTimeout = time.Second * 300
+const vmCloudInit = `---
+#cirros cloud-config
+users:
+  - name: ciaouser
+    geocos: CIAO Test User
+    lock-passwd: false
+    passwd: FrakbS}k0F5Xm0B
+    sudo: ALL=(ALL) NOPASSWD:ALL
+...
+`
 
 // Get all tenants
 //
@@ -309,6 +324,160 @@ func TestDeleteAllInstances(t *testing.T) {
 	if instancesFound != 0 {
 		t.Fatalf("0 instances expected.  Found %d", instancesFound)
 	}
+}
+
+//Launch an instance created from an image with a customized cloud init
+//
+//Download cirros image, add it to the image service using a custom cloudinit file
+//create a workload, launch an instance of this workload and connect via SSH
+//using the custom user and password
+//
+//instance should accept connection with specified user and password and
+//reply with the user name
+func TestLaunchCustomInstance(t *testing.T) {
+	//creating a new cirros image
+	const name = "cirros-image"
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	// TODO:  The only options currently supported by the image service are
+	// ID and Name.  This code needs to be updated when the image service's
+	// support for meta data improves.
+	options := bat.ImageOptions{
+		Name: name,
+	}
+	//downaload cirros image
+	resp, err := http.Get("http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img")
+	if err != nil {
+		t.Fatalf("Error while downloading image file %v", err)
+	}
+	defer resp.Body.Close()
+
+	ImageFile, err := os.Create("cirros-0.3.4-x86_64-disk.img")
+	if err != nil {
+		t.Fatalf("Error while creating image file %v", err)
+	}
+	defer ImageFile.Close()
+
+	_, err = io.Copy(ImageFile, resp.Body)
+
+	if err != nil {
+		t.Fatalf("Error while saving image file %v", err)
+	}
+
+	img, err := bat.AddImage(ctx, "", "cirros-0.3.4-x86_64-disk.img", &options)
+	if err != nil {
+		t.Fatalf("Unable to add image %v", err)
+	}
+
+	defer deleteCustomData(ctx, img.ID)
+
+	if img.ID == "" || img.Name != name || img.Status != "active" ||
+		img.Visibility != "public" || img.Protected {
+		t.Errorf("Meta data of added image is incorrect")
+	}
+	//get data to create workload yaml file
+	defaults := bat.DefaultResources{
+		VCPUs: 2,
+		MemMB: 128,
+	}
+
+	source := bat.Source{
+		Type: "image",
+		ID:   img.ID,
+	}
+	disk := bat.Disk{
+		Bootable:  true,
+		Source:    &source,
+		Ephemeral: true,
+	}
+
+	WLopts := bat.WorkloadOptions{
+		Description:     "BAT VM Test",
+		VMType:          "qemu",
+		FWType:          "legacy",
+		Defaults:        defaults,
+		CloudConfigFile: "CirrosInit.yaml",
+		Disks:           []bat.Disk{disk},
+	}
+	y, err := yaml.Marshal(WLopts)
+	if err != nil {
+		t.Fatal("fail to read yaml file $v", err)
+	}
+	ioutil.WriteFile("CirrosWorkload.yaml", y, 0644)
+	ioutil.WriteFile("CirrosInit.yaml", []byte(vmCloudInit), 0644)
+
+	//create the workload
+	bat.CreateWorkload(ctx, "", WLopts, vmCloudInit)
+	args := []string{"workload", "create", "-yaml", "CirrosWorkload.yaml"}
+	_, err = bat.RunCIAOCLIAsAdmin(ctx, "", args)
+	if err != nil {
+		t.Fatal("Fail to create workload $v", err)
+
+	}
+	//Get ID of workload just created
+	CurWL, err := bat.GetWorkloadByName(ctx, "", WLopts.Description)
+	if err != nil {
+		t.Fatalf("Can't find data for workload %v", err)
+	}
+	//Launch instance of that workload
+	instance, err := bat.LaunchInstances(ctx, "", CurWL.ID, 1)
+	if err != nil {
+		t.Fatal("Fail to launch instance: $v", err)
+	}
+	_, err = bat.WaitForInstancesLaunch(ctx, "", instance, false)
+	if err != nil {
+		t.Errorf("Instance %s did not launch: %v", instance[0], err)
+	}
+	//Access the instances with the user and pasword specified in the could init file
+	WLSSHClient := bat.SSHClient{
+		ClientIP:   "",
+		ClientPort: "",
+		ClientUser: "ciaouser",
+		ClientPass: "FrakbS}k0F5Xm0B",
+	}
+	//Login via ssh and get the user name
+	InstanceReply, err := bat.SSHSendCommand(ctx, WLSSHClient, "/usr/bin/whoami")
+	if err != nil {
+		t.Errorf("Failed to connect with the instance: %v", err)
+	}
+	InstanceReply = strings.TrimSpace(InstanceReply)
+	if InstanceReply != WLSSHClient.ClientUser {
+		t.Errorf("Wrong user name replied by the instances, got %v instead of %v", InstanceReply, WLSSHClient.ClientUser)
+	}
+	//Delete all instances
+	_, err = bat.DeleteInstances(ctx, "", instance)
+	if err != nil {
+		t.Errorf("Failed to delete instance: %v", err)
+	}
+
+	//Delete workload
+	err = bat.DeleteWorkload(ctx, "", CurWL.ID)
+	if err != nil {
+		t.Errorf("Failed to delete workload: %v", err)
+	}
+}
+
+//Cleanup process tu run after TestLaunchCustomInstance
+//
+//Delete the cirros***.img file downloaded, the yaml files for the image
+//created, the image and the instance
+//
+//all data created for the test is removed
+func deleteCustomData(ctx context.Context, ID string) {
+	_ = bat.DeleteImage(ctx, "", ID)
+	//Delete cirros-0.3.4-x86_64-disk.img and yaml files
+	if _, err := os.Stat("CirrosWorkload.yaml"); err == nil {
+		os.Remove("CirrosWorkload.yaml")
+	}
+
+	if _, err := os.Stat("CirrosInit.yaml"); err == nil {
+		os.Remove("CirrosInit.yaml")
+	}
+	if _, err := os.Stat("cirros-0.3.4-x86_64-disk.img"); err == nil {
+		os.Remove("cirros-0.3.4-x86_64-disk.img")
+	}
+
 }
 
 // TestMain ensures that all instances have been deleted when the tests finish.
