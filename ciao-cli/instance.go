@@ -732,13 +732,8 @@ func (cmd *instanceListCommand) run(args []string) error {
 	}
 
 	var servers compute.Servers
-	var url string
 
-	if cmd.workload != "" {
-		url = buildComputeURL("flavors/%s/servers/detail", cmd.workload)
-	} else {
-		url = buildComputeURL("%s/servers/detail", cmd.tenant)
-	}
+	url := buildComputeURL("%s/servers/detail", cmd.tenant)
 
 	var values []queryValue
 	if cmd.limit > 0 {
@@ -759,6 +754,13 @@ func (cmd *instanceListCommand) run(args []string) error {
 		values = append(values, queryValue{
 			name:  "marker",
 			value: cmd.marker,
+		})
+	}
+
+	if cmd.workload != "" {
+		values = append(values, queryValue{
+			name:  "flavor",
+			value: cmd.workload,
 		})
 	}
 
