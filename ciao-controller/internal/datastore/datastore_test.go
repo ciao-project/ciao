@@ -68,7 +68,6 @@ func addTestInstance(tenant *types.Tenant, workload types.Workload) (instance *t
 		CNCI:       false,
 		IPAddress:  ip.String(),
 		MACAddress: mac.String(),
-		Usage:      resources,
 	}
 
 	err = ds.AddInstance(instance)
@@ -291,76 +290,6 @@ func TestAddInstance(t *testing.T) {
 	_, err = addTestInstance(tenant, wls[0])
 	if err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestDeleteInstanceResources(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wls, err := ds.GetWorkloads(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("No Workloads Found")
-	}
-
-	instance, err := addTestInstance(tenant, wls[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// update tenant Info
-	tenantBefore, err := ds.getTenant(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	resourcesBefore := make(map[string]int)
-	for i := range tenantBefore.Resources {
-		r := tenantBefore.Resources[i]
-		resourcesBefore[r.Rname] = r.Usage
-	}
-
-	err = ds.DeleteInstance(instance.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tenantAfter, err := ds.getTenant(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defaults := wls[0].Defaults
-
-	usage := make(map[string]int)
-	for i := range defaults {
-		usage[string(defaults[i].Type)] = defaults[i].Value
-	}
-
-	resourcesAfter := make(map[string]int)
-	for i := range tenantAfter.Resources {
-		r := tenantAfter.Resources[i]
-		resourcesAfter[r.Rname] = r.Usage
-	}
-
-	// make sure usage was reduced by workload defaults values
-	for name, val := range resourcesAfter {
-		before := resourcesBefore[name]
-		delta := usage[name]
-
-		if name == "instances" {
-			if val != before-1 {
-				t.Fatal("instances not decremented")
-			}
-		} else if val != before-delta {
-			t.Fatal("usage not reduced")
-		}
 	}
 }
 
@@ -959,43 +888,6 @@ func TestGetCNCIWorkloadID(t *testing.T) {
 	}
 }
 
-func TestAddLimit(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	/* put tenant limit of 1 instance */
-	err = ds.AddLimit(tenant.ID, 1, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// make sure cache was updated
-	ds.tenantsLock.Lock()
-	t2 := ds.tenants[tenant.ID]
-	delete(ds.tenants, tenant.ID)
-	ds.tenantsLock.Unlock()
-
-	for i := range t2.Resources {
-		if t2.Resources[i].Rtype == 1 {
-			if t2.Resources[i].Limit != 1 {
-				t.Fatal(err)
-			}
-		}
-	}
-
-	// make sure datastore was updated
-	t3, err := ds.GetTenant(tenant.ID)
-	for i := range t3.Resources {
-		if t3.Resources[i].Rtype == 1 {
-			if t3.Resources[i].Limit != 1 {
-				t.Fatal(err)
-			}
-		}
-	}
-}
-
 func TestRemoveTenantCNCI(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
@@ -1269,17 +1161,6 @@ func TestStartFailureFullCloud(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tenantBefore, err := ds.GetTenant(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	resourcesBefore := make(map[string]int)
-	for i := range tenantBefore.Resources {
-		r := tenantBefore.Resources[i]
-		resourcesBefore[r.Rname] = r.Usage
-	}
-
 	reason := payloads.FullCloud
 
 	err = ds.StartFailure(instance.ID, reason)
@@ -1287,36 +1168,9 @@ func TestStartFailureFullCloud(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tenantAfter, err := ds.GetTenant(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defaults := wls[0].Defaults
-
-	usage := make(map[string]int)
-	for i := range defaults {
-		usage[string(defaults[i].Type)] = defaults[i].Value
-	}
-
-	resourcesAfter := make(map[string]int)
-	for i := range tenantAfter.Resources {
-		r := tenantAfter.Resources[i]
-		resourcesAfter[r.Rname] = r.Usage
-	}
-
-	// make sure usage was reduced by workload defaults values
-	for name, val := range resourcesAfter {
-		before := resourcesBefore[name]
-		delta := usage[name]
-
-		if name == "instances" {
-			if val != before-1 {
-				t.Fatal("instances not decremented")
-			}
-		} else if val != before-delta {
-			t.Fatal("usage not reduced")
-		}
+	_, err = ds.GetInstance(instance.ID)
+	if err == nil {
+		t.Fatal("Expected instance not to be present")
 	}
 }
 

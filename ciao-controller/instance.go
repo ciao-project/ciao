@@ -65,8 +65,6 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		return nil, err
 	}
 
-	usage := config.GetResources()
-
 	newInstance := types.Instance{
 		TenantID:   tenantID,
 		WorkloadID: workload.ID,
@@ -75,7 +73,6 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		CNCI:       config.cnci,
 		IPAddress:  config.ip,
 		MACAddress: config.mac,
-		Usage:      usage,
 		CreateTime: time.Now(),
 	}
 
@@ -145,24 +142,6 @@ func (i *instance) Allowed() (bool, error) {
 
 	ds := i.ctl.ds
 
-	tenant, err := ds.GetTenant(i.TenantID)
-	if err != nil {
-		return false, err
-	}
-
-	for _, res := range tenant.Resources {
-		// check instance count separately
-		if res.Rtype == 1 {
-			if res.OverLimit(1) {
-				return false, nil
-			}
-			continue
-		}
-		if res.OverLimit(i.Usage[res.Rname]) {
-			return false, nil
-		}
-	}
-
 	wl, err := ds.GetWorkload(i.TenantID, i.WorkloadID)
 	if err != nil {
 		return true, errors.Wrap(err, "error getting workload from datastore")
@@ -174,18 +153,6 @@ func (i *instance) Allowed() (bool, error) {
 
 	// Cleanup on disallowed happens in Clean()
 	return res.Allowed(), nil
-}
-
-func (c *config) GetResources() map[string]int {
-	rr := c.sc.Start.RequestedResources
-
-	// convert RequestedResources into a map[string]int
-	resources := make(map[string]int)
-	for i := range rr {
-		resources[string(rr[i].Type)] = rr[i].Value
-	}
-
-	return resources
 }
 
 func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s types.StorageResource) (payloads.StorageResource, error) {
