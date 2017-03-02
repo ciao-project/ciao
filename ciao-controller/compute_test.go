@@ -716,24 +716,27 @@ func testListTenantQuotas(t *testing.T, httpExpectedStatus int, validToken bool)
 
 	var expected types.CiaoTenantResources
 
-	for _, resource := range tenant.Resources {
-		switch resource.Rtype {
-		case instances:
-			expected.InstanceLimit = resource.Limit
-			expected.InstanceUsage = resource.Usage
+	qds := ctl.qs.DumpQuotas(tenant.ID)
 
-		case vcpu:
-			expected.VCPULimit = resource.Limit
-			expected.VCPUUsage = resource.Usage
-
-		case memory:
-			expected.MemLimit = resource.Limit
-			expected.MemUsage = resource.Usage
-
-		case disk:
-			expected.DiskLimit = resource.Limit
-			expected.DiskUsage = resource.Usage
-		}
+	qd := findQuota(qds, "tenant-instances-quota")
+	if qd != nil {
+		expected.InstanceLimit = qd.Value
+		expected.InstanceUsage = qd.Usage
+	}
+	qd = findQuota(qds, "tenant-vcpu-quota")
+	if qd != nil {
+		expected.VCPULimit = qd.Value
+		expected.VCPUUsage = qd.Usage
+	}
+	qd = findQuota(qds, "tenant-mem-quota")
+	if qd != nil {
+		expected.MemLimit = qd.Value
+		expected.MemUsage = qd.Usage
+	}
+	qd = findQuota(qds, "tenant-storage-quota")
+	if qd != nil {
+		expected.DiskLimit = qd.Value
+		expected.DiskUsage = qd.Usage
 	}
 
 	expected.ID = tenant.ID
