@@ -206,6 +206,12 @@ func (ts *testServer) EventNotify(uuid string, event ssntp.Event, frame *ssntp.F
 		if err == nil {
 			e = &payload
 		}
+	case ssntp.InstanceStopped:
+		payload := payloads.EventInstanceStopped{}
+		err := yaml.Unmarshal(frame.Payload, &payload)
+		if err == nil {
+			e = &payload
+		}
 	}
 
 	c.events = append(c.events, e)

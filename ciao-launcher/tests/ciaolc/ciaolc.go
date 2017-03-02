@@ -43,6 +43,7 @@ func init() {
 		fmt.Fprintln(os.Stderr, "Where commands are:")
 		fmt.Fprintln(os.Stderr, "\tstartf")
 		fmt.Fprintln(os.Stderr, "\tdelete")
+		fmt.Fprintln(os.Stderr, "\tstop")
 		fmt.Fprintln(os.Stderr, "\tdrain")
 		fmt.Fprintln(os.Stderr, "\tstats")
 		fmt.Fprintln(os.Stderr, "\tistats")
@@ -408,7 +409,7 @@ func startf(host string) error {
 	return err
 }
 
-func del(host string) error {
+func postDeleteCommand(host string, migration bool) error {
 	var del payloads.Delete
 
 	client, instance, err := getSimplePostArgs("delete")
@@ -417,7 +418,16 @@ func del(host string) error {
 	}
 
 	del.Delete.InstanceUUID = instance
+	del.Delete.Migration = migration
 	return postYaml(host, "delete", client, &del)
+}
+
+func del(host string) error {
+	return postDeleteCommand(host, false)
+}
+
+func stop(host string) error {
+	return postDeleteCommand(host, true)
 }
 
 func attach(host string) error {
@@ -459,6 +469,7 @@ func main() {
 		"stats":     stats,
 		"status":    status,
 		"delete":    del,
+		"stop":      stop,
 		"drain":     drain,
 		"startf":    startf,
 		"attach":    attach,
