@@ -43,6 +43,13 @@ const (
 	CLEARCONTAINERS = "clearcontainers"
 )
 
+// Constants for the Guest image used by ciao-down
+
+const (
+	guestDownloadURL       = "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
+	guestImageFriendlyName = "Ubuntu 16.04"
+)
+
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n\n", os.Args[0])
@@ -120,14 +127,6 @@ func startFlags() (memGB int, CPUs int, err error) {
 	}
 
 	return memGB, CPUs, nil
-}
-
-func downloadProgress(p progress) {
-	if p.totalMB >= 0 {
-		fmt.Printf("Downloaded %d MB of %d\n", p.downloadedMB, p.totalMB)
-	} else {
-		fmt.Printf("Downloaded %d MB\n", p.downloadedMB)
-	}
 }
 
 func saveInstanceConfig(ws *workspace) error {
@@ -210,7 +209,8 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	qcowPath, err := downloadUbuntu(ctx, ws.ciaoDir, downloadProgress)
+	fmt.Printf("Downloading %s\n", guestImageFriendlyName)
+	qcowPath, err := downloadFile(ctx, guestDownloadURL, ws.ciaoDir, downloadProgress)
 	if err != nil {
 		return
 	}
@@ -232,7 +232,7 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	err = manageInstallation(ctx, ws.instanceDir, ws)
+	err = manageInstallation(ctx, ws.ciaoDir, ws.instanceDir, ws)
 	if err != nil {
 		return
 	}

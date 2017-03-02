@@ -94,7 +94,7 @@ runcmd:
  - echo "PATH=\"$PATH:/usr/local/go/bin:{{$.GoPath}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
 
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}wget https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz -O /tmp/go1.8.linux-amd64.tar.gz
+ - {{download . "https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz"}}
  - {{template "CHECK" .}}
  - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
  - tar -C /usr/local -xzf /tmp/go1.8.linux-amd64.tar.gz
@@ -193,11 +193,11 @@ runcmd:
  - mkdir -p /home/{{.User}}/local
 
  - curl -X PUT -d "Downloading Fedora-Cloud-Base-24-1.2.x86_64.qcow2" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}wget https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2 -O /home/{{.User}}/local/Fedora-Cloud-Base-24-1.2.x86_64.qcow2
+ - {{download . "https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2" (printf "/home/%%s/local/Fedora-Cloud-Base-24-1.2.x86_64.qcow2" .User)}}
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Downloading CNCI image" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}wget https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz -O /home/{{.User}}/local/clear-8260-ciao-networking.img.xz
+ - {{download . "https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz" (printf "/home/%%s/local/clear-8260-ciao-networking.img.xz" .User)}}
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Downloading latest clear cloud image" 10.0.2.2:{{.HTTPServerPort}}
@@ -323,7 +323,7 @@ runcmd:
  - echo "PATH=\"$PATH:/usr/local/go/bin:{{$.GoPath}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
 
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}wget https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz -O /tmp/go1.7.4.linux-amd64.tar.gz
+ - {{download . "https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz" "/tmp/go1.7.4.linux-amd64.tar.gz"}}
  - {{template "CHECK" .}}
  - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
  - tar -C /usr/local -xzf /tmp/go1.7.4.linux-amd64.tar.gz
