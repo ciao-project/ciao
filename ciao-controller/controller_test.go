@@ -256,10 +256,10 @@ func TestTenantWithinBounds(t *testing.T) {
 	}
 
 	/* put tenant limit of 1 instance */
-	err = ctl.ds.AddLimit(tenant.ID, 1, 1)
-	if err != nil {
-		t.Fatal(err)
+	quotas := []types.QuotaDetails{
+		{Name: "tenant-instances-quota", Value: 1},
 	}
+	ctl.qs.Update(tenant.ID, quotas)
 
 	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil || len(wls) == 0 {
@@ -275,6 +275,10 @@ func TestTenantWithinBounds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	quotas = []types.QuotaDetails{
+		{Name: "tenant-instances-quota", Value: -1},
+	}
+	ctl.qs.Update(tenant.ID, quotas)
 }
 
 func TestTenantOutOfBounds(t *testing.T) {
@@ -287,10 +291,10 @@ func TestTenantOutOfBounds(t *testing.T) {
 	}
 
 	/* put tenant limit of 1 instance */
-	err = ctl.ds.AddLimit(tenant.ID, 1, 1)
-	if err != nil {
-		t.Fatal(err)
+	quotas := []types.QuotaDetails{
+		{Name: "tenant-instances-quota", Value: 1},
 	}
+	ctl.qs.Update(tenant.ID, quotas)
 
 	wls, err := ctl.ds.GetWorkloads(tenant.ID)
 	if err != nil || len(wls) == 0 {
@@ -307,6 +311,10 @@ func TestTenantOutOfBounds(t *testing.T) {
 	if err == nil {
 		t.Errorf("Not tracking limits correctly")
 	}
+	quotas = []types.QuotaDetails{
+		{Name: "tenant-instances-quota", Value: -1},
+	}
+	ctl.qs.Update(tenant.ID, quotas)
 }
 
 // TestNewTenantHardwareAddr
