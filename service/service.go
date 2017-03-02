@@ -16,6 +16,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 )
 
 type key int
@@ -23,6 +24,10 @@ type key int
 // PrivKey is the index of the context map which indicates whether a
 // service API has been called by a privileged user or not.
 const PrivKey key = 0
+
+// TenantIDKey is the index of the context map which indicates the
+// tenant id which is being used in the API call
+const TenantIDKey key = 1
 
 // GetPrivilege returns the value of PrivKey
 func GetPrivilege(ctx context.Context) bool {
@@ -33,4 +38,18 @@ func GetPrivilege(ctx context.Context) bool {
 // SetPrivilege is used to set the value of PrivKey
 func SetPrivilege(ctx context.Context, privileged bool) context.Context {
 	return context.WithValue(ctx, PrivKey, privileged)
+}
+
+// GetTenantID returns the value of TenantIDKey
+func GetTenantID(ctx context.Context) (string, error) {
+	tenantID, ok := ctx.Value(TenantIDKey).(string)
+	if ok {
+		return tenantID, nil
+	}
+	return tenantID, fmt.Errorf("There's no tenant on this Context")
+}
+
+// SetTenantID sets the value of Tenant ID
+func SetTenantID(ctx context.Context, tenantID string) context.Context {
+	return context.WithValue(ctx, TenantIDKey, tenantID)
 }
