@@ -168,7 +168,7 @@ func (c *controller) confirmTenant(tenantID string) error {
 func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, error) {
 	var e error
 
-	if instances <= 0 {
+	if w.Instances <= 0 {
 		return nil, errors.New("Missing number of instances to start")
 	}
 
