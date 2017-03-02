@@ -125,6 +125,26 @@ func (db *BoltDB) DbTablesInit(tables []string) (err error) {
 	return err
 }
 
+// DbTablesList retrieves list of existing buckets
+func (db *BoltDB) DbTablesList() ([]string, error) {
+
+	dbTables := []string{}
+	Logger.Infof("dbTablesList Tables")
+
+	err := db.DB.View(func(tx *bolt.Tx) error {
+		return tx.ForEach(func(name []byte, _ *bolt.Bucket) error {
+			dbTables = append(dbTables, string(name))
+			return nil
+		})
+	})
+
+	if err != nil {
+		Logger.Errorf("Tables listing error %v", err)
+	}
+
+	return dbTables, err
+}
+
 // DbAdd adds a new element to table in Bolt database
 func (db *BoltDB) DbAdd(table string, key string, value interface{}) (err error) {
 

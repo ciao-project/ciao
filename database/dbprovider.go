@@ -36,6 +36,8 @@ type DbProvider interface {
 	DbClose() error
 	// Creates the tables if the tables do not already exist in the database
 	DbTablesInit(tables []string) error
+	// Retrieves list of existing tables
+	DbTablesList() ([]string, error)
 	// Populates the in-memory table from the database
 	DbTableRebuild(table DbTable) error
 	// Adds the key/value pair to the table
