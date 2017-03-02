@@ -253,6 +253,7 @@ func (h Handler) validateToken(ctx context.Context, r *http.Request) (context.Co
 
 	if tenantFromVars == "" {
 		glog.V(2).Infof("Token validation for [%s]", tenantFromToken)
+		ctx = service.SetTenantID(ctx, tenantFromToken)
 		return h.checkToken(ctx, r, tenantFromToken, tokenResult)
 	}
 	// verify that tenant from token is consistent with the tenant
@@ -262,6 +263,7 @@ func (h Handler) validateToken(ctx context.Context, r *http.Request) (context.Co
 		return ctx, false
 	}
 
+	ctx = service.SetTenantID(ctx, tenantFromVars)
 	glog.V(2).Infof("Token validation for [%s]", tenantFromVars)
 	return h.checkToken(ctx, r, tenantFromVars, tokenResult)
 }
