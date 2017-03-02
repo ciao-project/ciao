@@ -231,12 +231,14 @@ func (pager *nodeServerPager) nextPage(filterType pagerFilterType, filter string
 	return types.CiaoServersStats{}, fmt.Errorf("Item %s not found", lastSeen)
 }
 
-const (
-	instances int = 1
-	vcpu          = 2
-	memory        = 3
-	disk          = 4
-)
+func findQuota(qds []types.QuotaDetails, name string) *types.QuotaDetails {
+	for i := range qds {
+		if qds[i].Name == name {
+			return &qds[i]
+		}
+	}
+	return nil
+}
 
 func getResources(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	var tenantResource types.CiaoTenantResources
@@ -254,28 +256,29 @@ func getResources(c *controller, w http.ResponseWriter, r *http.Request) (APIRes
 		return errorResponse(types.ErrTenantNotFound), types.ErrTenantNotFound
 	}
 
-	resources := t.Resources
-
 	tenantResource.ID = t.ID
 
-	for _, resource := range resources {
-		switch resource.Rtype {
-		case instances:
-			tenantResource.InstanceLimit = resource.Limit
-			tenantResource.InstanceUsage = resource.Usage
+	qds := c.qs.DumpQuotas(t.ID)
 
-		case vcpu:
-			tenantResource.VCPULimit = resource.Limit
-			tenantResource.VCPUUsage = resource.Usage
-
-		case memory:
-			tenantResource.MemLimit = resource.Limit
-			tenantResource.MemUsage = resource.Usage
-
-		case disk:
-			tenantResource.DiskLimit = resource.Limit
-			tenantResource.DiskUsage = resource.Usage
-		}
+	qd := findQuota(qds, "tenant-instances-quota")
+	if qd != nil {
+		tenantResource.InstanceLimit = qd.Value
+		tenantResource.InstanceUsage = qd.Usage
+	}
+	qd = findQuota(qds, "tenant-vcpu-quota")
+	if qd != nil {
+		tenantResource.VCPULimit = qd.Value
+		tenantResource.VCPUUsage = qd.Usage
+	}
+	qd = findQuota(qds, "tenant-mem-quota")
+	if qd != nil {
+		tenantResource.MemLimit = qd.Value
+		tenantResource.MemUsage = qd.Usage
+	}
+	qd = findQuota(qds, "tenant-storage-quota")
+	if qd != nil {
+		tenantResource.DiskLimit = qd.Value
+		tenantResource.DiskUsage = qd.Usage
 	}
 
 	return APIResponse{http.StatusOK, tenantResource}, nil
