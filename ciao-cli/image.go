@@ -206,26 +206,30 @@ func (cmd *imageListCommand) run(args []string) error {
 
 	pager := images.List(client, images.ListOpts{})
 
+	var allImages []images.Image
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
 		imageList, err := images.ExtractImages(page)
 		if err != nil {
 			errorf("Could not extract image [%s]\n", err)
 		}
+		allImages = append(allImages, imageList...)
 
-		if t != nil {
-			if err = t.Execute(os.Stdout, &imageList); err != nil {
-				fatalf(err.Error())
-			}
-			return false, nil
-		}
-
-		for k, i := range imageList {
-			fmt.Printf("Image #%d\n", k+1)
-			dumpImage(&i)
-			fmt.Printf("\n")
-		}
 		return false, nil
 	})
+
+	if t != nil {
+		if err = t.Execute(os.Stdout, &allImages); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
+	}
+
+	for k, i := range allImages {
+		fmt.Printf("Image #%d\n", k+1)
+		dumpImage(&i)
+		fmt.Printf("\n")
+	}
+
 	return err
 }
 
