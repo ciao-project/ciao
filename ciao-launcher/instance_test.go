@@ -62,6 +62,7 @@ type instanceTestState struct {
 	dvf             payloads.ErrorDetachVolumeFailure
 	deMigration     bool
 	de              payloads.EventInstanceDeleted
+	se              payloads.EventInstanceStopped
 	connect         bool
 	monitorCh       chan interface{}
 	errorCh         chan struct{}
@@ -166,9 +167,9 @@ func (v *instanceTestState) SendEvent(event ssntp.Event, payload []byte) (int, e
 		}
 	case ssntp.InstanceStopped:
 		v.deMigration = true
-		err := yaml.Unmarshal(payload, &v.de)
+		err := yaml.Unmarshal(payload, &v.se)
 		if err != nil {
-			v.t.Fatalf("Failed to unmarshall instanceDeleted event %v", err)
+			v.t.Fatalf("Failed to unmarshall instanceStopped event %v", err)
 		}
 	}
 
@@ -275,6 +276,22 @@ func (v *instanceTestState) deleteInstance(t *testing.T, ovsCh chan interface{},
 	return v.deleteInstanceEx(t, ovsCh, cmdCh, &insDeleteCmd{})
 }
 
+func (v *instanceTestState) checkDeleteEvent(t *testing.T, cmd *insDeleteCmd) {
+	if cmd.migration != v.deMigration {
+		t.Errorf("Incorrect delete event recevied")
+	}
+	var instance string
+	if cmd.migration {
+		instance = v.se.InstanceStopped.InstanceUUID
+	} else {
+		instance = v.de.InstanceDeleted.InstanceUUID
+	}
+	if instance != v.instance {
+		t.Errorf("Event recevied for wrong instance.  Expected %s got %s",
+			v.instance, instance)
+	}
+}
+
 func (v *instanceTestState) handleInstanceShutdown(t *testing.T, ovsCh chan interface{},
 	cmd *insDeleteCmd) bool {
 	statusReceived := false
@@ -299,13 +316,7 @@ func (v *instanceTestState) handleInstanceShutdown(t *testing.T, ovsCh chan inte
 			}
 		case <-v.eventCh:
 			v.eventCh = nil
-			if cmd.migration != v.deMigration {
-				t.Errorf("Incorrect delete event recevied")
-			}
-			if v.de.InstanceDeleted.InstanceUUID != v.instance {
-				t.Errorf("Delete event recevied for wrong instance.  Expected %s got %s",
-					v.instance, v.de.InstanceDeleted.InstanceUUID)
-			}
+			v.checkDeleteEvent(t, cmd)
 			if statusReceived {
 				return true
 			}

@@ -151,23 +151,34 @@ func (id *instanceData) monitorCommand(cmd *insMonitorCmd) {
 	id.monitorCh = id.vm.monitorVM(id.monitorCloseCh, id.connectedCh, &id.instanceWg, true)
 }
 
-func (id *instanceData) sendInstanceDeletedEvent(migration bool) {
+func (id *instanceData) sendInstanceDeletedEvent() {
 	var event payloads.EventInstanceDeleted
 
 	event.InstanceDeleted.InstanceUUID = id.instance
 
 	payload, err := yaml.Marshal(&event)
 	if err != nil {
-		glog.Errorf("Unable to Marshall STATS %v", err)
+		glog.Errorf("Unable to Marshall InstanceDeleted event %v", err)
 		return
 	}
-
-	eventType := ssntp.InstanceDeleted
-	if migration {
-		eventType = ssntp.InstanceStopped
+	_, err = id.ac.conn.SendEvent(ssntp.InstanceDeleted, payload)
+	if err != nil {
+		glog.Errorf("Failed to send event command %v", err)
+		return
 	}
+}
 
-	_, err = id.ac.conn.SendEvent(eventType, payload)
+func (id *instanceData) sendInstanceStoppedEvent() {
+	var event payloads.EventInstanceStopped
+
+	event.InstanceStopped.InstanceUUID = id.instance
+
+	payload, err := yaml.Marshal(&event)
+	if err != nil {
+		glog.Errorf("Unable to Marshall InstanceStopped %v", err)
+		return
+	}
+	_, err = id.ac.conn.SendEvent(ssntp.InstanceStopped, payload)
 	if err != nil {
 		glog.Errorf("Failed to send event command %v", err)
 		return
@@ -198,7 +209,11 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	id.unmapVolumes()
 
 	if !cmd.skipDeleteEvent {
-		id.sendInstanceDeletedEvent(cmd.migration)
+		if cmd.migration {
+			id.sendInstanceStoppedEvent()
+		} else {
+			id.sendInstanceDeletedEvent()
+		}
 		id.ovsCh <- &ovsStatusCmd{}
 	}
 	return true

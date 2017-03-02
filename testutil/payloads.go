@@ -422,6 +422,11 @@ const InsDelYaml = `instance_deleted:
   instance_uuid: ` + InstanceUUID + `
 `
 
+// InsStopYaml is a sample workload InstanceStopped ssntp.Event payload for test cases
+const InsStopYaml = `instance_stopped:
+  instance_uuid: ` + InstanceUUID + `
+`
+
 // NodeConnectedYaml is a sample node NodeConnected ssntp.Event payload for test cases
 const NodeConnectedYaml = `node_connected:
   node_uuid: ` + AgentUUID + `

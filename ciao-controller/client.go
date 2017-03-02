@@ -137,14 +137,14 @@ func (client *ssntpClient) instanceDeleted(payload []byte) {
 }
 
 func (client *ssntpClient) instanceStopped(payload []byte) {
-	var event payloads.EventInstanceDeleted
+	var event payloads.EventInstanceStopped
 	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
 		glog.Warning("Error unmarshalling InstanceStopped: %v")
 		return
 	}
-	glog.Infof("Stopped instance %s", event.InstanceDeleted.InstanceUUID)
-	err = client.ctl.ds.StopInstance(event.InstanceDeleted.InstanceUUID)
+	glog.Infof("Stopped instance %s", event.InstanceStopped.InstanceUUID)
+	err = client.ctl.ds.StopInstance(event.InstanceStopped.InstanceUUID)
 	if err != nil {
 		glog.Warningf("Error stopping instance from datastore: %v", err)
 	}

@@ -453,7 +453,7 @@ func TestRestartInstance(t *testing.T) {
 		t.Fatal("Did not get correct Instance ID")
 	}
 
-	err = sendDeleteEvent(client, instances[0].ID, true)
+	err = sendStopEvent(client, instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -895,7 +895,7 @@ func TestRestartFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = sendDeleteEvent(client, instances[0].ID, true)
+	err = sendStopEvent(client, instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}

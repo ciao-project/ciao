@@ -660,7 +660,8 @@ func (client *SsntpTestClient) SendTrace() {
 	go client.SendResultAndDelEventChan(ssntp.TraceReport, result)
 }
 
-func (client *SsntpTestClient) sendDeleteEvent(uuid string, ev ssntp.Event) {
+// SendDeleteEvent allows an SsntpTestClient to push an ssntp.InstanceDeleted event frame
+func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
 	var result Result
 
 	evt := payloads.InstanceDeletedEvent{
@@ -675,23 +676,38 @@ func (client *SsntpTestClient) sendDeleteEvent(uuid string, ev ssntp.Event) {
 	if err != nil {
 		result.Err = err
 	} else {
-		_, err = client.Ssntp.SendEvent(ev, y)
+		_, err = client.Ssntp.SendEvent(ssntp.InstanceDeleted, y)
 		if err != nil {
 			result.Err = err
 		}
 	}
 
-	go client.SendResultAndDelEventChan(ev, result)
+	go client.SendResultAndDelEventChan(ssntp.InstanceDeleted, result)
 }
 
-// SendDeleteEvent allows an SsntpTestClient to push an ssntp.InstanceDeleted event frame
-func (client *SsntpTestClient) SendDeleteEvent(uuid string) {
-	client.sendDeleteEvent(uuid, ssntp.InstanceDeleted)
-}
-
-// SendStopEvent allows an SsntpTestClient to push an ssntp.InstanceStopped event frame
+// SendStoppedEvent allows an SsntpTestClient to push an ssntp.InstanceStopped event frame
 func (client *SsntpTestClient) SendStoppedEvent(uuid string) {
-	client.sendDeleteEvent(uuid, ssntp.InstanceStopped)
+	var result Result
+
+	evt := payloads.InstanceStoppedEvent{
+		InstanceUUID: uuid,
+	}
+
+	event := payloads.EventInstanceStopped{
+		InstanceStopped: evt,
+	}
+
+	y, err := yaml.Marshal(event)
+	if err != nil {
+		result.Err = err
+	} else {
+		_, err = client.Ssntp.SendEvent(ssntp.InstanceStopped, y)
+		if err != nil {
+			result.Err = err
+		}
+	}
+
+	go client.SendResultAndDelEventChan(ssntp.InstanceStopped, result)
 }
 
 // SendTenantAddedEvent allows an SsntpTestClient to push an ssntp.TenantAdded event frame

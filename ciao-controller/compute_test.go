@@ -515,7 +515,7 @@ func TestServerActionStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = sendDeleteEvent(client, servers.Servers[0].ID, true)
+	err = sendStopEvent(client, servers.Servers[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -529,9 +529,9 @@ func TestServerActionStart(t *testing.T) {
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action), true)
 }
 
-func sendDeleteEvent(client *testutil.SsntpTestClient, instanceUUID string, migration bool) error {
-	event := payloads.EventInstanceDeleted{
-		InstanceDeleted: payloads.InstanceDeletedEvent{
+func sendStopEvent(client *testutil.SsntpTestClient, instanceUUID string) error {
+	event := payloads.EventInstanceStopped{
+		InstanceStopped: payloads.InstanceStoppedEvent{
 			InstanceUUID: instanceUUID,
 		},
 	}
