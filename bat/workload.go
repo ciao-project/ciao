@@ -60,7 +60,7 @@ type WorkloadOptions struct {
 	Description     string           `yaml:"description"`
 	VMType          string           `yaml:"vm_type"`
 	FWType          string           `yaml:"fw_type"`
-	ImageName       string           `yaml:"image_id"`
+	ImageName       string           `yaml:"image_name"`
 	Defaults        DefaultResources `yaml:"defaults"`
 	CloudConfigFile string           `yaml:"cloud_init"`
 	Disks           []Disk           `yaml:"disks"`
