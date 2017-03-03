@@ -969,6 +969,7 @@ type connectionStatus struct {
 type clusterConfiguration struct {
 	sync.RWMutex
 	configuration []byte
+	backup        string
 }
 
 func (conf *clusterConfiguration) setConfiguration(configuration []byte) {

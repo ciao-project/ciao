@@ -181,8 +181,23 @@ func handleSSNTPClient(server *Server, conn net.Conn) {
 		switch frame.Type {
 		case COMMAND:
 			if (Command)(frame.Operand) == CONFIGURE && session.destRole.IsController() {
-				/* TODO Send the CONFIGURE payload to the config package */
+				// setup new configuration in SSNTP server
 				server.configuration.setConfiguration(frame.Payload)
+
+				// save new configuration to be persistent
+				pyld, err := configuration.Payload(frame.Payload)
+				if err != nil {
+					server.log.Errorf("Unable to retrieve configuration payload: %v\n", err)
+				}
+				server.log.Infof("Saving new cluster configuration\n")
+				err = configuration.Save(&pyld, server.configuration.backup)
+				if err != nil {
+					server.log.Errorf("Unable to save new configuration: %v\n", err)
+				} else {
+					// re-define the backup in case ConfigStorageURI has been changed.
+					server.configuration.backup = pyld.Configure.Scheduler.ConfigStorageURI
+					server.log.Infof("New cluster configuration has been saved\n")
+				}
 			}
 			server.forwardRules.forwardFrame(server, session, (Command)(frame.Operand), &frame)
 			server.ntf.CommandNotify(uuidString, (Command)(frame.Operand), &frame)
@@ -256,6 +271,11 @@ func (server *Server) Serve(config *Config, ntf ServerNotifier) error {
 		server.log.Errorf("Error loading configuration data from %s: %s - You may have not installed your configuration file yet", config.ConfigURI, err)
 	} else {
 		server.configuration.setConfiguration(payload)
+		c, err := configuration.Payload(payload)
+		if err != nil {
+			server.log.Errorf("Error defining backup route for configuration: %v", err)
+		}
+		server.configuration.backup = c.Configure.Scheduler.ConfigStorageURI
 	}
 
 	server.ntf = ntf
