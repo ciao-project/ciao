@@ -82,6 +82,8 @@ func TestQuotas(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	defer cleanupQuotas(ctx, t, tenantID, origQuotas)
+
 	updatedQuotas, err := bat.ListQuotas(ctx, tenantID, "")
 	if err != nil {
 		t.Error(err)
@@ -90,11 +92,6 @@ func TestQuotas(t *testing.T) {
 	qd := findQuota(updatedQuotas, qn)
 	if qd.Value != "10" {
 		t.Error("Quota not expected value")
-	}
-
-	err = restoreQuotas(ctx, tenantID, origQuotas, updatedQuotas)
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -128,6 +125,18 @@ func checkUsage(qds []bat.QuotaDetails, wl bat.Workload, count int) bool {
 func getContainerWorkload(ctx context.Context, tenantID string) (bat.Workload, error) {
 	const testContainerWorkload = "Debian latest test container"
 	return bat.GetWorkloadByName(ctx, tenantID, testContainerWorkload)
+}
+
+func cleanupQuotas(ctx context.Context, t *testing.T, tenantID string, origQuotas []bat.QuotaDetails) {
+	updatedQuotas, err := bat.ListQuotas(ctx, tenantID, "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = restoreQuotas(ctx, tenantID, origQuotas, updatedQuotas)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 // Test reporting of instance usage
@@ -241,24 +250,16 @@ func TestInstanceLimited(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	err = bat.UpdateQuota(ctx, "", tenantID, "tenant-instances-quota", "2")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer cleanupQuotas(ctx, t, tenantID, origQuotas)
 
 	err = launchMultipleInstances(ctx, t, tenantID, 3)
 	if err == nil {
 		t.Errorf("Expected launch of instances to fail")
-	}
-
-	updatedQuotas, err := bat.ListQuotas(ctx, tenantID, "")
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = restoreQuotas(ctx, tenantID, origQuotas, updatedQuotas)
-	if err != nil {
-		t.Error(err)
 	}
 }
 
@@ -288,15 +289,16 @@ func TestInstanceUsageAfterDenial(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = bat.UpdateQuota(ctx, "", tenantID, "tenant-mem-quota", "0")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	wl, err := getContainerWorkload(ctx, tenantID)
 	if err != nil {
 		t.Skip()
 	}
+
+	err = bat.UpdateQuota(ctx, "", tenantID, "tenant-mem-quota", "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanupQuotas(ctx, t, tenantID, origQuotas)
 
 	instances, err := bat.LaunchInstances(ctx, "", wl.ID, 1)
 	if err == nil {
@@ -315,11 +317,6 @@ func TestInstanceUsageAfterDenial(t *testing.T) {
 
 	if !checkUsage(updatedQuotas, wl, 0) {
 		t.Error("Usage not recorded correctly")
-	}
-
-	err = restoreQuotas(ctx, tenantID, origQuotas, updatedQuotas)
-	if err != nil {
-		t.Error(err)
 	}
 
 	_, err = bat.DeleteInstances(ctx, "", scheduled)
