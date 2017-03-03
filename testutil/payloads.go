@@ -174,6 +174,7 @@ const StartYaml = `start:
     subnet_uuid: ""
     private_ip: ""
     public_ip: false
+  migration: false
 `
 
 // CNCIStartYaml is a sample CNCI workload START ssntp.Command payload for test cases
@@ -224,6 +225,7 @@ const PartialStartYaml = `start:
 // StartFailureYaml is a sample workload StartFailure ssntp.Error payload for test cases
 const StartFailureYaml = `instance_uuid: ` + InstanceUUID + `
 reason: full_cloud
+migration: false
 `
 
 // RestartYaml is a sample workload RESTART ssntp.Command payload for test cases

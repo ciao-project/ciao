@@ -283,19 +283,14 @@ func (client *ssntpClient) startFailure(payload []byte) {
 		glog.Warningf("Error unmarshalling StartFailure: %v", err)
 		return
 	}
-	i, err := client.ctl.ds.GetInstance(failure.InstanceUUID)
-	if err != nil {
-		glog.Warningf("StartFailure instance %s could not be retrieved: %v", failure.InstanceUUID, err)
-		return
-	}
-	if failure.Reason.IsFatal() && (i.State == payloads.ComputeStatusPending) {
+	if failure.Reason.IsFatal() && !failure.Migration {
 		client.deleteEphemeralStorage(failure.InstanceUUID)
 		err = client.releaseResources(failure.InstanceUUID)
 		if err != nil {
 			glog.Warningf("Error when releasing resources for start failed instance: %v", err)
 		}
 	}
-	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason)
+	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason, failure.Migration)
 	if err != nil {
 		glog.Warningf("Error adding StartFailure to datastore: %v", err)
 	}
@@ -465,6 +460,7 @@ func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) erro
 		// This instance is not running and not assigned to a node.  We
 		// can just remove its details from controller's db and delete
 		// any ephemeral storage.
+		glog.Info("Deleting unassigned instance")
 		client.removeInstance(instanceID)
 		return nil
 	}
@@ -494,6 +490,11 @@ func (client *ssntpClient) StopInstance(instanceID string, nodeID string) error 
 func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 	t *types.Tenant) error {
 
+	err := client.ctl.ds.RestartInstance(i.ID)
+	if err != nil {
+		return errors.Wrapf(err, "Unable to update instance state before restarting")
+	}
+
 	metaData := userData{
 		UUID:     i.ID,
 		Hostname: i.ID,
@@ -514,7 +515,8 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 			Subnet:           i.Subnet,
 			PrivateIP:        i.IPAddress,
 		},
-		Storage: make([]payloads.StorageResource, len(i.Attachments)),
+		Storage:   make([]payloads.StorageResource, len(i.Attachments)),
+		Migration: true,
 	}
 
 	if w.VMType == payloads.Docker {

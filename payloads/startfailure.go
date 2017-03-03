@@ -88,6 +88,10 @@ type ErrorStartFailure struct {
 	// Reason provides the reason for the start failure, e.g.,
 	// LaunchFailure.
 	Reason StartFailureReason `yaml:"reason"`
+
+	// Migration is true if the failed start command was attempting to
+	// restart an existing instance.
+	Migration bool
 }
 
 func (r StartFailureReason) String() string {

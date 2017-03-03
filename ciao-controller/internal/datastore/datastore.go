@@ -926,7 +926,7 @@ func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureR
 // is received.  StartFailure errors may also be generated when restarting an
 // exited instance and we want to make sure that a failure to restart such
 // an instance does not result in it being deleted.
-func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailureReason) error {
+func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailureReason, migration bool) error {
 	var tenantID string
 	var cnci bool
 
@@ -971,7 +971,7 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
-	if reason.IsFatal() && (i.State == payloads.ComputeStatusPending) {
+	if reason.IsFatal() && !migration {
 		ds.deleteInstance(instanceID)
 	}
 
@@ -1094,6 +1094,40 @@ func (ds *Datastore) DeleteInstance(instanceID string) error {
 	msg := fmt.Sprintf("Deleted Instance %s", instanceID)
 	ds.db.logEvent(tenantID, string(userInfo), msg)
 
+	return nil
+}
+
+func (ds *Datastore) restartInstance(instanceID string) error {
+	ds.instancesLock.Lock()
+	i := ds.instances[instanceID]
+	i.State = payloads.Pending
+	ds.instancesLock.Unlock()
+
+	instanceStat := types.CiaoServerStats{
+		ID:        instanceID,
+		Timestamp: time.Now(),
+		Status:    payloads.Pending,
+	}
+	ds.instanceLastStatLock.Lock()
+	ds.instanceLastStat[instanceID] = instanceStat
+	ds.instanceLastStatLock.Unlock()
+
+	stats := []payloads.InstanceStat{
+		{
+			InstanceUUID: instanceID,
+			State:        payloads.Pending,
+		},
+	}
+
+	return errors.Wrapf(ds.db.addInstanceStats(stats, ""), "error adding instance stats to database")
+}
+
+// RestartInstance resets a restarting instance's state to pending.
+func (ds *Datastore) RestartInstance(instanceID string) error {
+	err := ds.restartInstance(instanceID)
+	if err != nil {
+		return errors.Wrapf(err, "error restarting instance")
+	}
 	return nil
 }
 

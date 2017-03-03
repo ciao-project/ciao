@@ -170,7 +170,7 @@ func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) 
 		if !addResult.canAdd {
 			glog.Errorf("Instance will make node full: Disk %d Mem %d CPUs %d",
 				insCmd.cfg.Disk, insCmd.cfg.Mem, insCmd.cfg.Cpus)
-			se := startError{nil, payloads.FullComputeNode}
+			se := startError{nil, payloads.FullComputeNode, insCmd.cfg.Migration}
 			se.send(conn, cmd.instance)
 			return
 		}

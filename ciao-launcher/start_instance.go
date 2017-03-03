@@ -83,12 +83,12 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	_, err = os.Stat(instanceDir)
 	if err == nil {
 		err = fmt.Errorf("Instance %s has already been created", cfg.Instance)
-		return nil, &startError{err, payloads.InstanceExists}
+		return nil, &startError{err, payloads.InstanceExists, cmd.cfg.Migration}
 	}
 
 	err = vm.ensureBackingImage()
 	if err != nil {
-		return nil, &startError{err, payloads.ImageFailure}
+		return nil, &startError{err, payloads.ImageFailure, cmd.cfg.Migration}
 	}
 
 	st.backingImageCheck = time.Now()
@@ -97,14 +97,14 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 		vnicCfg, err = createVnicCfg(cfg)
 		if err != nil {
 			glog.Errorf("Could not create VnicCFG: %s", err)
-			return nil, &startError{err, payloads.InvalidData}
+			return nil, &startError{err, payloads.InvalidData, cmd.cfg.Migration}
 		}
 	}
 
 	if vnicCfg != nil {
 		vnicName, bridge, err = createVnic(conn, vnicCfg)
 		if err != nil {
-			return nil, &startError{err, payloads.NetworkFailure}
+			return nil, &startError{err, payloads.NetworkFailure, cmd.cfg.Migration}
 		}
 	}
 
@@ -112,14 +112,14 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 
 	err = createInstance(vm, instanceDir, cfg, bridge, cmd.userData, cmd.metaData)
 	if err != nil {
-		return nil, &startError{err, payloads.ImageFailure}
+		return nil, &startError{err, payloads.ImageFailure, cmd.cfg.Migration}
 	}
 
 	st.creationStamp = time.Now()
 
 	err = vm.startVM(vnicName, getNodeIPAddress(), cephID)
 	if err != nil {
-		return nil, &startError{err, payloads.LaunchFailure}
+		return nil, &startError{err, payloads.LaunchFailure, cmd.cfg.Migration}
 	}
 
 	st.runStamp = time.Now()

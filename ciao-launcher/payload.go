@@ -67,6 +67,7 @@ func printCloudinit(data *payloads.Start) {
 	glog.Infof("SubnetIP:             %v", net.Subnet)
 	glog.Infof("ConcUUID:             %v", net.ConcentratorUUID)
 	glog.Infof("VnicUUID:             %v", net.VnicUUID)
+	glog.Infof("Migration:            %t", start.Migration)
 
 	glog.Info("Requested resources:")
 	for i := range start.RequestedResources {
@@ -190,6 +191,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 		VnicUUID:    strings.TrimSpace(net.VnicUUID),
 		SSHPort:     sshPort,
 		Volumes:     volumes,
+		Migration:   clouddata.Start.Migration,
 	}, nil
 }
 
@@ -197,6 +199,7 @@ func generateStartError(instance string, startErr *startError) (out []byte, err 
 	sf := &payloads.ErrorStartFailure{
 		InstanceUUID: instance,
 		Reason:       startErr.code,
+		Migration:    startErr.migration,
 	}
 	return yaml.Marshal(sf)
 }

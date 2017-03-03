@@ -117,7 +117,7 @@ func killMe(instance string, skipDeleteEvent, migration bool, doneCh chan struct
 func (id *instanceData) startCommand(cmd *insStartCmd) {
 	glog.Info("Found start command")
 	if id.monitorCh != nil {
-		startErr := &startError{nil, payloads.AlreadyRunning}
+		startErr := &startError{nil, payloads.AlreadyRunning, cmd.cfg.Migration}
 		glog.Errorf("Unable to start instance[%s]", string(startErr.code))
 		startErr.send(id.ac.conn, id.instance)
 		return
@@ -196,11 +196,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	if id.monitorCh != nil {
 		glog.Infof("Powerdown %s before deleting", id.instance)
 		id.monitorCh <- virtualizerStopCmd{}
-		select {
-		case <-id.monitorCloseCh:
-		case <-time.After(time.Second * 10):
-			glog.Warningf("Timeout (10s) waiting for virtualizer to terminate")
-		}
+		<-id.monitorCloseCh
 		id.vm.lostVM()
 	}
 

@@ -103,6 +103,7 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 			startError := &startError{
 				payloadErr.err,
 				payloads.StartFailureReason(payloadErr.code),
+				false,
 			}
 			startError.send(client.conn, "")
 			glog.Errorf("Unable to parse YAML: %v", payloadErr.err)
