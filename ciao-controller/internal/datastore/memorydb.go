@@ -79,10 +79,6 @@ func (db *MemoryDB) getEventLog() ([]*types.LogEntry, error) {
 	return db.logEntries, nil
 }
 
-func (db *MemoryDB) addLimit(tenantID string, resourceID int, limit int) error {
-	return nil
-}
-
 func (db *MemoryDB) addTenant(id string, MAC string) error {
 	t := &tenant{
 		Tenant: types.Tenant{

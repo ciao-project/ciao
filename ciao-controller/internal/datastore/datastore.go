@@ -91,7 +91,6 @@ type persistentStore interface {
 	deleteWorkload(ID string) error
 
 	// interfaces related to tenants
-	addLimit(tenantID string, resourceID int, limit int) (err error)
 	addTenant(id string, MAC string) (err error)
 	getTenant(id string) (t *tenant, err error)
 	getTenants() ([]*tenant, error)
@@ -321,33 +320,6 @@ func (ds *Datastore) AddTenantChan(c chan bool, tenantID string) {
 	ds.cnciAddedLock.Lock()
 	ds.cnciAddedChans[tenantID] = c
 	ds.cnciAddedLock.Unlock()
-}
-
-// AddLimit allows the caller to store a limt for a specific resource for a tenant.
-func (ds *Datastore) AddLimit(tenantID string, resourceID int, limit int) error {
-	err := ds.db.addLimit(tenantID, resourceID, limit)
-	if err != nil {
-		return errors.Wrap(err, "error adding limit to database")
-	}
-
-	// update cache
-	ds.tenantsLock.Lock()
-
-	tenant := ds.tenants[tenantID]
-	if tenant != nil {
-		resources := tenant.Resources
-
-		for i := range resources {
-			if resources[i].Rtype == resourceID {
-				resources[i].Limit = limit
-				break
-			}
-		}
-	}
-
-	ds.tenantsLock.Unlock()
-
-	return nil
 }
 
 func newHardwareAddr() (net.HardwareAddr, error) {
@@ -891,29 +863,10 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 	ds.instancesLock.Unlock()
 
 	ds.tenantsLock.Lock()
-
 	tenant := ds.tenants[instance.TenantID]
 	if tenant != nil {
-		for name, val := range instance.Usage {
-			for i := range tenant.Resources {
-				if tenant.Resources[i].Rname == name {
-					tenant.Resources[i].Usage += val
-					break
-				}
-			}
-		}
-
-		// increment instances count
-		for i := range tenant.Resources {
-			if tenant.Resources[i].Rtype == 1 {
-				tenant.Resources[i].Usage++
-				break
-			}
-		}
-
 		tenant.instances[instance.ID] = instance
 	}
-
 	ds.tenantsLock.Unlock()
 
 	// update database asynchronously
@@ -1083,23 +1036,6 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 	ds.tenantsLock.Lock()
 	tenant := ds.tenants[i.TenantID]
 	delete(tenant.instances, instanceID)
-	if tenant != nil {
-		for name, val := range i.Usage {
-			for i := range tenant.Resources {
-				if tenant.Resources[i].Rname == name {
-					tenant.Resources[i].Usage -= val
-					break
-				}
-			}
-		}
-		// decrement instances count
-		for i := range tenant.Resources {
-			if tenant.Resources[i].Rtype == 1 {
-				tenant.Resources[i].Usage--
-				break
-			}
-		}
-	}
 	ds.tenantsLock.Unlock()
 
 	// we may not have received any node stats for this instance
