@@ -267,3 +267,32 @@ func (c *controller) addTenant(id string) error {
 	// CNCI started event is returned
 	return c.launchCNCI(id)
 }
+
+func (c *controller) deleteEphemeralStorage(instanceID string) error {
+	attachments := c.ds.GetStorageAttachments(instanceID)
+	for _, attachment := range attachments {
+		if !attachment.Ephemeral {
+			continue
+		}
+		err := c.ds.DeleteStorageAttachment(attachment.ID)
+		if err != nil {
+			return errors.Wrap(err, "Error deleting storage attachment from datastore")
+		}
+		bd, err := c.ds.GetBlockDevice(attachment.BlockID)
+		if err != nil {
+			return errors.Wrap(err, "Error getting block device from datastore")
+		}
+		err = c.ds.DeleteBlockDevice(attachment.BlockID)
+		if err != nil {
+			return errors.Wrap(err, "Error deleting block device from datastore")
+		}
+		err = c.DeleteBlockDevice(attachment.BlockID)
+		if err != nil {
+			return errors.Wrap(err, "Error deleting block device")
+		}
+		c.qs.Release(bd.TenantID,
+			payloads.RequestedResource{Type: payloads.Volume, Value: 1},
+			payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: bd.Size})
+	}
+	return nil
+}
