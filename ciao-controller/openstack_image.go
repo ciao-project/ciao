@@ -22,11 +22,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/01org/ciao/ciao-controller/internal/quotas"
+	"github.com/01org/ciao/ciao-controller/types"
 	imageDatastore "github.com/01org/ciao/ciao-image/datastore"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/database"
 	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/openstack/image"
+	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -35,6 +38,7 @@ import (
 // ImageService is the context for the image service implementation.
 type ImageService struct {
 	ds imageDatastore.DataStore
+	qs *quotas.Quotas
 }
 
 // CreateImage will create an empty image in the image datastore.
@@ -73,6 +77,13 @@ func (is *ImageService) CreateImage(tenantID string, req image.CreateImageReques
 	if err != nil {
 		glog.Errorf("Error on creating image: %v", err)
 		return image.DefaultResponse{}, err
+	}
+
+	res := <-is.qs.Consume(tenantID, payloads.RequestedResource{Type: payloads.Image, Value: 1})
+	if !res.Allowed() {
+		is.ds.DeleteImage(tenantID, id)
+		is.qs.Release(tenantID, payloads.RequestedResource{Type: payloads.Image, Value: 1})
+		return image.DefaultResponse{}, types.ErrQuota
 	}
 
 	glog.Infof("Image %v created", id)
@@ -166,6 +177,8 @@ func (is *ImageService) DeleteImage(tenantID, imageID string) (image.NoContentIm
 		glog.Errorf("Error on deleting image: %v", err)
 		return response, err
 	}
+
+	is.qs.Release(tenantID, payloads.RequestedResource{Type: payloads.Image, Value: 1})
 
 	response.ImageID = imageID
 	glog.Infof("Image %v deleted", imageID)
@@ -271,7 +284,7 @@ func (c *controller) startImageService() error {
 	glog.Infof("RawDataStore  : %T", config.RawDataStore)
 	glog.Infof("MetaDataStore : %T", config.MetaDataStore)
 
-	is := ImageService{ds: &imageDatastore.ImageStore{}}
+	is := ImageService{ds: &imageDatastore.ImageStore{}, qs: c.qs}
 	err = is.ds.Init(config.RawDataStore, config.MetaDataStore)
 	if err != nil {
 		return err
