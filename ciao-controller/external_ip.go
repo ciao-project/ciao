@@ -19,6 +19,7 @@ import (
 	"net"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 )
 
@@ -210,6 +211,18 @@ func (c *controller) ListMappedAddresses(tenant *string) []types.MappedIP {
 
 func (c *controller) MapAddress(poolName *string, instanceID string) error {
 	var m types.MappedIP
+
+	i, err := c.ds.GetInstance(instanceID)
+	if err != nil {
+		return err
+	}
+
+	// The matching release for this is in the client unAssignEvent
+	res := <-c.qs.Consume(i.TenantID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
+	if !res.Allowed() {
+		c.qs.Release(i.TenantID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
+		return types.ErrQuota
+	}
 
 	pools, err := c.ds.GetPools()
 	if err != nil {
