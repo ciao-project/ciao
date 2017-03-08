@@ -97,8 +97,8 @@ func (cmd *workloadListCommand) run(args []string) error {
 
 	for i, flavor := range flavors.Flavors {
 		fmt.Printf("Workload %d\n", i+1)
-		fmt.Printf("\tName: %s\n\tUUID:%s\n\tImage UUID: %s\n\tCPUs: %d\n\tMemory: %d MB\n",
-			flavor.Name, flavor.ID, flavor.Disk, flavor.Vcpus, flavor.RAM)
+		fmt.Printf("\tName: %s\n\tUUID:%s\n\tCPUs: %d\n\tMemory: %d MB\n",
+			flavor.Name, flavor.ID, flavor.Vcpus, flavor.RAM)
 	}
 	return nil
 }

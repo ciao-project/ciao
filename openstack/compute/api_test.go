@@ -107,7 +107,7 @@ var tests = []test{
 		listFlavorsDetails,
 		"",
 		http.StatusOK,
-		`{"flavors":[{"OS-FLV-DISABLED:disabled":false,"disk":"imageUUID","OS-FLV-EXT-DATA:ephemeral":0,"os-flavor-access:is_public":true,"id":"workloadUUID","links":null,"name":"testflavor","ram":256,"swap":"","vcpus":2}]}`,
+		`{"flavors":[{"OS-FLV-DISABLED:disabled":false,"disk":1024,"OS-FLV-EXT-DATA:ephemeral":0,"os-flavor-access:is_public":true,"id":"workloadUUID","links":null,"name":"testflavor","ram":256,"swap":"","vcpus":2}]}`,
 	},
 	{
 		"GET",
@@ -115,7 +115,7 @@ var tests = []test{
 		showFlavorDetails,
 		"",
 		http.StatusOK,
-		`{"flavor":{"OS-FLV-DISABLED:disabled":false,"disk":"imageUUID","OS-FLV-EXT-DATA:ephemeral":0,"os-flavor-access:is_public":true,"id":"workloadUUID","links":null,"name":"testflavor","ram":256,"swap":"","vcpus":2}}`,
+		`{"flavor":{"OS-FLV-DISABLED:disabled":false,"disk":1024,"OS-FLV-EXT-DATA:ephemeral":0,"os-flavor-access:is_public":true,"id":"workloadUUID","links":null,"name":"testflavor","ram":256,"swap":"","vcpus":2}}`,
 	},
 }
 
@@ -217,7 +217,7 @@ func (cs testComputeService) ListFlavorsDetail(string) (FlavorsDetails, error) {
 
 	details.OsFlavorAccessIsPublic = true
 	details.ID = "workloadUUID"
-	details.Disk = "imageUUID"
+	details.Disk = 1024
 	details.Name = "testflavor"
 	details.Vcpus = 2
 	details.RAM = 256
@@ -233,7 +233,7 @@ func (cs testComputeService) ShowFlavorDetails(string, string) (Flavor, error) {
 
 	details.OsFlavorAccessIsPublic = true
 	details.ID = "workloadUUID"
-	details.Disk = "imageUUID"
+	details.Disk = 1024
 	details.Name = "testflavor"
 	details.Vcpus = 2
 	details.RAM = 256

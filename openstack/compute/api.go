@@ -185,7 +185,7 @@ func NewComputeFlavors() (flavors Flavors) {
 // FlavorDetails contains information about a specific flavor.
 type FlavorDetails struct {
 	OSFLVDISABLEDDisabled  bool   `json:"OS-FLV-DISABLED:disabled"`
-	Disk                   string `json:"disk"` /* OpenStack API says this is an int */
+	Disk                   int    `json:"disk"`
 	OSFLVEXTDATAEphemeral  int    `json:"OS-FLV-EXT-DATA:ephemeral"`
 	OsFlavorAccessIsPublic bool   `json:"os-flavor-access:is_public"`
 	ID                     string `json:"id"`
