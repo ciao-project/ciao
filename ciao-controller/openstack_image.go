@@ -38,7 +38,7 @@ type ImageService struct {
 }
 
 // CreateImage will create an empty image in the image datastore.
-func (is ImageService) CreateImage(tenantID string, req image.CreateImageRequest) (image.DefaultResponse, error) {
+func (is *ImageService) CreateImage(tenantID string, req image.CreateImageRequest) (image.DefaultResponse, error) {
 	// create an ImageInfo struct and store it in our image
 	// datastore.
 	glog.Infof("Creating Image: %v", req.ID)
@@ -122,7 +122,7 @@ func createImageResponse(img imageDatastore.Image) (image.DefaultResponse, error
 }
 
 // ListImages will return a list of all the images in the datastore.
-func (is ImageService) ListImages(tenant string) ([]image.DefaultResponse, error) {
+func (is *ImageService) ListImages(tenant string) ([]image.DefaultResponse, error) {
 	glog.Infof("Listing images from [%v]", tenant)
 	response := []image.DefaultResponse{}
 
@@ -141,7 +141,7 @@ func (is ImageService) ListImages(tenant string) ([]image.DefaultResponse, error
 }
 
 // UploadImage will upload a raw image data and update its status.
-func (is ImageService) UploadImage(tenantID, imageID string, body io.Reader) (image.NoContentImageResponse, error) {
+func (is *ImageService) UploadImage(tenantID, imageID string, body io.Reader) (image.NoContentImageResponse, error) {
 	glog.Infof("Uploading image: %v", imageID)
 	var response image.NoContentImageResponse
 
@@ -157,7 +157,7 @@ func (is ImageService) UploadImage(tenantID, imageID string, body io.Reader) (im
 }
 
 // DeleteImage will delete a raw image and its metadata
-func (is ImageService) DeleteImage(tenantID, imageID string) (image.NoContentImageResponse, error) {
+func (is *ImageService) DeleteImage(tenantID, imageID string) (image.NoContentImageResponse, error) {
 	glog.Infof("Deleting image: %v", imageID)
 	var response image.NoContentImageResponse
 
@@ -173,7 +173,7 @@ func (is ImageService) DeleteImage(tenantID, imageID string) (image.NoContentIma
 }
 
 // GetImage will get the raw image data
-func (is ImageService) GetImage(tenantID, imageID string) (image.DefaultResponse, error) {
+func (is *ImageService) GetImage(tenantID, imageID string) (image.DefaultResponse, error) {
 	glog.Infof("Getting Image [%v] from [%v]", imageID, tenantID)
 	var response image.DefaultResponse
 
@@ -279,7 +279,7 @@ func (c *controller) startImageService() error {
 
 	apiConfig := image.APIConfig{
 		Port:         config.Port,
-		ImageService: is,
+		ImageService: &is,
 	}
 
 	// get our routes.
