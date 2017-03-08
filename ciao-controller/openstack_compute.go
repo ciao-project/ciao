@@ -566,7 +566,6 @@ func buildFlavorDetails(workload types.Workload) (compute.FlavorDetails, error) 
 
 	details.OsFlavorAccessIsPublic = true
 	details.ID = workload.ID
-	details.Disk = workload.ImageID
 	details.Name = workload.Description
 
 	for r := range defaults {
