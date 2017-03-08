@@ -333,12 +333,15 @@ runcmd:
  - groupadd docker
  - sudo gpasswd -a {{.User}} docker
  - curl -X PUT -d "Installing apt-transport-https and ca-certificates" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}apt-get install apt-transport-https ca-certificates
+ - {{template "ENV" .}}sudo apt-get -y install  apt-transport-https ca-certificates
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Add docker GPG key" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+ - {{template "ENV" .}}curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
  - {{template "CHECK" .}}
+
+ - curl -X PUT -d "Adding docker repo" 10.0.2.2:{{.HTTPServerPort}}
+ - {{template "ENV" .}} sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
  - curl -X PUT -d "Add Clear Containers OBS Repository " 10.0.2.2:{{.HTTPServerPort}}
  - sudo sh -c "echo 'deb http://download.opensuse.org/repositories/home:/clearlinux:/preview:/clear-containers-2.1/xUbuntu_16.04/ /' >> /etc/apt/sources.list.d/cc-oci-runtime.list"
@@ -346,15 +349,15 @@ runcmd:
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Retrieving updated list of packages" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}apt-get update
+ - {{template "ENV" .}}sudo apt-get update
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Clear Containers Runtime" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}apt-get install cc-oci-runtime -y
+ - {{template "ENV" .}}sudo apt-get install cc-oci-runtime -y
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Docker" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "ENV" .}}apt-get install docker-engine -y
+ - {{template "ENV" .}}sudo apt-get install -y --allow-downgrades --allow-unauthenticated docker-engine=1.12.1-0~xenial
  - {{template "CHECK" .}}
 
 
