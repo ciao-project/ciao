@@ -219,6 +219,8 @@ func (client *ssntpClient) unassignEvent(payload []byte) {
 		return
 	}
 
+	client.ctl.qs.Release(i.TenantID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
+
 	msg := fmt.Sprintf("Unmapped %s from %s", event.UnassignedIP.PublicIP, event.UnassignedIP.PrivateIP)
 	client.ctl.ds.LogEvent(i.TenantID, msg)
 }
