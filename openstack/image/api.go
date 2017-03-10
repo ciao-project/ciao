@@ -169,6 +169,9 @@ var (
 
 	// ErrForbiddenAccess is returned for only-privileged image operations
 	ErrForbiddenAccess = errors.New("Forbidden Access")
+
+	// ErrQuota is returned when the tenant exceeds its quota
+	ErrQuota = errors.New("Tenant over quota")
 )
 
 // CreateImageRequest contains information for a create image request.
@@ -274,7 +277,7 @@ type APIHandler struct {
 func (h APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.Handler(h.Context, w, r)
 	if err != nil {
-		http.Error(w, http.StatusText(resp.status), resp.status)
+		http.Error(w, err.Error(), resp.status)
 	}
 
 	b, err := json.Marshal(resp.response)
@@ -301,7 +304,7 @@ func errorResponse(err error) APIResponse {
 		return APIResponse{http.StatusBadRequest, nil}
 	case ErrAlreadyExists:
 		return APIResponse{http.StatusConflict, nil}
-	case ErrForbiddenAccess:
+	case ErrForbiddenAccess, ErrQuota:
 		return APIResponse{http.StatusForbidden, nil}
 	default:
 		return APIResponse{http.StatusInternalServerError, nil}

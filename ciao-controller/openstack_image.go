@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/internal/quotas"
-	"github.com/01org/ciao/ciao-controller/types"
 	imageDatastore "github.com/01org/ciao/ciao-image/datastore"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/database"
@@ -83,7 +82,7 @@ func (is *ImageService) CreateImage(tenantID string, req image.CreateImageReques
 	if !res.Allowed() {
 		is.ds.DeleteImage(tenantID, id)
 		is.qs.Release(tenantID, payloads.RequestedResource{Type: payloads.Image, Value: 1})
-		return image.DefaultResponse{}, types.ErrQuota
+		return image.DefaultResponse{}, image.ErrQuota
 	}
 
 	glog.Infof("Image %v created", id)
