@@ -174,6 +174,7 @@ const StartYaml = `start:
     subnet_uuid: ""
     private_ip: ""
     public_ip: false
+  migration: false
 `
 
 // CNCIStartYaml is a sample CNCI workload START ssntp.Command payload for test cases
@@ -224,6 +225,7 @@ const PartialStartYaml = `start:
 // StartFailureYaml is a sample workload StartFailure ssntp.Error payload for test cases
 const StartFailureYaml = `instance_uuid: ` + InstanceUUID + `
 reason: full_cloud
+migration: false
 `
 
 // RestartYaml is a sample workload RESTART ssntp.Command payload for test cases
@@ -279,6 +281,7 @@ reason: already_running
 const StopYaml = `stop:
   instance_uuid: ` + InstanceUUID + `
   workload_agent_uuid: ` + AgentUUID + `
+  migration: false
 `
 
 // StopFailureYaml is a sample workload StopFailure ssntp.Error payload for test cases
@@ -290,6 +293,15 @@ reason: already_stopped
 const DeleteYaml = `delete:
   instance_uuid: ` + InstanceUUID + `
   workload_agent_uuid: ` + AgentUUID + `
+  migration: false
+`
+
+// MigrateYaml is a sample workload DELETE ssntp.Command payload for test cases
+// that indicates that an instance is to be migrated rather than deleted.
+const MigrateYaml = `delete:
+  instance_uuid: ` + InstanceUUID + `
+  workload_agent_uuid: ` + AgentUUID + `
+  migration: true
 `
 
 // EvacuateYaml is a sample node EVACUATE ssntp.Command payload for test cases
@@ -409,6 +421,11 @@ reason: no_instance
 
 // InsDelYaml is a sample workload InstanceDeleted ssntp.Event payload for test cases
 const InsDelYaml = `instance_deleted:
+  instance_uuid: ` + InstanceUUID + `
+`
+
+// InsStopYaml is a sample workload InstanceStopped ssntp.Event payload for test cases
+const InsStopYaml = `instance_stopped:
   instance_uuid: ` + InstanceUUID + `
 `
 

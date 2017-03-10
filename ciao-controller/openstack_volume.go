@@ -192,10 +192,6 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 		return block.ErrInstanceOwner
 	}
 
-	if i.NodeID == "" {
-		return block.ErrInstanceNotAvailable
-	}
-
 	// update volume state to attaching
 	info.State = types.Attaching
 

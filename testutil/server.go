@@ -453,6 +453,10 @@ func (server *SsntpTestServer) EventNotify(uuid string, event ssntp.Event, frame
 		var deleteEvent payloads.EventInstanceDeleted
 
 		result.Err = yaml.Unmarshal(payload, &deleteEvent)
+	case ssntp.InstanceStopped:
+		var stopEvent payloads.EventInstanceStopped
+
+		result.Err = yaml.Unmarshal(payload, &stopEvent)
 	case ssntp.ConcentratorInstanceAdded:
 		// forward rule auto-sends to controllers
 	case ssntp.TenantAdded:
@@ -696,6 +700,10 @@ func StartTestServer() *SsntpTestServer {
 			},
 			{ // all InstanceDeleted events go to all Controllers
 				Operand: ssntp.InstanceDeleted,
+				Dest:    ssntp.Controller,
+			},
+			{ // all InstanceDeleted events go to all Controllers
+				Operand: ssntp.InstanceStopped,
 				Dest:    ssntp.Controller,
 			},
 			{ // all ConcentratorInstanceAdded events go to all Controllers

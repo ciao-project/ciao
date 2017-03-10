@@ -48,7 +48,7 @@ const (
 	InvalidPayload = "invalid_payload"
 
 	// InvalidData indicates that the start section of the payload is
-	// corrupt or missing information such as image-id
+	// corrupt or missing information
 	InvalidData = "invalid_data"
 
 	// AlreadyRunning is returned when an attempt is made to start an
@@ -61,9 +61,10 @@ const (
 	// exists but is not currently running.
 	InstanceExists = "instance_exists"
 
-	// ImageFailure indicates that ciao-launcher is unable to prepare
-	// the rootfs for the instance, e.g., the image_uuid refers to an
-	// non-existent backing image
+	// ImageFailure indicates that ciao-launcher is unable to locate
+	// the rootfs for the instance, e.g., a VM instance is started
+	// with no bootable volumes or a containers image cannot be
+	// downloaded.
 	ImageFailure = "image_failure"
 
 	// LaunchFailure indicates that the instance has been successfully
@@ -87,6 +88,10 @@ type ErrorStartFailure struct {
 	// Reason provides the reason for the start failure, e.g.,
 	// LaunchFailure.
 	Reason StartFailureReason `yaml:"reason"`
+
+	// Migration is true if the failed start command was attempting to
+	// restart an existing instance.
+	Migration bool
 }
 
 func (r StartFailureReason) String() string {
@@ -129,11 +134,11 @@ func (r StartFailureReason) IsFatal() bool {
 		InvalidPayload,
 		InvalidData,
 		ImageFailure,
+		LaunchFailure,
 		NetworkFailure:
 		return true
 
-	case LaunchFailure,
-		AlreadyRunning,
+	case AlreadyRunning,
 		InstanceExists:
 		return false
 	}

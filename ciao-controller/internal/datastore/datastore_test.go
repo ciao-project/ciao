@@ -1163,7 +1163,7 @@ func TestStartFailureFullCloud(t *testing.T) {
 
 	reason := payloads.FullCloud
 
-	err = ds.StartFailure(instance.ID, reason)
+	err = ds.StartFailure(instance.ID, reason, false)
 	if err != nil {
 		t.Fatal(err)
 	}

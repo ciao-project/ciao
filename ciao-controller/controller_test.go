@@ -409,14 +409,14 @@ func TestStopInstance(t *testing.T) {
 
 	sendStatsCmd(client, t)
 
-	serverCh := server.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.DELETE)
 
 	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
+	result, err := server.GetCmdChanResult(serverCh, ssntp.DELETE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,19 +433,19 @@ func TestRestartInstance(t *testing.T) {
 
 	sendStatsCmd(client, t)
 
-	serverCh := server.AddCmdChan(ssntp.STOP)
-	clientCh := client.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.DELETE)
+	clientCh := client.AddCmdChan(ssntp.DELETE)
 
 	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
+	result, err := server.GetCmdChanResult(serverCh, ssntp.DELETE)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.GetCmdChanResult(clientCh, ssntp.STOP)
+	_, err = client.GetCmdChanResult(clientCh, ssntp.DELETE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,18 +453,19 @@ func TestRestartInstance(t *testing.T) {
 		t.Fatal("Did not get correct Instance ID")
 	}
 
-	// now attempt to restart
+	err = sendStopEvent(client, instances[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	sendStatsCmd(client, t)
-
-	serverCh = server.AddCmdChan(ssntp.RESTART)
+	serverCh = server.AddCmdChan(ssntp.START)
 
 	err = ctl.restartInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err = server.GetCmdChanResult(serverCh, ssntp.RESTART)
+	result, err = server.GetCmdChanResult(serverCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -847,45 +848,30 @@ func TestStopFailure(t *testing.T) {
 	client, instances := testStartWorkload(t, 1, false, reason)
 	defer client.Shutdown()
 
-	client.StopFail = true
-	client.StopFailReason = payloads.StopNoInstance
+	client.DeleteFail = true
+	client.DeleteFailReason = payloads.DeleteNoInstance
 
 	sendStatsCmd(client, t)
 
-	serverCh := server.AddCmdChan(ssntp.STOP)
-	controllerCh := wrappedClient.addErrorChan(ssntp.StopFailure)
+	serverCh := server.AddCmdChan(ssntp.DELETE)
+	controllerCh := wrappedClient.addErrorChan(ssntp.DeleteFailure)
 
 	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
+	result, err := server.GetCmdChanResult(serverCh, ssntp.DELETE)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = wrappedClient.getErrorChan(controllerCh, ssntp.StopFailure)
+	err = wrappedClient.getErrorChan(controllerCh, ssntp.DeleteFailure)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if result.InstanceUUID != instances[0].ID {
 		t.Fatal("Did not get correct Instance ID")
 	}
-
-	// the response to a stop failure is to log the failure
-	entries, err := ctl.ds.GetEventLog()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expectedMsg := fmt.Sprintf("Stop Failure %s: %s", instances[0].ID, client.StopFailReason.String())
-
-	for i := range entries {
-		if entries[i].Message == expectedMsg {
-			return
-		}
-	}
-	t.Error("Did not find failure message in Log")
 }
 
 func TestRestartFailure(t *testing.T) {
@@ -896,24 +882,29 @@ func TestRestartFailure(t *testing.T) {
 	client, instances := testStartWorkload(t, 1, false, reason)
 	defer client.Shutdown()
 
-	client.RestartFail = true
-	client.RestartFailReason = payloads.RestartLaunchFailure
+	client.StartFail = true
+	client.StartFailReason = payloads.LaunchFailure
 
 	sendStatsCmd(client, t)
 
-	serverCh := server.AddCmdChan(ssntp.STOP)
-	clientCh := client.AddCmdChan(ssntp.STOP)
+	serverCh := server.AddCmdChan(ssntp.DELETE)
+	clientCh := client.AddCmdChan(ssntp.DELETE)
 
 	err := ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.GetCmdChanResult(clientCh, ssntp.STOP)
+	err = sendStopEvent(client, instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := server.GetCmdChanResult(serverCh, ssntp.STOP)
+
+	_, err = client.GetCmdChanResult(clientCh, ssntp.DELETE)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := server.GetCmdChanResult(serverCh, ssntp.DELETE)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -923,19 +914,19 @@ func TestRestartFailure(t *testing.T) {
 
 	sendStatsCmd(client, t)
 
-	serverCh = server.AddCmdChan(ssntp.RESTART)
-	controllerCh := wrappedClient.addErrorChan(ssntp.RestartFailure)
+	serverCh = server.AddCmdChan(ssntp.START)
+	controllerCh := wrappedClient.addErrorChan(ssntp.StartFailure)
 
 	err = ctl.restartInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err = server.GetCmdChanResult(serverCh, ssntp.RESTART)
+	result, err = server.GetCmdChanResult(serverCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = wrappedClient.getErrorChan(controllerCh, ssntp.RestartFailure)
+	err = wrappedClient.getErrorChan(controllerCh, ssntp.StartFailure)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -949,7 +940,7 @@ func TestRestartFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedMsg := fmt.Sprintf("Restart Failure %s: %s", instances[0].ID, client.RestartFailReason.String())
+	expectedMsg := fmt.Sprintf("Start Failure %s: %s", instances[0].ID, client.StartFailReason.String())
 
 	for i := range entries {
 		if entries[i].Message == expectedMsg {

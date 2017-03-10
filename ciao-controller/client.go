@@ -17,6 +17,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -34,7 +36,7 @@ type controllerClient interface {
 	StartWorkload(config string) error
 	DeleteInstance(instanceID string, nodeID string) error
 	StopInstance(instanceID string, nodeID string) error
-	RestartInstance(instanceID string, nodeID string) error
+	RestartInstance(i *types.Instance, w *types.Workload, t *types.Tenant) error
 	EvacuateNode(nodeID string) error
 	Disconnect()
 	mapExternalIP(t types.Tenant, m types.MappedIP) error
@@ -112,6 +114,18 @@ func (client *ssntpClient) releaseResources(instanceID string) error {
 	return nil
 }
 
+func (client *ssntpClient) removeInstance(instanceID string) {
+	err := client.releaseResources(instanceID)
+	if err != nil {
+		glog.Warningf("Error when releasing resources for deleted instance: %v", err)
+	}
+	client.deleteEphemeralStorage(instanceID)
+	err = client.ctl.ds.DeleteInstance(instanceID)
+	if err != nil {
+		glog.Warningf("Error deleting instance from datastore: %v", err)
+	}
+}
+
 func (client *ssntpClient) instanceDeleted(payload []byte) {
 	var event payloads.EventInstanceDeleted
 	err := yaml.Unmarshal(payload, &event)
@@ -119,16 +133,20 @@ func (client *ssntpClient) instanceDeleted(payload []byte) {
 		glog.Warning("Error unmarshalling InstanceDeleted: %v")
 		return
 	}
-	client.deleteEphemeralStorage(event.InstanceDeleted.InstanceUUID)
+	client.removeInstance(event.InstanceDeleted.InstanceUUID)
+}
 
-	err = client.releaseResources(event.InstanceDeleted.InstanceUUID)
+func (client *ssntpClient) instanceStopped(payload []byte) {
+	var event payloads.EventInstanceStopped
+	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
-		glog.Warningf("Error when releasing resources for deleted instance: %v", err)
+		glog.Warning("Error unmarshalling InstanceStopped: %v")
+		return
 	}
-
-	err = client.ctl.ds.DeleteInstance(event.InstanceDeleted.InstanceUUID)
+	glog.Infof("Stopped instance %s", event.InstanceStopped.InstanceUUID)
+	err = client.ctl.ds.StopInstance(event.InstanceStopped.InstanceUUID)
 	if err != nil {
-		glog.Warningf("Error deleting instance from datastore: %v", err)
+		glog.Warningf("Error stopping instance from datastore: %v", err)
 	}
 }
 
@@ -234,6 +252,9 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 	case ssntp.InstanceDeleted:
 		client.instanceDeleted(payload)
 
+	case ssntp.InstanceStopped:
+		client.instanceStopped(payload)
+
 	case ssntp.ConcentratorInstanceAdded:
 		client.instanceAdded(payload)
 
@@ -262,14 +283,14 @@ func (client *ssntpClient) startFailure(payload []byte) {
 		glog.Warningf("Error unmarshalling StartFailure: %v", err)
 		return
 	}
-	if failure.Reason.IsFatal() {
+	if failure.Reason.IsFatal() && !failure.Migration {
 		client.deleteEphemeralStorage(failure.InstanceUUID)
 		err = client.releaseResources(failure.InstanceUUID)
 		if err != nil {
 			glog.Warningf("Error when releasing resources for start failed instance: %v", err)
 		}
 	}
-	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason)
+	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason, failure.Migration)
 	if err != nil {
 		glog.Warningf("Error adding StartFailure to datastore: %v", err)
 	}
@@ -420,17 +441,8 @@ func (client *ssntpClient) StartWorkload(config string) error {
 	return err
 }
 
-func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) error {
-	stopCmd := payloads.StopCmd{
-		InstanceUUID:      instanceID,
-		WorkloadAgentUUID: nodeID,
-	}
-
-	payload := payloads.Delete{
-		Delete: stopCmd,
-	}
-
-	y, err := yaml.Marshal(payload)
+func (client *ssntpClient) deleteInstance(payload *payloads.Delete, instanceID string, nodeID string) error {
+	y, err := yaml.Marshal(*payload)
 	if err != nil {
 		return err
 	}
@@ -443,37 +455,83 @@ func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) erro
 	return err
 }
 
-func (client *ssntpClient) StopInstance(instanceID string, nodeID string) error {
-	stopCmd := payloads.StopCmd{
-		InstanceUUID:      instanceID,
-		WorkloadAgentUUID: nodeID,
+func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) error {
+	if nodeID == "" {
+		// This instance is not running and not assigned to a node.  We
+		// can just remove its details from controller's db and delete
+		// any ephemeral storage.
+		glog.Info("Deleting unassigned instance")
+		client.removeInstance(instanceID)
+		return nil
 	}
 
-	payload := payloads.Stop{
-		Stop: stopCmd,
+	payload := payloads.Delete{
+		Delete: payloads.StopCmd{
+			InstanceUUID:      instanceID,
+			WorkloadAgentUUID: nodeID,
+		},
 	}
 
-	y, err := yaml.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	glog.Info("STOP instance_id: ", instanceID, "node_id ", nodeID)
-	glog.V(1).Info(string(y))
-
-	_, err = client.ssntp.SendCommand(ssntp.STOP, y)
-
-	return err
+	return client.deleteInstance(&payload, instanceID, nodeID)
 }
 
-func (client *ssntpClient) RestartInstance(instanceID string, nodeID string) error {
-	restartCmd := payloads.RestartCmd{
-		InstanceUUID:      instanceID,
-		WorkloadAgentUUID: nodeID,
+func (client *ssntpClient) StopInstance(instanceID string, nodeID string) error {
+	payload := payloads.Delete{
+		Delete: payloads.StopCmd{
+			InstanceUUID:      instanceID,
+			WorkloadAgentUUID: nodeID,
+			Migration:         true,
+		},
 	}
 
-	payload := payloads.Restart{
-		Restart: restartCmd,
+	return client.deleteInstance(&payload, instanceID, nodeID)
+}
+
+func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
+	t *types.Tenant) error {
+
+	err := client.ctl.ds.RestartInstance(i.ID)
+	if err != nil {
+		return errors.Wrapf(err, "Unable to update instance state before restarting")
+	}
+
+	metaData := userData{
+		UUID:     i.ID,
+		Hostname: i.ID,
+	}
+
+	restartCmd := payloads.StartCmd{
+		TenantUUID:          i.TenantID,
+		InstanceUUID:        i.ID,
+		FWType:              payloads.Firmware(w.FWType),
+		VMType:              w.VMType,
+		InstancePersistence: payloads.Host,
+		RequestedResources:  w.Defaults,
+		Networking: payloads.NetworkResources{
+			VnicMAC:          i.MACAddress,
+			VnicUUID:         i.VnicUUID,
+			ConcentratorUUID: t.CNCIID,
+			ConcentratorIP:   t.CNCIIP,
+			Subnet:           i.Subnet,
+			PrivateIP:        i.IPAddress,
+		},
+		Storage:   make([]payloads.StorageResource, len(i.Attachments)),
+		Migration: true,
+	}
+
+	if w.VMType == payloads.Docker {
+		restartCmd.DockerImage = w.ImageName
+	}
+
+	for k := range i.Attachments {
+		vol := &restartCmd.Storage[k]
+		vol.ID = i.Attachments[k].BlockID
+		vol.Bootable = i.Attachments[k].Boot
+		vol.Ephemeral = i.Attachments[k].Ephemeral
+	}
+
+	payload := payloads.Start{
+		Start: restartCmd,
 	}
 
 	y, err := yaml.Marshal(payload)
@@ -481,10 +539,24 @@ func (client *ssntpClient) RestartInstance(instanceID string, nodeID string) err
 		return err
 	}
 
-	glog.Info("RESTART instance: ", instanceID)
-	glog.V(1).Info(string(y))
+	b, err := json.Marshal(&metaData)
+	if err != nil {
+		return err
+	}
 
-	_, err = client.ssntp.SendCommand(ssntp.RESTART, y)
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("---\n")
+	_, _ = buf.Write(y)
+	_, _ = buf.WriteString("...\n")
+	_, _ = buf.WriteString(w.Config)
+	_, _ = buf.WriteString("---\n")
+	_, _ = buf.Write(b)
+	_, _ = buf.WriteString("\n...\n")
+
+	glog.Info("RESTART instance: ", i.ID)
+	glog.V(1).Info(buf.String())
+
+	_, err = client.ssntp.SendCommand(ssntp.START, buf.Bytes())
 
 	return err
 }

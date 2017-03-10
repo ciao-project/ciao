@@ -33,21 +33,26 @@ func (c *controller) evacuateNode(nodeID string) error {
 
 func (c *controller) restartInstance(instanceID string) error {
 	// should I bother to see if instanceID is valid?
-	// get node id.  If there is no node id we can't send a restart
 	i, err := c.ds.GetInstance(instanceID)
 	if err != nil {
 		return err
-	}
-
-	if i.NodeID == "" {
-		return types.ErrInstanceNotAssigned
 	}
 
 	if i.State != "exited" {
 		return errors.New("You may only restart paused instances")
 	}
 
-	go c.client.RestartInstance(instanceID, i.NodeID)
+	w, err := c.ds.GetWorkload(i.TenantID, i.WorkloadID)
+	if err != nil {
+		return err
+	}
+
+	t, err := c.ds.GetTenant(i.TenantID)
+	if err != nil {
+		return err
+	}
+
+	go c.client.RestartInstance(i, &w, t)
 	return nil
 }
 
@@ -71,13 +76,14 @@ func (c *controller) stopInstance(instanceID string) error {
 }
 
 func (c *controller) deleteInstance(instanceID string) error {
-	// get node id.  If there is no node id we can't send a delete
+	// get node id.  If there is no node id and the instance is
+	// pending we can't send a delete
 	i, err := c.ds.GetInstance(instanceID)
 	if err != nil {
 		return err
 	}
 
-	if i.NodeID == "" {
+	if i.NodeID == "" && i.State == payloads.Pending {
 		return types.ErrInstanceNotAssigned
 	}
 

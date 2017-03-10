@@ -1093,6 +1093,10 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 			Operand: ssntp.InstanceDeleted,
 			Dest:    ssntp.Controller,
 		},
+		{ // all InstanceStopped events go to all Controllers
+			Operand: ssntp.InstanceStopped,
+			Dest:    ssntp.Controller,
+		},
 		{ // all ConcentratorInstanceAdded events go to all Controllers
 			Operand: ssntp.ConcentratorInstanceAdded,
 			Dest:    ssntp.Controller,

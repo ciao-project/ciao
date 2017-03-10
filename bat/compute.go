@@ -94,6 +94,23 @@ type ClusterStatus struct {
 	TotalNodesMaintenance int `json:"total_nodes_maintenance"`
 }
 
+// ComputeNodeStatus contains information about the status of a compute node
+type ComputeNodeStatus struct {
+	ID                    string    `json:"id"`
+	Timestamp             time.Time `json:"updated"`
+	Status                string    `json:"status"`
+	MemTotal              int       `json:"ram_total"`
+	MemAvailable          int       `json:"ram_available"`
+	DiskTotal             int       `json:"disk_total"`
+	DiskAvailable         int       `json:"disk_available"`
+	Load                  int       `json:"load"`
+	OnlineCPUs            int       `json:"online_cpus"`
+	TotalInstances        int       `json:"total_instances"`
+	TotalRunningInstances int       `json:"total_running_instances"`
+	TotalPendingInstances int       `json:"total_pending_instances"`
+	TotalPausedInstances  int       `json:"total_paused_instances"`
+}
+
 func checkEnv(vars []string) error {
 	for _, k := range vars {
 		if os.Getenv(k) == "" {
@@ -360,6 +377,42 @@ func StopInstanceAndWait(ctx context.Context, tenant string, instance string) er
 	}
 }
 
+// RestartInstance restarts a ciao instance by invoking the ciao-cli instance restart
+// command.  An error will be returned if the following environment variables are not set;
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func RestartInstance(ctx context.Context, tenant string, instance string) error {
+	args := []string{"instance", "restart", "-instance", instance}
+	_, err := RunCIAOCLI(ctx, tenant, args)
+	return err
+}
+
+// RestartInstanceAndWait restarts a ciao instance by invoking the ciao-cli instance
+// restart command.   It then waits until the instance's status changes to active.
+// An error will be returned if the following environment variables are not set;
+// CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+func RestartInstanceAndWait(ctx context.Context, tenant string, instance string) error {
+	if err := RestartInstance(ctx, tenant, instance); err != nil {
+		return err
+	}
+	for {
+		status, err := RetrieveInstanceStatus(ctx, tenant, instance)
+		if err != nil {
+			return err
+		}
+
+		if status == "active" {
+			return nil
+		}
+
+		select {
+		case <-time.After(time.Second):
+			continue
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
 // DeleteInstance deletes a specific instance from the cluster.  It deletes
 // the instance using ciao-cli instance delete.  An error will be returned
 // if the following environment variables are not set; CIAO_IDENTITY,
@@ -577,6 +630,27 @@ func GetCNCIs(ctx context.Context) (map[string]*CNCI, error) {
 	}
 
 	return CNCIs, nil
+}
+
+// GetComputeNodes returns a map containing status information about
+// each node in the cluster.  The key of the map is the Node ID.  The
+// information is retrieved using ciao-cli list -compute command.  An
+// error will be returned if the following environment are not set;
+// CIAO_IDENTITY,  CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+func GetComputeNodes(ctx context.Context) (map[string]*ComputeNodeStatus, error) {
+	var computeList []*ComputeNodeStatus
+	args := []string{"node", "list", "-compute", "-f", "{{tojson .}}"}
+	err := RunCIAOCLIAsAdminJS(ctx, "", args, &computeList)
+	if err != nil {
+		return nil, err
+	}
+
+	computeMap := make(map[string]*ComputeNodeStatus)
+	for _, n := range computeList {
+		computeMap[n.ID] = n
+	}
+
+	return computeMap, nil
 }
 
 // GetClusterStatus returns the status of the ciao cluster.  The information
