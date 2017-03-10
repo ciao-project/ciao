@@ -58,10 +58,25 @@ type insStartCmd struct {
 	rcvStamp time.Time
 }
 type insDeleteCmd struct {
-	suicide         bool
+	// Indicates that the delete command originated in launcher rather
+	// than controller.  Launcher may generate a delete command if a
+	// START command fails or an instance stops executing.
+	suicide bool
+
+	// Set to true if we don't want to send an InstanceDeleted or
+	// InstanceStopped event.  This is the case when we delete an
+	// instance that has failed to start.  We're sending StartFailure
+	// so InstanceDeleted is not needed.
 	skipDeleteEvent bool
-	running         ovsRunningState
-	stop            bool
+
+	// The running state of the instance as provided by the overseer.
+	// Used to determine whether we need to delete networking artifacts.
+	running ovsRunningState
+
+	// Indicates whether we are deleting or stopping an instance.  The
+	// two operations are almost identical for launcher.  The only difference
+	// is in the events that get sent back to controller.
+	stop bool
 }
 type insMonitorCmd struct{}
 
