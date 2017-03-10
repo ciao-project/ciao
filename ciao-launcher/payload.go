@@ -67,7 +67,7 @@ func printCloudinit(data *payloads.Start) {
 	glog.Infof("SubnetIP:             %v", net.Subnet)
 	glog.Infof("ConcUUID:             %v", net.ConcentratorUUID)
 	glog.Infof("VnicUUID:             %v", net.VnicUUID)
-	glog.Infof("Migration:            %t", start.Migration)
+	glog.Infof("Restart:              %t", start.Restart)
 
 	glog.Info("Requested resources:")
 	for i := range start.RequestedResources {
@@ -191,7 +191,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 		VnicUUID:    strings.TrimSpace(net.VnicUUID),
 		SSHPort:     sshPort,
 		Volumes:     volumes,
-		Migration:   clouddata.Start.Migration,
+		Restart:     clouddata.Start.Restart,
 	}, nil
 }
 
@@ -199,7 +199,7 @@ func generateStartError(instance string, startErr *startError) (out []byte, err 
 	sf := &payloads.ErrorStartFailure{
 		InstanceUUID: instance,
 		Reason:       startErr.code,
-		Migration:    startErr.migration,
+		Restart:      startErr.restart,
 	}
 	return yaml.Marshal(sf)
 }
@@ -272,7 +272,7 @@ func parseDeletePayload(data []byte) (string, bool, *payloadError) {
 		err = fmt.Errorf("Invalid instance id received: %s", instance)
 		return "", false, &payloadError{err, payloads.DeleteInvalidData}
 	}
-	return instance, clouddata.Delete.Migration, nil
+	return instance, clouddata.Delete.Stop, nil
 }
 
 func extractVolumeInfo(cmd *payloads.VolumeCmd, errString string) (string, string, *payloadError) {

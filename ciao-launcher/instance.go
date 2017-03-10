@@ -61,7 +61,7 @@ type insDeleteCmd struct {
 	suicide         bool
 	skipDeleteEvent bool
 	running         ovsRunningState
-	migration       bool
+	stop            bool
 }
 type insMonitorCmd struct{}
 
@@ -94,7 +94,7 @@ There's always the possibility new commands will be received for the
 instance while it is waiting to be killed.  We'll just fail those.
 */
 
-func killMe(instance string, skipDeleteEvent, migration bool, doneCh chan struct{},
+func killMe(instance string, skipDeleteEvent, stop bool, doneCh chan struct{},
 	ac *agentClient, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
@@ -103,7 +103,7 @@ func killMe(instance string, skipDeleteEvent, migration bool, doneCh chan struct
 			&insDeleteCmd{
 				suicide:         true,
 				skipDeleteEvent: skipDeleteEvent,
-				migration:       migration,
+				stop:            stop,
 			},
 		}
 		select {
@@ -117,7 +117,7 @@ func killMe(instance string, skipDeleteEvent, migration bool, doneCh chan struct
 func (id *instanceData) startCommand(cmd *insStartCmd) {
 	glog.Info("Found start command")
 	if id.monitorCh != nil {
-		startErr := &startError{nil, payloads.AlreadyRunning, cmd.cfg.Migration}
+		startErr := &startError{nil, payloads.AlreadyRunning, cmd.cfg.Restart}
 		glog.Errorf("Unable to start instance[%s]", string(startErr.code))
 		startErr.send(id.ac.conn, id.instance)
 		return
@@ -205,7 +205,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 	id.unmapVolumes()
 
 	if !cmd.skipDeleteEvent {
-		if cmd.migration {
+		if cmd.stop {
 			id.sendInstanceStoppedEvent()
 		} else {
 			id.sendInstanceDeletedEvent()

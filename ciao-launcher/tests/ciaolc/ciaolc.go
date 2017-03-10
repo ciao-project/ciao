@@ -409,7 +409,7 @@ func startf(host string) error {
 	return err
 }
 
-func postDeleteCommand(host string, migration bool) error {
+func postDeleteCommand(host string, stop bool) error {
 	var del payloads.Delete
 
 	client, instance, err := getSimplePostArgs("delete")
@@ -418,7 +418,7 @@ func postDeleteCommand(host string, migration bool) error {
 	}
 
 	del.Delete.InstanceUUID = instance
-	del.Delete.Migration = migration
+	del.Delete.Stop = stop
 	return postYaml(host, "delete", client, &del)
 }
 

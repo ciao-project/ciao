@@ -47,7 +47,7 @@ type vmConfig struct {
 	VnicUUID    string
 	SSHPort     int
 	Volumes     []volumeConfig
-	Migration   bool
+	Restart     bool
 }
 
 func loadVMConfig(instanceDir string) (*vmConfig, error) {
