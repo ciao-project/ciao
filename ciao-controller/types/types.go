@@ -26,6 +26,7 @@ import (
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp"
 )
 
 // SourceType contains the valid values of the storage source.
@@ -216,9 +217,10 @@ type BatchFrameSummary struct {
 
 // Node contains information about a physical node in the cluster.
 type Node struct {
-	ID       string `json:"node_id"`
-	IPAddr   string `json:"ip_address"`
-	Hostname string `json:"hostname"`
+	ID       string     `json:"node_id"`
+	IPAddr   string     `json:"ip_address"`
+	Hostname string     `json:"hostname"`
+	NodeRole ssntp.Role `json:"role"`
 }
 
 // BlockState represents the state of the block device in the controller
