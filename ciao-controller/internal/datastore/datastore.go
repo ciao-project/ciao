@@ -1205,6 +1205,20 @@ func (ds *Datastore) AddNode(nodeID string, nodeType payloads.Resource) {
 	ds.nodes[nodeID] = n
 }
 
+// GetNode retrieves a node in the node cache.
+func (ds *Datastore) GetNode(nodeID string) (types.Node, error) {
+	var node types.Node
+
+	ds.nodesLock.RLock()
+	defer ds.nodesLock.RUnlock()
+
+	if ds.nodes[nodeID] == nil {
+		return node, fmt.Errorf("node %s not found", nodeID)
+	}
+
+	return ds.nodes[nodeID].Node, nil
+}
+
 // HandleStats makes sure that the data from the stat payload is stored.
 func (ds *Datastore) HandleStats(stat payloads.Stat) error {
 	if stat.Load != -1 {
