@@ -30,6 +30,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -1172,6 +1173,36 @@ func (ds *Datastore) DeleteNode(nodeID string) error {
 	ds.nodeLastStatLock.Unlock()
 
 	return nil
+}
+
+// AddNode adds a node into the node cache, updating the node's tracked
+// role bitmask if the node is already present to be the superset of all
+// reported roles.
+func (ds *Datastore) AddNode(nodeID string, nodeType payloads.Resource) {
+	var role ssntp.Role
+	switch nodeType {
+	case payloads.ComputeNode:
+		role = ssntp.AGENT
+	case payloads.NetworkNode:
+		role = ssntp.NETAGENT
+	}
+
+	ds.nodesLock.Lock()
+	defer ds.nodesLock.Unlock()
+
+	if ds.nodes[nodeID] != nil {
+		ds.nodes[nodeID].NodeRole |= role
+		return
+	}
+
+	n := &node{
+		Node: types.Node{
+			ID:       nodeID,
+			NodeRole: role,
+		},
+		instances: make(map[string]*types.Instance),
+	}
+	ds.nodes[nodeID] = n
 }
 
 // HandleStats makes sure that the data from the stat payload is stored.
