@@ -60,7 +60,7 @@ var tests = []test{
 		createImage,
 		"",
 		http.StatusInternalServerError,
-		fmt.Sprintf("Internal Server Error\nnull"),
+		fmt.Sprintf("unexpected end of JSON input\nnull"),
 	},
 	{
 		"GET",
