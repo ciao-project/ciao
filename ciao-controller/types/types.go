@@ -131,12 +131,12 @@ func (s SortedInstancesByID) Len() int           { return len(s) }
 func (s SortedInstancesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s SortedInstancesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
 
-// SortedComputeNodesByID implements sort.Interface for Node by ID string
-type SortedComputeNodesByID []CiaoComputeNode
+// SortedNodesByID implements sort.Interface for Node by ID string
+type SortedNodesByID []CiaoNode
 
-func (s SortedComputeNodesByID) Len() int           { return len(s) }
-func (s SortedComputeNodesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s SortedComputeNodesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
+func (s SortedNodesByID) Len() int           { return len(s) }
+func (s SortedNodesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s SortedNodesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
 
 // Tenant contains information about a tenant or project.
 type Tenant struct {
@@ -286,9 +286,9 @@ func NewCiaoComputeTenants() (tenants CiaoComputeTenants) {
 	return
 }
 
-// CiaoComputeNode contains status and statistic information for an individual
+// CiaoNode contains status and statistic information for an individual
 // node.
-type CiaoComputeNode struct {
+type CiaoNode struct {
 	ID                    string    `json:"id"`
 	Timestamp             time.Time `json:"updated"`
 	Status                string    `json:"status"`
@@ -304,19 +304,19 @@ type CiaoComputeNode struct {
 	TotalPausedInstances  int       `json:"total_paused_instances"`
 }
 
-// CiaoComputeNodes represents the unmarshalled version of the contents of a
+// CiaoNodes represents the unmarshalled version of the contents of a
 // /v2.1/nodes response.  It contains status and statistics information
 // for a set of nodes.
-type CiaoComputeNodes struct {
-	Nodes []CiaoComputeNode `json:"nodes"`
+type CiaoNodes struct {
+	Nodes []CiaoNode `json:"nodes"`
 }
 
-// NewCiaoComputeNodes allocates a CiaoComputeNodes structure.
+// NewCiaoNodes allocates a CiaoNodes structure.
 // It allocates the Nodes slice as well so that the marshalled
 // JSON is an empty array and not a nil pointer, as specified by the
 // OpenStack APIs.
-func NewCiaoComputeNodes() (nodes CiaoComputeNodes) {
-	nodes.Nodes = []CiaoComputeNode{}
+func NewCiaoNodes() (nodes CiaoNodes) {
+	nodes.Nodes = []CiaoNode{}
 	return
 }
 

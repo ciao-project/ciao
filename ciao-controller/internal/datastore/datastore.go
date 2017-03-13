@@ -143,7 +143,7 @@ type Datastore struct {
 	cnciAddedChans map[string]chan bool
 	cnciAddedLock  *sync.Mutex
 
-	nodeLastStat     map[string]types.CiaoComputeNode
+	nodeLastStat     map[string]types.CiaoNode
 	nodeLastStatLock *sync.RWMutex
 
 	instanceLastStat     map[string]types.CiaoServerStats
@@ -220,7 +220,7 @@ func (ds *Datastore) Init(config Config) error {
 	ds.cnciAddedChans = make(map[string]chan bool)
 	ds.cnciAddedLock = &sync.Mutex{}
 
-	ds.nodeLastStat = make(map[string]types.CiaoComputeNode)
+	ds.nodeLastStat = make(map[string]types.CiaoNode)
 	ds.nodeLastStatLock = &sync.RWMutex{}
 
 	ds.instanceLastStat = make(map[string]types.CiaoServerStats)
@@ -1216,18 +1216,18 @@ func (ds *Datastore) GetInstanceLastStats(nodeID string) types.CiaoServersStats 
 	return serversStats
 }
 
-// GetNodeLastStats retrieves the last nodes stats received for this node.
+// GetNodeLastStats retrieves the last nodes' stats received.
 // It returns it in a format suitable for the compute API.
-func (ds *Datastore) GetNodeLastStats() types.CiaoComputeNodes {
-	var computeNodes types.CiaoComputeNodes
+func (ds *Datastore) GetNodeLastStats() types.CiaoNodes {
+	var nodes types.CiaoNodes
 
 	ds.nodeLastStatLock.RLock()
 	for _, node := range ds.nodeLastStat {
-		computeNodes.Nodes = append(computeNodes.Nodes, node)
+		nodes.Nodes = append(nodes.Nodes, node)
 	}
 	ds.nodeLastStatLock.RUnlock()
 
-	return computeNodes
+	return nodes
 }
 
 func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
@@ -1245,7 +1245,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 
 	ds.nodesLock.Unlock()
 
-	cnStat := types.CiaoComputeNode{
+	cnStat := types.CiaoNode{
 		ID:            stat.NodeUUID,
 		Status:        stat.Status,
 		Load:          stat.Load,

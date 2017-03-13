@@ -107,11 +107,11 @@ func pagerQueryParse(r *http.Request) (int, int, string) {
 
 type nodePager struct {
 	ctl   *controller
-	nodes []types.CiaoComputeNode
+	nodes []types.CiaoNode
 }
 
-func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, nodes []types.CiaoComputeNode, limit int, offset int) (types.CiaoComputeNodes, error) {
-	computeNodes := types.NewCiaoComputeNodes()
+func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, nodes []types.CiaoNode, limit int, offset int) (types.CiaoNodes, error) {
+	computeNodes := types.NewCiaoNodes()
 
 	pageLength := 0
 
@@ -133,11 +133,11 @@ func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, node
 	return computeNodes, nil
 }
 
-func (pager *nodePager) filter(filterType pagerFilterType, filter string, node types.CiaoComputeNode) bool {
+func (pager *nodePager) filter(filterType pagerFilterType, filter string, node types.CiaoNode) bool {
 	return false
 }
 
-func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *http.Request) (types.CiaoComputeNodes, error) {
+func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *http.Request) (types.CiaoNodes, error) {
 	limit, offset, lastSeen := pagerQueryParse(r)
 
 	if lastSeen == "" {
@@ -162,7 +162,7 @@ func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *h
 		}
 	}
 
-	return types.CiaoComputeNodes{}, fmt.Errorf("Item %s not found", lastSeen)
+	return types.CiaoNodes{}, fmt.Errorf("Item %s not found", lastSeen)
 }
 
 type nodeServerPager struct {
@@ -440,7 +440,7 @@ func listNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIRespon
 		}
 	}
 
-	sort.Sort(types.SortedComputeNodesByID(computeNodes.Nodes))
+	sort.Sort(types.SortedNodesByID(computeNodes.Nodes))
 
 	pager := nodePager{
 		ctl:   c,
