@@ -60,9 +60,12 @@
       - name: '"Clear Cloud"'
         file: "{{ clear_cloud_image }}"
         id: df3768da-31f5-4ba6-82f0-127a1a705169
+        visibility: public
       - name: "CNCI"
         file: "{{ cnci_image }}"
         id: 4e16e743-265a-4bf2-9fd1-57ada0b28904
+        visibility: internal
       - name: '"Fedora 24 Cloud"'
         file: "{{ fedora_cloud_image }}"
         id: 73a86d7e-93c0-480e-9c41-ab42f69b7799
+        visibility: public
