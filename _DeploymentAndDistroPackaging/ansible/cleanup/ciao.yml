@@ -183,6 +183,8 @@
             - qemu-system-x86
             - psmisc
             - docker-engine
+            - docker-ce
+            - docker
             - ciao-common
 
         - name: Uninstall dependencies (Fedora)
@@ -196,6 +198,8 @@
         - qemu-system-x86
         - psmisc
         - docker.io
+        - docker-engine
+        - docker-ce
         - ciao-common
       when: ansible_os_family == "Debian"
 
