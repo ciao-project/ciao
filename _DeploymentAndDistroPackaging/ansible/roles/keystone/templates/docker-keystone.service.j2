@@ -1,7 +1,7 @@
 [Unit]
 Description=Keystone Container for CIAO
-Requires={{ docker_service }}
-After={{ docker_service }}
+Requires=docker.service
+After=docker.service
 
 [Service]
 Restart=always

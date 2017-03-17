@@ -26,4 +26,4 @@
   static: no
 
 - name: Start docker daemon
-  systemd: name={{ docker_service }} enabled=yes state=started
+  systemd: name=docker.service enabled=yes state=started
