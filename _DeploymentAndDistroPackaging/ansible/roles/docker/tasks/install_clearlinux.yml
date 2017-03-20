@@ -14,13 +14,4 @@
 # limitations under the License.
 
   - name: Install containers-basic bundle (ClearLinux)
-    command: swupd bundle-add containers-basic {{ swupd_args | default('') }}
-    args:
-      creates: /usr/share/clear/bundles/containers-basic
-
-  - name: Check if host has /dev/kvm (ClearLinux)
-    stat: path=/dev/kvm
-    register: kvm
-
-  - name: Select docker runtime (ClearLinux)
-    set_fact: docker_service={{ 'docker-cor.service' if kvm.stat.exists else 'docker.service' }}
+    swupd: name=containers-basic state=present

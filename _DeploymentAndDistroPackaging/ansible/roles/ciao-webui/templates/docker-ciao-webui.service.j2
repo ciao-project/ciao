@@ -1,7 +1,7 @@
 [Unit]
 Description=CIAO WebUI Container
-Requires={{ docker_service }}
-After={{ docker_service }}
+Requires=docker.service
+After=docker.service
 
 [Service]
 Restart=always
