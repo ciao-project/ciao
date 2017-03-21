@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package main
+package templateutils
 
 import (
 	"bytes"
@@ -29,8 +29,10 @@ import (
 	"text/template"
 )
 
-const templateFunctionHelp = `
-ciao-cli adds some new functions to Go's template language
+// TemplateFunctionHelp contains formatted documentation that describes the
+// additional functions that templateutils adds to Go's templating language.
+const TemplateFunctionHelp = `
+Some new functions have been added to Go's template language
 
 - tojson outputs the specified object in json format, e.g., {{tojson .}}
 - filter operates on an slice or array of structures.  It allows the caller
@@ -38,13 +40,13 @@ ciao-cli adds some new functions to Go's template language
   The function returns a slice containing only the objects that satisfy the
   filter, e.g.
 
-  ciao-cli image list -f '{{$x := filter . "Protected" "true"}}{{len $x}}'
+  {{$x := filter . "Protected" "true"}}{{len $x}}
 
   outputs the number of protected images maintained by the image service.
 - filterContains operates along the same lines as filter, but returns
   substring matches
 
-  ciao-cli workload list -f '{{$x := filterContains . "Name" "Cloud"}}{{range $x}}{{.ID}}{{end}}'
+  {{$x := filterContains . "Name" "Cloud"}}{{range $x}}{{.ID}}{{end}}
 
   outputs the IDs of the workloads which have Cloud in their name.
 - filterHasPrefix along the same lines as filter, but returns prefix matches
@@ -54,7 +56,7 @@ ciao-cli adds some new functions to Go's template language
 - filterRegexp along the same lines as filter, but  returns matches based
   on regular expression matching
 
-  ciao-cli workload list -f '{{$x := filterRegexp . "Name" "^Docker[ a-zA-z]*latest$"}}{{range $x}}{{println .ID .Name}}{{end}}'
+  {{$x := filterRegexp . "Name" "^Docker[ a-zA-z]*latest$"}}{{range $x}}{{println .ID .Name}}{{end}}
 
   outputs the IDs of the workloads which have Docker prefix and latest suffix
   in their name.
@@ -90,7 +92,7 @@ func filterField(obj interface{}, field, val string, cmp func(string, string) bo
 	defer func() {
 		err := recover()
 		if err != nil {
-			fatalf("Invalid use of filter: %v", err)
+			panic(fmt.Errorf("Invalid use of filter: %v", err))
 		}
 	}()
 
@@ -147,7 +149,7 @@ func filterByRegexp(obj interface{}, field, val string) (retval interface{}) {
 	return filterField(obj, field, val, func(a, b string) bool {
 		matched, err := regexp.MatchString(b, a)
 		if err != nil {
-			fatalf("Invalid regexp: %v", err)
+			panic(fmt.Errorf("Invalid regexp: %v", err))
 		}
 		return matched
 	})
@@ -157,7 +159,7 @@ func selectField(obj interface{}, field string) string {
 	defer func() {
 		err := recover()
 		if err != nil {
-			fatalf("Invalid use of select: %v", err)
+			panic(fmt.Errorf("Invalid use of select: %v", err))
 		}
 	}()
 
@@ -191,18 +193,27 @@ func toJSON(obj interface{}) string {
 	return string(b)
 }
 
-func outputToTemplate(name, tmplSrc string, obj interface{}) error {
+// OutputToTemplate executes the template, whose source is contained within the
+// tmplSrc parameter, on the object obj.  The name of the template is given by
+// the name parameter.  The results of the execution are printed to os.Stdout.
+// All the additional functions provided by templateutils are available to the
+// template source code specified in tmplSrc.
+func OutputToTemplate(name, tmplSrc string, obj interface{}) error {
 	t, err := template.New(name).Funcs(funcMap).Parse(tmplSrc)
 	if err != nil {
-		fatalf(err.Error())
+		panic(err)
 	}
 	if err = t.Execute(os.Stdout, obj); err != nil {
-		fatalf(err.Error())
+		panic(err)
 	}
 	return nil
 }
 
-func createTemplate(name, tmplSrc string) *template.Template {
+// CreateTemplate creates a new template, whose source is contained within the
+// tmplSrc parameter and whose name is given by the name parameter.  All the
+// additional functions provided by templateutils are available to the template
+// source code specified in tmplSrc.
+func CreateTemplate(name, tmplSrc string) *template.Template {
 	var t *template.Template
 	if tmplSrc == "" {
 		return nil
@@ -210,7 +221,7 @@ func createTemplate(name, tmplSrc string) *template.Template {
 
 	t, err := template.New(name).Funcs(funcMap).Parse(tmplSrc)
 	if err != nil {
-		fatalf(err.Error())
+		panic(err)
 	}
 
 	return t
@@ -293,13 +304,34 @@ func generateIndentedUsage(buf *bytes.Buffer, i interface{}) {
 	formatType(buf, source.Bytes())
 }
 
-func generateUsageUndecorated(i interface{}) string {
+// GenerateUsageUndecorated returns a formatted string identifying the
+// elements of the type of object i that can be accessed  from inside a template.
+// Unexported struct values and channels are output are they cannot be usefully
+// accessed inside a template.  For example, given
+//
+//  i := struct {
+//      X     int
+//      Y     string
+//		hidden  float64
+//		Invalid chan int
+//  }
+//
+// GenerateUsageUndecorated would return
+//
+// struct {
+//      X     int
+//      Y     string
+// }
+func GenerateUsageUndecorated(i interface{}) string {
 	var buf bytes.Buffer
 	generateIndentedUsage(&buf, i)
 	return buf.String()
 }
 
-func generateUsageDecorated(flag string, i interface{}) string {
+// GenerateUsageDecorated is similar to GenerateUsageUndecorated with the
+// exception that it outputs the TemplateFunctionHelp string after describing
+// the type of i.
+func GenerateUsageDecorated(flag string, i interface{}) string {
 	var buf bytes.Buffer
 
 	fmt.Fprintf(&buf,
@@ -307,6 +339,6 @@ func generateUsageDecorated(flag string, i interface{}) string {
 		flag)
 
 	generateIndentedUsage(&buf, i)
-	fmt.Fprintf(&buf, templateFunctionHelp)
+	fmt.Fprintf(&buf, TemplateFunctionHelp)
 	return buf.String()
 }

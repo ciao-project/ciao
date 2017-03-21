@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package templateutils
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ var templateUsageTests = []struct {
 	expected string
 }{
 	{int(0), "int"},
-	{testint(0), "main.testint"},
+	{testint(0), "templateutils.testint"},
 	{[]int{}, "[]int"},
 	{false, "bool"},
 	{[5]int{}, "[5]int"},
@@ -64,7 +64,7 @@ var templateUsageTests = []struct {
 
 func TestTemplateGenerateUsage(t *testing.T) {
 	for _, s := range templateUsageTests {
-		gen := generateUsageUndecorated(s.obj)
+		gen := GenerateUsageUndecorated(s.obj)
 		var buf bytes.Buffer
 		formatType(&buf, []byte(s.expected))
 		trimmedGen := strings.TrimSpace(gen)
