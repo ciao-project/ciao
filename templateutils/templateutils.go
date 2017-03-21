@@ -201,10 +201,10 @@ func toJSON(obj interface{}) string {
 func OutputToTemplate(name, tmplSrc string, obj interface{}) error {
 	t, err := template.New(name).Funcs(funcMap).Parse(tmplSrc)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if err = t.Execute(os.Stdout, obj); err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
@@ -213,18 +213,12 @@ func OutputToTemplate(name, tmplSrc string, obj interface{}) error {
 // tmplSrc parameter and whose name is given by the name parameter.  All the
 // additional functions provided by templateutils are available to the template
 // source code specified in tmplSrc.
-func CreateTemplate(name, tmplSrc string) *template.Template {
-	var t *template.Template
+func CreateTemplate(name, tmplSrc string) (*template.Template, error) {
 	if tmplSrc == "" {
-		return nil
+		return nil, fmt.Errorf("template %s contains no source", name)
 	}
 
-	t, err := template.New(name).Funcs(funcMap).Parse(tmplSrc)
-	if err != nil {
-		panic(err)
-	}
-
-	return t
+	return template.New(name).Funcs(funcMap).Parse(tmplSrc)
 }
 
 func exportedFields(typ reflect.Type) bool {
@@ -293,7 +287,7 @@ func formatType(buf *bytes.Buffer, unformattedType []byte) {
 	_, _ = source.Write(unformattedType)
 	formattedType, err := format.Source(source.Bytes())
 	if err != nil {
-		panic(fmt.Errorf("generateIndentedUsage created invalid Go code: %v", err))
+		panic(fmt.Errorf("formatType created invalid Go code: %v", err))
 	}
 	_, _ = buf.Write(formattedType[len(typePrefix):])
 }

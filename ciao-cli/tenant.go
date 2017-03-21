@@ -85,7 +85,10 @@ func (cmd *tenantListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantListCommand) run(args []string) error {
-	t := templateutils.CreateTemplate("tenant-list", cmd.template)
+	t, err := templateutils.CreateTemplate("tenant-list", cmd.template)
+	if err != nil {
+		fatalf(err.Error())
+	}
 
 	if cmd.all {
 		return listAllTenants(t)

@@ -148,7 +148,10 @@ func (cmd *volumeListCommand) run(args []string) error {
 		fatalf("Could not get volume service client [%s]\n", err)
 	}
 
-	t := templateutils.CreateTemplate("volume-list", cmd.template)
+	t, err := templateutils.CreateTemplate("volume-list", cmd.template)
+	if err != nil {
+		fatalf(err.Error())
+	}
 
 	pager := volumes.List(client, volumes.ListOpts{})
 

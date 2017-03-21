@@ -226,7 +226,10 @@ func (cmd *imageListCommand) run(args []string) error {
 
 	var t *template.Template
 	if cmd.template != "" {
-		t = templateutils.CreateTemplate("image-list", cmd.template)
+		t, err = templateutils.CreateTemplate("image-list", cmd.template)
+		if err != nil {
+			fatalf(err.Error())
+		}
 	}
 
 	pager := images.List(client, images.ListOpts{})

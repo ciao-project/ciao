@@ -76,7 +76,10 @@ func (cmd *nodeListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeListCommand) run(args []string) error {
-	t := templateutils.CreateTemplate("node-list", cmd.template)
+	t, err := templateutils.CreateTemplate("node-list", cmd.template)
+	if err != nil {
+		fatalf(err.Error())
+	}
 
 	if cmd.compute {
 		return listComputeNodes(t)
