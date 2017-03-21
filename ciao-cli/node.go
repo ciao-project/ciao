@@ -201,7 +201,7 @@ func (cmd *nodeStatusCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("node-status", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "node-status", cmd.template,
 			&status.Status)
 	}
 
@@ -277,7 +277,7 @@ func showCNCINode(cmd *nodeShowCommand) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("node-show", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "node-show", cmd.template,
 			&cnci)
 	}
 

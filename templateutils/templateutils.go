@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"go/format"
 	"io"
-	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -195,15 +194,15 @@ func toJSON(obj interface{}) string {
 
 // OutputToTemplate executes the template, whose source is contained within the
 // tmplSrc parameter, on the object obj.  The name of the template is given by
-// the name parameter.  The results of the execution are printed to os.Stdout.
+// the name parameter.  The results of the execution are output to w.
 // All the additional functions provided by templateutils are available to the
 // template source code specified in tmplSrc.
-func OutputToTemplate(name, tmplSrc string, obj interface{}) error {
+func OutputToTemplate(w io.Writer, name, tmplSrc string, obj interface{}) error {
 	t, err := template.New(name).Funcs(funcMap).Parse(tmplSrc)
 	if err != nil {
 		return err
 	}
-	if err = t.Execute(os.Stdout, obj); err != nil {
+	if err = t.Execute(w, obj); err != nil {
 		return err
 	}
 	return nil

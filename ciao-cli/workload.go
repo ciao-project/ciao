@@ -91,7 +91,7 @@ func (cmd *workloadListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("workload-list", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "workload-list", cmd.template,
 			&flavors.Flavors)
 	}
 

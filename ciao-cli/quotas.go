@@ -210,7 +210,7 @@ func (cmd *quotasListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("quotas-list", cmd.template, results.Quotas)
+		return templateutils.OutputToTemplate(os.Stdout, "quotas-list", cmd.template, results.Quotas)
 	}
 
 	fmt.Printf("Quotas for tenant: %s\n", cmd.tenantID)

@@ -227,7 +227,7 @@ func (cmd *volumeShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("volume-show", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "volume-show", cmd.template,
 			&volume)
 	}
 

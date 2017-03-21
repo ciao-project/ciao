@@ -93,7 +93,7 @@ func (cmd *eventListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("event-list", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "event-list", cmd.template,
 			&events.Events)
 	}
 

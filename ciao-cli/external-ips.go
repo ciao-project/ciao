@@ -194,7 +194,7 @@ func (cmd *externalIPListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("external-ip-list", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "external-ip-list", cmd.template,
 			&IPs)
 	}
 
@@ -474,7 +474,7 @@ func (cmd *poolListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("pool-list", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "pool-list", cmd.template,
 			&pools.Pools)
 	}
 
@@ -563,7 +563,7 @@ func (cmd *poolShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("pool-show", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "pool-show", cmd.template,
 			&pool)
 	}
 

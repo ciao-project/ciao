@@ -524,7 +524,7 @@ func (cmd *instanceAddCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("instance-add", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "instance-add", cmd.template,
 			&servers.Servers)
 	}
 
@@ -795,7 +795,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 	sort.Sort(byCreated(sortedServers))
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("instance-list", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "instance-list", cmd.template,
 			&sortedServers)
 	}
 
@@ -873,7 +873,7 @@ func (cmd *instanceShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("instance-show", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "instance-show", cmd.template,
 			&server.Server)
 	}
 

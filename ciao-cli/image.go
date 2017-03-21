@@ -131,7 +131,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("image-add", cmd.template, image)
+		return templateutils.OutputToTemplate(os.Stdout, "image-add", cmd.template, image)
 	}
 
 	fmt.Printf("Created image:\n")
@@ -179,7 +179,7 @@ func (cmd *imageShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("image-show", cmd.template, i)
+		return templateutils.OutputToTemplate(os.Stdout, "image-show", cmd.template, i)
 	}
 
 	dumpImage(i)

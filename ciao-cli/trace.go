@@ -72,7 +72,7 @@ func (cmd *traceListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("trace-list", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "trace-list", cmd.template,
 			&traces.Summaries)
 	}
 
@@ -132,7 +132,7 @@ func (cmd *traceShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate("trace-show", cmd.template,
+		return templateutils.OutputToTemplate(os.Stdout, "trace-show", cmd.template,
 			&traceData.Summary)
 	}
 
