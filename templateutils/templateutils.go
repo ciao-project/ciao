@@ -24,6 +24,7 @@ import (
 	"io"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -86,6 +87,15 @@ Some new functions have been added to Go's template language
 
   returns a new slice of structs, each element of which is a structure with only two fields,
   Name and Address.
+- sort sorts a slice or an array of structs.  It takes three parameters.  The first is the
+  slice; the second is the name of the structure field by which to sort; the third provides
+  the direction of the sort.  The third parameter is optional.  If provided, it must be either
+  "asc" or "dsc".  If omitted the elements of the slice are sorted in ascending order.  The
+  type of the second field can be a number or a string.  When presented with another type, sort
+  will try to sort the elements by the string representation of the chosen field.   The following
+  example sorts a slice in ascending order by the Name field.
+
+  {{sort . "Name"}}
 `
 
 // BUG(markdryan): Tests for all functions
@@ -108,6 +118,154 @@ var funcMap = template.FuncMap{
 	"table":           table,
 	"tablex":          tablex,
 	"cols":            cols,
+	"sort":            sortSlice,
+}
+
+var sortAscMap = map[reflect.Kind]func(interface{}, interface{}) bool{
+	reflect.Int: func(v1, v2 interface{}) bool {
+		return v1.(int) < v2.(int)
+	},
+	reflect.Int8: func(v1, v2 interface{}) bool {
+		return v1.(int8) < v2.(int8)
+	},
+	reflect.Int16: func(v1, v2 interface{}) bool {
+		return v1.(int16) < v2.(int16)
+	},
+	reflect.Int32: func(v1, v2 interface{}) bool {
+		return v1.(int32) < v2.(int32)
+	},
+	reflect.Int64: func(v1, v2 interface{}) bool {
+		return v1.(int64) < v2.(int64)
+	},
+	reflect.Uint: func(v1, v2 interface{}) bool {
+		return v1.(uint) < v2.(uint)
+	},
+	reflect.Uint8: func(v1, v2 interface{}) bool {
+		return v1.(uint8) < v2.(uint8)
+	},
+	reflect.Uint16: func(v1, v2 interface{}) bool {
+		return v1.(uint16) < v2.(uint16)
+	},
+	reflect.Uint32: func(v1, v2 interface{}) bool {
+		return v1.(uint32) < v2.(uint32)
+	},
+	reflect.Uint64: func(v1, v2 interface{}) bool {
+		return v1.(uint64) < v2.(uint64)
+	},
+	reflect.Float64: func(v1, v2 interface{}) bool {
+		return v1.(float64) < v2.(float64)
+	},
+	reflect.Float32: func(v1, v2 interface{}) bool {
+		return v1.(float32) < v2.(float32)
+	},
+	reflect.String: func(v1, v2 interface{}) bool {
+		return v1.(string) < v2.(string)
+	},
+}
+
+var sortDscMap = map[reflect.Kind]func(interface{}, interface{}) bool{
+	reflect.Int: func(v1, v2 interface{}) bool {
+		return v2.(int) < v1.(int)
+	},
+	reflect.Int8: func(v1, v2 interface{}) bool {
+		return v2.(int8) < v1.(int8)
+	},
+	reflect.Int16: func(v1, v2 interface{}) bool {
+		return v2.(int16) < v1.(int16)
+	},
+	reflect.Int32: func(v1, v2 interface{}) bool {
+		return v2.(int32) < v1.(int32)
+	},
+	reflect.Int64: func(v1, v2 interface{}) bool {
+		return v2.(int64) < v1.(int64)
+	},
+	reflect.Uint: func(v1, v2 interface{}) bool {
+		return v2.(uint) < v1.(uint)
+	},
+	reflect.Uint8: func(v1, v2 interface{}) bool {
+		return v2.(uint8) < v1.(uint8)
+	},
+	reflect.Uint16: func(v1, v2 interface{}) bool {
+		return v2.(uint16) < v1.(uint16)
+	},
+	reflect.Uint32: func(v1, v2 interface{}) bool {
+		return v2.(uint32) < v1.(uint32)
+	},
+	reflect.Uint64: func(v1, v2 interface{}) bool {
+		return v2.(uint64) < v1.(uint64)
+	},
+	reflect.Float64: func(v1, v2 interface{}) bool {
+		return v2.(float64) < v1.(float64)
+	},
+	reflect.Float32: func(v1, v2 interface{}) bool {
+		return v2.(float32) < v1.(float32)
+	},
+	reflect.String: func(v1, v2 interface{}) bool {
+		return v2.(string) < v1.(string)
+	},
+}
+
+type valueSorter struct {
+	val   reflect.Value
+	field int
+	less  func(v1, v2 interface{}) bool
+}
+
+func (v *valueSorter) Len() int {
+	return v.val.Len()
+}
+
+func (v *valueSorter) Less(i, j int) bool {
+	iVal := v.val.Index(i)
+	jVal := v.val.Index(j)
+	return v.less(iVal.Field(v.field).Interface(), jVal.Field(v.field).Interface())
+}
+
+func (v *valueSorter) Swap(i, j int) {
+	iVal := v.val.Index(i).Interface()
+	jVal := v.val.Index(j).Interface()
+	v.val.Index(i).Set(reflect.ValueOf(jVal))
+	v.val.Index(j).Set(reflect.ValueOf(iVal))
+}
+
+func newValueSorter(obj interface{}, field string, ascending bool) *valueSorter {
+	val := reflect.ValueOf(obj)
+	typ := reflect.TypeOf(obj)
+	sTyp := typ.Elem()
+
+	var index int
+	var fTyp reflect.StructField
+	for index = 0; index < sTyp.NumField(); index++ {
+		fTyp = sTyp.Field(index)
+		if fTyp.Name == field {
+			break
+		}
+	}
+	if index == sTyp.NumField() {
+		panic(fmt.Sprintf("%s is not a valid field name", field))
+	}
+	fKind := fTyp.Type.Kind()
+
+	var lessFn func(interface{}, interface{}) bool
+	if ascending {
+		lessFn = sortAscMap[fKind]
+	} else {
+		lessFn = sortDscMap[fKind]
+	}
+	if lessFn == nil {
+		var stringer *fmt.Stringer
+		if !fTyp.Type.Implements(reflect.TypeOf(stringer).Elem()) {
+			panic(fmt.Errorf("cannot sort fields of type %s", fKind))
+		}
+		lessFn = func(v1, v2 interface{}) bool {
+			return v1.(fmt.Stringer).String() < v2.(fmt.Stringer).String()
+		}
+	}
+	return &valueSorter{
+		val:   val,
+		field: index,
+		less:  lessFn,
+	}
 }
 
 func findField(fieldPath []string, v reflect.Value) reflect.Value {
@@ -342,6 +500,25 @@ func cols(obj interface{}, fields ...string) interface{} {
 	}
 
 	return newVal.Interface()
+}
+
+func sortSlice(obj interface{}, field string, direction ...string) interface{} {
+	ascending := true
+	if len(direction) > 1 {
+		panic("Too many parameters passed to sort")
+	} else if len(direction) == 1 {
+		if direction[0] == "dsc" {
+			ascending = false
+		} else if direction[0] != "asc" {
+			panic("direction parameter must be \"asc\" or \"dsc\"")
+		}
+	}
+	assertCollectionOfStructs(obj)
+
+	// TODO: Need to copy
+	vs := newValueSorter(obj, field, ascending)
+	sort.Sort(vs)
+	return obj
 }
 
 // OutputToTemplate executes the template, whose source is contained within the
