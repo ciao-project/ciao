@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"text/tabwriter"
 	"text/template"
 )
 
@@ -63,7 +64,26 @@ Some new functions have been added to Go's template language
   field for each struct on a new line , e.g.,
 
   {{select . "Name"}}
+- table outputs a table given an array or a slice of structs.  The table headings are taken
+  from the names of the structs fields.  Hidden fields and fields of type channel are ignored.
+  The tabwidth and minimum column width are hardcoded to 8.  An example of table's usage is
+
+  {{table .}}
+- tablex is similar to table but it allows the caller more control over the table's appearance.
+  Users can control the names of the headings and also set the tab and column width.  tablex
+  takes 3 or more parameters.  The first parameter is the slice of structs to output, the
+  second is the minimum column width, the third the tab width.  The fourth and subsequent
+  parameters are the names of the column headings.  The column headings are optional and the
+  field names of the structure will be used if they are absent.  Example of its usage are
+
+  {{tablex . 12 8 "Column 1" "Column 2"}}
+  {{tablex . 8 8}}
 `
+
+type tableHeading struct {
+	name  string
+	index int
+}
 
 var funcMap = template.FuncMap{
 	"filter":          filterByField,
@@ -74,6 +94,8 @@ var funcMap = template.FuncMap{
 	"filterRegexp":    filterByRegexp,
 	"tojson":          toJSON,
 	"select":          selectField,
+	"table":           table,
+	"tablex":          tablex,
 }
 
 func findField(fieldPath []string, v reflect.Value) reflect.Value {
@@ -190,6 +212,69 @@ func toJSON(obj interface{}) string {
 		return ""
 	}
 	return string(b)
+}
+
+func getTableHeadings(obj interface{}) []tableHeading {
+	typ := reflect.TypeOf(obj)
+	kind := typ.Kind()
+	if kind != reflect.Slice && kind != reflect.Array {
+		panic("slice or an array of structs expected")
+	}
+	styp := typ.Elem()
+	if styp.Kind() != reflect.Struct {
+		panic("slice or an array of structs expected")
+	}
+
+	var headings []tableHeading
+	for i := 0; i < styp.NumField(); i++ {
+		field := styp.Field(i)
+		if field.PkgPath != "" || ignoreKind(field.Type.Kind()) {
+			continue
+		}
+		headings = append(headings, tableHeading{name: field.Name, index: i})
+	}
+
+	if len(headings) == 0 {
+		panic("structures must contain at least one exported non-channel field")
+	}
+	return headings
+}
+
+func createTable(obj interface{}, minWidth, tabWidth int, headings []tableHeading) string {
+	var b bytes.Buffer
+	w := tabwriter.NewWriter(&b, minWidth, tabWidth, 1, ' ', 0)
+	for _, h := range headings {
+		fmt.Fprintf(w, "%s\t", h.name)
+	}
+	fmt.Fprintln(w)
+
+	v := reflect.ValueOf(obj)
+	for i := 0; i < v.Len(); i++ {
+		el := v.Index(i)
+		for _, h := range headings {
+			fmt.Fprintf(w, "%v\t", el.Field(h.index).Interface())
+		}
+		fmt.Fprintln(w)
+	}
+	_ = w.Flush()
+
+	return b.String()
+}
+
+func table(obj interface{}) string {
+	return createTable(obj, 8, 8, getTableHeadings(obj))
+}
+
+func tablex(obj interface{}, minWidth, tabWidth int, userHeadings ...string) string {
+	headings := getTableHeadings(obj)
+	if len(headings) < len(userHeadings) {
+		panic(fmt.Sprintf("Too many headings specified.  Max permitted %d got %d",
+			len(headings), len(userHeadings)))
+	}
+	for i := range userHeadings {
+		headings[i].name = userHeadings[i]
+	}
+	return createTable(obj, minWidth, tabWidth, headings)
 }
 
 // OutputToTemplate executes the template, whose source is contained within the
