@@ -78,7 +78,18 @@ Some new functions have been added to Go's template language
 
   {{tablex . 12 8 "Column 1" "Column 2"}}
   {{tablex . 8 8}}
+- cols can be used to extract certain columns from a table consisting of a slice or array of
+  structs.  It returns a new slice of structs which contain only the fields requested by the
+  caller.   For example, given a slice of structs
+
+  {{cols . "Name" "Address"}}
+
+  returns a new slice of structs, each element of which is a structure with only two fields,
+  Name and Address.
 `
+
+// BUG(markdryan): Tests for all functions
+// BUG(markdryan): Check table and cols commands work with pointers to slices and slices of pointers
 
 type tableHeading struct {
 	name  string
@@ -96,6 +107,7 @@ var funcMap = template.FuncMap{
 	"select":          selectField,
 	"table":           table,
 	"tablex":          tablex,
+	"cols":            cols,
 }
 
 func findField(fieldPath []string, v reflect.Value) reflect.Value {
@@ -214,7 +226,7 @@ func toJSON(obj interface{}) string {
 	return string(b)
 }
 
-func getTableHeadings(obj interface{}) []tableHeading {
+func assertCollectionOfStructs(obj interface{}) {
 	typ := reflect.TypeOf(obj)
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
@@ -224,6 +236,13 @@ func getTableHeadings(obj interface{}) []tableHeading {
 	if styp.Kind() != reflect.Struct {
 		panic("slice or an array of structs expected")
 	}
+}
+
+func getTableHeadings(obj interface{}) []tableHeading {
+	assertCollectionOfStructs(obj)
+
+	typ := reflect.TypeOf(obj)
+	styp := typ.Elem()
 
 	var headings []tableHeading
 	for i := 0; i < styp.NumField(); i++ {
@@ -275,6 +294,54 @@ func tablex(obj interface{}, minWidth, tabWidth int, userHeadings ...string) str
 		headings[i].name = userHeadings[i]
 	}
 	return createTable(obj, minWidth, tabWidth, headings)
+}
+
+func cols(obj interface{}, fields ...string) interface{} {
+	assertCollectionOfStructs(obj)
+	if len(fields) == 0 {
+		panic("at least one column name must be specified")
+	}
+
+	var newFields []reflect.StructField
+	var indicies []int
+	styp := reflect.TypeOf(obj).Elem()
+	for i := 0; i < styp.NumField(); i++ {
+		field := styp.Field(i)
+		if field.PkgPath != "" || ignoreKind(field.Type.Kind()) {
+			continue
+		}
+
+		var j int
+		for j = 0; j < len(fields); j++ {
+			if fields[j] == field.Name {
+				break
+			}
+		}
+		if j == len(fields) {
+			continue
+		}
+
+		indicies = append(indicies, i)
+		newFields = append(newFields, field)
+	}
+
+	if len(indicies) != len(fields) {
+		panic("not all column names are valid")
+	}
+
+	val := reflect.ValueOf(obj)
+	newStyp := reflect.StructOf(newFields)
+	newVal := reflect.MakeSlice(reflect.SliceOf(newStyp), val.Len(), val.Len())
+	for i := 0; i < val.Len(); i++ {
+		sval := val.Index(i)
+		newSval := reflect.New(newStyp).Elem()
+		for j, origIndex := range indicies {
+			newSval.Field(j).Set(sval.Field(origIndex))
+		}
+		newVal.Index(i).Set(newSval)
+	}
+
+	return newVal.Interface()
 }
 
 // OutputToTemplate executes the template, whose source is contained within the
