@@ -15,3 +15,10 @@
 
   - name: Install containers-basic bundle (ClearLinux)
     swupd: name=containers-basic state=present
+
+  - name: Check if host has /dev/kvm (ClearLinux)
+    stat: path=/dev/kvm
+    register: kvm
+
+  - name: Select docker runtime (ClearLinux)
+    set_fact: docker_service={{ 'docker-cor.service' if kvm.stat.exists else 'docker.service' }}

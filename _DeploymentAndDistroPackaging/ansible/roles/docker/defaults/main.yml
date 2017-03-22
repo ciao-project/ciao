@@ -13,17 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- include: install_ubuntu.yml
-  when: ansible_os_family == "Debian"
-  static: no
-
-- include: install_fedora.yml
-  when: ansible_os_family == "RedHat"
-  static: no
-
-- include: install_clearlinux.yml
-  when: ansible_os_family == "Clear linux software for intel architecture"
-  static: no
-
-- name: Start docker daemon
-  systemd: name={{ docker_service }} enabled=yes state=started
+# Name of docker service
+docker_service: docker.service
