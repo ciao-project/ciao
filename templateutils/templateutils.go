@@ -99,7 +99,6 @@ Some new functions have been added to Go's template language
 `
 
 // BUG(markdryan): Tests for all functions
-// BUG(markdryan): Check table and cols commands work with pointers to slices and slices of pointers
 
 type tableHeading struct {
 	name  string
@@ -228,6 +227,14 @@ func (v *valueSorter) Swap(i, j int) {
 	v.val.Index(j).Set(reflect.ValueOf(iVal))
 }
 
+func getValue(obj interface{}) reflect.Value {
+	val := reflect.ValueOf(obj)
+	if val.Kind() == reflect.Ptr {
+		val = reflect.Indirect(val)
+	}
+	return val
+}
+
 func newValueSorter(obj interface{}, field string, ascending bool) *valueSorter {
 	val := reflect.ValueOf(obj)
 	typ := reflect.TypeOf(obj)
@@ -287,10 +294,7 @@ func filterField(obj interface{}, field, val string, cmp func(string, string) bo
 		}
 	}()
 
-	list := reflect.ValueOf(obj)
-	if list.Kind() == reflect.Ptr {
-		list = reflect.Indirect(list)
-	}
+	list := getValue(obj)
 	filtered := reflect.MakeSlice(list.Type(), 0, list.Len())
 
 	fieldPath := strings.Split(field, ".")
@@ -355,10 +359,7 @@ func selectField(obj interface{}, field string) string {
 	}()
 
 	var b bytes.Buffer
-	list := reflect.ValueOf(obj)
-	if list.Kind() == reflect.Ptr {
-		list = reflect.Indirect(list)
-	}
+	list := getValue(obj)
 
 	fieldPath := strings.Split(field, ".")
 
@@ -384,8 +385,8 @@ func toJSON(obj interface{}) string {
 	return string(b)
 }
 
-func assertCollectionOfStructs(obj interface{}) {
-	typ := reflect.TypeOf(obj)
+func assertCollectionOfStructs(v reflect.Value) {
+	typ := v.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
 		panic("slice or an array of structs expected")
@@ -396,10 +397,10 @@ func assertCollectionOfStructs(obj interface{}) {
 	}
 }
 
-func getTableHeadings(obj interface{}) []tableHeading {
-	assertCollectionOfStructs(obj)
+func getTableHeadings(v reflect.Value) []tableHeading {
+	assertCollectionOfStructs(v)
 
-	typ := reflect.TypeOf(obj)
+	typ := v.Type()
 	styp := typ.Elem()
 
 	var headings []tableHeading
@@ -417,7 +418,7 @@ func getTableHeadings(obj interface{}) []tableHeading {
 	return headings
 }
 
-func createTable(obj interface{}, minWidth, tabWidth int, headings []tableHeading) string {
+func createTable(v reflect.Value, minWidth, tabWidth int, headings []tableHeading) string {
 	var b bytes.Buffer
 	w := tabwriter.NewWriter(&b, minWidth, tabWidth, 1, ' ', 0)
 	for _, h := range headings {
@@ -425,7 +426,6 @@ func createTable(obj interface{}, minWidth, tabWidth int, headings []tableHeadin
 	}
 	fmt.Fprintln(w)
 
-	v := reflect.ValueOf(obj)
 	for i := 0; i < v.Len(); i++ {
 		el := v.Index(i)
 		for _, h := range headings {
@@ -439,11 +439,13 @@ func createTable(obj interface{}, minWidth, tabWidth int, headings []tableHeadin
 }
 
 func table(obj interface{}) string {
-	return createTable(obj, 8, 8, getTableHeadings(obj))
+	val := getValue(obj)
+	return createTable(val, 8, 8, getTableHeadings(val))
 }
 
 func tablex(obj interface{}, minWidth, tabWidth int, userHeadings ...string) string {
-	headings := getTableHeadings(obj)
+	val := getValue(obj)
+	headings := getTableHeadings(val)
 	if len(headings) < len(userHeadings) {
 		panic(fmt.Sprintf("Too many headings specified.  Max permitted %d got %d",
 			len(headings), len(userHeadings)))
@@ -451,18 +453,19 @@ func tablex(obj interface{}, minWidth, tabWidth int, userHeadings ...string) str
 	for i := range userHeadings {
 		headings[i].name = userHeadings[i]
 	}
-	return createTable(obj, minWidth, tabWidth, headings)
+	return createTable(val, minWidth, tabWidth, headings)
 }
 
 func cols(obj interface{}, fields ...string) interface{} {
-	assertCollectionOfStructs(obj)
+	val := getValue(obj)
+	assertCollectionOfStructs(val)
 	if len(fields) == 0 {
 		panic("at least one column name must be specified")
 	}
 
 	var newFields []reflect.StructField
 	var indicies []int
-	styp := reflect.TypeOf(obj).Elem()
+	styp := val.Type().Elem()
 	for i := 0; i < styp.NumField(); i++ {
 		field := styp.Field(i)
 		if field.PkgPath != "" || ignoreKind(field.Type.Kind()) {
@@ -487,7 +490,6 @@ func cols(obj interface{}, fields ...string) interface{} {
 		panic("not all column names are valid")
 	}
 
-	val := reflect.ValueOf(obj)
 	newStyp := reflect.StructOf(newFields)
 	newVal := reflect.MakeSlice(reflect.SliceOf(newStyp), val.Len(), val.Len())
 	for i := 0; i < val.Len(); i++ {
@@ -513,12 +515,19 @@ func sortSlice(obj interface{}, field string, direction ...string) interface{} {
 			panic("direction parameter must be \"asc\" or \"dsc\"")
 		}
 	}
-	assertCollectionOfStructs(obj)
 
-	// TODO: Need to copy
-	vs := newValueSorter(obj, field, ascending)
+	val := getValue(obj)
+	assertCollectionOfStructs(val)
+
+	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, val.Len())
+	for i := 0; i < val.Len(); i++ {
+		copy = reflect.Append(copy, val.Index(i))
+	}
+
+	newobj := copy.Interface()
+	vs := newValueSorter(newobj, field, ascending)
 	sort.Sort(vs)
-	return obj
+	return newobj
 }
 
 // OutputToTemplate executes the template, whose source is contained within the
