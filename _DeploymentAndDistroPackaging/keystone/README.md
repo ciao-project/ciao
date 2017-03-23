@@ -58,6 +58,6 @@ Environment Variables
 - ``IDENTITY_HOST``
   Identity (Keystone) host
 - (Optional) ``KEYSTONE_ADMIN_PASSWORD``
-  Keystone Admin user password. Default: ``bb915e9ce0ae4b46e82a069b2ef0f8d7``
+  Keystone Admin user password. If you don't provide this variable, a random password will be created.
 
 Default build args in Docker are on: https://docs.docker.com/engine/reference/builder/#/arg
