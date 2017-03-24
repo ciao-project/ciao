@@ -96,9 +96,41 @@ Some new functions have been added to Go's template language
   example sorts a slice in ascending order by the Name field.
 
   {{sort . "Name"}}
+- rows is used to extract a set of given rows from a slice or an array.  It takes at least two
+  parameters. The first is the slice on which to operate.  All subsequent parameters must be
+  integers that correspond to a row in the input slice.  Indicies that refer to non-existent
+  rows are ignored.  For example,
+
+  {{rows . 1 2}}
+
+  extracts the 2nd and 3rd rows from the slice represented by '.'.
+- head operates on a slice or an array, returning the first n elements of that array as a new
+  slice.  If n is not provided, a slice containing the first element of the input slice is
+  returned.  For example,
+
+  {{ head .}}
+
+  returns a single element slice containing the first element of '.' and
+
+  {{ head . 3}}
+
+  returns a slice containing the first three elements of '.'.  If '.' contains only 2 elements
+  the slice returned by {{ head . 3}} would be identical to the input slice.
+- tail is similar to head except that it returns a slice containing the last n elements of the
+  input slice.  For example,
+
+  {{tail . 2}}
+
+  returns a new slice containing the last two elements of '.'.
 `
 
 // BUG(markdryan): Tests for all functions
+// BUG(markdryan): Need Go doc
+// BUG(markdryan): Map to slice
+// BUG(markdryan): Options
+// BUG(markdryan): 3rd party extensions
+// BUG(markdryan): Need to call recover in OutputToTemplate
+// BUG(markdryan): Split into smaller files.
 
 type tableHeading struct {
 	name  string
@@ -118,6 +150,9 @@ var funcMap = template.FuncMap{
 	"tablex":          tablex,
 	"cols":            cols,
 	"sort":            sortSlice,
+	"rows":            rows,
+	"head":            head,
+	"tail":            tail,
 }
 
 var sortAscMap = map[reflect.Kind]func(interface{}, interface{}) bool{
@@ -528,6 +563,70 @@ func sortSlice(obj interface{}, field string, direction ...string) interface{} {
 	vs := newValueSorter(newobj, field, ascending)
 	sort.Sort(vs)
 	return newobj
+}
+
+func rows(obj interface{}, rows ...int) interface{} {
+	val := getValue(obj)
+	typ := val.Type()
+	kind := typ.Kind()
+	if kind != reflect.Slice && kind != reflect.Array {
+		panic("slice or an array of expected")
+	}
+
+	if len(rows) == 0 {
+		panic("at least one row index must be specified")
+	}
+
+	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, len(rows))
+	for _, row := range rows {
+		if row < val.Len() {
+			copy = reflect.Append(copy, val.Index(row))
+		}
+	}
+
+	return copy.Interface()
+}
+
+func assertSliceAndRetrieveCount(obj interface{}, count ...int) (reflect.Value, int) {
+	val := getValue(obj)
+	typ := val.Type()
+	kind := typ.Kind()
+	if kind != reflect.Slice && kind != reflect.Array {
+		panic("slice or an array of expected")
+	}
+
+	rows := 1
+	if len(count) == 1 {
+		rows = count[0]
+	} else if len(count) > 1 {
+		panic("accepts a maximum of two arguments expected")
+	}
+
+	return val, rows
+}
+
+func head(obj interface{}, count ...int) interface{} {
+	val, rows := assertSliceAndRetrieveCount(obj, count...)
+	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, rows)
+	for i := 0; i < rows && i < val.Len(); i++ {
+		copy = reflect.Append(copy, val.Index(i))
+	}
+
+	return copy.Interface()
+}
+
+func tail(obj interface{}, count ...int) interface{} {
+	val, rows := assertSliceAndRetrieveCount(obj, count...)
+	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, rows)
+	start := val.Len() - rows
+	if start < 0 {
+		start = 0
+	}
+	for i := start; i < val.Len(); i++ {
+		copy = reflect.Append(copy, val.Index(i))
+	}
+
+	return copy.Interface()
 }
 
 // OutputToTemplate executes the template, whose source is contained within the
