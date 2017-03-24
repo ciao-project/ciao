@@ -209,7 +209,7 @@ func (c *controller) ListMappedAddresses(tenant *string) []types.MappedIP {
 	return IPs
 }
 
-func (c *controller) MapAddress(poolName *string, instanceID string) error {
+func (c *controller) MapAddress(poolName *string, instanceID string) (err error) {
 	var m types.MappedIP
 
 	i, err := c.ds.GetInstance(instanceID)
@@ -217,10 +217,15 @@ func (c *controller) MapAddress(poolName *string, instanceID string) error {
 		return err
 	}
 
-	// The matching release for this is in the client unAssignEvent
+	// A matching release for this is in the client unAssignEvent
 	res := <-c.qs.Consume(i.TenantID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
+	defer func() {
+		if err != nil {
+			c.qs.Release(i.TenantID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
+		}
+	}()
+
 	if !res.Allowed() {
-		c.qs.Release(i.TenantID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
 		return types.ErrQuota
 	}
 
