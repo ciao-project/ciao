@@ -364,6 +364,8 @@ func (client *ssntpClient) assignError(payload []byte) {
 		glog.Warningf("Error unmapping external IP: %v", err)
 	}
 
+	client.ctl.qs.Release(failure.TenantUUID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
+
 	msg := fmt.Sprintf("Failed to map %s to %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
 	client.ctl.ds.LogEvent(failure.TenantUUID, msg)
 }
