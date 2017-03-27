@@ -620,7 +620,7 @@ func Routes(config Config) *mux.Router {
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}", Handler{context, listPools, false})
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/pools", Handler{context, listPools, false})
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
