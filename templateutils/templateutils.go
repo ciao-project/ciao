@@ -129,8 +129,16 @@ Some new functions have been added to Go's template language
 // BUG(markdryan): Map to slice
 // BUG(markdryan): Options
 // BUG(markdryan): 3rd party extensions
-// BUG(markdryan): Need to call recover in OutputToTemplate
-// BUG(markdryan): Split into smaller files.
+// BUG(markdryan): Split into smaller files
+// BUG(markdryan): tablex accept all parameters
+
+// UsageError indicates that one of the functions provided by this package
+// has been used incorrectly by a Go template program.
+type UsageError string
+
+func (e UsageError) Error() string {
+	return string(e)
+}
 
 type tableHeading struct {
 	name  string
@@ -284,7 +292,7 @@ func newValueSorter(obj interface{}, field string, ascending bool) *valueSorter 
 		}
 	}
 	if index == sTyp.NumField() {
-		panic(fmt.Sprintf("%s is not a valid field name", field))
+		panic(UsageError(fmt.Sprintf("%s is not a valid field name", field)))
 	}
 	fKind := fTyp.Type.Kind()
 
@@ -297,7 +305,7 @@ func newValueSorter(obj interface{}, field string, ascending bool) *valueSorter 
 	if lessFn == nil {
 		var stringer *fmt.Stringer
 		if !fTyp.Type.Implements(reflect.TypeOf(stringer).Elem()) {
-			panic(fmt.Errorf("cannot sort fields of type %s", fKind))
+			panic(UsageError(fmt.Sprintf("cannot sort fields of type %s", fKind)))
 		}
 		lessFn = func(v1, v2 interface{}) bool {
 			return v1.(fmt.Stringer).String() < v2.(fmt.Stringer).String()
@@ -325,7 +333,7 @@ func filterField(obj interface{}, field, val string, cmp func(string, string) bo
 	defer func() {
 		err := recover()
 		if err != nil {
-			panic(fmt.Errorf("Invalid use of filter: %v", err))
+			panic(UsageError(fmt.Sprintf("Invalid use of filter: %v", err)))
 		}
 	}()
 
@@ -379,7 +387,7 @@ func filterByRegexp(obj interface{}, field, val string) (retval interface{}) {
 	return filterField(obj, field, val, func(a, b string) bool {
 		matched, err := regexp.MatchString(b, a)
 		if err != nil {
-			panic(fmt.Errorf("Invalid regexp: %v", err))
+			panic(UsageError(fmt.Sprintf("Invalid regexp: %v", err)))
 		}
 		return matched
 	})
@@ -389,7 +397,7 @@ func selectField(obj interface{}, field string) string {
 	defer func() {
 		err := recover()
 		if err != nil {
-			panic(fmt.Errorf("Invalid use of select: %v", err))
+			panic(UsageError(fmt.Sprintf("Invalid use of select: %v", err)))
 		}
 	}()
 
@@ -448,7 +456,7 @@ func getTableHeadings(v reflect.Value) []tableHeading {
 	}
 
 	if len(headings) == 0 {
-		panic("structures must contain at least one exported non-channel field")
+		panic(UsageError("structures must contain at least one exported non-channel field"))
 	}
 	return headings
 }
@@ -482,8 +490,8 @@ func tablex(obj interface{}, minWidth, tabWidth int, userHeadings ...string) str
 	val := getValue(obj)
 	headings := getTableHeadings(val)
 	if len(headings) < len(userHeadings) {
-		panic(fmt.Sprintf("Too many headings specified.  Max permitted %d got %d",
-			len(headings), len(userHeadings)))
+		panic(UsageError(fmt.Sprintf("Too many headings specified.  Max permitted %d got %d",
+			len(headings), len(userHeadings))))
 	}
 	for i := range userHeadings {
 		headings[i].name = userHeadings[i]
@@ -495,7 +503,7 @@ func cols(obj interface{}, fields ...string) interface{} {
 	val := getValue(obj)
 	assertCollectionOfStructs(val)
 	if len(fields) == 0 {
-		panic("at least one column name must be specified")
+		panic(UsageError("at least one column name must be specified"))
 	}
 
 	var newFields []reflect.StructField
@@ -522,7 +530,7 @@ func cols(obj interface{}, fields ...string) interface{} {
 	}
 
 	if len(indicies) != len(fields) {
-		panic("not all column names are valid")
+		panic(UsageError("not all column names are valid"))
 	}
 
 	newStyp := reflect.StructOf(newFields)
@@ -542,12 +550,12 @@ func cols(obj interface{}, fields ...string) interface{} {
 func sortSlice(obj interface{}, field string, direction ...string) interface{} {
 	ascending := true
 	if len(direction) > 1 {
-		panic("Too many parameters passed to sort")
+		panic(UsageError("Too many parameters passed to sort"))
 	} else if len(direction) == 1 {
 		if direction[0] == "dsc" {
 			ascending = false
 		} else if direction[0] != "asc" {
-			panic("direction parameter must be \"asc\" or \"dsc\"")
+			panic(UsageError("direction parameter must be \"asc\" or \"dsc\""))
 		}
 	}
 
@@ -570,11 +578,11 @@ func rows(obj interface{}, rows ...int) interface{} {
 	typ := val.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		panic("slice or an array of expected")
+		panic(UsageError("slice or an array of expected"))
 	}
 
 	if len(rows) == 0 {
-		panic("at least one row index must be specified")
+		panic(UsageError("at least one row index must be specified"))
 	}
 
 	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, len(rows))
@@ -592,14 +600,14 @@ func assertSliceAndRetrieveCount(obj interface{}, count ...int) (reflect.Value, 
 	typ := val.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		panic("slice or an array of expected")
+		panic(UsageError("slice or an array of expected"))
 	}
 
 	rows := 1
 	if len(count) == 1 {
 		rows = count[0]
 	} else if len(count) > 1 {
-		panic("accepts a maximum of two arguments expected")
+		panic(UsageError("accepts a maximum of two arguments expected"))
 	}
 
 	return val, rows
@@ -633,8 +641,19 @@ func tail(obj interface{}, count ...int) interface{} {
 // tmplSrc parameter, on the object obj.  The name of the template is given by
 // the name parameter.  The results of the execution are output to w.
 // All the additional functions provided by templateutils are available to the
-// template source code specified in tmplSrc.
-func OutputToTemplate(w io.Writer, name, tmplSrc string, obj interface{}) error {
+// template source code specified in tmplSrc.  Any errors caused by the
+// incorrect usage of one of the functions provided by this package will result
+// in a templateutils.UsageError.
+func OutputToTemplate(w io.Writer, name, tmplSrc string, obj interface{}) (err error) {
+	defer func() {
+		if err1 := recover(); err1 != nil {
+			if err1, ok := err1.(UsageError); ok {
+				err = err1
+			} else {
+				panic(err1)
+			}
+		}
+	}()
 	t, err := template.New(name).Funcs(funcMap).Parse(tmplSrc)
 	if err != nil {
 		return err
@@ -648,7 +667,10 @@ func OutputToTemplate(w io.Writer, name, tmplSrc string, obj interface{}) error 
 // CreateTemplate creates a new template, whose source is contained within the
 // tmplSrc parameter and whose name is given by the name parameter.  All the
 // additional functions provided by templateutils are available to the template
-// source code specified in tmplSrc.
+// source code specified in tmplSrc.  Any errors caused by the incorrect usage of
+// one of the functions provided by this package will result a panic when the
+// when the template is executed.  The type of the object associated with the
+// panic is of type templateutils.UsageError.
 func CreateTemplate(name, tmplSrc string) (*template.Template, error) {
 	if tmplSrc == "" {
 		return nil, fmt.Errorf("template %s contains no source", name)
