@@ -50,7 +50,7 @@ The list flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		templateutils.GenerateUsageDecorated("f", types.CiaoEvents{}.Events))
+		templateutils.GenerateUsageDecorated("f", types.CiaoEvents{}.Events, nil))
 	os.Exit(2)
 }
 
@@ -94,7 +94,7 @@ func (cmd *eventListCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "event-list", cmd.template,
-			&events.Events)
+			&events.Events, nil)
 	}
 
 	fmt.Printf("%d Ciao event(s):\n", len(events.Events))

@@ -121,7 +121,7 @@ As volumes are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of volumes.
 `, templateutils.GenerateUsageUndecorated([]volumes.Volume{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp)
+	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -148,7 +148,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 		fatalf("Could not get volume service client [%s]\n", err)
 	}
 
-	t, err := templateutils.CreateTemplate("volume-list", cmd.template)
+	t, err := templateutils.CreateTemplate("volume-list", cmd.template, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -198,7 +198,7 @@ Show information about a volume
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", volumes.Volume{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", volumes.Volume{}, nil))
 	os.Exit(2)
 }
 
@@ -228,7 +228,7 @@ func (cmd *volumeShowCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "volume-show", cmd.template,
-			&volume)
+			&volume, nil)
 	}
 
 	dumpVolume(volume)

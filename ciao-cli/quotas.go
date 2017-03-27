@@ -157,7 +157,7 @@ The template passed to the -f option operates on a
 
 %s`,
 		templateutils.GenerateUsageUndecorated([]types.QuotaDetails{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp)
+	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 
 	os.Exit(2)
 }
@@ -210,7 +210,8 @@ func (cmd *quotasListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "quotas-list", cmd.template, results.Quotas)
+		return templateutils.OutputToTemplate(os.Stdout, "quotas-list", cmd.template,
+			results.Quotas, nil)
 	}
 
 	fmt.Printf("Quotas for tenant: %s\n", cmd.tenantID)

@@ -160,7 +160,7 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []types.MappedIP{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []types.MappedIP{}, nil))
 	os.Exit(2)
 }
 
@@ -195,7 +195,7 @@ func (cmd *externalIPListCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "external-ip-list", cmd.template,
-			&IPs)
+			&IPs, nil)
 	}
 
 	w := new(tabwriter.Writer)
@@ -439,7 +439,7 @@ The list flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		templateutils.GenerateUsageDecorated("f", types.ListPoolsResponse{}.Pools))
+		templateutils.GenerateUsageDecorated("f", types.ListPoolsResponse{}.Pools, nil))
 	os.Exit(2)
 }
 
@@ -475,7 +475,7 @@ func (cmd *poolListCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "pool-list", cmd.template,
-			&pools.Pools)
+			&pools.Pools, nil)
 	}
 
 	w := new(tabwriter.Writer)
@@ -522,7 +522,7 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", types.Pool{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", types.Pool{}, nil))
 	os.Exit(2)
 }
 
@@ -564,7 +564,7 @@ func (cmd *poolShowCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "pool-show", cmd.template,
-			&pool)
+			&pool, nil)
 	}
 
 	dumpPool(pool)

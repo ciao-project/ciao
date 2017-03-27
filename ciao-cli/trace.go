@@ -45,7 +45,7 @@ List all trace label
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		templateutils.GenerateUsageDecorated("f", types.CiaoTracesSummary{}.Summaries))
+		templateutils.GenerateUsageDecorated("f", types.CiaoTracesSummary{}.Summaries, nil))
 	os.Exit(2)
 }
 
@@ -73,7 +73,7 @@ func (cmd *traceListCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "trace-list", cmd.template,
-			&traces.Summaries)
+			&traces.Summaries, nil)
 	}
 
 	fmt.Printf("%d trace label(s) available\n", len(traces.Summaries))
@@ -100,7 +100,7 @@ The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		templateutils.GenerateUsageDecorated("f", types.CiaoTraceData{}.Summary))
+		templateutils.GenerateUsageDecorated("f", types.CiaoTraceData{}.Summary, nil))
 	os.Exit(2)
 }
 
@@ -133,7 +133,7 @@ func (cmd *traceShowCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "trace-show", cmd.template,
-			&traceData.Summary)
+			&traceData.Summary, nil)
 	}
 
 	fmt.Printf("Trace data for [%s]:\n", cmd.label)

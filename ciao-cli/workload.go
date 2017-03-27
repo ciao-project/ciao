@@ -57,7 +57,7 @@ List all workloads
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		templateutils.GenerateUsageDecorated("f", compute.FlavorsDetails{}.Flavors))
+		templateutils.GenerateUsageDecorated("f", compute.FlavorsDetails{}.Flavors, nil))
 	os.Exit(2)
 }
 
@@ -92,7 +92,7 @@ func (cmd *workloadListCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "workload-list", cmd.template,
-			&flavors.Flavors)
+			&flavors.Flavors, nil)
 	}
 
 	for i, flavor := range flavors.Flavors {

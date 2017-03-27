@@ -70,7 +70,7 @@ no options:
 		templateutils.GenerateUsageUndecorated(types.CiaoTenantResources{}),
 		templateutils.GenerateUsageUndecorated(types.CiaoUsageHistory{}.Usages))
 
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp)
+	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -85,7 +85,7 @@ func (cmd *tenantListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantListCommand) run(args []string) error {
-	t, err := templateutils.CreateTemplate("tenant-list", cmd.template)
+	t, err := templateutils.CreateTemplate("tenant-list", cmd.template, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}

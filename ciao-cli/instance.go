@@ -395,7 +395,7 @@ The add flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	printVolumeFlagUsage()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []compute.ServerDetails{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -525,7 +525,7 @@ func (cmd *instanceAddCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "instance-add", cmd.template,
-			&servers.Servers)
+			&servers.Servers, nil)
 	}
 
 	if len(servers.Servers) < cmd.instances {
@@ -712,7 +712,7 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []compute.ServerDetails{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -796,7 +796,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "instance-list", cmd.template,
-			&sortedServers)
+			&sortedServers, nil)
 	}
 
 	w := new(tabwriter.Writer)
@@ -842,7 +842,7 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", compute.ServerDetails{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -874,7 +874,7 @@ func (cmd *instanceShowCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "instance-show", cmd.template,
-			&server.Server)
+			&server.Server, nil)
 	}
 
 	dumpInstance(&server.Server)

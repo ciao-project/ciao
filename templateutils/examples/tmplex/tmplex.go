@@ -54,19 +54,21 @@ var fictionalStocks = []stock{
 
 var code string
 
+var cfg *templateutils.Config
+
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s -f [stocks]\n", os.Args[0])
 		flag.PrintDefaults()
 		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, templateutils.GenerateUsageDecorated("f", fictionalStocks))
+		fmt.Fprintln(os.Stderr, templateutils.GenerateUsageDecorated("f", fictionalStocks, cfg))
 	}
 	flag.StringVar(&code, "f", "", "string containing the template code to execute")
 }
 
 func stocks() error {
 	if code != "" {
-		err := templateutils.OutputToTemplate(os.Stdout, "stocks", code, fictionalStocks)
+		err := templateutils.OutputToTemplate(os.Stdout, "stocks", code, fictionalStocks, cfg)
 		if err != nil {
 			return fmt.Errorf("Unable to execute template : %v", err)
 		}

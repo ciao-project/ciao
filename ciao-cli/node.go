@@ -62,7 +62,7 @@ The template passed to the -f option operates on one of the following types:
 %s`,
 		templateutils.GenerateUsageUndecorated([]types.CiaoCNCI{}),
 		templateutils.GenerateUsageUndecorated([]types.CiaoComputeNode{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp)
+	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -76,7 +76,7 @@ func (cmd *nodeListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeListCommand) run(args []string) error {
-	t, err := templateutils.CreateTemplate("node-list", cmd.template)
+	t, err := templateutils.CreateTemplate("node-list", cmd.template, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -175,7 +175,7 @@ Show cluster status
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		templateutils.GenerateUsageDecorated("f", types.CiaoClusterStatus{}.Status))
+		templateutils.GenerateUsageDecorated("f", types.CiaoClusterStatus{}.Status, nil))
 	os.Exit(2)
 }
 
@@ -202,7 +202,7 @@ func (cmd *nodeStatusCommand) run(args []string) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "node-status", cmd.template,
-			&status.Status)
+			&status.Status, nil)
 	}
 
 	fmt.Printf("Total Nodes %d\n", status.Status.TotalNodes)
@@ -235,7 +235,7 @@ The template passed to the -f option operates on one of the following types:
 --cnci
 
 %s`, templateutils.GenerateUsageUndecorated(types.CiaoCNCI{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp)
+	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -278,7 +278,7 @@ func showCNCINode(cmd *nodeShowCommand) error {
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "node-show", cmd.template,
-			&cnci)
+			&cnci, nil)
 	}
 
 	fmt.Printf("\tCNCI UUID: %s\n", cnci.ID)

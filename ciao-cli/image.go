@@ -64,7 +64,7 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", images.Image{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", images.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -131,7 +131,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "image-add", cmd.template, image)
+		return templateutils.OutputToTemplate(os.Stdout, "image-add", cmd.template, image, nil)
 	}
 
 	fmt.Printf("Created image:\n")
@@ -151,7 +151,7 @@ func (cmd *imageShowCommand) usage(...string) {
 Show images
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", images.Image{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", images.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -179,7 +179,7 @@ func (cmd *imageShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "image-show", cmd.template, i)
+		return templateutils.OutputToTemplate(os.Stdout, "image-show", cmd.template, i, nil)
 	}
 
 	dumpImage(i)
@@ -207,7 +207,7 @@ As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
 `, templateutils.GenerateUsageUndecorated([]images.Image{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp)
+	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -226,7 +226,7 @@ func (cmd *imageListCommand) run(args []string) error {
 
 	var t *template.Template
 	if cmd.template != "" {
-		t, err = templateutils.CreateTemplate("image-list", cmd.template)
+		t, err = templateutils.CreateTemplate("image-list", cmd.template, nil)
 		if err != nil {
 			fatalf(err.Error())
 		}
