@@ -208,6 +208,18 @@ func GetAllWorkloads(ctx context.Context, tenant string) ([]Workload, error) {
 	return workloads, nil
 }
 
+func getWorkload(ctx context.Context, tenant string, wl string) (Workload, error) {
+	var workload Workload
+
+	args := []string{"workload", "show", "-f", "{{tojson .}}"}
+	err := RunCIAOCLIJS(ctx, tenant, args, &workload)
+	if err != nil {
+		return workload, err
+	}
+
+	return workload, nil
+}
+
 // GetWorkloadByName will return a specific workload referenced by name.
 // An error will be returned if either no workloads exist in the cluster,
 // or if the specific workload does not exist. It inherits all error
