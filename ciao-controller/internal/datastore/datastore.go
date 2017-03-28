@@ -1097,16 +1097,11 @@ func (ds *Datastore) DeleteInstance(instanceID string) error {
 	return nil
 }
 
-func (ds *Datastore) restartInstance(instanceID string) error {
-	ds.instancesLock.Lock()
-	i := ds.instances[instanceID]
-	i.State = payloads.Pending
-	ds.instancesLock.Unlock()
-
+func (ds *Datastore) updateInstanceStatus(status, instanceID string) error {
 	instanceStat := types.CiaoServerStats{
 		ID:        instanceID,
 		Timestamp: time.Now(),
-		Status:    payloads.Pending,
+		Status:    status,
 	}
 	ds.instanceLastStatLock.Lock()
 	ds.instanceLastStat[instanceID] = instanceStat
@@ -1115,11 +1110,20 @@ func (ds *Datastore) restartInstance(instanceID string) error {
 	stats := []payloads.InstanceStat{
 		{
 			InstanceUUID: instanceID,
-			State:        payloads.Pending,
+			State:        status,
 		},
 	}
 
 	return errors.Wrapf(ds.db.addInstanceStats(stats, ""), "error adding instance stats to database")
+}
+
+func (ds *Datastore) restartInstance(instanceID string) error {
+	ds.instancesLock.Lock()
+	i := ds.instances[instanceID]
+	i.State = payloads.Pending
+	ds.instancesLock.Unlock()
+
+	return ds.updateInstanceStatus(payloads.Pending, instanceID)
 }
 
 // RestartInstance resets a restarting instance's state to pending.
@@ -1146,23 +1150,7 @@ func (ds *Datastore) stopInstance(instanceID string) error {
 		ds.nodesLock.Unlock()
 	}
 
-	instanceStat := types.CiaoServerStats{
-		ID:        instanceID,
-		Timestamp: time.Now(),
-		Status:    payloads.Exited,
-	}
-	ds.instanceLastStatLock.Lock()
-	ds.instanceLastStat[instanceID] = instanceStat
-	ds.instanceLastStatLock.Unlock()
-
-	stats := []payloads.InstanceStat{
-		{
-			InstanceUUID: instanceID,
-			State:        payloads.Exited,
-		},
-	}
-
-	return errors.Wrapf(ds.db.addInstanceStats(stats, ""), "error adding instance stats to database")
+	return ds.updateInstanceStatus(payloads.Exited, instanceID)
 }
 
 // StopInstance removes the link between an instance and its node

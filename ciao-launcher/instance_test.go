@@ -277,11 +277,11 @@ func (v *instanceTestState) deleteInstance(t *testing.T, ovsCh chan interface{},
 }
 
 func (v *instanceTestState) checkDeleteEvent(t *testing.T, cmd *insDeleteCmd) {
-	if cmd.migration != v.deMigration {
+	if cmd.stop != v.deMigration {
 		t.Errorf("Incorrect delete event recevied")
 	}
 	var instance string
-	if cmd.migration {
+	if cmd.stop {
 		instance = v.se.InstanceStopped.InstanceUUID
 	} else {
 		instance = v.de.InstanceDeleted.InstanceUUID
@@ -804,7 +804,7 @@ func TestStartRunningInstance(t *testing.T) {
 //
 // We start the instance loop and then try to start an instance.  Our test virtualizer
 // closes the connected channel to indicate that the instance is running.  We then
-// delete the instance setting the migration flag in the insDelCmd.
+// delete the instance setting the stop flag in the insDelCmd.
 //
 // The instanceLoop and then instance should start correctly.  The instance should
 // then be deleted correctly and the InstanceStopped ssntp event should be received.
@@ -814,7 +814,7 @@ func TestMigrateInstance(t *testing.T) {
 	cfg := standardCfg
 	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
 
-	if !state.deleteInstanceEx(t, ovsCh, cmdCh, &insDeleteCmd{migration: true}) {
+	if !state.deleteInstanceEx(t, ovsCh, cmdCh, &insDeleteCmd{stop: true}) {
 		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
 	}
 

@@ -26,10 +26,10 @@ type StopCmd struct {
 	// the command to the correct CN/NN.
 	WorkloadAgentUUID string `yaml:"workload_agent_uuid"`
 
-	// Migration is true if the instance is being migrated to another node.
+	// Stop is true if the instance is being stopped rather than deleted.
 	// In this case the delete command should only delete the instance from
 	// the node to which it is sent and not the entire cluster.
-	Migration bool
+	Stop bool
 }
 
 // Stop represents the unmarshalled version of the contents of a SSNTP STOP

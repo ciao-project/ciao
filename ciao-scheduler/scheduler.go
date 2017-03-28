@@ -545,10 +545,11 @@ func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workRe
 	return false
 }
 
-func (sched *ssntpSchedulerServer) sendStartFailureError(clientUUID string, instanceUUID string, reason payloads.StartFailureReason) {
+func (sched *ssntpSchedulerServer) sendStartFailureError(clientUUID string, instanceUUID string, reason payloads.StartFailureReason, restart bool) {
 	error := payloads.ErrorStartFailure{
 		InstanceUUID: instanceUUID,
 		Reason:       reason,
+		Restart:      restart,
 	}
 
 	payload, err := yaml.Marshal(&error)
@@ -679,13 +680,13 @@ func (sched *ssntpSchedulerServer) decrementResourceUsage(node *nodeStat, worklo
 }
 
 // Find suitable compute node, returning referenced to a locked nodeStat if found
-func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workload *workResources) (node *nodeStat) {
+func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workload *workResources, restart bool) (node *nodeStat) {
 	sched.cnMutex.RLock()
 	defer sched.cnMutex.RUnlock()
 
 	if len(sched.cnList) == 0 {
 		glog.Errorf("No compute nodes connected, unable to start workload")
-		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoComputeNodes)
+		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoComputeNodes, restart)
 		return nil
 	}
 
@@ -718,18 +719,18 @@ func pickComputeNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 		node.mutex.Unlock()
 	}
 
-	sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.FullCloud)
+	sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.FullCloud, restart)
 	return nil
 }
 
 // Find suitable net node, returning referenced to a locked nodeStat if found
-func pickNetworkNode(sched *ssntpSchedulerServer, controllerUUID string, workload *workResources) (node *nodeStat) {
+func pickNetworkNode(sched *ssntpSchedulerServer, controllerUUID string, workload *workResources, restart bool) (node *nodeStat) {
 	sched.nnMutex.RLock()
 	defer sched.nnMutex.RUnlock()
 
 	if len(sched.nnList) == 0 {
 		glog.Errorf("No network nodes connected, unable to start network workload")
-		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoNetworkNodes)
+		sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoNetworkNodes, restart)
 		return nil
 	}
 
@@ -762,7 +763,7 @@ func pickNetworkNode(sched *ssntpSchedulerServer, controllerUUID string, workloa
 		node.mutex.Unlock()
 	}
 
-	sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoNetworkNodes)
+	sched.sendStartFailureError(controllerUUID, workload.instanceUUID, payloads.NoNetworkNodes, restart)
 	return nil
 }
 
@@ -787,9 +788,9 @@ func startWorkload(sched *ssntpSchedulerServer, controllerUUID string, payload [
 	var targetNode *nodeStat
 
 	if workload.networkNode {
-		targetNode = pickNetworkNode(sched, controllerUUID, &workload)
+		targetNode = pickNetworkNode(sched, controllerUUID, &workload, work.Start.Restart)
 	} else { //workload.network_node == false
-		targetNode = pickComputeNode(sched, controllerUUID, &workload)
+		targetNode = pickComputeNode(sched, controllerUUID, &workload, work.Start.Restart)
 	}
 
 	if targetNode != nil {

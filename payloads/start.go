@@ -243,9 +243,9 @@ type StartCmd struct {
 	// from storage for the new instance.
 	Storage []StorageResource `yaml:"storage,omitempty"`
 
-	// Migration is set to true if the payload represents a request to
+	// Restart is set to true if the payload represents a request to
 	// restart an existing instance on a new node.
-	Migration bool
+	Restart bool
 }
 
 // Start represents the unmarshalled version of the contents of a SSNTP START
