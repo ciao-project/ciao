@@ -527,6 +527,24 @@ func deleteWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Respons
 	return Response{http.StatusNoContent, nil}, nil
 }
 
+func showWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	ID := vars["workload_id"]
+
+	// if we have no tenant variable, then we are admin
+	tenant, ok := vars["tenant"]
+	if !ok {
+		tenant = "public"
+	}
+
+	wl, err := c.ShowWorkload(tenant, ID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusOK, wl}, nil
+}
+
 func listQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	tenantID, ok := vars["tenant"]
@@ -580,6 +598,7 @@ type Service interface {
 	UnMapAddress(ID string) error
 	CreateWorkload(req types.Workload) (types.Workload, error)
 	DeleteWorkload(tenantID string, workloadID string) error
+	ShowWorkload(tenantID string, workloadID string) (types.Workload, error)
 	ListQuotas(tenantID string) []types.QuotaDetails
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
 }
@@ -686,12 +705,20 @@ func Routes(config Config) *mux.Router {
 	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
+	route = r.Handle("/workloads/{workload_id:"+uuid.UUIDRegex+"}", Handler{context, showWorkload, true})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
 	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/workloads", Handler{context, addWorkload, false})
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/workloads/{workload_id:"+uuid.UUIDRegex+"}", Handler{context, deleteWorkload, false})
 	route.Methods("DELETE")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/workloads/{workload_id:"+uuid.UUIDRegex+"}", Handler{context, showWorkload, false})
+	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	// tenant quotas
