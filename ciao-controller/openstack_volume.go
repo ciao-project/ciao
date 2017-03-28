@@ -95,7 +95,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	if !res.Allowed() {
 		c.DeleteBlockDevice(bd.ID)
 		c.qs.Release(tenant, res.Resources()...)
-		return block.Volume{}, fmt.Errorf("Error creating volume: %s", res.Reason())
+		return block.Volume{}, block.ErrQuota
 	}
 
 	err = c.ds.AddBlockDevice(data)
