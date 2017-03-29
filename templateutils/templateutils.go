@@ -14,6 +14,44 @@
 // limitations under the License.
 //
 
+// Package templateutils provides a set of functions that are designed to
+// make it easier for developers to add template based scripting to their
+// command line tools.
+//
+// When writing a command line tool that responds to users queries by outputting
+// data, it's nice to allow the users to provide a template script so that they
+// can extract exactly the data they are interested in. This can be useful both
+// when visually inspecting the data and also when invoking command line tools
+// in scripts. The best example of this is go list which allows users to pass a
+// template script to extract interesting information about Go packages. For
+// example,
+//
+//  go list -f '{{range .Imports}}{{println .}}{{end}}'
+//
+// prints all the imports of the current package.
+//
+// The aim of this package is to make it easier for developers to add template
+// scripting support to their tools and easier for users of these tools to
+// extract the information they need.   It does this by augmenting the
+// templating language provided by the standard library package text/template in
+// two ways:
+//
+// 1. It auto generates descriptions of the data structures passed as
+// input to a template script for use in help messages.  This ensures
+// that help usage information is always up to date with your source code.
+//
+// 2. It provides a suite of convenience functions to make it easy for
+// script writers to extract the data they need.  There are functions for
+// sorting, selecting rows and columns and generating nicely formatted
+// tables.
+//
+// For example, if a program passed a slice of structs containing stock
+// data to a template script, we could use the following script to extract
+// the names of the 3 stocks with the highest trade volume.
+//
+//  {{select (head (sort . "Volume" "dsc") 3) "Name"}}
+//
+// The functions head, sort and select are provided by this package.
 package templateutils
 
 import (
@@ -25,7 +63,6 @@ import (
 )
 
 // BUG(markdryan): Tests for all functions
-// BUG(markdryan): Need Go doc
 // BUG(markdryan): Map to slice
 
 // These constants are used to ensure that all the help text
@@ -81,7 +118,7 @@ func (c *Config) Len() int           { return len(c.funcHelp) }
 func (c *Config) Swap(i, j int)      { c.funcHelp[i], c.funcHelp[j] = c.funcHelp[j], c.funcHelp[i] }
 func (c *Config) Less(i, j int) bool { return c.funcHelp[i].index < c.funcHelp[j].index }
 
-// AddCustomFn adds a custom function to the template langauge understood by
+// AddCustomFn adds a custom function to the template language understood by
 // templateutils.CreateTemplate and templateutils.OutputToTemplate.  The function
 // implementation is provided by fn, its name, i.e., the name used to invoke the
 // function in a program, is provided by name and the help for the function is
@@ -114,7 +151,7 @@ const helpFilter = `- 'filter' operates on an slice or array of structures.  It 
 // The function returns a slice containing only the objects that satisfy the
 // filter, e.g.
 //
-// {{len (filter . "Protected" "true")}}
+//  {{len (filter . "Protected" "true")}}
 //
 // outputs the number of elements whose "Protected" field is equal to "true".
 func OptFilter(c *Config) {
@@ -134,7 +171,7 @@ const helpFilterContains = `- 'filterContains' operates along the same lines as 
 // enabled.  'filterContains' operates along the same lines as filter, but returns
 // substring matches
 //
-// {{len(filterContains . "Name" "Cloud"}})
+//  {{len(filterContains . "Name" "Cloud"}})
 //
 // outputs the number of elements whose "Name" field contains the word "Cloud".
 func OptFilterContains(c *Config) {
@@ -230,7 +267,7 @@ const helpSelect = `- 'select' operates on a slice of structs.  It outputs the v
 // 'select' operates on a slice of structs.  It outputs the value of a specified
 // field for each struct on a new line , e.g.,
 //
-// {{select . "Name"}}
+//  {{select . "Name"}}
 //
 // prints the 'Name' field of each structure in the slice.
 func OptSelect(c *Config) {
@@ -360,7 +397,7 @@ const helpRows = `- 'rows' is used to extract a set of given rows from a slice o
 //
 //  {{rows . 1 2}}
 //
-//  extracts the 2nd and 3rd rows from the slice represented by '.'.
+// extracts the 2nd and 3rd rows from the slice represented by '.'.
 func OptRows(c *Config) {
 	c.funcMap["rows"] = rows
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpRows, helpRowsIndex})
@@ -393,8 +430,9 @@ const helpHead = `- 'head' operates on a slice or an array, returning the first 
 //  {{ head . 3}}
 //
 // returns a slice containing the first three elements of '.'.  If '.' contains
-// only 2 elements the slice returned by {{ head . 3}} would be identical to the
-// input slice.
+// only 2 elements the slice returned by
+//  {{ head . 3}}
+// would be identical to the input slice.
 func OptHead(c *Config) {
 	c.funcMap["head"] = head
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpHead, helpHeadIndex})
@@ -422,11 +460,11 @@ func OptTail(c *Config) {
 
 // NewConfig creates a new Config object that can be passed to other functions
 // in this package.  The Config option keeps track of which new functions are
-// added to Go's template libray.  If this function is call without arguments,
+// added to Go's template libray.  If this function is called without arguments,
 // all the functions defined in this package are enabled in the resulting Config
 // object.  To control which functions get added specify some options, e.g.,
 //
-// ctx := templateutils.NewConfig(templateutils.OptHead, templateutils.OptTail)
+//  ctx := templateutils.NewConfig(templateutils.OptHead, templateutils.OptTail)
 //
 // creates a new Config object that enables the 'head' and 'tail' functions only.
 func NewConfig(options ...func(*Config)) *Config {
@@ -509,21 +547,7 @@ func CreateTemplate(name, tmplSrc string, cfg *Config) (*template.Template, erro
 // GenerateUsageUndecorated returns a formatted string identifying the
 // elements of the type of object i that can be accessed  from inside a template.
 // Unexported struct values and channels are output are they cannot be usefully
-// accessed inside a template.  For example, given
-//
-//  i := struct {
-//      X     int
-//      Y     string
-//		hidden  float64
-//		Invalid chan int
-//  }
-//
-// GenerateUsageUndecorated would return
-//
-// struct {
-//      X     int
-//      Y     string
-// }
+// accessed inside a template.
 func GenerateUsageUndecorated(i interface{}) string {
 	var buf bytes.Buffer
 	generateIndentedUsage(&buf, i)
