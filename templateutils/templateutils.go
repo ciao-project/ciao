@@ -27,7 +27,6 @@ import (
 // BUG(markdryan): Tests for all functions
 // BUG(markdryan): Need Go doc
 // BUG(markdryan): Map to slice
-// BUG(markdryan): 3rd party extensions
 
 // These constants are used to ensure that all the help text
 // for functions provided by this package are always presented
@@ -48,6 +47,7 @@ const (
 	helpRowsIndex
 	helpHeadIndex
 	helpTailIndex
+	helpIndexCount
 )
 
 // UsageError indicates that one of the functions provided by this package
@@ -80,6 +80,23 @@ type Config struct {
 func (c *Config) Len() int           { return len(c.funcHelp) }
 func (c *Config) Swap(i, j int)      { c.funcHelp[i], c.funcHelp[j] = c.funcHelp[j], c.funcHelp[i] }
 func (c *Config) Less(i, j int) bool { return c.funcHelp[i].index < c.funcHelp[j].index }
+
+// AddCustomFn adds a custom function to the template langauge understood by
+// templateutils.CreateTemplate and templateutils.OutputToTemplate.  The function
+// implementation is provided by fn, its name, i.e., the name used to invoke the
+// function in a program, is provided by name and the help for the function is
+// provided by helpText.  An error will be returned if a function with the same
+// name is already associated with this Config object.
+func (c *Config) AddCustomFn(fn interface{}, name, helpText string) error {
+	if _, found := c.funcMap[name]; found {
+		return fmt.Errorf("%s already exists", name)
+	}
+	c.funcMap[name] = fn
+	if helpText != "" {
+		c.funcHelp = append(c.funcHelp, funcHelpInfo{helpText, helpIndexCount})
+	}
+	return nil
+}
 
 const helpFilter = `- 'filter' operates on an slice or array of structures.  It allows the caller
   to filter the input array based on the value of a single field.

@@ -429,7 +429,7 @@ Show workload details
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		generateUsageDecorated("f", types.Workload{}))
+		templateutils.GenerateUsageDecorated("f", types.Workload{}, nil))
 	os.Exit(2)
 }
 
@@ -476,8 +476,7 @@ func (cmd *workloadShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("workload-show", cmd.template,
-			&wl)
+		return templateutils.OutputToTemplate(os.Stdout, "workload-show", cmd.template, &wl, nil)
 	}
 
 	outputWorkload(wl)

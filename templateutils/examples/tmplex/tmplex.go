@@ -64,7 +64,22 @@ func init() {
 		fmt.Fprintln(os.Stderr, templateutils.GenerateUsageDecorated("f", fictionalStocks, cfg))
 	}
 	flag.StringVar(&code, "f", "", "string containing the template code to execute")
+	cfg = templateutils.NewConfig()
+
+	if err := cfg.AddCustomFn(sumVolume, "sumVolume", sumVolumeHelp); err != nil {
+		panic(err)
+	}
 }
+
+func sumVolume(stocks []stock) int {
+	total := 0
+	for _, s := range stocks {
+		total += s.Volume
+	}
+	return total
+}
+
+const sumVolumeHelp = `- sumVolume computes the total volume all stocks in a []stock slice`
 
 func stocks() error {
 	if code != "" {
