@@ -381,6 +381,7 @@ type instanceAddCommand struct {
 	instances int
 	label     string
 	volumes   volumeFlagSlice
+	template  string
 }
 
 func (cmd *instanceAddCommand) usage(...string) {
@@ -393,6 +394,7 @@ The add flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	printVolumeFlagUsage()
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", []compute.ServerDetails{}))
 	os.Exit(2)
 }
 
@@ -401,6 +403,7 @@ func (cmd *instanceAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.IntVar(&cmd.instances, "instances", 1, "Number of instances to create")
 	cmd.Flag.StringVar(&cmd.label, "label", "", "Set a frame label. This will trigger frame tracing")
 	cmd.Flag.Var(&cmd.volumes, "volume", "volume descriptor argument list")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -519,9 +522,19 @@ func (cmd *instanceAddCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
+	if cmd.template != "" {
+		return outputToTemplate("instance-add", cmd.template,
+			&servers.Servers)
+	}
+
+	if len(servers.Servers) < cmd.instances {
+		fmt.Println("Some instances failed to start - check the event log for details.")
+	}
+
 	for _, server := range servers.Servers {
 		fmt.Printf("Created new (pending) instance: %s\n", server.ID)
 	}
+
 	return nil
 }
 
@@ -732,13 +745,8 @@ func (cmd *instanceListCommand) run(args []string) error {
 	}
 
 	var servers compute.Servers
-	var url string
 
-	if cmd.workload != "" {
-		url = buildComputeURL("flavors/%s/servers/detail", cmd.workload)
-	} else {
-		url = buildComputeURL("%s/servers/detail", cmd.tenant)
-	}
+	url := buildComputeURL("%s/servers/detail", cmd.tenant)
 
 	var values []queryValue
 	if cmd.limit > 0 {
@@ -759,6 +767,13 @@ func (cmd *instanceListCommand) run(args []string) error {
 		values = append(values, queryValue{
 			name:  "marker",
 			value: cmd.marker,
+		})
+	}
+
+	if cmd.workload != "" {
+		values = append(values, queryValue{
+			name:  "flavor",
+			value: cmd.workload,
 		})
 	}
 

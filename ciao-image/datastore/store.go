@@ -19,7 +19,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/database"
 	"github.com/01org/ciao/openstack/image"
 )
@@ -71,7 +70,7 @@ func (s *ImageStore) Init(rawDs RawDataStore, metaDs MetaDataStore) error {
 	s.metaDs = metaDs
 	s.rawDs = rawDs
 
-	database.Logger = gloginterface.CiaoGlogLogger{}
+	database.Logger = Logger
 
 	return nil
 }
@@ -90,12 +89,11 @@ func (s *ImageStore) CreateImage(i Image) error {
 }
 
 // GetAllImages gets returns all the known images.
-func (s *ImageStore) GetAllImages() ([]Image, error) {
+func (s *ImageStore) GetAllImages(tenant string) ([]Image, error) {
 	var images []Image
 	s.ImageMap.RLock()
 	defer s.ImageMap.RUnlock()
-
-	images, err := s.metaDs.GetAll()
+	images, err := s.metaDs.GetAll(tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -104,11 +102,11 @@ func (s *ImageStore) GetAllImages() ([]Image, error) {
 }
 
 // GetImage returns the image specified by the ID string.
-func (s *ImageStore) GetImage(ID string) (Image, error) {
+func (s *ImageStore) GetImage(tenant, ID string) (Image, error) {
 	s.ImageMap.RLock()
 	defer s.ImageMap.RUnlock()
 
-	img, err := s.metaDs.Get(ID)
+	img, err := s.metaDs.Get(tenant, ID)
 	if err != nil {
 		return Image{}, image.ErrNoImage
 	}
@@ -130,16 +128,16 @@ func (s *ImageStore) UpdateImage(i Image) error {
 }
 
 // DeleteImage will delete an existing image.
-func (s *ImageStore) DeleteImage(ID string) error {
+func (s *ImageStore) DeleteImage(tenant, ID string) error {
 	s.ImageMap.Lock()
 	defer s.ImageMap.Unlock()
 
-	img, err := s.metaDs.Get(ID)
+	img, err := s.metaDs.Get(tenant, ID)
 	if err != nil {
 		return err
 	}
 
-	if img == (Image{}) {
+	if img == (Image{}) || img.TenantID != tenant {
 		return image.ErrNoImage
 	}
 
@@ -150,16 +148,19 @@ func (s *ImageStore) DeleteImage(ID string) error {
 		}
 	}
 
-	err = s.metaDs.Delete(ID)
+	if img.Visibility == image.Public {
+		tenant = string(image.Public)
+	}
+	err = s.metaDs.Delete(tenant, ID)
 
 	return err
 }
 
 // UploadImage will read an image, save it and update the image cache.
-func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
+func (s *ImageStore) UploadImage(tenant, ID string, body io.Reader) error {
 
 	s.ImageMap.RLock()
-	img, err := s.metaDs.Get(ID)
+	img, err := s.metaDs.Get(tenant, ID)
 	s.ImageMap.RUnlock()
 	if err != nil {
 		return err
@@ -178,13 +179,14 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 	if s.rawDs != nil {
 		err = s.rawDs.Write(ID, body)
 		if err != nil {
-			database.Logger.Errorf("Could not write image: %v", err)
+			Logger.Errorf("Could not write image: %v", err)
+
 			img.State = Killed
 		}
 
 		img.Size, err = s.rawDs.GetImageSize(ID)
 		if err != nil {
-			database.Logger.Errorf("Could not get image size: %v", err)
+			Logger.Errorf("Could not get image size: %v", err)
 			img.State = Killed
 			_ = s.rawDs.Delete(ID)
 		}
@@ -199,7 +201,7 @@ func (s *ImageStore) UploadImage(ID string, body io.Reader) error {
 	metaDsErr := s.metaDs.Write(img)
 
 	if err == nil && metaDsErr != nil {
-		database.Logger.Errorf("Could not write meta data: %v", metaDsErr)
+		Logger.Errorf("Could not write meta data: %v", metaDsErr)
 		err = metaDsErr
 	}
 
