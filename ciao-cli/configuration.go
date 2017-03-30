@@ -26,8 +26,11 @@ import (
 	"strconv"
 	"strings"
 
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/payloads"
 )
 
 var configCommand = &command{
@@ -201,21 +204,28 @@ func validConfigURI(s string, scheme string) bool {
 }
 
 type configShowCommand struct {
-	Flag flag.FlagSet
+	Flag     flag.FlagSet
+	template string
 }
 
 func (cmd *configShowCommand) usage(...string) {
 	fmt.Fprintf(os.Stderr, `
 Usage:
 
-ciao-cli config show
+ciao-cli config show [flags]
 
 Show current cluster configuration
+
+The show flags are:
+
 `)
+	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", payloads.Configure{}))
 	os.Exit(2)
 }
 
 func (cmd *configShowCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -223,6 +233,7 @@ func (cmd *configShowCommand) parseArgs(args []string) []string {
 
 func (cmd *configShowCommand) run(args []string) error {
 	var response types.ConfigShowResponse
+	var conf payloads.Configure
 
 	ver := api.ClusterConfigV1
 	url := buildCiaoURL("configuration")
@@ -235,6 +246,16 @@ func (cmd *configShowCommand) run(args []string) error {
 	if err != nil {
 		return err
 	}
+	if cmd.template != "" {
+		err = yaml.Unmarshal([]byte(response.Configuration), &conf)
+		if err != nil {
+			return err
+		}
+
+		return outputToTemplate("config-show", cmd.template,
+			&conf)
+	}
+
 	fmt.Print(response.Configuration)
 
 	return nil
