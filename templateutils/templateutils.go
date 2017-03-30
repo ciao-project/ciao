@@ -135,6 +135,12 @@ func (c *Config) AddCustomFn(fn interface{}, name, helpText string) error {
 	return nil
 }
 
+// OptAllFNs enables all template extension functions provided by this package
+func OptAllFNs(c *Config) {
+	c.funcMap = funcMap
+	c.funcHelp = funcHelpSlice
+}
+
 const helpFilter = `- 'filter' operates on an slice or array of structures.  It allows the caller
   to filter the input array based on the value of a single field.
   The function returns a slice containing only the objects that satisfy the
@@ -155,6 +161,9 @@ const helpFilter = `- 'filter' operates on an slice or array of structures.  It 
 //
 // outputs the number of elements whose "Protected" field is equal to "true".
 func OptFilter(c *Config) {
+	if _, ok := c.funcMap["filter"]; ok {
+		return
+	}
 	c.funcMap["filter"] = filterByField
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilter, helpFilterIndex})
 }
@@ -175,6 +184,9 @@ const helpFilterContains = `- 'filterContains' operates along the same lines as 
 //
 // outputs the number of elements whose "Name" field contains the word "Cloud".
 func OptFilterContains(c *Config) {
+	if _, ok := c.funcMap["filterContains"]; ok {
+		return
+	}
 	c.funcMap["filterContains"] = filterByContains
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterContains, helpFilterContainsIndex})
 }
@@ -185,6 +197,9 @@ const helpFilterHasPrefix = `- 'filterHasPrefix' is similar to filter, but retur
 // OptFilterHasPrefix indicates that the filterHasPrefix function should be enabled.
 // 'filterHasPrefix' is similar to filter, but returns prefix matches.
 func OptFilterHasPrefix(c *Config) {
+	if _, ok := c.funcMap["filterHasPrefix"]; ok {
+		return
+	}
 	c.funcMap["filterHasPrefix"] = filterByHasPrefix
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterHasPrefix, helpFilterHasPrefixIndex})
 }
@@ -195,6 +210,9 @@ const helpFilterHasSuffix = `- 'filterHasSuffix' is similar to filter, but retur
 // OptFilterHasSuffix indicates that the filterHasSuffix function should be enabled.
 // 'filterHasSuffix' is similar to filter, but returns suffix matches.
 func OptFilterHasSuffix(c *Config) {
+	if _, ok := c.funcMap["filterHasSuffix"]; ok {
+		return
+	}
 	c.funcMap["filterHasSuffix"] = filterByHasSuffix
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterHasSuffix, helpFilterHasSuffixIndex})
 }
@@ -207,6 +225,9 @@ const helpFilterFolded = `- 'filterFolded' is similar to filter, but returns mat
 // 'filterFolded' is similar to filter, but returns matches based on equality
 // under Unicode case-folding.
 func OptFilterFolded(c *Config) {
+	if _, ok := c.funcMap["filterFolded"]; ok {
+		return
+	}
 	c.funcMap["filterFolded"] = filterByFolded
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterFolded, helpFilterFoldedIndex})
 }
@@ -229,6 +250,9 @@ const helpFilterRegexp = `- 'filterRegexp' is similar to filter, but returns mat
 // outputs the number of elements whose "Name" field have 'Docker' as a prefix
 // and 'latest' as a suffix in their name.
 func OptFilterRegexp(c *Config) {
+	if _, ok := c.funcMap["filterRegexp"]; ok {
+		return
+	}
 	c.funcMap["filterRegexp"] = filterByRegexp
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterRegexp, helpFilterRegexpIndex})
 }
@@ -251,6 +275,9 @@ const helpToJSON = `- 'tojson' outputs the target object in json format, e.g., {
 // OptToJSON indicates that the 'tosjon' function should be enabled.
 // 'tojson' outputs the target object in json format, e.g., {{tojson .}}
 func OptToJSON(c *Config) {
+	if _, ok := c.funcMap["tojson"]; ok {
+		return
+	}
 	c.funcMap["tojson"] = toJSON
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpToJSON, helpToJSONIndex})
 }
@@ -271,6 +298,9 @@ const helpSelect = `- 'select' operates on a slice of structs.  It outputs the v
 //
 // prints the 'Name' field of each structure in the slice.
 func OptSelect(c *Config) {
+	if _, ok := c.funcMap["select"]; ok {
+		return
+	}
 	c.funcMap["select"] = selectField
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSelect, helpSelectIndex})
 }
@@ -291,6 +321,9 @@ const helpTable = `- 'table' outputs a table given an array or a slice of struct
 //
 //  {{table .}}
 func OptTable(c *Config) {
+	if _, ok := c.funcMap["table"]; ok {
+		return
+	}
 	c.funcMap["table"] = table
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTable, helpTableIndex})
 }
@@ -321,6 +354,9 @@ const helpTableX = `- 'tablex' is similar to table but it allows the caller more
 //  {{tablex . 12 8 "Column 1" "Column 2"}}
 //  {{tablex . 8 8}}
 func OptTableX(c *Config) {
+	if _, ok := c.funcMap["tablex"]; ok {
+		return
+	}
 	c.funcMap["tablex"] = tablex
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTableX, helpTableXIndex})
 }
@@ -345,6 +381,9 @@ const helpCols = `- 'cols' can be used to extract certain columns from a table c
 // returns a new slice of structs, each element of which is a structure with only
 // two fields, 'Name' and 'Address'.
 func OptCols(c *Config) {
+	if _, ok := c.funcMap["cols"]; ok {
+		return
+	}
 	c.funcMap["cols"] = cols
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpCols, helpColsIndex})
 }
@@ -373,6 +412,9 @@ const helpSort = `- 'sort' sorts a slice or an array of structs.  It takes three
 //
 //  {{sort . "Name"}}
 func OptSort(c *Config) {
+	if _, ok := c.funcMap["sort"]; ok {
+		return
+	}
 	c.funcMap["sort"] = sortSlice
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSort, helpSortIndex})
 }
@@ -399,6 +441,9 @@ const helpRows = `- 'rows' is used to extract a set of given rows from a slice o
 //
 // extracts the 2nd and 3rd rows from the slice represented by '.'.
 func OptRows(c *Config) {
+	if _, ok := c.funcMap["rows"]; ok {
+		return
+	}
 	c.funcMap["rows"] = rows
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpRows, helpRowsIndex})
 }
@@ -434,6 +479,9 @@ const helpHead = `- 'head' operates on a slice or an array, returning the first 
 //  {{ head . 3}}
 // would be identical to the input slice.
 func OptHead(c *Config) {
+	if _, ok := c.funcMap["head"]; ok {
+		return
+	}
 	c.funcMap["head"] = head
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpHead, helpHeadIndex})
 }
@@ -454,6 +502,9 @@ const helpTail = `- 'tail' is similar to head except that it returns a slice con
 //
 // returns a new slice containing the last two elements of '.'.
 func OptTail(c *Config) {
+	if _, ok := c.funcMap["tail"]; ok {
+		return
+	}
 	c.funcMap["tail"] = tail
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTail, helpTailIndex})
 }
@@ -461,20 +512,17 @@ func OptTail(c *Config) {
 // NewConfig creates a new Config object that can be passed to other functions
 // in this package.  The Config option keeps track of which new functions are
 // added to Go's template libray.  If this function is called without arguments,
-// all the functions defined in this package are enabled in the resulting Config
+// none of the functions defined in this package are enabled in the resulting Config
 // object.  To control which functions get added specify some options, e.g.,
 //
 //  ctx := templateutils.NewConfig(templateutils.OptHead, templateutils.OptTail)
 //
 // creates a new Config object that enables the 'head' and 'tail' functions only.
+//
+// To add all the functions, use the OptAllFNs options, e.g.,
+//
+//    ctx := templateutils.NewConfig(templateutils.OptAllFNs)
 func NewConfig(options ...func(*Config)) *Config {
-	if len(options) == 0 {
-		return &Config{
-			funcMap:  funcMap,
-			funcHelp: funcHelpSlice,
-		}
-	}
-
 	c := &Config{
 		funcMap: make(template.FuncMap),
 	}

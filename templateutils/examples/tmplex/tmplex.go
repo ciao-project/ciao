@@ -64,7 +64,7 @@ func init() {
 		fmt.Fprintln(os.Stderr, templateutils.GenerateUsageDecorated("f", fictionalStocks, cfg))
 	}
 	flag.StringVar(&code, "f", "", "string containing the template code to execute")
-	cfg = templateutils.NewConfig()
+	cfg = templateutils.NewConfig(templateutils.OptAllFNs)
 
 	if err := cfg.AddCustomFn(sumVolume, "sumVolume", sumVolumeHelp); err != nil {
 		panic(err)
