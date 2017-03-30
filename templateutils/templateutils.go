@@ -594,7 +594,7 @@ func CreateTemplate(name, tmplSrc string, cfg *Config) (*template.Template, erro
 
 // GenerateUsageUndecorated returns a formatted string identifying the
 // elements of the type of object i that can be accessed  from inside a template.
-// Unexported struct values and channels are output are they cannot be usefully
+// Unexported struct values and channels are not output as they cannot be usefully
 // accessed inside a template.
 func GenerateUsageUndecorated(i interface{}) string {
 	var buf bytes.Buffer
