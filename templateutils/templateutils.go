@@ -90,6 +90,7 @@ const (
 	helpRowsIndex
 	helpHeadIndex
 	helpTailIndex
+	helpDescribeIndex
 	helpIndexCount
 )
 
@@ -520,6 +521,33 @@ func OptTail(c *Config) {
 	}
 	c.funcMap["tail"] = tail
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTail, helpTailIndex})
+}
+
+const helpDescribe = `- 'describe' takes a single argument and outputs a description of the
+  type of that argument.  It can be useful if the type of the object
+  operated on by a template program is not described in the help of the
+  tool that executes the template.
+
+  {{describe . }}
+
+ outputs a description of the type of '.'.
+`
+
+// OptDescribe indicates that the 'describe' function should be enabled.
+// 'describe' takes a single argument and outputs a description of the
+// type of that argument.  It can be useful if the type of the object
+// operated on by a template program is not described in the help of the
+// tool that executes the template.
+//
+//  {{describe . }}
+//
+// outputs a description of the type of '.'.
+func OptDescribe(c *Config) {
+	if _, ok := c.funcMap["describe"]; ok {
+		return
+	}
+	c.funcMap["describe"] = describe
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpDescribe, helpDescribeIndex})
 }
 
 // NewConfig creates a new Config object that can be passed to other functions

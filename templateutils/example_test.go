@@ -357,6 +357,22 @@ func ExampleOptTail() {
 	// Crassus
 }
 
+func ExampleOptDescribe() {
+	data := []struct{ FirstName, MiddleName, Surname string }{}
+
+	// Describe the type of data
+	script := `{{describe .}}`
+	if err := OutputToTemplate(os.Stdout, "names", script, data, nil); err != nil {
+		panic(err)
+	}
+	// output:
+	// []struct {
+	// 	FirstName  string
+	// 	MiddleName string
+	//	Surname    string
+	// }
+}
+
 func ExampleConfig_AddCustomFn() {
 	nums := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	cfg := NewConfig(OptAllFNs)

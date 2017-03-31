@@ -505,3 +505,9 @@ func tail(obj interface{}, count ...int) interface{} {
 
 	return copy.Interface()
 }
+
+func describe(obj interface{}) string {
+	var buf bytes.Buffer
+	generateIndentedUsage(&buf, obj)
+	return buf.String()
+}
