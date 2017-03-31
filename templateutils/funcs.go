@@ -330,9 +330,9 @@ func getTableHeadings(v reflect.Value) []tableHeading {
 	return headings
 }
 
-func createTable(v reflect.Value, minWidth, tabWidth int, headings []tableHeading) string {
+func createTable(v reflect.Value, minWidth, tabWidth, padding int, headings []tableHeading) string {
 	var b bytes.Buffer
-	w := tabwriter.NewWriter(&b, minWidth, tabWidth, 1, ' ', 0)
+	w := tabwriter.NewWriter(&b, minWidth, tabWidth, padding, ' ', 0)
 	for _, h := range headings {
 		fmt.Fprintf(w, "%s\t", h.name)
 	}
@@ -352,10 +352,10 @@ func createTable(v reflect.Value, minWidth, tabWidth int, headings []tableHeadin
 
 func table(obj interface{}) string {
 	val := getValue(obj)
-	return createTable(val, 8, 8, getTableHeadings(val))
+	return createTable(val, 8, 8, 1, getTableHeadings(val))
 }
 
-func tablex(obj interface{}, minWidth, tabWidth int, userHeadings ...string) string {
+func tablex(obj interface{}, minWidth, tabWidth, padding int, userHeadings ...string) string {
 	val := getValue(obj)
 	headings := getTableHeadings(val)
 	if len(headings) < len(userHeadings) {
@@ -365,7 +365,7 @@ func tablex(obj interface{}, minWidth, tabWidth int, userHeadings ...string) str
 	for i := range userHeadings {
 		headings[i].name = userHeadings[i]
 	}
-	return createTable(val, minWidth, tabWidth, headings)
+	return createTable(val, minWidth, tabWidth, padding, headings)
 }
 
 func cols(obj interface{}, fields ...string) interface{} {

@@ -62,7 +62,6 @@ import (
 	"text/template"
 )
 
-// BUG(markdryan): Tests for all functions
 // BUG(markdryan): Map to slice
 
 // These constants are used to ensure that all the help text
@@ -341,18 +340,18 @@ const helpTableX = `- 'tablex' is similar to table but it allows the caller more
   {{tablex . 8 8}}
 `
 
-// OptTableX indicates that the 'tablex' function should be enabled.
-// 'tablex' is similar to table but it allows the caller more control over the
-// table's appearance.  Users can control the names of the headings and also set
-// the tab and column width.  'tablex' takes 3 or more parameters.  The first
-// parameter is the slice of structs to output, the second is the minimum column
-// width, the third the tab width.  The fourth and subsequent parameters are the
-// names of the column headings.  The column headings are optional and the field
-// names of the structure will be used if they are absent.  Example of its usage
-// are:
+// OptTableX indicates that the 'tablex' function should be enabled. 'tablex' is
+// similar to table but it allows the caller more control over the table's
+// appearance. Users can control the names of the headings and also set the tab
+// and column width. 'tablex' takes 4 or more parameters. The first parameter is
+// the slice of structs to output, the second is the minimum column width, the
+// third the tab width and the fourth is the padding. The fift and subsequent
+// parameters are the names of the column headings. The column headings are
+// optional and the field names of the structure will be used if they are
+// absent. Example of its usage are:
 //
-//  {{tablex . 12 8 "Column 1" "Column 2"}}
-//  {{tablex . 8 8}}
+//  {{tablex . 12 8 1 "Column 1" "Column 2"}}
+//  {{tablex . 8 8 1}}
 func OptTableX(c *Config) {
 	if _, ok := c.funcMap["tablex"]; ok {
 		return
