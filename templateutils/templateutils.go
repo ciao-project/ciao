@@ -136,8 +136,15 @@ func (c *Config) AddCustomFn(fn interface{}, name, helpText string) error {
 
 // OptAllFNs enables all template extension functions provided by this package
 func OptAllFNs(c *Config) {
-	c.funcMap = funcMap
-	c.funcHelp = funcHelpSlice
+	c.funcMap = make(template.FuncMap)
+	for k, v := range funcMap {
+		c.funcMap[k] = v
+	}
+
+	c.funcHelp = make([]funcHelpInfo, len(funcHelpSlice), cap(funcHelpSlice))
+	for i, h := range funcHelpSlice {
+		c.funcHelp[i] = h
+	}
 }
 
 const helpFilter = `- 'filter' operates on an slice or array of structures.  It allows the caller

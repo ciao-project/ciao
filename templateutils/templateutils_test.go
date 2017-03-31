@@ -139,3 +139,25 @@ func TestOptions(t *testing.T) {
 			nilHelp, cfgDoubleHelp)
 	}
 }
+
+// Check that OptAllFns makes a copy of the globals it uses
+//
+// Store the old length of funcMap and funcHelpSlice, create a new Config
+// object using OptAllFNs, add a new custom function, and then recheck the
+// lengths of the two global variables.
+//
+// The lengths of the global variables should not have changed.
+func TestOptAllFns(t *testing.T) {
+	oldMapLen := len(funcMap)
+	oldSliceLen := len(funcHelpSlice)
+	cfg := NewConfig(OptAllFNs)
+	cfg.AddCustomFn(func() int {
+		return 0
+	}, "zero", "- zero \"Returns\" zero")
+	if oldMapLen != len(funcMap) {
+		t.Errorf("Global funcmap should not be modified")
+	}
+	if oldSliceLen != len(funcHelpSlice) {
+		t.Errorf("Global funcHelpSlice should not be modified")
+	}
+}
