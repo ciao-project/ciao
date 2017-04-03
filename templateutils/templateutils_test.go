@@ -97,7 +97,7 @@ func TestTemplateGenerateUsage(t *testing.T) {
 // different sort order.
 func TestOptions(t *testing.T) {
 	nilHelp := GenerateUsageDecorated("-f", 0, nil)
-	cfgAllHelp := GenerateUsageDecorated("-f", 0, NewConfig(OptAllFNs))
+	cfgAllHelp := GenerateUsageDecorated("-f", 0, NewConfig(OptAllFns))
 
 	if nilHelp != cfgAllHelp {
 		t.Errorf("Default help message and message generated with a Config object do not match: %s %s",
@@ -153,7 +153,7 @@ func TestOptions(t *testing.T) {
 func TestOptAllFns(t *testing.T) {
 	oldMapLen := len(funcMap)
 	oldSliceLen := len(funcHelpSlice)
-	cfg := NewConfig(OptAllFNs)
+	cfg := NewConfig(OptAllFns)
 	cfg.AddCustomFn(func() int {
 		return 0
 	}, "zero", "- zero \"Returns\" zero")

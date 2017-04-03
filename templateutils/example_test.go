@@ -375,7 +375,7 @@ func ExampleOptDescribe() {
 
 func ExampleConfig_AddCustomFn() {
 	nums := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	cfg := NewConfig(OptAllFNs)
+	cfg := NewConfig(OptAllFns)
 	cfg.AddCustomFn(func(n []int) int {
 		sum := 0
 		for _, num := range n {

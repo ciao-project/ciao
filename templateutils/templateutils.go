@@ -134,8 +134,8 @@ func (c *Config) AddCustomFn(fn interface{}, name, helpText string) error {
 	return nil
 }
 
-// OptAllFNs enables all template extension functions provided by this package
-func OptAllFNs(c *Config) {
+// OptAllFns enables all template extension functions provided by this package
+func OptAllFns(c *Config) {
 	c.funcMap = make(template.FuncMap)
 	for k, v := range funcMap {
 		c.funcMap[k] = v
