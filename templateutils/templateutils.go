@@ -94,14 +94,6 @@ const (
 	helpIndexCount
 )
 
-// UsageError indicates that one of the functions provided by this package
-// has been used incorrectly by a Go template program.
-type UsageError string
-
-func (e UsageError) Error() string {
-	return string(e)
-}
-
 type funcHelpInfo struct {
 	help  string
 	index int
@@ -594,19 +586,8 @@ func TemplateFunctionHelp(c *Config) string {
 // the name parameter.  The results of the execution are output to w.
 // The functions enabled in the cfg parameter will be made available to the
 // template source code specified in tmplSrc.  If cfg is nil, all the
-// additional functions provided by templateutils will be enabled.  Any errors
-// caused by the incorrect usage of one of the functions provided by this package
-// will result in a templateutils.UsageError.
+// additional functions provided by templateutils will be enabled.
 func OutputToTemplate(w io.Writer, name, tmplSrc string, obj interface{}, cfg *Config) (err error) {
-	defer func() {
-		if err1 := recover(); err1 != nil {
-			if err1, ok := err1.(UsageError); ok {
-				err = err1
-			} else {
-				panic(err1)
-			}
-		}
-	}()
 	t, err := template.New(name).Funcs(getFuncMap(cfg)).Parse(tmplSrc)
 	if err != nil {
 		return err
@@ -621,10 +602,7 @@ func OutputToTemplate(w io.Writer, name, tmplSrc string, obj interface{}, cfg *C
 // tmplSrc parameter and whose name is given by the name parameter. The functions
 // enabled in the cfg parameter will be made available to the template source code
 // specified in tmplSrc.  If cfg is nil, all the additional functions provided by
-// templateutils will be enabled.  Any errors caused by the incorrect usage of
-// one of the functions provided by this package will result a panic when the
-// when the template is executed.  The type of the object associated with the
-// panic is of type templateutils.UsageError.
+// templateutils will be enabled.
 func CreateTemplate(name, tmplSrc string, cfg *Config) (*template.Template, error) {
 	if tmplSrc == "" {
 		return nil, fmt.Errorf("template %s contains no source", name)

@@ -17,9 +17,11 @@ package templateutils
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"strings"
 	"testing"
+	"text/template"
 )
 
 type testint int
@@ -160,5 +162,25 @@ func TestOptAllFns(t *testing.T) {
 	}
 	if oldSliceLen != len(funcHelpSlice) {
 		t.Errorf("Global funcHelpSlice should not be modified")
+	}
+}
+
+// Check an error is returned when cols is used incorrectly.
+//
+// Invoke the cols function with an invalid parameter and check
+// the error returned.
+//
+// OutputToTemplate should not panic and a template.ExecError should
+// be returned.  The Name field of the error should be "cols".
+func TestBadCols(t *testing.T) {
+	data := []struct{ FirstName, MiddleName, Surname string }{}
+	script := `{{cols . "Age"}}`
+	err := OutputToTemplate(ioutil.Discard, "cols", script, data, nil)
+	if err == nil {
+		t.Errorf("Error expected")
+	}
+	terr := err.(template.ExecError)
+	if terr.Name != "cols" {
+		t.Errorf("terr.Name should be cols")
 	}
 }

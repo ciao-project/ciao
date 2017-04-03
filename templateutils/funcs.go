@@ -25,6 +25,7 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"text/template"
 )
 
 type tableHeading struct {
@@ -147,6 +148,13 @@ func getValue(obj interface{}) reflect.Value {
 	return val
 }
 
+func fatalf(name, format string, args ...interface{}) {
+	panic(template.ExecError{
+		Name: name,
+		Err:  fmt.Errorf(format, args...),
+	})
+}
+
 func newValueSorter(obj interface{}, field string, ascending bool) *valueSorter {
 	val := reflect.ValueOf(obj)
 	typ := reflect.TypeOf(obj)
@@ -161,7 +169,7 @@ func newValueSorter(obj interface{}, field string, ascending bool) *valueSorter 
 		}
 	}
 	if index == sTyp.NumField() {
-		panic(UsageError(fmt.Sprintf("%s is not a valid field name", field)))
+		fatalf("sort", "%s is not a valid field name", field)
 	}
 	fKind := fTyp.Type.Kind()
 
@@ -174,7 +182,7 @@ func newValueSorter(obj interface{}, field string, ascending bool) *valueSorter 
 	if lessFn == nil {
 		var stringer *fmt.Stringer
 		if !fTyp.Type.Implements(reflect.TypeOf(stringer).Elem()) {
-			panic(UsageError(fmt.Sprintf("cannot sort fields of type %s", fKind)))
+			fatalf("sort", "cannot sort fields of type %s", fKind)
 		}
 		lessFn = func(v1, v2 interface{}) bool {
 			return v1.(fmt.Stringer).String() < v2.(fmt.Stringer).String()
@@ -198,11 +206,11 @@ func findField(fieldPath []string, v reflect.Value) reflect.Value {
 	return f
 }
 
-func filterField(obj interface{}, field, val string, cmp func(string, string) bool) (retval interface{}) {
+func filterField(fnname string, obj interface{}, field, val string, cmp func(string, string) bool) (retval interface{}) {
 	defer func() {
 		err := recover()
 		if err != nil {
-			panic(UsageError(fmt.Sprintf("Invalid use of filter: %v", err)))
+			fatalf(fnname, "Invalid use of filter: %v", err)
 		}
 	}()
 
@@ -231,32 +239,32 @@ func filterField(obj interface{}, field, val string, cmp func(string, string) bo
 }
 
 func filterByField(obj interface{}, field, val string) (retval interface{}) {
-	return filterField(obj, field, val, func(a, b string) bool {
+	return filterField("filter", obj, field, val, func(a, b string) bool {
 		return a == b
 	})
 }
 
 func filterByContains(obj interface{}, field, val string) (retval interface{}) {
-	return filterField(obj, field, val, strings.Contains)
+	return filterField("filterContains", obj, field, val, strings.Contains)
 }
 
 func filterByFolded(obj interface{}, field, val string) (retval interface{}) {
-	return filterField(obj, field, val, strings.EqualFold)
+	return filterField("filterFolded", obj, field, val, strings.EqualFold)
 }
 
 func filterByHasPrefix(obj interface{}, field, val string) (retval interface{}) {
-	return filterField(obj, field, val, strings.HasPrefix)
+	return filterField("filterHasPrefix", obj, field, val, strings.HasPrefix)
 }
 
 func filterByHasSuffix(obj interface{}, field, val string) (retval interface{}) {
-	return filterField(obj, field, val, strings.HasSuffix)
+	return filterField("filterHasSuffix", obj, field, val, strings.HasSuffix)
 }
 
 func filterByRegexp(obj interface{}, field, val string) (retval interface{}) {
-	return filterField(obj, field, val, func(a, b string) bool {
+	return filterField("filterRegexp", obj, field, val, func(a, b string) bool {
 		matched, err := regexp.MatchString(b, a)
 		if err != nil {
-			panic(UsageError(fmt.Sprintf("Invalid regexp: %v", err)))
+			fatalf("filter", "Invalid regexp: %v", err)
 		}
 		return matched
 	})
@@ -266,7 +274,7 @@ func selectField(obj interface{}, field string) string {
 	defer func() {
 		err := recover()
 		if err != nil {
-			panic(UsageError(fmt.Sprintf("Invalid use of select: %v", err)))
+			fatalf("select", "Invalid use of select: %v", err)
 		}
 	}()
 
@@ -297,20 +305,20 @@ func toJSON(obj interface{}) string {
 	return string(b)
 }
 
-func assertCollectionOfStructs(v reflect.Value) {
+func assertCollectionOfStructs(fnname string, v reflect.Value) {
 	typ := v.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		panic("slice or an array of structs expected")
+		fatalf(fnname, "slice or an array of structs expected")
 	}
 	styp := typ.Elem()
 	if styp.Kind() != reflect.Struct {
-		panic("slice or an array of structs expected")
+		fatalf(fnname, "slice or an array of structs expected")
 	}
 }
 
-func getTableHeadings(v reflect.Value) []tableHeading {
-	assertCollectionOfStructs(v)
+func getTableHeadings(fnname string, v reflect.Value) []tableHeading {
+	assertCollectionOfStructs(fnname, v)
 
 	typ := v.Type()
 	styp := typ.Elem()
@@ -325,7 +333,7 @@ func getTableHeadings(v reflect.Value) []tableHeading {
 	}
 
 	if len(headings) == 0 {
-		panic(UsageError("structures must contain at least one exported non-channel field"))
+		fatalf(fnname, "structures must contain at least one exported non-channel field")
 	}
 	return headings
 }
@@ -352,15 +360,15 @@ func createTable(v reflect.Value, minWidth, tabWidth, padding int, headings []ta
 
 func table(obj interface{}) string {
 	val := getValue(obj)
-	return createTable(val, 8, 8, 1, getTableHeadings(val))
+	return createTable(val, 8, 8, 1, getTableHeadings("table", val))
 }
 
 func tablex(obj interface{}, minWidth, tabWidth, padding int, userHeadings ...string) string {
 	val := getValue(obj)
-	headings := getTableHeadings(val)
+	headings := getTableHeadings("tablex", val)
 	if len(headings) < len(userHeadings) {
-		panic(UsageError(fmt.Sprintf("Too many headings specified.  Max permitted %d got %d",
-			len(headings), len(userHeadings))))
+		fatalf("tablex", "Too many headings specified.  Max permitted %d got %d",
+			len(headings), len(userHeadings))
 	}
 	for i := range userHeadings {
 		headings[i].name = userHeadings[i]
@@ -370,9 +378,9 @@ func tablex(obj interface{}, minWidth, tabWidth, padding int, userHeadings ...st
 
 func cols(obj interface{}, fields ...string) interface{} {
 	val := getValue(obj)
-	assertCollectionOfStructs(val)
+	assertCollectionOfStructs("cols", val)
 	if len(fields) == 0 {
-		panic(UsageError("at least one column name must be specified"))
+		fatalf("cols", "at least one column name must be specified")
 	}
 
 	var newFields []reflect.StructField
@@ -399,7 +407,7 @@ func cols(obj interface{}, fields ...string) interface{} {
 	}
 
 	if len(indicies) != len(fields) {
-		panic(UsageError("not all column names are valid"))
+		fatalf("cols", "not all column names are valid")
 	}
 
 	newStyp := reflect.StructOf(newFields)
@@ -419,17 +427,17 @@ func cols(obj interface{}, fields ...string) interface{} {
 func sortSlice(obj interface{}, field string, direction ...string) interface{} {
 	ascending := true
 	if len(direction) > 1 {
-		panic(UsageError("Too many parameters passed to sort"))
+		fatalf("sort", "Too many parameters passed to sort")
 	} else if len(direction) == 1 {
 		if direction[0] == "dsc" {
 			ascending = false
 		} else if direction[0] != "asc" {
-			panic(UsageError("direction parameter must be \"asc\" or \"dsc\""))
+			fatalf("sort", "direction parameter must be \"asc\" or \"dsc\"")
 		}
 	}
 
 	val := getValue(obj)
-	assertCollectionOfStructs(val)
+	assertCollectionOfStructs("sort", val)
 
 	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, val.Len())
 	for i := 0; i < val.Len(); i++ {
@@ -447,11 +455,11 @@ func rows(obj interface{}, rows ...int) interface{} {
 	typ := val.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		panic(UsageError("slice or an array of expected"))
+		fatalf("rows", "slice or an array of expected")
 	}
 
 	if len(rows) == 0 {
-		panic(UsageError("at least one row index must be specified"))
+		fatalf("rows", "at least one row index must be specified")
 	}
 
 	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, len(rows))
@@ -464,26 +472,26 @@ func rows(obj interface{}, rows ...int) interface{} {
 	return copy.Interface()
 }
 
-func assertSliceAndRetrieveCount(obj interface{}, count ...int) (reflect.Value, int) {
+func assertSliceAndRetrieveCount(fnname string, obj interface{}, count ...int) (reflect.Value, int) {
 	val := getValue(obj)
 	typ := val.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		panic(UsageError("slice or an array of expected"))
+		fatalf(fnname, "slice or an array of expected")
 	}
 
 	rows := 1
 	if len(count) == 1 {
 		rows = count[0]
 	} else if len(count) > 1 {
-		panic(UsageError("accepts a maximum of two arguments expected"))
+		fatalf(fnname, "accepts a maximum of two arguments expected")
 	}
 
 	return val, rows
 }
 
 func head(obj interface{}, count ...int) interface{} {
-	val, rows := assertSliceAndRetrieveCount(obj, count...)
+	val, rows := assertSliceAndRetrieveCount("head", obj, count...)
 	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, rows)
 	for i := 0; i < rows && i < val.Len(); i++ {
 		copy = reflect.Append(copy, val.Index(i))
@@ -493,7 +501,7 @@ func head(obj interface{}, count ...int) interface{} {
 }
 
 func tail(obj interface{}, count ...int) interface{} {
-	val, rows := assertSliceAndRetrieveCount(obj, count...)
+	val, rows := assertSliceAndRetrieveCount("tail", obj, count...)
 	copy := reflect.MakeSlice(reflect.SliceOf(val.Type().Elem()), 0, rows)
 	start := val.Len() - rows
 	if start < 0 {
