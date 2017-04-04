@@ -30,6 +30,7 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/openstack/compute"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/templateutils"
 
 	"gopkg.in/yaml.v2"
 )
@@ -56,7 +57,7 @@ List all workloads
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		generateUsageDecorated("f", compute.FlavorsDetails{}.Flavors))
+		templateutils.GenerateUsageDecorated("f", compute.FlavorsDetails{}.Flavors, nil))
 	os.Exit(2)
 }
 
@@ -90,8 +91,8 @@ func (cmd *workloadListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("workload-list", cmd.template,
-			&flavors.Flavors)
+		return templateutils.OutputToTemplate(os.Stdout, "workload-list", cmd.template,
+			&flavors.Flavors, nil)
 	}
 
 	for i, flavor := range flavors.Flavors {
@@ -428,7 +429,7 @@ Show workload details
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		generateUsageDecorated("f", types.Workload{}))
+		templateutils.GenerateUsageDecorated("f", types.Workload{}, nil))
 	os.Exit(2)
 }
 
@@ -475,8 +476,7 @@ func (cmd *workloadShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("workload-show", cmd.template,
-			&wl)
+		return templateutils.OutputToTemplate(os.Stdout, "workload-show", cmd.template, &wl, nil)
 	}
 
 	outputWorkload(wl)

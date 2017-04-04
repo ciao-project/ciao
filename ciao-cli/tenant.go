@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/templateutils"
 )
 
 var tenantCommand = &command{
@@ -64,12 +65,12 @@ no options:
 --resources:
 
 %s`,
-		generateUsageUndecorated([]Project{}),
-		generateUsageUndecorated(IdentityProjects{}.Projects),
-		generateUsageUndecorated(types.CiaoTenantResources{}),
-		generateUsageUndecorated(types.CiaoUsageHistory{}.Usages))
+		templateutils.GenerateUsageUndecorated([]Project{}),
+		templateutils.GenerateUsageUndecorated(IdentityProjects{}.Projects),
+		templateutils.GenerateUsageUndecorated(types.CiaoTenantResources{}),
+		templateutils.GenerateUsageUndecorated(types.CiaoUsageHistory{}.Usages))
 
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -84,7 +85,10 @@ func (cmd *tenantListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantListCommand) run(args []string) error {
-	t := createTemplate("tenant-list", cmd.template)
+	t, err := templateutils.CreateTemplate("tenant-list", cmd.template, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
 
 	if cmd.all {
 		return listAllTenants(t)

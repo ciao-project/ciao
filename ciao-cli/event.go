@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/templateutils"
 )
 
 var eventCommand = &command{
@@ -49,7 +50,7 @@ The list flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		generateUsageDecorated("f", types.CiaoEvents{}.Events))
+		templateutils.GenerateUsageDecorated("f", types.CiaoEvents{}.Events, nil))
 	os.Exit(2)
 }
 
@@ -92,8 +93,8 @@ func (cmd *eventListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("event-list", cmd.template,
-			&events.Events)
+		return templateutils.OutputToTemplate(os.Stdout, "event-list", cmd.template,
+			&events.Events, nil)
 	}
 
 	fmt.Printf("%d Ciao event(s):\n", len(events.Events))

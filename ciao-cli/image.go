@@ -24,6 +24,7 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/01org/ciao/templateutils"
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
 	"github.com/rackspace/gophercloud/openstack/imageservice/v2/images"
@@ -63,7 +64,7 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", images.Image{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", images.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -130,7 +131,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("image-add", cmd.template, image)
+		return templateutils.OutputToTemplate(os.Stdout, "image-add", cmd.template, image, nil)
 	}
 
 	fmt.Printf("Created image:\n")
@@ -150,7 +151,7 @@ func (cmd *imageShowCommand) usage(...string) {
 Show images
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", images.Image{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", images.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -178,7 +179,7 @@ func (cmd *imageShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("image-show", cmd.template, i)
+		return templateutils.OutputToTemplate(os.Stdout, "image-show", cmd.template, i, nil)
 	}
 
 	dumpImage(i)
@@ -205,8 +206,8 @@ The template passed to the -f option operates on a
 As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
-`, generateUsageUndecorated([]images.Image{}))
-	fmt.Fprintln(os.Stderr, templateFunctionHelp)
+`, templateutils.GenerateUsageUndecorated([]images.Image{}))
+	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -225,7 +226,10 @@ func (cmd *imageListCommand) run(args []string) error {
 
 	var t *template.Template
 	if cmd.template != "" {
-		t = createTemplate("image-list", cmd.template)
+		t, err = templateutils.CreateTemplate("image-list", cmd.template, nil)
+		if err != nil {
+			fatalf(err.Error())
+		}
 	}
 
 	pager := images.List(client, images.ListOpts{})

@@ -32,6 +32,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/openstack/compute"
+	"github.com/01org/ciao/templateutils"
 )
 
 const (
@@ -394,7 +395,7 @@ The add flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	printVolumeFlagUsage()
-	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", []compute.ServerDetails{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -523,8 +524,8 @@ func (cmd *instanceAddCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("instance-add", cmd.template,
-			&servers.Servers)
+		return templateutils.OutputToTemplate(os.Stdout, "instance-add", cmd.template,
+			&servers.Servers, nil)
 	}
 
 	if len(servers.Servers) < cmd.instances {
@@ -711,7 +712,7 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", []compute.ServerDetails{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -794,8 +795,8 @@ func (cmd *instanceListCommand) run(args []string) error {
 	sort.Sort(byCreated(sortedServers))
 
 	if cmd.template != "" {
-		return outputToTemplate("instance-list", cmd.template,
-			&sortedServers)
+		return templateutils.OutputToTemplate(os.Stdout, "instance-list", cmd.template,
+			&sortedServers, nil)
 	}
 
 	w := new(tabwriter.Writer)
@@ -841,7 +842,7 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", compute.ServerDetails{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -872,8 +873,8 @@ func (cmd *instanceShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("instance-show", cmd.template,
-			&server.Server)
+		return templateutils.OutputToTemplate(os.Stdout, "instance-show", cmd.template,
+			&server.Server, nil)
 	}
 
 	dumpInstance(&server.Server)

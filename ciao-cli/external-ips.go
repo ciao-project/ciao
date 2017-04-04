@@ -29,6 +29,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/templateutils"
 )
 
 func getCiaoExternalIPsResource() (string, string, error) {
@@ -159,7 +160,7 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", []types.MappedIP{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []types.MappedIP{}, nil))
 	os.Exit(2)
 }
 
@@ -193,8 +194,8 @@ func (cmd *externalIPListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("external-ip-list", cmd.template,
-			&IPs)
+		return templateutils.OutputToTemplate(os.Stdout, "external-ip-list", cmd.template,
+			&IPs, nil)
 	}
 
 	w := new(tabwriter.Writer)
@@ -438,7 +439,7 @@ The list flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		generateUsageDecorated("f", types.ListPoolsResponse{}.Pools))
+		templateutils.GenerateUsageDecorated("f", types.ListPoolsResponse{}.Pools, nil))
 	os.Exit(2)
 }
 
@@ -473,8 +474,8 @@ func (cmd *poolListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("pool-list", cmd.template,
-			&pools.Pools)
+		return templateutils.OutputToTemplate(os.Stdout, "pool-list", cmd.template,
+			&pools.Pools, nil)
 	}
 
 	w := new(tabwriter.Writer)
@@ -521,7 +522,7 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", generateUsageDecorated("f", types.Pool{}))
+	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", types.Pool{}, nil))
 	os.Exit(2)
 }
 
@@ -562,8 +563,8 @@ func (cmd *poolShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return outputToTemplate("pool-show", cmd.template,
-			&pool)
+		return templateutils.OutputToTemplate(os.Stdout, "pool-show", cmd.template,
+			&pool, nil)
 	}
 
 	dumpPool(pool)
