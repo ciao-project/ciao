@@ -206,11 +206,11 @@ func findField(fieldPath []string, v reflect.Value) reflect.Value {
 	return f
 }
 
-func filterField(fnname string, obj interface{}, field, val string, cmp func(string, string) bool) (retval interface{}) {
+func filterField(fnName string, obj interface{}, field, val string, cmp func(string, string) bool) interface{} {
 	defer func() {
 		err := recover()
 		if err != nil {
-			fatalf(fnname, "Invalid use of filter: %v", err)
+			fatalf(fnName, "Invalid use of filter: %v", err)
 		}
 	}()
 
@@ -233,34 +233,32 @@ func filterField(fnname string, obj interface{}, field, val string, cmp func(str
 		}
 	}
 
-	retval = filtered.Interface()
-	return
-
+	return filtered.Interface()
 }
 
-func filterByField(obj interface{}, field, val string) (retval interface{}) {
+func filterByField(obj interface{}, field, val string) interface{} {
 	return filterField("filter", obj, field, val, func(a, b string) bool {
 		return a == b
 	})
 }
 
-func filterByContains(obj interface{}, field, val string) (retval interface{}) {
+func filterByContains(obj interface{}, field, val string) interface{} {
 	return filterField("filterContains", obj, field, val, strings.Contains)
 }
 
-func filterByFolded(obj interface{}, field, val string) (retval interface{}) {
+func filterByFolded(obj interface{}, field, val string) interface{} {
 	return filterField("filterFolded", obj, field, val, strings.EqualFold)
 }
 
-func filterByHasPrefix(obj interface{}, field, val string) (retval interface{}) {
+func filterByHasPrefix(obj interface{}, field, val string) interface{} {
 	return filterField("filterHasPrefix", obj, field, val, strings.HasPrefix)
 }
 
-func filterByHasSuffix(obj interface{}, field, val string) (retval interface{}) {
+func filterByHasSuffix(obj interface{}, field, val string) interface{} {
 	return filterField("filterHasSuffix", obj, field, val, strings.HasSuffix)
 }
 
-func filterByRegexp(obj interface{}, field, val string) (retval interface{}) {
+func filterByRegexp(obj interface{}, field, val string) interface{} {
 	return filterField("filterRegexp", obj, field, val, func(a, b string) bool {
 		matched, err := regexp.MatchString(b, a)
 		if err != nil {
@@ -305,20 +303,20 @@ func toJSON(obj interface{}) string {
 	return string(b)
 }
 
-func assertCollectionOfStructs(fnname string, v reflect.Value) {
+func assertCollectionOfStructs(fnName string, v reflect.Value) {
 	typ := v.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		fatalf(fnname, "slice or an array of structs expected")
+		fatalf(fnName, "slice or an array of structs expected")
 	}
 	styp := typ.Elem()
 	if styp.Kind() != reflect.Struct {
-		fatalf(fnname, "slice or an array of structs expected")
+		fatalf(fnName, "slice or an array of structs expected")
 	}
 }
 
-func getTableHeadings(fnname string, v reflect.Value) []tableHeading {
-	assertCollectionOfStructs(fnname, v)
+func getTableHeadings(fnName string, v reflect.Value) []tableHeading {
+	assertCollectionOfStructs(fnName, v)
 
 	typ := v.Type()
 	styp := typ.Elem()
@@ -333,7 +331,7 @@ func getTableHeadings(fnname string, v reflect.Value) []tableHeading {
 	}
 
 	if len(headings) == 0 {
-		fatalf(fnname, "structures must contain at least one exported non-channel field")
+		fatalf(fnName, "structures must contain at least one exported non-channel field")
 	}
 	return headings
 }
@@ -472,19 +470,19 @@ func rows(obj interface{}, rows ...int) interface{} {
 	return copy.Interface()
 }
 
-func assertSliceAndRetrieveCount(fnname string, obj interface{}, count ...int) (reflect.Value, int) {
+func assertSliceAndRetrieveCount(fnName string, obj interface{}, count ...int) (reflect.Value, int) {
 	val := getValue(obj)
 	typ := val.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		fatalf(fnname, "slice or an array of expected")
+		fatalf(fnName, "slice or an array of expected")
 	}
 
 	rows := 1
 	if len(count) == 1 {
 		rows = count[0]
 	} else if len(count) > 1 {
-		fatalf(fnname, "accepts a maximum of two arguments expected")
+		fatalf(fnName, "accepts a maximum of two arguments expected")
 	}
 
 	return val, rows
