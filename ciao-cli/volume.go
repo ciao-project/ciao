@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"text/template"
 	"time"
 
 	"github.com/01org/ciao/templateutils"
@@ -148,9 +149,12 @@ func (cmd *volumeListCommand) run(args []string) error {
 		fatalf("Could not get volume service client [%s]\n", err)
 	}
 
-	t, err := templateutils.CreateTemplate("volume-list", cmd.template, nil)
-	if err != nil {
-		fatalf(err.Error())
+	var t *template.Template
+	if cmd.template != "" {
+		t, err = templateutils.CreateTemplate("volume-list", cmd.template, nil)
+		if err != nil {
+			fatalf(err.Error())
+		}
 	}
 
 	pager := volumes.List(client, volumes.ListOpts{})
