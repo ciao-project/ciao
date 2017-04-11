@@ -1130,9 +1130,17 @@ func (cn *ComputeNode) deleteBridgeInternal(bridge *Bridge, bLink *linkInfo, brD
 		return NewFatalError(bridge.GlobalID + err.Error())
 	}
 
+	//Make forward progress even on error
+	err = cn.Delete("filter", "FORWARD", "-i", bridge.LinkName, "-j", "ACCEPT")
+
+	if err != nil {
+		fmt.Printf("Unable to delete firewall rule %v", err)
+	}
+
 	if err := bridge.Destroy(); err != nil {
 		return NewFatalError("bridge destroy failed " + err.Error())
 	}
+
 	// We delete the container network when the bridge is deleted
 	if cn.containerMap[bridge.GlobalID] {
 		brDeleteMsg.containerSubnetID = bridge.LinkName
@@ -1223,13 +1231,6 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 
 	bLink, present := cn.linkMap[alias.bridge]
 	if present {
-		//Make forward progress even on error
-		err := cn.Delete("filter", "FORWARD",
-			"-p", "all", "-i", bridge.LinkName, "-j", "ACCEPT")
-
-		if err != nil {
-			fmt.Printf("Unable to delete firewall rule %v", err)
-		}
 
 		err = cn.deleteBridgeInternal(bridge, bLink, brDeleteMsg)
 		if err != nil {
