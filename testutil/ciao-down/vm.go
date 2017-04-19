@@ -138,7 +138,7 @@ func statusVM(ctx context.Context, instanceDir, keyPath string) {
 	ssh := "N/A"
 	if sshReady(ctx) {
 		status = "ciao up"
-		ssh = fmt.Sprintf("ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i %s 127.0.0.1 -p %d", keyPath, 10022)
+		ssh = fmt.Sprintf("ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i %s 127.0.0.1 -p %d", keyPath, 10022)
 	}
 
 	w := new(tabwriter.Writer)
