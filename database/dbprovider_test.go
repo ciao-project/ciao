@@ -122,6 +122,20 @@ func testDbTableInit(t *testing.T, provider Provider) {
 	}
 }
 
+func testDbTablesList(t *testing.T, provider Provider) {
+	defer closeDb(&provider)
+
+	err := provider.Db.DbInit(provider.DbDir, provider.DbFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = provider.Db.DbTablesList()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func testDbAdd(t *testing.T, provider Provider) {
 	defer closeDb(&provider)
 
@@ -235,6 +249,12 @@ func TestBoltDbClose(t *testing.T) {
 func TestBoltDbTableInit(t *testing.T) {
 	provider := initProvider(NewBoltDBProvider())
 	testDbTableInit(t, provider)
+	_ = os.Remove(path.Join(dbDir, dbFile))
+}
+
+func TestBoltDbTablesList(t *testing.T) {
+	provider := initProvider(NewBoltDBProvider())
+	testDbTablesList(t, provider)
 	_ = os.Remove(path.Join(dbDir, dbFile))
 }
 
