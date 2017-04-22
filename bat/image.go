@@ -194,7 +194,12 @@ func GetImageCount(ctx context.Context, tenant string) (int, error) {
 		return 0, err
 	}
 
-	return strconv.Atoi(string(data))
+	imageCount := 0
+	if string(data) != "" {
+		imageCount, err = strconv.Atoi(string(data))
+	}
+
+	return imageCount, err
 }
 
 // UploadImage overrides the contents of an existing image with a new file.  It is
