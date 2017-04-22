@@ -81,7 +81,7 @@ func processAttachVolume(storageDriver storage.BlockDriver, monitorCh chan inter
 		}
 	}
 
-	cfg.Volumes = append(cfg.Volumes, volumeConfig{UUID: volumeUUID})
+	cfg.Volumes = append(cfg.Volumes, volumeConfig{UUID: volumeUUID, UnmapRequired: true})
 
 	err := cfg.save(instanceDir)
 	if err != nil {
