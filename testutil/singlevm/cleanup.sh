@@ -13,6 +13,7 @@ sudo iptables -D FORWARD -i ciao_br -j ACCEPT
 sudo iptables -D FORWARD -i ciaovlan -j ACCEPT
 if [ "$ciao_host" == "singlevm" ]; then
 	sudo iptables -D FORWARD -i ens2 -j ACCEPT
+	sudo iptables -t nat -D POSTROUTING -o ens2 -j MASQUERADE
 fi
 sudo ip link del ciao_br
 sudo pkill -F /tmp/dnsmasq.ciaovlan.pid

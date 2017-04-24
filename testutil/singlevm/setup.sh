@@ -614,6 +614,8 @@ if [ -x "$(command -v ip)" ]; then
     #add this rule
     if [ "$ciao_host" == "singlevm" ]; then
 	sudo iptables -A FORWARD -p all -i ens2 -j ACCEPT
+	#NAT out all the traffic departing ciao-down
+	sudo iptables -t nat -A POSTROUTING -o ens2 -j MASQUERADE
     fi
 
 else
