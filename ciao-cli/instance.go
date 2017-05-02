@@ -448,7 +448,11 @@ func validateCreateServerRequest(server compute.CreateServerRequest) error {
 }
 
 func populateCreateServerRequest(cmd *instanceAddCommand, server *compute.CreateServerRequest) {
-	server.Server.Name = cmd.label
+	if cmd.label != "" {
+		server.Server.Metadata = make(map[string]string)
+		server.Server.Metadata["label"] = cmd.label
+	}
+
 	server.Server.Flavor = cmd.workload
 	server.Server.MaxInstances = cmd.instances
 	server.Server.MinInstances = 1

@@ -274,6 +274,7 @@ type CreateServerRequest struct {
 		MaxInstances        int                    `json:"max_count"`
 		MinInstances        int                    `json:"min_count"`
 		BlockDeviceMappings []BlockDeviceMappingV2 `json:"block_device_mapping_v2,omitempty"`
+		Metadata            map[string]string      `json:"metadata,omitempty"`
 	} `json:"server"`
 }
 

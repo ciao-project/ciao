@@ -366,13 +366,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 	}
 	volumes := abstractBlockDevices(blockDeviceMappings)
 
-	// openstack doesn't allow us to use our traced start workload
-	// functionality. So we use the name field in our cli to indicate
-	// that we want to trace this workload.
-	label := ""
-	if server.Server.Name != "" {
-		label = server.Server.Name
-	}
+	label := server.Server.Metadata["label"]
 
 	w := types.WorkloadRequest{
 		WorkloadID: server.Server.Flavor,
