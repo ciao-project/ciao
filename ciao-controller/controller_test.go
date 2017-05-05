@@ -336,6 +336,30 @@ func TestStartWorkload(t *testing.T) {
 	defer client.Shutdown()
 }
 
+func TestNamedWorkload(t *testing.T) {
+	var reason payloads.StartFailureReason
+
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.Shutdown()
+
+	if len(instances) != 1 {
+		t.Errorf("Expected one instance created")
+	}
+
+	sds, err := ctl.ListServersDetail(instances[0].TenantID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(sds) != 1 {
+		t.Errorf("Expected one server detail")
+	}
+
+	if sds[0].Name != "test" {
+		t.Errorf("Instance name not as expected: %s", sds[0].Name)
+	}
+}
+
 func TestStartTracedWorkload(t *testing.T) {
 	client := testStartTracedWorkload(t)
 	defer client.Shutdown()
@@ -1046,6 +1070,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 		WorkloadID: wls[0].ID,
 		TenantID:   tenant.ID,
 		Instances:  num,
+		Name:       "test",
 	}
 	instances, err := ctl.startWorkload(w)
 	if err != nil {
