@@ -200,6 +200,17 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 			name = fmt.Sprintf("%s-%d", name, i)
 		}
 
+		id, err := c.ds.ResolveInstance(w.TenantID, name)
+		if err != nil {
+			e = errors.Wrap(err, "error trying to resolve name")
+			continue
+		}
+
+		if id != "" {
+			e = fmt.Errorf("Instance name already in use: %s", name)
+			continue
+		}
+
 		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name)
 		if err != nil {
 			e = errors.Wrap(err, "Error creating instance")
