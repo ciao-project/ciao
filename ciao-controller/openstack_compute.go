@@ -69,6 +69,7 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 		SSHIP:   instance.SSHIP,
 		SSHPort: instance.SSHPort,
 		Created: instance.CreateTime,
+		Name:    instance.Name,
 	}
 
 	return server, nil
@@ -374,6 +375,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 		Instances:  nInstances,
 		TraceLabel: label,
 		Volumes:    volumes,
+		Name:       server.Server.Name,
 	}
 	var e error
 	instances, err := c.startWorkload(w)

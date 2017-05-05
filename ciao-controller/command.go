@@ -194,7 +194,13 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 
 	for i := 0; i < w.Instances && e == nil; i++ {
 		startTime := time.Now()
-		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes)
+
+		name := w.Name
+		if w.Instances > 1 {
+			name = fmt.Sprintf("%s-%d", name, i)
+		}
+
+		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name)
 		if err != nil {
 			e = errors.Wrap(err, "Error creating instance")
 			continue

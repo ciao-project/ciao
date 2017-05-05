@@ -62,7 +62,7 @@ func isCNCIWorkload(workload *types.Workload) bool {
 }
 
 func newInstance(ctl *controller, tenantID string, workload *types.Workload,
-	volumes []storage.BlockDevice) (*instance, error) {
+	volumes []storage.BlockDevice, name string) (*instance, error) {
 	id := uuid.Generate()
 
 	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes)
@@ -81,6 +81,7 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		Subnet:     config.sc.Start.Networking.Subnet,
 		MACAddress: config.mac,
 		CreateTime: time.Now(),
+		Name:       name,
 	}
 
 	i := &instance{

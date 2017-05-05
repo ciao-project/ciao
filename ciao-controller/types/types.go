@@ -102,6 +102,7 @@ type WorkloadRequest struct {
 	Instances  int
 	TraceLabel string
 	Volumes    []storage.BlockDevice
+	Name       string
 }
 
 // Instance contains information about an instance of a workload.
