@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 
@@ -358,6 +359,13 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 		nInstances = server.Server.MaxInstances
 	} else if server.Server.MinInstances > 0 {
 		nInstances = server.Server.MinInstances
+	}
+
+	if server.Server.Name != "" {
+		r := regexp.MustCompile("^[a-z0-9-]*$")
+		if !r.MatchString(server.Server.Name) {
+			return server, fmt.Errorf("Requested name must only contain lowercase letters, numbers and hyphens")
+		}
 	}
 
 	blockDeviceMappings := server.Server.BlockDeviceMappings
