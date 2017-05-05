@@ -43,7 +43,7 @@ func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
 	return
 }
 
-func addTestInstance(tenant *types.Tenant, workload types.Workload) (instance *types.Instance, err error) {
+func addInstance(tenant *types.Tenant, workload types.Workload, name string) (instance *types.Instance, err error) {
 	id := uuid.Generate()
 
 	ip, err := ds.AllocateTenantIP(tenant.ID)
@@ -68,6 +68,7 @@ func addTestInstance(tenant *types.Tenant, workload types.Workload) (instance *t
 		CNCI:       false,
 		IPAddress:  ip.String(),
 		MACAddress: mac.String(),
+		Name:       name,
 	}
 
 	err = ds.AddInstance(instance)
@@ -76,6 +77,22 @@ func addTestInstance(tenant *types.Tenant, workload types.Workload) (instance *t
 	}
 
 	return
+}
+
+func addTestInstance(tenant *types.Tenant, workload types.Workload) (*types.Instance, error) {
+	return addInstance(tenant, workload, "test")
+}
+
+func addTestInstances(tenant *types.Tenant, workload types.Workload, count int) ([]*types.Instance, error) {
+	instances := make([]*types.Instance, 0)
+	for i := 0; i < count; i++ {
+		instance, err := addInstance(tenant, workload, fmt.Sprintf("test-%d", i))
+		if err != nil {
+			return make([]*types.Instance, 0), err
+		}
+		instances = append(instances, instance)
+	}
+	return instances, nil
 }
 
 func addTestWorkload(tenantID string) error {
@@ -164,14 +181,9 @@ func addTestInstanceStats(t *testing.T) ([]*types.Instance, payloads.Stat) {
 		t.Fatal("No Workloads Found")
 	}
 
-	var instances []*types.Instance
-
-	for i := 0; i < 10; i++ {
-		instance, err := addTestInstance(tenant, wls[0])
-		if err != nil {
-			t.Fatal(err)
-		}
-		instances = append(instances, instance)
+	instances, err := addTestInstances(tenant, wls[0], 10)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	var stats []payloads.InstanceStat
@@ -374,11 +386,9 @@ func TestGetAllInstances(t *testing.T) {
 		t.Fatal("No Workloads Found")
 	}
 
-	for i := 0; i < 10; i++ {
-		_, err = addTestInstance(tenant, wls[0])
-		if err != nil {
-			t.Fatal(err)
-		}
+	_, err = addTestInstances(tenant, wls[0], 10)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	instances, err := ds.GetAllInstances()
@@ -409,11 +419,9 @@ func TestGetAllInstancesFromTenant(t *testing.T) {
 		t.Fatal("No Workloads Found")
 	}
 
-	for i := 0; i < 10; i++ {
-		_, err = addTestInstance(tenant, wls[0])
-		if err != nil {
-			t.Fatal(err)
-		}
+	_, err = addTestInstances(tenant, wls[0], 10)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// if we don't get 10 eventually, the test will timeout and fail
@@ -491,14 +499,9 @@ func TestHandleStats(t *testing.T) {
 		t.Fatal("No Workloads Found")
 	}
 
-	var instances []*types.Instance
-
-	for i := 0; i < 10; i++ {
-		instance, err := addTestInstance(tenant, wls[0])
-		if err != nil {
-			t.Fatal(err)
-		}
-		instances = append(instances, instance)
+	instances, err := addTestInstances(tenant, wls[0], 10)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	var stats []payloads.InstanceStat
@@ -565,14 +568,9 @@ func TestGetInstanceLastStats(t *testing.T) {
 		t.Fatal("No Workloads Found")
 	}
 
-	var instances []*types.Instance
-
-	for i := 0; i < 10; i++ {
-		instance, err := addTestInstance(tenant, wls[0])
-		if err != nil {
-			t.Fatal(err)
-		}
-		instances = append(instances, instance)
+	instances, err := addTestInstances(tenant, wls[0], 10)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	var stats []payloads.InstanceStat
@@ -628,14 +626,9 @@ func TestGetNodeLastStats(t *testing.T) {
 		t.Fatal("No Workloads Found")
 	}
 
-	var instances []*types.Instance
-
-	for i := 0; i < 10; i++ {
-		instance, err := addTestInstance(tenant, wls[0])
-		if err != nil {
-			t.Fatal(err)
-		}
-		instances = append(instances, instance)
+	instances, err := addTestInstances(tenant, wls[0], 10)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	var stats []payloads.InstanceStat
