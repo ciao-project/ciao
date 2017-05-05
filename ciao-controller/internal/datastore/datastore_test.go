@@ -2654,6 +2654,15 @@ func TestAddNamedInstance(t *testing.T) {
 	if instances[0].Name != "test-instance" {
 		t.Fatalf("Instance does not have expected name")
 	}
+
+	id, err := ds.ResolveInstance(tenant.ID, "test-instance")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if id != instances[0].ID {
+		t.Fatalf("Failed to resolve instance name to ID")
+	}
 }
 
 var ds *Datastore
