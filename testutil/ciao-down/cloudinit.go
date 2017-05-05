@@ -196,6 +196,9 @@ runcmd:
  - {{download . "https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2" (printf "/home/%%s/local/Fedora-Cloud-Base-24-1.2.x86_64.qcow2" .User)}}
  - {{template "CHECK" .}}
 
+ - curl -X PUT -d "Downloading xenial-server-cloudimg-amd64-disk1.img" 10.0.2.2:{{.HTTPServerPort}}
+ - {{download . "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img" (printf "/home/%%s/local/xenial-server-cloudimg-amd64-disk1.img" .User)}}
+
  - curl -X PUT -d "Downloading CNCI image" 10.0.2.2:{{.HTTPServerPort}}
  - {{download . "https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz" (printf "/home/%%s/local/clear-8260-ciao-networking.img.xz" .User)}}
  - {{template "CHECK" .}}

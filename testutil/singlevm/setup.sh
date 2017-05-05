@@ -28,6 +28,8 @@ ciao_cnci_image="clear-8260-ciao-networking.img"
 ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
 fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
+ubuntu_cloud_image="xenial-server-cloudimg-amd64-disk1.img"
+ubuntu_cloud_url="https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
 download=0
 conf_file="$ciao_bin"/configuration.yaml
 webui_conf_file="$ciao_bin"/webui_config.json
@@ -142,7 +144,7 @@ function createWorkloads() {
 	# Get the image ID for the fedora cloud image
 	id=$(ciao-cli image list -f='{{$x := filter . "Name" "Fedora Cloud Base 24-1.2"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
 
-	# add 2 vm test workloads
+	# add 3 vm test workloads
 	echo "Generating Fedora VM test workload"
 	(
 	cat <<-EOF
@@ -186,6 +188,29 @@ function createWorkloads() {
 	    bootable: true
 	EOF
 	) > "$ciao_bin"/workload_examples/clear_vm.yaml
+
+	# get the clear image id
+	ubuntu_id=$(ciao-cli image list -f='{{select (head (filter . "Name" "Ubuntu Server 16.04")) "ID"}}')
+
+	echo "Generating Ubuntu VM test workload"
+	(
+	cat <<-EOF
+	description: "Ubuntu test VM"
+	vm_type: qemu
+	fw_type: legacy
+	defaults:
+	    vcpus: 2
+	    mem_mb: 256
+	    disk_mb: 80
+	cloud_init: "vm-test.yaml"
+	disks:
+	  - source:
+	       service: image
+	       id: "$ubuntu_id"
+	    ephemeral: true
+	    bootable: true
+	EOF
+	) > "$ciao_bin"/workload_examples/ubuntu_vm.yaml
 
 	# create a container test cloud init
 	echo "Creating Container cloud init"
@@ -235,6 +260,7 @@ function createWorkloads() {
 	"$ciao_gobin"/ciao-cli workload create -yaml clear_vm.yaml
 	"$ciao_gobin"/ciao-cli workload create -yaml ubuntu_latest.yaml
 	"$ciao_gobin"/ciao-cli workload create -yaml debian_latest.yaml
+	"$ciao_gobin"/ciao-cli workload create -yaml ubuntu_vm.yaml
 	popd
 }
 
@@ -597,6 +623,18 @@ then
 	exit 1
 fi
 
+if [ $download -eq 1 ] || [ ! -f $ubuntu_cloud_image ]
+then
+    rm -f $ubuntu_cloud_image
+    curl -L -O $ubuntu_cloud_url
+fi
+
+if [ ! -f $ubuntu_cloud_image ]
+then
+	echo "FATAL ERROR: unable to download fedora cloud Image"
+	exit 1
+fi
+
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
     sudo ip link del "$ciao_bridge"
@@ -754,6 +792,13 @@ if [ -f $fedora_cloud_image ]; then
     "$ciao_gobin"/ciao-cli \
         image add --file $fedora_cloud_image \
         --name "Fedora Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799 \
+	--visibility public
+fi
+
+if [ -f $ubuntu_cloud_image ]; then
+    "$ciao_gobin"/ciao-cli \
+        image add --file $ubuntu_cloud_image \
+        --name "Ubuntu Server 16.04" \
 	--visibility public
 fi
 
