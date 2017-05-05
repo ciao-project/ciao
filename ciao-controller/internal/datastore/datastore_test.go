@@ -2622,6 +2622,40 @@ func TestDeleteWorkload(t *testing.T) {
 	}
 }
 
+func TestAddNamedInstance(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wls, err := ds.GetWorkloads(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No Workloads Found")
+	}
+
+	_, err = addInstance(tenant, wls[0], "test-instance")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	instances, err := ds.GetAllInstancesFromTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(instances) != 1 {
+		t.Fatalf("Expected one instance added")
+	}
+
+	if instances[0].Name != "test-instance" {
+		t.Fatalf("Instance does not have expected name")
+	}
+}
+
 var ds *Datastore
 
 var workloadsPath = flag.String("workloads_path", "../../workloads", "path to yaml files")
