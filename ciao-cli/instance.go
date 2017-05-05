@@ -382,6 +382,7 @@ type instanceAddCommand struct {
 	instances int
 	label     string
 	volumes   volumeFlagSlice
+	name      string
 	template  string
 }
 
@@ -404,6 +405,7 @@ func (cmd *instanceAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.IntVar(&cmd.instances, "instances", 1, "Number of instances to create")
 	cmd.Flag.StringVar(&cmd.label, "label", "", "Set a frame label. This will trigger frame tracing")
 	cmd.Flag.Var(&cmd.volumes, "volume", "volume descriptor argument list")
+	cmd.Flag.StringVar(&cmd.name, "name", "", "Name for this instance. When multiple instances are requested this is used as a prefix")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
@@ -419,6 +421,14 @@ func (cmd *instanceAddCommand) validateAddCommandArgs() {
 	if cmd.workload == "" {
 		errorf("Missing required -workload parameter")
 		cmd.usage()
+	}
+
+	if cmd.name != "" {
+		r := regexp.MustCompile("^[a-z0-9-]*$")
+		if !r.MatchString(cmd.name) {
+			errorf("Name must only contain lowercase letters, numbers and hyphens.")
+			cmd.usage()
+		}
 	}
 
 	for _, volume := range cmd.volumes {
@@ -456,6 +466,7 @@ func populateCreateServerRequest(cmd *instanceAddCommand, server *compute.Create
 	server.Server.Flavor = cmd.workload
 	server.Server.MaxInstances = cmd.instances
 	server.Server.MinInstances = 1
+	server.Server.Name = cmd.name
 
 	for _, volume := range cmd.volumes {
 		bd := compute.BlockDeviceMappingV2{
