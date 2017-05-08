@@ -94,3 +94,8 @@ func (d *NoopDriver) IsValidSnapshotUUID(snapshotUUID string) error {
 
 	return nil
 }
+
+// Resize the underlying rbd image. Only extending is permitted.
+func (d *NoopDriver) Resize(volumeUUID string, sizeGiB int) (int, error) {
+	return sizeGiB, nil
+}

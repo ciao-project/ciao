@@ -111,6 +111,10 @@ func (s dockerTestStorage) IsValidSnapshotUUID(string) error {
 	return nil
 }
 
+func (s dockerTestStorage) Resize(string, int) (int, error) {
+	return 0, nil
+}
+
 type dockerTestClient struct {
 	err               error
 	images            []types.Image
