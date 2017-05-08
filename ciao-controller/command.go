@@ -196,19 +196,10 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		startTime := time.Now()
 
 		name := w.Name
-		if w.Instances > 1 {
-			name = fmt.Sprintf("%s-%d", name, i)
-		}
-
-		id, err := c.ds.ResolveInstance(w.TenantID, name)
-		if err != nil {
-			e = errors.Wrap(err, "error trying to resolve name")
-			continue
-		}
-
-		if id != "" {
-			e = fmt.Errorf("Instance name already in use: %s", name)
-			continue
+		if name != "" {
+			if w.Instances > 1 {
+				name = fmt.Sprintf("%s-%d", name, i)
+			}
 		}
 
 		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name)

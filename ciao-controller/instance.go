@@ -65,6 +65,17 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 	volumes []storage.BlockDevice, name string) (*instance, error) {
 	id := uuid.Generate()
 
+	if name != "" {
+		existingID, err := ctl.ds.ResolveInstance(tenantID, name)
+		if err != nil {
+			return nil, errors.Wrap(err, "error trying to resolve name")
+		}
+
+		if existingID != "" {
+			return nil, fmt.Errorf("Instance name already in use: %s", name)
+		}
+	}
+
 	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes)
 	if err != nil {
 		return nil, err
