@@ -16,6 +16,7 @@ package workloadbat
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -39,17 +40,8 @@ users:
 
 const vmWorkloadImageName = "Fedora Cloud Base 24-1.2"
 
-func testCreateWorkload(t *testing.T, public bool) {
-	// we'll use empty string for now
-	tenant := ""
-
-	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
-	defer cancelFunc()
-
-	// generate ssh test keys?
-
+func getWorkloadSource(ctx context.Context, t *testing.T, tenant string) bat.Source {
 	// get the Image ID to use.
-	// TBD: where does ctx and tenant come from?
 	source := bat.Source{
 		Type: "image",
 	}
@@ -72,6 +64,20 @@ func testCreateWorkload(t *testing.T, public bool) {
 		t.Fatalf("vm Image %s not available", vmWorkloadImageName)
 	}
 
+	return source
+}
+
+func testCreateWorkload(t *testing.T, public bool) {
+	// we'll use empty string for now
+	tenant := ""
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	// generate ssh test keys?
+
+	source := getWorkloadSource(ctx, t, tenant)
+
 	// fill out the opt structure for this workload.
 	defaults := bat.DefaultResources{
 		VCPUs: 2,
@@ -93,6 +99,7 @@ func testCreateWorkload(t *testing.T, public bool) {
 	}
 
 	var ID string
+	var err error
 	if public {
 		ID, err = bat.CreatePublicWorkload(ctx, tenant, opt, vmCloudInit)
 	} else {
@@ -149,4 +156,112 @@ func TestCreateTenantWorkload(t *testing.T) {
 // the correct resources and description.
 func TestCreatePublicWorkload(t *testing.T) {
 	testCreateWorkload(t, true)
+}
+
+func findQuota(qds []bat.QuotaDetails, name string) *bat.QuotaDetails {
+	for i := range qds {
+		if qds[i].Name == name {
+			return &qds[i]
+		}
+	}
+	return nil
+}
+
+// Check workload creation with a sized volume.
+//
+// Create a workload with a storage specification that has a size, boot
+// an instance from that workload and check that the storage usage goes
+// up. Then delete the instance and the created workload.
+//
+// The new workload is created successfully and the storage used by the
+// instance created from the workload matches the requested size.
+func TestCreateWorkloadWithSizedVolume(t *testing.T) {
+	tenant := ""
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	source := getWorkloadSource(ctx, t, tenant)
+
+	defaults := bat.DefaultResources{
+		VCPUs: 2,
+		MemMB: 128,
+	}
+
+	disk := bat.Disk{
+		Bootable:  true,
+		Source:    &source,
+		Ephemeral: true,
+		Size:      10,
+	}
+
+	opt := bat.WorkloadOptions{
+		Description: "BAT VM Test",
+		VMType:      "qemu",
+		FWType:      "legacy",
+		Defaults:    defaults,
+		Disks:       []bat.Disk{disk},
+	}
+
+	workloadID, err := bat.CreateWorkload(ctx, tenant, opt, vmCloudInit)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := bat.GetWorkloadByID(ctx, tenant, workloadID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	initalQuotas, err := bat.ListQuotas(ctx, tenant, "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	instances, err := bat.LaunchInstances(ctx, tenant, w.ID, 1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	scheduled, err := bat.WaitForInstancesLaunch(ctx, tenant, instances, false)
+	if err != nil {
+		t.Errorf("Instances failed to launch: %v", err)
+	}
+
+	updatedQuotas, err := bat.ListQuotas(ctx, tenant, "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	storageBefore := findQuota(initalQuotas, "tenant-storage-quota")
+	storageAfter := findQuota(updatedQuotas, "tenant-storage-quota")
+
+	if storageBefore == nil || storageAfter == nil {
+		t.Errorf("Quota not found for storage")
+	}
+
+	before, _ := strconv.Atoi(storageBefore.Usage)
+	after, _ := strconv.Atoi(storageAfter.Usage)
+
+	if after-before < 10 {
+		t.Errorf("Storage usage not increased by expected amount")
+	}
+
+	for _, i := range scheduled {
+		err = bat.DeleteInstanceAndWait(ctx, "", i)
+		if err != nil {
+			t.Errorf("Failed to delete instances: %v", err)
+		}
+	}
+
+	err = bat.DeleteWorkload(ctx, tenant, w.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = bat.GetWorkloadByID(ctx, tenant, workloadID)
+	if err == nil {
+		t.Fatalf("Workload not deleted correctly")
+	}
 }
