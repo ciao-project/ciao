@@ -223,34 +223,42 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 	// assume always persistent for now.
 	// assume we have already checked quotas.
 	// ID of source is the image id.
+	var device storage.BlockDevice
+	var err error
 	switch s.SourceType {
 	case types.ImageService:
-		device, err := c.CreateBlockDeviceFromSnapshot(s.SourceID, "ciao-image")
+		device, err = c.CreateBlockDeviceFromSnapshot(s.SourceID, "ciao-image")
 		if err != nil {
 			glog.Errorf("Unable to get block device for image: %v", err)
 			return payloads.StorageResource{}, err
 		}
 
-		return addBlockDevice(c, tenant, instanceID, device, s)
-
 	case types.VolumeService:
-		device, err := c.CopyBlockDevice(s.SourceID)
+		device, err = c.CopyBlockDevice(s.SourceID)
 		if err != nil {
 			return payloads.StorageResource{}, err
 		}
-
-		return addBlockDevice(c, tenant, instanceID, device, s)
 
 	case types.Empty:
-		device, err := c.CreateBlockDevice("", "", s.Size)
+		device, err = c.CreateBlockDevice("", "", s.Size)
 		if err != nil {
 			return payloads.StorageResource{}, err
 		}
 
-		return addBlockDevice(c, tenant, instanceID, device, s)
+	default:
+		return payloads.StorageResource{}, errors.New("Unsupported workload storage variant in getStorage()")
 	}
 
-	return payloads.StorageResource{}, errors.New("Unsupported workload storage variant in getStorage()")
+	if device.Size < s.Size {
+		device.Size, err = c.Resize(device.ID, s.Size)
+	}
+
+	if err != nil {
+		c.DeleteBlockDevice(device.ID)
+		return payloads.StorageResource{}, errors.Wrap(err, "error resizing volume")
+	}
+
+	return addBlockDevice(c, tenant, instanceID, device, s)
 }
 
 func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s types.StorageResource) {
