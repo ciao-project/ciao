@@ -76,7 +76,7 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		}
 	}
 
-	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes)
+	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes, name)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s ty
 }
 
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
-	volumes []storage.BlockDevice) (config, error) {
+	volumes []storage.BlockDevice, name string) (config, error) {
 
 	var metaData userData
 	var config config
@@ -336,6 +336,9 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		// set the hostname and uuid for userdata
 		metaData.UUID = instanceID
 		metaData.Hostname = instanceID
+		if name != "" {
+			metaData.Hostname = name
+		}
 
 		// handle storage resources for just this instance
 		for _, volume := range volumes {
