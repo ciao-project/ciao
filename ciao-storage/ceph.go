@@ -276,3 +276,17 @@ func (d CephDriver) IsValidSnapshotUUID(snapshotUUID string) error {
 
 	return nil
 }
+
+// Resize the underlying rbd image. Only extending is permitted. Returns the new size in GiB.
+func (d CephDriver) Resize(volumeUUID string, sizeGiB int) (int, error) {
+	args := append(d.getCredentials(), "resize", volumeUUID, "--no-progress", "-s", fmt.Sprintf("%dG", sizeGiB))
+	cmd := exec.Command("rbd", args...)
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		err = fmt.Errorf("Error when running: %v: %v: %s", cmd.Args, err, out)
+	}
+
+	size, _ := d.getBlockDeviceSizeGiB(volumeUUID)
+	return size, err
+}

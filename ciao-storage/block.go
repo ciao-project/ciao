@@ -36,6 +36,7 @@ type BlockDriver interface {
 	CopyBlockDevice(string) (BlockDevice, error)
 	GetBlockDeviceSize(volumeUUID string) (uint64, error)
 	IsValidSnapshotUUID(string) error
+	Resize(volumeUUID string, sizeGiB int) (int, error)
 }
 
 // BlockDevice contains information about a block device

@@ -54,11 +54,6 @@ func validateWorkloadStorage(req types.Workload) error {
 			return types.ErrBadRequest
 		}
 
-		// you may not request a sized volume unless it's empty.
-		if req.Storage[i].Size > 0 && req.Storage[i].SourceType != types.Empty {
-			return types.ErrBadRequest
-		}
-
 		// you may not request a bootable empty volume.
 		if req.Storage[i].Bootable && req.Storage[i].SourceType == types.Empty {
 			return types.ErrBadRequest

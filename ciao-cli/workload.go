@@ -140,7 +140,7 @@ type disk struct {
 	ID        *string `yaml:"volume_id,omitempty"`
 	Size      int     `yaml:"size"`
 	Bootable  bool    `yaml:"bootable"`
-	Source    *source `yaml:"source"`
+	Source    source  `yaml:"source"`
 	Ephemeral bool    `yaml:"ephemeral"`
 }
 
@@ -172,36 +172,33 @@ func optToReqStorage(opt workloadOptions) ([]types.StorageResource, error) {
 			Ephemeral: disk.Ephemeral,
 		}
 
-		if disk.Source != nil && disk.Source.Type == "" {
-			disk.Source.Type = types.Empty
-		}
-
+		// Use existing volume
 		if disk.ID != nil {
 			res.ID = *disk.ID
-		} else if disk.Size == 0 {
-			// source had better exist.
-			if disk.Source == nil {
-				return nil, errors.New("Invalid workload yaml: disk source may not be nil")
-			}
-
-			res.SourceType = disk.Source.Type
-			res.SourceID = disk.Source.ID
-
-			if res.SourceID != "" && res.SourceType == types.Empty {
-				return nil, errors.New("Invalid workload yaml: when specifying a source ID a type must also be specified")
-			}
-
-			if res.SourceType != types.Empty && res.SourceID == "" {
-				return nil, errors.New("Invalid workload yaml: when specifying a source type other than empty an id must also be specified")
-			}
 		} else {
-			if disk.Bootable == true {
-				// you may not request a bootable drive
-				// from an empty source
-				return nil, errors.New("Invalid workload yaml: empty disk source may not be bootable")
+			// Create a new one
+			if disk.Source.Type == "" {
+				disk.Source.Type = types.Empty
 			}
 
-			res.SourceType = types.Empty
+			if disk.Source.Type != types.Empty {
+				res.SourceType = disk.Source.Type
+				res.SourceID = disk.Source.ID
+
+				if res.SourceID == "" {
+					return nil, errors.New("Invalid workload yaml: when using a source an id must also be specified")
+				}
+			} else {
+				if disk.Bootable == true {
+					// you may not request a bootable drive
+					// from an empty source
+					return nil, errors.New("Invalid workload yaml: empty disk source may not be bootable")
+				}
+
+				if disk.Size <= 0 {
+					return nil, errors.New("Invalid workload yaml: size required when creating a volume")
+				}
+			}
 		}
 
 		if disk.Bootable {
@@ -289,7 +286,7 @@ func outputWorkload(w types.Workload) {
 			ID:   s.SourceID,
 		}
 
-		d.Source = &src
+		d.Source = src
 
 		opt.Disks = append(opt.Disks, d)
 	}

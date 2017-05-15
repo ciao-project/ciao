@@ -62,6 +62,10 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 		bd, err = c.CreateBlockDevice("", "", req.Size)
 	}
 
+	if err == nil && req.Size > bd.Size {
+		bd.Size, err = c.Resize(bd.ID, req.Size)
+	}
+
 	if err != nil {
 		return block.Volume{}, err
 	}

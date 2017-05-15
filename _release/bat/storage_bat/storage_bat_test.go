@@ -735,3 +735,90 @@ func TestCreateVolumeFromVolume(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// Check that volumes created from image with a size override work
+//
+// Create a volume from an image with a size and check new size allocated
+//
+// The created volume should be the newly requested size
+func TestCreateSizedVolumeFromImage(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	options := bat.ImageOptions{
+		Name: "test-image",
+	}
+
+	image, err := bat.AddRandomImage(ctx, "", 10, &options)
+	if err != nil {
+		t.Fatalf("Unable to add image %v", err)
+	}
+
+	volumeUUID, err := bat.AddVolume(ctx, "", image.ID, "image", &bat.VolumeOptions{Size: 10})
+	if err != nil {
+		t.Error(err)
+	}
+
+	volume, err := bat.GetVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if volume.Size != 10 {
+		t.Errorf("Expected volume sizes to match after clone: %v GiB vs %v", volume.Size, 10)
+	}
+
+	err = bat.DeleteVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = bat.DeleteImage(ctx, "", image.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Check that volumes created from volume with a size override work
+//
+// Create a volume from an volume with a size and check new size allocated
+//
+// The created volume should be the newly requested size
+func TestCreateSizedVolumeFromVolume(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	sourceVolumeUUID, err := bat.AddVolume(ctx, "", "", "", &bat.VolumeOptions{Size: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = bat.GetVolume(ctx, "", sourceVolumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	volumeUUID, err := bat.AddVolume(ctx, "", sourceVolumeUUID, "volume", &bat.VolumeOptions{Size: 10})
+	if err != nil {
+		t.Error(err)
+	}
+
+	volume, err := bat.GetVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if volume.Size != 10 {
+		t.Errorf("Expected volume sizes to match after clone: %v GiB vs %v", volume.Size, 10)
+	}
+
+	err = bat.DeleteVolume(ctx, "", volumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = bat.DeleteVolume(ctx, "", sourceVolumeUUID)
+	if err != nil {
+		t.Error(err)
+	}
+}
