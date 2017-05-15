@@ -505,7 +505,7 @@ func (ds *sqliteDB) create(tableName string, record ...interface{}) error {
 	}
 
 	args := strings.Join(values, ",")
-	cmd := "INSERT or IGNORE into " + tableName + " VALUES (" + args + ");"
+	cmd := "INSERT into " + tableName + " VALUES (" + args + ");"
 
 	return ds.exec(db, cmd)
 }
