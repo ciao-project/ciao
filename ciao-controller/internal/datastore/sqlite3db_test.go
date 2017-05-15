@@ -32,8 +32,8 @@ var dbCount = 1
 func getPersistentStore() (persistentStore, error) {
 	ps := &sqliteDB{}
 	config := Config{
-		PersistentURI:     "file:memdb" + string(dbCount) + "?mode=memory&cache=shared",
-		TransientURI:      "file:memdb" + string(dbCount+1) + "?mode=memory&cache=shared",
+		PersistentURI:     fmt.Sprintf("file:memdb%d?mode=memory&cache=shared", dbCount),
+		TransientURI:      fmt.Sprintf("file:memdb%d?mode=memory&cache=shared", dbCount+1),
 		InitWorkloadsPath: *workloadsPath,
 	}
 	err := ps.init(config)
