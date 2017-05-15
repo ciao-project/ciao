@@ -1127,3 +1127,38 @@ func TestSQLiteDBUpdateQuotas(t *testing.T) {
 		t.Fatal("Added quota not found")
 	}
 }
+
+func TestInstanceNameConstraint(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	i := types.Instance{
+		ID:         uuid.Generate().String(),
+		TenantID:   tenantID,
+		WorkloadID: uuid.Generate().String(),
+		IPAddress:  "172.16.0.2",
+		Name:       "test",
+	}
+
+	err = db.addInstance(&i)
+	if err != nil {
+		t.Fatal("unable to store instance")
+	}
+
+	i2 := types.Instance{
+		ID:         uuid.Generate().String(),
+		TenantID:   tenantID,
+		WorkloadID: uuid.Generate().String(),
+		IPAddress:  "172.16.0.3",
+		Name:       "test",
+	}
+
+	err = db.addInstance(&i2)
+
+	if err == nil {
+		t.Fatal("Expected instance add to fail (duplicate name)")
+	}
+}
