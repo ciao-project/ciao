@@ -473,7 +473,7 @@ func (ds *sqliteDB) exec(db *sql.DB, cmd string) error {
 		return err
 	}
 
-	tx.Commit()
+	err = tx.Commit()
 
 	return err
 }
