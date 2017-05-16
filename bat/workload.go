@@ -128,27 +128,7 @@ func createWorkload(ctx context.Context, tenant string, opt WorkloadOptions, con
 		return "", err
 	}
 
-	// send the workload create command to ciao-cli
-	args := []string{"workload", "create", "-yaml", "workload.yaml"}
-
-	var data []byte
-	if public {
-		data, err = RunCIAOCLIAsAdmin(ctx, tenant, args)
-	} else {
-		data, err = RunCIAOCLI(ctx, tenant, args)
-	}
-
-	if err != nil {
-		return "", err
-	}
-
-	// get the returned workload ID
-	s := strings.SplitAfter(string(data), ":")
-	if len(s) != 2 {
-		return "", fmt.Errorf("Problem parsing workload ID")
-	}
-
-	return strings.TrimSpace(s[1]), nil
+	return CreateWorkloadFromFile(ctx, public, tenant, "workload.yaml")
 }
 
 func deleteWorkload(ctx context.Context, tenant string, workload string, public bool) (err error) {
@@ -170,6 +150,35 @@ func deleteWorkload(ctx context.Context, tenant string, workload string, public 
 // created when it is done.
 func CreatePublicWorkload(ctx context.Context, tenant string, opt WorkloadOptions, config string) (string, error) {
 	return createWorkload(ctx, "", opt, config, true)
+}
+
+// CreateWorkloadFromFile will call ciao-cli workload create -yaml
+// to create a workload from the specified file.  ciao-cli will be invoked
+// using the admin user if the public flag is set to true.  The provided
+// workload definition file will remain intact after the call returns.
+// The id of the new workload is returned upon success.
+func CreateWorkloadFromFile(ctx context.Context, public bool, tenant, wdPath string) (string, error) {
+	args := []string{"workload", "create", "-yaml", wdPath}
+
+	var data []byte
+	var err error
+	if public {
+		data, err = RunCIAOCLIAsAdmin(ctx, tenant, args)
+	} else {
+		data, err = RunCIAOCLI(ctx, tenant, args)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	// get the returned workload ID
+	s := strings.SplitAfter(string(data), ":")
+	if len(s) != 2 {
+		return "", fmt.Errorf("Problem parsing workload ID")
+	}
+
+	return strings.TrimSpace(s[1]), nil
 }
 
 // DeletePublicWorkload will call ciao-cli as admin to delete a workload.
