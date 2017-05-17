@@ -18,7 +18,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -92,48 +91,6 @@ Format specific information:
     refcount bits: 16
     corrupt: false
 `
-
-func TestExtractImageInfo(t *testing.T) {
-	tests := []struct {
-		name   string
-		result int
-		data   string
-	}{
-		{
-			"imageInfoTestGood",
-			865,
-			imageInfoTestGood,
-		},
-		{
-			"imageInfoTestMissingBytes",
-			-1,
-			imageInfoTestMissingBytes,
-		},
-		{
-			"imageInfoTestMissingLine",
-			-1,
-			imageInfoTestMissingLine,
-		},
-		{
-			"imageInfoTooBig",
-			-1,
-			imageInfoTooBig,
-		},
-		{
-			"imageInfoBadBytes",
-			-1,
-			imageInfoBadBytes,
-		},
-	}
-
-	for _, ti := range tests {
-		b := bytes.NewBuffer([]byte(ti.data))
-		result := extractImageInfo(b)
-		if result != ti.result {
-			t.Fatalf("%s failed. %d != %d", ti.name, result, ti.result)
-		}
-	}
-}
 
 func genQEMUParams(networkParams []string) []string {
 	baseParams := []string{
