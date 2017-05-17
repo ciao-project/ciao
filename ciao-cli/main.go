@@ -104,12 +104,6 @@ const openstackComputeVersion = "v2.1"
 
 type action uint8
 
-func debugf(format string, args ...interface{}) {
-	if glog.V(2) {
-		glog.InfoDepth(1, fmt.Sprintf("ciao-cli DEBUG: "+format, args...))
-	}
-}
-
 func infof(format string, args ...interface{}) {
 	if glog.V(1) {
 		glog.InfoDepth(1, fmt.Sprintf("ciao-cli INFO: "+format, args...))
