@@ -20,16 +20,16 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"text/template"
+
+	"strings"
 
 	"github.com/01org/ciao/templateutils"
 	"github.com/rackspace/gophercloud"
 	"github.com/rackspace/gophercloud/openstack"
 	"github.com/rackspace/gophercloud/openstack/imageservice/v2/images"
 	"github.com/rackspace/gophercloud/pagination"
-	"strings"
 )
 
 var imageCommand = &command{
@@ -261,65 +261,6 @@ func (cmd *imageListCommand) run(args []string) error {
 	return err
 }
 
-type imageDownloadCommand struct {
-	Flag  flag.FlagSet
-	image string
-	file  string
-}
-
-func (cmd *imageDownloadCommand) usage(...string) {
-	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] image download [flags]
-
-Fetch an image
-
-The download flags are:
-
-`)
-	cmd.Flag.PrintDefaults()
-	os.Exit(2)
-}
-
-func (cmd *imageDownloadCommand) parseArgs(args []string) []string {
-	cmd.Flag.StringVar(&cmd.image, "image", "", "Image UUID")
-	cmd.Flag.StringVar(&cmd.file, "file", "", "Filename to save the image (default will print to stdout)")
-	cmd.Flag.Usage = func() { cmd.usage() }
-	cmd.Flag.Parse(args)
-	return cmd.Flag.Args()
-}
-
-func (cmd *imageDownloadCommand) run(args []string) (err error) {
-	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get Image service client [%s]\n", err)
-	}
-
-	r, err := images.Download(client, cmd.image).Extract()
-	if err != nil {
-		fatalf("Could not download image [%s]\n", err)
-	}
-
-	dest := os.Stdout
-	if cmd.file != "" {
-		dest, err = os.Create(cmd.file)
-		defer func() {
-			closeErr := dest.Close()
-			if err == nil {
-				err = closeErr
-			}
-		}()
-		if err != nil {
-			fatalf("Could not create destination file: %s: %v", cmd.file, err)
-		}
-	}
-
-	_, err = io.Copy(dest, r)
-	if err != nil {
-		fatalf("Error copying to destination: %v", err)
-	}
-
-	return nil
-}
-
 type imageDeleteCommand struct {
 	Flag  flag.FlagSet
 	image string
@@ -375,60 +316,6 @@ func uploadTenantImage(username, password, tenant, image, filename string) error
 		fatalf("Could not upload %s [%s]", filename, res.Err)
 	}
 	return res.Err
-}
-
-type imageModifyCommand struct {
-	Flag  flag.FlagSet
-	name  string
-	image string
-}
-
-func (cmd *imageModifyCommand) usage(...string) {
-	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] image modify [flags]
-
-Modify an image
-
-The modify flags are:
-
-`)
-	cmd.Flag.PrintDefaults()
-	os.Exit(2)
-}
-
-func (cmd *imageModifyCommand) parseArgs(args []string) []string {
-	cmd.Flag.StringVar(&cmd.name, "name", "", "Image Name")
-	cmd.Flag.StringVar(&cmd.image, "image", "", "Image UUID")
-	cmd.Flag.Usage = func() { cmd.usage() }
-	cmd.Flag.Parse(args)
-	return cmd.Flag.Args()
-}
-
-func (cmd *imageModifyCommand) run(args []string) error {
-	if cmd.image == "" {
-		return errors.New("Missing required -image parameter")
-	}
-
-	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get Image service client [%s]\n", err)
-	}
-
-	var opts images.UpdateOpts
-	if cmd.name != "" {
-		n := images.ReplaceImageName{
-			NewName: cmd.name,
-		}
-		opts = append(opts, n)
-	}
-
-	image, err := images.Update(client, cmd.image, opts).Extract()
-	if err != nil {
-		fatalf("Could not update image's properties [%s]\n", err)
-	}
-
-	fmt.Printf("Updated image:\n")
-	dumpImage(image)
-	return nil
 }
 
 func dumpImage(i *images.Image) {
