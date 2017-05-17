@@ -304,12 +304,7 @@ type pagerFilterType uint8
 
 const (
 	none pagerFilterType = iota
-	changesSinceFilter
-	imageFilter
 	flavorFilter
-	nameFilter
-	statusFilter
-	hostFilter
 	limit
 	marker
 )
@@ -430,7 +425,6 @@ type action uint8
 const (
 	computeActionStart action = iota
 	computeActionStop
-	computeActionDelete
 )
 
 func dumpRequestBody(r *http.Request, body bool) {
