@@ -240,7 +240,7 @@ func BenchmarkNewConfig(b *testing.B) {
 	b.ResetTimer()
 	noVolumes := []storage.BlockDevice{}
 	for n := 0; n < b.N; n++ {
-		_, err := newConfig(ctl, &wls[0], id.String(), tenant.ID, noVolumes)
+		_, err := newConfig(ctl, &wls[0], id.String(), tenant.ID, noVolumes, fmt.Sprintf("test-%d", n))
 		if err != nil {
 			b.Error(err)
 		}
@@ -334,6 +334,30 @@ func TestStartWorkload(t *testing.T) {
 
 	client, _ := testStartWorkload(t, 1, false, reason)
 	defer client.Shutdown()
+}
+
+func TestNamedWorkload(t *testing.T) {
+	var reason payloads.StartFailureReason
+
+	client, instances := testStartWorkload(t, 1, false, reason)
+	defer client.Shutdown()
+
+	if len(instances) != 1 {
+		t.Errorf("Expected one instance created")
+	}
+
+	sds, err := ctl.ListServersDetail(instances[0].TenantID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(sds) != 1 {
+		t.Errorf("Expected one server detail")
+	}
+
+	if sds[0].Name != "test" {
+		t.Errorf("Instance name not as expected: %s", sds[0].Name)
+	}
 }
 
 func TestStartTracedWorkload(t *testing.T) {
@@ -1046,6 +1070,7 @@ func testStartWorkload(t *testing.T, num int, fail bool, reason payloads.StartFa
 		WorkloadID: wls[0].ID,
 		TenantID:   tenant.ID,
 		Instances:  num,
+		Name:       "test",
 	}
 	instances, err := ctl.startWorkload(w)
 	if err != nil {
@@ -1315,7 +1340,7 @@ func TestStorageConfig(t *testing.T) {
 	id := uuid.Generate()
 
 	noVolumes := []storage.BlockDevice{}
-	_, err = newConfig(ctl, &wls[0], id.String(), tenant.ID, noVolumes)
+	_, err = newConfig(ctl, &wls[0], id.String(), tenant.ID, noVolumes, "test")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2393,3 +2393,23 @@ func (ds *Datastore) GetQuotas(tenantID string) ([]types.QuotaDetails, error) {
 func (ds *Datastore) UpdateQuotas(tenantID string, qds []types.QuotaDetails) error {
 	return ds.db.updateQuotas(tenantID, qds)
 }
+
+// ResolveInstance maps an instance name to an uuid, returning "" if not found
+// TODO: Replace this O(n) algorithm with another name to id map.
+func (ds *Datastore) ResolveInstance(tenantID string, name string) (string, error) {
+	ds.tenantsLock.RLock()
+	defer ds.tenantsLock.RUnlock()
+
+	t, ok := ds.tenants[tenantID]
+	if !ok {
+		return "", fmt.Errorf("Tenant not found: %s", tenantID)
+	}
+
+	for _, i := range t.instances {
+		if i.Name == name || i.ID == name {
+			return i.ID, nil
+		}
+	}
+
+	return "", nil
+}

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 
@@ -69,6 +70,7 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 		SSHIP:   instance.SSHIP,
 		SSHPort: instance.SSHPort,
 		Created: instance.CreateTime,
+		Name:    instance.Name,
 	}
 
 	return server, nil
@@ -359,6 +361,14 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 		nInstances = server.Server.MinInstances
 	}
 
+	if server.Server.Name != "" {
+		// Between 1 and 64 (HOST_NAME_MAX) alphanum (+ "-")
+		r := regexp.MustCompile("^[a-z0-9-]{1,64}?$")
+		if !r.MatchString(server.Server.Name) {
+			return server, fmt.Errorf("Requested name must be between 1 and 64 lowercase letters, numbers and hyphens")
+		}
+	}
+
 	blockDeviceMappings := server.Server.BlockDeviceMappings
 	err = c.validateBlockDeviceMappings(blockDeviceMappings, nInstances)
 	if err != nil {
@@ -366,13 +376,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 	}
 	volumes := abstractBlockDevices(blockDeviceMappings)
 
-	// openstack doesn't allow us to use our traced start workload
-	// functionality. So we use the name field in our cli to indicate
-	// that we want to trace this workload.
-	label := ""
-	if server.Server.Name != "" {
-		label = server.Server.Name
-	}
+	label := server.Server.Metadata["label"]
 
 	w := types.WorkloadRequest{
 		WorkloadID: server.Server.Flavor,
@@ -380,6 +384,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 		Instances:  nInstances,
 		TraceLabel: label,
 		Volumes:    volumes,
+		Name:       server.Server.Name,
 	}
 	var e error
 	instances, err := c.startWorkload(w)

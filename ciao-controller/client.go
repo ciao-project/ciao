@@ -499,9 +499,14 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		return errors.Wrapf(err, "Unable to update instance state before restarting")
 	}
 
+	hostname := i.ID
+	if i.Name != "" {
+		hostname = i.Name
+	}
+
 	metaData := userData{
 		UUID:     i.ID,
-		Hostname: i.ID,
+		Hostname: hostname,
 	}
 
 	restartCmd := payloads.StartCmd{

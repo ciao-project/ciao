@@ -32,8 +32,8 @@ var dbCount = 1
 func getPersistentStore() (persistentStore, error) {
 	ps := &sqliteDB{}
 	config := Config{
-		PersistentURI:     "file:memdb" + string(dbCount) + "?mode=memory&cache=shared",
-		TransientURI:      "file:memdb" + string(dbCount+1) + "?mode=memory&cache=shared",
+		PersistentURI:     fmt.Sprintf("file:memdb%d?mode=memory&cache=shared", dbCount),
+		TransientURI:      fmt.Sprintf("file:memdb%d?mode=memory&cache=shared", dbCount+1),
 		InitWorkloadsPath: *workloadsPath,
 	}
 	err := ps.init(config)
@@ -1125,5 +1125,40 @@ func TestSQLiteDBUpdateQuotas(t *testing.T) {
 
 	if !findQuota(qds, "test-quota-name", 20) {
 		t.Fatal("Added quota not found")
+	}
+}
+
+func TestInstanceNameConstraint(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	i := types.Instance{
+		ID:         uuid.Generate().String(),
+		TenantID:   tenantID,
+		WorkloadID: uuid.Generate().String(),
+		IPAddress:  "172.16.0.2",
+		Name:       "test",
+	}
+
+	err = db.addInstance(&i)
+	if err != nil {
+		t.Fatal("unable to store instance")
+	}
+
+	i2 := types.Instance{
+		ID:         uuid.Generate().String(),
+		TenantID:   tenantID,
+		WorkloadID: uuid.Generate().String(),
+		IPAddress:  "172.16.0.3",
+		Name:       "test",
+	}
+
+	err = db.addInstance(&i2)
+
+	if err == nil {
+		t.Fatal("Expected instance add to fail (duplicate name)")
 	}
 }

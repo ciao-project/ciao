@@ -62,10 +62,21 @@ func isCNCIWorkload(workload *types.Workload) bool {
 }
 
 func newInstance(ctl *controller, tenantID string, workload *types.Workload,
-	volumes []storage.BlockDevice) (*instance, error) {
+	volumes []storage.BlockDevice, name string) (*instance, error) {
 	id := uuid.Generate()
 
-	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes)
+	if name != "" {
+		existingID, err := ctl.ds.ResolveInstance(tenantID, name)
+		if err != nil {
+			return nil, errors.Wrap(err, "error trying to resolve name")
+		}
+
+		if existingID != "" {
+			return nil, fmt.Errorf("Instance name already in use: %s", name)
+		}
+	}
+
+	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes, name)
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +92,7 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		Subnet:     config.sc.Start.Networking.Subnet,
 		MACAddress: config.mac,
 		CreateTime: time.Now(),
+		Name:       name,
 	}
 
 	i := &instance{
@@ -274,7 +286,7 @@ func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s ty
 }
 
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
-	volumes []storage.BlockDevice) (config, error) {
+	volumes []storage.BlockDevice, name string) (config, error) {
 
 	var metaData userData
 	var config config
@@ -324,6 +336,9 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		// set the hostname and uuid for userdata
 		metaData.UUID = instanceID
 		metaData.Hostname = instanceID
+		if name != "" {
+			metaData.Hostname = name
+		}
 
 		// handle storage resources for just this instance
 		for _, volume := range volumes {
@@ -369,14 +384,12 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	}
 
 	// handle storage resources in workload definition
-	if len(wl.Storage) > 0 {
-		for i := range wl.Storage {
-			workloadStorage, err := getStorage(ctl, wl.Storage[i], tenantID, instanceID)
-			if err != nil {
-				return config, err
-			}
-			storage = append(storage, workloadStorage)
+	for i := range wl.Storage {
+		workloadStorage, err := getStorage(ctl, wl.Storage[i], tenantID, instanceID)
+		if err != nil {
+			return config, err
 		}
+		storage = append(storage, workloadStorage)
 	}
 
 	// hardcode persistence until changes can be made to workload
