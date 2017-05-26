@@ -18,10 +18,12 @@ package configuration
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 
 	"github.com/01org/ciao/payloads"
+	"gopkg.in/yaml.v2"
 )
 
 type file struct {
@@ -60,7 +62,18 @@ func (f *file) fetchConfiguration(uriStr string) (conf payloads.Configure, err e
 	return conf, nil
 }
 
-func (f *file) storeConfiguration(payloads.Configure) error {
-	//empty for now
+func (f *file) storeConfiguration(config payloads.Configure) error {
+	uri, err := url.Parse(config.Configure.Scheduler.ConfigStorageURI)
+	if err != nil {
+		return fmt.Errorf("unable to obtain configuration file location: %v", err)
+	}
+	pyld, err := yaml.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("unable to save new configuration: %v", err)
+	}
+	err = ioutil.WriteFile(uri.Path, pyld, 0600)
+	if err != nil {
+		return fmt.Errorf("unable to save new configuration: %v", err)
+	}
 	return nil
 }

@@ -733,3 +733,20 @@ type QuotaUpdateRequest struct {
 type QuotaListResponse struct {
 	Quotas []QuotaDetails `json:"quotas"`
 }
+
+// ConfigRequest is used to request a change in  a specific element of the
+// cluster configuration
+type ConfigRequest struct {
+	Element string `json:"element"`
+	Value   string `json:"value"`
+}
+
+// ConfigUpdateResponse is used to respond a configuration update request
+type ConfigUpdateResponse struct {
+	Response string `json:"response"`
+}
+
+// ConfigShowResponse is used to respond a configuration show request
+type ConfigShowResponse struct {
+	Configuration string `json:"configuration"`
+}

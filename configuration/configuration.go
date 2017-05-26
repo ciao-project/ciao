@@ -20,9 +20,14 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/01org/ciao/payloads"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	timeFmt = "20060102_150405"
 )
 
 // we can have values set to default, except for
@@ -108,4 +113,57 @@ func ExtractBlob(uri string) (blob []byte, err error) {
 		return nil, err
 	}
 	return blob, nil
+}
+
+// Save stores the payloads.Configure struct passed in 'conf'
+// using the backend defined by the scheme in the configuration URI.
+// Previous to save configuration, backup is retrieved from the URI
+// specified by the backup variable and saved in "backup.YYYYMMDD_HHMMSS"
+func Save(conf *payloads.Configure, backup string) error {
+	var d driver
+
+	if conf == nil {
+		return errors.New("unable to store invalid configuration")
+	}
+
+	// create a backup first
+	driverType, err := discoverDriver(backup)
+	if err != nil {
+		return err
+	}
+	switch driverType {
+	case payloads.Filesystem:
+		d = &file{}
+	}
+	pyld, err := d.fetchConfiguration(backup)
+	if err != nil {
+		return fmt.Errorf("unable to retrieve current configuration for backup: %v", err)
+	}
+
+	uri := pyld.Configure.Scheduler.ConfigStorageURI
+
+	// append date to original config location
+	t := time.Now()
+	bkp := fmt.Sprintf("%s.%s", uri, t.Format(timeFmt))
+	pyld.Configure.Scheduler.ConfigStorageURI = bkp
+	err = d.storeConfiguration(pyld)
+	if err != nil {
+		return fmt.Errorf("unable to create backup: %v", err)
+	}
+
+	// now write new configuration file
+	uri = conf.Configure.Scheduler.ConfigStorageURI
+	driverType, err = discoverDriver(uri)
+	if err != nil {
+		return err
+	}
+	switch driverType {
+	case payloads.Filesystem:
+		d = &file{}
+	}
+	err = d.storeConfiguration(*conf)
+	if err != nil {
+		return err
+	}
+	return nil
 }

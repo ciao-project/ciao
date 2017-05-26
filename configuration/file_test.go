@@ -18,6 +18,7 @@ package configuration
 
 import (
 	"io/ioutil"
+	"os"
 	"syscall"
 	"testing"
 
@@ -126,7 +127,21 @@ func TestFileStoreConfiguration(t *testing.T) {
 	conf.InitDefaults()
 	d = &file{}
 
-	err := d.storeConfiguration(conf)
+	// create temp file where we can read the conf
+	tmpf, err := ioutil.TempFile("", "configuration.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpf.Name())
+	uri := "file://" + tmpf.Name()
+	conf.Configure.Scheduler.ConfigStorageURI = uri
+	err = ioutil.WriteFile(tmpf.Name(), []byte(fullValidConf), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = d.storeConfiguration(conf)
+
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}

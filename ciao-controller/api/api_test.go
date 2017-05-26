@@ -24,6 +24,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/testutil"
 )
 
 type test struct {
@@ -49,7 +50,7 @@ var tests = []test{
 		"",
 		"application/text",
 		http.StatusOK,
-		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"},{"rel":"tenants","href":"/tenants","version":"x.ciao.tenants.v1","minimum_version":"x.ciao.tenants.v1"}]`,
+		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"},{"rel":"tenants","href":"/tenants","version":"x.ciao.tenants.v1","minimum_version":"x.ciao.tenants.v1"},{"rel":"configuration","href":"/configuration","version":"x.ciao.cluster-config.v1","minimum_version":"x.ciao.cluster-config.v1"}]`,
 	},
 	{
 		"GET",
@@ -176,6 +177,24 @@ var tests = []test{
 		"application/x.ciao.v1.tenants",
 		http.StatusOK,
 		`{"quotas":[{"name":"test-quota-1","value":"10","usage":"3"},{"name":"test-quota-2","value":"unlimited","usage":"10"},{"name":"test-limit","value":"123"}]}`,
+	},
+	{
+		"GET",
+		"/configuration",
+		showConfig,
+		"",
+		"application/x.ciao.cluster-config.v1",
+		http.StatusOK,
+		`{"configuration":"configure:\n  scheduler:\n    storage_uri: /etc/ciao/ciao.json\n  storage:\n    ceph_id: ciao\n  controller:\n    volume_port: 446\n    compute_port: 443\n    ciao_port: 447\n    compute_fqdn: \"\"\n    compute_ca: /etc/pki/ciao/compute_ca.pem\n    compute_cert: /etc/pki/ciao/compute_key.pem\n    identity_user: controller\n    identity_password: ''\n    cnci_vcpus: 0\n    cnci_mem: 0\n    cnci_disk: 0\n    admin_ssh_key: ''\n    admin_password: ''\n  launcher:\n    compute_net:\n    - 192.168.1.110\n    mgmt_net:\n    - 192.168.1.111\n    disk_limit: false\n    mem_limit: false\n  image_service:\n    type: glance\n    url: http://glance.example.com\n  identity_service:\n    type: keystone\n    url: http://keystone.example.com\n"}`,
+	},
+	{
+		"PUT",
+		"/configuration",
+		updateConfig,
+		`{"element": "launcher.mem_limit","value": "True"}`,
+		"application/x.ciao.cluster-config.v1",
+		http.StatusOK,
+		`{"response":"Configuration update from 'launcher.mem_limit' to 'True' sent"}`,
 	},
 }
 
@@ -313,6 +332,14 @@ func (ts testCiaoService) ListQuotas(tenantID string) []types.QuotaDetails {
 
 func (ts testCiaoService) UpdateQuotas(tenantID string, qds []types.QuotaDetails) error {
 	return nil
+}
+
+func (ts testCiaoService) UpdateClusterConfig(newConf types.ConfigRequest) error {
+	return nil
+}
+func (ts testCiaoService) ShowClusterConfig() (string, error) {
+	return testutil.ConfigureSanatizedYaml, nil
+
 }
 
 func TestResponse(t *testing.T) {

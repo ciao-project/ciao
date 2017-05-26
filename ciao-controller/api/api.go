@@ -16,6 +16,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -42,6 +43,8 @@ const (
 
 	// TenantsV1 is the content-type string for v1 of our tenants resource
 	TenantsV1 = "x.ciao.tenants.v1"
+	// ClusterConfigV1 is the content-type string for v1 of our cluster configuration resource
+	ClusterConfigV1 = "x.ciao.cluster-config.v1"
 )
 
 // HTTPErrorData represents the HTTP response body for
@@ -210,6 +213,18 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 	}
 
 	links = append(links, link)
+
+	// we support the "configuration" resource (privileged tenant only)
+	link = types.APILink{
+		Rel:        "configuration",
+		Version:    ClusterConfigV1,
+		MinVersion: ClusterConfigV1,
+	}
+
+	if !ok {
+		link.Href = fmt.Sprintf("%s/configuration", c.URL)
+		links = append(links, link)
+	}
 
 	return Response{http.StatusOK, links}, nil
 }
@@ -585,6 +600,43 @@ func updateQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusCreated, resp}, nil
 }
 
+// updateConfig implements the response for a configuration update
+// API call, checks for valid input and test new configuration value
+// previous to perform the change.
+func updateConfig(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	cfgResponse := types.ConfigUpdateResponse{Response: ""}
+	var cfgReq types.ConfigRequest
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		cfgResponse.Response = fmt.Sprintf("Cannot read request: %s", err.Error())
+		return Response{http.StatusInternalServerError, cfgResponse}, errors.New(cfgResponse.Response)
+	}
+	err = json.Unmarshal(body, &cfgReq)
+	if err != nil {
+		cfgResponse.Response = fmt.Sprintf("Cannot decode request: %s", err.Error())
+		return Response{http.StatusInternalServerError, cfgResponse}, errors.New(cfgResponse.Response)
+	}
+	err = c.Service.UpdateClusterConfig(cfgReq)
+	if err != nil {
+		cfgResponse.Response = fmt.Sprintf("Unable to update configuration: %s", err.Error())
+		return Response{http.StatusInternalServerError, cfgResponse}, errors.New(cfgResponse.Response)
+	}
+	glog.Infof("Cluster config '%s' changed to '%s'\n", cfgReq.Element, cfgReq.Value)
+	cfgResponse.Response = fmt.Sprintf("Configuration update from '%s' to '%s' sent", cfgReq.Element, cfgReq.Value)
+	return Response{http.StatusOK, cfgResponse}, nil
+}
+
+// showConfig implements the response for a configuration show API call
+func showConfig(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	rsp := types.ConfigShowResponse{Configuration: ""}
+	cnf, err := c.Service.ShowClusterConfig()
+	if err != nil {
+		return Response{http.StatusInternalServerError, nil}, err
+	}
+	rsp.Configuration = cnf
+	return Response{http.StatusOK, rsp}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -601,6 +653,8 @@ type Service interface {
 	ShowWorkload(tenantID string, workloadID string) (types.Workload, error)
 	ListQuotas(tenantID string) []types.QuotaDetails
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
+	UpdateClusterConfig(newConf types.ConfigRequest) error
+	ShowClusterConfig() (string, error)
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -736,5 +790,15 @@ func Routes(config Config) *mux.Router {
 	route.Methods("PUT")
 	route.HeadersRegexp("Content-Type", matchContent)
 
+	// configuration
+	matchContent = fmt.Sprintf("application/(%s|json)", ClusterConfigV1)
+
+	route = r.Handle("/configuration", Handler{context, showConfig, true})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/configuration", Handler{context, updateConfig, true})
+	route.Methods("PUT")
+	route.HeadersRegexp("Content-Type", matchContent)
 	return r
 }
