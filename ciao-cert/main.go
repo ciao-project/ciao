@@ -68,23 +68,7 @@ func verifyCert(CACert string, certName string) {
 		log.Printf("Could not load [%s] %s", certName, err)
 	}
 
-	blockCert, _ := pem.Decode(bytesCert)
-	cert, err := x509.ParseCertificate(blockCert.Bytes)
-	if err != nil {
-		log.Printf("Could not parse [%s] %s", certName, err)
-	}
-
-	roots := x509.NewCertPool()
-	ok := roots.AppendCertsFromPEM(bytesAnchorCert)
-	if !ok {
-		log.Printf("Could not add CA cert to poll")
-	}
-
-	opts := x509.VerifyOptions{
-		Roots: roots,
-	}
-
-	if _, err = cert.Verify(opts); err != nil {
+	if err = certs.VerifyCert(bytesAnchorCert, bytesCert); err != nil {
 		log.Printf("Failed to verify certificate: %s", err)
 	}
 }

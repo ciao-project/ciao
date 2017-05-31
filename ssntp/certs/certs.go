@@ -428,3 +428,27 @@ func AddPrivateKeyToCert(certInput io.Reader, privKeyInput io.Reader, certOutput
 
 	return nil
 }
+
+// VerifyCert verifies that bytesCert is valid in terms of the CA in bytesAnchorCert
+func VerifyCert(bytesAnchorCert, bytesCert []byte) error {
+	blockCert, _ := pem.Decode(bytesCert)
+	cert, err := x509.ParseCertificate(blockCert.Bytes)
+	if err != nil {
+		return errors.Wrap(err, "error parsing certificate")
+	}
+
+	roots := x509.NewCertPool()
+	ok := roots.AppendCertsFromPEM(bytesAnchorCert)
+	if !ok {
+		return errors.New("Could not add CA cert to poll")
+	}
+
+	opts := x509.VerifyOptions{
+		Roots: roots,
+	}
+
+	if _, err = cert.Verify(opts); err != nil {
+		return errors.Wrap(err, "failed to verify certificate")
+	}
+	return nil
+}
