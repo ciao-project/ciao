@@ -30,6 +30,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -451,4 +452,20 @@ func VerifyCert(bytesAnchorCert, bytesCert []byte) error {
 		return errors.Wrap(err, "failed to verify certificate")
 	}
 	return nil
+}
+
+// FingerPrint returns the SHA-256 fingerprint of the public key
+func FingerPrint(c interface{}) string {
+	var input *[]byte
+	switch c.(type) {
+	case *x509.CertificateRequest:
+		input = &c.(*x509.CertificateRequest).RawSubjectPublicKeyInfo
+	case *x509.Certificate:
+		input = &c.(*x509.Certificate).RawSubjectPublicKeyInfo
+	default:
+		return ""
+	}
+	h := sha256.New()
+	h.Write(*input)
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
