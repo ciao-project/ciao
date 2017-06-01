@@ -42,6 +42,7 @@ import (
 	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
+	"github.com/coreos/go-systemd/daemon"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -61,6 +62,7 @@ type controller struct {
 	tenantReadiness     map[string]*tenantConfirmMemo
 	tenantReadinessLock sync.Mutex
 	qs                  *quotas.Quotas
+	ready               sync.WaitGroup
 }
 
 var cert = flag.String("cert", "", "Client certificate")
@@ -215,12 +217,15 @@ func main() {
 	}
 
 	wg.Add(1)
+	ctl.ready.Add(1)
 	go ctl.startComputeService()
 
 	wg.Add(1)
+	ctl.ready.Add(1)
 	go ctl.startVolumeService()
 
 	wg.Add(1)
+	ctl.ready.Add(1)
 	go ctl.startImageService()
 
 	host := clusterConfig.Configure.Controller.ControllerFQDN
@@ -230,7 +235,11 @@ func main() {
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
 	wg.Add(1)
+	ctl.ready.Add(1)
 	go ctl.startCiaoService()
+
+	ctl.ready.Wait()
+	daemon.SdNotify(false, "READY=1")
 
 	wg.Wait()
 	ctl.qs.Shutdown()
@@ -278,6 +287,7 @@ func (c *controller) startCiaoService() error {
 
 	glog.Infof("Starting ciao API on port %d\n", controllerAPIPort)
 
+	c.ready.Done()
 	err = http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
 	if err != nil {
 		glog.Fatal(err)

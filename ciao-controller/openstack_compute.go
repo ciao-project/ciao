@@ -668,5 +668,6 @@ func (c *controller) startComputeService() error {
 	// start service.
 	service := fmt.Sprintf(":%d", computeAPIPort)
 
+	c.ready.Done()
 	return http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
 }

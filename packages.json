@@ -14,6 +14,11 @@
 		"version": "fbb7337",
 		"license": "Apache v2.0"
 	},
+	"github.com/coreos/go-systemd": {
+		"url": "https://github.com/coreos/go-systemd.git",
+		"version": "e97b35f",
+		"license": "Apache v2.0"
+	},
 	"github.com/docker/docker": {
 		"url": "https://github.com/docker/docker.git",
 		"version": "v1.10.3",

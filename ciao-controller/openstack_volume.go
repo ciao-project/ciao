@@ -473,5 +473,6 @@ func (c *controller) startVolumeService() error {
 	// start service.
 	service := fmt.Sprintf(":%d", block.APIPort)
 
+	c.ready.Done()
 	return http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
 }
