@@ -2,10 +2,6 @@
 
 ciao_host=$(hostname)
 
-#Obtain the subnet of the primary interface
-default_if=$(ip route list | awk '/^default/ {print $5}')
-default_subnet=$(ip -o -f inet addr show $default_if | awk '{print $4}')
-
 #Cleanup artifacts
 sudo "$GOPATH"/bin/ciao-launcher --alsologtostderr -v 3 --hard-reset
 
