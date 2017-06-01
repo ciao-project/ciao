@@ -37,6 +37,8 @@ var nodeCommand = &command{
 type nodeListCommand struct {
 	Flag     flag.FlagSet
 	compute  bool
+	network  bool
+	all      bool
 	cnci     bool
 	nodeID   bool
 	template string
@@ -57,17 +59,29 @@ The template passed to the -f option operates on one of the following types:
 
 %s
 
+--network
+
+%s
+
 --compute
+
+%s
+
+--all
 
 %s`,
 		templateutils.GenerateUsageUndecorated([]types.CiaoCNCI{}),
-		templateutils.GenerateUsageUndecorated([]types.CiaoComputeNode{}))
+		templateutils.GenerateUsageUndecorated([]types.CiaoNode{}),
+		templateutils.GenerateUsageUndecorated([]types.CiaoNode{}),
+		templateutils.GenerateUsageUndecorated([]types.CiaoNode{}))
 	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
 func (cmd *nodeListCommand) parseArgs(args []string) []string {
 	cmd.Flag.BoolVar(&cmd.compute, "compute", false, "List all compute nodes")
+	cmd.Flag.BoolVar(&cmd.network, "network", false, "List all network nodes")
+	cmd.Flag.BoolVar(&cmd.all, "all", false, "List all nodes")
 	cmd.Flag.BoolVar(&cmd.cnci, "cnci", false, "List all CNCIs")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
@@ -86,19 +100,21 @@ func (cmd *nodeListCommand) run(args []string) error {
 	}
 
 	if cmd.compute {
-		return listComputeNodes(t)
+		listComputeNodes(t)
+	} else if cmd.network {
+		listNetworkNodes(t)
+	} else if cmd.cnci {
+		listCNCINodes(t)
+	} else if cmd.all {
+		listNodes(t)
+	} else {
+		cmd.usage()
 	}
-	if cmd.cnci {
-		return listCNCINodes(t)
-	}
-	cmd.usage()
 	return nil
 }
 
-func listComputeNodes(t *template.Template) error {
-	var nodes types.CiaoComputeNodes
-
-	url := buildComputeURL("nodes")
+func dumpNodes(headerText string, url string, t *template.Template) {
+	var nodes types.CiaoNodes
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
@@ -114,11 +130,11 @@ func listComputeNodes(t *template.Template) error {
 		if err := t.Execute(os.Stdout, &nodes.Nodes); err != nil {
 			fatalf(err.Error())
 		}
-		return nil
+		return
 	}
 
 	for i, node := range nodes.Nodes {
-		fmt.Printf("Compute Node %d\n", i+1)
+		fmt.Printf("%s %d\n", headerText, i+1)
 		fmt.Printf("\tUUID: %s\n", node.ID)
 		fmt.Printf("\tStatus: %s\n", node.Status)
 		fmt.Printf("\tLoad: %d\n", node.Load)
@@ -129,7 +145,21 @@ func listComputeNodes(t *template.Template) error {
 		fmt.Printf("\t\tPending Instances: %d\n", node.TotalPendingInstances)
 		fmt.Printf("\t\tPaused Instances: %d\n", node.TotalPausedInstances)
 	}
-	return nil
+}
+
+func listComputeNodes(t *template.Template) {
+	url := buildComputeURL("nodes/compute")
+	dumpNodes("Compute Node", url, t)
+}
+
+func listNetworkNodes(t *template.Template) {
+	url := buildComputeURL("nodes/network")
+	dumpNodes("Network Node", url, t)
+}
+
+func listNodes(t *template.Template) {
+	url := buildComputeURL("nodes")
+	dumpNodes("Node", url, t)
 }
 
 func listCNCINodes(t *template.Template) error {

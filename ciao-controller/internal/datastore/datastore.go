@@ -30,6 +30,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -143,7 +144,7 @@ type Datastore struct {
 	cnciAddedChans map[string]chan bool
 	cnciAddedLock  *sync.Mutex
 
-	nodeLastStat     map[string]types.CiaoComputeNode
+	nodeLastStat     map[string]types.CiaoNode
 	nodeLastStatLock *sync.RWMutex
 
 	instanceLastStat     map[string]types.CiaoServerStats
@@ -220,7 +221,7 @@ func (ds *Datastore) Init(config Config) error {
 	ds.cnciAddedChans = make(map[string]chan bool)
 	ds.cnciAddedLock = &sync.Mutex{}
 
-	ds.nodeLastStat = make(map[string]types.CiaoComputeNode)
+	ds.nodeLastStat = make(map[string]types.CiaoNode)
 	ds.nodeLastStatLock = &sync.RWMutex{}
 
 	ds.instanceLastStat = make(map[string]types.CiaoServerStats)
@@ -1174,6 +1175,50 @@ func (ds *Datastore) DeleteNode(nodeID string) error {
 	return nil
 }
 
+// AddNode adds a node into the node cache, updating the node's tracked
+// role bitmask if the node is already present to be the superset of all
+// reported roles.
+func (ds *Datastore) AddNode(nodeID string, nodeType payloads.Resource) {
+	var role ssntp.Role
+	switch nodeType {
+	case payloads.ComputeNode:
+		role = ssntp.AGENT
+	case payloads.NetworkNode:
+		role = ssntp.NETAGENT
+	}
+
+	ds.nodesLock.Lock()
+	defer ds.nodesLock.Unlock()
+
+	if ds.nodes[nodeID] != nil {
+		ds.nodes[nodeID].NodeRole |= role
+		return
+	}
+
+	n := &node{
+		Node: types.Node{
+			ID:       nodeID,
+			NodeRole: role,
+		},
+		instances: make(map[string]*types.Instance),
+	}
+	ds.nodes[nodeID] = n
+}
+
+// GetNode retrieves a node in the node cache.
+func (ds *Datastore) GetNode(nodeID string) (types.Node, error) {
+	var node types.Node
+
+	ds.nodesLock.RLock()
+	defer ds.nodesLock.RUnlock()
+
+	if ds.nodes[nodeID] == nil {
+		return node, fmt.Errorf("node %s not found", nodeID)
+	}
+
+	return ds.nodes[nodeID].Node, nil
+}
+
 // HandleStats makes sure that the data from the stat payload is stored.
 func (ds *Datastore) HandleStats(stat payloads.Stat) error {
 	if stat.Load != -1 {
@@ -1216,18 +1261,18 @@ func (ds *Datastore) GetInstanceLastStats(nodeID string) types.CiaoServersStats 
 	return serversStats
 }
 
-// GetNodeLastStats retrieves the last nodes stats received for this node.
+// GetNodeLastStats retrieves the last nodes' stats received.
 // It returns it in a format suitable for the compute API.
-func (ds *Datastore) GetNodeLastStats() types.CiaoComputeNodes {
-	var computeNodes types.CiaoComputeNodes
+func (ds *Datastore) GetNodeLastStats() types.CiaoNodes {
+	var nodes types.CiaoNodes
 
 	ds.nodeLastStatLock.RLock()
 	for _, node := range ds.nodeLastStat {
-		computeNodes.Nodes = append(computeNodes.Nodes, node)
+		nodes.Nodes = append(nodes.Nodes, node)
 	}
 	ds.nodeLastStatLock.RUnlock()
 
-	return computeNodes
+	return nodes
 }
 
 func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
@@ -1245,7 +1290,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 
 	ds.nodesLock.Unlock()
 
-	cnStat := types.CiaoComputeNode{
+	cnStat := types.CiaoNode{
 		ID:            stat.NodeUUID,
 		Status:        stat.Status,
 		Load:          stat.Load,

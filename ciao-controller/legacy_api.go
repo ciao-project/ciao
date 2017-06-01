@@ -146,6 +146,30 @@ func legacyListNodes(c *controller, w http.ResponseWriter, r *http.Request) (API
 	return listNodes(c, w, r)
 }
 
+// @Title legacyListComputeNodes
+// @Description Returns a list of all compute nodes.
+// @Accept  json
+// @Success 200 {array} interface "Returns ciao-controller.nodePager with TotalInstances, TotalRunningInstances, TotalPendingInstances, TotalPausedInstances."
+// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/nodes/compute [get]
+// @Resource /v2.1/node/computes
+func legacyListComputeNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	return listComputeNodes(c, w, r)
+}
+
+// @Title legacyListNetworkNodes
+// @Description Returns a list of all network nodes.
+// @Accept  json
+// @Success 200 {array} interface "Returns ciao-controller.nodePager with TotalInstances, TotalRunningInstances, TotalPendingInstances, TotalPausedInstances."
+// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
+// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
+// @Router /v2.1/nodes/network [get]
+// @Resource /v2.1/nodes/network
+func legacyListNetworkNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+	return listNetworkNodes(c, w, r)
+}
+
 // @Title legacyNodesSummary
 // @Description A summary of all node stats.
 // @Accept  json
@@ -301,6 +325,10 @@ func legacyComputeRoutes(ctl *controller, r *mux.Router) *mux.Router {
 		legacyAPIHandler{ctl, legacyNodesSummary, true}).Methods("GET")
 	r.Handle("/v2.1/nodes/{node}/servers/detail",
 		legacyAPIHandler{ctl, legacyListNodeServers, true}).Methods("GET")
+	r.Handle("/v2.1/nodes/compute",
+		legacyAPIHandler{ctl, legacyListComputeNodes, true}).Methods("GET")
+	r.Handle("/v2.1/nodes/network",
+		legacyAPIHandler{ctl, legacyListNetworkNodes, true}).Methods("GET")
 
 	r.Handle("/v2.1/cncis",
 		legacyAPIHandler{ctl, legacyListCNCIs, true}).Methods("GET")
