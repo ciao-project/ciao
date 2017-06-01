@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -82,45 +81,6 @@ func (q *qemuV) init(cfg *vmConfig, instanceDir string) {
 	q.cfg = cfg
 	q.instanceDir = instanceDir
 	q.isoPath = path.Join(instanceDir, seedImage)
-}
-
-func extractImageInfo(r io.Reader) int {
-	imageSizeMiB := -1
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() && imageSizeMiB == -1 {
-		line := scanner.Text()
-		matches := virtualSizeRegexp.FindStringSubmatch(line)
-		if matches == nil {
-			continue
-		}
-
-		if len(matches) < 2 {
-			glog.Warningf("Unable to find image size from: %s",
-				line)
-			break
-		}
-
-		sizeInBytes, err := strconv.ParseInt(matches[1], 10, 64)
-		if err != nil {
-			glog.Warningf("Unable to parse image size from: %s",
-				matches[1])
-			break
-		}
-
-		size := sizeInBytes / (1024 * 1024)
-		if size > int64((^uint(0))>>1) {
-			glog.Warningf("Unexpectedly large disk size found: %d MiB",
-				size)
-			break
-		}
-
-		imageSizeMiB = int(size)
-		if int64(imageSizeMiB)*1024*1024 < sizeInBytes {
-			imageSizeMiB++
-		}
-	}
-
-	return imageSizeMiB
 }
 
 func createCloudInitISO(instanceDir, isoPath string, cfg *vmConfig, userData, metaData []byte) error {

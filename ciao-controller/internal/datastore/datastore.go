@@ -54,7 +54,6 @@ type userEventType string
 
 const (
 	userInfo  userEventType = "info"
-	userWarn  userEventType = "warn"
 	userError userEventType = "error"
 )
 

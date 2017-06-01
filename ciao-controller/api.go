@@ -68,9 +68,8 @@ func errorResponse(err error) APIResponse {
 type pagerFilterType uint8
 
 const (
-	none           pagerFilterType = 0
-	workloadFilter                 = 0x1
-	statusFilter                   = 0x2
+	none         pagerFilterType = 0
+	statusFilter                 = 0x2
 )
 
 type pager interface {

@@ -15,7 +15,3 @@
 //
 
 package parallel
-
-func main() {
-
-}
