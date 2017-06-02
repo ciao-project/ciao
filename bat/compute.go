@@ -56,11 +56,10 @@ type Tenant struct {
 
 // Workload contains detailed information about a workload
 type Workload struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	ImageUUID string `json:"disk"`
-	CPUs      int    `json:"vcpus"`
-	Mem       int    `json:"ram"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	CPUs int    `json:"vcpus"`
+	Mem  int    `json:"ram"`
 }
 
 // Instance contains detailed information about an instance

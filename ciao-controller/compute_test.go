@@ -618,7 +618,6 @@ func testShowFlavorDetails(t *testing.T, httpExpectedStatus int, validToken bool
 		details := compute.FlavorDetails{
 			OsFlavorAccessIsPublic: true,
 			ID:   w.ID,
-			Disk: w.ImageID,
 			Name: w.Description,
 		}
 
