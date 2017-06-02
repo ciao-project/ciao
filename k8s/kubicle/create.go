@@ -563,6 +563,20 @@ func (c *creator) waitForAdminConf(ctx context.Context) error {
 	return err
 }
 
+func (c *creator) alreadyExists(ctx context.Context) bool {
+	_, err := getWorkloadUUIDs(ctx, workerWorkloadName)
+	if err == nil {
+		return true
+	}
+
+	_, err = getWorkloadUUIDs(ctx, masterWorkloadName)
+	if err == nil {
+		return true
+	}
+
+	return false
+}
+
 func newCreator() (*creator, error) {
 	c := &creator{}
 
@@ -601,6 +615,10 @@ func createCluster(ctx context.Context) (err error) {
 	c, err = newCreator()
 	if err != nil {
 		return err
+	}
+
+	if c.alreadyExists(ctx) {
+		return fmt.Errorf("kubicle has already created a cluster for this tenant")
 	}
 
 	defer func() {

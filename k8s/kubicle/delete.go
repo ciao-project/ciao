@@ -34,32 +34,6 @@ type destroyer struct {
 	ipsMapped   bool
 }
 
-func getWorkloadUUID(ctx context.Context, name string) (string, error) {
-	wls, err := bat.GetAllWorkloads(ctx, "")
-	if err != nil {
-		return "", fmt.Errorf("Failed to retrieve workload list")
-	}
-	var id string
-	matches := 0
-
-	for _, w := range wls {
-		if w.Name == name {
-			id = w.ID
-			matches++
-		}
-	}
-
-	if matches == 0 {
-		return "", fmt.Errorf("workload %s not found", name)
-	}
-
-	if matches > 1 {
-		return "", fmt.Errorf("Multiple workloads with the same name (%s) found", name)
-	}
-
-	return id, nil
-}
-
 func (d *destroyer) deleteExternalIPs(ctx context.Context) error {
 	externalIPs, err := bat.ListExternalIPs(ctx, "")
 	if err != nil {
