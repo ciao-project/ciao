@@ -41,6 +41,7 @@ var (
 	ErrNoTenant            = errors.New("Tenant not found")
 	ErrNoBlockData         = errors.New("Block Device not found")
 	ErrNoStorageAttachment = errors.New("No Volume Attached")
+	ErrTenantExists        = errors.New("Tenant exists")
 )
 
 // Config contains configuration information for the datastore.
@@ -362,6 +363,13 @@ func newHardwareAddr() (net.HardwareAddr, error) {
 // it creates a MAC address for the tenant network and makes sure
 // that this new tenant is cached.
 func (ds *Datastore) AddTenant(id string) (*types.Tenant, error) {
+	ds.tenantsLock.Lock()
+	defer ds.tenantsLock.Unlock()
+
+	if t, ok := ds.tenants[id]; ok {
+		return &t.Tenant, ErrTenantExists
+	}
+
 	hw, err := newHardwareAddr()
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating MAC address")
@@ -372,14 +380,12 @@ func (ds *Datastore) AddTenant(id string) (*types.Tenant, error) {
 		return nil, errors.Wrapf(err, "error adding tenant (%v) to database", id)
 	}
 
-	t, err := ds.getTenant(id)
+	t, err := ds.db.getTenant(id)
 	if err != nil || t == nil {
 		return nil, err
 	}
 
-	ds.tenantsLock.Lock()
 	ds.tenants[id] = t
-	ds.tenantsLock.Unlock()
 
 	return &t.Tenant, nil
 }

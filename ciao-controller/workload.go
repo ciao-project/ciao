@@ -17,6 +17,7 @@ package main
 import (
 	"github.com/golang/glog"
 
+	"github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
@@ -160,16 +161,9 @@ func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) 
 	// workload. Instead, we'll add the new tenant directly to the
 	// datastore. On first launch request, if the tenant doesn't yet
 	// have a cnci, it will get launched for them then.
-	tenant, err := c.ds.GetTenant(req.TenantID)
-	if err != nil {
+	_, err = c.ds.AddTenant(req.TenantID)
+	if err != nil && err != datastore.ErrTenantExists {
 		return req, err
-	}
-
-	if tenant == nil {
-		_, err := c.ds.AddTenant(req.TenantID)
-		if err != nil {
-			return req, err
-		}
 	}
 
 	// create a workload storage resource for this new workload.
