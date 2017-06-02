@@ -30,6 +30,7 @@ type destroyer struct {
 	wDeleted    []string
 	iDeleted    []string
 	ipsDeleted  []string
+	poolName    string
 	poolDeleted string
 	ipsMapped   bool
 }
@@ -41,6 +42,9 @@ func (d *destroyer) deleteExternalIPs(ctx context.Context) error {
 	}
 
 	for _, ip := range externalIPs {
+		if ip.PoolName != d.poolName {
+			continue
+		}
 		if _, ok := d.instances[ip.InstanceID]; ok {
 			d.ipsMapped = true
 			err := bat.UnmapExternalIP(ctx, "", ip.ExternalIP)
@@ -56,9 +60,9 @@ func (d *destroyer) deleteExternalIPs(ctx context.Context) error {
 	}
 
 	for i := 0; i < 5; i++ {
-		err := bat.DeleteExternalIPPool(ctx, "", externalIPPool)
+		err := bat.DeleteExternalIPPool(ctx, "", d.poolName)
 		if err == nil {
-			d.poolDeleted = externalIPPool
+			d.poolDeleted = d.poolName
 			return nil
 		}
 		select {
@@ -134,9 +138,18 @@ func (d *destroyer) destroyCluster(ctx context.Context) error {
 
 	defer d.status()
 
-	err = d.deleteExternalIPs(ctx)
+	masterWkldUUID, err := getWorkloadUUID(ctx, masterWorkloadName)
 	if err != nil {
-		return err
+		fmt.Fprintf(os.Stderr, "Warning: Failed to determine master workload: %v\n", err)
+		if ctx.Err() != nil {
+			return err
+		}
+	} else {
+		d.poolName = fmt.Sprintf("%s-%s", externalIPPool, masterWkldUUID)
+		err = d.deleteExternalIPs(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	workerWkldUUID, err := getWorkloadUUID(ctx, workerWorkloadName)
@@ -146,21 +159,15 @@ func (d *destroyer) destroyCluster(ctx context.Context) error {
 			return err
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "Warning: Failed determine worker workload: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Warning: Failed to determine worker workload: %v\n", err)
 		if ctx.Err() != nil {
 			return err
 		}
 	}
 
-	masterWkldUUID, err := getWorkloadUUID(ctx, masterWorkloadName)
-	if err == nil {
+	if masterWkldUUID != "" {
 		err := d.deleteWorkloadAndInstances(ctx, masterWkldUUID)
 		if err != nil {
-			return err
-		}
-	} else {
-		fmt.Fprintf(os.Stderr, "Warning: Failed determine master workload: %v\n", err)
-		if ctx.Err() != nil {
 			return err
 		}
 	}

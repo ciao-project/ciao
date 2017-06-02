@@ -71,7 +71,8 @@ type creator struct {
 	workerUDPath    string
 	workerWkldUUID  string
 	workerInstUUIDs []string
-	pool            string
+	poolName        string
+	poolCreated     string
 	externalIP      string
 	listener        net.Listener
 	errCh           chan error
@@ -321,6 +322,9 @@ func (c *creator) createMaster(ctx context.Context) error {
 		return fmt.Errorf("Failed to create master workload: %s", c.masterPath)
 	}
 	c.masterWkldUUID = id
+	if c.mc.ExternalIP != "" {
+		c.poolName = fmt.Sprintf("%s-%s", externalIPPool, id)
+	}
 
 	ids, err := bat.LaunchInstances(ctx, "", c.masterWkldUUID, 1)
 	if err != nil {
@@ -375,20 +379,22 @@ func (c *creator) createWorkers(ctx context.Context) error {
 }
 
 func (c *creator) createExternalIP(ctx context.Context) error {
-	err := bat.CreateExternalIPPool(ctx, "", externalIPPool)
+	err := bat.CreateExternalIPPool(ctx, "", c.poolName)
 	if err != nil {
-		return fmt.Errorf("Unable to create external-ip pool %s", externalIPPool)
+		return fmt.Errorf("Unable to create external-ip pool %s",
+			c.poolName)
 	}
 
-	c.pool = externalIPPool
+	c.poolCreated = c.poolName
 
-	err = bat.AddExternalIPToPool(ctx, "", c.pool, c.mc.ExternalIP)
+	err = bat.AddExternalIPToPool(ctx, "", c.poolCreated,
+		c.mc.ExternalIP)
 	if err != nil {
 		return fmt.Errorf("Unable to add external-ip %s to pool %s",
-			c.mc.ExternalIP, externalIPPool)
+			c.mc.ExternalIP, c.poolName)
 	}
 
-	err = bat.MapExternalIP(ctx, "", c.pool, c.masterInstUUID)
+	err = bat.MapExternalIP(ctx, "", c.poolCreated, c.masterInstUUID)
 	if err != nil {
 		return fmt.Errorf("Unable to map external-ip %s to instance %s",
 			c.mc.ExternalIP, c.masterInstUUID)
@@ -419,7 +425,7 @@ func (c *creator) status() {
 		fmt.Println("Created external-ips:")
 		fmt.Printf("- %s\n", c.externalIP)
 		fmt.Println("Created pools:")
-		fmt.Printf("- %s\n", c.pool)
+		fmt.Printf("- %s\n", c.poolCreated)
 	}
 
 	if c.adminPath != "" {
@@ -463,10 +469,10 @@ func (c *creator) cleanup() {
 		cancel()
 	}
 
-	if c.pool != "" {
-		fmt.Fprintf(os.Stderr, "Deleting external-ip pool: %s\n", c.pool)
+	if c.poolCreated != "" {
+		fmt.Fprintf(os.Stderr, "Deleting external-ip pool: %s\n", c.poolCreated)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		_ = bat.DeleteExternalIPPool(ctx, "", c.pool)
+		_ = bat.DeleteExternalIPPool(ctx, "", c.poolCreated)
 		cancel()
 	}
 
