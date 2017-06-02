@@ -94,8 +94,8 @@ type ClusterStatus struct {
 	TotalNodesMaintenance int `json:"total_nodes_maintenance"`
 }
 
-// ComputeNodeStatus contains information about the status of a compute node
-type ComputeNodeStatus struct {
+// NodeStatus contains information about the status of a node
+type NodeStatus struct {
 	ID                    string    `json:"id"`
 	Timestamp             time.Time `json:"updated"`
 	Status                string    `json:"status"`
@@ -632,25 +632,39 @@ func GetCNCIs(ctx context.Context) (map[string]*CNCI, error) {
 	return CNCIs, nil
 }
 
-// GetComputeNodes returns a map containing status information about
-// each node in the cluster.  The key of the map is the Node ID.  The
-// information is retrieved using ciao-cli list -compute command.  An
-// error will be returned if the following environment are not set;
-// CIAO_IDENTITY,  CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
-func GetComputeNodes(ctx context.Context) (map[string]*ComputeNodeStatus, error) {
-	var computeList []*ComputeNodeStatus
-	args := []string{"node", "list", "-compute", "-f", "{{tojson .}}"}
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &computeList)
+func getNodes(ctx context.Context, args []string) (map[string]*NodeStatus, error) {
+	var nodeList []*NodeStatus
+	err := RunCIAOCLIAsAdminJS(ctx, "", args, &nodeList)
 	if err != nil {
 		return nil, err
 	}
 
-	computeMap := make(map[string]*ComputeNodeStatus)
-	for _, n := range computeList {
-		computeMap[n.ID] = n
+	nodeMap := make(map[string]*NodeStatus)
+	for _, n := range nodeList {
+		nodeMap[n.ID] = n
 	}
 
-	return computeMap, nil
+	return nodeMap, nil
+}
+
+// GetComputeNodes returns a map containing status information about
+// each compute node in the cluster.  The key of the map is the Node ID.  The
+// information is retrieved using ciao-cli list -compute command.  An
+// error will be returned if the following environment are not set;
+// CIAO_IDENTITY,  CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+func GetComputeNodes(ctx context.Context) (map[string]*NodeStatus, error) {
+	args := []string{"node", "list", "-compute", "-f", "{{tojson .}}"}
+	return getNodes(ctx, args)
+}
+
+// GetNetworkNodes returns a map containing status information about
+// each network node in the cluster.  The key of the map is the Node ID.  The
+// information is retrieved using ciao-cli list -network command.  An
+// error will be returned if the following environment are not set;
+// CIAO_IDENTITY,  CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+func GetNetworkNodes(ctx context.Context) (map[string]*NodeStatus, error) {
+	args := []string{"node", "list", "-network", "-f", "{{tojson .}}"}
+	return getNodes(ctx, args)
 }
 
 // GetClusterStatus returns the status of the ciao cluster.  The information
