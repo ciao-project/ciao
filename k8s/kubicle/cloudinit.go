@@ -21,13 +21,13 @@ vm_type: qemu
 fw_type: legacy
 defaults:
     vcpus: {{.VCPUs}}
-    mem_mb: {{.RAM}}
+    mem_mb: {{.RAMMiB}}
 cloud_init: "{{.UserDataFile}}"
 disks:
   - source:
        service: image
        id: "{{.ImageUUID}}"
-    size: {{.Disk}}
+    size: {{.DiskGiB}}
     ephemeral: true
     bootable: true
 `

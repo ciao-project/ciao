@@ -38,9 +38,9 @@ func (e usageError) Error() string {
 }
 
 type vmOptions struct {
-	vCPUs int
-	mem   int
-	disk  int
+	vCPUs   int
+	memMiB  int
+	diskGiB int
 }
 
 type options struct {
@@ -56,8 +56,8 @@ type options struct {
 
 type baseConfig struct {
 	VCPUs        int
-	RAM          int
-	Disk         int
+	RAMMiB       int
+	DiskGiB      int
 	User         string
 	ImageUUID    string
 	HTTPSProxy   string
@@ -88,14 +88,14 @@ func init() {
 func createFlags() (*options, error) {
 	opts := options{
 		masterVM: vmOptions{
-			vCPUs: 1,
-			mem:   1024,
-			disk:  10,
+			vCPUs:   1,
+			memMiB:  1024,
+			diskGiB: 10,
 		},
 		workerVM: vmOptions{
-			vCPUs: 1,
-			mem:   2048,
-			disk:  10,
+			vCPUs:   1,
+			memMiB:  2048,
+			diskGiB: 10,
 		},
 		workers: 1,
 	}
@@ -108,17 +108,17 @@ func createFlags() (*options, error) {
 
 	fs := flag.NewFlagSet("create", flag.ExitOnError)
 
-	fs.IntVar(&opts.masterVM.mem, "mmem", opts.masterVM.mem,
-		"Megabytes of RAM allocated to master VM")
+	fs.IntVar(&opts.masterVM.memMiB, "mmem", opts.masterVM.memMiB,
+		"Mebibytes of RAM allocated to master VM")
 	fs.IntVar(&opts.masterVM.vCPUs, "mcpus", opts.masterVM.vCPUs, "VCPUs assignged to master VM")
-	fs.IntVar(&opts.masterVM.disk, "mdisk", opts.masterVM.disk,
-		"Gigabytes of disk allocated to master VM")
+	fs.IntVar(&opts.masterVM.diskGiB, "mdisk", opts.masterVM.diskGiB,
+		"Gibibytes of disk allocated to master VM")
 
-	fs.IntVar(&opts.workerVM.mem, "wmem", opts.workerVM.mem,
-		"Megabytes of RAM allocated to worker VMs")
+	fs.IntVar(&opts.workerVM.memMiB, "wmem", opts.workerVM.memMiB,
+		"Mebibytes of RAM allocated to worker VMs")
 	fs.IntVar(&opts.workerVM.vCPUs, "wcpus", opts.workerVM.vCPUs, "VCPUs assignged to worker VM")
-	fs.IntVar(&opts.workerVM.disk, "wdisk", opts.workerVM.disk,
-		"Gigabytes of disk allocated to worker VM")
+	fs.IntVar(&opts.workerVM.diskGiB, "wdisk", opts.workerVM.diskGiB,
+		"Gibibytes of disk allocated to worker VMs")
 
 	fs.IntVar(&opts.workers, "workers", opts.workers, "Number of worker nodes to create")
 

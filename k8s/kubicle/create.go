@@ -187,8 +187,8 @@ func (c *creator) createMasterConfig() {
 	mc := &masterConfig{
 		baseConfig: baseConfig{
 			VCPUs:        c.opts.masterVM.vCPUs,
-			RAM:          c.opts.masterVM.mem,
-			Disk:         c.opts.masterVM.disk,
+			RAMMiB:       c.opts.masterVM.memMiB,
+			DiskGiB:      c.opts.masterVM.diskGiB,
 			User:         c.opts.user,
 			ImageUUID:    c.opts.imageUUID,
 			PublicKey:    c.pk,
@@ -212,9 +212,9 @@ func (c *creator) createMasterConfig() {
 func (c *creator) createWorkerConfig() {
 	wc := &workerConfig{
 		baseConfig: baseConfig{
-			VCPUs:        c.opts.masterVM.vCPUs,
-			RAM:          c.opts.masterVM.mem,
-			Disk:         c.opts.masterVM.disk,
+			VCPUs:        c.opts.workerVM.vCPUs,
+			RAMMiB:       c.opts.workerVM.memMiB,
+			DiskGiB:      c.opts.workerVM.diskGiB,
 			User:         c.opts.user,
 			ImageUUID:    c.opts.imageUUID,
 			PublicKey:    c.pk,
