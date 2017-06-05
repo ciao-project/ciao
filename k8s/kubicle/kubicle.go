@@ -163,7 +163,8 @@ func runCommand(signalCh <-chan os.Signal) error {
 
 func main() {
 	flag.Parse()
-	if len(flag.Args()) < 1 {
+	if len(flag.Args()) < 1 ||
+		!(os.Args[1] == "create" || os.Args[1] == "delete") {
 		flag.Usage()
 		os.Exit(1)
 	}
