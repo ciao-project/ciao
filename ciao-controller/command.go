@@ -106,29 +106,25 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 	}
 
 	if tenant == nil {
-		if *noNetwork {
-			_, err := c.ds.AddTenant(tenantID)
-			if err != nil {
-				return err
-			}
-		} else {
-
-			err = c.addTenant(tenantID)
-			if err != nil {
-				return err
-			}
+		tenant, err = c.ds.AddTenant(tenantID)
+		if err != nil {
+			return err
 		}
-	} else if tenant.CNCIIP == "" {
-		if !*noNetwork {
-			_ = c.addTenant(tenantID)
-			tenant, err = c.ds.GetTenant(tenantID)
-			if err != nil {
-				return err
-			}
+	}
 
-			if tenant.CNCIIP == "" {
-				return errors.New("Unable to Launch Tenant CNCI")
-			}
+	if tenant.CNCIIP == "" && !*noNetwork {
+		err := c.launchCNCI(tenantID)
+		if err != nil {
+			return err
+		}
+
+		tenant, err = c.ds.GetTenant(tenantID)
+		if err != nil {
+			return err
+		}
+
+		if tenant.CNCIIP == "" {
+			return errors.New("Unable to Launch Tenant CNCI")
 		}
 	}
 
@@ -268,18 +264,6 @@ func (c *controller) launchCNCI(tenantID string) error {
 	}
 	msg := fmt.Sprintf("Failed to Launch CNCI for %s", tenantID)
 	return errors.New(msg)
-}
-
-func (c *controller) addTenant(id string) error {
-	// create new entry in datastore
-	_, err := c.ds.AddTenant(id)
-	if err != nil {
-		return err
-	}
-
-	// start up a CNCI. this will block till the
-	// CNCI started event is returned
-	return c.launchCNCI(id)
 }
 
 func (c *controller) deleteEphemeralStorage(instanceID string) error {

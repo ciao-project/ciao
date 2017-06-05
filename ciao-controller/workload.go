@@ -154,22 +154,9 @@ func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) 
 		return req, err
 	}
 
-	// check to see if this is a new tenant. If so, we need to add
-	// them to the datastore. We do not however want to launch a
-	// CNCI yet since this might be a request to upload a CNCI
-	// workload. Instead, we'll add the new tenant directly to the
-	// datastore. On first launch request, if the tenant doesn't yet
-	// have a cnci, it will get launched for them then.
-	tenant, err := c.ds.GetTenant(req.TenantID)
+	err = c.confirmTenant(req.TenantID)
 	if err != nil {
 		return req, err
-	}
-
-	if tenant == nil {
-		_, err := c.ds.AddTenant(req.TenantID)
-		if err != nil {
-			return req, err
-		}
 	}
 
 	// create a workload storage resource for this new workload.
