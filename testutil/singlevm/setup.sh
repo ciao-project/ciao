@@ -31,6 +31,7 @@ fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/2
 ubuntu_cloud_image="xenial-server-cloudimg-amd64-disk1.img"
 ubuntu_cloud_url="https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
 download=0
+all_images=0
 conf_file="$ciao_bin"/configuration.yaml
 webui_conf_file="$ciao_bin"/webui_config.json
 ciao_username=csr
@@ -141,53 +142,57 @@ function createWorkloads() {
 	EOF
 	) > "$ciao_bin"/workload_examples/vm-test.yaml
 
-	# Get the image ID for the fedora cloud image
-	id=$(ciao-cli image list -f='{{$x := filter . "Name" "Fedora Cloud Base 24-1.2"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
+	if [ $all_images -eq 1 ]
+	then
+	    # Get the image ID for the fedora cloud image
+	    id=$(ciao-cli image list -f='{{$x := filter . "Name" "Fedora Cloud Base 24-1.2"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
 
-	# add 3 vm test workloads
-	echo "Generating Fedora VM test workload"
-	(
-	cat <<-EOF
-	description: "Fedora test VM"
-	vm_type: qemu
-	fw_type: legacy
-	defaults:
-	    vcpus: 2
-	    mem_mb: 128
-	    disk_mb: 80
-	cloud_init: "vm-test.yaml"
-	disks:
-	  - source:
-	       service: image
-	       id: "$id"
-	    ephemeral: true
-	    bootable: true
-	EOF
-	) > "$ciao_bin"/workload_examples/fedora_vm.yaml
+	    # add 3 vm test workloads
+	    echo "Generating Fedora VM test workload"
+	    (
+		cat <<-EOF
+		description: "Fedora test VM"
+		vm_type: qemu
+		fw_type: legacy
+		defaults:
+		    vcpus: 2
+		    mem_mb: 128
+		    disk_mb: 80
+		cloud_init: "vm-test.yaml"
+		disks:
+		  - source:
+		       service: image
+		       id: "$id"
+		    ephemeral: true
+		    bootable: true
+		EOF
+	    ) > "$ciao_bin"/workload_examples/fedora_vm.yaml
 
-	# get the clear image id
-	clear_id=$(ciao-cli image list -f='{{$x := filter . "Name" "Clear Linux '"${LATEST}"'"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
+	    # get the clear image id
+	    clear_id=$(ciao-cli image list -f='{{$x := filter . "Name" "Clear Linux '"${LATEST}"'"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
 
-	# create a clear VM workload definition
-	echo "Creating Clear test workload"
-	(
-	cat <<-EOF
-	description: "Clear Linux test VM"
-	vm_type: qemu
-	fw_type: efi
-	defaults:
-	    vcpus: 2
-	    mem_mb: 128
-	    disk_mb: 80
-	cloud_init: "vm-test.yaml"
-	disks:
-	  - source:
-	       service: image
-	       id: "$clear_id"
-	    ephemeral: true
-	    bootable: true
-	EOF
-	) > "$ciao_bin"/workload_examples/clear_vm.yaml
+	    # create a clear VM workload definition
+	    echo "Creating Clear test workload"
+	    (
+		cat <<-EOF
+		description: "Clear Linux test VM"
+		vm_type: qemu
+		fw_type: efi
+		defaults:
+		    vcpus: 2
+		    mem_mb: 128
+		    disk_mb: 80
+		cloud_init: "vm-test.yaml"
+		disks:
+		  - source:
+		       service: image
+		       id: "$clear_id"
+		    ephemeral: true
+		    bootable: true
+		EOF
+	    ) > "$ciao_bin"/workload_examples/clear_vm.yaml
+
+	fi
 
 	# get the clear image id
 	ubuntu_id=$(ciao-cli image list -f='{{select (head (filter . "Name" "Ubuntu Server 16.04")) "ID"}}')
@@ -256,15 +261,19 @@ function createWorkloads() {
 
 	# store the new workloads into ciao
 	pushd "$ciao_bin"/workload_examples
-	"$ciao_gobin"/ciao-cli workload create -yaml fedora_vm.yaml
-	"$ciao_gobin"/ciao-cli workload create -yaml clear_vm.yaml
+	if [ $all_images -eq 1 ]
+	then
+	    "$ciao_gobin"/ciao-cli workload create -yaml fedora_vm.yaml
+	    "$ciao_gobin"/ciao-cli workload create -yaml clear_vm.yaml
+	fi
 	"$ciao_gobin"/ciao-cli workload create -yaml ubuntu_latest.yaml
 	"$ciao_gobin"/ciao-cli workload create -yaml debian_latest.yaml
 	"$ciao_gobin"/ciao-cli workload create -yaml ubuntu_vm.yaml
 	popd
 }
 
-usage="$(basename "$0") [--download] The script will download dependencies if needed. Specifying --download will force download the dependencies even if they are cached locally"
+usage="$(basename "$0") [-d --download] The script will download dependencies if needed. Specifying --download will force download the dependencies even if they are cached locally
+$(basename "$0") [-a --all-images] By default only the Ubuntu cloud image is downloaded.  Specify this option to download and create additional images and workloads"
 
 while :
 do
@@ -275,6 +284,10 @@ do
 	  ;;
       -d | --download)
           download=1
+          shift 1
+          ;;
+      -a | --all-images)
+          all_images=1
           shift 1
           ;;
       -i | --cnciimage)
@@ -583,46 +596,50 @@ fi
 qemu-img convert -f raw -O qcow2 "$ciao_cnci_image" "$ciao_cnci_image".qcow
 
 #Clear
-cd "$ciao_bin"
 
-if [ $download -eq 1 ]
+if [ $all_images -eq 1 ]
 then
+    cd "$ciao_bin"
+    if [ $download -eq 1 ]
+    then
 	LATEST=$(curl https://download.clearlinux.org/latest)
-else
+    else
 	# replace this will a function that looks in ~local cache
 	# for the last version of clear to use.
 	LATEST="12620"
-fi
+    fi
 
-if [ $download -eq 1 ] || [ ! -f clear-"${LATEST}"-cloud.img ]
-then
+    if [ $download -eq 1 ] || [ ! -f clear-"${LATEST}"-cloud.img ]
+    then
 	rm -f clear-"${LATEST}"-cloud.img.xz
 	rm -f clear-"${LATEST}"-cloud.img
 	curl -O https://download.clearlinux.org/releases/"$LATEST"/clear/clear-"$LATEST"-cloud.img.xz
 	xz -T0 --decompress clear-"${LATEST}"-cloud.img.xz
-fi
+    fi
 
 
-if [ ! -f clear-"${LATEST}"-cloud.img ]
-then
+    if [ ! -f clear-"${LATEST}"-cloud.img ]
+    then
 	echo "FATAL ERROR: unable to download clear cloud Image"
 	exit 1
-fi
+    fi
 
-#Fedora, needed for BAT tests
-cd "$ciao_bin"
-if [ $download -eq 1 ] || [ ! -f $fedora_cloud_image ]
-then
-    rm -f $fedora_cloud_image
-    curl -L -O $fedora_cloud_url
-fi
+    cd "$ciao_bin"
+    if [ $download -eq 1 ] || [ ! -f $fedora_cloud_image ]
+    then
+	rm -f $fedora_cloud_image
+	curl -L -O $fedora_cloud_url
+    fi
 
-if [ ! -f $fedora_cloud_image ]
-then
+    if [ ! -f $fedora_cloud_image ]
+    then
 	echo "FATAL ERROR: unable to download fedora cloud Image"
 	exit 1
+    fi
 fi
 
+#Ubuntu, needed for kubicle and BAT tests
+cd "$ciao_bin"
 if [ $download -eq 1 ] || [ ! -f $ubuntu_cloud_image ]
 then
     rm -f $ubuntu_cloud_image
@@ -781,18 +798,21 @@ if [ -f "$ciao_cnci_image".qcow ]; then
 	--visibility internal
 fi
 
-if [ -f clear-"${LATEST}"-cloud.img ]; then
-    "$ciao_gobin"/ciao-cli \
-        image add --file clear-"${LATEST}"-cloud.img \
-        --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169 \
-	--visibility public
-fi
+if [ $all_images -eq 1 ]
+then
+    if [ -f clear-"${LATEST}"-cloud.img ]; then
+	"$ciao_gobin"/ciao-cli \
+		     image add --file clear-"${LATEST}"-cloud.img \
+		     --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169 \
+		     --visibility public
+    fi
 
-if [ -f $fedora_cloud_image ]; then
-    "$ciao_gobin"/ciao-cli \
-        image add --file $fedora_cloud_image \
-        --name "Fedora Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799 \
-	--visibility public
+    if [ -f $fedora_cloud_image ]; then
+	"$ciao_gobin"/ciao-cli \
+		     image add --file $fedora_cloud_image \
+		     --name "Fedora Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799 \
+		     --visibility public
+    fi
 fi
 
 if [ -f $ubuntu_cloud_image ]; then

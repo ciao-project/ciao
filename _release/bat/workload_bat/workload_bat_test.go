@@ -38,7 +38,7 @@ users:
 ...
 `
 
-const vmWorkloadImageName = "Fedora Cloud Base 24-1.2"
+const vmWorkloadImageName = "Ubuntu Server 16.04"
 
 func getWorkloadSource(ctx context.Context, t *testing.T, tenant string) bat.Source {
 	// get the Image ID to use.
