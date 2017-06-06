@@ -1,5 +1,5 @@
 # clearlinux.keystone
-This role installs clearlinux/keystone docker container
+This role installs ciaoproject/keystone docker container
 
 ## Requirements
 * docker

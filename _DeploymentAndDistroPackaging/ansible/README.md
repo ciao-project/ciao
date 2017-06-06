@@ -72,7 +72,7 @@ before proceeding to the next step.
 ## NOTES:
 
 ### A note on docker hostname resolution
-This playbook uses docker containers to start the [identity service](https://hub.docker.com/r/clearlinux/keystone/) and [ciao-webui](https://hub.docker.com/r/clearlinux/ciao-webui/).
+This playbook uses docker containers to start the [identity service](https://hub.docker.com/r/ciaoproject/keystone/) and [ciao-webui](https://hub.docker.com/r/clearlinux/ciao-webui/).
 
 Docker containers uses /etc/resolv.conf on the host machine filtering any localhost
 address since 'localhost' is not accesible from the container. If after this filtering

@@ -1,0 +1,9 @@
+export OS_PROJECT_DOMAIN_NAME=default
+export OS_USER_DOMAIN_NAME=default
+export OS_PROJECT_NAME=admin
+export OS_USERNAME=admin
+export OS_PASSWORD=KEYSTONE_ADMIN_PASSWORD
+export OS_AUTH_URL=https://IDENTITY_HOST:35357/v3
+export OS_IDENTITY_API_VERSION=3
+export OS_IMAGE_API_VERSION=2
+export OS_CACERT=/etc/nginx/ssl/keystone_cert.pem

@@ -15,7 +15,7 @@
 
 galaxy_info:
   author: Alberto Murillo
-  description: This role installs clearlinux/keystone docker container
+  description: This role installs ciaoproject/keystone docker container
   company: Intel
 
   issue_tracker_url: https://github.com/clearlinux/ansible-role-keystone
