@@ -681,7 +681,18 @@ func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) error {
 	ds.tenantsLock.Lock()
 
 	if ds.tenants[tenantID] != nil {
-		ds.tenants[tenantID].network[int(subnetInt)][int(ipBytes[3])] = false
+		delete(ds.tenants[tenantID].network[int(subnetInt)], int(ipBytes[3]))
+		subnets := ds.tenants[tenantID].subnets
+		network := ds.tenants[tenantID].network
+		i := int(subnetInt)
+
+		if len(network[i]) == 0 {
+			if len(subnets) > 1 {
+				ds.tenants[tenantID].subnets = append(subnets[:i], subnets[i+1:]...)
+			} else {
+				ds.tenants[tenantID].subnets = nil
+			}
+		}
 	}
 
 	ds.tenantsLock.Unlock()

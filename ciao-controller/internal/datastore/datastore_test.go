@@ -1036,6 +1036,11 @@ func TestReleaseTenantIP(t *testing.T) {
 		t.Fatal("IP Address not marked Used")
 	}
 
+	// confirm that subnets has been incremented
+	if len(newTenant.subnets) != 1 {
+		t.Fatal("subnet not allocated in cache")
+	}
+
 	err = ds.ReleaseTenantIP(tenant.ID, ip.String())
 	if err != nil {
 		t.Fatal(err)
@@ -1050,6 +1055,10 @@ func TestReleaseTenantIP(t *testing.T) {
 	// confirm that tenant map shows it not used.
 	if newTenant.network[int(subnetInt)][int(ipBytes[3])] != false {
 		t.Fatal("IP Address not released from cache")
+	}
+
+	if len(newTenant.subnets) != 0 {
+		t.Fatal("subnet not released from cache")
 	}
 
 	// clear tenant from cache
