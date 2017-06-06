@@ -207,8 +207,21 @@ function deleteExternalIPPool() {
 # Read cluster env variables
 . $ciao_bin/demo.sh
 
-vm_wlid=$("$ciao_gobin"/ciao-cli workload list -f='{{if gt (len .) 0}}{{(index . 0).ID}}{{end}}')
-exitOnError $?  "Unable to list workloads"
+for item in `ciao-cli workload list -f '{{select . "ID"}} '`
+do
+    type=`ciao-cli workload show --workload $item -f '{{.VMType}}'`;
+    if [ $type == "qemu" ]
+    then
+	vm_wlid=$item
+	break
+    fi
+done
+
+if [ -z $vm_wlid ]
+then
+    echo "FATAL ERROR exiting: No VM workloads defined"
+    exit 1
+fi
 
 "$ciao_gobin"/ciao-cli instance add --workload=$vm_wlid --instances=2
 exitOnError $?  "Unable to launch VMs"
