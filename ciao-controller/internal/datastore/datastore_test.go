@@ -887,7 +887,7 @@ func TestRemoveTenantCNCI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = ds.removeTenantCNCI(tenant.ID)
+	err = ds.RemoveTenantCNCI(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

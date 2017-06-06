@@ -361,7 +361,7 @@ func serversAction(c *controller, w http.ResponseWriter, r *http.Request) (APIRe
 	if len(servers.ServerIDs) > 0 {
 		for _, instanceID := range servers.ServerIDs {
 			// make sure the instance belongs to the tenant
-			instance, err := c.ds.GetInstance(instanceID)
+			instance, err := c.ds.GetTenantInstance(instanceID)
 
 			if err != nil {
 				return errorResponse(err), err

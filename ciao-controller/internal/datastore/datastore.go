@@ -599,7 +599,9 @@ func (ds *Datastore) AddTenantCNCI(tenantID string, instanceID string, mac strin
 	return ds.db.updateTenant(tenant)
 }
 
-func (ds *Datastore) removeTenantCNCI(tenantID string) error {
+// RemoveTenantCNCI will delete a CNCI from the datastore
+// The CNCI must not have any subnets with host IPs allocated on it.
+func (ds *Datastore) RemoveTenantCNCI(tenantID string) error {
 	// update tenants cache
 	ds.tenantsLock.Lock()
 
@@ -607,6 +609,11 @@ func (ds *Datastore) removeTenantCNCI(tenantID string) error {
 	if !ok {
 		ds.tenantsLock.Unlock()
 		return ErrNoTenant
+	}
+
+	if len(tenant.subnets) > 0 {
+		ds.tenantsLock.Unlock()
+		return errors.New("CNCI still in use")
 	}
 
 	tenant.CNCIID = ""
@@ -791,7 +798,7 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
 	return next, nil
 }
 
-// GetAllInstances retrieves all instances out of the datastore.
+// GetAllInstances retrieves all tenant instances out of the datastore.
 func (ds *Datastore) GetAllInstances() ([]*types.Instance, error) {
 	var instances []*types.Instance
 
@@ -800,7 +807,9 @@ func (ds *Datastore) GetAllInstances() ([]*types.Instance, error) {
 
 	if len(ds.instances) > 0 {
 		for _, val := range ds.instances {
-			instances = append(instances, val)
+			if val.CNCI == false {
+				instances = append(instances, val)
+			}
 		}
 	}
 
@@ -810,6 +819,7 @@ func (ds *Datastore) GetAllInstances() ([]*types.Instance, error) {
 }
 
 // GetInstance retrieves an instance out of the datastore.
+// The CNCI could be retrieved this way.
 func (ds *Datastore) GetInstance(id string) (*types.Instance, error) {
 	// always get from cache
 	ds.instancesLock.RLock()
@@ -825,6 +835,23 @@ func (ds *Datastore) GetInstance(id string) (*types.Instance, error) {
 	return value, nil
 }
 
+// GetTenantInstance retrieves a tenant instance out of the datastore.
+// the CNCI will be excluded from this search.
+func (ds *Datastore) GetTenantInstance(id string) (*types.Instance, error) {
+	// always get from cache
+	ds.instancesLock.RLock()
+
+	value, ok := ds.instances[id]
+
+	ds.instancesLock.RUnlock()
+
+	if !ok || (value.CNCI == true) {
+		return nil, types.ErrInstanceNotFound
+	}
+
+	return value, nil
+}
+
 // GetAllInstancesFromTenant will retrieve all instances belonging to a specific tenant
 func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) ([]*types.Instance, error) {
 	var instances []*types.Instance
@@ -834,7 +861,9 @@ func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) ([]*types.Instan
 	t, ok := ds.tenants[tenantID]
 	if ok {
 		for _, val := range t.instances {
-			instances = append(instances, val)
+			if val.CNCI == false {
+				instances = append(instances, val)
+			}
 		}
 
 		ds.tenantsLock.RUnlock()
@@ -856,7 +885,9 @@ func (ds *Datastore) GetAllInstancesByNode(nodeID string) ([]*types.Instance, er
 	n, ok := ds.nodes[nodeID]
 	if ok {
 		for _, val := range n.instances {
-			instances = append(instances, val)
+			if val.CNCI == false {
+				instances = append(instances, val)
+			}
 		}
 	}
 
@@ -956,7 +987,7 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 	if cnci == true {
 		glog.Warning("CNCI ", instanceID, " Failed to start")
 
-		err := ds.removeTenantCNCI(tenantID)
+		err := ds.RemoveTenantCNCI(tenantID)
 
 		msg := fmt.Sprintf("CNCI Start Failure %s: %s", instanceID, reason.String())
 		ds.db.logEvent(tenantID, string(userError), msg)

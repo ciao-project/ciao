@@ -92,12 +92,7 @@ func (client *ssntpClient) deleteEphemeralStorage(instanceID string) {
 	}
 }
 
-func (client *ssntpClient) releaseResources(instanceID string) error {
-	i, err := client.ctl.ds.GetInstance(instanceID)
-	if err != nil {
-		return errors.Wrapf(err, "error getting instance from datastore")
-	}
-
+func (client *ssntpClient) releaseResources(i *types.Instance) error {
 	// CNCI resources are not quota tracked
 	if i.CNCI {
 		return nil
@@ -114,26 +109,84 @@ func (client *ssntpClient) releaseResources(instanceID string) error {
 	return nil
 }
 
-func (client *ssntpClient) removeInstance(instanceID string) {
-	err := client.releaseResources(instanceID)
+func (client *ssntpClient) removeInstance(i *types.Instance) {
+	err := client.releaseResources(i)
 	if err != nil {
 		glog.Warningf("Error when releasing resources for deleted instance: %v", err)
 	}
-	client.deleteEphemeralStorage(instanceID)
-	err = client.ctl.ds.DeleteInstance(instanceID)
+	client.deleteEphemeralStorage(i.ID)
+	err = client.ctl.ds.DeleteInstance(i.ID)
 	if err != nil {
 		glog.Warningf("Error deleting instance from datastore: %v", err)
 	}
+
+	if i.CNCI {
+		return
+	}
+
+	// check the cnci after 5 minutes has elapsed to see if it's idle.
+	go func() {
+		time.Sleep(5 * time.Minute)
+		err = client.checkCNCI(i.TenantID)
+		if err != nil {
+			glog.Warningf("Error deleting CNCI: %v", err)
+		}
+	}()
+}
+
+func (client *ssntpClient) checkCNCI(tenantID string) error {
+	t, err := client.ctl.ds.GetTenant(tenantID)
+	if err != nil {
+		return errors.Wrapf(err, "error getting tenant from datastore")
+	}
+
+	cncis, err := client.ctl.ds.GetTenantCNCISummary(t.CNCIID)
+	if err != nil {
+		return errors.Wrapf(err, "error getting cnci from datastore")
+	}
+
+	// tenants only have one cnci right now
+	cnci := cncis[0]
+
+	if len(cnci.Subnets) > 0 {
+		return nil
+	}
+
+	// cache this value.
+	cnciID := t.CNCIID
+
+	// clean up tenant info in datastore.
+	err = client.ctl.ds.RemoveTenantCNCI(t.ID)
+	if err != nil {
+		// probably this is ok, it means that something needs
+		// the cnci now
+		return nil
+	}
+
+	// send the request to delete the cnci instance
+	err = client.ctl.deleteInstance(cnciID)
+	if err != nil {
+		return errors.Wrapf(err, "error deleting CNCI instance")
+	}
+
+	return nil
 }
 
 func (client *ssntpClient) instanceDeleted(payload []byte) {
 	var event payloads.EventInstanceDeleted
 	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
-		glog.Warning("Error unmarshalling InstanceDeleted: %v")
+		glog.Warningf("Error unmarshalling InstanceDeleted: %v")
 		return
 	}
-	client.removeInstance(event.InstanceDeleted.InstanceUUID)
+
+	i, err := client.ctl.ds.GetInstance(event.InstanceDeleted.InstanceUUID)
+	if err != nil {
+		glog.Warningf("error getting instance from datastore: %v")
+		return
+	}
+
+	client.removeInstance(i)
 }
 
 func (client *ssntpClient) instanceStopped(payload []byte) {
@@ -288,8 +341,13 @@ func (client *ssntpClient) startFailure(payload []byte) {
 		return
 	}
 	if failure.Reason.IsFatal() && !failure.Restart {
+		i, err := client.ctl.ds.GetInstance(failure.InstanceUUID)
+		if err != nil {
+			glog.Warningf("error getting instance from datastore: %v", err)
+			return
+		}
 		client.deleteEphemeralStorage(failure.InstanceUUID)
-		err = client.releaseResources(failure.InstanceUUID)
+		err = client.releaseResources(i)
 		if err != nil {
 			glog.Warningf("Error when releasing resources for start failed instance: %v", err)
 		}
@@ -463,11 +521,16 @@ func (client *ssntpClient) deleteInstance(payload *payloads.Delete, instanceID s
 
 func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) error {
 	if nodeID == "" {
+		i, err := client.ctl.ds.GetInstance(instanceID)
+		if err != nil {
+			return err
+		}
+
 		// This instance is not running and not assigned to a node.  We
 		// can just remove its details from controller's db and delete
 		// any ephemeral storage.
 		glog.Info("Deleting unassigned instance")
-		client.removeInstance(instanceID)
+		client.removeInstance(i)
 		return nil
 	}
 

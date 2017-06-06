@@ -106,10 +106,23 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 	}
 
 	if tenant == nil {
-		tenant, err = c.ds.AddTenant(tenantID)
+		_, err = c.ds.AddTenant(tenantID)
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (c *controller) confirmCNCI(tenantID string) error {
+	tenant, err := c.ds.GetTenant(tenantID)
+	if err != nil {
+		return err
+	}
+
+	if tenant == nil {
+		return errors.New("No tenant when there should be")
 	}
 
 	if tenant.CNCIIP == "" && !*noNetwork {
@@ -181,6 +194,11 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 
 	if !isCNCIWorkload(&wl) {
 		err := c.confirmTenant(w.TenantID)
+		if err != nil {
+			return nil, err
+		}
+
+		err = c.confirmCNCI(w.TenantID)
 		if err != nil {
 			return nil, err
 		}

@@ -212,7 +212,7 @@ func (c *controller) ListMappedAddresses(tenant *string) []types.MappedIP {
 func (c *controller) MapAddress(poolName *string, instanceID string) (err error) {
 	var m types.MappedIP
 
-	i, err := c.ds.GetInstance(instanceID)
+	i, err := c.ds.GetTenantInstance(instanceID)
 	if err != nil {
 		return err
 	}

@@ -107,14 +107,19 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 func (i *instance) Add() error {
 	ds := i.ctl.ds
 	var err error
-	if i.CNCI == false {
-		err = ds.AddInstance(&i.Instance)
-	} else {
-		err = ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
-	}
+
+	err = ds.AddInstance(&i.Instance)
 	if err != nil {
 		return errors.Wrapf(err, "Error creating instance in datastore")
 	}
+
+	if i.CNCI == true {
+		err = ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
+		if err != nil {
+			return errors.Wrapf(err, "Error creating instance in datastore")
+		}
+	}
+
 	for _, volume := range i.newConfig.sc.Start.Storage {
 		if volume.ID == "" && volume.Local {
 			// these are launcher auto-created ephemeral
