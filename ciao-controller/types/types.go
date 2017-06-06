@@ -21,6 +21,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/01org/ciao/ciao-storage"
@@ -103,6 +104,7 @@ type WorkloadRequest struct {
 	TraceLabel string
 	Volumes    []storage.BlockDevice
 	Name       string
+	Subnet     string
 }
 
 // Instance contains information about an instance of a workload.
@@ -122,6 +124,7 @@ type Instance struct {
 	Attachments []StorageAttachment `json:"-"`
 	CreateTime  time.Time           `json:"-"`
 	Name        string              `json:"name"`
+	StateLock   *sync.RWMutex       `json:"-"`
 }
 
 // SortedInstancesByID implements sort.Interface for Instance by ID string
@@ -140,9 +143,9 @@ func (s SortedNodesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
 
 // Tenant contains information about a tenant or project.
 type Tenant struct {
-	ID     string
-	Name   string
-	CNCIID string
+	ID       string
+	Name     string
+	CNCIctrl CNCIController
 }
 
 // LogEntry stores information about events.
@@ -713,4 +716,16 @@ type QuotaUpdateRequest struct {
 // QuotaListResponse holds the layout for returning quotas in the API
 type QuotaListResponse struct {
 	Quotas []QuotaDetails `json:"quotas"`
+}
+
+// CNCIController is the interface for the cnci controller associated with each tenant
+type CNCIController interface {
+	ConcentratorInstanceAdded(ID string) error
+	ConcentratorInstanceRemoved(ID string) error
+	StartFailure(ID string) error
+	Active(ID string) bool
+	RemoveSubnet(subnet int) error
+	WaitForActive(subnet int) error
+	GetInstanceCNCI(InstanceID string) (*Instance, error)
+	GetSubnetCNCI(subnet string) (*Instance, error)
 }

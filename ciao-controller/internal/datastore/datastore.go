@@ -139,9 +139,6 @@ type persistentStore interface {
 type Datastore struct {
 	db persistentStore
 
-	cnciAddedChans map[string]chan bool
-	cnciAddedLock  *sync.Mutex
-
 	nodeLastStat     map[string]types.CiaoNode
 	nodeLastStatLock *sync.RWMutex
 
@@ -216,9 +213,6 @@ func (ds *Datastore) Init(config Config) error {
 
 	ds.db = ps
 
-	ds.cnciAddedChans = make(map[string]chan bool)
-	ds.cnciAddedLock = &sync.Mutex{}
-
 	ds.nodeLastStat = make(map[string]types.CiaoNode)
 	ds.nodeLastStatLock = &sync.RWMutex{}
 
@@ -278,9 +272,6 @@ func (ds *Datastore) Init(config Config) error {
 		tenant := ds.tenants[i.TenantID]
 		if tenant != nil {
 			tenant.instances[i.ID] = i
-			if i.CNCI {
-				tenant.CNCIID = i.ID
-			}
 		}
 	}
 
@@ -325,16 +316,6 @@ func (ds *Datastore) Init(config Config) error {
 // Exit will disconnect the backing database.
 func (ds *Datastore) Exit() {
 	ds.db.disconnect()
-}
-
-// AddTenantChan allows a caller to pass in a channel for CNCI Launch status.
-// When a CNCI has been added to the datastore and a channel exists,
-// success will be indicated on the channel.  If a CNCI failure occurred
-// and a channel exists, failure will be indicated on the channel.
-func (ds *Datastore) AddTenantChan(c chan bool, tenantID string) {
-	ds.cnciAddedLock.Lock()
-	ds.cnciAddedChans[tenantID] = c
-	ds.cnciAddedLock.Unlock()
 }
 
 // AddTenant stores information about a tenant into the datastore.
@@ -510,42 +491,6 @@ func (ds *Datastore) GetWorkloads(tenantID string) ([]types.Workload, error) {
 	return workloads, nil
 }
 
-// CNCIAdded will write to any associated tenant chans to indicate a
-// CNCI has been successfully launched.
-func (ds *Datastore) CNCIAdded(tenantID string) error {
-	ds.cnciAddedLock.Lock()
-
-	c, ok := ds.cnciAddedChans[tenantID]
-	if ok {
-		delete(ds.cnciAddedChans, tenantID)
-	}
-
-	ds.cnciAddedLock.Unlock()
-
-	if c != nil {
-		c <- true
-	}
-
-	return nil
-}
-
-func (ds *Datastore) removeTenantCNCI(tenantID string) error {
-	// update tenants cache
-	ds.tenantsLock.Lock()
-
-	tenant, ok := ds.tenants[tenantID]
-	if !ok {
-		ds.tenantsLock.Unlock()
-		return ErrNoTenant
-	}
-
-	tenant.CNCIID = ""
-
-	ds.tenantsLock.Unlock()
-
-	return nil
-}
-
 // UpdateInstance will update certain fields of an instance
 func (ds *Datastore) UpdateInstance(instance *types.Instance) error {
 	return ds.db.updateInstance(instance)
@@ -566,6 +511,9 @@ func (ds *Datastore) GetAllTenants() ([]*types.Tenant, error) {
 // Once a tenant IP address is released, it can be reassigned to another
 // instance.
 func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) error {
+	removeSubnet := false
+	var i int
+
 	ipAddr := net.ParseIP(ip)
 	if ipAddr == nil {
 		return errors.New("Invalid IPv4 Address")
@@ -582,10 +530,51 @@ func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) error {
 	ds.tenantsLock.Lock()
 
 	if ds.tenants[tenantID] != nil {
-		ds.tenants[tenantID].network[int(subnetInt)][int(ipBytes[3])] = false
+		delete(ds.tenants[tenantID].network[int(subnetInt)], int(ipBytes[3]))
+		subnets := ds.tenants[tenantID].subnets
+		network := ds.tenants[tenantID].network
+		i = int(subnetInt)
+
+		if len(network[i]) == 0 {
+			// delete the network map and the subnet
+			delete(ds.tenants[tenantID].network, i)
+
+			if len(subnets) > 1 {
+				ds.tenants[tenantID].subnets = append(subnets[:i], subnets[i+1:]...)
+			} else {
+				ds.tenants[tenantID].subnets = nil
+			}
+
+			removeSubnet = true
+		}
 	}
 
 	ds.tenantsLock.Unlock()
+
+	// must be called with tenants lock unlocked?
+	// should we wait 5 minutes here?
+	if removeSubnet && ds.tenants[tenantID].CNCIctrl != nil {
+		go func() {
+			time.Sleep(5 * time.Minute)
+			ds.tenantsLock.RLock()
+			subnets := ds.tenants[tenantID].subnets
+			for _, s := range subnets {
+				if s == i {
+					removeSubnet = false
+					break
+				}
+			}
+			ds.tenantsLock.RUnlock()
+
+			if removeSubnet {
+				// handle error?
+				err := ds.tenants[tenantID].CNCIctrl.RemoveSubnet(i)
+				if err != nil {
+					glog.Warningf("Error removing subnet: (%v)\n", err)
+				}
+			}
+		}()
+	}
 
 	return ds.db.releaseTenantIP(tenantID, int(subnetInt), int(ipBytes[3]))
 }
@@ -678,6 +667,19 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
 		return nil, errors.Wrap(err, "Error claiming tenant IP in database")
 	}
 
+	// must be done with lock unlocked?.
+	mgr := ds.tenants[tenantID].CNCIctrl
+
+	if mgr != nil {
+		// if the subnet has already been added, this function
+		// will just confirm the subnet is active. If a new one
+		// is needed, it will wait for the new cnci to become active.
+		err := mgr.WaitForActive(int(subnetInt))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// convert to IP type.
 	next := net.IPv4(172, subnetBytes[0], subnetBytes[1], byte(rest))
 
@@ -703,12 +705,18 @@ func (ds *Datastore) getInstances(cncis bool) ([]*types.Instance, error) {
 	return instances, nil
 }
 
-// GetAllInstances retrieves all instances out of the datastore.
+// GetAllInstances retrieves all tenant instances out of the datastore.
 func (ds *Datastore) GetAllInstances() ([]*types.Instance, error) {
 	return ds.getInstances(false)
 }
 
+// GetAllCNCIInstances retrieves all CNCI instances out of the datastore.
+func (ds *Datastore) GetAllCNCIInstances() ([]*types.Instance, error) {
+	return ds.getInstances(true)
+}
+
 // GetInstance retrieves an instance out of the datastore.
+// The CNCI could be retrieved this way.
 func (ds *Datastore) GetInstance(id string) (*types.Instance, error) {
 	// always get from cache
 	ds.instancesLock.RLock()
@@ -866,37 +874,13 @@ func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureR
 // exited instance and we want to make sure that a failure to restart such
 // an instance does not result in it being deleted.
 func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailureReason, migration bool) error {
-	var tenantID string
-
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
 		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
-	tenantID = i.TenantID
 
 	if i.CNCI == true {
 		glog.Warning("CNCI ", instanceID, " Failed to start")
-
-		err := ds.removeTenantCNCI(tenantID)
-		if err != nil {
-			return errors.Wrap(err, "error removing CNCI for tenant")
-		}
-
-		msg := fmt.Sprintf("CNCI Start Failure %s: %s", instanceID, reason.String())
-		_ = ds.db.logEvent(tenantID, string(userError), msg)
-
-		ds.cnciAddedLock.Lock()
-
-		c, ok := ds.cnciAddedChans[tenantID]
-		if ok {
-			delete(ds.cnciAddedChans, tenantID)
-		}
-
-		ds.cnciAddedLock.Unlock()
-
-		if c != nil {
-			c <- false
-		}
 	}
 
 	if reason.IsFatal() && !migration {
@@ -1000,11 +984,16 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 	}
 
 	var err error
+	if tmpErr := ds.db.deleteInstance(i.ID); tmpErr != nil {
+		glog.Warningf("error deleting instance (%v): %v", i.ID, err)
+		err = errors.Wrapf(tmpErr, "error deleting instance from database (%v)", i.ID)
+	}
+
 	if i.CNCI == false {
 		if tmpErr := ds.ReleaseTenantIP(i.TenantID, i.IPAddress); tmpErr != nil {
-			glog.Warningf("error releasing IP for instance (%v): %v", i.ID, err)
+			glog.Warningf("error releasing IP for instance (%v): %v", i.ID, tmpErr)
 			if err == nil {
-				err = errors.Wrapf(tmpErr, "error releasing IP for instance (%v)", i.ID)
+				err = errors.Wrapf(err, "error releasing IP for instance (%v)", i.ID)
 			}
 		}
 	}
@@ -1411,49 +1400,34 @@ func (c ByTenantID) Less(i int, j int) bool {
 // cnci.
 func (ds *Datastore) GetTenantCNCISummary(cnci string) ([]types.TenantCNCI, error) {
 	var cncis []types.TenantCNCI
-	subnetBytes := []byte{0, 0}
 
-	ds.tenantsLock.RLock()
+	instances, err := ds.GetAllCNCIInstances()
+	if err != nil {
+		return cncis, err
+	}
 
-	for _, t := range ds.tenants {
-		if cnci != "" && cnci != t.CNCIID {
+	for _, i := range instances {
+		if cnci != "" && cnci != i.ID {
 			continue
 		}
 
-		var IPAddress string
-		var MACAddress string
-
-		if t.CNCIID != "" {
-			i, err := ds.GetInstance(t.CNCIID)
-			if err != nil {
-				return nil, err
-			}
-
-			IPAddress = i.IPAddress
-			MACAddress = i.MACAddress
-		}
-
 		cn := types.TenantCNCI{
-			TenantID:   t.ID,
-			IPAddress:  IPAddress,
-			MACAddress: MACAddress,
-			InstanceID: t.CNCIID,
+			TenantID:   i.TenantID,
+			IPAddress:  i.IPAddress,
+			MACAddress: i.MACAddress,
+			InstanceID: i.ID,
 		}
 
-		for _, subnet := range t.subnets {
-			binary.BigEndian.PutUint16(subnetBytes, (uint16)(subnet))
-			cn.Subnets = append(cn.Subnets, fmt.Sprintf("Subnet 172.%d.%d.0/8", subnetBytes[0], subnetBytes[1]))
-		}
+		cn.Subnets = append(cn.Subnets, i.Subnet)
 
 		cncis = append(cncis, cn)
 
-		if cnci != "" && cnci == t.CNCIID {
+		if cnci != "" {
 			break
 		}
 	}
 
-	ds.tenantsLock.RUnlock()
-
+	// sort by TenantID.
 	sort.Sort(ByTenantID(cncis))
 
 	return cncis, nil
@@ -1495,8 +1469,6 @@ func (ds *Datastore) GetNodeSummary() ([]*types.NodeSummary, error) {
 				summary.TotalPausedInstances++
 			}
 		}
-
-		summary.NodeID = n.ID
 
 		nodes = append(nodes, &summary)
 	}
