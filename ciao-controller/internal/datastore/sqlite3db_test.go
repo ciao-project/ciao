@@ -602,7 +602,7 @@ func TestCreateMappedIP(t *testing.T) {
 
 	err = db.addInstance(&i)
 	if err != nil {
-		t.Fatal("unable to store instance")
+		t.Fatalf("unable to store instance: %v\n", err)
 	}
 
 	instances, err := db.getInstances()
@@ -660,7 +660,7 @@ func TestDeleteMappedIP(t *testing.T) {
 
 	err = db.addInstance(&i)
 	if err != nil {
-		t.Fatal("unable to store instance")
+		t.Fatalf("unable to store instance: %v\n", err)
 	}
 
 	instances, err := db.getInstances()
@@ -1145,7 +1145,7 @@ func TestInstanceNameConstraint(t *testing.T) {
 
 	err = db.addInstance(&i)
 	if err != nil {
-		t.Fatal("unable to store instance")
+		t.Fatalf("unable to store instance %v\n", err)
 	}
 
 	i2 := types.Instance{
@@ -1161,4 +1161,37 @@ func TestInstanceNameConstraint(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected instance add to fail (duplicate name)")
 	}
+}
+
+func TestAddCNCIInstance(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	i := types.Instance{
+		ID:         uuid.Generate().String(),
+		TenantID:   tenantID,
+		WorkloadID: uuid.Generate().String(),
+		IPAddress:  "172.16.0.2",
+		Name:       "test",
+		CNCI:       true,
+	}
+
+	err = db.addInstance(&i)
+	if err != nil {
+		t.Fatalf("unable to store instance %v\n", err)
+	}
+
+	instances, err := db.getInstances()
+	if err != nil || len(instances) != 1 {
+		t.Fatal(err)
+	}
+
+	if instances[0].CNCI != true {
+		t.Fatal("CNCI Instance not properly stored")
+	}
+
+	db.disconnect()
 }
