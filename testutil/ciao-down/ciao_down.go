@@ -26,12 +26,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
-	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -64,10 +64,56 @@ func init() {
 	}
 }
 
-func vmFlags(fs *flag.FlagSet, memGB, CPUs *int) {
-	*memGB, *CPUs = getMemAndCpus()
+type mounts []mount
+
+func (m *mounts) String() string {
+	return fmt.Sprint(*m)
+}
+
+func (m *mounts) Set(value string) error {
+	components := strings.Split(value, ",")
+	if len(components) != 3 {
+		return fmt.Errorf("--mount parameter should be of format tag,security_model,path")
+	}
+	*m = append(*m, mount{
+		Tag:           components[0],
+		SecurityModel: components[1],
+		Path:          components[2],
+	})
+	return nil
+}
+
+type ports []portMapping
+
+func (p *ports) String() string {
+	return fmt.Sprint(*p)
+}
+
+func (p *ports) Set(value string) error {
+	components := strings.Split(value, "-")
+	if len(components) != 2 {
+		return fmt.Errorf("--port parameter should be of format host-guest")
+	}
+	host, err := strconv.Atoi(components[0])
+	if err != nil {
+		return fmt.Errorf("host port must be a number")
+	}
+	guest, err := strconv.Atoi(components[1])
+	if err != nil {
+		return fmt.Errorf("guest port must be a number")
+	}
+	*p = append(*p, portMapping{
+		Host:  host,
+		Guest: guest,
+	})
+	return nil
+}
+
+func vmFlags(fs *flag.FlagSet, memGB, CPUs *int, m *mounts, p *ports) {
 	fs.IntVar(memGB, "mem", *memGB, "Gigabytes of RAM allocated to VM")
 	fs.IntVar(CPUs, "cpus", *CPUs, "VCPUs assignged to VM")
+	fs.Var(m, "mount", "directory to mount in guest VM via 9p. Format is tag,security_model,path")
+	fs.Var(p, "port", "port mapping. Format is host_port-guest_port, e.g., -port 10022-22")
 }
 
 func checkDirectory(dir string) error {
@@ -91,58 +137,67 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func prepareFlags() (memGB int, CPUs int, debug bool, uiPath, runCmd, vmType string, err error) {
+func prepareFlags(ws *workspace) (*instance, bool, string, string, error) {
+	var debug bool
+	var runCmd, vmType string
+	var m mounts
+	var p ports
+
+	memGiB, CPUs := getMemAndCpus()
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
-	vmFlags(fs, &memGB, &CPUs)
+	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
-	fs.StringVar(&uiPath, "ui-path", "", "Host path of cloned ciao-webui repo")
 	fs.StringVar(&runCmd, "runcmd", "", "Path to a file containing additional commands to execute when preparing the VM")
 	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch. "+CIAO+" or "+CLEARCONTAINERS)
 
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return -1, -1, false, "", "", "", err
-	}
-
-	if err := checkDirectory(uiPath); err != nil {
-		return -1, -1, false, "", "", "", err
+		return nil, false, "", "", err
 	}
 
 	if vmType != CIAO && vmType != CLEARCONTAINERS {
 		err := fmt.Errorf("Unsupported vmType %s. Should be one of "+CIAO+"|"+CLEARCONTAINERS, vmType)
-		return -1, -1, false, "", "", "", err
+		return nil, false, "", "", err
 	}
 
-	if uiPath != "" {
-		uiPath = filepath.Clean(uiPath)
+	for i := range m {
+		if err := checkDirectory(m[i].Path); err != nil {
+			return nil, false, "", "", err
+		}
 	}
 
-	return memGB, CPUs, debug, uiPath, runCmd, vmType, nil
+	in := newDefaultInstance(ws, vmType)
+	in.CPUs = CPUs
+	in.MemGiB = memGiB
+	in.mergeMounts(m)
+	in.mergePorts(p)
+
+	return in, debug, runCmd, vmType, nil
 }
 
-func startFlags() (memGB int, CPUs int, err error) {
+func startFlags(in *instance) error {
+	var m mounts
+	var p ports
+
+	CPUs := in.CPUs
+	memGiB := in.MemGiB
+
 	fs := flag.NewFlagSet("start", flag.ExitOnError)
-	vmFlags(fs, &memGB, &CPUs)
+	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return -1, -1, err
-	}
-
-	return memGB, CPUs, nil
-}
-
-func saveInstanceConfig(ws *workspace) error {
-	err := ioutil.WriteFile(path.Join(ws.instanceDir, "vmtype.txt"),
-		[]byte(ws.vmType), 0600)
-	if err != nil {
-		err = fmt.Errorf("Unable to write vmtype.txt : %v", err)
 		return err
 	}
 
-	err = ioutil.WriteFile(path.Join(ws.instanceDir, "ui_path.txt"),
-		[]byte(ws.UIPath), 0600)
-	if err != nil {
-		err = fmt.Errorf("Unable to write ui_path.txt : %v", err)
-		return err
+	for i := range m {
+		if err := checkDirectory(m[i].Path); err != nil {
+			return err
+		}
 	}
+
+	in.CPUs = CPUs
+	in.MemGiB = memGiB
+	in.mergeMounts(m)
+	in.mergePorts(p)
+
 	return nil
 }
 
@@ -160,15 +215,17 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	fmt.Println("Checking environment")
 
-	memGB, CPUs, debug, uiPath, runCmd, vmType, err := prepareFlags()
-	if err != nil {
-		return
-	}
-
 	ws, err := prepareEnv(ctx)
 	if err != nil {
 		return
 	}
+
+	in, debug, runCmd, vmType, err := prepareFlags(ws)
+	if err != nil {
+		return
+	}
+
+	ws.Mounts = in.Mounts
 
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {
@@ -191,9 +248,7 @@ func prepare(ctx context.Context, errCh chan error) {
 		}
 	}()
 
-	ws.vmType = vmType
-	ws.UIPath = uiPath
-	err = saveInstanceConfig(ws)
+	err = in.save(ws)
 	if err != nil {
 		err = fmt.Errorf("Unable to save instance state : %v", err)
 		return
@@ -215,7 +270,7 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	err = buildISOImage(ctx, ws.instanceDir, ws, debug)
+	err = buildISOImage(ctx, ws.instanceDir, vmType, ws, debug)
 	if err != nil {
 		return
 	}
@@ -225,9 +280,9 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	fmt.Printf("Booting VM with %d GB RAM and %d cpus\n", memGB, CPUs)
+	fmt.Printf("Booting VM with %d GB RAM and %d cpus\n", in.MemGiB, in.CPUs)
 
-	err = bootVM(ctx, ws, memGB, CPUs)
+	err = bootVM(ctx, ws, in)
 	if err != nil {
 		return
 	}
@@ -246,21 +301,39 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	memGB, CPUs, err := startFlags()
-	if err != nil {
-		errCh <- err
-		return
-	}
-
 	ws, err := prepareEnv(ctx)
 	if err != nil {
 		errCh <- err
 		return
 	}
 
-	fmt.Printf("Booting VM with %d GB RAM and %d cpus\n", memGB, CPUs)
+	in, err := newInstanceFromFile(ws)
+	if err != nil {
+		errCh <- err
+		return
+	}
 
-	err = bootVM(ctx, ws, memGB, CPUs)
+	memGiB, CPUs := getMemAndCpus()
+	if in.MemGiB == 0 {
+		in.MemGiB = memGiB
+	}
+	if in.CPUs == 0 {
+		in.CPUs = CPUs
+	}
+
+	err = startFlags(in)
+	if err != nil {
+		errCh <- err
+		return
+	}
+
+	if err := in.save(ws); err != nil {
+		fmt.Printf("Warning: Failed to update instance state: %v", err)
+	}
+
+	fmt.Printf("Booting VM with %d GB RAM and %d cpus\n", in.MemGiB, in.CPUs)
+
+	err = bootVM(ctx, ws, in)
 	if err != nil {
 		errCh <- err
 		return
@@ -314,7 +387,19 @@ func status(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	statusVM(ctx, ws.instanceDir, ws.keyPath)
+	in, err := newInstanceFromFile(ws)
+	if err != nil {
+		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
+		return
+	}
+
+	sshPort, err := in.sshPort()
+	if err != nil {
+		errCh <- fmt.Errorf("Instance does not have SSH port open.  Unable to determine status")
+		return
+	}
+
+	statusVM(ctx, ws.instanceDir, ws.keyPath, sshPort)
 	errCh <- err
 }
 
@@ -325,9 +410,9 @@ func connect(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	_, err = os.Stat(ws.instanceDir)
+	in, err := newInstanceFromFile(ws)
 	if err != nil {
-		errCh <- fmt.Errorf("instance does not exist")
+		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
 
@@ -337,7 +422,13 @@ func connect(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if !sshReady(ctx) {
+	sshPort, err := in.sshPort()
+	if err != nil {
+		errCh <- err
+		return
+	}
+
+	if !sshReady(ctx, sshPort) {
 		fmt.Printf("Waiting for VM to boot ")
 	DONE:
 		for {
@@ -348,7 +439,7 @@ func connect(ctx context.Context, errCh chan error) {
 				return
 			}
 
-			if sshReady(ctx) {
+			if sshReady(ctx, sshPort) {
 				break DONE
 			}
 
@@ -362,7 +453,7 @@ func connect(ctx context.Context, errCh chan error) {
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "IdentitiesOnly=yes",
 		"-i", ws.keyPath,
-		"127.0.0.1", "-p", "10022"},
+		"127.0.0.1", "-p", strconv.Itoa(sshPort)},
 		os.Environ())
 	errCh <- err
 }

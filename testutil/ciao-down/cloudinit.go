@@ -30,8 +30,8 @@ curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
 {{end -}}
 #cloud-config
 mounts:
- - [hostgo, {{.GoPath}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
-{{if len .UIPath }} - [hostui, {{.UIPath}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]{{end}}
+{{range .Mounts}} - [{{.Tag}}, {{.Path}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
+{{end -}}
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
@@ -44,12 +44,12 @@ write_files:
      printf "\n"
      printf "To run Single VM:\n"
      printf "\n"
-     printf "cd {{.GoPath}}/src/github.com/01org/ciao/testutil/singlevm\n"
+     printf "cd {{.MountPath "hostgo"}}/src/github.com/01org/ciao/testutil/singlevm\n"
      printf "./setup.sh\n"
      printf "\n"
      printf "To start the web-ui:\n"
      printf "\n"
-     printf "cd {{if len .UIPath}}{{.UIPath}}{{else}}/home/{{.User}}/ciao-webui{{end}}\n"
+     printf "cd {{with .MountPath "hostui"}}{{.}}{{else}}/home/{{.User}}/ciao-webui{{end}}\n"
      printf "./deploy.sh production --config_file=/home/{{.User}}/local/webui_config.json\n"
      printf "\n"
      printf "Point your host's browser at https://localhost:3000"
@@ -70,8 +70,6 @@ package_upgrade: true
 
 runcmd:
  - echo "127.0.0.1 singlevm" >> /etc/hosts
- - mount hostgo
-{{if len .UIPath }} - mount hostui{{end}}
  - chown {{.User}}:{{.User}} /home/{{.User}}
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
@@ -90,8 +88,8 @@ runcmd:
  - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm\""  >> /etc/environment
 {{end}}
 
- - echo "GOPATH=\"{{.GoPath}}\"" >> /etc/environment
- - echo "PATH=\"$PATH:/usr/local/go/bin:{{$.GoPath}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
+ - echo "GOPATH=\"{{.MountPath "hostgo"}}\"" >> /etc/environment
+ - echo "PATH=\"$PATH:/usr/local/go/bin:{{.MountPath "hostgo"}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
 
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
  - {{download . "https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz"}}
@@ -155,21 +153,22 @@ runcmd:
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Building ciao" 10.0.2.2:{{.HTTPServerPort}}
- - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.GoPath}} /usr/local/go/bin/go get github.com/01org/ciao/...
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.MountPath "hostgo"}} /usr/local/go/bin/go get github.com/01org/ciao/...
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Go development utils" 10.0.2.2:{{.HTTPServerPort}}
- - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.GoPath}} /usr/local/go/bin/go get github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.MountPath "hostgo"}} /usr/local/go/bin/go get github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
  - {{template "CHECK" .}}
 
- - chown {{.User}}:{{.User}} -R {{.GoPath}}
+ - chown {{.User}}:{{.User}} -R {{.MountPath "hostgo"}}
 
  - curl -X PUT -d "Retrieving ciao-webui " 10.0.2.2:{{.HTTPServerPort}}
-{{ if len .UIPath }}
- - cd {{.UIPath}}
- - git status || sudo -u {{.User}} {{template "ENV" .}} git clone https://github.com/01org/ciao-webui.git .
- - {{template "CHECK" .}}
-{{else }}
+{{with .MountPath "hostui"}}
+ - cd {{.}}
+ - git status || {{template "ENV" $}} git clone https://github.com/01org/ciao-webui.git .
+ - {{template "CHECK" $}}
+ - chown {{$.User}}:{{$.User}} -R {{.}}
+{{else}}
  - cd /home/{{.User}}
  - sudo -u {{.User}} {{template "ENV" .}} git clone https://github.com/01org/ciao-webui.git
  - {{template "CHECK" .}}
@@ -258,7 +257,8 @@ curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
 {{end -}}
 #cloud-config
 mounts:
- - [hostgo, {{.GoPath}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
+{{range .Mounts}} - [{{.Tag}}, {{.Path}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
+{{end -}}
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
@@ -275,11 +275,11 @@ write_files:
      #!/bin/sh
      printf "\n"
      printf "\n"
-     printf "Your go code is at {{.GoPath}}\n"
+     printf "Your go code is at {{.MountPath "hostgo"}}\n"
      printf "You can also edit your code on your host system \n"
      printf "To build cc-oci-runtime from sources \n"
      printf "go get -d github.com/01org/cc-oci-runtime/... \n"
-     printf "cd $GOPATH/src/github.com/01org/cc-oci-runtime \n"
+     printf "cd {{.MountPath "hostgo"}}/src/github.com/01org/cc-oci-runtime \n"
      printf "./autogen.sh --with-cc-kernel=/usr/share/clear-containers/vmlinux.container --with-cc-image=/usr/share/clear-containers/clear-containers.img \n"
      printf "make \n"
      printf "make check \n"
@@ -322,8 +322,8 @@ runcmd:
  - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm\""  >> /etc/environment
 {{end}}
 
- - echo "GOPATH=\"{{.GoPath}}\"" >> /etc/environment
- - echo "PATH=\"$PATH:/usr/local/go/bin:{{$.GoPath}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
+ - echo "GOPATH=\"{{.MountPath "hostgo"}}\"" >> /etc/environment
+ - echo "PATH=\"$PATH:/usr/local/go/bin:{{.MountPath "hostgo"}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
 
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
  - {{download . "https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz" "/tmp/go1.7.4.linux-amd64.tar.gz"}}
@@ -396,10 +396,10 @@ runcmd:
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Go development utils" 10.0.2.2:{{.HTTPServerPort}}
- - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.GoPath}} /usr/local/go/bin/go get github.com/mattn/goveralls golang.org/x/tools/cmd/cover github.com/pierrre/gotestcover github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell github.com/01org/ciao/test-cases github.com/opencontainers/runc/libcontainer/configs
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.MountPath "hostgo"}} /usr/local/go/bin/go get github.com/mattn/goveralls golang.org/x/tools/cmd/cover github.com/pierrre/gotestcover github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell github.com/01org/ciao/test-cases github.com/opencontainers/runc/libcontainer/configs
  - {{template "CHECK" .}}
 
- - chown {{.User}}:{{.User}} -R {{.GoPath}}
+ - chown {{.User}}:{{.User}} -R {{.MountPath "hostgo"}}
 
 {{if len .GitUserName}}
  - curl -X PUT -d "Setting git user.name" 10.0.2.2:{{.HTTPServerPort}}

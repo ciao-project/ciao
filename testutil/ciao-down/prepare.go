@@ -66,13 +66,22 @@ type workspace struct {
 	HTTPServerPort int
 	GitUserName    string
 	GitEmail       string
-	UIPath         string
+	Mounts         []mount
 	RunCmd         string
 	ciaoDir        string
 	instanceDir    string
 	keyPath        string
 	publicKeyPath  string
-	vmType         string
+}
+
+func (w *workspace) MountPath(tag string) string {
+	for _, m := range w.Mounts {
+		if m.Tag == tag {
+			return m.Path
+		}
+	}
+
+	return ""
 }
 
 func installDeps(ctx context.Context) {
@@ -221,18 +230,6 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 		ws.GitEmail = strings.TrimSpace(string(data))
 	}
 
-	data, err = ioutil.ReadFile(path.Join(ws.instanceDir, "ui_path.txt"))
-	if err == nil {
-		ws.UIPath = string(data)
-	}
-
-	data, err = ioutil.ReadFile(path.Join(ws.instanceDir, "vmtype.txt"))
-	if err == nil {
-		ws.vmType = string(data)
-	} else {
-		ws.vmType = CIAO
-	}
-
 	return ws, nil
 }
 
@@ -253,9 +250,9 @@ func downloadFN(ws *workspace, URL, location string) string {
 	return fmt.Sprintf("wget %s -O %s", url.String(), location)
 }
 
-func buildISOImage(ctx context.Context, instanceDir string, ws *workspace, debug bool) error {
+func buildISOImage(ctx context.Context, instanceDir, vmType string, ws *workspace, debug bool) error {
 	var tmpl string
-	if ws.vmType == CLEARCONTAINERS {
+	if vmType == CLEARCONTAINERS {
 		tmpl = fmt.Sprintf(ccUserDataTemplate, ws.RunCmd)
 	} else {
 		tmpl = fmt.Sprintf(userDataTemplate, ws.RunCmd)
