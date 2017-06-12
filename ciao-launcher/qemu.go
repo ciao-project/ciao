@@ -444,7 +444,16 @@ func qmpAttach(cmd virtualizerAttachCmd, q *qemu.QMP) {
 func qmpDetach(cmd virtualizerDetachCmd, q *qemu.QMP) {
 	glog.Info("Detach command received")
 	devID := fmt.Sprintf("device_%s", cmd.volumeUUID)
-	err := q.ExecuteDeviceDel(context.Background(), devID)
+	var err error
+	for i := 0; i < 2; i++ {
+		ctx, cancelFN := context.WithTimeout(context.Background(), time.Second*2)
+		err := q.ExecuteDeviceDel(ctx, devID)
+		cancelFN()
+		if err == nil {
+			break
+		}
+		glog.Warningf("Failed to execute device_del: %v, re-trying", err)
+	}
 	if err != nil {
 		glog.Errorf("Failed to execute device_del: %v", err)
 	} else {
