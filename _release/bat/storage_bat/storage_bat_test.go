@@ -63,7 +63,7 @@ func createSpecificInstance(ctx context.Context, t *testing.T, tenant, workloadI
 }
 
 func createVMInstance(ctx context.Context, t *testing.T, tenant string) string {
-	const testVMWorkload = "Fedora test VM"
+	const testVMWorkload = "Ubuntu test VM"
 
 	w, err := bat.GetWorkloadByName(ctx, tenant, testVMWorkload)
 	if err != nil {
