@@ -332,9 +332,6 @@ configure:
     cnci_disk: 128
     admin_ssh_key: ${test_sshkey}
     admin_password: ${test_passwd}
-  image_service:
-    type: glance
-    url: https://${ciao_host}
   launcher:
     compute_net: [${ciao_vlan_subnet}]
     mgmt_net: [${ciao_vlan_subnet}]

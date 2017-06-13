@@ -29,7 +29,6 @@ import (
 //    scheduler { storage_uri }
 //    controller { compute_ca, compute_cert, identity_user, identity_password }
 //    launcher { compute_net, mgmt_net }
-//    image_service { url }
 //    identity_service { url }
 //
 // so we need to have at least those values set in our config

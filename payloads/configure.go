@@ -111,7 +111,6 @@ type ConfigurePayload struct {
 	Storage         ConfigureStorage    `yaml:"storage"`
 	Controller      ConfigureController `yaml:"controller"`
 	Launcher        ConfigureLauncher   `yaml:"launcher"`
-	ImageService    ConfigureService    `yaml:"image_service"`
 	IdentityService ConfigureService    `yaml:"identity_service"`
 }
 
@@ -125,7 +124,6 @@ func (conf *Configure) InitDefaults() {
 	conf.Configure.Controller.VolumePort = 8776
 	conf.Configure.Controller.ComputePort = 8774
 	conf.Configure.Controller.CiaoPort = 8889
-	conf.Configure.ImageService.Type = Glance
 	conf.Configure.IdentityService.Type = Keystone
 	conf.Configure.Launcher.DiskLimit = true
 	conf.Configure.Launcher.MemoryLimit = true

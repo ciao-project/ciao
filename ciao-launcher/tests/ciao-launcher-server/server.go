@@ -484,7 +484,6 @@ func createConfigFile(confPath string) error {
 	conf.Configure.Controller.HTTPSKey = "n/a"
 	conf.Configure.Controller.IdentityUser = "n/a"
 	conf.Configure.Controller.IdentityPassword = "n/a"
-	conf.Configure.ImageService.URL = "http://127.0.0.1"
 	conf.Configure.IdentityService.URL = "http://127.0.0.1"
 
 	conf.Configure.Launcher.DiskLimit = diskLimit

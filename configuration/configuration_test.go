@@ -84,9 +84,6 @@ const fullValidConf = `configure:
     - 192.168.1.0/24
     disk_limit: true
     mem_limit: true
-  image_service:
-    type: glance
-    url: http://glance.example.com
   identity_service:
     type: keystone
     url: http://keystone.example.com
@@ -139,7 +136,6 @@ func fillPayload(conf *payloads.Configure) {
 	conf.Configure.Controller.CNCIDisk = 128
 	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
 	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
-	conf.Configure.ImageService.URL = glanceURL
 	conf.Configure.IdentityService.URL = keystoneURL
 	conf.Configure.Storage.CephID = cephID
 }
@@ -189,7 +185,6 @@ func saneDefaults(conf *payloads.Configure) bool {
 	return (conf.Configure.Controller.VolumePort == 8776 &&
 		conf.Configure.Controller.ComputePort == 8774 &&
 		conf.Configure.Controller.CiaoPort == 8889 &&
-		conf.Configure.ImageService.Type == payloads.Glance &&
 		conf.Configure.IdentityService.Type == payloads.Keystone &&
 		conf.Configure.Launcher.DiskLimit == true &&
 		conf.Configure.Launcher.MemoryLimit == true)
