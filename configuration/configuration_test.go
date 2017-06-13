@@ -67,7 +67,6 @@ const fullValidConf = `configure:
     volume_port: 8776
     compute_port: 8774
     ciao_port: 8889
-    compute_fqdn: ""
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
     identity_user: controller
@@ -75,8 +74,6 @@ const fullValidConf = `configure:
     cnci_vcpus: 4
     cnci_mem: 128
     cnci_disk: 128
-    admin_ssh_key: ""
-    admin_password: ""
   launcher:
     compute_net:
     - 192.168.1.0/24
