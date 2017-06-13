@@ -59,9 +59,6 @@ configure:
     mgmt_net: list [The launcher management network(s)]
     disk_limit: bool
     mem_limit: bool
-  image_service:
-    type: string [The image service type, e.g. glance]
-    url: string [The image service URL]
   identity_service:
     type: string [The identity service type, e.g. keystone]
     url: string [The identity service URL]
@@ -86,8 +83,6 @@ configure:
     - 192.168.0.0/16
     mgmt_net:
     - 192.168.0.0/16
-  image_service:
-    url: http://glance.example.com:9292
   identity_service:
     url: http://keystone.example.com:35357
 ```
@@ -114,9 +109,6 @@ configure:
     - 192.168.0.0/16
     disk_limit: true
     mem_limit: true
-  image_service:
-    type: glance
-    url: http://glance.example.com:9292
   identity_service:
     type: keystone
     url: http://keystone.example.com:35357

@@ -37,8 +37,6 @@ controller:
 launcher:
     compute_net: 192.168.1.110
     mgmt_net: 192.168.1.111
-image_service:
-    url: http://glance.example.com
 identity_service:
     url: http://keystone.example.com
 `

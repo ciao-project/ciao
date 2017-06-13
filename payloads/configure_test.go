@@ -34,10 +34,6 @@ func TestConfigureUnmarshal(t *testing.T) {
 		t.Error(err)
 	}
 
-	if cfg.Configure.ImageService.Type != Glance {
-		t.Errorf("Wrong image service type [%s]", cfg.Configure.ImageService.Type)
-	}
-
 	if cfg.Configure.IdentityService.Type != Keystone {
 		t.Errorf("Wrong identity service type [%s]", cfg.Configure.IdentityService.Type)
 	}
@@ -66,9 +62,6 @@ func TestConfigureUnmarshal(t *testing.T) {
 
 func TestConfigureMarshal(t *testing.T) {
 	var cfg Configure
-
-	cfg.Configure.ImageService.Type = Glance
-	cfg.Configure.ImageService.URL = testutil.GlanceURL
 
 	cfg.Configure.IdentityService.Type = Keystone
 	cfg.Configure.IdentityService.URL = testutil.KeystoneURL

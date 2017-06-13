@@ -406,9 +406,6 @@ const ConfigureYaml = `configure:
     - ` + MgmtNet + `
     disk_limit: false
     mem_limit: false
-  image_service:
-    type: glance
-    url: ` + GlanceURL + `
   identity_service:
     type: keystone
     url: ` + KeystoneURL + `
