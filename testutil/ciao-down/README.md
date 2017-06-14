@@ -94,17 +94,20 @@ In addition to downloading and building the ciao source code, ciao-down also
 downloads the code for ciao's ui, ciao-webui.  By default it will place the
 source in a local directory in $HOME/ciao-webui.  However, if you are modifying
 the code of the webui it is convenient to have the code shared between your host
-machine and the ciao-down VM.  This can be achieved using the --ui-path.  This
+machine and the ciao-down VM.  This can be achieved using the --mount option.  This
 option takes a path to the location on your host machine where the UI code is
 stored.  This path gets mounted to the same location inside the VM, allowing you to
 modify the sources on your host and compile inside the VM.  For example,
 
-ciao-down prepare --with-ui $HOME/src/ciao-webui
+ciao-down prepare --mount hostui,mapped,$HOME/src/ciao-webui
 
 will create a new ciao-down VM in which the $HOME/src/ciao-webui folder on
-your host will be mounted at $HOME/src/ciao-webui.
+your host will be mounted at $HOME/src/ciao-webui.  It is important to use
+the 'mapped' 9p security model.  If you use passthrough the mounted folder
+will not be writeable in the guest and you will not be able to build the
+web-ui.
 
-Note that if the directory passed to --with-ui option already contains a
+Note that if the directory passed to --mount option already contains a
 git repo, ciao-down will perform no action other than to mount the directory
 in the guest VM.  It will not try to clone the repo or update it.  It assumes
 that the directory already contains the webui code.

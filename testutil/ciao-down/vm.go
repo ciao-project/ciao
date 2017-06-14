@@ -128,7 +128,7 @@ func newInstanceFromFile(ws *workspace) (*instance, error) {
 	if uiPath != "" {
 		in.Mounts = append(in.Mounts, mount{
 			Tag:           "hostui",
-			SecurityModel: "passthrough",
+			SecurityModel: "mapped",
 			Path:          filepath.Clean(uiPath),
 		})
 	}

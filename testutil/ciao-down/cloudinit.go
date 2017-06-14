@@ -71,6 +71,9 @@ package_upgrade: true
 runcmd:
  - echo "127.0.0.1 singlevm" >> /etc/hosts
  - chown {{.User}}:{{.User}} /home/{{.User}}
+{{- with .MountPath "hostui"}}
+ - chown {{$.User}}:{{$.User}} {{.}}
+{{- end}}
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
  - rm /etc/legal
