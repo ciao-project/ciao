@@ -246,15 +246,6 @@ cat <<-EOF
 EOF
 ) > $webui_conf_file
 
-
-sudo mkdir -p ${ciao_dir}/images
-if [ ! -d ${ciao_dir}/images ]
-then
-	echo "FATAL ERROR: Unable to create $ciao_dir/images"
-	exit 1
-
-fi
-
 sudo mkdir -p ${ciao_pki_path}
 if [ ! -d ${ciao_pki_path} ]
 then
