@@ -295,8 +295,6 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh   &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-. $ciao_env
-
 echo -n "Waiting up to $ciao_image_wait_time seconds for the ciao image" \
     "service to become available "
 try_until=$(($(date +%s) + $ciao_image_wait_time))
