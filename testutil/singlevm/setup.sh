@@ -113,165 +113,6 @@ function ctrl_c() {
     exit 1
 }
 
-function createWorkloads() {
-	mkdir -p ${ciao_bin}/workload_examples
-	if [ ! -d ${ciao_bin}/workload_examples ]
-	then
-		echo "FATAL ERROR: Unable to create ${ciao_bin}/workload_examples"
-		exit 1
-
-	fi
-
-	sudo chmod 755 "$ciao_bin"/workload_examples
-
-	# create a VM test workload with ssh capability
-	echo "Generating VM cloud-init"
-	(
-	cat <<-EOF
-	---
-	#cloud-config
-	users:
-	  - name: demouser
-	    gecos: CIAO Demo User
-	    lock-passwd: false
-	    passwd: ${test_passwd}
-	    sudo: ALL=(ALL) NOPASSWD:ALL
-	    ssh-authorized-keys:
-	      - ${test_sshkey}
-	...
-	EOF
-	) > "$ciao_bin"/workload_examples/vm-test.yaml
-
-	if [ $all_images -eq 1 ]
-	then
-	    # Get the image ID for the fedora cloud image
-	    id=$(ciao-cli image list -f='{{$x := filter . "Name" "Fedora Cloud Base 24-1.2"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
-
-	    # add 3 vm test workloads
-	    echo "Generating Fedora VM test workload"
-	    (
-		cat <<-EOF
-		description: "Fedora test VM"
-		vm_type: qemu
-		fw_type: legacy
-		defaults:
-		    vcpus: 2
-		    mem_mb: 128
-		    disk_mb: 80
-		cloud_init: "vm-test.yaml"
-		disks:
-		  - source:
-		       service: image
-		       id: "$id"
-		    ephemeral: true
-		    bootable: true
-		EOF
-	    ) > "$ciao_bin"/workload_examples/fedora_vm.yaml
-
-	    # get the clear image id
-	    clear_id=$(ciao-cli image list -f='{{$x := filter . "Name" "Clear Linux '"${LATEST}"'"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
-
-	    # create a clear VM workload definition
-	    echo "Creating Clear test workload"
-	    (
-		cat <<-EOF
-		description: "Clear Linux test VM"
-		vm_type: qemu
-		fw_type: efi
-		defaults:
-		    vcpus: 2
-		    mem_mb: 128
-		    disk_mb: 80
-		cloud_init: "vm-test.yaml"
-		disks:
-		  - source:
-		       service: image
-		       id: "$clear_id"
-		    ephemeral: true
-		    bootable: true
-		EOF
-	    ) > "$ciao_bin"/workload_examples/clear_vm.yaml
-
-	fi
-
-	# get the clear image id
-	ubuntu_id=$(ciao-cli image list -f='{{select (head (filter . "Name" "Ubuntu Server 16.04")) "ID"}}')
-
-	echo "Generating Ubuntu VM test workload"
-	(
-	cat <<-EOF
-	description: "Ubuntu test VM"
-	vm_type: qemu
-	fw_type: legacy
-	defaults:
-	    vcpus: 2
-	    mem_mb: 256
-	    disk_mb: 80
-	cloud_init: "vm-test.yaml"
-	disks:
-	  - source:
-	       service: image
-	       id: "$ubuntu_id"
-	    ephemeral: true
-	    bootable: true
-	EOF
-	) > "$ciao_bin"/workload_examples/ubuntu_vm.yaml
-
-	# create a container test cloud init
-	echo "Creating Container cloud init"
-	(
-	cat <<-EOF
-	---
-	#cloud-config
-	runcmd:
-	    - [ /bin/bash, -c, "while true; do sleep 60; done" ]
-	...
-	EOF
-	) > "$ciao_bin"/workload_examples/container-test.yaml
-
-	# create a Debian container workload definition
-	echo "Creating Debian Container test workload"
-	(
-	cat <<-EOF
-	description: "Debian latest test container"
-	vm_type: docker
-	image_name: "debian:latest"
-	defaults:
-	  vcpus: 2
-	  mem_mb: 128
-	  disk_mb: 80
-	cloud_init: "container-test.yaml"
-	EOF
-	) > "$ciao_bin"/workload_examples/debian_latest.yaml
-
-	# create an Ubuntu container workload definition
-	echo "Creating Ubuntu Container test workload"
-	(
-	cat <<-EOF
-	description: "Ubuntu latest test container"
-	vm_type: docker
-	image_name: "ubuntu:latest"
-	defaults:
-	  vcpus: 2
-	  mem_mb: 128
-	  disk_mb: 80
-	cloud_init: "container-test.yaml"
-	EOF
-	) > "$ciao_bin"/workload_examples/ubuntu_latest.yaml
-
-	# store the new workloads into ciao
-	pushd "$ciao_bin"/workload_examples
-	if [ $all_images -eq 1 ]
-	then
-	    "$ciao_gobin"/ciao-cli workload create -yaml fedora_vm.yaml
-	    "$ciao_gobin"/ciao-cli workload create -yaml clear_vm.yaml
-	fi
-	"$ciao_gobin"/ciao-cli workload create -yaml ubuntu_latest.yaml
-	"$ciao_gobin"/ciao-cli workload create -yaml debian_latest.yaml
-	"$ciao_gobin"/ciao-cli workload create -yaml ubuntu_vm.yaml
-	popd
-}
-
 usage="$(basename "$0") [-d --download] The script will download dependencies if needed. Specifying --download will force download the dependencies even if they are cached locally
 $(basename "$0") [-a --all-images] By default only the Ubuntu cloud image is downloaded.  Specify this option to download and create additional images and workloads"
 
@@ -436,7 +277,6 @@ sudo killall ciao-launcher
 sudo killall qemu-system-x86_64
 sudo rm -rf ${ciao_dir}
 
-
 cd "$ciao_bin"
 
 #Cleanup any old artifacts
@@ -461,8 +301,6 @@ then
 	echo "FATAL ERROR: build failed"
 	exit 1
 fi
-
-
 
 #Generate Certificates
 "$GOPATH"/bin/ciao-cert -anchor -role scheduler -email="$ciao_email" \
@@ -550,105 +388,6 @@ cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
 cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
 cp "$ciao_scripts"/verify.sh "$ciao_bin"
 
-#Download the firmware
-cd "$ciao_bin"
-if [ $download -eq 1 ] || [ ! -f OVMF.fd ]
-then
-	rm -f OVMF.fd
-	curl -O https://download.clearlinux.org/image/OVMF.fd
-fi
-
-if [ ! -f OVMF.fd ]
-then
-	echo "FATAL ERROR: unable to download firmware"
-	exit 1
-fi
-
-sudo cp -f OVMF.fd  /usr/share/qemu/OVMF.fd
-
-#Generate the CNCI VM and seed the image and populate the image cache
-cd "$ciao_bin"
-rm -f "$ciao_cnci_image".qcow
-
-if [ $download -eq 1 ] || [ ! -f "$ciao_cnci_image" ] 
-then
-	rm -f "$ciao_cnci_image"
-	"$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image" -d -u "$ciao_cnci_url"
-else
-	"$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image"
-fi
-
-if [ $? -ne 0 ]
-then
-	echo "FATAL ERROR: Unable to mount CNCI Image"
-	exit 1
-fi
-
-if [ ! -f "$ciao_cnci_image" ]
-then
-	echo "FATAL ERROR: unable to download CNCI Image"
-	exit 1
-fi
-
-qemu-img convert -f raw -O qcow2 "$ciao_cnci_image" "$ciao_cnci_image".qcow
-
-#Clear
-
-if [ $all_images -eq 1 ]
-then
-    cd "$ciao_bin"
-    if [ $download -eq 1 ]
-    then
-	LATEST=$(curl https://download.clearlinux.org/latest)
-    else
-	# replace this will a function that looks in ~local cache
-	# for the last version of clear to use.
-	LATEST="12620"
-    fi
-
-    if [ $download -eq 1 ] || [ ! -f clear-"${LATEST}"-cloud.img ]
-    then
-	rm -f clear-"${LATEST}"-cloud.img.xz
-	rm -f clear-"${LATEST}"-cloud.img
-	curl -O https://download.clearlinux.org/releases/"$LATEST"/clear/clear-"$LATEST"-cloud.img.xz
-	xz -T0 --decompress clear-"${LATEST}"-cloud.img.xz
-    fi
-
-
-    if [ ! -f clear-"${LATEST}"-cloud.img ]
-    then
-	echo "FATAL ERROR: unable to download clear cloud Image"
-	exit 1
-    fi
-
-    cd "$ciao_bin"
-    if [ $download -eq 1 ] || [ ! -f $fedora_cloud_image ]
-    then
-	rm -f $fedora_cloud_image
-	curl -L -O $fedora_cloud_url
-    fi
-
-    if [ ! -f $fedora_cloud_image ]
-    then
-	echo "FATAL ERROR: unable to download fedora cloud Image"
-	exit 1
-    fi
-fi
-
-#Ubuntu, needed for kubicle and BAT tests
-cd "$ciao_bin"
-if [ $download -eq 1 ] || [ ! -f $ubuntu_cloud_image ]
-then
-    rm -f $ubuntu_cloud_image
-    curl -L -O $ubuntu_cloud_url
-fi
-
-if [ ! -f $ubuntu_cloud_image ]
-then
-	echo "FATAL ERROR: unable to download fedora cloud Image"
-	exit 1
-fi
-
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
     sudo ip link del "$ciao_bridge"
@@ -683,71 +422,7 @@ else
     echo 'dnsmasq command is not supported'
 fi
 
-# Generate the post-keystone script to issue singlevm-specific openstack
-# commands
-( cat <<-EOF
-#!/bin/bash
-
-# Create basic services, users, and projects/tenants
-openstack service create --name ciao compute
-openstack user create --password "$ciao_password" "$ciao_username"
-openstack role add --project service --user "$ciao_username" admin
-openstack user create --password "$ciao_demo_password" "$ciao_demo_username"
-openstack project show demo
-if [[ \$? == 1 ]]; then
-    openstack project create --domain default demo
-fi
-openstack role add --project demo --user "$ciao_demo_username" user
-
-# Create image service endpoints
-openstack service create --name glance --description "Image Service" image
-openstack endpoint create --region RegionOne image public   https://$ciao_host:9292
-openstack endpoint create --region RegionOne image internal https://$ciao_host:9292
-openstack endpoint create --region RegionOne image admin    https://$ciao_host:9292
-
-# admin should only be admin of the admin project. This role was created by the
-# keystone container's bootstrap.
-openstack role remove --project service --user admin admin
-
-# Create storage endpoints
-openstack service create --name cinderv2 --description "Volume Service" volumev2
-openstack endpoint create --region RegionOne volumev2 public   'https://$ciao_host:8776/v2/%(tenant_id)s'
-openstack endpoint create --region RegionOne volumev2 internal 'https://$ciao_host:8776/v2/%(tenant_id)s'
-openstack endpoint create --region RegionOne volumev2 admin    'https://$ciao_host:8776/v2/%(tenant_id)s'
-
-EOF
-) > "$ciao_bin"/post-keystone.sh
-chmod 755 "$ciao_bin"/post-keystone.sh
-
-## Install keystone
-sudo docker run -d -it --name keystone \
-    --add-host="$ciao_host":"$ciao_ip" \
-    -p $keystone_public_port:5000 \
-    -p $keystone_admin_port:35357 \
-    -e IDENTITY_HOST="$ciao_host" -e KEYSTONE_ADMIN_PASSWORD="${OS_PASSWORD}" \
-    -v "$ciao_bin"/post-keystone.sh:/usr/bin/post-keystone.sh \
-    -v $mysql_data_dir:/var/lib/mysql \
-    -v "$keystone_cert":/etc/nginx/ssl/keystone_cert.pem \
-    -v "$keystone_key":/etc/nginx/ssl/keystone_key.pem clearlinux/keystone:stable
-
-echo -n "Waiting up to $keystone_wait_time seconds for keystone identity" \
-    "service to become available"
-try_until=$(($(date +%s) + $keystone_wait_time))
-while : ; do
-    while [ $(date +%s) -le $try_until ]; do
-        # The keystone container tails the log at the end of its
-        # initialization script
-        if docker exec keystone pidof tail > /dev/null 2>&1; then
-            echo READY
-            break 2
-        else
-            echo -n .
-            sleep 1
-        fi
-    done
-    echo FAILED
-    break
-done
+source $ciao_scripts/setup_keystone.sh
 
 # Install ceph
 # This runs *after* keystone so keystone will get port 5000 first
@@ -779,52 +454,12 @@ while : ; do
     break
 done
 
-# become admin for now.
-ciao_user=$CIAO_USERNAME
-ciao_passwd=$CIAO_PASSWORD
+# become admin in order to upload images and setup workloads
 export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
 export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
 
-echo ""
-echo "Uploading test images to image service"
-echo "---------------------------------------------------------------------------------------"
-if [ -f "$ciao_cnci_image".qcow ]; then
-    "$ciao_gobin"/ciao-cli \
-        image add --file "$ciao_cnci_image".qcow \
-        --name "ciao CNCI image" --id 4e16e743-265a-4bf2-9fd1-57ada0b28904 \
-	--visibility internal
-fi
-
-if [ $all_images -eq 1 ]
-then
-    if [ -f clear-"${LATEST}"-cloud.img ]; then
-	"$ciao_gobin"/ciao-cli \
-		     image add --file clear-"${LATEST}"-cloud.img \
-		     --name "Clear Linux ${LATEST}" --id df3768da-31f5-4ba6-82f0-127a1a705169 \
-		     --visibility public
-    fi
-
-    if [ -f $fedora_cloud_image ]; then
-	"$ciao_gobin"/ciao-cli \
-		     image add --file $fedora_cloud_image \
-		     --name "Fedora Cloud Base 24-1.2" --id 73a86d7e-93c0-480e-9c41-ab42f69b7799 \
-		     --visibility public
-    fi
-fi
-
-if [ -f $ubuntu_cloud_image ]; then
-    "$ciao_gobin"/ciao-cli \
-        image add --file $ubuntu_cloud_image \
-        --name "Ubuntu Server 16.04" \
-	--visibility public
-fi
-
-echo ""
-echo "Creating public test workloads"
-echo "---------------------------------------------------------------------------------------"
-createWorkloads
-export CIAO_USERNAME=$ciao_user
-export CIAO_PASSWORD=$ciao_password
+source $ciao_scripts/setup_images.sh
+source $ciao_scripts/setup_workloads.sh
 
 echo "---------------------------------------------------------------------------------------"
 echo ""
