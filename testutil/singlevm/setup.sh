@@ -64,7 +64,6 @@ export CIAO_USERNAME="$ciao_demo_username"
 export CIAO_PASSWORD="$ciao_demo_password"
 export CIAO_ADMIN_USERNAME="$ciao_admin_username"
 export CIAO_ADMIN_PASSWORD="$ciao_admin_password"
-export CIAO_CA_CERT_FILE="$ciao_bin"/"CAcert-""$ciao_host"".pem"
 export CIAO_IDENTITY="$ciao_identity_url"
 export CIAO_SSH_KEY="$workload_sshkey"
 
@@ -326,7 +325,6 @@ cacert_prog_fedora=$(type -p update-ca-trust)
 if [ x"$cacert_prog_ubuntu" != x ] && [ -x "$cacert_prog_ubuntu" ]; then
     cacert_dir=/usr/local/share/ca-certificates
     sudo install -m 0644 -T "$keystone_cert" "$cacert_dir"/keystone.crt
-    sudo install -m 0644 -T "$CIAO_CA_CERT_FILE" "$cacert_dir"/ciao.crt
     sudo "$cacert_prog_ubuntu"
 
     # Do it a second time with nothing new to make it clean out the old
@@ -344,7 +342,6 @@ elif [ x"$cacert_prog_fedora" != x ] && [ -x "$cacert_prog_fedora" ]; then
     
     if [ -d "$cacert_dir" ]; then
         sudo install -m 0644 -t "$cacert_dir" "$keystone_cert"
-        sudo install -m 0644 -t "$cacert_dir" "$CIAO_CA_CERT_FILE"
         sudo "$cacert_prog_fedora" extract
     else
 	echo "Unable to add keystone's CA certificate to your system's trusted \
