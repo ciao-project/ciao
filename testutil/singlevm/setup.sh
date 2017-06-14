@@ -295,23 +295,6 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh   &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
-echo -n "Waiting up to $ciao_image_wait_time seconds for the ciao image" \
-    "service to become available "
-try_until=$(($(date +%s) + $ciao_image_wait_time))
-while : ; do
-    while [ $(date +%s) -le $try_until ]; do
-        if ciao-cli image list > /dev/null 2>&1; then
-            echo " READY"
-            break 2
-        else
-            echo -n .
-            sleep 1
-        fi
-    done
-    echo FAILED
-    break
-done
-
 # become admin in order to upload images and setup workloads
 export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
 export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD

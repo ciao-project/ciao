@@ -95,6 +95,23 @@ then
 	exit 1
 fi
 
+echo -n "Waiting up to $ciao_image_wait_time seconds for the ciao image" \
+    "service to become available "
+try_until=$(($(date +%s) + $ciao_image_wait_time))
+while : ; do
+    while [ $(date +%s) -le $try_until ]; do
+        if ciao-cli image list > /dev/null 2>&1; then
+            echo " READY"
+            break 2
+        else
+            echo -n .
+            sleep 1
+        fi
+    done
+    echo FAILED
+    break
+done
+
 echo ""
 echo "Uploading test images to image service"
 echo "---------------------------------------------------------------------------------------"
