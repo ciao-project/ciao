@@ -22,8 +22,6 @@ ciao_gobin="$GOPATH"/bin
 ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
 ciao_env="$ciao_bin/demo.sh"
 ciao_dir=/var/lib/ciao
-ciao_data_dir=${ciao_dir}/data
-ciao_ctl_dir=${ciao_data_dir}/controller
 ciao_cnci_image="clear-8260-ciao-networking.img"
 ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
 fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
@@ -314,10 +312,6 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 #Copy the certs
 sudo install -m 0644 -t "$ciao_pki_path" "$keystone_cert"
-sudo install -m 0644 -t "$ciao_pki_path" \
-    "$ciao_bin"/"cert-Controller-""$ciao_host"".pem"
-sudo install -m 0644 -t "$ciao_pki_path" \
-    "$ciao_bin"/"CAcert-""$ciao_host"".pem"
 
 if [ ! -f ${ciao_pki_path}/${ui_cert} ] || [ ! -f ${ciao_pki_path}/${ui_key} ]; then
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -361,16 +355,6 @@ else
     echo "Unable to add keystone's CA certificate to your system's trusted \
         store!"
     exit 1
-fi
-
-
-#Create controller dirs
-echo "Making ciao workloads dir: ${ciao_ctl_dir}/workloads"
-sudo mkdir -p ${ciao_ctl_dir}/workloads
-if [ ! -d ${ciao_ctl_dir}/workloads ]
-then
-	echo "FATAL ERROR: Unable to create ${ciao_ctl_dir}/workloads}"
-	exit 1
 fi
 
 #Copy the launch scripts
