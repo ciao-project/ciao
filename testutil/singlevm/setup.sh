@@ -241,47 +241,6 @@ fi
     -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
     -ip="$ciao_vlan_ip" -verify
 
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout "$keystone_key" -out "$keystone_cert" -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
-
-#Copy the certs
-sudo install -m 0644 -t "$ciao_pki_path" "$keystone_cert"
-
-#Update system's trusted certificates
-cacert_prog_ubuntu=$(type -p update-ca-certificates)
-cacert_prog_fedora=$(type -p update-ca-trust)
-if [ x"$cacert_prog_ubuntu" != x ] && [ -x "$cacert_prog_ubuntu" ]; then
-    cacert_dir=/usr/local/share/ca-certificates
-    sudo install -m 0644 -T "$keystone_cert" "$cacert_dir"/keystone.crt
-    sudo "$cacert_prog_ubuntu"
-
-    # Do it a second time with nothing new to make it clean out the old
-    sudo "$cacert_prog_ubuntu" --fresh
-elif [ x"$cacert_prog_fedora" != x ] && [ -x "$cacert_prog_fedora" ]; then
-    cacert_dir_fedora=/etc/pki/ca-trust/source/anchors/
-    cacert_dir_archlinux=/etc/ca-certificates/trust-source/anchors
-    cacert_dir=""
-
-    if [ -d "$cacert_dir_fedora" ]; then
-	cacert_dir=$cacert_dir_fedora
-    elif [ -d "$cacert_dir_archlinux" ]; then
-	cacert_dir=$cacert_dir_archlinux
-    fi
-    
-    if [ -d "$cacert_dir" ]; then
-        sudo install -m 0644 -t "$cacert_dir" "$keystone_cert"
-        sudo "$cacert_prog_fedora" extract
-    else
-	echo "Unable to add keystone's CA certificate to your system's trusted \
-             store!"
-	exit 1
-    fi
-else
-    echo "Unable to add keystone's CA certificate to your system's trusted \
-        store!"
-    exit 1
-fi
-
 #Copy the launch scripts
 cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
 cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
