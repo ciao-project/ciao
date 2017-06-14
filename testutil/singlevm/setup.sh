@@ -241,12 +241,6 @@ fi
     -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
     -ip="$ciao_vlan_ip" -verify
 
-#Copy the launch scripts
-cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
-cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
-cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
-cp "$ciao_scripts"/verify.sh "$ciao_bin"
-
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
     sudo ip link del "$ciao_bridge"
@@ -288,6 +282,12 @@ source $ciao_scripts/setup_keystone.sh
 # This runs *after* keystone so keystone will get port 5000 first
 sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_vlan_ip -e CEPH_PUBLIC_NETWORK=$ciao_vlan_subnet ceph/demo
 sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
+
+#Copy the launch scripts
+cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
+cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
+cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
+cp "$ciao_scripts"/verify.sh "$ciao_bin"
 
 #Kick off the agents
 cd "$ciao_bin"
