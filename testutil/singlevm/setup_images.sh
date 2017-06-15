@@ -17,6 +17,12 @@ sudo cp -f OVMF.fd  /usr/share/qemu/OVMF.fd
 #Generate the CNCI VM and seed the image and populate the image cache
 rm -f "$ciao_cnci_image".qcow
 
+# Generate CNCI certificate signed by scheduler certificate
+rm -f "$ciao_bin"/*.pem
+"$GOPATH"/bin/ciao-cert -role cnciagent -anchor-cert "$ciao_cert" \
+    -organization="Ciao Deployment" -host="$ciao_host" -verify >/dev/null
+cp "$ciao_pki_path"/CAcert.pem .
+
 if [ $download -eq 1 ] || [ ! -f "$ciao_cnci_image" ] 
 then
 	rm -f "$ciao_cnci_image"
