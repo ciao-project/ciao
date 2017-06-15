@@ -127,4 +127,7 @@ func (conf *Configure) InitDefaults() {
 	conf.Configure.IdentityService.Type = Keystone
 	conf.Configure.Launcher.DiskLimit = true
 	conf.Configure.Launcher.MemoryLimit = true
+	conf.Configure.Controller.CNCIDisk = 2048
+	conf.Configure.Controller.CNCIMem = 2048
+	conf.Configure.Controller.CNCIVcpus = 4
 }

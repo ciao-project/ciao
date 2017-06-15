@@ -85,9 +85,6 @@ var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to cia
 
 var cephID = flag.String("ceph_id", "", "ceph client id")
 
-var cnciVCPUs = 4
-var cnciMem = 2048
-var cnciDisk = 2048
 var adminSSHKey = ""
 
 // default password set to "ciao"
@@ -169,17 +166,9 @@ func main() {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
 
-	if clusterConfig.Configure.Controller.CNCIVcpus != 0 {
-		cnciVCPUs = clusterConfig.Configure.Controller.CNCIVcpus
-	}
-
-	if clusterConfig.Configure.Controller.CNCIMem != 0 {
-		cnciMem = clusterConfig.Configure.Controller.CNCIMem
-	}
-
-	if clusterConfig.Configure.Controller.CNCIDisk != 0 {
-		cnciDisk = clusterConfig.Configure.Controller.CNCIDisk
-	}
+	cnciVCPUs := clusterConfig.Configure.Controller.CNCIVcpus
+	cnciMem := clusterConfig.Configure.Controller.CNCIMem
+	cnciDisk := clusterConfig.Configure.Controller.CNCIDisk
 
 	adminSSHKey = clusterConfig.Configure.Controller.AdminSSHKey
 
