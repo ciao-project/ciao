@@ -100,7 +100,7 @@ echo -n "Waiting up to $ciao_image_wait_time seconds for the ciao image" \
 try_until=$(($(date +%s) + $ciao_image_wait_time))
 while : ; do
     while [ $(date +%s) -le $try_until ]; do
-        if ciao-cli image list > /dev/null 2>&1; then
+        if "$ciao_gobin"/ciao-cli image list > /dev/null 2>&1; then
             echo " READY"
             break 2
         else
