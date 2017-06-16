@@ -27,6 +27,8 @@ import (
 	"reflect"
 	"testing"
 
+	"crypto/tls"
+
 	"github.com/01org/ciao/ssntp"
 )
 
@@ -284,5 +286,50 @@ func TestCreateCert(t *testing.T) {
 
 	if _, err = cert.Verify(opts); err != nil {
 		t.Errorf("Failed to verify certificate: %v", err)
+	}
+}
+
+func TestCSRFlow(t *testing.T) {
+	var anchorCertOutput, caCertOutput, certOutput, csrOutput, privKeyOutput, combinedOutput bytes.Buffer
+
+	hosts := []string{"test.example.com", "test2.example.com"}
+	mgmtIPs := []string{}
+
+	template, err := CreateCertTemplate(ssntp.AGENT, "ACME Corp", "test@example.com", hosts, mgmtIPs)
+	if err != nil {
+		t.Fatalf("Unexpected error when creating cert template: %v", err)
+	}
+
+	err = CreateAnchorCert(template, true, &anchorCertOutput, &caCertOutput)
+	if err != nil {
+		t.Fatalf("Unexpected error when creating anchor cert: %v", err)
+	}
+
+	request := CreateCertificateRequest(true, "ACME Corp", "test@example.com", hosts, mgmtIPs)
+
+	err = CreateCSR(request, true, &csrOutput, &privKeyOutput)
+	if err != nil {
+		t.Fatalf("Unexpected error when creating CSR: %v", err)
+	}
+
+	err = CreateCertFromCSR(ssntp.AGENT, csrOutput.Bytes(), anchorCertOutput.Bytes(), &certOutput)
+	if err != nil {
+		t.Fatalf("Unexpected error when creating cert from CSR: %v", err)
+	}
+
+	err = AddPrivateKeyToCert(&certOutput, &privKeyOutput, &combinedOutput)
+	if err != nil {
+		t.Fatalf("Unexpected error when merging cert and private key")
+	}
+
+	err = VerifyCert(anchorCertOutput.Bytes(), combinedOutput.Bytes())
+	if err != nil {
+		t.Fatalf("Unexpected error when verifying merged cert: %v", err)
+	}
+
+	// Test that this cert is useful for ssntp TLS
+	_, err = tls.X509KeyPair(combinedOutput.Bytes(), combinedOutput.Bytes())
+	if err != nil {
+		t.Fatalf("Unexpected error when checking merged cert: %v", err)
 	}
 }
