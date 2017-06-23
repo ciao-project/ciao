@@ -1,5 +1,5 @@
+pushd $ciao_bin
 #Download the firmware
-cd "$ciao_bin"
 if [ $download -eq 1 ] || [ ! -f OVMF.fd ]
 then
 	rm -f OVMF.fd
@@ -15,7 +15,6 @@ fi
 sudo cp -f OVMF.fd  /usr/share/qemu/OVMF.fd
 
 #Generate the CNCI VM and seed the image and populate the image cache
-cd "$ciao_bin"
 rm -f "$ciao_cnci_image".qcow
 
 if [ $download -eq 1 ] || [ ! -f "$ciao_cnci_image" ] 
@@ -42,7 +41,6 @@ qemu-img convert -f raw -O qcow2 "$ciao_cnci_image" "$ciao_cnci_image".qcow
 
 if [ $all_images -eq 1 ]
 then
-    cd "$ciao_bin"
     if [ $download -eq 1 ]
     then
 	LATEST=$(curl https://download.clearlinux.org/latest)
@@ -67,7 +65,6 @@ then
 	exit 1
     fi
 
-    cd "$ciao_bin"
     if [ $download -eq 1 ] || [ ! -f $fedora_cloud_image ]
     then
 	rm -f $fedora_cloud_image
@@ -82,7 +79,6 @@ then
 fi
 
 #Ubuntu, needed for kubicle and BAT tests
-cd "$ciao_bin"
 if [ $download -eq 1 ] || [ ! -f $ubuntu_cloud_image ]
 then
     rm -f $ubuntu_cloud_image
@@ -100,7 +96,7 @@ echo -n "Waiting up to $ciao_image_wait_time seconds for the ciao image" \
 try_until=$(($(date +%s) + $ciao_image_wait_time))
 while : ; do
     while [ $(date +%s) -le $try_until ]; do
-        if ciao-cli image list > /dev/null 2>&1; then
+        if "$ciao_gobin"/ciao-cli image list > /dev/null 2>&1; then
             echo " READY"
             break 2
         else
@@ -145,3 +141,4 @@ if [ -f $ubuntu_cloud_image ]; then
         --name "Ubuntu Server 16.04" \
 	--visibility public
 fi
+popd

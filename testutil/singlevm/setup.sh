@@ -225,6 +225,9 @@ then
 	exit 1
 fi
 
+# Started early to minimise overall running time
+source $ciao_scripts/setup_keystone.sh
+
 #Generate Certificates
 "$GOPATH"/bin/ciao-cert -anchor -role scheduler -email="$ciao_email" \
     -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_vlan_ip" -verify
@@ -240,6 +243,8 @@ fi
 "$GOPATH"/bin/ciao-cert -role agent,netagent -anchor-cert "$ciao_cert" \
     -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
     -ip="$ciao_vlan_ip" -verify
+
+source $ciao_scripts/setup_webui.sh
 
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
@@ -275,13 +280,12 @@ else
     echo 'dnsmasq command is not supported'
 fi
 
-source $ciao_scripts/setup_webui.sh
-source $ciao_scripts/setup_keystone.sh
-
 # Install ceph
 # This runs *after* keystone so keystone will get port 5000 first
 sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_vlan_ip -e CEPH_PUBLIC_NETWORK=$ciao_vlan_subnet ceph/demo
 sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
+
+source "$ciao_scripts"/wait_for_keystone.sh
 
 #Copy the launch scripts
 cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
