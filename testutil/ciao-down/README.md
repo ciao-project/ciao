@@ -94,17 +94,20 @@ In addition to downloading and building the ciao source code, ciao-down also
 downloads the code for ciao's ui, ciao-webui.  By default it will place the
 source in a local directory in $HOME/ciao-webui.  However, if you are modifying
 the code of the webui it is convenient to have the code shared between your host
-machine and the ciao-down VM.  This can be achieved using the --ui-path.  This
+machine and the ciao-down VM.  This can be achieved using the --mount option.  This
 option takes a path to the location on your host machine where the UI code is
 stored.  This path gets mounted to the same location inside the VM, allowing you to
 modify the sources on your host and compile inside the VM.  For example,
 
-ciao-down prepare --with-ui $HOME/src/ciao-webui
+ciao-down prepare --mount hostui,mapped,$HOME/src/ciao-webui
 
 will create a new ciao-down VM in which the $HOME/src/ciao-webui folder on
-your host will be mounted at $HOME/src/ciao-webui.
+your host will be mounted at $HOME/src/ciao-webui.  It is important to use
+the 'mapped' 9p security model.  If you use passthrough the mounted folder
+will not be writeable in the guest and you will not be able to build the
+web-ui.
 
-Note that if the directory passed to --with-ui option already contains a
+Note that if the directory passed to --mount option already contains a
 git repo, ciao-down will perform no action other than to mount the directory
 in the guest VM.  It will not try to clone the repo or update it.  It assumes
 that the directory already contains the webui code.
@@ -140,7 +143,22 @@ ciao-down stop is used to power down the ciao-down VM cleanly.
 ciao-down start boots a previously prepared but not running ciao-down VM.
 The start command also supports the --mem and --cpu options.  So it's
 possible to change the resources assigned to the guest VM by stopping it
-and restarting it, specifying --mem and --cpu.
+and restarting it, specifying --mem and --cpu.  It's also possible to
+specify additional port mappings or mounts via the start command.  See
+the section on port mappings below.
+
+Any parameters you pass to the start command override the parameters
+you originally passed to prepare.  These settings are also persisted.
+For example, if you were to run
+
+./ciao-down prepare --mem=2
+./ciao-down stop
+./ciao-down start --mem=1
+./ciao-down stop
+./ciao-down start
+
+The final ciao-down instance would boot with 1GB of RAM even though no mem
+parameter was provided.
 
 ### quit
 
@@ -157,4 +175,30 @@ the host.  However, it is sometimes useful to be able to create commits from
 inside the guest, for example, if you were to ssh into the guest from a machine
 that is not the host.
 
+## Port mappings and Mounts
+
+By default, ciao-down creates two port mappings for ciao VMs, 10022-22 for SSH
+and 3000-3000 for ciao's webui.  It creates a single port mapping for clear
+container VMs for SSH.  It also creates a single mount for the Go Path.  You
+can specify additional port mappings or mounts or even override the default
+settings.
+
+For example,
+
+./ciao-down prepare --mount docs,passthrough,$HOME/Documents --port 10000-80
+
+shares the host directory, $HOME/Documents, with the ciao-down VM using the 9p
+passthrough security model.  The directory can be mounted inside the VM using
+the docs tag.  The command also adds a new port mapping.  127.0.0.1:10000 on
+the host now maps to port 80 on the guest.
+
+Multiple --mount and --port options can be provided and it's also possible to
+override the default ports.  Default mounts can be overridden by specifying
+an existing tag with new options, and default ports can be overridden by
+mapping a new host port to an existing guest port.  For example,
+
+./ciao-down prepare --mount hostgo,none,$HOME/go -port 10023-22
+
+changes the security model with the default hostgo mount and makes the instance
+available via ssh on 127.0.0.1:10023.
 
