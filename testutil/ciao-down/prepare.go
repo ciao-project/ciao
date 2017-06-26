@@ -20,17 +20,21 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"text/template"
 
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/qemu"
 )
+
+const ciaoDownPkg = "github.com/01org/ciao/testutil/ciao-down"
 
 type logger struct{}
 
@@ -52,6 +56,11 @@ func (l logger) Warningf(s string, args ...interface{}) {
 
 func (l logger) Errorf(s string, args ...interface{}) {
 	l.Infof(s, args)
+}
+
+type workload struct {
+	userData     string
+	instanceData instance
 }
 
 type workspace struct {
@@ -110,6 +119,26 @@ func hostSupportsNestedKVM() bool {
 	return hostSupportsNestedKVMIntel() || hostSupportsNestedKVMAMD()
 }
 
+func createWorkload(ws *workspace, vmType string) (*workload, error) {
+	localPath := filepath.Join(ws.Home, ".ciao-down", "workloads",
+		fmt.Sprintf("%s.yaml", vmType))
+	ud, err := ioutil.ReadFile(localPath)
+	if err == nil {
+		return &workload{userData: string(ud)}, nil
+	}
+
+	p, err := build.Default.Import(ciaoDownPkg, "", build.FindOnly)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to locate ciao-down workload directory: %v", err)
+	}
+	workloadPath := filepath.Join(p.Dir, "workloads", fmt.Sprintf("%s.yaml", vmType))
+	ud, err = ioutil.ReadFile(workloadPath)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to load workload %s", workloadPath)
+	}
+	return &workload{userData: string(ud)}, nil
+}
+
 func prepareSSHKeys(ctx context.Context, ws *workspace) error {
 	_, privKeyErr := os.Stat(ws.keyPath)
 	_, pubKeyErr := os.Stat(ws.publicKeyPath)
@@ -128,35 +157,6 @@ func prepareSSHKeys(ctx context.Context, ws *workspace) error {
 	}
 
 	ws.PublicKey = string(publicKey)
-	return nil
-}
-
-func prepareRunCmd(ws *workspace, runCmd string) error {
-	if runCmd == "" {
-		return nil
-	}
-
-	runCmdData, err := ioutil.ReadFile(runCmd)
-	if err != nil {
-		return fmt.Errorf("Unable to read %s : %v", runCmd, err)
-	}
-
-	buf := bytes.NewBuffer(runCmdData)
-	found := false
-	line, err := buf.ReadString('\n')
-	for err == nil {
-		if strings.TrimSpace(line) == "run_cmd:" {
-			found = true
-			break
-		}
-		line, err = buf.ReadString('\n')
-	}
-
-	if !found {
-		return fmt.Errorf("No commands found in %s", runCmd)
-	}
-
-	ws.RunCmd = buf.String()
 	return nil
 }
 
@@ -250,14 +250,7 @@ func downloadFN(ws *workspace, URL, location string) string {
 	return fmt.Sprintf("wget %s -O %s", url.String(), location)
 }
 
-func buildISOImage(ctx context.Context, instanceDir, vmType string, ws *workspace, debug bool) error {
-	var tmpl string
-	if vmType == CLEARCONTAINERS {
-		tmpl = fmt.Sprintf(ccUserDataTemplate, ws.RunCmd)
-	} else {
-		tmpl = fmt.Sprintf(userDataTemplate, ws.RunCmd)
-	}
-
+func buildISOImage(ctx context.Context, instanceDir, tmpl string, ws *workspace, debug bool) error {
 	funcMap := template.FuncMap{
 		"download": downloadFN,
 	}

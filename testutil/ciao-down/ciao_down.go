@@ -137,9 +137,9 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func prepareFlags(ws *workspace) (*instance, bool, string, string, error) {
+func prepareFlags(ws *workspace) (*instance, *workload, bool, error) {
 	var debug bool
-	var runCmd, vmType string
+	var vmType string
 	var m mounts
 	var p ports
 
@@ -147,31 +147,36 @@ func prepareFlags(ws *workspace) (*instance, bool, string, string, error) {
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
-	fs.StringVar(&runCmd, "runcmd", "", "Path to a file containing additional commands to execute when preparing the VM")
-	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch. "+CIAO+" or "+CLEARCONTAINERS)
+	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch.")
 
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return nil, false, "", "", err
+		return nil, nil, false, err
 	}
 
-	if vmType != CIAO && vmType != CLEARCONTAINERS {
-		err := fmt.Errorf("Unsupported vmType %s. Should be one of "+CIAO+"|"+CLEARCONTAINERS, vmType)
-		return nil, false, "", "", err
+	wkl, err := createWorkload(ws, vmType)
+	if err != nil {
+		return nil, nil, false, err
 	}
 
 	for i := range m {
 		if err := checkDirectory(m[i].Path); err != nil {
-			return nil, false, "", "", err
+			return nil, nil, false, err
 		}
 	}
 
-	in := newDefaultInstance(ws, vmType)
+	in := &instance{}
+	in.PortMappings = []portMapping{
+		{
+			Host:  10022,
+			Guest: 22,
+		},
+	}
 	in.CPUs = CPUs
 	in.MemGiB = memGiB
 	in.mergeMounts(m)
 	in.mergePorts(p)
 
-	return in, debug, runCmd, vmType, nil
+	return in, wkl, debug, nil
 }
 
 func startFlags(in *instance) error {
@@ -220,7 +225,7 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, debug, runCmd, vmType, err := prepareFlags(ws)
+	in, wkld, debug, err := prepareFlags(ws)
 	if err != nil {
 		return
 	}
@@ -259,18 +264,13 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	err = prepareRunCmd(ws, runCmd)
-	if err != nil {
-		return
-	}
-
 	fmt.Printf("Downloading %s\n", guestImageFriendlyName)
 	qcowPath, err := downloadFile(ctx, guestDownloadURL, ws.ciaoDir, downloadProgress)
 	if err != nil {
 		return
 	}
 
-	err = buildISOImage(ctx, ws.instanceDir, vmType, ws, debug)
+	err = buildISOImage(ctx, ws.instanceDir, wkld.userData, ws, debug)
 	if err != nil {
 		return
 	}
