@@ -47,7 +47,6 @@ type sqliteDB struct {
 
 type persistentData interface {
 	Init() error
-	Populate() error
 	Create(...string) error
 	Name() string
 	DB() *sql.DB
@@ -62,10 +61,6 @@ type namedData struct {
 func (d namedData) Create(record ...string) (err error) {
 	err = d.ds.create(d.name, record)
 	return
-}
-
-func (d namedData) Populate() (err error) {
-	return nil
 }
 
 func (d namedData) Name() (name string) {
@@ -530,13 +525,6 @@ func (ds *sqliteDB) init(config Config) error {
 
 	for _, table := range ds.tables {
 		err = table.Init()
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, table := range ds.tables {
-		err = table.Populate()
 		if err != nil {
 			return err
 		}
