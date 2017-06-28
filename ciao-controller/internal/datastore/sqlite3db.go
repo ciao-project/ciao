@@ -47,7 +47,6 @@ type sqliteDB struct {
 
 type persistentData interface {
 	Init() error
-	Populate() error
 	Create(...string) error
 	Name() string
 	DB() *sql.DB
@@ -62,10 +61,6 @@ type namedData struct {
 func (d namedData) Create(record ...string) (err error) {
 	err = d.ds.create(d.name, record)
 	return
-}
-
-func (d namedData) Populate() (err error) {
-	return nil
 }
 
 func (d namedData) Name() (name string) {
@@ -194,45 +189,6 @@ func (d workloadStorage) Init() error {
 		tag string,
 		foreign key(workload_id) references workloads(id),
 		foreign key(volume_id) references block_data(id)
-		);`
-
-	return d.ds.exec(d.db, cmd)
-}
-
-// Resources data
-type resourceData struct {
-	namedData
-}
-
-func (d resourceData) Populate() error {
-	err := d.ds.create(d.name, 1, "instances")
-	if err != nil {
-		glog.V(2).Info("could not add resource: ", err)
-	}
-
-	err = d.ds.create(d.name, 2, payloads.VCPUs)
-	if err != nil {
-		glog.V(2).Info("could not add resource: ", err)
-	}
-
-	err = d.ds.create(d.name, 3, payloads.MemMB)
-	if err != nil {
-		glog.V(2).Info("could not add resource: ", err)
-	}
-
-	err = d.ds.create(d.name, 5, payloads.NetworkNode)
-	if err != nil {
-		glog.V(2).Info("could not add resource: ", err)
-	}
-
-	return err
-}
-
-func (d resourceData) Init() error {
-	cmd := `CREATE TABLE IF NOT EXISTS resources
-		(
-		id int primary key,
-		name text
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -545,7 +501,6 @@ func (ds *sqliteDB) init(config Config) error {
 	ds.tdbLock = &sync.RWMutex{}
 
 	ds.tables = []persistentData{
-		resourceData{namedData{ds: ds, name: "resources", db: ds.db}},
 		tenantData{namedData{ds: ds, name: "tenants", db: ds.db}},
 		instanceData{namedData{ds: ds, name: "instances", db: ds.db}},
 		workloadTemplateData{namedData{ds: ds, name: "workload_template", db: ds.db}},
@@ -570,13 +525,6 @@ func (ds *sqliteDB) init(config Config) error {
 
 	for _, table := range ds.tables {
 		err = table.Init()
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, table := range ds.tables {
-		err = table.Populate()
 		if err != nil {
 			return err
 		}
