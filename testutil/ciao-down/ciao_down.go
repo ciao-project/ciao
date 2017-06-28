@@ -43,13 +43,6 @@ const (
 	CLEARCONTAINERS = "clearcontainers"
 )
 
-// Constants for the Guest image used by ciao-down
-
-const (
-	guestDownloadURL       = "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
-	guestImageFriendlyName = "Ubuntu 16.04"
-)
-
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n\n", os.Args[0])
@@ -137,46 +130,45 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func prepareFlags(ws *workspace) (*instance, *workload, bool, error) {
+func prepareFlags(ws *workspace) (*workload, bool, error) {
 	var debug bool
 	var vmType string
 	var m mounts
 	var p ports
+	var memGiB, CPUs int
 
-	memGiB, CPUs := getMemAndCpus()
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
 	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch.")
 
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return nil, nil, false, err
-	}
-
-	wkl, err := createWorkload(ws, vmType)
-	if err != nil {
-		return nil, nil, false, err
+		return nil, false, err
 	}
 
 	for i := range m {
 		if err := checkDirectory(m[i].Path); err != nil {
-			return nil, nil, false, err
+			return nil, false, err
 		}
 	}
 
-	in := &instance{}
-	in.PortMappings = []portMapping{
-		{
-			Host:  10022,
-			Guest: 22,
-		},
+	wkl, err := createWorkload(ws, vmType)
+	if err != nil {
+		return nil, false, err
 	}
-	in.CPUs = CPUs
-	in.MemGiB = memGiB
+
+	in := &wkl.insData
+	if memGiB != 0 {
+		in.MemGiB = memGiB
+	}
+	if CPUs != 0 {
+		in.CPUs = CPUs
+	}
+
 	in.mergeMounts(m)
 	in.mergePorts(p)
 
-	return in, wkl, debug, nil
+	return wkl, debug, nil
 }
 
 func startFlags(in *instance) error {
@@ -225,12 +217,14 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, wkld, debug, err := prepareFlags(ws)
+	wkld, debug, err := prepareFlags(ws)
 	if err != nil {
 		return
 	}
 
+	in := &wkld.insData
 	ws.Mounts = in.Mounts
+	ws.Hostname = wkld.insSpec.Hostname
 
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {
@@ -264,8 +258,8 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	fmt.Printf("Downloading %s\n", guestImageFriendlyName)
-	qcowPath, err := downloadFile(ctx, guestDownloadURL, ws.ciaoDir, downloadProgress)
+	fmt.Printf("Downloading %s\n", wkld.insSpec.BaseImageName)
+	qcowPath, err := downloadFile(ctx, wkld.insSpec.BaseImageURL, ws.ciaoDir, downloadProgress)
 	if err != nil {
 		return
 	}

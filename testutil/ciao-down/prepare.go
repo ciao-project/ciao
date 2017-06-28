@@ -20,21 +20,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go/build"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"strings"
 	"text/template"
 
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/qemu"
 )
-
-const ciaoDownPkg = "github.com/01org/ciao/testutil/ciao-down"
 
 type logger struct{}
 
@@ -58,11 +54,6 @@ func (l logger) Errorf(s string, args ...interface{}) {
 	l.Infof(s, args)
 }
 
-type workload struct {
-	userData     string
-	instanceData instance
-}
-
 type workspace struct {
 	GoPath         string
 	Home           string
@@ -76,6 +67,7 @@ type workspace struct {
 	GitUserName    string
 	GitEmail       string
 	Mounts         []mount
+	Hostname       string
 	RunCmd         string
 	ciaoDir        string
 	instanceDir    string
@@ -117,26 +109,6 @@ func hostSupportsNestedKVMAMD() bool {
 
 func hostSupportsNestedKVM() bool {
 	return hostSupportsNestedKVMIntel() || hostSupportsNestedKVMAMD()
-}
-
-func createWorkload(ws *workspace, vmType string) (*workload, error) {
-	localPath := filepath.Join(ws.Home, ".ciao-down", "workloads",
-		fmt.Sprintf("%s.yaml", vmType))
-	ud, err := ioutil.ReadFile(localPath)
-	if err == nil {
-		return &workload{userData: string(ud)}, nil
-	}
-
-	p, err := build.Default.Import(ciaoDownPkg, "", build.FindOnly)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to locate ciao-down workload directory: %v", err)
-	}
-	workloadPath := filepath.Join(p.Dir, "workloads", fmt.Sprintf("%s.yaml", vmType))
-	ud, err = ioutil.ReadFile(workloadPath)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to load workload %s", workloadPath)
-	}
-	return &workload{userData: string(ud)}, nil
 }
 
 func prepareSSHKeys(ctx context.Context, ws *workspace) error {

@@ -22,16 +22,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"text/tabwriter"
 	"time"
-
-	yaml "gopkg.in/yaml.v2"
 
 	"github.com/01org/ciao/qemu"
 )
@@ -42,170 +38,6 @@ const (
 	friendlyNameParam = "name"
 	urlParam          = "url"
 )
-
-type portMapping struct {
-	Host  int `yaml:"host"`
-	Guest int `yaml:"guest"`
-}
-
-func (p portMapping) String() string {
-	return fmt.Sprintf("%d-%d", p.Host, p.Guest)
-}
-
-type mount struct {
-	Tag           string `yaml:"tag"`
-	SecurityModel string `yaml:"security_model"`
-	Path          string `yaml:"path"`
-}
-
-func (m mount) String() string {
-	return fmt.Sprintf("%s,%s,%s", m.Tag, m.SecurityModel, m.Path)
-}
-
-type instance struct {
-	MemGiB       int           `yaml:"mem_gib"`
-	CPUs         int           `yaml:"cpus"`
-	PortMappings []portMapping `yaml:"ports"`
-	Mounts       []mount       `yaml:"mounts"`
-}
-
-func newDefaultInstance(ws *workspace, vmType string) *instance {
-	var in instance
-
-	in.Mounts = []mount{
-		{
-			Tag:           "hostgo",
-			SecurityModel: "passthrough",
-			Path:          ws.GoPath,
-		},
-	}
-
-	in.PortMappings = []portMapping{
-		{
-			Host:  10022,
-			Guest: 22,
-		},
-	}
-
-	if vmType == CIAO {
-		in.PortMappings = append(in.PortMappings, portMapping{
-			Host:  3000,
-			Guest: 3000,
-		})
-	}
-
-	return &in
-}
-
-func newInstanceFromFile(ws *workspace) (*instance, error) {
-	in := &instance{}
-
-	err := in.load(ws)
-	if err == nil {
-		return in, nil
-	}
-
-	// Check for legacy state files.
-
-	vmType := CIAO
-	data, err := ioutil.ReadFile(path.Join(ws.instanceDir, "vmtype.txt"))
-	if err == nil {
-		vmType = string(data)
-		if vmType != CIAO && vmType != CLEARCONTAINERS {
-			err := fmt.Errorf("Unsupported vmType %s. Should be one of "+CIAO+"|"+CLEARCONTAINERS, vmType)
-			return nil, err
-		}
-	}
-
-	uiPath := ""
-	data, err = ioutil.ReadFile(path.Join(ws.instanceDir, "ui_path.txt"))
-	if err == nil {
-		uiPath = string(data)
-	}
-
-	in = newDefaultInstance(ws, vmType)
-
-	if uiPath != "" {
-		in.Mounts = append(in.Mounts, mount{
-			Tag:           "hostui",
-			SecurityModel: "mapped",
-			Path:          filepath.Clean(uiPath),
-		})
-	}
-
-	return in, nil
-}
-
-func (in *instance) load(ws *workspace) error {
-	data, err := ioutil.ReadFile(path.Join(ws.instanceDir, "state.yaml"))
-	if err != nil {
-		return fmt.Errorf("Unable to read instance state : %v", err)
-	}
-
-	err = yaml.Unmarshal(data, in)
-	if err != nil {
-		return fmt.Errorf("Unable to unmarshall instance state : %v", err)
-	}
-	return nil
-}
-
-func (in *instance) save(ws *workspace) error {
-	data, err := yaml.Marshal(in)
-	if err != nil {
-		return fmt.Errorf("Unable to marshall instance state : %v", err)
-	}
-	err = ioutil.WriteFile(path.Join(ws.instanceDir, "state.yaml"),
-		data, 0600)
-	if err != nil {
-		return fmt.Errorf("Unable to write instance state : %v", err)
-	}
-	return nil
-}
-
-func (in *instance) mergeMounts(m mounts) {
-	mountCount := len(in.Mounts)
-	for _, mount := range m {
-		var i int
-		for i = 0; i < mountCount; i++ {
-			if mount.Tag == in.Mounts[i].Tag {
-				break
-			}
-		}
-
-		if i == mountCount {
-			in.Mounts = append(in.Mounts, mount)
-		} else {
-			in.Mounts[i] = mount
-		}
-	}
-}
-
-func (in *instance) mergePorts(p ports) {
-	portCount := len(in.PortMappings)
-	for _, port := range p {
-		var i int
-		for i = 0; i < portCount; i++ {
-			if port.Guest == in.PortMappings[i].Guest {
-				break
-			}
-		}
-
-		if i == portCount {
-			in.PortMappings = append(in.PortMappings, port)
-		} else {
-			in.PortMappings[i] = port
-		}
-	}
-}
-
-func (in *instance) sshPort() (int, error) {
-	for _, p := range in.PortMappings {
-		if p.Guest == 22 {
-			return p.Host, nil
-		}
-	}
-	return 0, fmt.Errorf("No SSH port configured")
-}
 
 func bootVM(ctx context.Context, ws *workspace, in *instance) error {
 	disconnectedCh := make(chan struct{})

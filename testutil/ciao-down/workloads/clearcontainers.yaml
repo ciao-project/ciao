@@ -1,8 +1,23 @@
+---
+base_image_url: https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img
+base_image_name: Ubuntu 16.04
+hostname: singlevm
+...
+---
+{{with .GoPath}}
+mounts:
+- tag: hostgo
+  security_model: none
+  path: {{.}}
+{{end}}
+...
+---
 {{- define "ENV" -}}
 {{if len .HTTPSProxy }}https_proxy={{.HTTPSProxy}} {{end -}}
 {{if len .HTTPProxy }}http_proxy={{.HTTPProxy}} {{end -}}
 {{print "DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true " -}}
 {{end}}
+{{ define "GOPATH" }}{{with .GoPath}}{{$.MountPath "hostgo"}}{{else}}/home/{{.User}}/go{{end}}{{end}}
 {{- define "CHECK" -}}
 if [ $? -eq 0 ] ; then ret="OK" ; else ret="FAIL" ; fi ; curl -X PUT -d $ret 10.0.2.2:{{.HTTPServerPort -}}
 {{end -}}
@@ -29,11 +44,11 @@ write_files:
      #!/bin/sh
      printf "\n"
      printf "\n"
-     printf "Your go code is at {{.MountPath "hostgo"}}\n"
+     printf "Your go code is at {{template "GOPATH" .}}\n"
      printf "You can also edit your code on your host system \n"
      printf "To build cc-oci-runtime from sources \n"
      printf "go get -d github.com/01org/cc-oci-runtime/... \n"
-     printf "cd {{.MountPath "hostgo"}}/src/github.com/01org/cc-oci-runtime \n"
+     printf "cd {{template "GOPATH" .}}/src/github.com/01org/cc-oci-runtime \n"
      printf "./autogen.sh --with-cc-kernel=/usr/share/clear-containers/vmlinux.container --with-cc-image=/usr/share/clear-containers/clear-containers.img \n"
      printf "make \n"
      printf "make check \n"
@@ -57,7 +72,6 @@ package_upgrade: true
 
 runcmd:
  - echo "127.0.0.1 singlevm" >> /etc/hosts
- - mount hostgo
  - chown {{.User}}:{{.User}} /home/{{.User}}
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
@@ -76,8 +90,8 @@ runcmd:
  - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm\""  >> /etc/environment
 {{end}}
 
- - echo "GOPATH=\"{{.MountPath "hostgo"}}\"" >> /etc/environment
- - echo "PATH=\"$PATH:/usr/local/go/bin:{{.MountPath "hostgo"}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
+ - echo "GOPATH=\"{{template "GOPATH" .}}\"" >> /etc/environment
+ - echo "PATH=\"$PATH:/usr/local/go/bin:{{template "GOPATH" .}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
 
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
  - {{download . "https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz" "/tmp/go1.7.4.linux-amd64.tar.gz"}}
@@ -150,10 +164,10 @@ runcmd:
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Go development utils" 10.0.2.2:{{.HTTPServerPort}}
- - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.MountPath "hostgo"}} /usr/local/go/bin/go get github.com/mattn/goveralls golang.org/x/tools/cmd/cover github.com/pierrre/gotestcover github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell github.com/01org/ciao/test-cases github.com/opencontainers/runc/libcontainer/configs
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/mattn/goveralls golang.org/x/tools/cmd/cover github.com/pierrre/gotestcover github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell github.com/01org/ciao/test-cases github.com/opencontainers/runc/libcontainer/configs
  - {{template "CHECK" .}}
 
- - chown {{.User}}:{{.User}} -R {{.MountPath "hostgo"}}
+ - chown {{.User}}:{{.User}} -R {{template "GOPATH" .}}
 
 {{if len .GitUserName}}
  - curl -X PUT -d "Setting git user.name" 10.0.2.2:{{.HTTPServerPort}}
@@ -176,3 +190,4 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh-authorized-keys:
     - {{.PublicKey}}
+...

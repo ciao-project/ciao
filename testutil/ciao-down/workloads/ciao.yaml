@@ -1,8 +1,25 @@
+---
+base_image_url: https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img
+base_image_name: Ubuntu 16.04
+...
+---
+{{with .GoPath}}
+mounts:
+- tag: hostgo
+  security_model: passthrough
+  path: {{.}}
+{{end}}
+ports:
+- host: 3000
+  guest: 3000
+...
+---
 {{- define "ENV" -}}
 {{if len .HTTPSProxy }}https_proxy={{.HTTPSProxy}} {{end -}}
 {{if len .HTTPProxy }}http_proxy={{.HTTPProxy}} {{end -}}
 {{- print "DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true " -}}
 {{end}}
+{{ define "GOPATH" }}{{with .GoPath}}{{$.MountPath "hostgo"}}{{else}}/home/{{.User}}/go{{end}}{{end}}
 {{- define "CHECK" -}}
 if [ $? -eq 0 ] ; then ret="OK" ; else ret="FAIL" ; fi ; curl -X PUT -d $ret 10.0.2.2:{{.HTTPServerPort -}}
 {{end -}}
@@ -25,7 +42,7 @@ write_files:
      printf "\n"
      printf "To run Single VM:\n"
      printf "\n"
-     printf "cd {{.MountPath "hostgo"}}/src/github.com/01org/ciao/testutil/singlevm\n"
+     printf "cd {{template "GOPATH" .}}/src/github.com/01org/ciao/testutil/singlevm\n"
      printf "./setup.sh\n"
      printf "\n"
      printf "To start the web-ui:\n"
@@ -72,8 +89,8 @@ runcmd:
  - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm\""  >> /etc/environment
 {{end}}
 
- - echo "GOPATH=\"{{.MountPath "hostgo"}}\"" >> /etc/environment
- - echo "PATH=\"$PATH:/usr/local/go/bin:{{.MountPath "hostgo"}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
+ - echo "GOPATH=\"{{template "GOPATH" .}}\"" >> /etc/environment
+ - echo "PATH=\"$PATH:/usr/local/go/bin:{{template "GOPATH" .}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
 
  - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
  - {{download . "https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz"}}
@@ -137,14 +154,14 @@ runcmd:
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Building ciao" 10.0.2.2:{{.HTTPServerPort}}
- - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.MountPath "hostgo"}} /usr/local/go/bin/go get github.com/01org/ciao/...
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/01org/ciao/...
  - {{template "CHECK" .}}
 
  - curl -X PUT -d "Installing Go development utils" 10.0.2.2:{{.HTTPServerPort}}
- - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{.MountPath "hostgo"}} /usr/local/go/bin/go get github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
  - {{template "CHECK" .}}
 
- - chown {{.User}}:{{.User}} -R {{.MountPath "hostgo"}}
+ - chown {{.User}}:{{.User}} -R {{template "GOPATH" .}}
 
  - curl -X PUT -d "Retrieving ciao-webui " 10.0.2.2:{{.HTTPServerPort}}
 {{with .MountPath "hostui"}}
@@ -214,3 +231,4 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh-authorized-keys:
     - {{.PublicKey}}
+...
