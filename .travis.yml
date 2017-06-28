@@ -26,8 +26,8 @@ before_install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/pierrre/gotestcover
   - go get github.com/google/gofuzz github.com/stretchr/testify
-  - go get -u github.com/alecthomas/gometalinter
-  - gometalinter --install
+  - go get -u gopkg.in/alecthomas/gometalinter.v1
+  - gometalinter.v1 --install
   - pip install ansible
 
 # We need to create and install SSNTP certs for the SSNTP and controller tests
@@ -56,9 +56,9 @@ script:
    - sudo docker pull debian
    - sudo ip link add testdummy type dummy
    - sudo ip addr add 198.51.100.1/24 dev testdummy
-   - gometalinter --tests --vendor --disable-all --enable=misspell --enable=vet --enable=ineffassign --enable=gofmt --enable=gocyclo --cyclo-over=15 --enable=golint --enable=deadcode ./...
+   - gometalinter.v1 --tests --vendor --disable-all --enable=misspell --enable=vet --enable=ineffassign --enable=gofmt --enable=gocyclo --cyclo-over=15 --enable=golint --enable=deadcode ./...
    - cd _release/bat
-   - gometalinter --tests --vendor --disable-all --enable=misspell --enable=vet --enable=ineffassign --enable=gofmt --enable=gocyclo --cyclo-over=15 --enable=golint --enable=deadcode ./...
+   - gometalinter.v1 --tests --vendor --disable-all --enable=misspell --enable=vet --enable=ineffassign --enable=gofmt --enable=gocyclo --cyclo-over=15 --enable=golint --enable=deadcode ./...
    - cd ../..
    - sudo mkdir -p /var/lib/ciao/instances
    - sudo mkdir -p /var/lib/ciao/data/controller/workloads
