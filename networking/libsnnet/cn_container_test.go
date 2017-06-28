@@ -128,12 +128,11 @@ func dockerNetInfo(subnetID string) error {
 	return err
 }
 
-func dockerRunTop(name string, ip net.IP, mac net.HardwareAddr, subnetID string) {
-	cmd := exec.Command("docker", "run", "--name", ip.String(), "--net="+subnetID,
+func dockerRunDebian(name string, ip net.IP, mac net.HardwareAddr, subnetID string) error {
+	cmd := exec.Command("docker", "run", "-itd", "--name", ip.String(), "--net="+subnetID,
 		"--ip="+ip.String(), "--mac-address="+mac.String(),
-		"debian", "top", "-b", "-d1")
-	go func() { _ = cmd.Run() }() // Ensures that the containers stays alive. Kludgy
-	return
+		"debian", "sh")
+	return cmd.Run()
 }
 
 func dockerRunPingVerify(name string, ip net.IP, mac net.HardwareAddr, subnetID string, addr string) error {
@@ -414,7 +413,8 @@ func TestCNContainer_Connectivity(t *testing.T) {
 	assert.Nil(dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
 
 	//Kick off a long running container
-	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	err = dockerRunDebian(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	assert.Nil(err)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
 	assert.Nil(err)
@@ -532,7 +532,8 @@ func TestCNContainer_Interop1(t *testing.T) {
 	assert.Nil(err)
 
 	//Kick off a long running container
-	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	err = dockerRunDebian(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	assert.Nil(err)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
 	assert.Nil(err)
@@ -659,7 +660,8 @@ func TestCNContainer_Interop2(t *testing.T) {
 	assert.Nil(dockerNetCreate(cInfo.Subnet, cInfo.Gateway, cInfo.Bridge, cInfo.SubnetID))
 
 	//Kick off a long running container
-	dockerRunTop(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	err = dockerRunDebian(vnicCfg.VnicIP.String(), vnicCfg.VnicIP, vnicCfg.VnicMAC, cInfo.SubnetID)
+	assert.Nil(err)
 
 	_, _, cInfo2, err := cn.CreateVnic(vnicCfg2)
 	assert.Nil(err)
