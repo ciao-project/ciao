@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -157,9 +158,9 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	var err error
 
 	ws := &workspace{HTTPServerPort: 8080}
-	ws.GoPath = os.Getenv("GOPATH")
-	if ws.GoPath == "" {
-		return nil, fmt.Errorf("GOPATH is not defined")
+	data, err := exec.Command("go", "env", "GOPATH").Output()
+	if err == nil {
+		ws.GoPath = filepath.Clean(strings.TrimSpace(string(data)))
 	}
 	ws.Home = os.Getenv("HOME")
 	if ws.Home == "" {
@@ -192,7 +193,7 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	ws.keyPath = path.Join(ws.ciaoDir, "id_rsa")
 	ws.publicKeyPath = fmt.Sprintf("%s.pub", ws.keyPath)
 
-	data, err := exec.Command("git", "config", "--global", "user.name").Output()
+	data, err = exec.Command("git", "config", "--global", "user.name").Output()
 	if err == nil {
 		ws.GitUserName = strings.TrimSpace(string(data))
 	}
