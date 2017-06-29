@@ -31,7 +31,15 @@ import (
 
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/qemu"
+	"github.com/01org/ciao/ssntp/uuid"
 )
+
+const metaDataTemplate = `
+{
+  "uuid": "{{.UUID}}",
+  "hostname": "{{.Hostname}}"
+}
+`
 
 type logger struct{}
 
@@ -69,6 +77,7 @@ type workspace struct {
 	GitEmail       string
 	Mounts         []mount
 	Hostname       string
+	UUID           string
 	RunCmd         string
 	ciaoDir        string
 	instanceDir    string
@@ -202,6 +211,8 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	if err == nil {
 		ws.GitEmail = strings.TrimSpace(string(data))
 	}
+
+	ws.UUID = uuid.Generate().String()
 
 	return ws, nil
 }
