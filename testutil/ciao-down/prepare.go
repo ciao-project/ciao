@@ -234,9 +234,40 @@ func downloadFN(ws *workspace, URL, location string) string {
 	return fmt.Sprintf("wget %s -O %s", url.String(), location)
 }
 
+func beginTaskFN(ws *workspace, message string) string {
+	const infoStr = `curl -X PUT -d "%s" 10.0.2.2:%d`
+	return fmt.Sprintf(infoStr, message, ws.HTTPServerPort)
+}
+
+func endTaskCheckFN(ws *workspace) string {
+	const checkStr = `if [ $? -eq 0 ] ; then ret="OK" ; else ret="FAIL" ; fi ; ` +
+		`curl -X PUT -d $ret 10.0.2.2:%d`
+	return fmt.Sprintf(checkStr, ws.HTTPServerPort)
+}
+
+func endTaskOkFN(ws *workspace) string {
+	const okStr = `curl -X PUT -d "OK" 10.0.2.2:%d`
+	return fmt.Sprintf(okStr, ws.HTTPServerPort)
+}
+
+func endTaskFailFN(ws *workspace) string {
+	const failStr = `curl -X PUT -d "FAIL" 10.0.2.2:%d`
+	return fmt.Sprintf(failStr, ws.HTTPServerPort)
+}
+
+func finishedFN(ws *workspace) string {
+	const finishedStr = `curl -X PUT -d "FINISHED" 10.0.2.2:%d`
+	return fmt.Sprintf(finishedStr, ws.HTTPServerPort)
+}
+
 func buildISOImage(ctx context.Context, instanceDir, tmpl string, ws *workspace, debug bool) error {
 	funcMap := template.FuncMap{
-		"download": downloadFN,
+		"download":     downloadFN,
+		"beginTask":    beginTaskFN,
+		"endTaskCheck": endTaskCheckFN,
+		"endTaskOk":    endTaskOkFN,
+		"endTaskFail":  endTaskFailFN,
+		"finished":     finishedFN,
 	}
 
 	udt := template.Must(template.New("user-data").Funcs(funcMap).Parse(tmpl))

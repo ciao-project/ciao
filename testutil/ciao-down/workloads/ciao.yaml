@@ -20,12 +20,6 @@ ports:
 {{- print "DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true " -}}
 {{end}}
 {{ define "GOPATH" }}{{with .GoPath}}{{$.MountPath "hostgo"}}{{else}}/home/{{.User}}/go{{end}}{{end}}
-{{- define "CHECK" -}}
-if [ $? -eq 0 ] ; then ret="OK" ; else ret="FAIL" ; fi ; curl -X PUT -d $ret 10.0.2.2:{{.HTTPServerPort -}}
-{{end -}}
-{{- define "OK" -}}
-curl -X PUT -d "OK" 10.0.2.2:{{.HTTPServerPort -}}
-{{end -}}
 #cloud-config
 mounts:
 {{range .Mounts}} - [{{.Tag}}, {{.Path}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
@@ -34,7 +28,7 @@ write_files:
 {{- if len $.HTTPProxy }}
  - content: |
      [Service]
-     Environment="HTTP_PROXY={{$.HTTPProxy}}"{{if len .HTTPSProxy}} "HTTPS_PROXY={{.HTTPSProxy}}{{end}}"{{if len .NoProxy}} "NO_PROXY={{.NoProxy}},singlevm{{end}}"
+     Environment="HTTP_PROXY={{$.HTTPProxy}}"{{if len .HTTPSProxy}} "HTTPS_PROXY={{.HTTPSProxy}}{{end}}"{{if len .NoProxy}} "NO_PROXY={{.NoProxy}},{{.Hostname}}{{end}}"
    path: /etc/systemd/system/docker.service.d/http-proxy.conf
 {{- end}}
  - content: |
@@ -67,7 +61,7 @@ apt:
 package_upgrade: true
 
 runcmd:
- - echo "127.0.0.1 singlevm" >> /etc/hosts
+ - echo "127.0.0.1 {{.Hostname}}" >> /etc/hosts
  - chown {{.User}}:{{.User}} /home/{{.User}}
 {{- with .MountPath "hostui"}}
  - chown {{$.User}}:{{$.User}} {{.}}
@@ -75,8 +69,8 @@ runcmd:
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
  - rm /etc/legal
- - curl -X PUT -d "Booting VM" 10.0.2.2:{{.HTTPServerPort}}
- - {{template "OK" .}}
+ - {{beginTask . "Booting VM"}}
+ - {{endTaskOk . }}
 {{if len $.HTTPProxy }}
  - echo "HTTP_PROXY=\"{{.HTTPProxy}}\"" >> /etc/environment
  - echo "http_proxy=\"{{.HTTPProxy}}\"" >> /etc/environment
@@ -86,93 +80,97 @@ runcmd:
  - echo "https_proxy=\"{{.HTTPSProxy}}\"" >> /etc/environment
 {{end}}
 {{- if or (len .HTTPSProxy) (len .HTTPProxy) }}
- - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}singlevm\""  >> /etc/environment
+ - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}{{.Hostname}}\""  >> /etc/environment
 {{end}}
 
  - echo "GOPATH=\"{{template "GOPATH" .}}\"" >> /etc/environment
  - echo "PATH=\"$PATH:/usr/local/go/bin:{{template "GOPATH" .}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
 
- - curl -X PUT -d "Downloading Go" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Downloading Go" }}
  - {{download . "https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz"}}
- - {{template "CHECK" .}}
- - curl -X PUT -d "Unpacking Go" 10.0.2.2:{{.HTTPServerPort}}
+ - {{endTaskCheck .}}
+ 
+ - {{beginTask . "Unpacking Go" }}
  - tar -C /usr/local -xzf /tmp/go1.8.linux-amd64.tar.gz
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
+
  - rm /tmp/go1.8.linux-amd64.tar.gz
 
  - groupadd docker
  - sudo gpasswd -a {{.User}} docker
- - curl -X PUT -d "Installing apt-transport-https and ca-certificates" 10.0.2.2:{{.HTTPServerPort}}
+
+ - {{beginTask . "Installing apt-transport-https and ca-certificates" }}
  - {{template "ENV" .}}apt-get install apt-transport-https ca-certificates
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Add docker GPG key" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Add docker GPG key" }}
  - {{template "ENV" .}}apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Retrieving updated list of packages" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Retrieving updated list of packages"}}
  - {{template "ENV" .}}apt-get update
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Installing Docker" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Installing Docker"}}
  - {{template "ENV" .}}apt-get install docker-engine -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Installing GCC" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Installing GCC"}}
  - {{template "ENV" .}}apt-get install gcc -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Installing Make" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Installing Make"}}
  - {{template "ENV" .}}apt-get install make -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Installing QEMU" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Installing QEMU"}}
  - {{template "ENV" .}}apt-get install qemu-system-x86 -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Installing xorriso" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Installing xorriso" }}
  - {{template "ENV" .}}apt-get install xorriso -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Installing ceph-common" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Installing ceph-common"}}
  - {{template "ENV" .}}apt-get install ceph-common -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Installing Openstack client" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Installing Openstack client"}}
  - {{template "ENV" .}}apt-get install python-openstackclient -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Updating NodeJS sources" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Updating NodeJS sources" }}
  - {{template "ENV" .}}curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
- - {{template "CHECK" .}}
- - curl -X PUT -d "Installing NodeJS" 10.0.2.2:{{.HTTPServerPort}}
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing NodeJS"}}
  - {{template "ENV" .}}apt-get install nodejs -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Auto removing unused components" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Auto removing unused components"}}
  - {{template "ENV" .}}apt-get auto-remove -y
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Building ciao" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Building ciao" }}
  - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/01org/ciao/...
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Installing Go development utils" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Installing Go development utils"}}
  - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
  - chown {{.User}}:{{.User}} -R {{template "GOPATH" .}}
 
- - curl -X PUT -d "Retrieving ciao-webui " 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Retrieving ciao-webui"}}
 {{with .MountPath "hostui"}}
  - cd {{.}}
  - git status || {{template "ENV" $}} git clone https://github.com/01org/ciao-webui.git .
- - {{template "CHECK" $}}
+ - {{endTaskCheck $}}
  - chown {{$.User}}:{{$.User}} -R {{.}}
 {{else}}
  - cd /home/{{.User}}
  - sudo -u {{.User}} {{template "ENV" .}} git clone https://github.com/01org/ciao-webui.git
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 {{end}}
 
 {{if len .HTTPProxy}} - sudo -u {{.User}} npm config set proxy {{.HTTPProxy}}{{end}}
@@ -182,46 +180,49 @@ runcmd:
  - chown {{.User}}:{{.User}} /usr/local/nodejs
  - sudo -u {{.User}} npm config set prefix '/usr/local/nodejs'
 
- - curl -X PUT -d "Pulling ceph/demo" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Pulling ceph/demo" }}
  - {{template "ENV" .}} docker pull ceph/demo
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Pulling clearlinux/keystone" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Pulling clearlinux/keystone" }}
  - {{template "ENV" .}} docker pull clearlinux/keystone:stable
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
  - mkdir -p /home/{{.User}}/local
 
- - curl -X PUT -d "Downloading Fedora-Cloud-Base-24-1.2.x86_64.qcow2" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Downloading Fedora-Cloud-Base-24-1.2.x86_64.qcow2"}}
  - {{download . "https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2" (printf "/home/%s/local/Fedora-Cloud-Base-24-1.2.x86_64.qcow2" .User)}}
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Downloading xenial-server-cloudimg-amd64-disk1.img" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Downloading xenial-server-cloudimg-amd64-disk1.img"}}
  - {{download . "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img" (printf "/home/%s/local/xenial-server-cloudimg-amd64-disk1.img" .User)}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Downloading CNCI image" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Downloading CNCI image" }}
  - {{download . "https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz" (printf "/home/%s/local/clear-8260-ciao-networking.img.xz" .User)}}
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
- - curl -X PUT -d "Downloading latest clear cloud image" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Downloading latest clear cloud image" }}
  - LATEST=$({{template "ENV" .}} curl -s https://download.clearlinux.org/latest) &&  {{template "ENV" .}} wget https://download.clearlinux.org/releases/"$LATEST"/clear/clear-"$LATEST"-cloud.img.xz -O /home/{{.User}}/local/clear-"$LATEST"-cloud.img.xz
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 
  - cd /home/{{.User}}/local && xz -T0 --decompress *.xz
 
  - chown {{.User}}:{{.User}} -R /home/{{.User}}/local
+
 {{if len .GitUserName}}
- - curl -X PUT -d "Setting git user.name" 10.0.2.2:{{.HTTPServerPort}}
+ - {{beginTask . "Setting git user.name"}}
  - sudo -u {{.User}} git config --global user.name "{{.GitUserName}}"
- - {{template "CHECK" .}}
-{{end}}
-{{if len .GitEmail}}
- - curl -X PUT -d "Setting git user.email" 10.0.2.2:{{.HTTPServerPort}}
- - sudo -u {{.User}} git config --global user.email {{.GitEmail}}
- - {{template "CHECK" .}}
+ - {{endTaskCheck .}}
 {{end}}
 
- - curl -X PUT -d "FINISHED" 10.0.2.2:{{.HTTPServerPort}}
+{{if len .GitEmail}}
+ - {{beginTask . "Setting git user.email"}}
+ - sudo -u {{.User}} git config --global user.email {{.GitEmail}}
+ - {{endTaskCheck .}}
+{{end}}
+
+ - {{finished .}}
 
 users:
   - name: {{.User}}
