@@ -225,6 +225,11 @@ func prepare(ctx context.Context, errCh chan error) {
 	in := &wkld.insData
 	ws.Mounts = in.Mounts
 	ws.Hostname = wkld.insSpec.Hostname
+	if ws.NoProxy != "" {
+		ws.NoProxy = fmt.Sprintf("%s,%s", ws.Hostname, ws.NoProxy)
+	} else {
+		ws.NoProxy = ws.Hostname
+	}
 
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {

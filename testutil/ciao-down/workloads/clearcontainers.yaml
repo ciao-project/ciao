@@ -13,9 +13,8 @@ mounts:
 ...
 ---
 {{- define "ENV" -}}
-{{if len .HTTPSProxy }}https_proxy={{.HTTPSProxy}} {{end -}}
-{{if len .HTTPProxy }}http_proxy={{.HTTPProxy}} {{end -}}
-{{print "DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true " -}}
+{{proxyVars .}}
+{{- print " DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true " -}}
 {{end}}
 {{ define "GOPATH" }}{{with .GoPath}}{{$.MountPath "hostgo"}}{{else}}/home/{{.User}}/go{{end}}{{end}}
 #cloud-config
@@ -29,6 +28,11 @@ write_files:
      Environment="HTTP_PROXY={{$.HTTPProxy}}"{{if len .HTTPSProxy}} "HTTPS_PROXY={{.HTTPSProxy}}{{end}}"{{if len .NoProxy}} "NO_PROXY={{.NoProxy}},{{.Hostname}}{{end}}"
    path: /etc/systemd/system/docker.service.d/http-proxy.conf
 {{- end}}
+{{with proxyEnv . 5}}
+ - content: |
+{{.}}
+   path: /etc/environment
+{{end}}
  - content: |
      [Service]
      ExecStart=
@@ -73,18 +77,6 @@ runcmd:
 
  - {{beginTask . "Booting VM"}}
  - {{endTaskOk . }}
-
-{{if len $.HTTPProxy }}
- - echo "HTTP_PROXY=\"{{.HTTPProxy}}\"" >> /etc/environment
- - echo "http_proxy=\"{{.HTTPProxy}}\"" >> /etc/environment
-{{end -}}
-{{- if len $.HTTPSProxy }}
- - echo "HTTPS_PROXY=\"{{.HTTPSProxy}}\"" >> /etc/environment
- - echo "https_proxy=\"{{.HTTPSProxy}}\"" >> /etc/environment
-{{end}}
-{{- if or (len .HTTPSProxy) (len .HTTPProxy) }}
- - echo "no_proxy=\"{{if len .NoProxy}}{{.NoProxy}},{{end}}{{.Hostname}}\""  >> /etc/environment
-{{end}}
 
  - echo "GOPATH=\"{{template "GOPATH" .}}\"" >> /etc/environment
  - echo "PATH=\"$PATH:/usr/local/go/bin:{{template "GOPATH" .}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment

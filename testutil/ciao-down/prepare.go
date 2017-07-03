@@ -260,8 +260,66 @@ func finishedFN(ws *workspace) string {
 	return fmt.Sprintf(finishedStr, ws.HTTPServerPort)
 }
 
+func proxyVarsFN(ws *workspace) string {
+	var buf bytes.Buffer
+	if ws.NoProxy != "" {
+		buf.WriteString("no_proxy=")
+		buf.WriteString(ws.NoProxy)
+		buf.WriteString(" ")
+	}
+	if ws.HTTPProxy != "" {
+		buf.WriteString("http_proxy=")
+		buf.WriteString(ws.HTTPProxy)
+		buf.WriteString(" HTTP_PROXY=")
+		buf.WriteString(ws.HTTPProxy)
+		buf.WriteString(" ")
+	}
+	if ws.HTTPSProxy != "" {
+		buf.WriteString("https_proxy=")
+		buf.WriteString(ws.HTTPSProxy)
+		buf.WriteString(" HTTPS_PROXY=")
+		buf.WriteString(ws.HTTPSProxy)
+		buf.WriteString(" ")
+	}
+	return strings.TrimSpace(buf.String())
+}
+
+func proxyEnvFN(ws *workspace, indent int) string {
+	var buf bytes.Buffer
+	spaces := strings.Repeat(" ", indent)
+	if ws.NoProxy != "" {
+		buf.WriteString(spaces)
+		buf.WriteString(`no_proxy="`)
+		buf.WriteString(ws.NoProxy)
+		buf.WriteString(`"` + "\n")
+	}
+	if ws.HTTPProxy != "" {
+		buf.WriteString(spaces)
+		buf.WriteString(`http_proxy="`)
+		buf.WriteString(ws.HTTPProxy)
+		buf.WriteString(`"` + "\n")
+		buf.WriteString(spaces)
+		buf.WriteString(`HTTP_PROXY="`)
+		buf.WriteString(ws.HTTPProxy)
+		buf.WriteString(`"` + "\n")
+	}
+	if ws.HTTPSProxy != "" {
+		buf.WriteString(spaces)
+		buf.WriteString(`https_proxy="`)
+		buf.WriteString(ws.HTTPSProxy)
+		buf.WriteString(`"` + "\n")
+		buf.WriteString(spaces)
+		buf.WriteString(`HTTPS_PROXY="`)
+		buf.WriteString(ws.HTTPSProxy)
+		buf.WriteString(`"`)
+	}
+	return buf.String()
+}
+
 func buildISOImage(ctx context.Context, instanceDir, tmpl string, ws *workspace, debug bool) error {
 	funcMap := template.FuncMap{
+		"proxyVars":    proxyVarsFN,
+		"proxyEnv":     proxyEnvFN,
 		"download":     downloadFN,
 		"beginTask":    beginTaskFN,
 		"endTaskCheck": endTaskCheckFN,
