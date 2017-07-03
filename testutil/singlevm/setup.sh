@@ -1,52 +1,10 @@
 #!/bin/bash
-ciao_host=$(hostname)
-ciao_ip=$(hostname -i)
-ext_int=$(ip -o route get 8.8.8.8 | cut -d ' ' -f 5)
-ciao_bridge=ciao_br
-ciao_vlan_ip=198.51.100.1
-ciao_vlan_subnet=${ciao_vlan_ip}/24
-ciao_vlan_brdcast=198.51.100.255
-ciao_bin="$HOME/local"
-keystone_key="$ciao_bin"/keystone_key.pem
-keystone_cert="$ciao_bin"/keystone_cert.pem
-workload_sshkey="$ciao_bin"/testkey
-ciao_pki_path=/etc/pki/ciao
-ciao_cert="$ciao_pki_path""/cert-Scheduler-""$ciao_host"".pem"
+
+ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
+
+source $ciao_scripts/config.sh
 
 export no_proxy=$no_proxy,$ciao_vlan_ip,$ciao_host
-
-ciao_email="ciao-devel@lists.clearlinux.org"
-ciao_org="Intel"
-ciao_src="$GOPATH"/src/github.com/01org/ciao
-ciao_gobin="$GOPATH"/bin
-ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
-ciao_env="$ciao_bin/demo.sh"
-ciao_dir=/var/lib/ciao
-ciao_data_dir=${ciao_dir}/data
-ciao_ctl_dir=${ciao_data_dir}/controller
-ciao_cnci_image="clear-8260-ciao-networking.img"
-ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
-fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
-fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
-ubuntu_cloud_image="xenial-server-cloudimg-amd64-disk1.img"
-ubuntu_cloud_url="https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
-download=0
-all_images=0
-conf_file="$ciao_bin"/configuration.yaml
-ciao_username=csr
-ciao_password=hello
-ciao_admin_username=admin
-ciao_admin_password=giveciaoatry
-ciao_demo_username=demo
-ciao_demo_password=hello
-compute_api_port=8774
-storage_api_port=8776
-keystone_public_port=5000
-keystone_admin_port=35357
-mysql_data_dir="${ciao_bin}"/mysql
-ciao_identity_url="https://""$ciao_host"":""$keystone_public_port"
-keystone_wait_time=60 # How long to wait for keystone to start
-ciao_image_wait_time=60 # How long to wait for ciao_image to start
 
 #Create a directory where all the certificates, binaries and other
 #dependencies are placed
@@ -196,7 +154,7 @@ then
 fi
 
 # Started early to minimise overall running time
-source $ciao_scripts/setup_keystone.sh
+$ciao_scripts/setup_keystone.sh
 
 killall ciao-deploy-server
 "$ciao_gobin"/ciao-deploy-server -admin-password="$test_passwd" \
@@ -261,8 +219,8 @@ cp "$ciao_scripts"/verify.sh "$ciao_bin"
 export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
 export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
 
-source $ciao_scripts/setup_images.sh
-source $ciao_scripts/setup_workloads.sh
+$ciao_scripts/setup_images.sh
+$ciao_scripts/setup_workloads.sh
 
 echo "---------------------------------------------------------------------------------------"
 echo ""

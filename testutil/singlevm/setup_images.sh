@@ -1,3 +1,15 @@
+#!/bin/bash
+
+ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
+source $ciao_scripts/config.sh
+
+ciao_cnci_image="clear-8260-ciao-networking.img"
+ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
+fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
+fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
+ubuntu_cloud_image="xenial-server-cloudimg-amd64-disk1.img"
+ubuntu_cloud_url="https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
+
 pushd $ciao_bin
 #Download the firmware
 if [ $download -eq 1 ] || [ ! -f OVMF.fd ]
