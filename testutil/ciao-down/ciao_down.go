@@ -102,6 +102,20 @@ func (p *ports) Set(value string) error {
 	return nil
 }
 
+type packageUpgrade string
+
+func (p *packageUpgrade) String() string {
+	return string(*p)
+}
+
+func (p *packageUpgrade) Set(value string) error {
+	if value != "true" && value != "false" {
+		return fmt.Errorf("--package-update parameter should be true or false")
+	}
+	*p = packageUpgrade(value)
+	return nil
+}
+
 func vmFlags(fs *flag.FlagSet, memGB, CPUs *int, m *mounts, p *ports) {
 	fs.IntVar(memGB, "mem", *memGB, "Gigabytes of RAM allocated to VM")
 	fs.IntVar(CPUs, "cpus", *CPUs, "VCPUs assignged to VM")
@@ -136,11 +150,14 @@ func prepareFlags(ws *workspace) (*workload, bool, error) {
 	var m mounts
 	var p ports
 	var memGiB, CPUs int
+	var update packageUpgrade
 
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
 	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch.")
+	fs.Var(&update, "package-upgrade",
+		"Hint to enable or disable update of VM packages.  Should be true or false")
 
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
 		return nil, false, err
@@ -167,6 +184,15 @@ func prepareFlags(ws *workspace) (*workload, bool, error) {
 
 	in.mergeMounts(m)
 	in.mergePorts(p)
+
+	ws.Mounts = in.Mounts
+	ws.Hostname = wkl.insSpec.Hostname
+	if ws.NoProxy != "" {
+		ws.NoProxy = fmt.Sprintf("%s,%s", ws.Hostname, ws.NoProxy)
+	} else {
+		ws.NoProxy = ws.Hostname
+	}
+	ws.PackageUpgrade = string(update)
 
 	return wkl, debug, nil
 }
@@ -223,14 +249,6 @@ func prepare(ctx context.Context, errCh chan error) {
 	}
 
 	in := &wkld.insData
-	ws.Mounts = in.Mounts
-	ws.Hostname = wkld.insSpec.Hostname
-	if ws.NoProxy != "" {
-		ws.NoProxy = fmt.Sprintf("%s,%s", ws.Hostname, ws.NoProxy)
-	} else {
-		ws.NoProxy = ws.Hostname
-	}
-
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {
 		err = fmt.Errorf("instance already exists")

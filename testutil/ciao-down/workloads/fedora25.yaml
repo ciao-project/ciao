@@ -22,8 +22,8 @@ write_files:
      proxy={{.}}
    path: /etc/dnf/dnf.conf
 {{end}}
-    
-package_upgrade: false
+
+package_upgrade: {{with .PackageUpgrade}}{{.}}{{else}}false{{end}}
 
 runcmd:
  - {{beginTask . "Booting VM"}}

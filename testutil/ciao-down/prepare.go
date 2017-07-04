@@ -79,6 +79,7 @@ type workspace struct {
 	Hostname       string
 	UUID           string
 	RunCmd         string
+	PackageUpgrade string
 	ciaoDir        string
 	instanceDir    string
 	keyPath        string

@@ -54,7 +54,7 @@ write_files:
    path: /etc/motd
    permissions: '0755'
     
-package_upgrade: true
+package_upgrade: {{with .PackageUpgrade}}{{.}}{{else}}true{{end}}
 
 runcmd:
  - {{beginTask . "Booting VM"}}
