@@ -656,6 +656,7 @@ type MappedIPShort struct {
 	ID         string `json:"mapping_id"`
 	ExternalIP string `json:"external_ip"`
 	InternalIP string `json:"internal_ip"`
+	InstanceID string `json:"instance_id"`
 	Links      []Link `json:"links"`
 }
 

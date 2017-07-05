@@ -403,6 +403,7 @@ func listMappedIPs(c *Context, w http.ResponseWriter, r *http.Request) (Response
 			ID:         IP.ID,
 			ExternalIP: IP.ExternalIP,
 			InternalIP: IP.InternalIP,
+			InstanceID: IP.InstanceID,
 			Links:      IP.Links,
 		}
 		short = append(short, s)
