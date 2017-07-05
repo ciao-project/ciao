@@ -121,6 +121,7 @@ func (d instanceData) Init() error {
 		ip string,
 		create_time DATETIME,
 		name string,
+		cnci int,
 		foreign key(tenant_id) references tenants(id),
 		foreign key(workload_id) references workload_template(id),
 		unique(tenant_id, ip, mac_address),
@@ -1234,7 +1235,8 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 		vnic_uuid,
 		subnet,
 		ip,
-		name
+		name,
+		cnci
 	FROM instances
 	LEFT JOIN latest
 	ON instances.id = latest.instance_id
@@ -1253,7 +1255,7 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 
 		var sshPort sql.NullInt64
 
-		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &i.WorkloadID, &i.SSHIP, &sshPort, &i.NodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name)
+		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &i.WorkloadID, &i.SSHIP, &sshPort, &i.NodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name, &i.CNCI)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
@@ -1314,7 +1316,8 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 		vnic_uuid,
 		subnet,
 		ip,
-		name
+		name,
+		cnci
 	FROM instances
 	LEFT JOIN latest
 	ON instances.id = latest.instance_id
@@ -1337,7 +1340,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 
 		i := &types.Instance{}
 
-		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &sshIP, &sshPort, &i.WorkloadID, &nodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name)
+		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &sshIP, &sshPort, &i.WorkloadID, &nodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name, &i.CNCI)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
@@ -1373,12 +1376,24 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 }
 
 func (ds *sqliteDB) addInstance(instance *types.Instance) error {
+	datastore := ds.getTableDB("instances")
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
-	err := ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.VnicUUID, instance.Subnet, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano), instance.Name)
+	tx, err := datastore.Begin()
+	if err != nil {
+		return err
+	}
 
-	ds.dbLock.Unlock()
-	return err
+	_, err = tx.Exec("INSERT INTO instances VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.VnicUUID, instance.Subnet, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano), instance.Name, instance.CNCI)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+
+	return nil
 }
 
 func (ds *sqliteDB) deleteInstance(instanceID string) error {
