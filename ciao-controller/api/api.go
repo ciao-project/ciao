@@ -23,7 +23,6 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/service"
 	"github.com/01org/ciao/ssntp/uuid"
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -214,21 +213,6 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 	return Response{http.StatusOK, links}, nil
 }
 
-func dumpPool(pool types.Pool) {
-	glog.V(2).Info("Pool")
-	glog.V(2).Info("-----------------------")
-	glog.V(2).Infof("ID: %s\n", pool.ID)
-	glog.V(2).Infof("Name: %s\n", pool.Name)
-	glog.V(2).Infof("TotalIPs: %d\n", pool.TotalIPs)
-	glog.V(2).Infof("Free: %d\n", pool.Free)
-	glog.V(2).Infof("Links: %v\n", pool.Links)
-	glog.V(2).Infof("Subnets:\n")
-
-	for _, sub := range pool.Subnets {
-		glog.V(2).Infof("%v", sub)
-	}
-}
-
 func showPool(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	ID := vars["pool"]
@@ -237,8 +221,6 @@ func showPool(c *Context, w http.ResponseWriter, r *http.Request) (Response, err
 	if err != nil {
 		return errorResponse(err), err
 	}
-
-	dumpPool(pool)
 
 	return Response{http.StatusOK, pool}, nil
 }
@@ -258,8 +240,6 @@ func listPools(c *Context, w http.ResponseWriter, r *http.Request) (Response, er
 	names, returnNamedPool := queries["name"]
 
 	for i, p := range pools {
-		dumpPool(p)
-
 		var match bool
 
 		if returnNamedPool == true {
