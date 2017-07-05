@@ -239,9 +239,8 @@ func listPools(c *Context, w http.ResponseWriter, r *http.Request) (Response, er
 
 	names, returnNamedPool := queries["name"]
 
+	var match bool
 	for i, p := range pools {
-		var match bool
-
 		if returnNamedPool == true {
 			for _, name := range names {
 				if name == p.Name {
@@ -266,6 +265,10 @@ func listPools(c *Context, w http.ResponseWriter, r *http.Request) (Response, er
 
 			resp.Pools = append(resp.Pools, summary)
 		}
+	}
+
+	if returnNamedPool && !match {
+		return Response{http.StatusNotFound, nil}, types.ErrPoolNotFound
 	}
 
 	return Response{http.StatusOK, resp}, err
