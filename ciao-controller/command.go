@@ -112,6 +112,12 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 		}
 	}
 
+	// "public" can exit in the database as a valid tenant and is only used for
+	// labelling workloads as public. But we musn't start a CNCI for it.
+	if tenantID == "public" {
+		return nil
+	}
+
 	if tenant.CNCIIP == "" && !*noNetwork {
 		err := c.launchCNCI(tenantID)
 		if err != nil {
