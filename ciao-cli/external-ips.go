@@ -348,7 +348,7 @@ func getCiaoPool(name string) (types.Pool, error) {
 
 	url, err := getCiaoPoolRef(name)
 	if err != nil {
-		return pool, nil
+		return pool, err
 	}
 
 	ver := api.PoolsV1
