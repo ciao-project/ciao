@@ -557,6 +557,10 @@ func (cmd *poolShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
+	if !checkPrivilege() {
+		fatalf("This command is only available to admins")
+	}
+
 	pool, err := getCiaoPool(cmd.name)
 	if err != nil {
 		fatalf(err.Error())
