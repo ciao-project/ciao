@@ -204,13 +204,25 @@ func main() {
 	}
 
 	wg.Add(1)
-	go ctl.startComputeService()
+	go func() {
+		if err := ctl.startComputeService(); err != nil {
+			glog.Fatalf("Error starting compute service: %v", err)
+		}
+	}()
 
 	wg.Add(1)
-	go ctl.startVolumeService()
+	go func() {
+		if err := ctl.startVolumeService(); err != nil {
+			glog.Fatalf("Error starting volume service: %v", err)
+		}
+	}()
 
 	wg.Add(1)
-	go ctl.startImageService()
+	go func() {
+		if err := ctl.startImageService(); err != nil {
+			glog.Fatalf("Error starting image service: %v", err)
+		}
+	}()
 
 	host := clusterConfig.Configure.Controller.ControllerFQDN
 	if host == "" {
@@ -219,7 +231,11 @@ func main() {
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
 	wg.Add(1)
-	go ctl.startCiaoService()
+	go func() {
+		if err := ctl.startCiaoService(); err != nil {
+			glog.Fatalf("Error starting ciao service: %v", err)
+		}
+	}()
 
 	wg.Wait()
 	ctl.qs.Shutdown()
@@ -267,10 +283,5 @@ func (c *controller) startCiaoService() error {
 
 	glog.Infof("Starting ciao API on port %d\n", controllerAPIPort)
 
-	err = http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	return nil
+	return http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
 }
