@@ -189,7 +189,7 @@ func prepareFlags(ws *workspace) (*workload, bool, error) {
 	ws.Hostname = wkl.insSpec.Hostname
 	if ws.NoProxy != "" {
 		ws.NoProxy = fmt.Sprintf("%s,%s", ws.Hostname, ws.NoProxy)
-	} else {
+	} else if ws.HTTPProxy != "" || ws.HTTPSProxy != "" {
 		ws.NoProxy = ws.Hostname
 	}
 	ws.PackageUpgrade = string(update)
