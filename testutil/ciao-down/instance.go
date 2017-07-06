@@ -289,7 +289,7 @@ func (ins *instanceSpec) unmarshall(data []byte) error {
 }
 
 func (ins *instanceSpec) unmarshallWithTemplate(ws *workspace, data string) error {
-	tmpl, err := template.New("instance-data").Parse(string(data))
+	tmpl, err := template.New("instance-spec").Parse(string(data))
 	if err != nil {
 		return fmt.Errorf("Unable to parse instance data template: %v", err)
 	}
