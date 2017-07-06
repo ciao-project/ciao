@@ -90,10 +90,6 @@ func tenantServersAction(c *controller, w http.ResponseWriter, r *http.Request) 
 	return serversAction(c, w, r)
 }
 
-func legacyListTenants(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	return listTenants(c, w, r)
-}
-
 func legacyListNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	return listNodes(c, w, r)
 }
@@ -169,9 +165,6 @@ func legacyComputeRoutes(ctl *controller, r *mux.Router) *mux.Router {
 
 	r.Handle("/v2.1/{tenant}/quotas",
 		legacyAPIHandler{ctl, listTenantQuotas, false}).Methods("GET")
-
-	r.Handle("/v2.1/tenants",
-		legacyAPIHandler{ctl, legacyListTenants, true}).Methods("GET")
 
 	r.Handle("/v2.1/nodes",
 		legacyAPIHandler{ctl, legacyListNodes, true}).Methods("GET")

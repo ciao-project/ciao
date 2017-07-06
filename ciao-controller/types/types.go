@@ -266,28 +266,6 @@ type StorageAttachment struct {
 	Boot       bool   // whether this is a boot device
 }
 
-// CiaoComputeTenants represents the unmarshalled version of the contents of a
-// /v2.1/tenants response.  It contains information about the tenants in a ciao
-// cluster.
-type CiaoComputeTenants struct {
-	Tenants []struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"tenants"`
-}
-
-// NewCiaoComputeTenants allocates a CiaoComputeTenants structure.
-// It allocates the Tenants slice as well so that the marshalled
-// JSON is an empty array and not a nil pointer, as specified by the
-// OpenStack APIs.
-func NewCiaoComputeTenants() (tenants CiaoComputeTenants) {
-	tenants.Tenants = []struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	}{}
-	return
-}
-
 // CiaoNode contains status and statistic information for an individual
 // node.
 type CiaoNode struct {

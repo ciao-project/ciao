@@ -392,29 +392,6 @@ func serversAction(c *controller, w http.ResponseWriter, r *http.Request) (APIRe
 	return APIResponse{http.StatusAccepted, nil}, nil
 }
 
-func listTenants(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	var computeTenants types.CiaoComputeTenants
-
-	tenants, err := c.ds.GetAllTenants()
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	for _, tenant := range tenants {
-		computeTenants.Tenants = append(computeTenants.Tenants,
-			struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			}{
-				ID:   tenant.ID,
-				Name: tenant.Name,
-			},
-		)
-	}
-
-	return APIResponse{http.StatusOK, computeTenants}, nil
-}
-
 func trimComputeNodes(c *controller, nodeList types.CiaoNodes, targetRole ssntp.Role) (types.CiaoNodes, error) {
 	var trimmedNodes types.CiaoNodes
 
