@@ -167,7 +167,7 @@ runcmd:
 {{end}}
 
 {{if len .HTTPProxy}} - sudo -u {{.User}} npm config set proxy {{.HTTPProxy}}{{end}}
-{{if len .NodeHTTPSProxy}} - sudo -u {{.User}} npm config set https-proxy {{.NodeHTTPSProxy}}{{end}}
+{{if len .HTTPSProxy}} - sudo -u {{.User}} npm config set https-proxy {{.HTTPSProxy}}{{end}}
 
  - mkdir -p /usr/local/nodejs
  - chown {{.User}}:{{.User}} /usr/local/nodejs

@@ -68,7 +68,6 @@ type workspace struct {
 	Home           string
 	HTTPProxy      string
 	HTTPSProxy     string
-	NodeHTTPSProxy string
 	NoProxy        string
 	User           string
 	PublicKey      string
@@ -78,7 +77,6 @@ type workspace struct {
 	Mounts         []mount
 	Hostname       string
 	UUID           string
-	RunCmd         string
 	PackageUpgrade string
 	ciaoDir        string
 	instanceDir    string
@@ -194,7 +192,7 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	if ws.HTTPSProxy != "" {
 		u, _ := url.Parse(ws.HTTPSProxy)
 		u.Scheme = "http"
-		ws.NodeHTTPSProxy = u.String()
+		ws.HTTPSProxy = u.String()
 	}
 
 	ws.NoProxy = os.Getenv("no_proxy")
