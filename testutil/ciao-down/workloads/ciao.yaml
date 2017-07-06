@@ -88,9 +88,6 @@ runcmd:
  - rm /etc/update-motd.d/90-updates-available
  - rm /etc/legal
 
- - echo "GOPATH=\"{{template "GOPATH" .}}\"" >> /etc/environment
- - echo "PATH=\"$PATH:/usr/local/go/bin:{{template "GOPATH" .}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
-
  - {{beginTask . "Downloading Go" }}
  - {{download . "https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz"}}
  - {{endTaskCheck .}}
@@ -226,6 +223,9 @@ runcmd:
  - sudo -u {{.User}} git config --global user.email {{.GitEmail}}
  - {{endTaskCheck .}}
 {{end}}
+
+ - echo "export GOPATH={{template "GOPATH" . }}" >> /home/{{.User}}/.profile
+ - echo "export PATH=$PATH:{{template "GOPATH" . }}/bin:/usr/local/go/bin:/usr/local/nodejs/bin" >> /home/{{.User}}/.profile
 
  - {{finished .}}
 

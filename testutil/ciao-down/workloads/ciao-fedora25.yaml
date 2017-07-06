@@ -206,8 +206,8 @@ runcmd:
  - {{endTaskCheck .}}
 {{end}}
 
- - echo "export GOPATH={{template "GOPATH" . }}" >> /home/{{.User}}/.bashrc
- - echo "export PATH=$PATH:{{template "GOPATH" . }}/bin:/usr/local/go/bin" >> /home/{{.User}}/.bashrc
+ - echo "export GOPATH={{template "GOPATH" . }}" >> /home/{{.User}}/.profile
+ - echo "export PATH=$PATH:{{template "GOPATH" . }}/bin:/usr/local/go/bin" >> /home/{{.User}}/.profile
 
  - {{finished .}}
   
