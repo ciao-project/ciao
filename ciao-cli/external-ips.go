@@ -348,7 +348,7 @@ func getCiaoPool(name string) (types.Pool, error) {
 
 	url, err := getCiaoPoolRef(name)
 	if err != nil {
-		return pool, nil
+		return pool, err
 	}
 
 	ver := api.PoolsV1
@@ -555,6 +555,10 @@ func (cmd *poolShowCommand) run(args []string) error {
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
+	}
+
+	if !checkPrivilege() {
+		fatalf("This command is only available to admins")
 	}
 
 	pool, err := getCiaoPool(cmd.name)
