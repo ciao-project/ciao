@@ -20,9 +20,6 @@ ports:
 {{end}}
 {{ define "GOPATH" }}{{with .GoPath}}{{$.MountPath "hostgo"}}{{else}}/home/{{.User}}/go{{end}}{{end}}
 #cloud-config
-mounts:
-{{range .Mounts}} - [{{.Tag}}, {{.Path}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
-{{end -}}
 write_files:
 {{- if len $.HTTPProxy }}
  - content: |
@@ -65,7 +62,24 @@ apt:
 package_upgrade: {{with .PackageUpgrade}}{{.}}{{else}}true{{end}}
 
 runcmd:
+ - {{beginTask . "Booting VM"}}
+ - {{endTaskOk . }}
+
+ - {{beginTask . (printf "Adding %s to /etc/hosts" .Hostname) }}
  - echo "127.0.0.1 {{.Hostname}}" >> /etc/hosts
+ - {{endTaskCheck .}}
+
+{{range .Mounts}}
+ - mkdir -p {{.Path}}
+ - sudo chown {{$.User}}:{{$.User}} {{.Tag}}
+ - echo "{{.Tag}} {{.Path}} 9p x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L 0 0" >> /etc/fstab
+{{end}}
+{{range .Mounts}}
+ - {{beginTask $ (printf "Mounting %s" .Path) }}
+ - mount {{.Path}}
+ - {{endTaskCheck $}}
+{{end}}
+
  - chown {{.User}}:{{.User}} /home/{{.User}}
 {{- with .MountPath "hostui"}}
  - chown {{$.User}}:{{$.User}} {{.}}
@@ -73,8 +87,6 @@ runcmd:
  - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
  - rm /etc/update-motd.d/90-updates-available
  - rm /etc/legal
- - {{beginTask . "Booting VM"}}
- - {{endTaskOk . }}
 
  - echo "GOPATH=\"{{template "GOPATH" .}}\"" >> /etc/environment
  - echo "PATH=\"$PATH:/usr/local/go/bin:{{template "GOPATH" .}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
