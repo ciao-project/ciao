@@ -200,9 +200,9 @@ func (cmd *externalIPListCommand) run(args []string) error {
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 1, 1, ' ', 0)
-	fmt.Fprintf(w, "#\tExternalIP\tInternalIP")
+	fmt.Fprintf(w, "#\tExternalIP\tInternalIP\tInstanceID")
 	if checkPrivilege() {
-		fmt.Fprintf(w, "\tInstanceID\tTenantID\tPoolName\n")
+		fmt.Fprintf(w, "\tTenantID\tPoolName\n")
 	} else {
 		fmt.Fprintf(w, "\n")
 	}
