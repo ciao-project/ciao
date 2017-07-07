@@ -879,54 +879,6 @@ func TestListNodeServersInvalidToken(t *testing.T) {
 	testListNodeServers(t, http.StatusUnauthorized, false)
 }
 
-func testListTenants(t *testing.T, httpExpectedStatus int, validToken bool) {
-	tenants, err := ctl.ds.GetAllTenants()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := types.NewCiaoComputeTenants()
-
-	for _, tenant := range tenants {
-		expected.Tenants = append(expected.Tenants,
-			struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			}{
-				ID:   tenant.ID,
-				Name: tenant.Name,
-			},
-		)
-	}
-
-	url := testutil.ComputeURL + "/v2.1/tenants"
-
-	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
-	// stop evaluating in case the scenario is InvalidToken
-	if httpExpectedStatus == 401 {
-		return
-	}
-
-	var result types.CiaoComputeTenants
-
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if reflect.DeepEqual(expected, result) == false {
-		t.Fatal("Tenant list not correct")
-	}
-}
-
-func TestListTenants(t *testing.T) {
-	testListTenants(t, http.StatusOK, true)
-}
-
-func TestListTenantsInvalidToken(t *testing.T) {
-	testListTenants(t, http.StatusUnauthorized, false)
-}
-
 func testListNodes(t *testing.T, httpExpectedStatus int, validToken bool) {
 	expected := ctl.ds.GetNodeLastStats()
 

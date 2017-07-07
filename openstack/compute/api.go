@@ -515,14 +515,6 @@ func (h APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-// @Title createServer
-// @Description Creates a server.
-// @Accept  json
-// @Success 202 {object} Servers "Returns Servers and CreateServerRequest with data of the created server."
-// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
-// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
-// @Router /v2.1/{tenant}/servers [post]
-// @Resource /v2.1/{tenant}/servers
 func createServer(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 
 	vars := mux.Vars(r)
@@ -557,14 +549,6 @@ func createServer(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 // endpoint using the "flavor" option. It is simpler to just overload
 // this function than to reimplement the legacy code.
 //
-// @Title ListServerDetails
-// @Description Lists all servers with details.
-// @Accept  json
-// @Success 200 {array} ServerDetails "Returns details of all servers."
-// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
-// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
-// @Router /v2.1/{tenant}/servers/detail [get]
-// @Resource /v2.1/{tenant}/servers
 func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -606,14 +590,6 @@ func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (API
 	return APIResponse{http.StatusOK, resp}, nil
 }
 
-// @Title showServerDetails
-// @Description Shows details for a server.
-// @Accept  json
-// @Success 200 {object} Server "Returns details for a server."
-// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
-// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
-// @Router /v2.1/{tenant}/servers/{server} [get]
-// @Resource /v2.1/{tenant}/servers
 func showServerDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -629,14 +605,6 @@ func showServerDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIR
 	return APIResponse{http.StatusOK, resp}, nil
 }
 
-// @Title deleteServer
-// @Description Deletes a server.
-// @Accept  json
-// @Success 204 {object} string "This operation does not return a response body, returns the 204 StatusNoContent code."
-// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
-// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
-// @Router /v2.1/{tenant}/servers/{server} [delete]
-// @Resource /v2.1/{tenant}/servers
 func deleteServer(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -652,14 +620,6 @@ func deleteServer(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 	return APIResponse{http.StatusNoContent, nil}, nil
 }
 
-// @Title serverAction
-// @Description Runs the indicated action (os-start, os-stop) in the a server.
-// @Accept  json
-// @Success 202 {object} string "This operation does not return a response body, returns the 202 StatusAccepted code."
-// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
-// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
-// @Router /v2.1/{tenant}/servers/{server}/action [post]
-// @Resource /v2.1/{tenant}/servers
 func serverAction(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -701,14 +661,6 @@ func serverAction(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 	return APIResponse{http.StatusAccepted, nil}, nil
 }
 
-// @Title listFlavors
-// @Description Lists flavors.
-// @Accept  json
-// @Success 200 {object} Flavors "Returns Flavors with the corresponding available flavors for the tenant."
-// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
-// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
-// @Router /v2.1/{tenant}/flavors [get]
-// @Resource /v2.1/{tenant}/flavors
 func listFlavors(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -723,14 +675,6 @@ func listFlavors(c *Context, w http.ResponseWriter, r *http.Request) (APIRespons
 	return APIResponse{http.StatusOK, resp}, nil
 }
 
-// @Title listFlavorsDetails
-// @Description Lists flavors with details.
-// @Accept  json
-// @Success 200 {object} FlavorsDetails "Returns FlavorsDetails with flavor details."
-// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
-// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
-// @Router /v2.1/{tenant}/flavors/detail [get]
-// @Resource /v2.1/{tenant}/flavors
 func listFlavorsDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -745,14 +689,6 @@ func listFlavorsDetails(c *Context, w http.ResponseWriter, r *http.Request) (API
 	return APIResponse{http.StatusOK, resp}, nil
 }
 
-// @Title showFlavorDetails
-// @Description Shows details for a flavor.
-// @Accept  json
-// @Success 200 {object} Flavor "Returns details for a flavor."
-// @Failure 400 {object} HTTPReturnErrorCode "The response contains the corresponding message and 40x corresponding code."
-// @Failure 500 {object} HTTPReturnErrorCode "The response contains the corresponding message and 50x corresponding code."
-// @Router /v2.1/{tenant}/flavors/{flavor} [get]
-// @Resource /v2.1/{tenant}/flavors
 func showFlavorDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
