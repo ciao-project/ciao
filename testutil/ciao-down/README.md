@@ -4,7 +4,7 @@ ciao-down is a small utility for setting up a VM that contains
 everything you need to run ciao's Single VM. All you need to have
 installed on your machine is:
 
-- Go 1.7 or greater
+- Go 1.8 or greater
 
 Then simply type
 

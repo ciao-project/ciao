@@ -26,7 +26,7 @@ The deployment machine can be any Linux OS as long as it has the following packa
 * python-keystoneclient
 * python-netaddr
 * gcc
-* go>=1.7
+* go>=1.8
 * git
 
 ---
