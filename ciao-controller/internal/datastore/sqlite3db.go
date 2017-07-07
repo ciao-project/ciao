@@ -606,6 +606,7 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 // Disconnect is used to close the connection to the sql database
 func (ds *sqliteDB) disconnect() {
 	ds.db.Close()
+	ds.tdb.Close()
 }
 
 func (ds *sqliteDB) logEvent(tenantID string, eventType string, message string) error {
