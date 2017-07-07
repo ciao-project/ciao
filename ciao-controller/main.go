@@ -22,7 +22,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/internal/datastore"
@@ -55,6 +58,7 @@ type controller struct {
 	tenantReadiness     map[string]*tenantConfirmMemo
 	tenantReadinessLock sync.Mutex
 	qs                  *quotas.Quotas
+	httpServers         []*http.Server
 }
 
 var cert = flag.String("cert", "", "Client certificate")
@@ -196,26 +200,23 @@ func main() {
 		return
 	}
 
-	wg.Add(1)
-	go func() {
-		if err := ctl.startComputeService(); err != nil {
-			glog.Fatalf("Error starting compute service: %v", err)
-		}
-	}()
+	server, err := ctl.createComputeServer()
+	if err != nil {
+		glog.Fatalf("Error creating compute server: %v", err)
+	}
+	ctl.httpServers = append(ctl.httpServers, server)
 
-	wg.Add(1)
-	go func() {
-		if err := ctl.startVolumeService(); err != nil {
-			glog.Fatalf("Error starting volume service: %v", err)
-		}
-	}()
+	server, err = ctl.createVolumeServer()
+	if err != nil {
+		glog.Fatalf("Error creating volume server: %v", err)
+	}
+	ctl.httpServers = append(ctl.httpServers, server)
 
-	wg.Add(1)
-	go func() {
-		if err := ctl.startImageService(); err != nil {
-			glog.Fatalf("Error starting image service: %v", err)
-		}
-	}()
+	server, err = ctl.createImageServer()
+	if err != nil {
+		glog.Fatalf("Error creating image server: %v", err)
+	}
+	ctl.httpServers = append(ctl.httpServers, server)
 
 	host := clusterConfig.Configure.Controller.ControllerFQDN
 	if host == "" {
@@ -223,26 +224,44 @@ func main() {
 	}
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
-	wg.Add(1)
+	server, err = ctl.createCiaoServer()
+	if err != nil {
+		glog.Fatalf("Error creating ciao server: %v", err)
+	}
+	ctl.httpServers = append(ctl.httpServers, server)
+
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
-		if err := ctl.startCiaoService(); err != nil {
-			glog.Fatalf("Error starting ciao service: %v", err)
-		}
+		s := <-signalCh
+		glog.Warningf("Received signal: %s", s)
+		ctl.ShutdownHTTPServers()
 	}()
 
+	for _, server := range ctl.httpServers {
+		wg.Add(1)
+		go func(server *http.Server) {
+			if err := server.ListenAndServeTLS(httpsCAcert, httpsKey); err != http.ErrServerClosed {
+				glog.Errorf("Error from HTTP server: %v", err)
+			}
+			wg.Done()
+		}(server)
+	}
+
 	wg.Wait()
+	glog.Warning("Controller shutdown initiated")
 	ctl.qs.Shutdown()
 	ctl.ds.Exit()
 	ctl.is.ds.Shutdown()
 	ctl.client.Disconnect()
 }
 
-func (c *controller) startCiaoService() error {
+func (c *controller) createCiaoServer() (*http.Server, error) {
 	config := api.Config{URL: c.apiURL, CiaoService: c}
 
 	r := api.Routes(config)
 	if r == nil {
-		return errors.New("Unable to start Ciao API Service")
+		return nil, errors.New("Unable to start Ciao API Service")
 	}
 
 	// wrap each route in keystone validation.
@@ -270,12 +289,33 @@ func (c *controller) startCiaoService() error {
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	service := fmt.Sprintf(":%d", controllerAPIPort)
 
-	glog.Infof("Starting ciao API on port %d\n", controllerAPIPort)
+	server := &http.Server{
+		Handler: r,
+		Addr:    service,
+	}
 
-	return http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
+	return server, nil
+}
+
+func (c *controller) ShutdownHTTPServers() {
+	glog.Warning("Shutting down HTTP servers")
+	var wg sync.WaitGroup
+	for _, server := range c.httpServers {
+		wg.Add(1)
+		go func(server *http.Server) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			defer cancel()
+			err := server.Shutdown(ctx)
+			if err != nil {
+				glog.Errorf("Error during HTTP server shutdown")
+			}
+			wg.Done()
+		}(server)
+	}
+	wg.Wait()
 }

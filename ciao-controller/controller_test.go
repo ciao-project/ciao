@@ -1993,9 +1993,11 @@ func TestMain(m *testing.M) {
 	}
 
 	_, _ = addComputeTestTenant()
-	go ctl.startComputeService()
+	s, _ := ctl.createComputeServer()
+	go s.ListenAndServeTLS(httpsCAcert, httpsKey)
 	time.Sleep(1 * time.Second)
-	go ctl.startVolumeService()
+	s, _ = ctl.createVolumeServer()
+	go s.ListenAndServeTLS(httpsCAcert, httpsKey)
 	time.Sleep(1 * time.Second)
 
 	code := m.Run()
