@@ -78,7 +78,6 @@ var workloadsPath = flag.String("workloads_path", "/var/lib/ciao/data/controller
 var noNetwork = flag.Bool("nonetwork", false, "Debug with no networking")
 var persistentDatastoreLocation = flag.String("database_path", "/var/lib/ciao/data/controller/ciao-controller.db", "path to persistent database")
 var imageDatastoreLocation = flag.String("image_database_path", "/var/lib/ciao/data/image/ciao-image.db", "path to image persistent database")
-var transientDatastoreLocation = flag.String("stats_path", "/tmp/ciao-controller-stats.db", "path to stats database")
 var logDir = "/var/lib/ciao/logs/controller"
 
 var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
@@ -120,7 +119,7 @@ func main() {
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:" + *persistentDatastoreLocation,
-		TransientURI:      "file:" + *transientDatastoreLocation,
+		TransientURI:      "file:transient?mode=memory&cache=shared",
 		InitWorkloadsPath: *workloadsPath,
 	}
 
