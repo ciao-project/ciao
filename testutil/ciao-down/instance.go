@@ -69,7 +69,12 @@ type instanceSpec struct {
 	Hostname      string `yaml:"hostname"`
 }
 
-func newDefaultInstance(ws *workspace, vmType string) *instance {
+// This function creates a default instanceData object for legacy ciao-down
+// ciao VMs.  These old VMs did not store information about mounts and
+// mapped ports as this information was hard-coded into ciao-down itself.
+// Consequently, when migrating one of these old VMs we need to fill in
+// the missing information.
+func newLegacyInstance(ws *workspace, vmType string) *instance {
 	var in instance
 
 	in.Mounts = []mount{
@@ -123,7 +128,7 @@ func newInstanceFromFile(ws *workspace) (*instance, error) {
 		uiPath = string(data)
 	}
 
-	in = newDefaultInstance(ws, vmType)
+	in = newLegacyInstance(ws, vmType)
 
 	if uiPath != "" {
 		in.Mounts = append(in.Mounts, mount{
