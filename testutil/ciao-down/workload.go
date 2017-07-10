@@ -133,7 +133,13 @@ func createWorkload(ws *workspace, vmType string) (*workload, error) {
 	}
 
 	err = unmarshallWorkload(ws, &wkld, insSpec, insData, userData)
-	return &wkld, err
+	if err != nil {
+		return nil, err
+	}
+	if wkld.insSpec.WorkloadName == "" {
+		wkld.insSpec.WorkloadName = vmType
+	}
+	return &wkld, nil
 }
 
 func restoreWorkload(ws *workspace) (*workload, error) {

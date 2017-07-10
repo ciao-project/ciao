@@ -67,6 +67,7 @@ type instanceSpec struct {
 	BaseImageURL  string `yaml:"base_image_url"`
 	BaseImageName string `yaml:"base_image_name"`
 	Hostname      string `yaml:"hostname"`
+	WorkloadName  string `yaml:"workload"`
 }
 
 // This function creates a default instanceData object for legacy ciao-down

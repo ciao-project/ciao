@@ -418,7 +418,8 @@ func status(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	statusVM(ctx, ws.instanceDir, ws.keyPath, sshPort)
+	statusVM(ctx, ws.instanceDir, ws.keyPath, wkld.insSpec.WorkloadName,
+		sshPort)
 	errCh <- err
 }
 

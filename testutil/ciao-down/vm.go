@@ -143,7 +143,7 @@ func sshReady(ctx context.Context, sshPort int) bool {
 	return retval
 }
 
-func statusVM(ctx context.Context, instanceDir, keyPath string, sshPort int) {
+func statusVM(ctx context.Context, instanceDir, keyPath, vmType string, sshPort int) {
 	status := "ciao down"
 	ssh := "N/A"
 	if sshReady(ctx, sshPort) {
@@ -153,6 +153,7 @@ func statusVM(ctx context.Context, instanceDir, keyPath string, sshPort int) {
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+	fmt.Fprintf(w, "Workload\t:\t%s\n", vmType)
 	fmt.Fprintf(w, "Status\t:\t%s\n", status)
 	fmt.Fprintf(w, "SSH\t:\t%s\n", ssh)
 	w.Flush()
