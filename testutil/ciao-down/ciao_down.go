@@ -270,7 +270,7 @@ func prepare(ctx context.Context, errCh chan error) {
 		}
 	}()
 
-	err = in.save(ws)
+	err = wkld.save(ws)
 	if err != nil {
 		err = fmt.Errorf("Unable to save instance state : %v", err)
 		return
@@ -324,11 +324,12 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, err := newInstanceFromFile(ws)
+	wkld, err := restoreWorkload(ws)
 	if err != nil {
 		errCh <- err
 		return
 	}
+	in := &wkld.insData
 
 	memGiB, CPUs := getMemAndCpus()
 	if in.MemGiB == 0 {
@@ -344,7 +345,7 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if err := in.save(ws); err != nil {
+	if err := wkld.save(ws); err != nil {
 		fmt.Printf("Warning: Failed to update instance state: %v", err)
 	}
 
@@ -404,11 +405,12 @@ func status(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, err := newInstanceFromFile(ws)
+	wkld, err := restoreWorkload(ws)
 	if err != nil {
 		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
+	in := &wkld.insData
 
 	sshPort, err := in.sshPort()
 	if err != nil {
@@ -427,11 +429,12 @@ func connect(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, err := newInstanceFromFile(ws)
+	wkld, err := restoreWorkload(ws)
 	if err != nil {
 		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
+	in := &wkld.insData
 
 	path, err := exec.LookPath("ssh")
 	if err != nil {

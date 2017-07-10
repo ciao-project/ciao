@@ -22,8 +22,11 @@ import (
 	"fmt"
 	"go/build"
 	"io/ioutil"
+	"path"
 	"path/filepath"
 	"regexp"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 const ciaoDownPkg = "github.com/01org/ciao/testutil/ciao-down"
@@ -40,7 +43,39 @@ type workload struct {
 	userData string
 }
 
-func loadWorkload(ws *workspace, vmType string) ([]byte, error) {
+func (wkld *workload) save(ws *workspace) error {
+	var buf bytes.Buffer
+
+	_, _ = buf.WriteString("---\n")
+	data, err := yaml.Marshal(wkld.insSpec)
+	if err != nil {
+		return fmt.Errorf("Unable to marshall instance specification : %v", err)
+	}
+	_, _ = buf.Write(data)
+	_, _ = buf.WriteString("...\n")
+
+	_, _ = buf.WriteString("---\n")
+	data, err = yaml.Marshal(wkld.insData)
+	if err != nil {
+		return fmt.Errorf("Unable to marshall instance specification : %v", err)
+	}
+	_, _ = buf.Write(data)
+	_, _ = buf.WriteString("...\n")
+
+	_, _ = buf.WriteString("---\n")
+	_, _ = buf.WriteString(wkld.userData)
+	_, _ = buf.WriteString("...\n")
+
+	err = ioutil.WriteFile(path.Join(ws.instanceDir, "state.yaml"),
+		buf.Bytes(), 0600)
+	if err != nil {
+		return fmt.Errorf("Unable to write instance state : %v", err)
+	}
+
+	return nil
+}
+
+func loadWorkloadData(ws *workspace, vmType string) ([]byte, error) {
 	localPath := filepath.Join(ws.Home, ".ciao-down", "workloads",
 		fmt.Sprintf("%s.yaml", vmType))
 	wkld, err := ioutil.ReadFile(localPath)
@@ -61,8 +96,25 @@ func loadWorkload(ws *workspace, vmType string) ([]byte, error) {
 	return wkld, nil
 }
 
+func unmarshallWorkload(ws *workspace, wkld *workload, insSpec, insData,
+	userData string) error {
+	err := wkld.insSpec.unmarshallWithTemplate(ws, insSpec)
+	if err != nil {
+		return err
+	}
+
+	err = wkld.insData.unmarshallWithTemplate(ws, insData)
+	if err != nil {
+		return err
+	}
+
+	wkld.userData = userData
+
+	return nil
+}
+
 func createWorkload(ws *workspace, vmType string) (*workload, error) {
-	data, err := loadWorkload(ws, vmType)
+	data, err := loadWorkloadData(ws, vmType)
 	if err != nil {
 		return nil, err
 	}
@@ -80,19 +132,34 @@ func createWorkload(ws *workspace, vmType string) (*workload, error) {
 		return nil, fmt.Errorf("Invalid workload")
 	}
 
-	err = wkld.insSpec.unmarshallWithTemplate(ws, insSpec)
+	err = unmarshallWorkload(ws, &wkld, insSpec, insData, userData)
+	return &wkld, err
+}
+
+func restoreWorkload(ws *workspace) (*workload, error) {
+	var wkld workload
+	data, err := ioutil.ReadFile(path.Join(ws.instanceDir, "state.yaml"))
 	if err != nil {
-		return nil, err
+		if err = wkld.insData.loadLegacyInstance(ws); err != nil {
+			return nil, err
+		}
+		return &wkld, nil
 	}
 
-	err = wkld.insData.unmarshallWithTemplate(ws, insData)
-	if err != nil {
-		return nil, err
+	docs := splitYaml(data)
+	if len(docs) == 1 {
+		// Older versions of ciao-down just stored the instance
+		// data and not the entire workload.
+		if err = wkld.insData.unmarshallWithTemplate(ws, string(docs[0])); err != nil {
+			return nil, err
+		}
+		return &wkld, nil
+	} else if len(docs) < 3 {
+		return nil, fmt.Errorf("Invalid workload")
 	}
 
-	wkld.userData = userData
-
-	return &wkld, nil
+	err = unmarshallWorkload(ws, &wkld, string(docs[0]), string(docs[1]), string(docs[2]))
+	return &wkld, err
 }
 
 func findDocument(lines [][]byte) ([]byte, int) {

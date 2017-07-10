@@ -74,8 +74,24 @@ type instanceSpec struct {
 // mapped ports as this information was hard-coded into ciao-down itself.
 // Consequently, when migrating one of these old VMs we need to fill in
 // the missing information.
-func newLegacyInstance(ws *workspace, vmType string) *instance {
-	var in instance
+func (in *instance) loadLegacyInstance(ws *workspace) error {
+	// Check for legacy state files.
+
+	vmType := CIAO
+	data, err := ioutil.ReadFile(path.Join(ws.instanceDir, "vmtype.txt"))
+	if err == nil {
+		vmType = string(data)
+		if vmType != CIAO && vmType != CLEARCONTAINERS {
+			err := fmt.Errorf("Unsupported vmType %s. Should be one of "+CIAO+"|"+CLEARCONTAINERS, vmType)
+			return err
+		}
+	}
+
+	uiPath := ""
+	data, err = ioutil.ReadFile(path.Join(ws.instanceDir, "ui_path.txt"))
+	if err == nil {
+		uiPath = string(data)
+	}
 
 	in.Mounts = []mount{
 		{
@@ -99,37 +115,6 @@ func newLegacyInstance(ws *workspace, vmType string) *instance {
 		})
 	}
 
-	return &in
-}
-
-func newInstanceFromFile(ws *workspace) (*instance, error) {
-	in := &instance{}
-
-	err := in.load(ws)
-	if err == nil {
-		return in, nil
-	}
-
-	// Check for legacy state files.
-
-	vmType := CIAO
-	data, err := ioutil.ReadFile(path.Join(ws.instanceDir, "vmtype.txt"))
-	if err == nil {
-		vmType = string(data)
-		if vmType != CIAO && vmType != CLEARCONTAINERS {
-			err := fmt.Errorf("Unsupported vmType %s. Should be one of "+CIAO+"|"+CLEARCONTAINERS, vmType)
-			return nil, err
-		}
-	}
-
-	uiPath := ""
-	data, err = ioutil.ReadFile(path.Join(ws.instanceDir, "ui_path.txt"))
-	if err == nil {
-		uiPath = string(data)
-	}
-
-	in = newLegacyInstance(ws, vmType)
-
 	if uiPath != "" {
 		in.Mounts = append(in.Mounts, mount{
 			Tag:           "hostui",
@@ -138,7 +123,7 @@ func newInstanceFromFile(ws *workspace) (*instance, error) {
 		})
 	}
 
-	return in, nil
+	return nil
 }
 
 func (in *instance) unmarshall(data []byte) error {
@@ -193,28 +178,6 @@ func (in *instance) unmarshallWithTemplate(ws *workspace, data string) error {
 		return fmt.Errorf("Unable to execute instance data template: %v", err)
 	}
 	return in.unmarshall(buf.Bytes())
-}
-
-func (in *instance) load(ws *workspace) error {
-	data, err := ioutil.ReadFile(path.Join(ws.instanceDir, "state.yaml"))
-	if err != nil {
-		return fmt.Errorf("Unable to read instance state : %v", err)
-	}
-
-	return in.unmarshall(data)
-}
-
-func (in *instance) save(ws *workspace) error {
-	data, err := yaml.Marshal(in)
-	if err != nil {
-		return fmt.Errorf("Unable to marshall instance state : %v", err)
-	}
-	err = ioutil.WriteFile(path.Join(ws.instanceDir, "state.yaml"),
-		data, 0600)
-	if err != nil {
-		return fmt.Errorf("Unable to write instance state : %v", err)
-	}
-	return nil
 }
 
 func (in *instance) mergeMounts(m mounts) {
