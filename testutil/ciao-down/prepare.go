@@ -265,6 +265,9 @@ func proxyVarsFN(ws *workspace) string {
 		buf.WriteString("no_proxy=")
 		buf.WriteString(ws.NoProxy)
 		buf.WriteString(" ")
+		buf.WriteString("NO_PROXY=")
+		buf.WriteString(ws.NoProxy)
+		buf.WriteString(" ")
 	}
 	if ws.HTTPProxy != "" {
 		buf.WriteString("http_proxy=")
@@ -289,6 +292,10 @@ func proxyEnvFN(ws *workspace, indent int) string {
 	if ws.NoProxy != "" {
 		buf.WriteString(spaces)
 		buf.WriteString(`no_proxy="`)
+		buf.WriteString(ws.NoProxy)
+		buf.WriteString(`"` + "\n")
+		buf.WriteString(spaces)
+		buf.WriteString(`NO_PROXY="`)
 		buf.WriteString(ws.NoProxy)
 		buf.WriteString(`"` + "\n")
 	}
