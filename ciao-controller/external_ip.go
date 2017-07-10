@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
@@ -106,45 +105,17 @@ func (c *controller) AddPool(name string, subnet *string, ips []string) (types.P
 		Name: name,
 	}
 
-	if subnet != nil {
-		sub := types.ExternalSubnet{
-			ID:   uuid.Generate().String(),
-			CIDR: *subnet,
-		}
-
-		_, ipNet, err := net.ParseCIDR(*subnet)
-		if err != nil {
-			return pool, err
-		}
-
-		ones, bits := ipNet.Mask.Size()
-
-		// subtract out gateway and broadcast
-		TotalIPs := (1 << uint32(bits-ones)) - 2
-		pool.TotalIPs = TotalIPs
-		pool.Free = pool.TotalIPs
-		pool.Subnets = append(pool.Subnets, sub)
-	} else if len(ips) > 0 {
-		for _, i := range ips {
-			addr := net.ParseIP(i)
-			if addr == nil {
-				return pool, types.ErrInvalidIP
-			}
-
-			IP := types.ExternalIP{
-				ID:      uuid.Generate().String(),
-				Address: i,
-			}
-
-			pool.IPs = append(pool.IPs, IP)
-		}
-		pool.TotalIPs = len(ips)
-		pool.Free = pool.TotalIPs
+	err = c.ds.AddPool(pool)
+	if err != nil {
+		return pool, err
 	}
 
-	err = c.ds.AddPool(pool)
+	err = c.AddAddress(pool.ID, subnet, ips)
+	if err != nil {
+		return pool, err
+	}
 
-	return pool, err
+	return c.ds.GetPool(pool.ID)
 }
 
 func (c *controller) ListPools() ([]types.Pool, error) {
