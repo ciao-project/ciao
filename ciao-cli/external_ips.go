@@ -671,9 +671,13 @@ func (cmd *poolAddCommand) run(args []string) error {
 
 	if cmd.subnet != "" {
 		// verify it's a good address.
-		_, _, err := net.ParseCIDR(cmd.subnet)
+		_, network, err := net.ParseCIDR(cmd.subnet)
 		if err != nil {
 			fatalf(err.Error())
+		}
+
+		if ones, bits := network.Mask.Size(); bits-ones < 2 {
+			fatalf("Use address mode to add a single IP address")
 		}
 
 		req.Subnet = &cmd.subnet
