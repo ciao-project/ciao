@@ -29,15 +29,15 @@ using the following command.
 ciao-down connect
 ```
 
-The command above assumes that either $GOPATH/bin or ~/go/bin is on
+The command above assumes that either $GOPATH/bin or ~/go/bin is in
 your PATH.
 
 ciao-down will cache the Ubuntu image locally so the next time you
-create another xenial based you won't have to wait very long. It also
-knows about HTTP proxies and will mirror your host computer's proxy
+create another xenial based VM you won't have to wait very long.
+It also knows about HTTP proxies and will mirror your host computer's proxy
 settings inside the VMs it creates.
 
-You can delete the VM you've just created by calling,
+You can delete the VM you've just created by running,
 
 ```
 ciao-down delete
@@ -69,7 +69,7 @@ prepare command.  This is done via the --vmtype option.  You specify the file na
 of the workload without the .yaml extension.  The workload must be present in either
 of the two directories mentioned above.  For example, the prepare command in the
 introduction section used the option --vmtype xenial.  This caused ciao-down to
-load the pre-shipped workload defintion in
+load the workload definition in
 $GOPATH/src/github.com/01org/ciao/testutil/ciao-down/workloads/xenial.yaml.
 
 The default workload is called ciao and this workload is used if no --vmtype option is
@@ -250,9 +250,9 @@ write_files:
 #### download
 
 Download should be used to download files from inside the guest.  Download is preferable
-to direclty downloading files inside the cloudinit document using curl or wget for
+to directly downloading files inside the cloudinit document using curl or wget for
 example, as the downloaded files are cached by ciao-down.  This means that the next time
-an instance of this workload is created the file will not have to be rertrieved from
+an instance of this workload is created the file will not have to be retrieved from
 the Internet, resulting in quicker boot times for the new VM.
 
 download takes three parameters
@@ -404,7 +404,7 @@ will create a new ciao-down VM in which the $HOME/src/ciao-webui folder on
 your host will be mounted at $HOME/src/ciao-webui.
 
 ciao-down by default creates a VM suitable for ciao development. It also supports
-setting up development enviornments for other projects, via the vmtype option
+setting up development environments for other projects, via the vmtype option
 
 ciao-down prepare -vmtype clearcontainers
 
