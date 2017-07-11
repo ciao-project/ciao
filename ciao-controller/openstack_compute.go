@@ -32,11 +32,6 @@ import (
 )
 
 func instanceToServer(ctl *controller, instance *types.Instance) (compute.ServerDetails, error) {
-	workload, err := ctl.ds.GetWorkload(instance.TenantID, instance.WorkloadID)
-	if err != nil {
-		return compute.ServerDetails{}, err
-	}
-
 	var volumes []string
 
 	instance.Attachments = ctl.ds.GetStorageAttachments(instance.ID)
@@ -45,17 +40,12 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 		volumes = append(volumes, vol.BlockID)
 	}
 
-	imageID := workload.ImageID
-
 	server := compute.ServerDetails{
 		HostID:   instance.NodeID,
 		ID:       instance.ID,
 		TenantID: instance.TenantID,
 		Flavor: compute.FlavorLinks{
 			ID: instance.WorkloadID,
-		},
-		Image: compute.Image{
-			ID: imageID,
 		},
 		Status: instance.State,
 		Addresses: compute.Addresses{
