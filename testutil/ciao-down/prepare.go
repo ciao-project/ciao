@@ -25,12 +25,21 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"text/template"
 
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/qemu"
+	"github.com/01org/ciao/ssntp/uuid"
 )
+
+const metaDataTemplate = `
+{
+  "uuid": "{{.UUID}}",
+  "hostname": "{{.Hostname}}"
+}
+`
 
 type logger struct{}
 
@@ -59,7 +68,6 @@ type workspace struct {
 	Home           string
 	HTTPProxy      string
 	HTTPSProxy     string
-	NodeHTTPSProxy string
 	NoProxy        string
 	User           string
 	PublicKey      string
@@ -67,7 +75,9 @@ type workspace struct {
 	GitUserName    string
 	GitEmail       string
 	Mounts         []mount
-	RunCmd         string
+	Hostname       string
+	UUID           string
+	PackageUpgrade string
 	ciaoDir        string
 	instanceDir    string
 	keyPath        string
@@ -131,35 +141,6 @@ func prepareSSHKeys(ctx context.Context, ws *workspace) error {
 	return nil
 }
 
-func prepareRunCmd(ws *workspace, runCmd string) error {
-	if runCmd == "" {
-		return nil
-	}
-
-	runCmdData, err := ioutil.ReadFile(runCmd)
-	if err != nil {
-		return fmt.Errorf("Unable to read %s : %v", runCmd, err)
-	}
-
-	buf := bytes.NewBuffer(runCmdData)
-	found := false
-	line, err := buf.ReadString('\n')
-	for err == nil {
-		if strings.TrimSpace(line) == "run_cmd:" {
-			found = true
-			break
-		}
-		line, err = buf.ReadString('\n')
-	}
-
-	if !found {
-		return fmt.Errorf("No commands found in %s", runCmd)
-	}
-
-	ws.RunCmd = buf.String()
-	return nil
-}
-
 func getProxy(upper, lower string) (string, error) {
 	proxy := os.Getenv(upper)
 	if proxy == "" {
@@ -185,9 +166,9 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	var err error
 
 	ws := &workspace{HTTPServerPort: 8080}
-	ws.GoPath = os.Getenv("GOPATH")
-	if ws.GoPath == "" {
-		return nil, fmt.Errorf("GOPATH is not defined")
+	data, err := exec.Command("go", "env", "GOPATH").Output()
+	if err == nil {
+		ws.GoPath = filepath.Clean(strings.TrimSpace(string(data)))
 	}
 	ws.Home = os.Getenv("HOME")
 	if ws.Home == "" {
@@ -211,7 +192,7 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	if ws.HTTPSProxy != "" {
 		u, _ := url.Parse(ws.HTTPSProxy)
 		u.Scheme = "http"
-		ws.NodeHTTPSProxy = u.String()
+		ws.HTTPSProxy = u.String()
 	}
 
 	ws.NoProxy = os.Getenv("no_proxy")
@@ -220,7 +201,7 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	ws.keyPath = path.Join(ws.ciaoDir, "id_rsa")
 	ws.publicKeyPath = fmt.Sprintf("%s.pub", ws.keyPath)
 
-	data, err := exec.Command("git", "config", "--global", "user.name").Output()
+	data, err = exec.Command("git", "config", "--global", "user.name").Output()
 	if err == nil {
 		ws.GitUserName = strings.TrimSpace(string(data))
 	}
@@ -229,6 +210,8 @@ func prepareEnv(ctx context.Context) (*workspace, error) {
 	if err == nil {
 		ws.GitEmail = strings.TrimSpace(string(data))
 	}
+
+	ws.UUID = uuid.Generate().String()
 
 	return ws, nil
 }
@@ -250,16 +233,105 @@ func downloadFN(ws *workspace, URL, location string) string {
 	return fmt.Sprintf("wget %s -O %s", url.String(), location)
 }
 
-func buildISOImage(ctx context.Context, instanceDir, vmType string, ws *workspace, debug bool) error {
-	var tmpl string
-	if vmType == CLEARCONTAINERS {
-		tmpl = fmt.Sprintf(ccUserDataTemplate, ws.RunCmd)
-	} else {
-		tmpl = fmt.Sprintf(userDataTemplate, ws.RunCmd)
-	}
+func beginTaskFN(ws *workspace, message string) string {
+	const infoStr = `curl -X PUT -d "%s" 10.0.2.2:%d`
+	return fmt.Sprintf(infoStr, message, ws.HTTPServerPort)
+}
 
+func endTaskCheckFN(ws *workspace) string {
+	const checkStr = `if [ $? -eq 0 ] ; then ret="OK" ; else ret="FAIL" ; fi ; ` +
+		`curl -X PUT -d $ret 10.0.2.2:%d`
+	return fmt.Sprintf(checkStr, ws.HTTPServerPort)
+}
+
+func endTaskOkFN(ws *workspace) string {
+	const okStr = `curl -X PUT -d "OK" 10.0.2.2:%d`
+	return fmt.Sprintf(okStr, ws.HTTPServerPort)
+}
+
+func endTaskFailFN(ws *workspace) string {
+	const failStr = `curl -X PUT -d "FAIL" 10.0.2.2:%d`
+	return fmt.Sprintf(failStr, ws.HTTPServerPort)
+}
+
+func finishedFN(ws *workspace) string {
+	const finishedStr = `curl -X PUT -d "FINISHED" 10.0.2.2:%d`
+	return fmt.Sprintf(finishedStr, ws.HTTPServerPort)
+}
+
+func proxyVarsFN(ws *workspace) string {
+	var buf bytes.Buffer
+	if ws.NoProxy != "" {
+		buf.WriteString("no_proxy=")
+		buf.WriteString(ws.NoProxy)
+		buf.WriteString(" ")
+		buf.WriteString("NO_PROXY=")
+		buf.WriteString(ws.NoProxy)
+		buf.WriteString(" ")
+	}
+	if ws.HTTPProxy != "" {
+		buf.WriteString("http_proxy=")
+		buf.WriteString(ws.HTTPProxy)
+		buf.WriteString(" HTTP_PROXY=")
+		buf.WriteString(ws.HTTPProxy)
+		buf.WriteString(" ")
+	}
+	if ws.HTTPSProxy != "" {
+		buf.WriteString("https_proxy=")
+		buf.WriteString(ws.HTTPSProxy)
+		buf.WriteString(" HTTPS_PROXY=")
+		buf.WriteString(ws.HTTPSProxy)
+		buf.WriteString(" ")
+	}
+	return strings.TrimSpace(buf.String())
+}
+
+func proxyEnvFN(ws *workspace, indent int) string {
+	var buf bytes.Buffer
+	spaces := strings.Repeat(" ", indent)
+	if ws.NoProxy != "" {
+		buf.WriteString(spaces)
+		buf.WriteString(`no_proxy="`)
+		buf.WriteString(ws.NoProxy)
+		buf.WriteString(`"` + "\n")
+		buf.WriteString(spaces)
+		buf.WriteString(`NO_PROXY="`)
+		buf.WriteString(ws.NoProxy)
+		buf.WriteString(`"` + "\n")
+	}
+	if ws.HTTPProxy != "" {
+		buf.WriteString(spaces)
+		buf.WriteString(`http_proxy="`)
+		buf.WriteString(ws.HTTPProxy)
+		buf.WriteString(`"` + "\n")
+		buf.WriteString(spaces)
+		buf.WriteString(`HTTP_PROXY="`)
+		buf.WriteString(ws.HTTPProxy)
+		buf.WriteString(`"` + "\n")
+	}
+	if ws.HTTPSProxy != "" {
+		buf.WriteString(spaces)
+		buf.WriteString(`https_proxy="`)
+		buf.WriteString(ws.HTTPSProxy)
+		buf.WriteString(`"` + "\n")
+		buf.WriteString(spaces)
+		buf.WriteString(`HTTPS_PROXY="`)
+		buf.WriteString(ws.HTTPSProxy)
+		buf.WriteString(`"`)
+	}
+	return buf.String()
+}
+
+func buildISOImage(ctx context.Context, instanceDir, tmpl string, ws *workspace, debug bool) error {
 	funcMap := template.FuncMap{
-		"download": downloadFN,
+		"proxyVars":    proxyVarsFN,
+		"proxyEnv":     proxyEnvFN,
+		"download":     downloadFN,
+		"beginTask":    beginTaskFN,
+		"endTaskCheck": endTaskCheckFN,
+		"endTaskOk":    endTaskOkFN,
+		"endTaskFail":  endTaskFailFN,
+		"finished":     finishedFN,
 	}
 
 	udt := template.Must(template.New("user-data").Funcs(funcMap).Parse(tmpl))

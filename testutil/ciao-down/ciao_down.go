@@ -43,13 +43,6 @@ const (
 	CLEARCONTAINERS = "clearcontainers"
 )
 
-// Constants for the Guest image used by ciao-down
-
-const (
-	guestDownloadURL       = "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
-	guestImageFriendlyName = "Ubuntu 16.04"
-)
-
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n\n", os.Args[0])
@@ -109,6 +102,20 @@ func (p *ports) Set(value string) error {
 	return nil
 }
 
+type packageUpgrade string
+
+func (p *packageUpgrade) String() string {
+	return string(*p)
+}
+
+func (p *packageUpgrade) Set(value string) error {
+	if value != "true" && value != "false" {
+		return fmt.Errorf("--package-update parameter should be true or false")
+	}
+	*p = packageUpgrade(value)
+	return nil
+}
+
 func vmFlags(fs *flag.FlagSet, memGB, CPUs *int, m *mounts, p *ports) {
 	fs.IntVar(memGB, "mem", *memGB, "Gigabytes of RAM allocated to VM")
 	fs.IntVar(CPUs, "cpus", *CPUs, "VCPUs assignged to VM")
@@ -137,41 +144,57 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func prepareFlags(ws *workspace) (*instance, bool, string, string, error) {
+func prepareFlags(ws *workspace) (*workload, bool, error) {
 	var debug bool
-	var runCmd, vmType string
+	var vmType string
 	var m mounts
 	var p ports
+	var memGiB, CPUs int
+	var update packageUpgrade
 
-	memGiB, CPUs := getMemAndCpus()
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
-	fs.StringVar(&runCmd, "runcmd", "", "Path to a file containing additional commands to execute when preparing the VM")
-	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch. "+CIAO+" or "+CLEARCONTAINERS)
+	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch.")
+	fs.Var(&update, "package-upgrade",
+		"Hint to enable or disable update of VM packages.  Should be true or false")
 
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
-		return nil, false, "", "", err
-	}
-
-	if vmType != CIAO && vmType != CLEARCONTAINERS {
-		err := fmt.Errorf("Unsupported vmType %s. Should be one of "+CIAO+"|"+CLEARCONTAINERS, vmType)
-		return nil, false, "", "", err
+		return nil, false, err
 	}
 
 	for i := range m {
 		if err := checkDirectory(m[i].Path); err != nil {
-			return nil, false, "", "", err
+			return nil, false, err
 		}
 	}
 
-	in := newDefaultInstance(ws, vmType)
-	in.CPUs = CPUs
-	in.MemGiB = memGiB
+	wkl, err := createWorkload(ws, vmType)
+	if err != nil {
+		return nil, false, err
+	}
+
+	in := &wkl.insData
+	if memGiB != 0 {
+		in.MemGiB = memGiB
+	}
+	if CPUs != 0 {
+		in.CPUs = CPUs
+	}
+
 	in.mergeMounts(m)
 	in.mergePorts(p)
 
-	return in, debug, runCmd, vmType, nil
+	ws.Mounts = in.Mounts
+	ws.Hostname = wkl.insSpec.Hostname
+	if ws.NoProxy != "" {
+		ws.NoProxy = fmt.Sprintf("%s,%s", ws.Hostname, ws.NoProxy)
+	} else if ws.HTTPProxy != "" || ws.HTTPSProxy != "" {
+		ws.NoProxy = ws.Hostname
+	}
+	ws.PackageUpgrade = string(update)
+
+	return wkl, debug, nil
 }
 
 func startFlags(in *instance) error {
@@ -220,13 +243,12 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, debug, runCmd, vmType, err := prepareFlags(ws)
+	wkld, debug, err := prepareFlags(ws)
 	if err != nil {
 		return
 	}
 
-	ws.Mounts = in.Mounts
-
+	in := &wkld.insData
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {
 		err = fmt.Errorf("instance already exists")
@@ -248,7 +270,7 @@ func prepare(ctx context.Context, errCh chan error) {
 		}
 	}()
 
-	err = in.save(ws)
+	err = wkld.save(ws)
 	if err != nil {
 		err = fmt.Errorf("Unable to save instance state : %v", err)
 		return
@@ -259,18 +281,13 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	err = prepareRunCmd(ws, runCmd)
+	fmt.Printf("Downloading %s\n", wkld.insSpec.BaseImageName)
+	qcowPath, err := downloadFile(ctx, wkld.insSpec.BaseImageURL, ws.ciaoDir, downloadProgress)
 	if err != nil {
 		return
 	}
 
-	fmt.Printf("Downloading %s\n", guestImageFriendlyName)
-	qcowPath, err := downloadFile(ctx, guestDownloadURL, ws.ciaoDir, downloadProgress)
-	if err != nil {
-		return
-	}
-
-	err = buildISOImage(ctx, ws.instanceDir, vmType, ws, debug)
+	err = buildISOImage(ctx, ws.instanceDir, wkld.userData, ws, debug)
 	if err != nil {
 		return
 	}
@@ -307,11 +324,12 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, err := newInstanceFromFile(ws)
+	wkld, err := restoreWorkload(ws)
 	if err != nil {
 		errCh <- err
 		return
 	}
+	in := &wkld.insData
 
 	memGiB, CPUs := getMemAndCpus()
 	if in.MemGiB == 0 {
@@ -327,7 +345,7 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if err := in.save(ws); err != nil {
+	if err := wkld.save(ws); err != nil {
 		fmt.Printf("Warning: Failed to update instance state: %v", err)
 	}
 
@@ -387,11 +405,12 @@ func status(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, err := newInstanceFromFile(ws)
+	wkld, err := restoreWorkload(ws)
 	if err != nil {
 		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
+	in := &wkld.insData
 
 	sshPort, err := in.sshPort()
 	if err != nil {
@@ -399,7 +418,8 @@ func status(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	statusVM(ctx, ws.instanceDir, ws.keyPath, sshPort)
+	statusVM(ctx, ws.instanceDir, ws.keyPath, wkld.insSpec.WorkloadName,
+		sshPort)
 	errCh <- err
 }
 
@@ -410,11 +430,12 @@ func connect(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in, err := newInstanceFromFile(ws)
+	wkld, err := restoreWorkload(ws)
 	if err != nil {
 		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
+	in := &wkld.insData
 
 	path, err := exec.LookPath("ssh")
 	if err != nil {

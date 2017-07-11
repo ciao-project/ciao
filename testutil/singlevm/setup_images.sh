@@ -47,7 +47,7 @@ then
     else
 	# replace this will a function that looks in ~local cache
 	# for the last version of clear to use.
-	LATEST="12620"
+	LATEST="16240"
     fi
 
     if [ $download -eq 1 ] || [ ! -f clear-"${LATEST}"-cloud.img ]

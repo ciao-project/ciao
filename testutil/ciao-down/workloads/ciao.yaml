@@ -1,0 +1,240 @@
+---
+base_image_url: https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img
+base_image_name: Ubuntu 16.04
+...
+---
+{{with .GoPath}}
+mounts:
+- tag: hostgo
+  security_model: passthrough
+  path: {{.}}
+{{end}}
+ports:
+- host: 3000
+  guest: 3000
+...
+---
+{{- define "ENV" -}}
+{{proxyVars .}}
+{{- print " DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true " -}}
+{{end}}
+{{ define "GOPATH" }}{{with .GoPath}}{{$.MountPath "hostgo"}}{{else}}/home/{{.User}}/go{{end}}{{end}}
+#cloud-config
+write_files:
+{{- if len $.HTTPProxy }}
+ - content: |
+     [Service]
+     Environment="HTTP_PROXY={{$.HTTPProxy}}"{{if len .HTTPSProxy}} "HTTPS_PROXY={{.HTTPSProxy}}{{end}}"{{if len .NoProxy}} "NO_PROXY={{.NoProxy}},{{.Hostname}}{{end}}"
+   path: /etc/systemd/system/docker.service.d/http-proxy.conf
+{{- end}}
+{{with proxyEnv . 5}}
+ - content: |
+{{.}}
+   path: /etc/environment
+{{end}}
+ - content: |
+     #!/bin/sh
+     printf "\n"
+     printf "To run Single VM:\n"
+     printf "\n"
+     printf "cd {{template "GOPATH" .}}/src/github.com/01org/ciao/testutil/singlevm\n"
+     printf "./setup.sh\n"
+     printf "\n"
+     printf "To start the web-ui:\n"
+     printf "\n"
+     printf "cd {{with .MountPath "hostui"}}{{.}}{{else}}/home/{{.User}}/ciao-webui{{end}}\n"
+     printf "./deploy.sh production --config_file=/home/{{.User}}/local/webui_config.json\n"
+     printf "\n"
+     printf "Point your host's browser at https://localhost:3000"
+   path: /etc/update-motd.d/10-ciao-help-text
+   permissions: '0755'
+ - content: |
+     deb https://apt.dockerproject.org/repo ubuntu-xenial main
+   path: /etc/apt/sources.list.d/docker.list
+
+apt:
+{{- if len $.HTTPProxy }}
+  proxy: "{{$.HTTPProxy}}"
+{{- end}}
+{{- if len $.HTTPSProxy }}
+  https_proxy: "{{$.HTTPSProxy}}"
+{{- end}}
+package_upgrade: {{with .PackageUpgrade}}{{.}}{{else}}true{{end}}
+
+runcmd:
+ - {{beginTask . "Booting VM"}}
+ - {{endTaskOk . }}
+
+ - {{beginTask . (printf "Adding %s to /etc/hosts" .Hostname) }}
+ - echo "127.0.0.1 {{.Hostname}}" >> /etc/hosts
+ - {{endTaskCheck .}}
+
+{{range .Mounts}}
+ - mkdir -p {{.Path}}
+ - sudo chown {{$.User}}:{{$.User}} {{.Tag}}
+ - echo "{{.Tag}} {{.Path}} 9p x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L 0 0" >> /etc/fstab
+{{end}}
+{{range .Mounts}}
+ - {{beginTask $ (printf "Mounting %s" .Path) }}
+ - mount {{.Path}}
+ - {{endTaskCheck $}}
+{{end}}
+
+ - chown {{.User}}:{{.User}} /home/{{.User}}
+{{- with .MountPath "hostui"}}
+ - chown {{$.User}}:{{$.User}} {{.}}
+{{- end}}
+ - rm /etc/update-motd.d/10-help-text /etc/update-motd.d/51-cloudguest
+ - rm /etc/update-motd.d/90-updates-available
+ - rm /etc/legal
+
+ - {{beginTask . "Downloading Go" }}
+ - {{download . "https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz"}}
+ - {{endTaskCheck .}}
+ 
+ - {{beginTask . "Unpacking Go" }}
+ - tar -C /usr/local -xzf /tmp/go1.8.linux-amd64.tar.gz
+ - {{endTaskCheck .}}
+
+ - rm /tmp/go1.8.linux-amd64.tar.gz
+
+ - groupadd docker
+ - sudo gpasswd -a {{.User}} docker
+
+ - {{beginTask . "Installing apt-transport-https and ca-certificates" }}
+ - {{template "ENV" .}}apt-get install apt-transport-https ca-certificates
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Add docker GPG key" }}
+ - {{template "ENV" .}}apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Retrieving updated list of packages"}}
+ - {{template "ENV" .}}apt-get update
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing Docker"}}
+ - {{template "ENV" .}}apt-get install docker-engine -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing GCC"}}
+ - {{template "ENV" .}}apt-get install gcc -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing Make"}}
+ - {{template "ENV" .}}apt-get install make -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing QEMU"}}
+ - {{template "ENV" .}}apt-get install qemu-system-x86 -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing xorriso" }}
+ - {{template "ENV" .}}apt-get install xorriso -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing ceph-common"}}
+ - {{template "ENV" .}}apt-get install ceph-common -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing Openstack client"}}
+ - {{template "ENV" .}}apt-get install python-openstackclient -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Updating NodeJS sources" }}
+ - {{template "ENV" .}}curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing NodeJS"}}
+ - {{template "ENV" .}}apt-get install nodejs -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Auto removing unused components"}}
+ - {{template "ENV" .}}apt-get auto-remove -y
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Building ciao" }}
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/01org/ciao/...
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Installing Go development utils"}}
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell
+ - {{endTaskCheck .}}
+
+ - chown {{.User}}:{{.User}} -R {{template "GOPATH" .}}
+
+ - {{beginTask . "Retrieving ciao-webui"}}
+{{with .MountPath "hostui"}}
+ - cd {{.}}
+ - git status || {{template "ENV" $}} git clone https://github.com/01org/ciao-webui.git .
+ - {{endTaskCheck $}}
+ - chown {{$.User}}:{{$.User}} -R {{.}}
+{{else}}
+ - cd /home/{{.User}}
+ - sudo -u {{.User}} {{template "ENV" .}} git clone https://github.com/01org/ciao-webui.git
+ - {{endTaskCheck .}}
+{{end}}
+
+{{if len .HTTPProxy}} - sudo -u {{.User}} npm config set proxy {{.HTTPProxy}}{{end}}
+{{if len .HTTPSProxy}} - sudo -u {{.User}} npm config set https-proxy {{.HTTPSProxy}}{{end}}
+
+ - mkdir -p /usr/local/nodejs
+ - chown {{.User}}:{{.User}} /usr/local/nodejs
+ - sudo -u {{.User}} npm config set prefix '/usr/local/nodejs'
+
+ - {{beginTask . "Pulling ceph/demo" }}
+ - {{template "ENV" .}} docker pull ceph/demo
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Pulling clearlinux/keystone" }}
+ - {{template "ENV" .}} docker pull clearlinux/keystone:stable
+ - {{endTaskCheck .}}
+
+ - mkdir -p /home/{{.User}}/local
+
+ - {{beginTask . "Downloading Fedora-Cloud-Base-24-1.2.x86_64.qcow2"}}
+ - {{download . "https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2" (printf "/home/%s/local/Fedora-Cloud-Base-24-1.2.x86_64.qcow2" .User)}}
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Downloading xenial-server-cloudimg-amd64-disk1.img"}}
+ - {{download . "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img" (printf "/home/%s/local/xenial-server-cloudimg-amd64-disk1.img" .User)}}
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Downloading CNCI image" }}
+ - {{download . "https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz" (printf "/home/%s/local/clear-8260-ciao-networking.img.xz" .User)}}
+ - {{endTaskCheck .}}
+
+ - {{beginTask . "Downloading latest clear cloud image" }}
+ - LATEST=$({{template "ENV" .}} curl -s https://download.clearlinux.org/latest) &&  {{template "ENV" .}} wget https://download.clearlinux.org/releases/"$LATEST"/clear/clear-"$LATEST"-cloud.img.xz -O /home/{{.User}}/local/clear-"$LATEST"-cloud.img.xz
+ - {{endTaskCheck .}}
+
+ - cd /home/{{.User}}/local && xz -T0 --decompress *.xz
+
+ - chown {{.User}}:{{.User}} -R /home/{{.User}}/local
+
+{{if len .GitUserName}}
+ - {{beginTask . "Setting git user.name"}}
+ - sudo -u {{.User}} git config --global user.name "{{.GitUserName}}"
+ - {{endTaskCheck .}}
+{{end}}
+
+{{if len .GitEmail}}
+ - {{beginTask . "Setting git user.email"}}
+ - sudo -u {{.User}} git config --global user.email {{.GitEmail}}
+ - {{endTaskCheck .}}
+{{end}}
+
+ - echo "export GOPATH={{template "GOPATH" . }}" >> /home/{{.User}}/.profile
+ - echo "export PATH=$PATH:{{template "GOPATH" . }}/bin:/usr/local/go/bin:/usr/local/nodejs/bin" >> /home/{{.User}}/.profile
+
+ - {{finished .}}
+
+users:
+  - name: {{.User}}
+    gecos: CIAO Demo User
+    lock-passwd: true
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+    - {{.PublicKey}}
+...

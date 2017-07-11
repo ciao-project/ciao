@@ -1,7 +1,9 @@
 # ciao-down
 
-ciao-down is a small utility for setting up a VM that contains
-everything you need to run ciao's Single VM. All you need to have
+## Introduction
+
+ciao-down is a small utility that simplifies the task of creating,
+managing and connecting to virtual machines.  All you need to have
 installed on your machine is:
 
 - Go 1.7 or greater
@@ -10,39 +12,336 @@ Then simply type
 
 ```
 go get github.com/01org/ciao/testutil/ciao-down
-$GOPATH/bin/ciao-down prepare
+$GOPATH/bin/ciao-down prepare --vmtype=xenial
 ```
 
-ciao-down will install some needed dependencies on your local PC such
-as qemu and xorriso. It will then download an Ubuntu Cloud Image and
-create a VM based on this image. It will boot the VM and install in that
-VM everything you need to run ciao Single VM, including docker, ceph,
-go, gcc, etc. When ciao-down prepare has finished you can connect to the
-newly created VM with
+to create a new Ubuntu 16.04 VM.  ciao-down will install some needed
+dependencies on your local PC such as qemu and xorriso. It will then
+download an Ubuntu Cloud Image and create a VM based on this image.
+It will boot the VM, create an account for you, with the same
+name as your account on your host, and optionally update the default
+packages.
+
+Once it's finished you'll be able to connect to the the VM via SSH
+using the following command.
 
 ```
-$GOPATH/bin/ciao-down connect
+ciao-down connect
 ```
 
-Your host's GOPATH is mounted inside the VM. Thus you can edit your
-the ciao code on your host machine and test in Single VM.
+The command above assumes that either $GOPATH/bin or ~/go/bin is in
+your PATH.
 
-Follow the instructions at the prompt to start Single VM.
+ciao-down will cache the Ubuntu image locally so the next time you
+create another xenial based VM you won't have to wait very long.
+It also knows about HTTP proxies and will mirror your host computer's proxy
+settings inside the VMs it creates.
 
-The nice thing about ciao-down is that it is built using existing ciao
-packages. It uses osprepare to install dependencies on the host, some
-launcher code to create the images needed by the VMs, and the qemu
-package to launch and manage the VMs. All the rest is done via cloud-init.
+You can delete the VM you've just created by running,
 
-## ciao-down commands
+```
+ciao-down delete
+```
+
+## Workloads
+
+Each VM is created from a workload. A workload is a text file which contains
+a set of instructions for initialising the VM.  A workload, among other things,
+can specify:
+
+- The hostname of the VM.
+- The resources to be consumed by the VM
+- The base image from which the VM is to be created
+- The folders that should be shared between the host and the VM
+- An annotated cloud-init file that contains the set of instructions
+  to run on the first boot of the VM.  This file is used to create
+  user accounts, install packages and configure the VM.
+
+ciao-down ships with a number of workloads for creating VMs based on standard images,
+such as Ubuntu 16.04 and Fedora 25.  Users are also free to create their own workloads.
+Standard workloads are stored in $GOPATH/src/github.com/01org/ciao/testutil/ciao-down/workloads.
+User created workloads are stored in ~/.ciao-down/workloads.  ciao-down always checks the
+~/.ciao-down/workloads directory first so if a workload exists in both directories
+with the same name, ciao-down will use the workload in ~/.ciao-down/workloads.
+
+You can tell ciao-down which workload to use when creating the VM with the
+prepare command.  This is done via the --vmtype option.  You specify the file name
+of the workload without the .yaml extension.  The workload must be present in either
+of the two directories mentioned above.  For example, the prepare command in the
+introduction section used the option --vmtype xenial.  This caused ciao-down to
+load the workload definition in
+$GOPATH/src/github.com/01org/ciao/testutil/ciao-down/workloads/xenial.yaml.
+
+The default workload is called ciao and this workload is used if no --vmtype option is
+specified.  Selecting the ciao workloads sets up a [ciao](https://github.com/01org/ciao)
+development environment inside a xenial VM.  ciao-down was original created as a tool to
+automatically set up a development environment for ciao.  It still serves this purpose
+but is no longer tied to ciao.  For more information about running ciao with ciao-down
+please see the [Ciao Developer Quick Start](https://github.com/01org/ciao/blob/master/DeveloperQuickStart.md).
+
+As the majority of the ciao-down workloads are cloud-init files, ciao-down only
+works with images that are designed to run cloud-init on their first boot.  Typically,
+these are the cloud images, e.g.,. the [Ubuntu Cloud Images](https://cloud-images.ubuntu.com/).
+
+## Creating new Workloads
+
+ciao-down workloads are multi-doc YAML files.  The first document contains invariants
+about the VM created from the workload such as the image off which it is based and its
+hostname.  The second contains dynamic instance data that can be altered on every boot,
+such as the number of CPUs the VM uses and the ports mapped.  The final document contains
+the cloud-init file.  If only one section is present it is assumed to the be cloud-init
+file and default values are used for the other two sections.
+
+An example workload is shown below:
+
+```
+---
+base_image_url: https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img
+base_image_name: Ubuntu 16.04
+...
+---
+mem_gib: 2
+cpus: 2
+...
+---
+#cloud-config
+package_upgrade: false
+runcmd:
+ - {{finished .}}
+
+users:
+  - name: {{.User}}
+    gecos: CIAO Demo User
+    lock-passwd: true
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+    - {{.PublicKey}}
+...
+```
+
+### Templates
+
+[Go templates](https://golang.org/pkg/text/template/) can be used in each
+document in a workload yaml file.  These templates have access to an instance
+of a structure called Workspace that contains some useful information about the
+host's environment and the instance that is being created.  The following pieces
+of information are available via the workload structure.
+
+ - GoPath         : The GoPath on the host or ~/go if GOPATH is not defined
+ - Home           : The home directory of the user who ran ciao-down
+ - HTTPProxy      : The hosts HTTP proxy if set
+ - HTTPSProxy     : The hosts HTTPS proxy if set
+ - NoProxy        : The value of the host's no_proxy variable
+ - User           : The user who invoked ciao-down
+ - PublicKey      : The public key that will be used to access the instance over SSH
+ - GitUserName    : The git user name of the user who ran ciao-down
+ - GitEmail       : The git email address of the user who ran ciao-down
+ - Mounts         : A slice of mounts, each describing a path to be shared between guest and host
+ - Hostname       : The instance hostname
+ - UUID           : A UUID for the new instance
+ - PackageUpgrade : Indicates whether package upgrade should be performed during the first boot.
+
+As an example consider the third document in the workload definition above.  The User and
+PublicKey fields are accessed via the {{.User}} and {{.PublicKey}} Go templates.  Abstracting
+all of the user and instance specific information via templates in this way allows us to keep our
+workload definitions generic.
+
+### The Instance Specification Document
+
+The first yaml document is called the instance specification document.  It defines the fixed
+characteristics of instances created from the workload which cannot be altered.  Three
+fields are currently defined:
+
+- base_image_url  : The URL of the qcow2 image upon which instances of the workload should be based.
+- base_image_name : Friendly name for the base image.  This is optional.
+- hostname        : The hostname of instances created from this workload.  Hostname is also optional and defaults to singlevm if not provided.
+
+### The Instance Data Document
+
+The second document is called the instance data document.  It contains information that is
+set when an instance is first created but may be modified at a later date, without deleting
+the instance.    Four fields are currently defined:
+
+- mem_gib : Number of Gigabytes to assign to the VM.  Defaults to half the memory on your machine
+- cpus    : Number of CPUs to assign to the VM.  Defaults to half the cores on your machine
+- ports   : Slice of port objects which map host ports on 127.0.0.1 to guest ports
+- mounts  : Slice of mount objects which describe the folders shared between the host and the guest
+
+Each port object has two members, host and guest.  They are both integers and they specify
+the mapping of port numbers from host to guest.  A default mapping of 10022 to 22 is always
+added so that users can connect to their VMs via ciao-down connect.  An example port
+mapping is shown below:
+
+```
+ports:
+- host: 10022
+  guest: 22
+```
+
+Mount objects can be used to share folders between the host and guest.  Folders are shared
+using the 9p protocol.  Each mount object has three pieces of information.
+
+- tag            : An id for the mount.  This information is needed when mounting the shared folder in the guest
+- security_model : The 9p security model to use
+- path           : The path of the host folder to share
+
+An example of a mount is given below.
+
+```
+mounts:
+- tag: hostgo
+  security_model: passthrough
+  path: /home/user/go
+```
+
+Note that specifying a mount in the instance data document only creates a
+9p device which is visible inside the guest.  To actually access the shared
+folder from inside the guest you need to mount the folder.  This can be
+done in the cloud-init file discussed below.
+
+### The Cloudinit document
+
+The third document contains a cloud-init user data file that can be used
+to create users, mount folders, install and update packages and perform
+general configuration tasks on the newly created VM.  The user is
+expected to be familiar with the
+[cloudinit file format](https://cloudinit.readthedocs.io/en/latest/).
+
+Like the instance specification and data documents, the cloudinit document
+is processed by the Go template engine before being passed to cloudinit
+running inside the guest VM.  The template engine makes a number of
+functions available to the cloudinit document.  These functions are used
+to perform common tasks such as configuring proxies and communicating with
+ciao-down running on the host.  Each function must be passed the
+workspace object as the first parameter.  The following functions are
+available:
+
+#### proxyVars
+
+Generates a string containing variable definitions for all the proxy
+variables.  It is useful for prepending to commands inside the runcmd:
+section of the cloudinit document that require proxies to be set, e.g,
+
+```
+- {{proxyvars .}} wget https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz
+```
+
+may expand to something like after being processed by the template engine
+
+```
+- https_proxy=http://myproxy.mydomain.com:911 wget https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz
+```
+
+#### proxyEnv
+
+Generates proxy definitions in a format that is suitable for the /etc/environment file.
+It should be used as follows:
+
+```
+write_files:
+{{with proxyEnv . 5}}
+ - content: |
+{{.}}
+   path: /etc/environment
+{{end}}
+```
+
+#### download
+
+Download should be used to download files from inside the guest.  Download is preferable
+to directly downloading files inside the cloudinit document using curl or wget for
+example, as the downloaded files are cached by ciao-down.  This means that the next time
+an instance of this workload is created the file will not have to be retrieved from
+the Internet, resulting in quicker boot times for the new VM.
+
+download takes three parameters
+
+- The workspace object
+- The URL of the file to download
+- The location on the guest where the downloaded file should be stored
+
+An example of its usage is
+
+```
+- {{download . "https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz"}}
+```
+
+#### The task functions
+
+There are four functions that can be used to provide visual information back to the user
+who invoked ciao-down on the host.  These functions should always be issued in pairs.
+The first function invoked should always be beginTask.
+
+beginTask takes two parameters.  The first is the workspace object.  The second is a
+string to present to the user.  beginTask is typically followed by a command and
+then a call to either endTaskOk, endTaskFail or endTaskCheck.
+
+endTaskOk prints "[OK]" to the screen, endTaskFail prints "[FAIL]" to the screen and
+endTaskCheck prints "[OK]" or "[FAIL]" depending on the result of the previous command.
+
+For example,
+
+```
+ - {{beginTask . "Unpacking Go" }}
+ - tar -C /usr/local -xzf /tmp/go1.8.linux-amd64.tar.gz
+ - {{endTaskCheck .}}
+```
+
+will print
+
+Unpacking Go : [OK]
+
+if the tar command succeeds
+
+and
+
+Unpacking Go : [FAIL]
+
+if it fails.
+
+Reporting a failure back to ciao-down does not cause the prepare command to exit.  The
+failure is presented to the user and the setup of the VM continues.
+
+#### Finished
+
+Every cloudinit document must contain a runcmd: section and that section must contain
+a call to the finished function.  The function takes one parameter, the workspace
+parameter.  A call to
+
+```
+ - {{finished .}}
+```
+
+is usually the last command in the runcmd section.  Remember it's currently mandatory.
+
+### Automatically mounting shared folders
+
+As previously mentioned mounts specified in the instance data document will only
+create 9p devices in the guest.  In order to access the files in the shared folder
+you need to arrange to have these devices mounted.  The way you do this might
+differ from distro to distro.  On Ubuntu it is done by adding a mount: section
+to the cloudinit document, e.g.,
+
+```
+mounts:
+{{range .Mounts}} - [{{.Tag}}, {{.Path}}, 9p, "x-systemd.automount,x-systemd.device-timeout=10,nofail,trans=virtio,version=9p2000.L", "0", "0"]
+{{end -}}
+```
+
+The above command will arrange for all mounts specified in the instance data document or on
+the prepare command line to be mounted to the same location that they are mounted on the
+host.
+
+Mounts added later via the start command will need to be mounted manually.
+
+## Commands
 
 ### prepare
 
 ciao-down prepare creates and configures a new ciao-down VM.  Currently,
 only one VM can be configured at any one time.  All the files associated
-with the VM are stored in ~/.ciao-down.  The first time you run ciao-down
-it will download the Ubuntu 16.04 cloud image which takes some time.  This
-image is cached in ~/.ciao-down for future use.
+with the VM are stored in ~/.ciao-down.
 
 An example of ciao-down prepare is given below:
 
@@ -102,22 +401,52 @@ modify the sources on your host and compile inside the VM.  For example,
 ciao-down prepare --mount hostui,mapped,$HOME/src/ciao-webui
 
 will create a new ciao-down VM in which the $HOME/src/ciao-webui folder on
-your host will be mounted at $HOME/src/ciao-webui.  It is important to use
-the 'mapped' 9p security model.  If you use passthrough the mounted folder
-will not be writeable in the guest and you will not be able to build the
-web-ui.
-
-Note that if the directory passed to --mount option already contains a
-git repo, ciao-down will perform no action other than to mount the directory
-in the guest VM.  It will not try to clone the repo or update it.  It assumes
-that the directory already contains the webui code.
+your host will be mounted at $HOME/src/ciao-webui.
 
 ciao-down by default creates a VM suitable for ciao development. It also supports
-setting up development enviornments for other projects.
+setting up development environments for other projects, via the vmtype option
 
 ciao-down prepare -vmtype clearcontainers
 
 will create a new ciao-down VM for development of clearcontainers.
+
+The --package-upgrade option can be used to provide a hint to workloads
+indicating whether packages contained within the base image should be updated or not
+during the first boot.  Updating packages can be quite time consuming
+and may not be necessary if the user just wants to create a throw away
+VM to test something under a particular distro.  This hint only works if
+the workloads define the following in their cloudinit documents.
+
+```
+package_upgrade: {{with .PackageUpgrade}}{{.}}{{else}}false{{end}}
+```
+
+#### Port mappings and Mounts
+
+By default, ciao-down creates one port mapping for new VMs, 10022-22 for SSH
+access.  You can specify additional port mappings or mounts or even override
+the default settings on the command line.
+
+For example,
+
+./ciao-down prepare --mount docs,passthrough,$HOME/Documents --port 10000-80
+
+shares the host directory, $HOME/Documents, with the ciao-down VM using the 9p
+passthrough security model.  The directory can be mounted inside the VM using
+the docs tag.  The command also adds a new port mapping.  127.0.0.1:10000 on
+the host now maps to port 80 on the guest.
+
+Multiple --mount and --port options can be provided and it's also possible to
+override the default ports.  Default mounts, ones specified in the
+instance data document, can be overridden by specifying
+an existing tag with new options, and default ports can be overridden by
+mapping a new host port to an existing guest port.  For example,
+
+./ciao-down prepare --mount hostgo,none,$HOME/go -port 10023-22
+
+changes the security model of the mount with the hostgo tag and makes the instance
+available via ssh on 127.0.0.1:10023.
+
 
 ### delete
 
@@ -151,11 +480,13 @@ Any parameters you pass to the start command override the parameters
 you originally passed to prepare.  These settings are also persisted.
 For example, if you were to run
 
+```
 ./ciao-down prepare --mem=2
 ./ciao-down stop
 ./ciao-down start --mem=1
 ./ciao-down stop
 ./ciao-down start
+```
 
 The final ciao-down instance would boot with 1GB of RAM even though no mem
 parameter was provided.
@@ -164,41 +495,4 @@ parameter was provided.
 
 ciao-down quit terminates the VM immediately.  It does not shut down the OS
 running in the VM cleanly.
-
-## Git config
-
-Ciao-down will try to copy the git config variables, user.name and user.email,
-from the host to the newly created guest during the execution of the prepare
-command.  This is done to allow you to create git commits from inside the guest.
-Normally, you would modify the ciao source code and submit any changes on
-the host.  However, it is sometimes useful to be able to create commits from
-inside the guest, for example, if you were to ssh into the guest from a machine
-that is not the host.
-
-## Port mappings and Mounts
-
-By default, ciao-down creates two port mappings for ciao VMs, 10022-22 for SSH
-and 3000-3000 for ciao's webui.  It creates a single port mapping for clear
-container VMs for SSH.  It also creates a single mount for the Go Path.  You
-can specify additional port mappings or mounts or even override the default
-settings.
-
-For example,
-
-./ciao-down prepare --mount docs,passthrough,$HOME/Documents --port 10000-80
-
-shares the host directory, $HOME/Documents, with the ciao-down VM using the 9p
-passthrough security model.  The directory can be mounted inside the VM using
-the docs tag.  The command also adds a new port mapping.  127.0.0.1:10000 on
-the host now maps to port 80 on the guest.
-
-Multiple --mount and --port options can be provided and it's also possible to
-override the default ports.  Default mounts can be overridden by specifying
-an existing tag with new options, and default ports can be overridden by
-mapping a new host port to an existing guest port.  For example,
-
-./ciao-down prepare --mount hostgo,none,$HOME/go -port 10023-22
-
-changes the security model with the default hostgo mount and makes the instance
-available via ssh on 127.0.0.1:10023.
 
