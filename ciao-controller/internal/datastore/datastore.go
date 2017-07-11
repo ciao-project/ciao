@@ -2043,8 +2043,12 @@ func (ds *Datastore) AddExternalSubnet(poolID string, subnet string) error {
 
 	ones, bits := ipNet.Mask.Size()
 
+	// intentionally do not support /32 here, user should add by IP address instead
 	// deduct gateway and broadcast
 	newIPs := (1 << uint32(bits-ones)) - 2
+	if newIPs <= 0 {
+		return types.ErrSubnetTooSmall
+	}
 	p.TotalIPs += newIPs
 	p.Free += newIPs
 	p.Subnets = append(p.Subnets, sub)

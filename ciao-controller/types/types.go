@@ -512,6 +512,9 @@ var (
 	// ErrInvalidIP is returned when an IP cannot be parsed
 	ErrInvalidIP = errors.New("The IP Address is not valid")
 
+	// ErrSubnetTooSmall is returned when an invalid subnet is used
+	ErrSubnetTooSmall = errors.New("Requested subnet is too small to be usable")
+
 	// ErrPoolNotFound is returned when an external IP pool is not found
 	ErrPoolNotFound = errors.New("Pool not found")
 
