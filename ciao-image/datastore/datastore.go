@@ -90,6 +90,7 @@ type DataStore interface {
 	UpdateImage(Image) error
 	DeleteImage(tenant, id string) error
 	UploadImage(tenant, id string, imageFile io.Reader) error
+	Shutdown() error
 }
 
 // MetaDataStore is the metadata storing interface that's used by
@@ -99,6 +100,7 @@ type MetaDataStore interface {
 	Delete(tenant, ID string) error
 	Get(tenant, ID string) (Image, error)
 	GetAll(tenant string) ([]Image, error)
+	Shutdown() error
 }
 
 // RawDataStore is the raw data storage interface that's used by the

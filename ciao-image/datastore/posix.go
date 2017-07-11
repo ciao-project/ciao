@@ -21,7 +21,7 @@ import (
 	"path"
 )
 
-// Posix implements the DataStore interface for posix filesystems
+// Posix implements the RawDataStore interface for posix filesystems
 type Posix struct {
 	MountPoint string
 }

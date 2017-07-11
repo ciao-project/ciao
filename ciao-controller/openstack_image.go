@@ -249,7 +249,6 @@ func (c *controller) startImageService() error {
 	if err != nil {
 		glog.Fatalf("Error on DB Initialization: %v", err)
 	}
-	defer metaDs.DbClose()
 
 	err = metaDs.DbTablesInit(metaDsTables)
 	if err != nil {
@@ -283,15 +282,15 @@ func (c *controller) startImageService() error {
 	glog.Infof("RawDataStore  : %T", config.RawDataStore)
 	glog.Infof("MetaDataStore : %T", config.MetaDataStore)
 
-	is := ImageService{ds: &imageDatastore.ImageStore{}, qs: c.qs}
-	err = is.ds.Init(config.RawDataStore, config.MetaDataStore)
+	c.is = &ImageService{ds: &imageDatastore.ImageStore{}, qs: c.qs}
+	err = c.is.ds.Init(config.RawDataStore, config.MetaDataStore)
 	if err != nil {
 		return err
 	}
 
 	apiConfig := image.APIConfig{
 		Port:         config.Port,
-		ImageService: &is,
+		ImageService: c.is,
 	}
 
 	// get our routes.

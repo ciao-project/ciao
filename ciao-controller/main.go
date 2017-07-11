@@ -49,6 +49,7 @@ type controller struct {
 	storage.BlockDriver
 	client              controllerClient
 	ds                  *datastore.Datastore
+	is                  *ImageService
 	id                  *identity
 	apiURL              string
 	tenantReadiness     map[string]*tenantConfirmMemo
@@ -232,6 +233,7 @@ func main() {
 	wg.Wait()
 	ctl.qs.Shutdown()
 	ctl.ds.Exit()
+	ctl.is.ds.Shutdown()
 	ctl.client.Disconnect()
 }
 
