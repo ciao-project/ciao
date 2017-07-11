@@ -156,7 +156,7 @@ func CreateCertTemplate(role ssntp.Role, organization string, email string, host
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		EmailAddresses:        []string{email},
 		BasicConstraintsValid: true,
@@ -278,7 +278,7 @@ func createCertTemplateFromCSR(role ssntp.Role, request *x509.CertificateRequest
 		PublicKeyAlgorithm: request.PublicKeyAlgorithm,
 		PublicKey:          request.PublicKey,
 
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		EmailAddresses:        request.EmailAddresses,
 		BasicConstraintsValid: true,
