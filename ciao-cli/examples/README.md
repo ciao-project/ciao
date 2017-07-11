@@ -42,19 +42,22 @@ provided, however, `vm_type` is set to `qemu`. Additionally, a `fw_type` is
 required to specify whether the image that is provided has a UEFI based
 firmware, or a legacy firmware. If the workload should be booted from an
 image, the image must have already been added to the ciao image service.
-The `image_id` is the UUID of the image, and can be obtained with `ciao-cli
-image list`.
 
 ```
 description: "My favorite pet VM"
 vm_type: qemu
 fw_type: legacy
-image_id: "73a86d7e-93c0-480e-9c41-ab42f69b7799"
+disks:
+  - source:
+       service: image
+       id: "73a86d7e-93c0-480e-9c41-ab42f69b7799"
+    ephemeral: true
+    bootable: true
 ```
 
 Workloads may also be specified to boot from volumes created in ciao's volume
-service. To create a workload which boots from an existing volume, leave the
-image_id blank and include a definition for a bootable disk.
+service. To create a workload which boots from an existing volume include a
+definition for a bootable disk.
 
 ```
 description: "My favorite pet VM"
