@@ -55,7 +55,6 @@ func TestStartMarshal(t *testing.T) {
 	var cmd Start
 	cmd.Start.TenantUUID = testutil.TenantUUID
 	cmd.Start.InstanceUUID = testutil.InstanceUUID
-	cmd.Start.ImageUUID = testutil.ImageUUID
 	cmd.Start.DockerImage = testutil.DockerImage
 	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqVcpus)
 	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqMem)
@@ -86,7 +85,6 @@ func TestStartUnmarshalPartial(t *testing.T) {
 
 	var expectedCmd Start
 	expectedCmd.Start.InstanceUUID = testutil.InstanceUUID
-	expectedCmd.Start.ImageUUID = testutil.ImageUUID
 	expectedCmd.Start.DockerImage = testutil.DockerImage
 	expectedCmd.Start.FWType = EFI
 	expectedCmd.Start.InstancePersistence = Host
@@ -99,7 +97,6 @@ func TestStartUnmarshalPartial(t *testing.T) {
 	expectedCmd.Start.RequestedResources = append(expectedCmd.Start.RequestedResources, vcpus)
 
 	if cmd.Start.InstanceUUID != expectedCmd.Start.InstanceUUID ||
-		cmd.Start.ImageUUID != expectedCmd.Start.ImageUUID ||
 		cmd.Start.DockerImage != expectedCmd.Start.DockerImage ||
 		cmd.Start.FWType != expectedCmd.Start.FWType ||
 		cmd.Start.InstancePersistence != expectedCmd.Start.InstancePersistence ||

@@ -208,10 +208,6 @@ type StartCmd struct {
 	// InstanceUUID is the UUID of the instance itself.
 	InstanceUUID string `yaml:"instance_uuid"`
 
-	// ImageUUID is the UUID of the image upon which the RootFS of this
-	// instance will be based.  Only used for qemu instances.
-	ImageUUID string `yaml:"image_uuid"`
-
 	// DockerImage is the name of the docker base image from which the
 	// container will be created.  It should match the name of an
 	// existing image in the docker registry.  Only used for docker
@@ -263,9 +259,6 @@ type RestartCmd struct {
 
 	// InstanceUUID is the UUID of the instance to restart.
 	InstanceUUID string `yaml:"instance_uuid"`
-
-	// ImageUUID  is the image ID fo the instance to restart.
-	ImageUUID string `yaml:"image_uuid"`
 
 	// WorkloadAgentUUID identifies the node on which the instance is
 	// running.  This information is needed by the scheduler to route

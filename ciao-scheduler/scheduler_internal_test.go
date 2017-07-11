@@ -124,7 +124,6 @@ func createStartWorkload(vCpus int, memMB int, diskMB int) *payloads.Start {
 	var work payloads.Start
 
 	work.Start.InstanceUUID = "c73322e8-d5fe-4d57-874c-dcee4fd368cd"
-	work.Start.ImageUUID = "b265f62b-e957-47fd-a0a2-6dc261c7315c"
 
 	reqVcpus := payloads.RequestedResource{
 		Type:      "vcpus",
