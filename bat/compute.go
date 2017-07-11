@@ -36,7 +36,7 @@ import (
 
 const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}", 
     "tenant_id" : "{{.TenantID | js }}", "flavor_id" : "{{.Flavor.ID | js}}",
-    "image_id" : "{{.Image.ID | js}}", "status" : "{{.Status | js}}",
+    "status" : "{{.Status | js}}",
     "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
     "volumes" : {{tojson .OsExtendedVolumesVolumesAttached}}
     {{ $addrLen := len .Addresses.Private }}
@@ -67,7 +67,6 @@ type Instance struct {
 	HostID     string   `json:"host_id"`
 	TenantID   string   `json:"tenant_id"`
 	FlavorID   string   `json:"flavor_id"`
-	ImageID    string   `json:"image_id"`
 	Status     string   `json:"status"`
 	PrivateIP  string   `json:"private_ip"`
 	MacAddress string   `json:"mac_address"`
