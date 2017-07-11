@@ -387,6 +387,10 @@ func (cmd *poolCreateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *poolCreateCommand) run(args []string) error {
+	if !checkPrivilege() {
+		fatalf("The creation of pools is restricted to admin users")
+	}
+
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
@@ -601,6 +605,10 @@ func (cmd *poolDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *poolDeleteCommand) run(args []string) error {
+	if !checkPrivilege() {
+		fatalf("The deletion of pools is restricted to admin users")
+	}
+
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
@@ -658,6 +666,10 @@ func (cmd *poolAddCommand) parseArgs(args []string) []string {
 
 func (cmd *poolAddCommand) run(args []string) error {
 	var req types.NewAddressRequest
+
+	if !checkPrivilege() {
+		fatalf("Adding IP addresses to pools is restricted to admin users")
+	}
 
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
@@ -772,6 +784,10 @@ func getIPRef(pool types.Pool, address string) string {
 }
 
 func (cmd *poolRemoveCommand) run(args []string) error {
+	if !checkPrivilege() {
+		fatalf("Removing IP addresses from pools is restricted to admin users")
+	}
+
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
