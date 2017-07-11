@@ -32,6 +32,7 @@ import (
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 // ImageService is the context for the image service implementation.
@@ -223,11 +224,9 @@ type ImageConfig struct {
 	MetaDataStore imageDatastore.MetaDataStore
 }
 
-// startImageService will get the Image API endpoints from the OpenStack image api,
-// then wrap them in keystone validation. It will then start the https
-// service.
-func (c *controller) startImageService() error {
-
+// createImageServer will get the Image API endpoints from the OpenStack image api,
+// then wrap them in keystone validation.
+func (c *controller) createImageServer() (*http.Server, error) {
 	dbDir := filepath.Dir(*imageDatastoreLocation)
 	dbFile := filepath.Base(*imageDatastoreLocation)
 
@@ -247,13 +246,12 @@ func (c *controller) startImageService() error {
 	err := metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
 
 	if err != nil {
-		glog.Fatalf("Error on DB Initialization: %v", err)
+		return nil, errors.Wrap(err, "Error on DB Initialization")
 	}
-	defer metaDs.DbClose()
 
 	err = metaDs.DbTablesInit(metaDsTables)
 	if err != nil {
-		glog.Fatalf("Error on DB Tables Initialization: %v ", err)
+		return nil, errors.Wrap(err, "Error on DB Tables Initialization")
 	}
 
 	rawDs := &imageDatastore.Ceph{
@@ -283,15 +281,15 @@ func (c *controller) startImageService() error {
 	glog.Infof("RawDataStore  : %T", config.RawDataStore)
 	glog.Infof("MetaDataStore : %T", config.MetaDataStore)
 
-	is := ImageService{ds: &imageDatastore.ImageStore{}, qs: c.qs}
-	err = is.ds.Init(config.RawDataStore, config.MetaDataStore)
+	c.is = &ImageService{ds: &imageDatastore.ImageStore{}, qs: c.qs}
+	err = c.is.ds.Init(config.RawDataStore, config.MetaDataStore)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	apiConfig := image.APIConfig{
 		Port:         config.Port,
-		ImageService: &is,
+		ImageService: c.is,
 	}
 
 	// get our routes.
@@ -320,11 +318,15 @@ func (c *controller) startImageService() error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// start service.
 	service := fmt.Sprintf(":%d", config.Port)
-	glog.Infof("Starting CIAO Image Service")
-	return http.ListenAndServeTLS(service, config.HTTPSCACert, config.HTTPSKey, r)
+
+	server := &http.Server{
+		Handler: r,
+		Addr:    service,
+	}
+
+	return server, nil
 }

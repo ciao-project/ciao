@@ -622,14 +622,13 @@ func (c *controller) ShowFlavorDetails(tenant string, flavorID string) (compute.
 }
 
 // Start will get the Compute API endpoints from the OpenStack compute api,
-// then wrap them in keystone validation. It will then start the https
-// service.
-func (c *controller) startComputeService() error {
+// then wrap them in keystone validation.
+func (c *controller) createComputeServer() (*http.Server, error) {
 	config := compute.APIConfig{Port: computeAPIPort, ComputeService: c}
 
 	r := compute.Routes(config)
 	if r == nil {
-		return errors.New("Unable to start Compute Service")
+		return nil, errors.New("Unable to start Compute Service")
 	}
 
 	// we add on some ciao specific routes for legacy purposes
@@ -661,11 +660,15 @@ func (c *controller) startComputeService() error {
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// start service.
 	service := fmt.Sprintf(":%d", computeAPIPort)
 
-	return http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
+	server := &http.Server{
+		Handler: r,
+		Addr:    service,
+	}
+
+	return server, nil
 }

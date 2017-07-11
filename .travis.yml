@@ -5,7 +5,6 @@ services:
   - docker
 
 go:
-    - 1.7
     - 1.8
     - go1.9beta2
     - tip

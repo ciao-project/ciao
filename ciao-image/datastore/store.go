@@ -76,6 +76,11 @@ func (s *ImageStore) Init(rawDs RawDataStore, metaDs MetaDataStore) error {
 	return nil
 }
 
+// Shutdown is the opposite of Init()
+func (s *ImageStore) Shutdown() error {
+	return s.metaDs.Shutdown()
+}
+
 // CreateImage will add an image to the datastore.
 func (s *ImageStore) CreateImage(i Image) error {
 	s.ImageMap.Lock()

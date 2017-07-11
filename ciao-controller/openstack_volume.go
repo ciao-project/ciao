@@ -431,12 +431,12 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.Volu
 // Start will get the Volume API endpoints from the OpenStack block api,
 // then wrap them in keystone validation. It will then start the https
 // service.
-func (c *controller) startVolumeService() error {
+func (c *controller) createVolumeServer() (*http.Server, error) {
 	config := block.APIConfig{Port: volumeAPIPort, VolService: c}
 
 	r := block.Routes(config)
 	if r == nil {
-		return errors.New("Unable to start Volume Service")
+		return nil, errors.New("Unable to start Volume Service")
 	}
 
 	// setup identity for these routes.
@@ -466,11 +466,15 @@ func (c *controller) startVolumeService() error {
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// start service.
 	service := fmt.Sprintf(":%d", block.APIPort)
 
-	return http.ListenAndServeTLS(service, httpsCAcert, httpsKey, r)
+	server := &http.Server{
+		Handler: r,
+		Addr:    service,
+	}
+
+	return server, nil
 }

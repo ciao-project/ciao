@@ -18,7 +18,7 @@ import (
 	"github.com/01org/ciao/database"
 )
 
-// MetaDs implements the DataStore interface for persistent data
+// MetaDs implements the MetaDataStore interface for persistent data
 type MetaDs struct {
 	database.DbProvider
 	DbDir  string
@@ -68,4 +68,9 @@ func (m *MetaDs) GetAll(tenant string) (images []Image, err error) {
 	}
 
 	return images, err
+}
+
+// Shutdown closes the database connection
+func (m *MetaDs) Shutdown() error {
+	return m.DbClose()
 }

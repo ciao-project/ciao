@@ -6,7 +6,7 @@ ciao-down is a small utility that simplifies the task of creating,
 managing and connecting to virtual machines.  All you need to have
 installed on your machine is:
 
-- Go 1.7 or greater
+- Go 1.8 or greater
 
 Then simply type
 

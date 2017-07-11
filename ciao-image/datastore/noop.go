@@ -48,3 +48,8 @@ func (n *Noop) Get(tenant, id string) (Image, error) {
 func (n *Noop) GetAll(tenant string) ([]Image, error) {
 	return []Image{}, nil
 }
+
+// Shutdown no-op
+func (n *Noop) Shutdown() error {
+	return nil
+}

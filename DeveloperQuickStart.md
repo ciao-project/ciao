@@ -105,9 +105,9 @@ completely self contained.
 On the host install the latest release of go for your distribution
 [Installing Go](https://golang.org/doc/install).
 
-> NOTE: Go version 1.7 or later is required for Ciao. Ciao will not work with 
+> NOTE: Go version 1.8 or later is required for Ciao. Ciao will not work with 
 older version of Go. Hence it is best you download and install the latest 
-version of Go if you distro is not on Go 1.7.
+version of Go if you distro is not on Go 1.8.
 
 You should also ensure that your GOPATH environment variable is set.
 
@@ -117,7 +117,7 @@ ciao-down is a small utility for setting up a VM that contains
 everything you need to run ciao's Single VM. All you need to have
 installed on your machine is:
 
-- Go 1.7 or greater
+- Go 1.8 or greater
 
 Once Go is installed you simply need to type
 

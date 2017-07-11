@@ -23,7 +23,7 @@ import (
 	"github.com/01org/ciao/ciao-storage"
 )
 
-// Ceph implements the DataStore interface for Ceph RBD based storage
+// Ceph implements the RawDataStore interface for Ceph RBD based storage
 type Ceph struct {
 	ImageTempDir string
 	BlockDriver  storage.CephDriver
