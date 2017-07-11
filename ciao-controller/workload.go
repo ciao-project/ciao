@@ -122,16 +122,6 @@ func validateWorkloadRequest(req types.Workload) error {
 		}
 	}
 
-	if req.ImageID != "" {
-		// validate that the image id is at least valid
-		// uuid4.
-		_, err := uuid.Parse(req.ImageID)
-		if err != nil {
-			glog.V(2).Info("Invalid workload request: ImageID is not uuid4")
-			return types.ErrBadRequest
-		}
-	}
-
 	if req.Config == "" {
 		glog.V(2).Info("Invalid workload request: config is blank")
 		return types.ErrBadRequest
@@ -157,26 +147,6 @@ func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) 
 	err = c.confirmTenant(req.TenantID)
 	if err != nil {
 		return req, err
-	}
-
-	// create a workload storage resource for this new workload.
-	if req.ImageID != "" {
-		// validate that the image id is at least valid
-		// uuid4.
-		_, err = uuid.Parse(req.ImageID)
-		if err != nil {
-			return req, err
-		}
-
-		storage := types.StorageResource{
-			Bootable:   true,
-			Ephemeral:  true,
-			SourceType: types.ImageService,
-			SourceID:   req.ImageID,
-		}
-
-		req.ImageID = ""
-		req.Storage = append(req.Storage, storage)
 	}
 
 	req.ID = uuid.Generate().String()

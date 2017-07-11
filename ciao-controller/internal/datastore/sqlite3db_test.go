@@ -971,7 +971,6 @@ users:
 		Description: "testWorkload",
 		FWType:      string(payloads.EFI),
 		VMType:      payloads.QEMU,
-		ImageID:     uuid.Generate().String(),
 		ImageName:   "",
 		Config:      testConfig,
 		Defaults:    []payloads.RequestedResource{mem, cpus},

@@ -81,7 +81,6 @@ type Workload struct {
 	Description string                       `json:"description"`
 	FWType      string                       `json:"fw_type"`
 	VMType      payloads.Hypervisor          `json:"vm_type"`
-	ImageID     string                       `json:"image_id"`
 	ImageName   string                       `json:"image_name"`
 	Config      string                       `json:"config"`
 	Defaults    []payloads.RequestedResource `json:"defaults"`
