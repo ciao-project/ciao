@@ -208,6 +208,8 @@ runcmd:
 
  - echo "export GOPATH={{template "GOPATH" . }}" >> /home/{{.User}}/.profile
  - echo "export PATH=$PATH:{{template "GOPATH" . }}/bin:/usr/local/go/bin" >> /home/{{.User}}/.profile
+ - echo "source /home/{{.User}}/.profile" >> /home/{{.User}}/.bashrc
+
 
  - {{finished .}}
   
