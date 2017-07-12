@@ -52,6 +52,7 @@ type options struct {
 	imageUUID     string
 	externalIP    string
 	keep          bool
+	k8sVersion    string
 }
 
 type baseConfig struct {
@@ -67,6 +68,7 @@ type baseConfig struct {
 	PublicKey    string
 	UserDataFile string
 	Description  string
+	K8sVersion   string
 }
 
 type proxyConfig struct {
@@ -97,7 +99,8 @@ func createFlags() (*options, error) {
 			memMiB:  2048,
 			diskGiB: 10,
 		},
-		workers: 1,
+		workers:    1,
+		k8sVersion: "1.6.7",
 	}
 
 	opts.user = os.Getenv("USER")
@@ -127,6 +130,7 @@ func createFlags() (*options, error) {
 	fs.StringVar(&opts.externalIP, "external-ip", opts.externalIP,
 		"External-ip to associate with the master node")
 	fs.BoolVar(&opts.keep, "keep", false, "Retains workload definition files if set to true")
+	fs.StringVar(&opts.k8sVersion, "k8s-version", opts.k8sVersion, "Specifies the version of k8s to install.  Should be either the empty string, meaning the latest, or a version, e.g, 1.6.7")
 
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
 		return nil, err

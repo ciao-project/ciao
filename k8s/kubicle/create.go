@@ -195,6 +195,7 @@ func (c *creator) createMasterConfig() {
 			Token:        c.token,
 			UserDataFile: "k8s-master-ci.yaml",
 			Description:  masterWorkloadName,
+			K8sVersion:   c.opts.k8sVersion,
 		},
 		ExternalIP: c.opts.externalIP,
 	}
@@ -221,6 +222,7 @@ func (c *creator) createWorkerConfig() {
 			Token:        c.token,
 			UserDataFile: "k8s-worker-ci.yaml",
 			Description:  workerWorkloadName,
+			K8sVersion:   c.opts.k8sVersion,
 		},
 		MasterIP: c.masterIP,
 	}
@@ -433,6 +435,7 @@ func (c *creator) status() {
 		fmt.Printf("- export KUBECONFIG=%s\n", c.adminPath)
 		fmt.Println("- If you use proxies, set")
 		fmt.Printf("  - export no_proxy=$no_proxy,%s\n", c.mc.ExternalIP)
+		fmt.Printf("  - export NO_PROXY=$NO_PROXY,%s\n", c.mc.ExternalIP)
 	}
 }
 
