@@ -34,7 +34,6 @@ type SsntpTestClient struct {
 	Name                   string
 	instances              []payloads.InstanceStat
 	instancesLock          *sync.Mutex
-	ticker                 *time.Ticker
 	UUID                   string
 	Role                   ssntp.Role
 	StartFail              bool

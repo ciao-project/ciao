@@ -26,7 +26,6 @@ import (
 )
 
 type ssntpClientWrapper struct {
-	ctl        *controller
 	name       string
 	realClient controllerClient
 

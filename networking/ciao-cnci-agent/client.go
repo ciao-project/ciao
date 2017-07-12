@@ -94,7 +94,6 @@ type agentClient struct {
 	ssntpConn
 	db    *cnciDatabase
 	cmdCh chan *cmdWrapper
-	netCh chan struct{} //Used to signal physical network changes
 }
 
 func (client *agentClient) DisconnectNotify() {
