@@ -68,14 +68,8 @@ func errorResponse(err error) APIResponse {
 type pagerFilterType uint8
 
 const (
-	none         pagerFilterType = 0
-	statusFilter                 = 0x2
+	none pagerFilterType = 0
 )
-
-type pager interface {
-	filter(filterType pagerFilterType, filter string, item interface{}) bool
-	nextPage(filterType pagerFilterType, filter string, r *http.Request) ([]byte, error)
-}
 
 func pagerQueryParse(r *http.Request) (int, int, string) {
 	values := r.URL.Query()
@@ -131,10 +125,6 @@ func (pager *nodePager) getNodes(filterType pagerFilterType, filter string, node
 	}
 
 	return computeNodes, nil
-}
-
-func (pager *nodePager) filter(filterType pagerFilterType, filter string, node types.CiaoNode) bool {
-	return false
 }
 
 func (pager *nodePager) nextPage(filterType pagerFilterType, filter string, r *http.Request) (types.CiaoNodes, error) {
@@ -193,10 +183,6 @@ func (pager *nodeServerPager) getNodeServers(filterType pagerFilterType, filter 
 	}
 
 	return servers, nil
-}
-
-func (pager *nodeServerPager) filter(filterType pagerFilterType, filter string, instance types.CiaoServerStats) bool {
-	return false
 }
 
 func (pager *nodeServerPager) nextPage(filterType pagerFilterType, filter string, r *http.Request) (types.CiaoServersStats, error) {

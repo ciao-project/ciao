@@ -25,7 +25,6 @@ import (
 )
 
 var mountPoint = "/tmp"
-var metaDsTables = []string{"images"}
 var dbDir = "/tmp"
 var dbFile = "ciao-image.db"
 var testImageID = "12345678-1234-5678-1234-567812345678"

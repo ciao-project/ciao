@@ -102,8 +102,6 @@ var scopedToken string
 const openstackComputePort = 8774
 const openstackComputeVersion = "v2.1"
 
-type action uint8
-
 func infof(format string, args ...interface{}) {
 	if glog.V(1) {
 		glog.InfoDepth(1, fmt.Sprintf("ciao-cli INFO: "+format, args...))

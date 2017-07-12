@@ -95,8 +95,6 @@ func initNetwork(cancelCh <-chan os.Signal) error {
 }
 
 func unmarshallSubnetParams(cmd *payloads.TenantAddedEvent) (*net.IPNet, int, net.IP, error) {
-	const maxKey = ^uint32(0)
-
 	_, snet, err := net.ParseCIDR(cmd.TenantSubnet)
 	if err != nil {
 		return nil, 0, nil, errors.Wrapf(err, "invalid Remote subnet")

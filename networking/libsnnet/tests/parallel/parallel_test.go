@@ -368,22 +368,6 @@ func dockerNetDelete(t *testing.T, subnetID string) error {
 	return err
 }
 
-func dockerNetList(t *testing.T) error {
-	assert := assert.New(t)
-	defer logTime(t, time.Now(), "dockerNetList")
-	out, err := exec.Command("docker", "network", "ls").CombinedOutput()
-	assert.Nil(err, string(out))
-	return err
-}
-
-func dockerNetInfo(t *testing.T, subnetID string) error {
-	assert := assert.New(t)
-	defer logTime(t, time.Now(), "dockerNetInfo")
-	out, err := exec.Command("docker", "network", "inspect", subnetID).CombinedOutput()
-	assert.Nil(err, string(out))
-	return err
-}
-
 type dockerNetType int
 
 const (
