@@ -1915,7 +1915,6 @@ func TestMapAddressNoPool(t *testing.T) {
 	}
 }
 
-var testClients []*testutil.SsntpTestClient
 var ctl *controller
 var server *testutil.SsntpTestServer
 var wrappedClient *ssntpClientWrapper

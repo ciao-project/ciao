@@ -32,7 +32,6 @@ const invalidURI = "file://%z invalid uri with spaces"
 const emptyPathURI = "file://"
 
 const keystoneURL = "http://keystone.example.com"
-const glanceURL = "http://glance.example.com"
 const computeNet = "192.168.1.0/24"
 const mgmtNet = "192.168.1.0/24"
 const storageURI = "/etc/ciao/configuration.yaml"
