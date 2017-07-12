@@ -433,6 +433,7 @@ func (c *creator) status() {
 		fmt.Printf("- export KUBECONFIG=%s\n", c.adminPath)
 		fmt.Println("- If you use proxies, set")
 		fmt.Printf("  - export no_proxy=$no_proxy,%s\n", c.mc.ExternalIP)
+		fmt.Printf("  - export NO_PROXY=$NO_PROXY,%s\n", c.mc.ExternalIP)
 	}
 }
 
