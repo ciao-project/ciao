@@ -82,7 +82,7 @@ const udMasterTemplate = `
  - echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" >/etc/apt/sources.list.d/kubernetes.list
  - apt-get update
  - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y docker-engine
- - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet kubeadm kubectl kubernetes-cni
+ - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet=1.6.7-00 kubeadm=1.6.7-00 kubectl=1.6.7-00 kubernetes-cni
  - {{template "PROXIES" .}}no_proxy=` + "`hostname -i`" + ` kubeadm init --pod-network-cidr 10.244.0.0/16 --token {{.Token}} {{if len .ExternalIP}}--apiserver-cert-extra-sans={{.ExternalIP}}{{end}}
  - cp /etc/kubernetes/admin.conf /home/{{.User}}/
  - chown {{.User}}:{{.User}} /home/{{.User}}/admin.conf
@@ -100,7 +100,7 @@ const udNodeTemplate = `
  - echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" >/etc/apt/sources.list.d/kubernetes.list
  - apt-get update
  - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y docker-engine
- - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet kubeadm kubectl kubernetes-cni
+ - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet=1.6.7-00 kubeadm=1.6.7-00 kubectl=1.6.7-00 kubernetes-cni
  - kubeadm join --token {{.Token}} {{.MasterIP}}:6443
 ...
 `
