@@ -195,6 +195,7 @@ func (c *creator) createMasterConfig() {
 			Token:        c.token,
 			UserDataFile: "k8s-master-ci.yaml",
 			Description:  masterWorkloadName,
+			K8sVersion:   c.opts.k8sVersion,
 		},
 		ExternalIP: c.opts.externalIP,
 	}
@@ -221,6 +222,7 @@ func (c *creator) createWorkerConfig() {
 			Token:        c.token,
 			UserDataFile: "k8s-worker-ci.yaml",
 			Description:  workerWorkloadName,
+			K8sVersion:   c.opts.k8sVersion,
 		},
 		MasterIP: c.masterIP,
 	}
