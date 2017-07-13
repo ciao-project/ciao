@@ -236,8 +236,6 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	fmt.Println("Checking environment")
-
 	ws, err := prepareEnv(ctx)
 	if err != nil {
 		return
