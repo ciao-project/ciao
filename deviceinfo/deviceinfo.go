@@ -100,7 +100,7 @@ func GetMemoryInfo() (total, available int) {
 
 	file, err := os.Open("/proc/meminfo")
 	if err != nil {
-		return
+		return -1, -1
 	}
 
 	total, available = getMemoryInfo(file)
