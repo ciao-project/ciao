@@ -231,13 +231,6 @@ func prepare(ctx context.Context, errCh chan error) {
 		errCh <- err
 	}()
 
-	if !hostSupportsNestedKVM() {
-		err = fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
-		return
-	}
-
-	fmt.Println("Checking environment")
-
 	ws, err := prepareEnv(ctx)
 	if err != nil {
 		return
@@ -245,6 +238,11 @@ func prepare(ctx context.Context, errCh chan error) {
 
 	wkld, debug, err := prepareFlags(ws)
 	if err != nil {
+		return
+	}
+
+	if !hostSupportsNestedKVM() {
+		err = fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
 
@@ -313,11 +311,6 @@ func prepare(ctx context.Context, errCh chan error) {
 }
 
 func start(ctx context.Context, errCh chan error) {
-	if !hostSupportsNestedKVM() {
-		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
-		return
-	}
-
 	ws, err := prepareEnv(ctx)
 	if err != nil {
 		errCh <- err
@@ -342,6 +335,11 @@ func start(ctx context.Context, errCh chan error) {
 	err = startFlags(in)
 	if err != nil {
 		errCh <- err
+		return
+	}
+
+	if !hostSupportsNestedKVM() {
+		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
 
