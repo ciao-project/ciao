@@ -94,8 +94,8 @@ func getMemoryInfo(file io.Reader) (total, available int) {
 }
 
 // GetMemoryInfo returns the both the total amount of memory installed in the
-// device and the amount of memory currently available.  A return value of -1
-// indicates that an error occurred computing the return value.
+// device and the amount of memory currently available, in MiB.  A return value
+// of -1 indicates that an error occurred computing the return value.
 func GetMemoryInfo() (total, available int) {
 
 	file, err := os.Open("/proc/meminfo")
