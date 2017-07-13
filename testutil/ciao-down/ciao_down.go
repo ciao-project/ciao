@@ -146,7 +146,7 @@ func checkDirectory(dir string) error {
 
 func prepareFlags(ws *workspace) (*workload, bool, error) {
 	var debug bool
-	var vmType string
+	var workloadName string
 	var m mounts
 	var p ports
 	var memGiB, CPUs int
@@ -155,7 +155,7 @@ func prepareFlags(ws *workspace) (*workload, bool, error) {
 	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
 	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
-	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch.")
+	fs.StringVar(&workloadName, "vmtype", CIAO, "Type of VM to launch.")
 	fs.Var(&update, "package-upgrade",
 		"Hint to enable or disable update of VM packages. Should be true or false")
 
@@ -169,7 +169,7 @@ func prepareFlags(ws *workspace) (*workload, bool, error) {
 		}
 	}
 
-	wkl, err := createWorkload(ws, vmType)
+	wkl, err := createWorkload(ws, workloadName)
 	if err != nil {
 		return nil, false, err
 	}
