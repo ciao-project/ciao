@@ -4,6 +4,7 @@
 
 ciao_gobin="$GOPATH"/bin
 ciao_host=$(hostname)
+ext_int=$(ip -o route get 8.8.8.8 | cut -d ' ' -f 5)
 sudo killall ciao-scheduler
 sudo killall ciao-controller
 sudo killall ciao-launcher
@@ -12,8 +13,8 @@ sudo "$ciao_gobin"/ciao-launcher --alsologtostderr -v 3 --hard-reset
 sudo iptables -D FORWARD -i ciao_br -j ACCEPT
 sudo iptables -D FORWARD -i ciaovlan -j ACCEPT
 if [ "$ciao_host" == "singlevm" ]; then
-	sudo iptables -D FORWARD -i ens2 -j ACCEPT
-	sudo iptables -t nat -D POSTROUTING -o ens2 -j MASQUERADE
+	sudo iptables -D FORWARD -i "$ext_int" -j ACCEPT
+	sudo iptables -t nat -D POSTROUTING -o "$ext_int" -j MASQUERADE
 fi
 sudo ip link del ciao_br
 sudo pkill -F /tmp/dnsmasq.ciaovlan.pid
