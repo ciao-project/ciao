@@ -2075,8 +2075,16 @@ func (ds *Datastore) AddExternalIPs(poolID string, IPs []string) error {
 		return types.ErrPoolNotFound
 	}
 
+	// sort to allow duplicate detection in IPs
+	sort.Strings(IPs)
+
 	// make sure valid and not duplicate
+	lastIP := ""
 	for _, newIP := range IPs {
+		if lastIP == newIP {
+			return types.ErrDuplicateIP
+		}
+
 		IP := net.ParseIP(newIP)
 		if IP == nil {
 			return types.ErrInvalidIP
@@ -2094,6 +2102,7 @@ func (ds *Datastore) AddExternalIPs(poolID string, IPs []string) error {
 		p.TotalIPs++
 		p.Free++
 		p.IPs = append(p.IPs, ExtIP)
+		lastIP = newIP
 	}
 
 	// update persistent store.

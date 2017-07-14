@@ -2245,6 +2245,13 @@ func TestAddExternalIPs(t *testing.T) {
 		t.Fatal("duplicate IP allowed")
 	}
 
+	// add duplicate in set
+	IPs = []string{"192.168.0.2", "192.168.0.2"}
+	err = ds.AddExternalIPs(orig.ID, IPs)
+	if err != types.ErrDuplicateIP {
+		t.Fatal("duplicate IP allowed")
+	}
+
 	// add to an invalid pool
 	IPs = []string{"192.168.0.2"}
 	err = ds.AddExternalIPs(uuid.Generate().String(), IPs)
