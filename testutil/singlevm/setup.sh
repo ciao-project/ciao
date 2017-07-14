@@ -1,6 +1,7 @@
 #!/bin/bash
 ciao_host=$(hostname)
 ciao_ip=$(hostname -i)
+ext_int=$(ip -o route get 8.8.8.8 | cut -d ' ' -f 5)
 ciao_bridge=ciao_br
 ciao_vlan_ip=198.51.100.1
 ciao_vlan_subnet=${ciao_vlan_ip}/24
@@ -262,9 +263,9 @@ if [ -x "$(command -v ip)" ]; then
     #open up the machine. On bare metal the user will need to explicitly
     #add this rule
     if [ "$ciao_host" == "singlevm" ]; then
-	sudo iptables -A FORWARD -p all -i ens2 -j ACCEPT
+	sudo iptables -A FORWARD -p all -i "$ext_int" -j ACCEPT
 	#NAT out all the traffic departing ciao-down
-	sudo iptables -t nat -A POSTROUTING -o ens2 -j MASQUERADE
+	sudo iptables -t nat -A POSTROUTING -o "$ext_int" -j MASQUERADE
     fi
 
 else
