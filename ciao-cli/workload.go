@@ -156,7 +156,6 @@ type workloadOptions struct {
 	VMType          string           `yaml:"vm_type"`
 	FWType          string           `yaml:"fw_type,omitempty"`
 	ImageName       string           `yaml:"image_name,omitempty"`
-	ImageID         string           `yaml:"image_id,omitempty"`
 	Defaults        defaultResources `yaml:"defaults"`
 	CloudConfigFile string           `yaml:"cloud_init,omitempty"`
 	Disks           []disk           `yaml:"disks,omitempty"`
@@ -229,7 +228,6 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 	req.VMType = payloads.Hypervisor(opt.VMType)
 	req.FWType = opt.FWType
 	req.ImageName = opt.ImageName
-	req.ImageID = opt.ImageID
 	req.Config = config
 	req.Storage, err = optToReqStorage(opt)
 
@@ -262,7 +260,6 @@ func outputWorkload(w types.Workload) {
 	opt.VMType = string(w.VMType)
 	opt.FWType = w.FWType
 	opt.ImageName = w.ImageName
-	opt.ImageID = w.ImageID
 	for _, d := range w.Defaults {
 		if d.Type == payloads.VCPUs {
 			opt.Defaults.VCPUs = d.Value

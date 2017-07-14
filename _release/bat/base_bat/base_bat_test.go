@@ -236,7 +236,7 @@ func TestStartAllWorkloads(t *testing.T) {
 
 func checkInstances(t *testing.T, a, b *bat.Instance) {
 	if !(a.TenantID == b.TenantID &&
-		a.FlavorID == b.FlavorID && a.ImageID == b.ImageID &&
+		a.FlavorID == b.FlavorID &&
 		a.PrivateIP == b.PrivateIP && a.MacAddress == b.MacAddress &&
 		a.SSHIP == b.SSHIP && a.SSHPort == b.SSHPort) {
 		t.Fatalf("Instance details do not match: %v %v", a, b)

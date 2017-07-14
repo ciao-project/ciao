@@ -96,9 +96,6 @@ const HTTPSCACert = "/etc/pki/ciao/compute_ca.pem"
 // DockerImage is a docker image name for use in start/restart tests
 const DockerImage = "docker/latest"
 
-// ImageUUID is a disk image UUID for use in start/restart tests
-const ImageUUID = "59460b8a-5f53-4e3e-b5ce-b71fed8c7e64"
-
 // InstanceUUID is an instance UUID for use in start/stop/restart/delete tests
 const InstanceUUID = "3390740c-dce9-48d6-b83a-a717417072ce"
 
@@ -147,7 +144,6 @@ var MultipleComputeNetworks = []payloads.NetworkStat{
 const StartYaml = `start:
   tenant_uuid: ` + TenantUUID + `
   instance_uuid: ` + InstanceUUID + `
-  image_uuid: ` + ImageUUID + `
   docker_image: ` + DockerImage + `
   fw_type: efi
   persistence: host
@@ -180,7 +176,6 @@ const StartYaml = `start:
 // CNCIStartYaml is a sample CNCI workload START ssntp.Command payload for test cases
 const CNCIStartYaml = `start:
   instance_uuid: ` + CNCIInstanceUUID + `
-  image_uuid: ` + ImageUUID + `
   fw_type: efi
   persistence: host
   vm_type: qemu
@@ -211,7 +206,6 @@ const CNCIStartYaml = `start:
 // PartialStartYaml is a sample minimal workload START ssntp.Command payload for test cases
 const PartialStartYaml = `start:
   instance_uuid: ` + InstanceUUID + `
-  image_uuid: ` + ImageUUID + `
   docker_image: ` + DockerImage + `
   fw_type: efi
   persistence: host
@@ -232,7 +226,6 @@ restart: false
 const RestartYaml = `restart:
   tenant_uuid: ` + TenantUUID + `
   instance_uuid: ` + InstanceUUID + `
-  image_uuid: ` + ImageUUID + `
   workload_agent_uuid: ` + AgentUUID + `
   fw_type: efi
   persistence: host

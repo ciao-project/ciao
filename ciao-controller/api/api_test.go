@@ -145,10 +145,10 @@ var tests = []test{
 		"POST",
 		"/workloads",
 		addWorkload,
-		`{"id":"","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_id":"73a86d7e-93c0-480e-9c41-ab42f69b7799","image_name":"","config":"this will totally work!","defaults":[]}`,
+		`{"id":"","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":[]}`,
 		"application/x.ciao.v1.workloads",
 		http.StatusCreated,
-		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_id":"73a86d7e-93c0-480e-9c41-ab42f69b7799","image_name":"","config":"this will totally work!","defaults":[],"storage":null},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
+		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":[],"storage":null},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
 	},
 	{
 		"DELETE",
@@ -166,7 +166,7 @@ var tests = []test{
 		"",
 		"application/x.ciao.v1.workloads",
 		http.StatusOK,
-		`{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_id":"73a86d7e-93c0-480e-9c41-ab42f69b7799","image_name":"","config":"this will totally work!","defaults":null,"storage":null}`,
+		`{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":null,"storage":null}`,
 	},
 	{
 		"GET",
@@ -298,7 +298,6 @@ func (ts testCiaoService) ShowWorkload(tenant string, ID string) (types.Workload
 		Description: "testWorkload",
 		FWType:      payloads.Legacy,
 		VMType:      payloads.QEMU,
-		ImageID:     "73a86d7e-93c0-480e-9c41-ab42f69b7799",
 		Config:      "this will totally work!",
 	}, nil
 }

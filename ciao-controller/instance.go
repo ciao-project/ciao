@@ -293,7 +293,6 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 
 	baseConfig := wl.Config
 	defaults := wl.Defaults
-	imageID := wl.ImageID
 	fwType := wl.FWType
 
 	tenant, err := ctl.ds.GetTenant(tenantID)
@@ -398,7 +397,6 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	startCmd := payloads.StartCmd{
 		TenantUUID:          tenantID,
 		InstanceUUID:        instanceID,
-		ImageUUID:           imageID,
 		FWType:              payloads.Firmware(fwType),
 		VMType:              wl.VMType,
 		InstancePersistence: payloads.Host,

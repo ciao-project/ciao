@@ -55,7 +55,6 @@ func TestRestartMarshal(t *testing.T) {
 	var cmd Restart
 	cmd.Restart.TenantUUID = testutil.TenantUUID
 	cmd.Restart.InstanceUUID = testutil.InstanceUUID
-	cmd.Restart.ImageUUID = testutil.ImageUUID
 	cmd.Restart.WorkloadAgentUUID = testutil.AgentUUID
 	cmd.Restart.RequestedResources = append(cmd.Restart.RequestedResources, reqVcpus)
 	cmd.Restart.RequestedResources = append(cmd.Restart.RequestedResources, reqMem)
