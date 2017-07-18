@@ -127,10 +127,10 @@ func (in *instance) loadLegacyInstance(ws *workspace) error {
 	return nil
 }
 
-func (in *instance) unmarshall(data []byte) error {
+func (in *instance) unmarshal(data []byte) error {
 	err := yaml.Unmarshal(data, in)
 	if err != nil {
-		return fmt.Errorf("Unable to unmarshall instance state : %v", err)
+		return fmt.Errorf("Unable to unmarshal instance state : %v", err)
 	}
 
 	for i := range in.Mounts {
@@ -168,7 +168,7 @@ func (in *instance) unmarshall(data []byte) error {
 	return nil
 }
 
-func (in *instance) unmarshallWithTemplate(ws *workspace, data string) error {
+func (in *instance) unmarshalWithTemplate(ws *workspace, data string) error {
 	tmpl, err := template.New("instance-data").Parse(string(data))
 	if err != nil {
 		return fmt.Errorf("Unable to parse instance data template: %v", err)
@@ -178,7 +178,7 @@ func (in *instance) unmarshallWithTemplate(ws *workspace, data string) error {
 	if err != nil {
 		return fmt.Errorf("Unable to execute instance data template: %v", err)
 	}
-	return in.unmarshall(buf.Bytes())
+	return in.unmarshal(buf.Bytes())
 }
 
 func (in *instance) mergeMounts(m mounts) {
@@ -226,10 +226,10 @@ func (in *instance) sshPort() (int, error) {
 	return 0, fmt.Errorf("No SSH port configured")
 }
 
-func (ins *instanceSpec) unmarshall(data []byte) error {
+func (ins *instanceSpec) unmarshal(data []byte) error {
 	err := yaml.Unmarshal(data, ins)
 	if err != nil {
-		return fmt.Errorf("Unable to unmarshall instance specification : %v", err)
+		return fmt.Errorf("Unable to unmarshal instance specification : %v", err)
 	}
 
 	if ins.BaseImageURL == "" {
@@ -257,7 +257,7 @@ func (ins *instanceSpec) unmarshall(data []byte) error {
 	return nil
 }
 
-func (ins *instanceSpec) unmarshallWithTemplate(ws *workspace, data string) error {
+func (ins *instanceSpec) unmarshalWithTemplate(ws *workspace, data string) error {
 	tmpl, err := template.New("instance-spec").Parse(string(data))
 	if err != nil {
 		return fmt.Errorf("Unable to parse instance data template: %v", err)
@@ -267,5 +267,5 @@ func (ins *instanceSpec) unmarshallWithTemplate(ws *workspace, data string) erro
 	if err != nil {
 		return fmt.Errorf("Unable to execute instance data template: %v", err)
 	}
-	return ins.unmarshall(buf.Bytes())
+	return ins.unmarshal(buf.Bytes())
 }
