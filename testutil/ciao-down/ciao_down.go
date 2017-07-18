@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -146,22 +147,31 @@ func checkDirectory(dir string) error {
 
 func createFlags(ws *workspace) (*workload, bool, error) {
 	var debug bool
-	var workloadName string
 	var m mounts
 	var p ports
 	var memGiB, CPUs int
 	var update packageUpgrade
 
 	fs := flag.NewFlagSet("create", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s create <workload> \n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  <workload>\tName of the workload to create\n\n")
+		fs.PrintDefaults()
+	}
 	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
-	fs.StringVar(&workloadName, "vmtype", CIAO, "Type of VM to launch.")
 	fs.Var(&update, "package-upgrade",
 		"Hint to enable or disable update of VM packages. Should be true or false")
 
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
 		return nil, false, err
 	}
+
+	if fs.NArg() != 1 {
+		fs.Usage()
+		return nil, false, errors.New("no workload specified")
+	}
+	workloadName := fs.Arg(0)
 
 	for i := range m {
 		if err := checkDirectory(m[i].Path); err != nil {
