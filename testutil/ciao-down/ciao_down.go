@@ -118,7 +118,7 @@ func (p *packageUpgrade) Set(value string) error {
 
 func vmFlags(fs *flag.FlagSet, memGB, CPUs *int, m *mounts, p *ports) {
 	fs.IntVar(memGB, "mem", *memGB, "Gigabytes of RAM allocated to VM")
-	fs.IntVar(CPUs, "cpus", *CPUs, "VCPUs assignged to VM")
+	fs.IntVar(CPUs, "cpus", *CPUs, "VCPUs assigned to VM")
 	fs.Var(m, "mount", "directory to mount in guest VM via 9p. Format is tag,security_model,path")
 	fs.Var(p, "port", "port mapping. Format is host_port-guest_port, e.g., -port 10022-22")
 }
