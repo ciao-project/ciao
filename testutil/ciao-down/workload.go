@@ -49,7 +49,7 @@ func (wkld *workload) save(ws *workspace) error {
 	_, _ = buf.WriteString("---\n")
 	data, err := yaml.Marshal(wkld.insSpec)
 	if err != nil {
-		return fmt.Errorf("Unable to marshall instance specification : %v", err)
+		return fmt.Errorf("Unable to marshal instance specification : %v", err)
 	}
 	_, _ = buf.Write(data)
 	_, _ = buf.WriteString("...\n")
@@ -57,7 +57,7 @@ func (wkld *workload) save(ws *workspace) error {
 	_, _ = buf.WriteString("---\n")
 	data, err = yaml.Marshal(wkld.insData)
 	if err != nil {
-		return fmt.Errorf("Unable to marshall instance specification : %v", err)
+		return fmt.Errorf("Unable to marshal instance specification : %v", err)
 	}
 	_, _ = buf.Write(data)
 	_, _ = buf.WriteString("...\n")
@@ -96,14 +96,14 @@ func loadWorkloadData(ws *workspace, vmType string) ([]byte, error) {
 	return wkld, nil
 }
 
-func unmarshallWorkload(ws *workspace, wkld *workload, insSpec, insData,
+func unmarshalWorkload(ws *workspace, wkld *workload, insSpec, insData,
 	userData string) error {
-	err := wkld.insSpec.unmarshallWithTemplate(ws, insSpec)
+	err := wkld.insSpec.unmarshalWithTemplate(ws, insSpec)
 	if err != nil {
 		return err
 	}
 
-	err = wkld.insData.unmarshallWithTemplate(ws, insData)
+	err = wkld.insData.unmarshalWithTemplate(ws, insData)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func createWorkload(ws *workspace, vmType string) (*workload, error) {
 		return nil, fmt.Errorf("Invalid workload")
 	}
 
-	err = unmarshallWorkload(ws, &wkld, insSpec, insData, userData)
+	err = unmarshalWorkload(ws, &wkld, insSpec, insData, userData)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func restoreWorkload(ws *workspace) (*workload, error) {
 	if len(docs) == 1 {
 		// Older versions of ciao-down just stored the instance
 		// data and not the entire workload.
-		if err = wkld.insData.unmarshallWithTemplate(ws, string(docs[0])); err != nil {
+		if err = wkld.insData.unmarshalWithTemplate(ws, string(docs[0])); err != nil {
 			return nil, err
 		}
 		return &wkld, nil
@@ -164,7 +164,7 @@ func restoreWorkload(ws *workspace) (*workload, error) {
 		return nil, fmt.Errorf("Invalid workload")
 	}
 
-	err = unmarshallWorkload(ws, &wkld, string(docs[0]), string(docs[1]), string(docs[2]))
+	err = unmarshalWorkload(ws, &wkld, string(docs[0]), string(docs[1]), string(docs[2]))
 	return &wkld, err
 }
 
