@@ -157,7 +157,7 @@ func prepareFlags(ws *workspace) (*workload, bool, error) {
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
 	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch.")
 	fs.Var(&update, "package-upgrade",
-		"Hint to enable or disable update of VM packages.  Should be true or false")
+		"Hint to enable or disable update of VM packages. Should be true or false")
 
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
 		return nil, false, err
