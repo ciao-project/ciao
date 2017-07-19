@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -46,8 +47,8 @@ const (
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "%s [prepare|start|stop|quit|status|connect|delete]\n\n", os.Args[0])
-		fmt.Fprintln(os.Stderr, "- prepare : creates a new VM for ciao or clear containers")
+		fmt.Fprintf(os.Stderr, "%s [create|start|stop|quit|status|connect|delete]\n\n", os.Args[0])
+		fmt.Fprintln(os.Stderr, "- create : creates a new VM")
 		fmt.Fprintln(os.Stderr, "- start : boots a stopped VM")
 		fmt.Fprintln(os.Stderr, "- stop : cleanly powers down a running VM")
 		fmt.Fprintln(os.Stderr, "- quit : quits a running VM")
@@ -144,18 +145,21 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func prepareFlags(ws *workspace) (*workload, bool, error) {
+func createFlags(ws *workspace) (*workload, bool, error) {
 	var debug bool
-	var vmType string
 	var m mounts
 	var p ports
 	var memGiB, CPUs int
 	var update packageUpgrade
 
-	fs := flag.NewFlagSet("prepare", flag.ExitOnError)
+	fs := flag.NewFlagSet("create", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s create <workload> \n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  <workload>\tName of the workload to create\n\n")
+		fs.PrintDefaults()
+	}
 	vmFlags(fs, &memGiB, &CPUs, &m, &p)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
-	fs.StringVar(&vmType, "vmtype", CIAO, "Type of VM to launch.")
 	fs.Var(&update, "package-upgrade",
 		"Hint to enable or disable update of VM packages. Should be true or false")
 
@@ -163,13 +167,19 @@ func prepareFlags(ws *workspace) (*workload, bool, error) {
 		return nil, false, err
 	}
 
+	if fs.NArg() != 1 {
+		fs.Usage()
+		return nil, false, errors.New("no workload specified")
+	}
+	workloadName := fs.Arg(0)
+
 	for i := range m {
 		if err := checkDirectory(m[i].Path); err != nil {
 			return nil, false, err
 		}
 	}
 
-	wkl, err := createWorkload(ws, vmType)
+	wkl, err := createWorkload(ws, workloadName)
 	if err != nil {
 		return nil, false, err
 	}
@@ -224,7 +234,7 @@ func startFlags(in *instance) error {
 	return nil
 }
 
-func prepare(ctx context.Context, errCh chan error) {
+func create(ctx context.Context, errCh chan error) {
 	var err error
 
 	defer func() {
@@ -236,7 +246,7 @@ func prepare(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	wkld, debug, err := prepareFlags(ws)
+	wkld, debug, err := createFlags(ws)
 	if err != nil {
 		return
 	}
@@ -500,8 +510,8 @@ func runCommand(signalCh <-chan os.Signal) error {
 	errCh := make(chan error)
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	switch os.Args[1] {
-	case "prepare":
-		go prepare(ctx, errCh)
+	case "create":
+		go create(ctx, errCh)
 	case "start":
 		go start(ctx, errCh)
 	case "stop":
@@ -529,7 +539,7 @@ func runCommand(signalCh <-chan os.Signal) error {
 func main() {
 	flag.Parse()
 	if len(os.Args) < 2 ||
-		!(os.Args[1] == "prepare" || os.Args[1] == "start" || os.Args[1] == "stop" ||
+		!(os.Args[1] == "create" || os.Args[1] == "start" || os.Args[1] == "stop" ||
 			os.Args[1] == "quit" || os.Args[1] == "status" ||
 			os.Args[1] == "connect" || os.Args[1] == "delete") {
 		flag.Usage()

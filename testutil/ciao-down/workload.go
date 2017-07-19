@@ -75,9 +75,9 @@ func (wkld *workload) save(ws *workspace) error {
 	return nil
 }
 
-func loadWorkloadData(ws *workspace, vmType string) ([]byte, error) {
+func loadWorkloadData(ws *workspace, workloadName string) ([]byte, error) {
 	localPath := filepath.Join(ws.Home, ".ciao-down", "workloads",
-		fmt.Sprintf("%s.yaml", vmType))
+		fmt.Sprintf("%s.yaml", workloadName))
 	wkld, err := ioutil.ReadFile(localPath)
 	if err == nil {
 		return wkld, nil
@@ -87,7 +87,7 @@ func loadWorkloadData(ws *workspace, vmType string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Unable to locate ciao-down workload directory: %v", err)
 	}
-	workloadPath := filepath.Join(p.Dir, "workloads", fmt.Sprintf("%s.yaml", vmType))
+	workloadPath := filepath.Join(p.Dir, "workloads", fmt.Sprintf("%s.yaml", workloadName))
 	wkld, err = ioutil.ReadFile(workloadPath)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to load workload %s", workloadPath)
@@ -113,8 +113,8 @@ func unmarshalWorkload(ws *workspace, wkld *workload, insSpec, insData,
 	return nil
 }
 
-func createWorkload(ws *workspace, vmType string) (*workload, error) {
-	data, err := loadWorkloadData(ws, vmType)
+func createWorkload(ws *workspace, workloadName string) (*workload, error) {
+	data, err := loadWorkloadData(ws, workloadName)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func createWorkload(ws *workspace, vmType string) (*workload, error) {
 		return nil, err
 	}
 	if wkld.insSpec.WorkloadName == "" {
-		wkld.insSpec.WorkloadName = vmType
+		wkld.insSpec.WorkloadName = workloadName
 	}
 	return &wkld, nil
 }

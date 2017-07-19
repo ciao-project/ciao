@@ -12,7 +12,7 @@ Then simply type
 
 ```
 go get github.com/01org/ciao/testutil/ciao-down
-$GOPATH/bin/ciao-down prepare --vmtype=xenial
+$GOPATH/bin/ciao-down create xenial
 ```
 
 to create a new Ubuntu 16.04 VM.  ciao-down will install some needed
@@ -65,9 +65,9 @@ User created workloads are stored in ~/.ciao-down/workloads.  ciao-down always c
 with the same name, ciao-down will use the workload in ~/.ciao-down/workloads.
 
 You can tell ciao-down which workload to use when creating the VM with the
-prepare command.  This is done via the --vmtype option.  You specify the file name
+create command.  This is done via the --vmtype option.  You specify the file name
 of the workload without the .yaml extension.  The workload must be present in either
-of the two directories mentioned above.  For example, the prepare command in the
+of the two directories mentioned above.  For example, the create command in the
 introduction section used the option --vmtype xenial.  This caused ciao-down to
 load the workload definition in
 $GOPATH/src/github.com/01org/ciao/testutil/ciao-down/workloads/xenial.yaml.
@@ -300,7 +300,7 @@ Unpacking Go : [FAIL]
 
 if it fails.
 
-Reporting a failure back to ciao-down does not cause the prepare command to exit.  The
+Reporting a failure back to ciao-down does not cause the create command to exit.  The
 failure is presented to the user and the setup of the VM continues.
 
 #### Finished
@@ -330,23 +330,23 @@ mounts:
 ```
 
 The above command will arrange for all mounts specified in the instance data document or on
-the prepare command line to be mounted to the same location that they are mounted on the
+the create command line to be mounted to the same location that they are mounted on the
 host.
 
 Mounts added later via the start command will need to be mounted manually.
 
 ## Commands
 
-### prepare
+### create
 
-ciao-down prepare creates and configures a new ciao-down VM.  Currently,
+ciao-down create creates and configures a new ciao-down VM.  Currently,
 only one VM can be configured at any one time.  All the files associated
 with the VM are stored in ~/.ciao-down.
 
-An example of ciao-down prepare is given below:
+An example of ciao-down create is given below:
 
 ```
-$ ./ciao-down prepare
+$ ./ciao-down create xenial
 Booting VM with 7 GB RAM and 4 cpus
 Booting VM : [OK]
 Downloading Go : [OK]
@@ -385,7 +385,7 @@ host, ciao-down will assign 4GB of RAM and 4 VCPUs to the guest VM.  You
 can control this behaviour by using the --mem and --cpu options.  For
 example,
 
-ciao-down prepare --cpus 2 -mem 2
+ciao-down create --cpus 2 -mem 2 ciao
 
 Creates and boots a VM with 2 VCPUs and 2 GB of RAM.
 
@@ -398,17 +398,10 @@ option takes a path to the location on your host machine where the UI code is
 stored.  This path gets mounted to the same location inside the VM, allowing you to
 modify the sources on your host and compile inside the VM.  For example,
 
-ciao-down prepare --mount hostui,mapped,$HOME/src/ciao-webui
+ciao-down create --mount hostui,mapped,$HOME/src/ciao-webui ciao
 
 will create a new ciao-down VM in which the $HOME/src/ciao-webui folder on
 your host will be mounted at $HOME/src/ciao-webui.
-
-ciao-down by default creates a VM suitable for ciao development. It also supports
-setting up development environments for other projects, via the vmtype option
-
-ciao-down prepare -vmtype clearcontainers
-
-will create a new ciao-down VM for development of clearcontainers.
 
 The --package-upgrade option can be used to provide a hint to workloads
 indicating whether packages contained within the base image should be updated or not
@@ -429,7 +422,7 @@ the default settings on the command line.
 
 For example,
 
-./ciao-down prepare --mount docs,passthrough,$HOME/Documents --port 10000-80
+./ciao-down create --mount docs,passthrough,$HOME/Documents --port 10000-80 xenial
 
 shares the host directory, $HOME/Documents, with the ciao-down VM using the 9p
 passthrough security model.  The directory can be mounted inside the VM using
@@ -442,7 +435,7 @@ instance data document, can be overridden by specifying
 an existing tag with new options, and default ports can be overridden by
 mapping a new host port to an existing guest port.  For example,
 
-./ciao-down prepare --mount hostgo,none,$HOME/go -port 10023-22
+./ciao-down create --mount hostgo,none,$HOME/go -port 10023-22 xenial
 
 changes the security model of the mount with the hostgo tag and makes the instance
 available via ssh on 127.0.0.1:10023.
@@ -469,7 +462,7 @@ ciao-down stop is used to power down the ciao-down VM cleanly.
 
 ### start
 
-ciao-down start boots a previously prepared but not running ciao-down VM.
+ciao-down start boots a previously created but not running ciao-down VM.
 The start command also supports the --mem and --cpu options.  So it's
 possible to change the resources assigned to the guest VM by stopping it
 and restarting it, specifying --mem and --cpu.  It's also possible to
@@ -477,11 +470,11 @@ specify additional port mappings or mounts via the start command.  See
 the section on port mappings below.
 
 Any parameters you pass to the start command override the parameters
-you originally passed to prepare.  These settings are also persisted.
+you originally passed to create.  These settings are also persisted.
 For example, if you were to run
 
 ```
-./ciao-down prepare --mem=2
+./ciao-down create --mem=2 xenial
 ./ciao-down stop
 ./ciao-down start --mem=1
 ./ciao-down stop
