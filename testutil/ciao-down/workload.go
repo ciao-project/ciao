@@ -38,8 +38,8 @@ func init() {
 }
 
 type workload struct {
-	spec  workloadSpec
-	insData  instance
+	spec     workloadSpec
+	insData  VMSpec
 	userData string
 }
 

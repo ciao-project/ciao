@@ -207,7 +207,7 @@ func createFlags(ws *workspace) (*workload, bool, error) {
 	return wkl, debug, nil
 }
 
-func startFlags(in *instance) error {
+func startFlags(in *VMSpec) error {
 	var m mounts
 	var p ports
 

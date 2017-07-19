@@ -40,7 +40,7 @@ ports:
 mounts: []
 `
 
-var mockVMSpec = instance{
+var mockVMSpec = VMSpec{
 	MemGiB:       3,
 	CPUs:         2,
 	PortMappings: []portMapping{{Host: 10022, Guest: 22}},

@@ -56,7 +56,8 @@ func (m mount) String() string {
 	return fmt.Sprintf("%s,%s,%s", m.Tag, m.SecurityModel, m.Path)
 }
 
-type instance struct {
+// VMSpec holds the per-VM state.
+type VMSpec struct {
 	MemGiB       int           `yaml:"mem_gib"`
 	CPUs         int           `yaml:"cpus"`
 	PortMappings []portMapping `yaml:"ports"`
@@ -76,7 +77,7 @@ type workloadSpec struct {
 // mapped ports as this information was hard-coded into ciao-down itself.
 // Consequently, when migrating one of these old VMs we need to fill in
 // the missing information.
-func (in *instance) loadLegacyInstance(ws *workspace) error {
+func (in *VMSpec) loadLegacyInstance(ws *workspace) error {
 	// Check for legacy state files.
 
 	vmType := CIAO
@@ -128,7 +129,7 @@ func (in *instance) loadLegacyInstance(ws *workspace) error {
 	return nil
 }
 
-func (in *instance) unmarshal(data []byte) error {
+func (in *VMSpec) unmarshal(data []byte) error {
 	err := yaml.Unmarshal(data, in)
 	if err != nil {
 		return fmt.Errorf("Unable to unmarshal instance state : %v", err)
@@ -169,7 +170,7 @@ func (in *instance) unmarshal(data []byte) error {
 	return nil
 }
 
-func (in *instance) unmarshalWithTemplate(ws *workspace, data string) error {
+func (in *VMSpec) unmarshalWithTemplate(ws *workspace, data string) error {
 	tmpl, err := template.New("instance-data").Parse(string(data))
 	if err != nil {
 		return fmt.Errorf("Unable to parse instance data template: %v", err)
@@ -182,7 +183,7 @@ func (in *instance) unmarshalWithTemplate(ws *workspace, data string) error {
 	return in.unmarshal(buf.Bytes())
 }
 
-func (in *instance) mergeMounts(m mounts) {
+func (in *VMSpec) mergeMounts(m mounts) {
 	mountCount := len(in.Mounts)
 	for _, mount := range m {
 		var i int
@@ -200,7 +201,7 @@ func (in *instance) mergeMounts(m mounts) {
 	}
 }
 
-func (in *instance) mergePorts(p ports) {
+func (in *VMSpec) mergePorts(p ports) {
 	portCount := len(in.PortMappings)
 	for _, port := range p {
 		var i int
@@ -218,7 +219,7 @@ func (in *instance) mergePorts(p ports) {
 	}
 }
 
-func (in *instance) sshPort() (int, error) {
+func (in *VMSpec) sshPort() (int, error) {
 	for _, p := range in.PortMappings {
 		if p.Guest == 22 {
 			return p.Host, nil
