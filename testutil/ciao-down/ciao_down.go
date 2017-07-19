@@ -184,7 +184,7 @@ func createFlags(ws *workspace) (*workload, bool, error) {
 		return nil, false, err
 	}
 
-	in := &wkl.insData
+	in := &wkl.spec.VM
 	if memGiB != 0 {
 		in.MemGiB = memGiB
 	}
@@ -256,7 +256,7 @@ func create(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	in := &wkld.insData
+	in := &wkld.spec.VM
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {
 		err = fmt.Errorf("instance already exists")
@@ -332,7 +332,7 @@ func start(ctx context.Context, errCh chan error) {
 		errCh <- err
 		return
 	}
-	in := &wkld.insData
+	in := &wkld.spec.VM
 
 	memGiB, CPUs := getMemAndCpus()
 	if in.MemGiB == 0 {
@@ -418,7 +418,7 @@ func status(ctx context.Context, errCh chan error) {
 		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
-	in := &wkld.insData
+	in := &wkld.spec.VM
 
 	sshPort, err := in.sshPort()
 	if err != nil {
@@ -443,7 +443,7 @@ func connect(ctx context.Context, errCh chan error) {
 		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
-	in := &wkld.insData
+	in := &wkld.spec.VM
 
 	path, err := exec.LookPath("ssh")
 	if err != nil {

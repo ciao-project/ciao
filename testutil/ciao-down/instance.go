@@ -70,6 +70,7 @@ type workloadSpec struct {
 	Hostname      string `yaml:"hostname"`
 	WorkloadName  string `yaml:"workload"`
 	NeedsNestedVM bool   `yaml:"needs_nested_vm"`
+	VM            VMSpec `yaml:"vm"`
 }
 
 // This function creates a default instanceData object for legacy ciao-down

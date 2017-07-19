@@ -70,7 +70,7 @@ func TestRestoreWorkload(t *testing.T) {
 
 		workload, err := restoreWorkload(ws)
 		assert.Nil(t, err)
-		assert.Equal(t, mockVMSpec, workload.insData)
+		assert.Equal(t, mockVMSpec, workload.spec.VM)
 		if test.checkSpec {
 			assert.Equal(t, guestDownloadURL, workload.spec.BaseImageURL)
 			assert.Equal(t, guestImageFriendlyName, workload.spec.BaseImageName)

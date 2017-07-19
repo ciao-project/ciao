@@ -39,7 +39,6 @@ func init() {
 
 type workload struct {
 	spec     workloadSpec
-	insData  VMSpec
 	userData string
 }
 
@@ -55,7 +54,7 @@ func (wkld *workload) save(ws *workspace) error {
 	_, _ = buf.WriteString("...\n")
 
 	_, _ = buf.WriteString("---\n")
-	data, err = yaml.Marshal(wkld.insData)
+	data, err = yaml.Marshal(wkld.spec.VM)
 	if err != nil {
 		return fmt.Errorf("Unable to marshal instance specification : %v", err)
 	}
@@ -96,14 +95,14 @@ func loadWorkloadData(ws *workspace, workloadName string) ([]byte, error) {
 	return wkld, nil
 }
 
-func unmarshalWorkload(ws *workspace, wkld *workload, spec, insData,
+func unmarshalWorkload(ws *workspace, wkld *workload, spec, VMData,
 	userData string) error {
 	err := wkld.spec.unmarshalWithTemplate(ws, spec)
 	if err != nil {
 		return err
 	}
 
-	err = wkld.insData.unmarshalWithTemplate(ws, insData)
+	err = wkld.spec.VM.unmarshalWithTemplate(ws, VMData)
 	if err != nil {
 		return err
 	}
@@ -120,19 +119,19 @@ func createWorkload(ws *workspace, workloadName string) (*workload, error) {
 	}
 
 	var wkld workload
-	var spec, insData, userData string
+	var spec, VMData, userData string
 	docs := splitYaml(data)
 	if len(docs) == 1 {
 		userData = string(docs[0])
 	} else if len(docs) >= 3 {
 		spec = string(docs[0])
-		insData = string(docs[1])
+		VMData = string(docs[1])
 		userData = string(docs[2])
 	} else {
 		return nil, fmt.Errorf("Invalid workload")
 	}
 
-	err = unmarshalWorkload(ws, &wkld, spec, insData, userData)
+	err = unmarshalWorkload(ws, &wkld, spec, VMData, userData)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +145,7 @@ func restoreWorkload(ws *workspace) (*workload, error) {
 	var wkld workload
 	data, err := ioutil.ReadFile(path.Join(ws.instanceDir, "state.yaml"))
 	if err != nil {
-		if err = wkld.insData.loadLegacyInstance(ws); err != nil {
+		if err = wkld.spec.VM.loadLegacyInstance(ws); err != nil {
 			return nil, err
 		}
 		return &wkld, nil
@@ -154,9 +153,9 @@ func restoreWorkload(ws *workspace) (*workload, error) {
 
 	docs := splitYaml(data)
 	if len(docs) == 1 {
-		// Older versions of ciao-down just stored the instance
-		// data and not the entire workload.
-		if err = wkld.insData.unmarshalWithTemplate(ws, string(docs[0])); err != nil {
+		// Older versions of ciao-down just stored the VM data and not the
+		// entire workload.
+		if err = wkld.spec.VM.unmarshalWithTemplate(ws, string(docs[0])); err != nil {
 			return nil, err
 		}
 		return &wkld, nil
