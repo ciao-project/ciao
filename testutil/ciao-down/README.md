@@ -64,20 +64,12 @@ User created workloads are stored in ~/.ciao-down/workloads.  ciao-down always c
 ~/.ciao-down/workloads directory first so if a workload exists in both directories
 with the same name, ciao-down will use the workload in ~/.ciao-down/workloads.
 
-You can tell ciao-down which workload to use when creating the VM with the
-create command.  This is done via the --vmtype option.  You specify the file name
-of the workload without the .yaml extension.  The workload must be present in either
-of the two directories mentioned above.  For example, the create command in the
-introduction section used the option --vmtype xenial.  This caused ciao-down to
-load the workload definition in
+Which workload to use is specified when creating the VM with the create
+command.  This is the name the workload file without the .yaml extension.  The
+workload must be present in either of the two directories mentioned above.  For
+example, the create command in the introduction section creates an Ubuntu 16.04
+workload (xenial).  This caused ciao-down to load the workload definition in
 $GOPATH/src/github.com/01org/ciao/testutil/ciao-down/workloads/xenial.yaml.
-
-The default workload is called ciao and this workload is used if no --vmtype option is
-specified.  Selecting the ciao workloads sets up a [ciao](https://github.com/01org/ciao)
-development environment inside a xenial VM.  ciao-down was original created as a tool to
-automatically set up a development environment for ciao.  It still serves this purpose
-but is no longer tied to ciao.  For more information about running ciao with ciao-down
-please see the [Ciao Developer Quick Start](https://github.com/01org/ciao/blob/master/DeveloperQuickStart.md).
 
 As the majority of the ciao-down workloads are cloud-init files, ciao-down only
 works with images that are designed to run cloud-init on their first boot.  Typically,
