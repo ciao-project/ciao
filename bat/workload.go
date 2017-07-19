@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -85,50 +86,31 @@ func createCloudConfig(filename string, config string) error {
 }
 
 func createWorkload(ctx context.Context, tenant string, opt WorkloadOptions, config string, public bool) (ID string, err error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
 	// create temp dir for the yaml files
 	dir, err := ioutil.TempDir("", "ciao_bat")
 	if err != nil {
 		return "", err
 	}
-
-	// you have to call workload create from the same working dir
-	// as you have placed your yaml files, so change into that dir.
-	err = os.Chdir(dir)
-	if err != nil {
-		os.RemoveAll(dir)
-		return "", err
-	}
-
-	// change back to cwd and clean up temp dir on exit.
 	defer func() {
-		chdirErr := os.Chdir(cwd)
-		if err == nil {
-			err = chdirErr
-		}
-
 		os.RemoveAll(dir)
 	}()
 
+	opt.CloudConfigFile = path.Join(dir, "config.yaml")
+
 	// write out the cloud config.
-	err = createCloudConfig("config.yaml", config)
+	err = createCloudConfig(opt.CloudConfigFile, config)
 	if err != nil {
 		return "", err
 	}
-
-	opt.CloudConfigFile = "config.yaml"
 
 	// write out the workload definition
-	err = createWorkloadDefinition("workload.yaml", opt)
+	fp := path.Join(dir, "workload.yaml")
+	err = createWorkloadDefinition(fp, opt)
 	if err != nil {
 		return "", err
 	}
 
-	return CreateWorkloadFromFile(ctx, public, tenant, "workload.yaml")
+	return CreateWorkloadFromFile(ctx, public, tenant, fp)
 }
 
 func deleteWorkload(ctx context.Context, tenant string, workload string, public bool) (err error) {
