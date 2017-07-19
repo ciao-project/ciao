@@ -105,9 +105,7 @@ func (cmd *eventListCommand) run(args []string) error {
 }
 
 type eventDeleteCommand struct {
-	Flag   flag.FlagSet
-	all    bool
-	tenant string
+	Flag flag.FlagSet
 }
 
 func (cmd *eventDeleteCommand) usage(...string) {

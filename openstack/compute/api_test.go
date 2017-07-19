@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 )
 
@@ -29,11 +28,6 @@ type test struct {
 	request          string
 	expectedStatus   int
 	expectedResponse string
-}
-
-func myHostname() string {
-	host, _ := os.Hostname()
-	return host
 }
 
 var tests = []test{

@@ -305,14 +305,7 @@ type pagerFilterType uint8
 const (
 	none pagerFilterType = iota
 	flavorFilter
-	limit
-	marker
 )
-
-type pager interface {
-	filter(filterType pagerFilterType, filter string, item interface{}) bool
-	nextPage(filterType pagerFilterType, filter string, r *http.Request) ([]byte, error)
-}
 
 type serverPager struct {
 	servers []ServerDetails

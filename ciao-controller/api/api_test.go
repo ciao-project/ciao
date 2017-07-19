@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/01org/ciao/ciao-controller/types"
@@ -34,11 +33,6 @@ type test struct {
 	media            string
 	expectedStatus   int
 	expectedResponse string
-}
-
-func myHostname() string {
-	host, _ := os.Hostname()
-	return host
 }
 
 var tests = []test{

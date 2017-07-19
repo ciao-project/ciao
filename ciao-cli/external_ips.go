@@ -641,7 +641,6 @@ type poolAddCommand struct {
 	Flag   flag.FlagSet
 	name   string
 	subnet string
-	ips    []string
 }
 
 func (cmd *poolAddCommand) usage(...string) {

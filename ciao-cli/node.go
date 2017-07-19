@@ -40,7 +40,6 @@ type nodeListCommand struct {
 	network  bool
 	all      bool
 	cnci     bool
-	nodeID   bool
 	template string
 }
 
