@@ -396,6 +396,7 @@ func listMappedIPs(c *Context, w http.ResponseWriter, r *http.Request) (Response
 }
 
 func mapExternalIP(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
 	var req types.MapIPRequest
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -408,7 +409,9 @@ func mapExternalIP(c *Context, w http.ResponseWriter, r *http.Request) (Response
 		return errorResponse(err), err
 	}
 
-	err = c.MapAddress(req.PoolName, req.InstanceID)
+	tenantID := vars["tenant"]
+
+	err = c.MapAddress(tenantID, req.PoolName, req.InstanceID)
 	if err != nil {
 		return errorResponse(err), err
 	}
@@ -578,7 +581,7 @@ type Service interface {
 	AddAddress(poolID string, subnet *string, IPs []string) error
 	RemoveAddress(poolID string, subnetID *string, IPID *string) error
 	ListMappedAddresses(tenantID *string) []types.MappedIP
-	MapAddress(poolName *string, instanceID string) error
+	MapAddress(tenantID string, poolName *string, instanceID string) error
 	UnMapAddress(ID string) error
 	CreateWorkload(req types.Workload) (types.Workload, error)
 	DeleteWorkload(tenantID string, workloadID string) error

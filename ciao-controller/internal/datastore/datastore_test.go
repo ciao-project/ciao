@@ -483,6 +483,29 @@ func TestGetInstance(t *testing.T) {
 	}
 }
 
+func TestGetTenantInstance(t *testing.T) {
+	instances, stat := addTestInstanceStats(t)
+	instance, err := ds.GetTenantInstance(instances[0].TenantID, instances[0].ID)
+	if err != nil && err != sql.ErrNoRows {
+		t.Fatal(err)
+	}
+
+	for instance == nil {
+		instance, err = ds.GetTenantInstance(instances[0].TenantID, instances[0].ID)
+		if err != nil && err != sql.ErrNoRows {
+			t.Fatal(err)
+		}
+	}
+
+	if instance.NodeID != stat.NodeUUID {
+		t.Fatal("retrieved incorrect NodeID")
+	}
+
+	if instance.State != payloads.ComputeStatusRunning {
+		t.Fatal("retrieved incorrect state")
+	}
+}
+
 func TestHandleStats(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
