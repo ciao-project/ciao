@@ -63,7 +63,7 @@ type instance struct {
 	Mounts       []mount       `yaml:"mounts"`
 }
 
-type instanceSpec struct {
+type workloadSpec struct {
 	BaseImageURL  string `yaml:"base_image_url"`
 	BaseImageName string `yaml:"base_image_name"`
 	Hostname      string `yaml:"hostname"`
@@ -227,7 +227,7 @@ func (in *instance) sshPort() (int, error) {
 	return 0, fmt.Errorf("No SSH port configured")
 }
 
-func (ins *instanceSpec) unmarshal(data []byte) error {
+func (ins *workloadSpec) unmarshal(data []byte) error {
 	err := yaml.Unmarshal(data, ins)
 	if err != nil {
 		return fmt.Errorf("Unable to unmarshal instance specification : %v", err)
@@ -258,7 +258,7 @@ func (ins *instanceSpec) unmarshal(data []byte) error {
 	return nil
 }
 
-func (ins *instanceSpec) unmarshalWithTemplate(ws *workspace, data string) error {
+func (ins *workloadSpec) unmarshalWithTemplate(ws *workspace, data string) error {
 	tmpl, err := template.New("instance-spec").Parse(string(data))
 	if err != nil {
 		return fmt.Errorf("Unable to parse instance data template: %v", err)

@@ -38,7 +38,7 @@ func init() {
 }
 
 type workload struct {
-	insSpec  instanceSpec
+	spec  workloadSpec
 	insData  instance
 	userData string
 }
@@ -47,7 +47,7 @@ func (wkld *workload) save(ws *workspace) error {
 	var buf bytes.Buffer
 
 	_, _ = buf.WriteString("---\n")
-	data, err := yaml.Marshal(wkld.insSpec)
+	data, err := yaml.Marshal(wkld.spec)
 	if err != nil {
 		return fmt.Errorf("Unable to marshal instance specification : %v", err)
 	}
@@ -96,9 +96,9 @@ func loadWorkloadData(ws *workspace, workloadName string) ([]byte, error) {
 	return wkld, nil
 }
 
-func unmarshalWorkload(ws *workspace, wkld *workload, insSpec, insData,
+func unmarshalWorkload(ws *workspace, wkld *workload, spec, insData,
 	userData string) error {
-	err := wkld.insSpec.unmarshalWithTemplate(ws, insSpec)
+	err := wkld.spec.unmarshalWithTemplate(ws, spec)
 	if err != nil {
 		return err
 	}
@@ -120,24 +120,24 @@ func createWorkload(ws *workspace, workloadName string) (*workload, error) {
 	}
 
 	var wkld workload
-	var insSpec, insData, userData string
+	var spec, insData, userData string
 	docs := splitYaml(data)
 	if len(docs) == 1 {
 		userData = string(docs[0])
 	} else if len(docs) >= 3 {
-		insSpec = string(docs[0])
+		spec = string(docs[0])
 		insData = string(docs[1])
 		userData = string(docs[2])
 	} else {
 		return nil, fmt.Errorf("Invalid workload")
 	}
 
-	err = unmarshalWorkload(ws, &wkld, insSpec, insData, userData)
+	err = unmarshalWorkload(ws, &wkld, spec, insData, userData)
 	if err != nil {
 		return nil, err
 	}
-	if wkld.insSpec.WorkloadName == "" {
-		wkld.insSpec.WorkloadName = workloadName
+	if wkld.spec.WorkloadName == "" {
+		wkld.spec.WorkloadName = workloadName
 	}
 	return &wkld, nil
 }

@@ -196,7 +196,7 @@ func createFlags(ws *workspace) (*workload, bool, error) {
 	in.mergePorts(p)
 
 	ws.Mounts = in.Mounts
-	ws.Hostname = wkl.insSpec.Hostname
+	ws.Hostname = wkl.spec.Hostname
 	if ws.NoProxy != "" {
 		ws.NoProxy = fmt.Sprintf("%s,%s", ws.Hostname, ws.NoProxy)
 	} else if ws.HTTPProxy != "" || ws.HTTPSProxy != "" {
@@ -251,7 +251,7 @@ func create(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if wkld.insSpec.NeedsNestedVM && !hostSupportsNestedKVM() {
+	if wkld.spec.NeedsNestedVM && !hostSupportsNestedKVM() {
 		err = fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
@@ -289,8 +289,8 @@ func create(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	fmt.Printf("Downloading %s\n", wkld.insSpec.BaseImageName)
-	qcowPath, err := downloadFile(ctx, wkld.insSpec.BaseImageURL, ws.ciaoDir, downloadProgress)
+	fmt.Printf("Downloading %s\n", wkld.spec.BaseImageName)
+	qcowPath, err := downloadFile(ctx, wkld.spec.BaseImageURL, ws.ciaoDir, downloadProgress)
 	if err != nil {
 		return
 	}
@@ -348,7 +348,7 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if wkld.insSpec.NeedsNestedVM && !hostSupportsNestedKVM() {
+	if wkld.spec.NeedsNestedVM && !hostSupportsNestedKVM() {
 		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
@@ -426,7 +426,7 @@ func status(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	statusVM(ctx, ws.instanceDir, ws.keyPath, wkld.insSpec.WorkloadName,
+	statusVM(ctx, ws.instanceDir, ws.keyPath, wkld.spec.WorkloadName,
 		sshPort)
 	errCh <- err
 }
