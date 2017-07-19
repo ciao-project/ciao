@@ -65,11 +65,29 @@ User created workloads are stored in ~/.ciao-down/workloads.  ciao-down always c
 with the same name, ciao-down will use the workload in ~/.ciao-down/workloads.
 
 Which workload to use is specified when creating the VM with the create
-command.  This is the name the workload file without the .yaml extension.  The
-workload must be present in either of the two directories mentioned above.  For
-example, the create command in the introduction section creates an Ubuntu 16.04
+command. The workload can be a file without the .yaml extension or a URI pointing to
+a local or remote file. If the workload is a file without the .yaml extension then it
+must be present in either of the two directories mentioned above. For example,
+the create command in the introduction section creates an Ubuntu 16.04
 workload (xenial).  This caused ciao-down to load the workload definition in
 $GOPATH/src/github.com/01org/ciao/testutil/ciao-down/workloads/xenial.yaml.
+In the case of a remote file the supported schemes are http, https and file. Be aware
+of the remote file will not be saved hence each time this option is used, ciao-down
+will try to get it from the remote location. For example, to create a workload using the
+file /home/x/workload.yaml we have two options.
+
+Using the file scheme:
+
+```
+ciao-down create file:///home/ciao-down/workload.yaml
+```
+
+or its absolute path:
+
+```
+ciao-down create  /home/ciao-down/workload.yaml
+```
+
 
 As the majority of the ciao-down workloads are cloud-init files, ciao-down only
 works with images that are designed to run cloud-init on their first boot.  Typically,

@@ -145,7 +145,7 @@ func checkDirectory(dir string) error {
 	return nil
 }
 
-func createFlags(ws *workspace) (*workload, bool, error) {
+func createFlags(ctx context.Context, ws *workspace) (*workload, bool, error) {
 	var debug bool
 	var m mounts
 	var p ports
@@ -179,7 +179,7 @@ func createFlags(ws *workspace) (*workload, bool, error) {
 		}
 	}
 
-	wkl, err := createWorkload(ws, workloadName)
+	wkl, err := createWorkload(ctx, ws, workloadName)
 	if err != nil {
 		return nil, false, err
 	}
@@ -246,7 +246,7 @@ func create(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	wkld, debug, err := createFlags(ws)
+	wkld, debug, err := createFlags(ctx, ws)
 	if err != nil {
 		return
 	}
