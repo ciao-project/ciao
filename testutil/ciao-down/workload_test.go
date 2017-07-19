@@ -51,3 +51,32 @@ func TestSplitYaml(t *testing.T) {
 		assert.Equal(t, test.documents, documents)
 	}
 }
+
+func TestRestoreWorkload(t *testing.T) {
+	tests := []struct {
+		checkSpec bool // Should we check the workload.spec content?
+		workload  string
+	}{
+		// 1 document: per-VM data (legacy)
+		{workload: sampleVMSpec},
+		// 3 documents: spec, per-VM data, cloud init file
+		{workload: sampleWorkload, checkSpec: true},
+	}
+
+	for i := range tests {
+		test := &tests[i]
+
+		ws := createMockWorkSpaceWithWorkload(t, test.workload)
+
+		workload, err := restoreWorkload(ws)
+		assert.Nil(t, err)
+		assert.Equal(t, mockVMSpec, workload.insData)
+		if test.checkSpec {
+			assert.Equal(t, guestDownloadURL, workload.spec.BaseImageURL)
+			assert.Equal(t, guestImageFriendlyName, workload.spec.BaseImageName)
+			assert.Equal(t, defaultHostname, workload.spec.Hostname)
+		}
+
+		cleanupMockWorkspace(t, ws)
+	}
+}
