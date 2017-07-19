@@ -455,13 +455,9 @@ func (c *controller) ListServersDetail(tenant string) ([]compute.ServerDetails, 
 func (c *controller) ShowServerDetails(tenant string, server string) (compute.Server, error) {
 	var s compute.Server
 
-	instance, err := c.ds.GetInstance(server)
+	instance, err := c.ds.GetTenantInstance(tenant, server)
 	if err != nil {
 		return s, err
-	}
-
-	if instance.TenantID != tenant {
-		return s, compute.ErrServerOwner
 	}
 
 	s.Server, err = instanceToServer(c, instance)
@@ -474,13 +470,9 @@ func (c *controller) ShowServerDetails(tenant string, server string) (compute.Se
 
 func (c *controller) DeleteServer(tenant string, server string) error {
 	/* First check that the instance belongs to this tenant */
-	i, err := c.ds.GetInstance(server)
+	_, err := c.ds.GetTenantInstance(tenant, server)
 	if err != nil {
 		return compute.ErrServerNotFound
-	}
-
-	if i.TenantID != tenant {
-		return compute.ErrServerOwner
 	}
 
 	err = c.deleteInstance(server)
@@ -492,13 +484,9 @@ func (c *controller) DeleteServer(tenant string, server string) error {
 }
 
 func (c *controller) StartServer(tenant string, ID string) error {
-	i, err := c.ds.GetInstance(ID)
+	_, err := c.ds.GetTenantInstance(tenant, ID)
 	if err != nil {
 		return err
-	}
-
-	if i.TenantID != tenant {
-		return compute.ErrServerOwner
 	}
 
 	err = c.restartInstance(ID)
@@ -510,13 +498,9 @@ func (c *controller) StartServer(tenant string, ID string) error {
 }
 
 func (c *controller) StopServer(tenant string, ID string) error {
-	i, err := c.ds.GetInstance(ID)
+	_, err := c.ds.GetTenantInstance(tenant, ID)
 	if err != nil {
 		return err
-	}
-
-	if i.TenantID != tenant {
-		return compute.ErrServerOwner
 	}
 
 	err = c.stopInstance(ID)

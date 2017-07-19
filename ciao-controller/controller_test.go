@@ -1850,7 +1850,7 @@ func TestMapAddress(t *testing.T) {
 		}
 	}
 
-	err = ctl.MapAddress(&poolName, instances[0].ID)
+	err = ctl.MapAddress(instances[0].TenantID, &poolName, instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1885,7 +1885,7 @@ func TestMapAddressNoPool(t *testing.T) {
 
 	testAddPool(t, poolName, nil, ips)
 
-	err := ctl.MapAddress(nil, instances[0].ID)
+	err := ctl.MapAddress(instances[0].TenantID, nil, instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}

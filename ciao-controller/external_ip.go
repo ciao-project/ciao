@@ -180,10 +180,16 @@ func (c *controller) ListMappedAddresses(tenant *string) []types.MappedIP {
 	return IPs
 }
 
-func (c *controller) MapAddress(poolName *string, instanceID string) (err error) {
+func (c *controller) MapAddress(tenantID string, poolName *string, instanceID string) (err error) {
 	var m types.MappedIP
+	var i *types.Instance
 
-	i, err := c.ds.GetInstance(instanceID)
+	if tenantID == "" {
+		// we allow the admin to map anyone's instance
+		i, err = c.ds.GetInstance(instanceID)
+	} else {
+		i, err = c.ds.GetTenantInstance(tenantID, instanceID)
+	}
 	if err != nil {
 		return err
 	}

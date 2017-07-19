@@ -814,6 +814,22 @@ func (ds *Datastore) GetInstance(id string) (*types.Instance, error) {
 	return value, nil
 }
 
+// GetTenantInstance retrieves a tenant instance out of the datastore.
+func (ds *Datastore) GetTenantInstance(tenantID string, instanceID string) (*types.Instance, error) {
+	// always get from cache
+	ds.instancesLock.RLock()
+
+	value, ok := ds.instances[instanceID]
+
+	ds.instancesLock.RUnlock()
+
+	if !ok || value.TenantID != tenantID {
+		return nil, types.ErrInstanceNotFound
+	}
+
+	return value, nil
+}
+
 // GetAllInstancesFromTenant will retrieve all instances belonging to a specific tenant
 func (ds *Datastore) GetAllInstancesFromTenant(tenantID string) ([]*types.Instance, error) {
 	var instances []*types.Instance

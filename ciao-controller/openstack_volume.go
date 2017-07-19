@@ -187,13 +187,9 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 	}
 
 	// check that the instance is owned by the tenant.
-	i, err := c.ds.GetInstance(instance)
+	i, err := c.ds.GetTenantInstance(tenant, instance)
 	if err != nil {
 		return block.ErrInstanceNotFound
-	}
-
-	if i.TenantID != tenant {
-		return block.ErrInstanceOwner
 	}
 
 	// update volume state to attaching
@@ -293,7 +289,7 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 	// detach everything for this volume
 	for _, a := range attachments {
 		// get instance info
-		i, err := c.ds.GetInstance(a.InstanceID)
+		i, err := c.ds.GetTenantInstance(tenant, a.InstanceID)
 		if err != nil {
 			glog.Error(block.ErrInstanceNotFound)
 			// keep going

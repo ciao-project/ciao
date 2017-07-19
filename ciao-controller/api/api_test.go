@@ -268,7 +268,7 @@ func (ts testCiaoService) ListMappedAddresses(tenant *string) []types.MappedIP {
 	return []types.MappedIP{m}
 }
 
-func (ts testCiaoService) MapAddress(name *string, instanceID string) error {
+func (ts testCiaoService) MapAddress(tenantID string, name *string, instanceID string) error {
 	return nil
 }
 
