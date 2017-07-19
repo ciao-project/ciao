@@ -251,7 +251,7 @@ func create(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if !hostSupportsNestedKVM() {
+	if wkld.insSpec.NeedsNestedVM && !hostSupportsNestedKVM() {
 		err = fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
@@ -348,7 +348,7 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if !hostSupportsNestedKVM() {
+	if wkld.insSpec.NeedsNestedVM && !hostSupportsNestedKVM() {
 		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
