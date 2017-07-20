@@ -68,10 +68,10 @@ type clearWorkload struct {
 }
 
 type workloadDetails interface {
-	Download() error
+	Download(ctx context.Context) error
 	Extra() bool
-	Upload() error
-	CreateWorkload() error
+	Upload(ctx context.Context) error
+	CreateWorkload(ctx context.Context) error
 }
 
 var images = []workloadDetails{
@@ -147,13 +147,13 @@ var images = []workloadDetails{
 }
 
 // CreateBatWorkloads creates all necessary workloads to run BAT
-func CreateBatWorkloads(allWorkloads bool) (errOut error) {
+func CreateBatWorkloads(ctx context.Context, allWorkloads bool) (errOut error) {
 	for _, wd := range images {
 		if wd.Extra() && !allWorkloads {
 			continue
 		}
 
-		if err := wd.Download(); err != nil {
+		if err := wd.Download(ctx); err != nil {
 			return errors.Wrap(err, "Error downloading image")
 		}
 	}
@@ -167,11 +167,11 @@ func CreateBatWorkloads(allWorkloads bool) (errOut error) {
 
 		wg.Add(1)
 		go func(wd workloadDetails) {
-			if err := wd.Upload(); err != nil {
+			if err := wd.Upload(ctx); err != nil {
 				errOut = errors.Wrap(err, "Error uploading image")
 			}
 
-			if err := wd.CreateWorkload(); err != nil {
+			if err := wd.CreateWorkload(ctx); err != nil {
 				errOut = errors.Wrap(err, "Error creating workload")
 			}
 
@@ -194,7 +194,7 @@ func imageCacheDir() (string, error) {
 	return icd, nil
 }
 
-func (wd *baseWorkload) download(url string) error {
+func (wd *baseWorkload) download(ctx context.Context, url string) error {
 	ss := strings.Split(url, "/")
 	localName := ss[len(ss)-1]
 
@@ -220,22 +220,30 @@ func (wd *baseWorkload) download(url string) error {
 	if err != nil {
 		return errors.Wrap(err, "Unable to create temporary file for download")
 	}
-	defer f.Close()
-	defer os.Remove(f.Name())
+	defer func() { _ = f.Close() }()
+	defer func() { _ = os.Remove(f.Name()) }()
 
 	fmt.Printf("Downloading: %s\n", url)
-	resp, err := http.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return errors.Wrap(err, "Unable to fetch URL")
+		return errors.Wrap(err, "Error creating HTTP request")
 	}
-	defer resp.Body.Close()
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Unexpected status when downloading URL: %s: %s", url, resp.Status)
 	}
 
-	if _, err := io.Copy(f, resp.Body); err != nil {
-		return errors.Wrap(err, "Error copying from http to file")
+	buf := make([]byte, 1<<20)
+	_, err = io.CopyBuffer(f, resp.Body, buf)
+	if err != nil {
+		return errors.Wrap(err, "Error copying from HTTP response to file")
 	}
 
 	wd.localPath = imagePath
@@ -249,20 +257,20 @@ func (wd *baseWorkload) download(url string) error {
 	return nil
 }
 
-func (wd *baseWorkload) Download() error {
+func (wd *baseWorkload) Download(ctx context.Context) error {
 	if wd.opts.VMType != "qemu" {
 		return nil
 	}
 
-	return wd.download(wd.url)
+	return wd.download(ctx, wd.url)
 }
 
-func (cwd *clearWorkload) Download() error {
+func (cwd *clearWorkload) Download(ctx context.Context) error {
 	resp, err := http.Get("https://download.clearlinux.org/latest")
 	if err != nil {
 		return errors.Wrap(err, "Error downloading clear version info")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Unexpected status when downloading clear version info: %s", resp.Status)
@@ -290,12 +298,12 @@ func (cwd *clearWorkload) Download() error {
 	}
 
 	url := fmt.Sprintf("https://download.clearlinux.org/releases/%s/clear/%s.xz", cwd.version, fn)
-	err = cwd.wd.download(url)
+	err = cwd.wd.download(ctx, url)
 	if err != nil {
 		return errors.Wrap(err, "Error downloading clear image")
 	}
 
-	cmd := exec.Command("unxz", "-f", cwd.wd.localPath)
+	cmd := exec.CommandContext(ctx, "unxz", "-f", cwd.wd.localPath)
 	if err := cmd.Run(); err != nil {
 		return errors.Wrap(err, "Error when decompressing clear image")
 	}
@@ -312,14 +320,14 @@ func (cwd *clearWorkload) Extra() bool {
 	return cwd.wd.extra
 }
 
-func (wd *baseWorkload) upload(fp, name string) error {
+func (wd *baseWorkload) upload(ctx context.Context, fp, name string) error {
 	opts := bat.ImageOptions{
 		Name:       name,
 		Visibility: "public",
 	}
-	fmt.Printf("Uploading image from %s\n", fp)
 
-	i, err := bat.AddImage(context.Background(), "", fp, &opts)
+	fmt.Printf("Uploading image from %s\n", fp)
+	i, err := bat.AddImage(ctx, "", fp, &opts)
 	if err != nil {
 		return errors.Wrap(err, "Error creating image")
 	}
@@ -329,19 +337,19 @@ func (wd *baseWorkload) upload(fp, name string) error {
 	return nil
 }
 
-func (wd *baseWorkload) Upload() error {
+func (wd *baseWorkload) Upload(ctx context.Context) error {
 	if wd.opts.VMType != "qemu" {
 		return nil
 	}
 
-	return wd.upload(wd.localPath, wd.imageName)
+	return wd.upload(ctx, wd.localPath, wd.imageName)
 }
 
-func (cwd *clearWorkload) Upload() error {
-	return cwd.wd.upload(cwd.wd.localPath, fmt.Sprintf("Clear Linux %s", cwd.version))
+func (cwd *clearWorkload) Upload(ctx context.Context) error {
+	return cwd.wd.upload(ctx, cwd.wd.localPath, fmt.Sprintf("Clear Linux %s", cwd.version))
 }
 
-func (wd *baseWorkload) CreateWorkload() error {
+func (wd *baseWorkload) CreateWorkload(ctx context.Context) error {
 	opts := wd.opts
 	if opts.VMType == "qemu" {
 		opts.Disks = []bat.Disk{
@@ -356,7 +364,7 @@ func (wd *baseWorkload) CreateWorkload() error {
 		}
 	}
 
-	workloadID, err := bat.CreateWorkload(context.Background(), "", opts, wd.cloudInit)
+	workloadID, err := bat.CreateWorkload(ctx, "", opts, wd.cloudInit)
 	if err == nil {
 		wd.workloadID = workloadID
 		fmt.Printf("Workload created \"%s\" as %s\n", opts.Description, wd.workloadID)
@@ -365,6 +373,6 @@ func (wd *baseWorkload) CreateWorkload() error {
 	return err
 }
 
-func (cwd *clearWorkload) CreateWorkload() error {
-	return cwd.wd.CreateWorkload()
+func (cwd *clearWorkload) CreateWorkload(ctx context.Context) error {
+	return cwd.wd.CreateWorkload(ctx)
 }
