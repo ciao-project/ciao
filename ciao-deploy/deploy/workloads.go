@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -26,6 +27,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"text/template"
 
 	"github.com/01org/ciao/bat"
 	"github.com/pkg/errors"
@@ -47,6 +49,13 @@ users:
     gecos: CIAO Demo User
     lock-passwd: false
     sudo: ALL=(ALL) NOPASSWD:ALL
+{{- with .Password }}
+    passwd: {{ . }}
+{{- end }}
+{{- with .SSHKey }}
+    ssh-authorized-keys:
+      - {{ . }}
+{{- end }}
 ...
 `
 
@@ -71,7 +80,7 @@ type workloadDetails interface {
 	Download(ctx context.Context) error
 	Extra() bool
 	Upload(ctx context.Context) error
-	CreateWorkload(ctx context.Context) error
+	CreateWorkload(ctx context.Context, sshPublickey string, password string) error
 }
 
 var images = []workloadDetails{
@@ -147,7 +156,7 @@ var images = []workloadDetails{
 }
 
 // CreateBatWorkloads creates all necessary workloads to run BAT
-func CreateBatWorkloads(ctx context.Context, allWorkloads bool) (errOut error) {
+func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey string, password string) (errOut error) {
 	for _, wd := range images {
 		if wd.Extra() && !allWorkloads {
 			continue
@@ -171,7 +180,7 @@ func CreateBatWorkloads(ctx context.Context, allWorkloads bool) (errOut error) {
 				errOut = errors.Wrap(err, "Error uploading image")
 			}
 
-			if err := wd.CreateWorkload(ctx); err != nil {
+			if err := wd.CreateWorkload(ctx, sshPublickey, password); err != nil {
 				errOut = errors.Wrap(err, "Error creating workload")
 			}
 
@@ -349,7 +358,7 @@ func (cwd *clearWorkload) Upload(ctx context.Context) error {
 	return cwd.wd.upload(ctx, cwd.wd.localPath, fmt.Sprintf("Clear Linux %s", cwd.version))
 }
 
-func (wd *baseWorkload) CreateWorkload(ctx context.Context) error {
+func (wd *baseWorkload) CreateWorkload(ctx context.Context, sshPublickey string, password string) error {
 	opts := wd.opts
 	if opts.VMType == "qemu" {
 		opts.Disks = []bat.Disk{
@@ -364,7 +373,22 @@ func (wd *baseWorkload) CreateWorkload(ctx context.Context) error {
 		}
 	}
 
-	workloadID, err := bat.CreateWorkload(ctx, "", opts, wd.cloudInit)
+	var buf bytes.Buffer
+
+	var t = template.Must(template.New("cloudInit").Parse(wd.cloudInit))
+	var ciSetup = struct {
+		SSHKey   string
+		Password string
+	}{
+		SSHKey:   sshPublickey,
+		Password: password,
+	}
+
+	if err := t.Execute(&buf, &ciSetup); err != nil {
+		return errors.Wrap(err, "Error executing cloud init template")
+	}
+
+	workloadID, err := bat.CreateWorkload(ctx, "", opts, strings.TrimSpace(buf.String()))
 	if err == nil {
 		wd.workloadID = workloadID
 		fmt.Printf("Workload created \"%s\" as %s\n", opts.Description, wd.workloadID)
@@ -373,6 +397,6 @@ func (wd *baseWorkload) CreateWorkload(ctx context.Context) error {
 	return err
 }
 
-func (cwd *clearWorkload) CreateWorkload(ctx context.Context) error {
-	return cwd.wd.CreateWorkload(ctx)
+func (cwd *clearWorkload) CreateWorkload(ctx context.Context, sshPublickey string, password string) error {
+	return cwd.wd.CreateWorkload(ctx, sshPublickey, password)
 }

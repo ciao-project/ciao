@@ -17,6 +17,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,6 +27,8 @@ import (
 )
 
 var allWorkloads bool
+var sshPublicKeyFile string
+var password string
 
 // createBatWorkloadsCmd represents the create-bat-workloads command
 var createBatWorkloadsCmd = &cobra.Command{
@@ -44,7 +47,17 @@ var createBatWorkloadsCmd = &cobra.Command{
 		}()
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-		err := deploy.CreateBatWorkloads(ctx, allWorkloads)
+		var sshPublicKey []byte
+		var err error
+		if sshPublicKeyFile != "" {
+			sshPublicKey, err = ioutil.ReadFile(sshPublicKeyFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error reading from SSH key file: %s\n", err)
+				os.Exit(1)
+			}
+		}
+
+		err = deploy.CreateBatWorkloads(ctx, allWorkloads, string(sshPublicKey), password)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating BAT workloads: %s\n", err)
 			os.Exit(1)
@@ -57,4 +70,6 @@ func init() {
 	RootCmd.AddCommand(createBatWorkloadsCmd)
 
 	createBatWorkloadsCmd.Flags().BoolVar(&allWorkloads, "all-workloads", false, "Create extra workloads not required for BAT")
+	createBatWorkloadsCmd.Flags().StringVar(&sshPublicKeyFile, "ssh-public-key-file", "", "SSH public key to be injected into workloads (demouser)")
+	createBatWorkloadsCmd.Flags().StringVar(&password, "password", "", "Password to be injected into workloads (demouser)")
 }
