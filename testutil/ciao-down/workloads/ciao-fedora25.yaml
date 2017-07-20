@@ -3,17 +3,16 @@ base_image_url: https://download.fedoraproject.org/pub/fedora/linux/releases/25/
 base_image_name: Fedora 25
 hostname: singlevm
 needs_nested_vm: true
-...
----
+vm:
 {{with .GoPath}}
-mounts:
-- tag: hostgo
-  security_model: passthrough
-  path: {{.}}
+  mounts:
+  - tag: hostgo
+    security_model: passthrough
+    path: {{.}}
 {{end}}
-ports:
-- host: 3000
-  guest: 3000
+  ports:
+  - host: 3000
+    guest: 3000
 ...
 ---
 {{ define "GOPATH" }}{{with .GoPath}}{{$.MountPath "hostgo"}}{{else}}/home/{{.User}}/go{{end}}{{end}}

@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const xenialWorkloadSpec = `
+const xenialWorkloadSpecNoVM = `
 base_image_url: ` + guestDownloadURL + `
 base_image_name: ` + guestImageFriendlyName + `
 `
@@ -40,6 +40,18 @@ ports:
 mounts: []
 `
 
+const xenialWorkloadSpec = `
+base_image_url: ` + guestDownloadURL + `
+base_image_name: ` + guestImageFriendlyName + `
+vm:
+  mem_gib: 3
+  cpus: 2
+  ports:
+  - host: 10022
+    guest: 22
+  mounts: []
+`
+
 var mockVMSpec = VMSpec{
 	MemGiB:       3,
 	CPUs:         2,
@@ -50,7 +62,8 @@ var mockVMSpec = VMSpec{
 const sampleCloudInit = `
 `
 
-const sampleWorkload = "---\n" + xenialWorkloadSpec + "...\n---\n" + sampleVMSpec + "...\n---\n" + sampleCloudInit + "...\n"
+const sampleWorkload3Docs = "---\n" + xenialWorkloadSpecNoVM + "...\n---\n" + sampleVMSpec + "...\n---\n" + sampleCloudInit + "...\n"
+const sampleWorkload = "---\n" + xenialWorkloadSpec + "...\n---\n" + sampleCloudInit + "...\n"
 
 func createMockWorkSpaceWithWorkload(t *testing.T, workload string) *workspace {
 	ciaoDir, err := ioutil.TempDir("", "ciao-down-tests-")

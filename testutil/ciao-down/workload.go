@@ -54,14 +54,6 @@ func (wkld *workload) save(ws *workspace) error {
 	_, _ = buf.WriteString("...\n")
 
 	_, _ = buf.WriteString("---\n")
-	data, err = yaml.Marshal(wkld.spec.VM)
-	if err != nil {
-		return fmt.Errorf("Unable to marshal instance specification : %v", err)
-	}
-	_, _ = buf.Write(data)
-	_, _ = buf.WriteString("...\n")
-
-	_, _ = buf.WriteString("---\n")
 	_, _ = buf.WriteString(wkld.userData)
 	_, _ = buf.WriteString("...\n")
 
@@ -123,6 +115,9 @@ func createWorkload(ws *workspace, workloadName string) (*workload, error) {
 	docs := splitYaml(data)
 	if len(docs) == 1 {
 		userData = string(docs[0])
+	} else if len(docs) == 2 {
+		spec = string(docs[0])
+		userData = string(docs[1])
 	} else if len(docs) >= 3 {
 		spec = string(docs[0])
 		VMData = string(docs[1])
@@ -152,6 +147,9 @@ func restoreWorkload(ws *workspace) (*workload, error) {
 	}
 
 	docs := splitYaml(data)
+	if len(docs) == 0 {
+		return nil, fmt.Errorf("Invalid workload")
+	}
 	if len(docs) == 1 {
 		// Older versions of ciao-down just stored the VM data and not the
 		// entire workload.
@@ -159,10 +157,13 @@ func restoreWorkload(ws *workspace) (*workload, error) {
 			return nil, err
 		}
 		return &wkld, nil
-	} else if len(docs) < 3 {
-		return nil, fmt.Errorf("Invalid workload")
+	}
+	if len(docs) == 2 {
+		err = unmarshalWorkload(ws, &wkld, string(docs[0]), "", string(docs[1]))
+		return &wkld, err
 	}
 
+	// 3 or more documents.
 	err = unmarshalWorkload(ws, &wkld, string(docs[0]), string(docs[1]), string(docs[2]))
 	return &wkld, err
 }

@@ -59,8 +59,10 @@ func TestRestoreWorkload(t *testing.T) {
 	}{
 		// 1 document: per-VM data (legacy)
 		{workload: sampleVMSpec},
-		// 3 documents: spec, per-VM data, cloud init file
+		// 2 documents: spec, cloud init file
 		{workload: sampleWorkload, checkSpec: true},
+		// 3 documents: spec, per-VM data, cloud init file (legacy)
+		{workload: sampleWorkload3Docs, checkSpec: true},
 	}
 
 	for i := range tests {
