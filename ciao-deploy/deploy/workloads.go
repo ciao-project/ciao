@@ -77,7 +77,7 @@ type clearWorkload struct {
 }
 
 type workloadDetails interface {
-	Download(ctx context.Context) error
+	Download(ctx context.Context, imageCacheDir string) error
 	Extra() bool
 	Upload(ctx context.Context) error
 	CreateWorkload(ctx context.Context, sshPublickey string, password string) error
@@ -170,13 +170,22 @@ func cleanup() {
 }
 
 // CreateBatWorkloads creates all necessary workloads to run BAT
-func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey string, password string) (errOut error) {
+func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey string, password string, imageCacheDir string) (errOut error) {
+	if imageCacheDir == "" {
+		u, err := user.Current()
+		if err != nil {
+			return errors.Wrap(err, "Unable to get user home directory")
+		}
+
+		imageCacheDir = path.Join(u.HomeDir, ".cache", "ciao", "images")
+	}
+
 	for _, wd := range images {
 		if wd.Extra() && !allWorkloads {
 			continue
 		}
 
-		if err := wd.Download(ctx); err != nil {
+		if err := wd.Download(ctx, imageCacheDir); err != nil {
 			return errors.Wrap(err, "Error downloading image")
 		}
 	}
@@ -217,26 +226,11 @@ func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey str
 	return errOut
 }
 
-func imageCacheDir() (string, error) {
-	u, err := user.Current()
-	if err != nil {
-		return "", errors.Wrap(err, "Unable to get user home directory")
-	}
-
-	icd := path.Join(u.HomeDir, ".cache", "ciao", "images")
-	return icd, nil
-}
-
-func (wd *baseWorkload) download(ctx context.Context, url string) error {
+func (wd *baseWorkload) download(ctx context.Context, url string, imageCacheDir string) error {
 	ss := strings.Split(url, "/")
 	localName := ss[len(ss)-1]
 
-	icd, err := imageCacheDir()
-	if err != nil {
-		return errors.Wrap(err, "Unable to get image cache directory")
-	}
-
-	imagePath := path.Join(icd, localName)
+	imagePath := path.Join(imageCacheDir, localName)
 	if _, err := os.Stat(imagePath); err == nil {
 		wd.localPath = imagePath
 		fmt.Printf("Using already downloaded image: %s\n", wd.localPath)
@@ -245,11 +239,11 @@ func (wd *baseWorkload) download(ctx context.Context, url string) error {
 		return errors.Wrap(err, "Error when stat()ing expected image path")
 	}
 
-	if err := os.MkdirAll(icd, 0755); err != nil {
+	if err := os.MkdirAll(imageCacheDir, 0755); err != nil {
 		return errors.Wrap(err, "Unable to create image cache directory")
 	}
 
-	f, err := ioutil.TempFile(icd, localName)
+	f, err := ioutil.TempFile(imageCacheDir, localName)
 	if err != nil {
 		return errors.Wrap(err, "Unable to create temporary file for download")
 	}
@@ -290,15 +284,15 @@ func (wd *baseWorkload) download(ctx context.Context, url string) error {
 	return nil
 }
 
-func (wd *baseWorkload) Download(ctx context.Context) error {
+func (wd *baseWorkload) Download(ctx context.Context, imageCacheDir string) error {
 	if wd.opts.VMType != "qemu" {
 		return nil
 	}
 
-	return wd.download(ctx, wd.url)
+	return wd.download(ctx, wd.url, imageCacheDir)
 }
 
-func (cwd *clearWorkload) Download(ctx context.Context) error {
+func (cwd *clearWorkload) Download(ctx context.Context, imageCacheDir string) error {
 	resp, err := http.Get("https://download.clearlinux.org/latest")
 	if err != nil {
 		return errors.Wrap(err, "Error downloading clear version info")
@@ -315,14 +309,9 @@ func (cwd *clearWorkload) Download(ctx context.Context) error {
 	}
 	cwd.version = strings.TrimSpace(string(versionBytes))
 
-	icd, err := imageCacheDir()
-	if err != nil {
-		return errors.Wrap(err, "Error getting image cache directory")
-	}
-
 	// Check if already extracted file is present
 	fn := fmt.Sprintf("clear-%s-cloud.img", cwd.version)
-	fp := path.Join(icd, fn)
+	fp := path.Join(imageCacheDir, fn)
 	if _, err := os.Stat(fp); err == nil {
 		cwd.wd.localPath = fp
 		return nil
@@ -331,7 +320,7 @@ func (cwd *clearWorkload) Download(ctx context.Context) error {
 	}
 
 	url := fmt.Sprintf("https://download.clearlinux.org/releases/%s/clear/%s.xz", cwd.version, fn)
-	err = cwd.wd.download(ctx, url)
+	err = cwd.wd.download(ctx, url, imageCacheDir)
 	if err != nil {
 		return errors.Wrap(err, "Error downloading clear image")
 	}
