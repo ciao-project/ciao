@@ -19,12 +19,16 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"go/build"
 	"io/ioutil"
+	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -75,10 +79,55 @@ func (wkld *workload) save(ws *workspace) error {
 	return nil
 }
 
-func loadWorkloadData(ws *workspace, workloadName string) ([]byte, error) {
+func workloadFromURL(ctx context.Context, u url.URL) ([]byte, error) {
+	var workloadPath string
+
+	switch u.Scheme {
+	case "http", "https":
+		workloadFile, err := ioutil.TempFile("", ".workload")
+		if err != nil {
+			return nil, fmt.Errorf("Failed to create a temporal file: %s", err)
+		}
+
+		workloadPath = workloadFile.Name()
+		defer func() { _ = os.Remove(workloadPath) }()
+
+		// 60 seconds should be enough to download the workload file
+		ctx, cancelFunc := context.WithTimeout(ctx, 60*time.Second)
+		err = getFile(ctx, u.String(), workloadFile, downloadProgress)
+		cancelFunc()
+		if err != nil {
+			return nil, fmt.Errorf("Unable download workload file from %s: %v", u.String(), err)
+		}
+	case "file":
+		workloadPath = u.Path
+
+	default:
+		return nil, fmt.Errorf("Unable download workload file %s: unsupported scheme", u.String())
+	}
+
+	return ioutil.ReadFile(workloadPath)
+}
+
+func loadWorkloadData(ctx context.Context, ws *workspace, workloadName string) ([]byte, error) {
+	u, err := url.Parse(workloadName)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to parse workload name %s: %s", workloadName, err)
+	}
+
+	// Absolute means that it has a non-empty scheme
+	if u.IsAbs() {
+		return workloadFromURL(ctx, *u)
+	}
+
+	wkld, err := ioutil.ReadFile(workloadName)
+	if err == nil {
+		return wkld, nil
+	}
+
 	localPath := filepath.Join(ws.Home, ".ciao-down", "workloads",
 		fmt.Sprintf("%s.yaml", workloadName))
-	wkld, err := ioutil.ReadFile(localPath)
+	wkld, err = ioutil.ReadFile(localPath)
 	if err == nil {
 		return wkld, nil
 	}
@@ -113,8 +162,8 @@ func unmarshalWorkload(ws *workspace, wkld *workload, insSpec, insData,
 	return nil
 }
 
-func createWorkload(ws *workspace, workloadName string) (*workload, error) {
-	data, err := loadWorkloadData(ws, workloadName)
+func createWorkload(ctx context.Context, ws *workspace, workloadName string) (*workload, error) {
+	data, err := loadWorkloadData(ctx, ws, workloadName)
 	if err != nil {
 		return nil, err
 	}
