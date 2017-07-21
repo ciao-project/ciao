@@ -29,6 +29,7 @@ import (
 var allWorkloads bool
 var sshPublicKeyPath string
 var password string
+var imageCacheDirectory string
 
 // createBatWorkloadsCmd represents the create-bat-workloads command
 var createBatWorkloadsCmd = &cobra.Command{
@@ -57,7 +58,7 @@ var createBatWorkloadsCmd = &cobra.Command{
 			}
 		}
 
-		err = deploy.CreateBatWorkloads(ctx, allWorkloads, string(sshPublicKey), password)
+		err = deploy.CreateBatWorkloads(ctx, allWorkloads, string(sshPublicKey), password, imageCacheDirectory)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating BAT workloads: %s\n", err)
 			os.Exit(1)
@@ -72,4 +73,5 @@ func init() {
 	createBatWorkloadsCmd.Flags().BoolVar(&allWorkloads, "all-workloads", false, "Create extra workloads not required for BAT")
 	createBatWorkloadsCmd.Flags().StringVar(&sshPublicKeyPath, "ssh-public-key-file", "", "SSH public key to be injected into workloads (demouser)")
 	createBatWorkloadsCmd.Flags().StringVar(&password, "password", "", "Password to be injected into workloads (demouser)")
+	createBatWorkloadsCmd.Flags().StringVar(&imageCacheDirectory, "image-cache-directory", "", "Directory to use for caching of downloaded images")
 }
