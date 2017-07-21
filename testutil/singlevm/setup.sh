@@ -23,10 +23,6 @@ ciao_env="$ciao_bin/demo.sh"
 ciao_dir=/var/lib/ciao
 ciao_cnci_image="clear-8260-ciao-networking.img"
 ciao_cnci_url="https://download.clearlinux.org/demos/ciao"
-fedora_cloud_image="Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
-fedora_cloud_url="https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2"
-ubuntu_cloud_image="xenial-server-cloudimg-amd64-disk1.img"
-ubuntu_cloud_url="https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
 download=0
 all_images=0
 conf_file="$ciao_bin"/configuration.yaml
@@ -305,9 +301,15 @@ export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
 export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
 
 source $ciao_scripts/setup_images.sh
-source $ciao_scripts/setup_workloads.sh
 
-echo "---------------------------------------------------------------------------------------"
+workload_opts="--image-cache-directory=$HOME/local --password=$test_passwd --ssh-public-key-file=$workload_sshkey.pub"
+if [ $all_images -eq 1 ]
+then
+workload_opts="$workload_opts --all-workloads"
+fi
+ciao-deploy create-bat-workloads $workload_opts
+
+echo "--------------------------------------------------------"
 echo ""
 echo "Your ciao development environment has been initialised."
 echo "To get started run:"
