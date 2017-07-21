@@ -81,6 +81,7 @@ type workloadDetails interface {
 	Extra() bool
 	Upload(ctx context.Context) error
 	CreateWorkload(ctx context.Context, sshPublickey string, password string) error
+	Cleanup()
 }
 
 var images = []workloadDetails{
@@ -155,6 +156,19 @@ var images = []workloadDetails{
 	},
 }
 
+func cleanup() {
+	var wg sync.WaitGroup
+	fmt.Printf("Cleaning up after error\n")
+	for _, wd := range images {
+		wg.Add(1)
+		go func(wd workloadDetails) {
+			wd.Cleanup()
+			wg.Done()
+		}(wd)
+	}
+	wg.Wait()
+}
+
 // CreateBatWorkloads creates all necessary workloads to run BAT
 func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey string, password string) (errOut error) {
 	for _, wd := range images {
@@ -177,11 +191,15 @@ func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey str
 		wg.Add(1)
 		go func(wd workloadDetails) {
 			if err := wd.Upload(ctx); err != nil {
-				errOut = errors.Wrap(err, "Error uploading image")
+				if errOut == nil {
+					errOut = errors.Wrap(err, "Error uploading image")
+				}
 			}
 
 			if err := wd.CreateWorkload(ctx, sshPublickey, password); err != nil {
-				errOut = errors.Wrap(err, "Error creating workload")
+				if errOut == nil {
+					errOut = errors.Wrap(err, "Error creating workload")
+				}
 			}
 
 			wg.Done()
@@ -189,6 +207,10 @@ func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey str
 	}
 
 	wg.Wait()
+
+	if errOut != nil {
+		cleanup()
+	}
 
 	return errOut
 }
@@ -399,4 +421,25 @@ func (wd *baseWorkload) CreateWorkload(ctx context.Context, sshPublickey string,
 
 func (cwd *clearWorkload) CreateWorkload(ctx context.Context, sshPublickey string, password string) error {
 	return cwd.wd.CreateWorkload(ctx, sshPublickey, password)
+}
+
+func (wd *baseWorkload) Cleanup() {
+	if wd.downloaded {
+		_ = os.Remove(wd.localPath)
+	}
+
+	if wd.workloadID != "" {
+		_ = bat.DeleteWorkload(context.Background(), "", wd.workloadID)
+	}
+
+	if wd.imageID != "" {
+		_ = bat.DeleteImage(context.Background(), "", wd.imageID)
+	}
+}
+
+func (cwd *clearWorkload) Cleanup() {
+	if cwd.wd.downloaded {
+		_ = os.Remove(strings.TrimSuffix(cwd.wd.localPath, ".xz"))
+	}
+	cwd.wd.Cleanup()
 }
