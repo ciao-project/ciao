@@ -184,7 +184,7 @@ func createFlags(ctx context.Context, ws *workspace) (*workload, bool, error) {
 		return nil, false, err
 	}
 
-	in := &wkl.insData
+	in := &wkl.spec.VM
 	if memGiB != 0 {
 		in.MemGiB = memGiB
 	}
@@ -196,7 +196,7 @@ func createFlags(ctx context.Context, ws *workspace) (*workload, bool, error) {
 	in.mergePorts(p)
 
 	ws.Mounts = in.Mounts
-	ws.Hostname = wkl.insSpec.Hostname
+	ws.Hostname = wkl.spec.Hostname
 	if ws.NoProxy != "" {
 		ws.NoProxy = fmt.Sprintf("%s,%s", ws.Hostname, ws.NoProxy)
 	} else if ws.HTTPProxy != "" || ws.HTTPSProxy != "" {
@@ -207,7 +207,7 @@ func createFlags(ctx context.Context, ws *workspace) (*workload, bool, error) {
 	return wkl, debug, nil
 }
 
-func startFlags(in *instance) error {
+func startFlags(in *VMSpec) error {
 	var m mounts
 	var p ports
 
@@ -251,12 +251,12 @@ func create(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if wkld.insSpec.NeedsNestedVM && !hostSupportsNestedKVM() {
+	if wkld.spec.NeedsNestedVM && !hostSupportsNestedKVM() {
 		err = fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
 
-	in := &wkld.insData
+	in := &wkld.spec.VM
 	_, err = os.Stat(ws.instanceDir)
 	if err == nil {
 		err = fmt.Errorf("instance already exists")
@@ -289,8 +289,8 @@ func create(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	fmt.Printf("Downloading %s\n", wkld.insSpec.BaseImageName)
-	qcowPath, err := downloadFile(ctx, wkld.insSpec.BaseImageURL, ws.ciaoDir, downloadProgress)
+	fmt.Printf("Downloading %s\n", wkld.spec.BaseImageName)
+	qcowPath, err := downloadFile(ctx, wkld.spec.BaseImageURL, ws.ciaoDir, downloadProgress)
 	if err != nil {
 		return
 	}
@@ -332,7 +332,7 @@ func start(ctx context.Context, errCh chan error) {
 		errCh <- err
 		return
 	}
-	in := &wkld.insData
+	in := &wkld.spec.VM
 
 	memGiB, CPUs := getMemAndCpus()
 	if in.MemGiB == 0 {
@@ -348,7 +348,7 @@ func start(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	if wkld.insSpec.NeedsNestedVM && !hostSupportsNestedKVM() {
+	if wkld.spec.NeedsNestedVM && !hostSupportsNestedKVM() {
 		errCh <- fmt.Errorf("nested KVM is not enabled.  Please enable and try again")
 		return
 	}
@@ -418,7 +418,7 @@ func status(ctx context.Context, errCh chan error) {
 		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
-	in := &wkld.insData
+	in := &wkld.spec.VM
 
 	sshPort, err := in.sshPort()
 	if err != nil {
@@ -426,7 +426,7 @@ func status(ctx context.Context, errCh chan error) {
 		return
 	}
 
-	statusVM(ctx, ws.instanceDir, ws.keyPath, wkld.insSpec.WorkloadName,
+	statusVM(ctx, ws.instanceDir, ws.keyPath, wkld.spec.WorkloadName,
 		sshPort)
 	errCh <- err
 }
@@ -443,7 +443,7 @@ func connect(ctx context.Context, errCh chan error) {
 		errCh <- fmt.Errorf("Unable to load instance state: %v", err)
 		return
 	}
-	in := &wkld.insData
+	in := &wkld.spec.VM
 
 	path, err := exec.LookPath("ssh")
 	if err != nil {

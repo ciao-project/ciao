@@ -39,7 +39,7 @@ const (
 	urlParam          = "url"
 )
 
-func bootVM(ctx context.Context, ws *workspace, in *instance) error {
+func bootVM(ctx context.Context, ws *workspace, in *VMSpec) error {
 	disconnectedCh := make(chan struct{})
 	socket := path.Join(ws.instanceDir, "socket")
 	qmp, _, err := qemu.QMPStart(ctx, socket, qemu.QMPConfig{}, disconnectedCh)

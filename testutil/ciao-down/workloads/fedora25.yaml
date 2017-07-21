@@ -4,8 +4,6 @@ base_image_name: Fedora 25
 hostname: singlevm
 ...
 ---
-...
----
 #cloud-config
 write_files:
 {{with proxyEnv . 5}}

@@ -3,8 +3,6 @@ base_image_url: https://cloud-images.ubuntu.com/xenial/current/xenial-server-clo
 base_image_name: Ubuntu 16.04
 ...
 ---
-...
----
 {{- define "ENV" -}}
 {{proxyVars .}}
 {{- print " DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true " -}}

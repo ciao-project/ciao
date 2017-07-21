@@ -2,17 +2,16 @@
 base_image_url: https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img
 base_image_name: Ubuntu 16.04
 needs_nested_vm: true
-...
----
+vm:
 {{with .GoPath}}
-mounts:
-- tag: hostgo
-  security_model: passthrough
-  path: {{.}}
+  mounts:
+  - tag: hostgo
+    security_model: passthrough
+    path: {{.}}
 {{end}}
-ports:
-- host: 3000
-  guest: 3000
+  ports:
+  - host: 3000
+    guest: 3000
 ...
 ---
 {{- define "ENV" -}}
