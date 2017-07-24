@@ -123,8 +123,7 @@ func (d instanceData) Init() error {
 		name string,
 		foreign key(tenant_id) references tenants(id),
 		foreign key(workload_id) references workload_template(id),
-		unique(tenant_id, ip, mac_address),
-		unique(tenant_id, name)
+		unique(tenant_id, ip, mac_address)
 		);`
 
 	return d.ds.exec(d.db, cmd)
