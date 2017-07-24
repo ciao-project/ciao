@@ -96,17 +96,26 @@ func (c *CNCI) waitForEventTimeout(e event, timeout time.Duration) error {
 	}
 }
 
+// do sends on the eventCh non-blocking, because there might not
+// be anyone to receive the event.
+func (c *CNCI) sendNonBlockingEvent(e event) {
+	select {
+	case c.eventCh <- e:
+	default:
+	}
+}
+
 func (c *CNCI) transitionState(to CNCIState) {
 	transitionInstanceState(c.instance, (string(to)))
 
 	// some state changes cause events
 	switch to {
 	case exited:
-		c.eventCh <- removed
+		c.sendNonBlockingEvent(removed)
 	case active:
-		c.eventCh <- added
+		c.sendNonBlockingEvent(added)
 	case failed:
-		c.eventCh <- startFailure
+		c.sendNonBlockingEvent(startFailure)
 	}
 }
 
