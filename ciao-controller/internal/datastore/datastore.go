@@ -248,7 +248,7 @@ func (ds *Datastore) Init(config Config) error {
 
 	// cache our current tenants into a map that we can
 	// quickly index
-	tenants, err := ds.getTenants()
+	tenants, err := ds.db.getTenants()
 	if err != nil {
 		return errors.Wrap(err, "error getting tenants from database")
 	}
@@ -619,45 +619,12 @@ func (ds *Datastore) removeTenantCNCI(tenantID string) error {
 	return errors.Wrap(ds.db.updateTenant(tenant), "error updating tenant in database")
 }
 
-func (ds *Datastore) getTenants() ([]*tenant, error) {
-	var tenants []*tenant
-
-	// check the cache first
-	ds.tenantsLock.RLock()
-
-	if len(ds.tenants) > 0 {
-		for _, value := range ds.tenants {
-			tenants = append(tenants, value)
-		}
-
-		ds.tenantsLock.RUnlock()
-
-		return tenants, nil
-	}
-
-	ds.tenantsLock.RUnlock()
-
-	tenants, err := ds.db.getTenants()
-	return tenants, errors.Wrap(err, "error getting tenants from database")
-}
-
 // GetAllTenants returns all the tenants from the datastore.
 func (ds *Datastore) GetAllTenants() ([]*types.Tenant, error) {
 	var tenants []*types.Tenant
 
-	// yes, this makes it so we have to loop through
-	// tenants twice, but there probably aren't huge
-	// numbers of tenants. I'd rather reuse the code
-	// than make this more efficient at this point.
-	ts, err := ds.getTenants()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(ts) > 0 {
-		for _, value := range ts {
-			tenants = append(tenants, &value.Tenant)
-		}
+	for _, t := range ds.tenants {
+		tenants = append(tenants, &t.Tenant)
 	}
 
 	return tenants, nil
