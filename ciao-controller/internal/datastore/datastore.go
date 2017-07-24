@@ -452,19 +452,21 @@ func (ds *Datastore) DeleteWorkload(tenantID string, workloadID string) error {
 	defer ds.tenantsLock.Unlock()
 
 	t, ok := ds.tenants[tenantID]
-	if ok {
-		for i, wl := range t.workloads {
-			if wl.ID == workloadID {
-				// delete from persistent datastore.
-				err := ds.db.deleteWorkload(workloadID)
-				if err != nil {
-					return errors.Wrapf(err, "error deleting workload %v from database", wl.ID)
-				}
+	if !ok {
+		return types.ErrTenantNotFound
+	}
 
-				// delete from cache.
-				ds.tenants[tenantID].workloads = append(ds.tenants[tenantID].workloads[:i], ds.tenants[tenantID].workloads[i+1:]...)
-				return nil
+	for i, wl := range t.workloads {
+		if wl.ID == workloadID {
+			// delete from persistent datastore.
+			err := ds.db.deleteWorkload(workloadID)
+			if err != nil {
+				return errors.Wrapf(err, "error deleting workload %v from database", wl.ID)
 			}
+
+			// delete from cache.
+			ds.tenants[tenantID].workloads = append(ds.tenants[tenantID].workloads[:i], ds.tenants[tenantID].workloads[i+1:]...)
+			return nil
 		}
 	}
 
