@@ -845,6 +845,12 @@ func (ds *Datastore) GetAllInstancesByNode(nodeID string) ([]*types.Instance, er
 // AddInstance will store a new instance in the datastore.
 // The instance will be updated both in the cache and in the database
 func (ds *Datastore) AddInstance(instance *types.Instance) error {
+	err := ds.db.addInstance(instance)
+
+	if err != nil {
+		return errors.Wrap(err, "Error adding instance to database")
+	}
+
 	// add to cache
 	ds.instancesLock.Lock()
 
@@ -871,7 +877,7 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 	}
 	ds.tenantsLock.Unlock()
 
-	return errors.Wrap(ds.db.addInstance(instance), "Error adding instance to database")
+	return nil
 }
 
 // RestartFailure logs a RestartFailure in the datastore
