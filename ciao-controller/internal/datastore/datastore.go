@@ -1818,6 +1818,11 @@ func (ds *Datastore) getStorageAttachment(instanceID string, volumeID string) (t
 // DeleteStorageAttachment will delete the attachment with the associated ID
 // from the datastore.
 func (ds *Datastore) DeleteStorageAttachment(ID string) error {
+	err := errors.Wrapf(ds.db.deleteStorageAttachment(ID), "error deleting storage attachment (%v) from database", ID)
+	if err != nil {
+		return err
+	}
+
 	ds.attachLock.Lock()
 	a, ok := ds.attachments[ID]
 	if ok {
@@ -1835,7 +1840,7 @@ func (ds *Datastore) DeleteStorageAttachment(ID string) error {
 		return ErrNoStorageAttachment
 	}
 
-	return errors.Wrapf(ds.db.deleteStorageAttachment(ID), "error deleting storage attachment (%v) from database", ID)
+	return nil
 }
 
 // GetVolumeAttachments will return a list of attachments associated with
@@ -1994,10 +1999,7 @@ func (ds *Datastore) DeletePool(ID string) error {
 	}
 
 	// delete from persistent store
-	err := ds.db.deletePool(ID)
-	if err != nil {
-		return errors.Wrapf(err, "error deleting pool (%v) from database", ID)
-	}
+	err := errors.Wrapf(ds.db.deletePool(ID), "error deleting pool (%v) from database", ID)
 
 	// delete all subnets
 	for _, subnet := range p.Subnets {
@@ -2012,7 +2014,7 @@ func (ds *Datastore) DeletePool(ID string) error {
 	// delete the whole pool
 	delete(ds.pools, ID)
 
-	return nil
+	return err
 }
 
 // AddExternalSubnet will add a new subnet to an existing pool.
