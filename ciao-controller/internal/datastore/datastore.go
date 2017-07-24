@@ -888,9 +888,7 @@ func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFa
 	}
 
 	msg := fmt.Sprintf("Restart Failure %s: %s", instanceID, reason.String())
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 // StopFailure logs a StopFailure in the datastore
@@ -902,9 +900,7 @@ func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureR
 
 	msg := fmt.Sprintf("Stop Failure %s: %s", instanceID, reason.String())
 
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 // StartFailure will clean up after a failure to start an instance.
@@ -939,7 +935,7 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		err := ds.removeTenantCNCI(tenantID)
 
 		msg := fmt.Sprintf("CNCI Start Failure %s: %s", instanceID, reason.String())
-		ds.db.logEvent(tenantID, string(userError), msg)
+		_ = ds.db.logEvent(tenantID, string(userError), msg)
 
 		ds.cnciAddedLock.Lock()
 
@@ -963,13 +959,13 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 	}
 
 	if reason.IsFatal() && !migration {
-		ds.deleteInstance(instanceID)
+		if _, err := ds.deleteInstance(instanceID); err != nil {
+			return errors.Wrap(err, "Error deleting instance")
+		}
 	}
 
 	msg := fmt.Sprintf("Start Failure %s: %s", instanceID, reason.String())
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 // AttachVolumeFailure will clean up after a failure to attach a volume.
@@ -998,9 +994,7 @@ func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, rea
 
 	msg := fmt.Sprintf("Attach Volume Failure %s to %s: %s", volumeID, instanceID, reason.String())
 
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 // DetachVolumeFailure will clean up after a failure to detach a volume.
@@ -1032,8 +1026,7 @@ func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, rea
 
 	msg := fmt.Sprintf("Detach Volume Failure %s from %s: %s", volumeID, instanceID, reason.String())
 
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
@@ -1213,7 +1206,9 @@ func (ds *Datastore) GetNode(nodeID string) (types.Node, error) {
 // HandleStats makes sure that the data from the stat payload is stored.
 func (ds *Datastore) HandleStats(stat payloads.Stat) error {
 	if stat.Load != -1 {
-		ds.addNodeStat(stat)
+		if err := ds.addNodeStat(stat); err != nil {
+			return errors.Wrap(err, "error updating node stats")
+		}
 	}
 
 	return errors.Wrapf(ds.addInstanceStats(stat.Instances, stat.NodeUUID), "error updating stats")
@@ -1528,13 +1523,13 @@ func (ds *Datastore) ClearLog() error {
 }
 
 // LogEvent will add a message to the persistent event log.
-func (ds *Datastore) LogEvent(tenant string, msg string) {
-	ds.db.logEvent(tenant, string(userInfo), msg)
+func (ds *Datastore) LogEvent(tenant string, msg string) error {
+	return ds.db.logEvent(tenant, string(userInfo), msg)
 }
 
 // LogError will add a message to the persistent event log as an error
-func (ds *Datastore) LogError(tenant string, msg string) {
-	ds.db.logEvent(tenant, string(userError), msg)
+func (ds *Datastore) LogError(tenant string, msg string) error {
+	return ds.db.logEvent(tenant, string(userError), msg)
 }
 
 // AddBlockDevice will store information about new BlockData into
@@ -1653,14 +1648,14 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, volume payloads.
 	// ensure that the volume is marked in use as we have created an attachment
 	bd, err := ds.GetBlockDevice(volume.ID)
 	if err != nil {
-		ds.db.deleteStorageAttachment(a.ID)
+		_ = ds.db.deleteStorageAttachment(a.ID)
 		return types.StorageAttachment{}, errors.Wrapf(err, "error fetching block device (%v)", volume.ID)
 	}
 
 	bd.State = types.InUse
 	err = ds.UpdateBlockDevice(bd)
 	if err != nil {
-		ds.db.deleteStorageAttachment(a.ID)
+		_ = ds.db.deleteStorageAttachment(a.ID)
 		return types.StorageAttachment{}, errors.Wrapf(err, "error updating block device (%v)", volume.ID)
 	}
 
@@ -1960,7 +1955,7 @@ func (ds *Datastore) AddPool(pool types.Pool) error {
 
 	if err != nil {
 		// lock must not be held when calling.
-		ds.DeletePool(pool.ID)
+		_ = ds.DeletePool(pool.ID)
 	}
 
 	return errors.Wrap(err, "error adding pool to database")
