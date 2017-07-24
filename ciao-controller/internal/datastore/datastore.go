@@ -1037,6 +1037,11 @@ func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, rea
 }
 
 func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
+	if err := ds.db.deleteInstance(instanceID); err != nil {
+		glog.Warningf("error deleting instance (%v): %v", instanceID, err)
+		return "", errors.Wrapf(err, "error deleting instance from database (%v)", instanceID)
+	}
+
 	ds.instanceLastStatLock.Lock()
 	delete(ds.instanceLastStat, instanceID)
 	ds.instanceLastStatLock.Unlock()
@@ -1061,11 +1066,6 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 	}
 
 	var err error
-	if tmpErr := ds.db.deleteInstance(i.ID); tmpErr != nil {
-		glog.Warningf("error deleting instance (%v): %v", i.ID, err)
-		err = errors.Wrapf(tmpErr, "error deleting instance from database (%v)", i.ID)
-	}
-
 	if tmpErr := ds.ReleaseTenantIP(i.TenantID, i.IPAddress); tmpErr != nil {
 		glog.Warningf("error releasing IP for instance (%v): %v", i.ID, err)
 		if err == nil {
