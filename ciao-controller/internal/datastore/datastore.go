@@ -772,7 +772,10 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
 
 	ds.tenantsLock.Unlock()
 
-	go ds.db.claimTenantIP(tenantID, int(subnetInt), rest)
+	err := ds.db.claimTenantIP(tenantID, int(subnetInt), rest)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error claiming tenant IP in database")
+	}
 
 	// convert to IP type.
 	next := net.IPv4(172, subnetBytes[0], subnetBytes[1], byte(rest))
@@ -899,10 +902,7 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 	}
 	ds.tenantsLock.Unlock()
 
-	// update database asynchronously
-	go ds.db.addInstance(instance)
-
-	return nil
+	return errors.Wrap(ds.db.addInstance(instance), "Error adding instance to database")
 }
 
 // RestartFailure logs a RestartFailure in the datastore
@@ -1578,20 +1578,15 @@ func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 
 	// store persistently
 	if !update {
-		go ds.db.addBlockData(device)
-	} else {
-		go ds.db.updateBlockData(device)
+		return errors.Wrap(ds.db.addBlockData(device), "Error adding block data to database")
 	}
-
-	return nil
+	return errors.Wrap(ds.db.updateBlockData(device), "Error updating block data in database")
 }
 
 // DeleteBlockDevice will delete a volume from the datastore.
 // It also deletes it from the tenant's list of devices.
 func (ds *Datastore) DeleteBlockDevice(ID string) error {
 	// lock both tenants and devices maps
-	var err error
-
 	ds.bdLock.Lock()
 	ds.tenantsLock.Lock()
 
@@ -1605,12 +1600,9 @@ func (ds *Datastore) DeleteBlockDevice(ID string) error {
 	ds.bdLock.Unlock()
 
 	if ok {
-		go ds.db.deleteBlockData(ID)
-	} else {
-		err = ErrNoBlockData
+		return errors.Wrap(ds.db.deleteBlockData(ID), "Error deleting block data from database")
 	}
-
-	return err
+	return ErrNoBlockData
 }
 
 // GetBlockDevices will return all the BlockDevices associated with a tenant.
@@ -1805,7 +1797,10 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 			// ok for lock to be held here, but
 			// not needed as the db keeps it's
 			// own locks.
-			go ds.db.deleteStorageAttachment(ID)
+			err = ds.db.deleteStorageAttachment(ID)
+			if err != nil {
+				glog.Warningf("error updating storage attachments: %v", err)
+			}
 		}
 	}
 	ds.attachLock.Unlock()
