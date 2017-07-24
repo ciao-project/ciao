@@ -1537,6 +1537,21 @@ func (ds *Datastore) LogError(tenant string, msg string) error {
 func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	ds.bdLock.Lock()
 	_, update := ds.blockDevices[device.ID]
+	ds.bdLock.Unlock()
+
+	// store persistently
+	var err error
+	if !update {
+		err = errors.Wrap(ds.db.addBlockData(device), "Error adding block data to database")
+	} else {
+		err = errors.Wrap(ds.db.updateBlockData(device), "Error updating block data in database")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	ds.bdLock.Lock()
 	ds.blockDevices[device.ID] = device
 	ds.bdLock.Unlock()
 
@@ -1545,34 +1560,36 @@ func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	devices := ds.tenants[device.TenantID].devices
 	devices[device.ID] = device
 	ds.tenantsLock.Unlock()
-
-	// store persistently
-	if !update {
-		return errors.Wrap(ds.db.addBlockData(device), "Error adding block data to database")
-	}
-	return errors.Wrap(ds.db.updateBlockData(device), "Error updating block data in database")
+	return nil
 }
 
 // DeleteBlockDevice will delete a volume from the datastore.
 // It also deletes it from the tenant's list of devices.
 func (ds *Datastore) DeleteBlockDevice(ID string) error {
-	// lock both tenants and devices maps
+	ds.bdLock.Lock()
+	dev, ok := ds.blockDevices[ID]
+	if !ok {
+
+		ds.bdLock.Unlock()
+		return ErrNoBlockData
+	}
+	ds.bdLock.Unlock()
+
+	err := errors.Wrap(ds.db.deleteBlockData(ID), "Error deleting block data from database")
+	if err != nil {
+		return err
+	}
+
 	ds.bdLock.Lock()
 	ds.tenantsLock.Lock()
 
-	dev, ok := ds.blockDevices[ID]
-	if ok {
-		delete(ds.blockDevices, ID)
-		delete(ds.tenants[dev.TenantID].devices, ID)
-	}
+	delete(ds.blockDevices, ID)
+	delete(ds.tenants[dev.TenantID].devices, ID)
 
 	ds.tenantsLock.Unlock()
 	ds.bdLock.Unlock()
 
-	if ok {
-		return errors.Wrap(ds.db.deleteBlockData(ID), "Error deleting block data from database")
-	}
-	return ErrNoBlockData
+	return nil
 }
 
 // GetBlockDevices will return all the BlockDevices associated with a tenant.
