@@ -982,9 +982,11 @@ func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, rea
 		return errors.Wrapf(err, "error getting block device for volume (%v)", volumeID)
 	}
 
+	oldState := data.State
 	data.State = types.Available
 	err = ds.UpdateBlockDevice(data)
 	if err != nil {
+		data.State = oldState
 		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
 	}
 
@@ -1014,10 +1016,11 @@ func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, rea
 	// because controller wouldn't allow a detach if state
 	// wasn't initially InUse, we can blindly set this back
 	// to InUse.
-
+	oldState := data.State
 	data.State = types.InUse
 	err = ds.UpdateBlockDevice(data)
 	if err != nil {
+		data.State = oldState
 		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
 	}
 
