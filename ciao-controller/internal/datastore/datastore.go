@@ -1091,7 +1091,7 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 	if tmpErr := ds.ReleaseTenantIP(i.TenantID, i.IPAddress); tmpErr != nil {
 		glog.Warningf("error releasing IP for instance (%v): %v", i.ID, err)
 		if err == nil {
-			err = errors.Wrapf(err, "error releasing IP for instance (%v)", i.ID)
+			err = errors.Wrapf(tmpErr, "error releasing IP for instance (%v)", i.ID)
 		}
 	}
 
