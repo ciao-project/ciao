@@ -1086,12 +1086,22 @@ func (ds *Datastore) DeleteInstance(instanceID string) error {
 	}
 
 	msg := fmt.Sprintf("Deleted Instance %s", instanceID)
-	ds.db.logEvent(tenantID, string(userInfo), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(tenantID, string(userInfo), msg), "Error logging event")
 }
 
 func (ds *Datastore) updateInstanceStatus(status, instanceID string) error {
+	stats := []payloads.InstanceStat{
+		{
+			InstanceUUID: instanceID,
+			State:        status,
+		},
+	}
+
+	err := ds.db.addInstanceStats(stats, "")
+	if err != nil {
+		return errors.Wrapf(err, "error adding instance stats to database")
+	}
+
 	instanceStat := types.CiaoServerStats{
 		ID:        instanceID,
 		Timestamp: time.Now(),
@@ -1101,35 +1111,31 @@ func (ds *Datastore) updateInstanceStatus(status, instanceID string) error {
 	ds.instanceLastStat[instanceID] = instanceStat
 	ds.instanceLastStatLock.Unlock()
 
-	stats := []payloads.InstanceStat{
-		{
-			InstanceUUID: instanceID,
-			State:        status,
-		},
-	}
-
-	return errors.Wrapf(ds.db.addInstanceStats(stats, ""), "error adding instance stats to database")
+	return nil
 }
 
-func (ds *Datastore) restartInstance(instanceID string) error {
+// InstanceRestarting resets a restarting instance's state to pending.
+func (ds *Datastore) InstanceRestarting(instanceID string) error {
+	err := ds.updateInstanceStatus(payloads.Pending, instanceID)
+	if err != nil {
+		return errors.Wrap(err, "Error marking instance as restarting")
+	}
+
 	ds.instancesLock.Lock()
 	i := ds.instances[instanceID]
 	i.State = payloads.Pending
 	ds.instancesLock.Unlock()
 
-	return ds.updateInstanceStatus(payloads.Pending, instanceID)
-}
-
-// RestartInstance resets a restarting instance's state to pending.
-func (ds *Datastore) RestartInstance(instanceID string) error {
-	err := ds.restartInstance(instanceID)
-	if err != nil {
-		return errors.Wrapf(err, "error restarting instance")
-	}
 	return nil
 }
 
-func (ds *Datastore) stopInstance(instanceID string) error {
+// InstanceStopped removes the link between an instance and its node
+func (ds *Datastore) InstanceStopped(instanceID string) error {
+	err := ds.updateInstanceStatus(payloads.Exited, instanceID)
+	if err != nil {
+		return errors.Wrap(err, "Error marked instance as stopped")
+	}
+
 	ds.instancesLock.Lock()
 	i := ds.instances[instanceID]
 	oldNodeID := i.NodeID
@@ -1144,15 +1150,6 @@ func (ds *Datastore) stopInstance(instanceID string) error {
 		ds.nodesLock.Unlock()
 	}
 
-	return ds.updateInstanceStatus(payloads.Exited, instanceID)
-}
-
-// StopInstance removes the link between an instance and its node
-func (ds *Datastore) StopInstance(instanceID string) error {
-	err := ds.stopInstance(instanceID)
-	if err != nil {
-		return errors.Wrapf(err, "error stopping instance")
-	}
 	return nil
 }
 
