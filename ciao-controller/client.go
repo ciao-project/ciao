@@ -150,7 +150,7 @@ func (client *ssntpClient) instanceStopped(payload []byte) {
 	}
 }
 
-func (client *ssntpClient) instanceAdded(payload []byte) {
+func (client *ssntpClient) concentratorInstanceAdded(payload []byte) {
 	var event payloads.EventConcentratorInstanceAdded
 	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
@@ -260,7 +260,7 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 		client.instanceStopped(payload)
 
 	case ssntp.ConcentratorInstanceAdded:
-		client.instanceAdded(payload)
+		client.concentratorInstanceAdded(payload)
 
 	case ssntp.TraceReport:
 		client.traceReport(payload)
