@@ -226,26 +226,28 @@ func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey str
 	return errOut
 }
 
-func (wd *baseWorkload) download(ctx context.Context, url string, imageCacheDir string) error {
+// DownloadImage checks for a cached image in the cache directory and downloads
+// otherwise. The returned string is the path to the file and the boolean
+// indicates if it was downloaded on this function call.
+func DownloadImage(ctx context.Context, url string, imageCacheDir string) (string, bool, error) {
 	ss := strings.Split(url, "/")
 	localName := ss[len(ss)-1]
 
 	imagePath := path.Join(imageCacheDir, localName)
 	if _, err := os.Stat(imagePath); err == nil {
-		wd.localPath = imagePath
-		fmt.Printf("Using already downloaded image: %s\n", wd.localPath)
-		return nil
+		fmt.Printf("Using already downloaded image: %s\n", imagePath)
+		return imagePath, false, nil
 	} else if !os.IsNotExist(err) {
-		return errors.Wrap(err, "Error when stat()ing expected image path")
+		return "", false, errors.Wrap(err, "Error when stat()ing expected image path")
 	}
 
 	if err := os.MkdirAll(imageCacheDir, 0755); err != nil {
-		return errors.Wrap(err, "Unable to create image cache directory")
+		return "", false, errors.Wrap(err, "Unable to create image cache directory")
 	}
 
 	f, err := ioutil.TempFile(imageCacheDir, localName)
 	if err != nil {
-		return errors.Wrap(err, "Unable to create temporary file for download")
+		return "", false, errors.Wrap(err, "Unable to create temporary file for download")
 	}
 	defer func() { _ = f.Close() }()
 	defer func() { _ = os.Remove(f.Name()) }()
@@ -253,34 +255,42 @@ func (wd *baseWorkload) download(ctx context.Context, url string, imageCacheDir 
 	fmt.Printf("Downloading: %s\n", url)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return errors.Wrap(err, "Error creating HTTP request")
+		return "", false, errors.Wrap(err, "Error creating HTTP request")
 	}
 	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
+		return "", false, errors.Wrap(err, "Error making HTTP request")
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Unexpected status when downloading URL: %s: %s", url, resp.Status)
+		return "", false, fmt.Errorf("Unexpected status when downloading URL: %s: %s", url, resp.Status)
 	}
 
 	buf := make([]byte, 1<<20)
 	_, err = io.CopyBuffer(f, resp.Body, buf)
 	if err != nil {
-		return errors.Wrap(err, "Error copying from HTTP response to file")
+		return "", false, errors.Wrap(err, "Error copying from HTTP response to file")
 	}
 
-	wd.localPath = imagePath
-	if err := os.Rename(f.Name(), wd.localPath); err != nil {
-		return errors.Wrap(err, "Error moving downloaded image to destination")
+	if err := os.Rename(f.Name(), imagePath); err != nil {
+		return "", false, errors.Wrap(err, "Error moving downloaded image to destination")
 	}
 
 	fmt.Printf("Image downloaded to %s\n", imagePath)
 
-	wd.downloaded = true // for later cleanup
+	return imagePath, true, nil
+}
+
+func (wd *baseWorkload) download(ctx context.Context, url string, imageCacheDir string) error {
+	localPath, downloaded, err := DownloadImage(ctx, url, imageCacheDir)
+	if err != nil {
+		return err
+	}
+	wd.localPath = localPath
+	wd.downloaded = downloaded
 	return nil
 }
 
