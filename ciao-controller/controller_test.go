@@ -143,19 +143,7 @@ func addComputeTestTenant() (tenant *types.Tenant, err error) {
 func BenchmarkStartSingleWorkload(b *testing.B) {
 	var err error
 
-	/* add a new tenant */
-	tuuid := uuid.Generate()
-	tenant, err := ctl.ds.AddTenant(tuuid.String())
-	if err != nil {
-		b.Error(err)
-	}
-
-	// Add fake CNCI
-	err = ctl.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
-	if err != nil {
-		b.Error(err)
-	}
-	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+	tenant, err := addTestTenant()
 	if err != nil {
 		b.Error(err)
 	}
@@ -170,7 +158,7 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		w := types.WorkloadRequest{
 			WorkloadID: wls[0].ID,
-			TenantID:   tuuid.String(),
+			TenantID:   tenant.ID,
 			Instances:  1,
 		}
 		_, err = ctl.startWorkload(w)
@@ -183,19 +171,7 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 func BenchmarkStart1000Workload(b *testing.B) {
 	var err error
 
-	/* add a new tenant */
-	tuuid := uuid.Generate()
-	tenant, err := ctl.ds.AddTenant(tuuid.String())
-	if err != nil {
-		b.Error(err)
-	}
-
-	// Add fake CNCI
-	err = ctl.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
-	if err != nil {
-		b.Error(err)
-	}
-	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+	tenant, err := addTestTenant()
 	if err != nil {
 		b.Error(err)
 	}
@@ -210,7 +186,7 @@ func BenchmarkStart1000Workload(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		w := types.WorkloadRequest{
 			WorkloadID: wls[0].ID,
-			TenantID:   tuuid.String(),
+			TenantID:   tenant.ID,
 			Instances:  1000,
 		}
 		_, err = ctl.startWorkload(w)
