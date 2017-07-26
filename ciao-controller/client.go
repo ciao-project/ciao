@@ -144,13 +144,13 @@ func (client *ssntpClient) instanceStopped(payload []byte) {
 		return
 	}
 	glog.Infof("Stopped instance %s", event.InstanceStopped.InstanceUUID)
-	err = client.ctl.ds.StopInstance(event.InstanceStopped.InstanceUUID)
+	err = client.ctl.ds.InstanceStopped(event.InstanceStopped.InstanceUUID)
 	if err != nil {
 		glog.Warningf("Error stopping instance from datastore: %v", err)
 	}
 }
 
-func (client *ssntpClient) instanceAdded(payload []byte) {
+func (client *ssntpClient) concentratorInstanceAdded(payload []byte) {
 	var event payloads.EventConcentratorInstanceAdded
 	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
@@ -260,7 +260,7 @@ func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
 		client.instanceStopped(payload)
 
 	case ssntp.ConcentratorInstanceAdded:
-		client.instanceAdded(payload)
+		client.concentratorInstanceAdded(payload)
 
 	case ssntp.TraceReport:
 		client.traceReport(payload)
@@ -496,7 +496,7 @@ func (client *ssntpClient) StopInstance(instanceID string, nodeID string) error 
 func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 	t *types.Tenant) error {
 
-	err := client.ctl.ds.RestartInstance(i.ID)
+	err := client.ctl.ds.InstanceRestarting(i.ID)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to update instance state before restarting")
 	}

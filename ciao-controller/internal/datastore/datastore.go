@@ -248,7 +248,7 @@ func (ds *Datastore) Init(config Config) error {
 
 	// cache our current tenants into a map that we can
 	// quickly index
-	tenants, err := ds.getTenants()
+	tenants, err := ds.db.getTenants()
 	if err != nil {
 		return errors.Wrap(err, "error getting tenants from database")
 	}
@@ -452,19 +452,21 @@ func (ds *Datastore) DeleteWorkload(tenantID string, workloadID string) error {
 	defer ds.tenantsLock.Unlock()
 
 	t, ok := ds.tenants[tenantID]
-	if ok {
-		for i, wl := range t.workloads {
-			if wl.ID == workloadID {
-				// delete from persistent datastore.
-				err := ds.db.deleteWorkload(workloadID)
-				if err != nil {
-					return errors.Wrapf(err, "error deleting workload %v from database", wl.ID)
-				}
+	if !ok {
+		return types.ErrTenantNotFound
+	}
 
-				// delete from cache.
-				ds.tenants[tenantID].workloads = append(ds.tenants[tenantID].workloads[:i], ds.tenants[tenantID].workloads[i+1:]...)
-				return nil
+	for i, wl := range t.workloads {
+		if wl.ID == workloadID {
+			// delete from persistent datastore.
+			err := ds.db.deleteWorkload(workloadID)
+			if err != nil {
+				return errors.Wrapf(err, "error deleting workload %v from database", wl.ID)
 			}
+
+			// delete from cache.
+			ds.tenants[tenantID].workloads = append(ds.tenants[tenantID].workloads[:i], ds.tenants[tenantID].workloads[i+1:]...)
+			return nil
 		}
 	}
 
@@ -617,45 +619,12 @@ func (ds *Datastore) removeTenantCNCI(tenantID string) error {
 	return errors.Wrap(ds.db.updateTenant(tenant), "error updating tenant in database")
 }
 
-func (ds *Datastore) getTenants() ([]*tenant, error) {
-	var tenants []*tenant
-
-	// check the cache first
-	ds.tenantsLock.RLock()
-
-	if len(ds.tenants) > 0 {
-		for _, value := range ds.tenants {
-			tenants = append(tenants, value)
-		}
-
-		ds.tenantsLock.RUnlock()
-
-		return tenants, nil
-	}
-
-	ds.tenantsLock.RUnlock()
-
-	tenants, err := ds.db.getTenants()
-	return tenants, errors.Wrap(err, "error getting tenants from database")
-}
-
 // GetAllTenants returns all the tenants from the datastore.
 func (ds *Datastore) GetAllTenants() ([]*types.Tenant, error) {
 	var tenants []*types.Tenant
 
-	// yes, this makes it so we have to loop through
-	// tenants twice, but there probably aren't huge
-	// numbers of tenants. I'd rather reuse the code
-	// than make this more efficient at this point.
-	ts, err := ds.getTenants()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(ts) > 0 {
-		for _, value := range ts {
-			tenants = append(tenants, &value.Tenant)
-		}
+	for _, t := range ds.tenants {
+		tenants = append(tenants, &t.Tenant)
 	}
 
 	return tenants, nil
@@ -772,7 +741,10 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
 
 	ds.tenantsLock.Unlock()
 
-	go ds.db.claimTenantIP(tenantID, int(subnetInt), rest)
+	err := ds.db.claimTenantIP(tenantID, int(subnetInt), rest)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error claiming tenant IP in database")
+	}
 
 	// convert to IP type.
 	next := net.IPv4(172, subnetBytes[0], subnetBytes[1], byte(rest))
@@ -873,6 +845,12 @@ func (ds *Datastore) GetAllInstancesByNode(nodeID string) ([]*types.Instance, er
 // AddInstance will store a new instance in the datastore.
 // The instance will be updated both in the cache and in the database
 func (ds *Datastore) AddInstance(instance *types.Instance) error {
+	err := ds.db.addInstance(instance)
+
+	if err != nil {
+		return errors.Wrap(err, "Error adding instance to database")
+	}
+
 	// add to cache
 	ds.instancesLock.Lock()
 
@@ -899,9 +877,6 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 	}
 	ds.tenantsLock.Unlock()
 
-	// update database asynchronously
-	go ds.db.addInstance(instance)
-
 	return nil
 }
 
@@ -913,9 +888,7 @@ func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFa
 	}
 
 	msg := fmt.Sprintf("Restart Failure %s: %s", instanceID, reason.String())
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 // StopFailure logs a StopFailure in the datastore
@@ -927,9 +900,7 @@ func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureR
 
 	msg := fmt.Sprintf("Stop Failure %s: %s", instanceID, reason.String())
 
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 // StartFailure will clean up after a failure to start an instance.
@@ -964,7 +935,7 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		err := ds.removeTenantCNCI(tenantID)
 
 		msg := fmt.Sprintf("CNCI Start Failure %s: %s", instanceID, reason.String())
-		ds.db.logEvent(tenantID, string(userError), msg)
+		_ = ds.db.logEvent(tenantID, string(userError), msg)
 
 		ds.cnciAddedLock.Lock()
 
@@ -988,13 +959,13 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 	}
 
 	if reason.IsFatal() && !migration {
-		ds.deleteInstance(instanceID)
+		if _, err := ds.deleteInstance(instanceID); err != nil {
+			return errors.Wrap(err, "Error deleting instance")
+		}
 	}
 
 	msg := fmt.Sprintf("Start Failure %s: %s", instanceID, reason.String())
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 // AttachVolumeFailure will clean up after a failure to attach a volume.
@@ -1007,9 +978,11 @@ func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, rea
 		return errors.Wrapf(err, "error getting block device for volume (%v)", volumeID)
 	}
 
+	oldState := data.State
 	data.State = types.Available
 	err = ds.UpdateBlockDevice(data)
 	if err != nil {
+		data.State = oldState
 		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
 	}
 
@@ -1021,9 +994,7 @@ func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, rea
 
 	msg := fmt.Sprintf("Attach Volume Failure %s to %s: %s", volumeID, instanceID, reason.String())
 
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 // DetachVolumeFailure will clean up after a failure to detach a volume.
@@ -1039,10 +1010,11 @@ func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, rea
 	// because controller wouldn't allow a detach if state
 	// wasn't initially InUse, we can blindly set this back
 	// to InUse.
-
+	oldState := data.State
 	data.State = types.InUse
 	err = ds.UpdateBlockDevice(data)
 	if err != nil {
+		data.State = oldState
 		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
 	}
 
@@ -1054,11 +1026,15 @@ func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, rea
 
 	msg := fmt.Sprintf("Detach Volume Failure %s from %s: %s", volumeID, instanceID, reason.String())
 
-	ds.db.logEvent(i.TenantID, string(userError), msg)
-	return nil
+	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
 }
 
 func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
+	if err := ds.db.deleteInstance(instanceID); err != nil {
+		glog.Warningf("error deleting instance (%v): %v", instanceID, err)
+		return "", errors.Wrapf(err, "error deleting instance from database (%v)", instanceID)
+	}
+
 	ds.instanceLastStatLock.Lock()
 	delete(ds.instanceLastStat, instanceID)
 	ds.instanceLastStatLock.Unlock()
@@ -1083,15 +1059,10 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 	}
 
 	var err error
-	if tmpErr := ds.db.deleteInstance(i.ID); tmpErr != nil {
-		glog.Warningf("error deleting instance (%v): %v", i.ID, err)
-		err = errors.Wrapf(tmpErr, "error deleting instance from database (%v)", i.ID)
-	}
-
 	if tmpErr := ds.ReleaseTenantIP(i.TenantID, i.IPAddress); tmpErr != nil {
 		glog.Warningf("error releasing IP for instance (%v): %v", i.ID, err)
 		if err == nil {
-			err = errors.Wrapf(err, "error releasing IP for instance (%v)", i.ID)
+			err = errors.Wrapf(tmpErr, "error releasing IP for instance (%v)", i.ID)
 		}
 	}
 
@@ -1108,12 +1079,22 @@ func (ds *Datastore) DeleteInstance(instanceID string) error {
 	}
 
 	msg := fmt.Sprintf("Deleted Instance %s", instanceID)
-	ds.db.logEvent(tenantID, string(userInfo), msg)
-
-	return nil
+	return errors.Wrap(ds.db.logEvent(tenantID, string(userInfo), msg), "Error logging event")
 }
 
 func (ds *Datastore) updateInstanceStatus(status, instanceID string) error {
+	stats := []payloads.InstanceStat{
+		{
+			InstanceUUID: instanceID,
+			State:        status,
+		},
+	}
+
+	err := ds.db.addInstanceStats(stats, "")
+	if err != nil {
+		return errors.Wrapf(err, "error adding instance stats to database")
+	}
+
 	instanceStat := types.CiaoServerStats{
 		ID:        instanceID,
 		Timestamp: time.Now(),
@@ -1123,35 +1104,31 @@ func (ds *Datastore) updateInstanceStatus(status, instanceID string) error {
 	ds.instanceLastStat[instanceID] = instanceStat
 	ds.instanceLastStatLock.Unlock()
 
-	stats := []payloads.InstanceStat{
-		{
-			InstanceUUID: instanceID,
-			State:        status,
-		},
-	}
-
-	return errors.Wrapf(ds.db.addInstanceStats(stats, ""), "error adding instance stats to database")
+	return nil
 }
 
-func (ds *Datastore) restartInstance(instanceID string) error {
+// InstanceRestarting resets a restarting instance's state to pending.
+func (ds *Datastore) InstanceRestarting(instanceID string) error {
+	err := ds.updateInstanceStatus(payloads.Pending, instanceID)
+	if err != nil {
+		return errors.Wrap(err, "Error marking instance as restarting")
+	}
+
 	ds.instancesLock.Lock()
 	i := ds.instances[instanceID]
 	i.State = payloads.Pending
 	ds.instancesLock.Unlock()
 
-	return ds.updateInstanceStatus(payloads.Pending, instanceID)
-}
-
-// RestartInstance resets a restarting instance's state to pending.
-func (ds *Datastore) RestartInstance(instanceID string) error {
-	err := ds.restartInstance(instanceID)
-	if err != nil {
-		return errors.Wrapf(err, "error restarting instance")
-	}
 	return nil
 }
 
-func (ds *Datastore) stopInstance(instanceID string) error {
+// InstanceStopped removes the link between an instance and its node
+func (ds *Datastore) InstanceStopped(instanceID string) error {
+	err := ds.updateInstanceStatus(payloads.Exited, instanceID)
+	if err != nil {
+		return errors.Wrap(err, "Error marked instance as stopped")
+	}
+
 	ds.instancesLock.Lock()
 	i := ds.instances[instanceID]
 	oldNodeID := i.NodeID
@@ -1166,15 +1143,6 @@ func (ds *Datastore) stopInstance(instanceID string) error {
 		ds.nodesLock.Unlock()
 	}
 
-	return ds.updateInstanceStatus(payloads.Exited, instanceID)
-}
-
-// StopInstance removes the link between an instance and its node
-func (ds *Datastore) StopInstance(instanceID string) error {
-	err := ds.stopInstance(instanceID)
-	if err != nil {
-		return errors.Wrapf(err, "error stopping instance")
-	}
 	return nil
 }
 
@@ -1238,7 +1206,9 @@ func (ds *Datastore) GetNode(nodeID string) (types.Node, error) {
 // HandleStats makes sure that the data from the stat payload is stored.
 func (ds *Datastore) HandleStats(stat payloads.Stat) error {
 	if stat.Load != -1 {
-		ds.addNodeStat(stat)
+		if err := ds.addNodeStat(stat); err != nil {
+			return errors.Wrap(err, "error updating node stats")
+		}
 	}
 
 	return errors.Wrapf(ds.addInstanceStats(stat.Instances, stat.NodeUUID), "error updating stats")
@@ -1553,13 +1523,13 @@ func (ds *Datastore) ClearLog() error {
 }
 
 // LogEvent will add a message to the persistent event log.
-func (ds *Datastore) LogEvent(tenant string, msg string) {
-	ds.db.logEvent(tenant, string(userInfo), msg)
+func (ds *Datastore) LogEvent(tenant string, msg string) error {
+	return ds.db.logEvent(tenant, string(userInfo), msg)
 }
 
 // LogError will add a message to the persistent event log as an error
-func (ds *Datastore) LogError(tenant string, msg string) {
-	ds.db.logEvent(tenant, string(userError), msg)
+func (ds *Datastore) LogError(tenant string, msg string) error {
+	return ds.db.logEvent(tenant, string(userError), msg)
 }
 
 // AddBlockDevice will store information about new BlockData into
@@ -1567,6 +1537,21 @@ func (ds *Datastore) LogError(tenant string, msg string) {
 func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	ds.bdLock.Lock()
 	_, update := ds.blockDevices[device.ID]
+	ds.bdLock.Unlock()
+
+	// store persistently
+	var err error
+	if !update {
+		err = errors.Wrap(ds.db.addBlockData(device), "Error adding block data to database")
+	} else {
+		err = errors.Wrap(ds.db.updateBlockData(device), "Error updating block data in database")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	ds.bdLock.Lock()
 	ds.blockDevices[device.ID] = device
 	ds.bdLock.Unlock()
 
@@ -1575,42 +1560,36 @@ func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
 	devices := ds.tenants[device.TenantID].devices
 	devices[device.ID] = device
 	ds.tenantsLock.Unlock()
-
-	// store persistently
-	if !update {
-		go ds.db.addBlockData(device)
-	} else {
-		go ds.db.updateBlockData(device)
-	}
-
 	return nil
 }
 
 // DeleteBlockDevice will delete a volume from the datastore.
 // It also deletes it from the tenant's list of devices.
 func (ds *Datastore) DeleteBlockDevice(ID string) error {
-	// lock both tenants and devices maps
-	var err error
+	ds.bdLock.Lock()
+	dev, ok := ds.blockDevices[ID]
+	if !ok {
+
+		ds.bdLock.Unlock()
+		return ErrNoBlockData
+	}
+	ds.bdLock.Unlock()
+
+	err := errors.Wrap(ds.db.deleteBlockData(ID), "Error deleting block data from database")
+	if err != nil {
+		return err
+	}
 
 	ds.bdLock.Lock()
 	ds.tenantsLock.Lock()
 
-	dev, ok := ds.blockDevices[ID]
-	if ok {
-		delete(ds.blockDevices, ID)
-		delete(ds.tenants[dev.TenantID].devices, ID)
-	}
+	delete(ds.blockDevices, ID)
+	delete(ds.tenants[dev.TenantID].devices, ID)
 
 	ds.tenantsLock.Unlock()
 	ds.bdLock.Unlock()
 
-	if ok {
-		go ds.db.deleteBlockData(ID)
-	} else {
-		err = ErrNoBlockData
-	}
-
-	return err
+	return nil
 }
 
 // GetBlockDevices will return all the BlockDevices associated with a tenant.
@@ -1686,14 +1665,14 @@ func (ds *Datastore) CreateStorageAttachment(instanceID string, volume payloads.
 	// ensure that the volume is marked in use as we have created an attachment
 	bd, err := ds.GetBlockDevice(volume.ID)
 	if err != nil {
-		ds.db.deleteStorageAttachment(a.ID)
+		_ = ds.db.deleteStorageAttachment(a.ID)
 		return types.StorageAttachment{}, errors.Wrapf(err, "error fetching block device (%v)", volume.ID)
 	}
 
 	bd.State = types.InUse
 	err = ds.UpdateBlockDevice(bd)
 	if err != nil {
-		ds.db.deleteStorageAttachment(a.ID)
+		_ = ds.db.deleteStorageAttachment(a.ID)
 		return types.StorageAttachment{}, errors.Wrapf(err, "error updating block device (%v)", volume.ID)
 	}
 
@@ -1805,7 +1784,10 @@ func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []strin
 			// ok for lock to be held here, but
 			// not needed as the db keeps it's
 			// own locks.
-			go ds.db.deleteStorageAttachment(ID)
+			err = ds.db.deleteStorageAttachment(ID)
+			if err != nil {
+				glog.Warningf("error updating storage attachments: %v", err)
+			}
 		}
 	}
 	ds.attachLock.Unlock()
@@ -1836,6 +1818,11 @@ func (ds *Datastore) getStorageAttachment(instanceID string, volumeID string) (t
 // DeleteStorageAttachment will delete the attachment with the associated ID
 // from the datastore.
 func (ds *Datastore) DeleteStorageAttachment(ID string) error {
+	err := errors.Wrapf(ds.db.deleteStorageAttachment(ID), "error deleting storage attachment (%v) from database", ID)
+	if err != nil {
+		return err
+	}
+
 	ds.attachLock.Lock()
 	a, ok := ds.attachments[ID]
 	if ok {
@@ -1853,7 +1840,7 @@ func (ds *Datastore) DeleteStorageAttachment(ID string) error {
 		return ErrNoStorageAttachment
 	}
 
-	return errors.Wrapf(ds.db.deleteStorageAttachment(ID), "error deleting storage attachment (%v) from database", ID)
+	return nil
 }
 
 // GetVolumeAttachments will return a list of attachments associated with
@@ -1990,7 +1977,7 @@ func (ds *Datastore) AddPool(pool types.Pool) error {
 
 	if err != nil {
 		// lock must not be held when calling.
-		ds.DeletePool(pool.ID)
+		_ = ds.DeletePool(pool.ID)
 	}
 
 	return errors.Wrap(err, "error adding pool to database")
@@ -2012,10 +1999,7 @@ func (ds *Datastore) DeletePool(ID string) error {
 	}
 
 	// delete from persistent store
-	err := ds.db.deletePool(ID)
-	if err != nil {
-		return errors.Wrapf(err, "error deleting pool (%v) from database", ID)
-	}
+	err := errors.Wrapf(ds.db.deletePool(ID), "error deleting pool (%v) from database", ID)
 
 	// delete all subnets
 	for _, subnet := range p.Subnets {
@@ -2030,7 +2014,7 @@ func (ds *Datastore) DeletePool(ID string) error {
 	// delete the whole pool
 	delete(ds.pools, ID)
 
-	return nil
+	return err
 }
 
 // AddExternalSubnet will add a new subnet to an existing pool.

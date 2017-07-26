@@ -1128,6 +1128,7 @@ func TestSQLiteDBUpdateQuotas(t *testing.T) {
 }
 
 func TestInstanceNameConstraint(t *testing.T) {
+	t.Skip("Name constraint not currently enforced #1365")
 	db, err := getPersistentStore()
 	if err != nil {
 		t.Fatal(err)
