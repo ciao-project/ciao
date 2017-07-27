@@ -59,5 +59,5 @@ func init() {
 
 	createCNCICmd.Flags().StringVar(&anchorCertPath, "anchor-cert-path", "", "Path to anchor certificate")
 	createCNCICmd.Flags().StringVar(&caCertPath, "ca-cert-path", "", "Path to CA certificate")
-	createCNCICmd.Flags().StringVar(&imageCacheDirectory, "image-cache-directory", "", "Directory to use for caching of downloaded images")
+	createCNCICmd.Flags().StringVar(&imageCacheDirectory, "image-cache-directory", deploy.DefaultImageCacheDir(), "Directory to use for caching of downloaded images")
 }

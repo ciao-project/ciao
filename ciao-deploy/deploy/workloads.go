@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/user"
 	"path"
 	"strings"
 	"sync"
@@ -171,15 +170,6 @@ func cleanup() {
 
 // CreateBatWorkloads creates all necessary workloads to run BAT
 func CreateBatWorkloads(ctx context.Context, allWorkloads bool, sshPublickey string, password string, imageCacheDir string) (errOut error) {
-	if imageCacheDir == "" {
-		u, err := user.Current()
-		if err != nil {
-			return errors.Wrap(err, "Unable to get user home directory")
-		}
-
-		imageCacheDir = path.Join(u.HomeDir, ".cache", "ciao", "images")
-	}
-
 	for _, wd := range images {
 		if wd.Extra() && !allWorkloads {
 			continue

@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"os/user"
 	"path"
 	"path/filepath"
 	"strings"
@@ -224,15 +223,6 @@ func generateAgentCert(anchorCertPath string) (path string, errOut error) {
 
 // CreateCNCIImage creates a customised CNCI image in the system
 func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath string, imageCacheDir string) (errOut error) {
-	if imageCacheDir == "" {
-		u, err := user.Current()
-		if err != nil {
-			return errors.Wrap(err, "Unable to get user home directory")
-		}
-
-		imageCacheDir = path.Join(u.HomeDir, ".cache", "ciao", "images")
-	}
-
 	agentCertPath, err := generateAgentCert(anchorCertPath)
 	if err != nil {
 		return errors.Wrap(err, "Error creating agent certificate")
