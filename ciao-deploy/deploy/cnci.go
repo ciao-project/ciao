@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/01org/ciao/bat"
@@ -32,12 +31,6 @@ import (
 
 var cnciURL = "https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz"
 var cnciImageID = "4e16e743-265a-4bf2-9fd1-57ada0b28904"
-
-// SudoCommandContext runs the given command with root privileges
-func SudoCommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
-	newArgs := append([]string{name}, args...)
-	return exec.CommandContext(ctx, "sudo", newArgs...)
-}
 
 func mountImage(ctx context.Context, fp string, mntDir string) (string, error) {
 	cmd := SudoCommandContext(ctx, "losetup", "-f", "--show", "-P", fp)
@@ -262,41 +255,4 @@ func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath stri
 	fmt.Printf("CNCI image uploaded as %s\n", i.ID)
 
 	return nil
-}
-
-// SudoCopyFile copies the file from the source to dest as root
-func SudoCopyFile(ctx context.Context, dest string, src string) error {
-	cmd := SudoCommandContext(ctx, "cp", src, dest)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "Error running: %v", cmd.Args)
-	}
-	return nil
-}
-
-// SudoMakeDirectory creates the desired directory hiearchy as root
-func SudoMakeDirectory(ctx context.Context, dest string) error {
-	cmd := SudoCommandContext(ctx, "mkdir", "-p", dest)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "Error running: %v", cmd.Args)
-	}
-	return nil
-}
-
-// SudoRemoveDirectory deletes the directory hiearchy as root
-func SudoRemoveDirectory(ctx context.Context, dest string) error {
-	cmd := SudoCommandContext(ctx, "rm", "-rf", dest)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "Error running: %v", cmd.Args)
-	}
-	return nil
-}
-
-// InGoPath returns the desired path relative to $GOPATH
-func InGoPath(path string) string {
-	data, err := exec.Command("go", "env", "GOPATH").Output()
-	gp := ""
-	if err == nil {
-		gp = filepath.Clean(strings.TrimSpace(string(data)))
-	}
-	return filepath.Join(gp, path)
 }
