@@ -73,5 +73,5 @@ func init() {
 	createBatWorkloadsCmd.Flags().BoolVar(&allWorkloads, "all-workloads", false, "Create extra workloads not required for BAT")
 	createBatWorkloadsCmd.Flags().StringVar(&sshPublicKeyFile, "ssh-public-key-file", "", "SSH public key to be injected into workloads (demouser)")
 	createBatWorkloadsCmd.Flags().StringVar(&password, "password", "", "Password to be injected into workloads (demouser)")
-	createBatWorkloadsCmd.Flags().StringVar(&imageCacheDirectory, "image-cache-directory", "", "Directory to use for caching of downloaded images")
+	createBatWorkloadsCmd.Flags().StringVar(&imageCacheDirectory, "image-cache-directory", deploy.DefaultImageCacheDir(), "Directory to use for caching of downloaded images")
 }
