@@ -131,6 +131,15 @@ func SudoRemoveDirectory(ctx context.Context, dest string) error {
 	return nil
 }
 
+// SudoRemoveFile deletes the file as root
+func SudoRemoveFile(ctx context.Context, dest string) error {
+	cmd := SudoCommandContext(ctx, "rm", "-f", dest)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+	return nil
+}
+
 // InGoPath returns the desired path relative to $GOPATH
 func InGoPath(path string) string {
 	data, err := exec.Command("go", "env", "GOPATH").Output()
