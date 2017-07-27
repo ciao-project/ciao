@@ -8,6 +8,7 @@ ciao_vlan_subnet=${ciao_vlan_ip}/24
 ciao_vlan_brdcast=198.51.100.255
 ciao_bin="$HOME/local"
 ciao_cert="$ciao_bin""/cert-Scheduler-""$ciao_host"".pem"
+ciao_ca_cert="$ciao_bin""/CAcert-""$ciao_host"".pem"
 keystone_key="$ciao_bin"/keystone_key.pem
 keystone_cert="$ciao_bin"/keystone_cert.pem
 workload_sshkey="$ciao_bin"/testkey
@@ -296,18 +297,33 @@ cd "$ciao_bin"
 "$ciao_bin"/run_launcher.sh   &> /dev/null
 "$ciao_bin"/run_controller.sh &> /dev/null
 
+#Download the firmware. See #1361
+if [ $download -eq 1 ] || [ ! -f OVMF.fd ]
+then
+       rm -f OVMF.fd
+       curl -O https://download.clearlinux.org/image/OVMF.fd
+fi
+
+if [ ! -f OVMF.fd ]
+then
+       echo "FATAL ERROR: unable to download firmware"
+       exit 1
+fi
+
+sudo cp -f OVMF.fd  /usr/share/qemu/OVMF.fd
+
 # become admin in order to upload images and setup workloads
 export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
 export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
 
-source $ciao_scripts/setup_images.sh
+ciao-deploy create-cnci --image-cache-directory=$HOME/local --anchor-cert-path=$ciao_cert --ca-cert-path=$ciao_ca_cert || exit 1
 
 workload_opts="--image-cache-directory=$HOME/local --password=$test_passwd --ssh-public-key-file=$workload_sshkey.pub"
 if [ $all_images -eq 1 ]
 then
 workload_opts="$workload_opts --all-workloads"
 fi
-ciao-deploy create-bat-workloads $workload_opts
+ciao-deploy create-bat-workloads $workload_opts || exit 1
 
 echo "--------------------------------------------------------"
 echo ""
