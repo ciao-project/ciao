@@ -146,10 +146,6 @@ func (db *MemoryDB) addNodeStat(stat payloads.Stat) error {
 	return nil
 }
 
-func (db *MemoryDB) getNodeSummary() ([]*types.NodeSummary, error) {
-	return nil, nil
-}
-
 func (db *MemoryDB) addInstanceStats(stats []payloads.InstanceStat, nodeID string) error {
 	return nil
 }

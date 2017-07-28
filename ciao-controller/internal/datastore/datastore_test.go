@@ -752,13 +752,6 @@ func TestGetBatchFrameSummary(t *testing.T) {
 	}
 }
 
-func TestGetNodeSummary(t *testing.T) {
-	_, err := ds.db.getNodeSummary()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestGetEventLog(t *testing.T) {
 	err := ds.db.logEvent("test-tenantID", "info", "this is a test")
 	if err != nil {

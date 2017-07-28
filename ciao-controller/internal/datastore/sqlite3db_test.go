@@ -919,11 +919,6 @@ func TestSQLiteDBInstanceStats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	_, err = db.getNodeSummary()
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestSQLiteDBUpdateDeleteWorkload(t *testing.T) {
