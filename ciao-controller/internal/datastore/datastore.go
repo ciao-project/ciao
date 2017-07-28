@@ -105,7 +105,6 @@ type persistentStore interface {
 
 	// interfaces related to statistics
 	addNodeStat(stat payloads.Stat) (err error)
-	getNodeSummary() (Summary []*types.NodeSummary, err error)
 	addInstanceStats(stats []payloads.InstanceStat, nodeID string) (err error)
 	addFrameStat(stat payloads.FrameTrace) (err error)
 	getBatchFrameSummary() (stats []types.BatchFrameSummary, err error)
@@ -1490,9 +1489,39 @@ func (ds *Datastore) GetCNCIWorkloadID() (string, error) {
 
 // GetNodeSummary provides a summary the state and count of instances running per node.
 func (ds *Datastore) GetNodeSummary() ([]*types.NodeSummary, error) {
-	// TBD: write a new routine that grabs the node summary info
-	// from the cache rather than do this lengthy sql query.
-	return ds.db.getNodeSummary()
+	var nodes []*types.NodeSummary
+
+	ds.nodesLock.RLock()
+
+	for _, n := range ds.nodes {
+		var summary types.NodeSummary
+
+		// count the total instances, no CNCI included
+		for _, i := range n.instances {
+			if i.CNCI == true {
+				continue
+			}
+
+			summary.TotalInstances++
+
+			switch i.State {
+			case payloads.Pending:
+				summary.TotalPendingInstances++
+			case payloads.Running:
+				summary.TotalRunningInstances++
+			case payloads.Exited:
+				summary.TotalPausedInstances++
+			}
+		}
+
+		summary.NodeID = n.ID
+
+		nodes = append(nodes, &summary)
+	}
+
+	ds.nodesLock.RUnlock()
+
+	return nodes, nil
 }
 
 // GetBatchFrameSummary will retieve the count of traces we have for a specific label
