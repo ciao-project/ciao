@@ -949,17 +949,6 @@ func TestRestartFailure(t *testing.T) {
 	t.Error("Did not find failure message in Log")
 }
 
-func TestNoNetwork(t *testing.T) {
-	nn := true
-
-	noNetwork = &nn
-
-	var reason payloads.StartFailureReason
-
-	client, _ := testStartWorkload(t, 1, false, reason)
-	defer client.Shutdown()
-}
-
 // NOTE: the caller is responsible for calling Shutdown() on the *SsntpTestClient
 func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	tenant, err := addTestTenant()
