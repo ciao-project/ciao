@@ -5,6 +5,9 @@
 ciao_gobin="$GOPATH"/bin
 ciao_host=$(hostname)
 ext_int=$(ip -o route get 8.8.8.8 | cut -d ' ' -f 5)
+sudo systemctl stop ciao-scheduler
+sudo systemctl stop ciao-controller
+sudo systemctl stop ciao-launcher
 sudo killall ciao-scheduler
 sudo killall ciao-controller
 sudo killall ciao-launcher

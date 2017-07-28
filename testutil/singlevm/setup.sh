@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 ciao_host=$(hostname)
 ciao_ip=$(hostname -i)
 ext_int=$(ip -o route get 8.8.8.8 | cut -d ' ' -f 5)
@@ -226,24 +227,6 @@ fi
 # Started early to minimise overall running time
 source $ciao_scripts/setup_keystone.sh
 
-#Generate Certificates
-"$GOPATH"/bin/ciao-cert -anchor -role scheduler -email="$ciao_email" \
-    -organization="$ciao_org" -host="$ciao_host" -ip="$ciao_vlan_ip" -verify
-
-"$GOPATH"/bin/ciao-cert -role cnciagent -anchor-cert "$ciao_cert" \
-    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
-    -ip="$ciao_vlan_ip" -verify
-
-"$GOPATH"/bin/ciao-cert -role controller -anchor-cert "$ciao_cert" \
-    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
-    -ip="$ciao_vlan_ip" -verify
-
-"$GOPATH"/bin/ciao-cert -role agent,netagent -anchor-cert "$ciao_cert" \
-    -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
-    -ip="$ciao_vlan_ip" -verify
-
-source $ciao_scripts/setup_webui.sh
-
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
     sudo ip link del "$ciao_bridge"
@@ -278,24 +261,13 @@ else
     echo 'dnsmasq command is not supported'
 fi
 
+
 # Install ceph
 # This runs *after* keystone so keystone will get port 5000 first
 sudo docker run --name ceph-demo -d --net=host -v /etc/ceph:/etc/ceph -e MON_IP=$ciao_vlan_ip -e CEPH_PUBLIC_NETWORK=$ciao_vlan_subnet ceph/demo
 sudo ceph auth get-or-create client.ciao -o /etc/ceph/ceph.client.ciao.keyring mon 'allow *' osd 'allow *' mds 'allow'
 
 source "$ciao_scripts"/wait_for_keystone.sh
-
-#Copy the launch scripts
-cp "$ciao_scripts"/run_scheduler.sh "$ciao_bin"
-cp "$ciao_scripts"/run_controller.sh "$ciao_bin"
-cp "$ciao_scripts"/run_launcher.sh "$ciao_bin"
-cp "$ciao_scripts"/verify.sh "$ciao_bin"
-
-#Kick off the agents
-cd "$ciao_bin"
-"$ciao_bin"/run_scheduler.sh  &> /dev/null
-"$ciao_bin"/run_launcher.sh   &> /dev/null
-"$ciao_bin"/run_controller.sh &> /dev/null
 
 #Download the firmware. See #1361
 if [ $download -eq 1 ] || [ ! -f OVMF.fd ]
@@ -316,7 +288,22 @@ sudo cp -f OVMF.fd  /usr/share/qemu/OVMF.fd
 export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
 export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
 
-ciao-deploy create-cnci --image-cache-directory=$HOME/local --anchor-cert-path=$ciao_cert --ca-cert-path=$ciao_ca_cert || exit 1
+ciao-deploy master \
+	--admin-password="$test_passwd" \
+	--admin-ssh-key="$workload_sshkey.pub" \
+	--ceph-id=ciao \
+	--compute-net="$ciao_vlan_subnet" \
+	--https-ca-cert="$keystone_cert" \
+	--https-cert="$keystone_key" \
+	--image-cache-directory="$HOME/local" \
+	--keystone-service-password="$ciao_password" \
+	--keystone-service-user="$ciao_username" \
+	--keystone-url="https://${ciao_host}:${keystone_admin_port}" \
+	--mgmt-net="$ciao_vlan_subnet" \
+	--server-ip="$ciao_vlan_ip" \
+	--local-launcher
+
+#ciao-deploy create-cnci --image-cache-directory=$HOME/local --anchor-cert-path=$ciao_cert --ca-cert-path=$ciao_ca_cert || exit 1
 
 workload_opts="--image-cache-directory=$HOME/local --password=$test_passwd --ssh-public-key-file=$workload_sshkey.pub"
 if [ $all_images -eq 1 ]
