@@ -118,7 +118,7 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 		return nil
 	}
 
-	if tenant.CNCIIP == "" && !*noNetwork {
+	if tenant.CNCIIP == "" {
 		err := c.launchCNCI(tenantID)
 		if err != nil {
 			return err

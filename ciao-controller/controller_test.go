@@ -949,17 +949,6 @@ func TestRestartFailure(t *testing.T) {
 	t.Error("Did not find failure message in Log")
 }
 
-func TestNoNetwork(t *testing.T) {
-	nn := true
-
-	noNetwork = &nn
-
-	var reason payloads.StartFailureReason
-
-	client, _ := testStartWorkload(t, 1, false, reason)
-	defer client.Shutdown()
-}
-
 // NOTE: the caller is responsible for calling Shutdown() on the *SsntpTestClient
 func testStartTracedWorkload(t *testing.T) *testutil.SsntpTestClient {
 	tenant, err := addTestTenant()
@@ -1410,8 +1399,14 @@ func TestDeleteVolume(t *testing.T) {
 		t.Fatal("Incorrect error")
 	}
 
+	// add second tenant to datastore to prevent CNCI launching.
+	tenant2, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// attempt to delete with bad tenant ID
-	err = ctl.DeleteVolume("badID", volID)
+	err = ctl.DeleteVolume(tenant2.ID, volID)
 	if err != block.ErrVolumeOwner {
 		t.Fatal("Incorrect error")
 	}
