@@ -520,6 +520,9 @@ func (ds *sqliteDB) init(config Config) error {
 	}
 
 	ds.workloadsPath = config.InitWorkloadsPath
+	if err := os.MkdirAll(ds.workloadsPath, 0755); err != nil {
+		return errors.Wrap(err, "Error creating workload directory")
+	}
 
 	for _, table := range ds.tables {
 		err = table.Init()
