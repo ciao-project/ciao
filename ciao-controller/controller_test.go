@@ -1410,8 +1410,14 @@ func TestDeleteVolume(t *testing.T) {
 		t.Fatal("Incorrect error")
 	}
 
+	// add second tenant to datastore to prevent CNCI launching.
+	tenant2, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// attempt to delete with bad tenant ID
-	err = ctl.DeleteVolume("badID", volID)
+	err = ctl.DeleteVolume(tenant2.ID, volID)
 	if err != block.ErrVolumeOwner {
 		t.Fatal("Incorrect error")
 	}
