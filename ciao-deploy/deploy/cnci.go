@@ -25,7 +25,6 @@ import (
 
 	"github.com/01org/ciao/bat"
 	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/ssntp/certs"
 	"github.com/pkg/errors"
 )
 
@@ -184,39 +183,9 @@ func prepareImage(ctx context.Context, baseImage string, agentCertPath string, c
 	return preparedImagePath, nil
 }
 
-func generateAgentCert(anchorCertPath string) (path string, errOut error) {
-	anchorCertBytes, err := ioutil.ReadFile(anchorCertPath)
-	if err != nil {
-		return "", errors.Wrap(err, "Error reading anchor cert")
-	}
-
-	t, err := certs.CreateCertTemplate(ssntp.CNCIAGENT, "Ciao", "", []string{}, []string{})
-	if err != nil {
-		return "", errors.Wrap(err, "Error creating certificate template")
-	}
-
-	f, err := ioutil.TempFile("", "cert")
-	if err != nil {
-		return "", errors.Wrap(err, "Error creating temporary certifate file")
-	}
-	defer func() {
-		_ = f.Close()
-		if errOut != nil {
-			_ = os.Remove(f.Name())
-		}
-	}()
-
-	err = certs.CreateCert(t, false, anchorCertBytes, f)
-	if err != nil {
-		return "", errors.Wrap(err, "Error creating certificate from anchor")
-	}
-
-	return f.Name(), nil
-}
-
 // CreateCNCIImage creates a customised CNCI image in the system
 func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath string, imageCacheDir string) (errOut error) {
-	agentCertPath, err := generateAgentCert(anchorCertPath)
+	agentCertPath, err := GenerateCert(anchorCertPath, ssntp.CNCIAGENT)
 	if err != nil {
 		return errors.Wrap(err, "Error creating agent certificate")
 	}
