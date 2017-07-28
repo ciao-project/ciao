@@ -130,7 +130,7 @@ func (client *ssntpClient) instanceDeleted(payload []byte) {
 	var event payloads.EventInstanceDeleted
 	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
-		glog.Warning("Error unmarshalling InstanceDeleted: %v")
+		glog.Warningf("Error unmarshalling InstanceDeleted: %v", err)
 		return
 	}
 	client.removeInstance(event.InstanceDeleted.InstanceUUID)
@@ -154,7 +154,7 @@ func (client *ssntpClient) concentratorInstanceAdded(payload []byte) {
 	var event payloads.EventConcentratorInstanceAdded
 	err := yaml.Unmarshal(payload, &event)
 	if err != nil {
-		glog.Warning("Error unmarshalling EventConcentratorInstanceAdded: %v", err)
+		glog.Warningf("Error unmarshalling EventConcentratorInstanceAdded: %v", err)
 		return
 	}
 	newCNCI := event.CNCIAdded
@@ -217,7 +217,7 @@ func (client *ssntpClient) unassignEvent(payload []byte) {
 
 	err = client.ctl.ds.UnMapExternalIP(event.UnassignedIP.PublicIP)
 	if err != nil {
-		glog.Warning("Error unmapping external IP: %v", err)
+		glog.Warningf("Error unmapping external IP: %v", err)
 		return
 	}
 
@@ -317,7 +317,7 @@ func (client *ssntpClient) restartFailure(payload []byte) {
 	var failure payloads.ErrorRestartFailure
 	err := yaml.Unmarshal(payload, &failure)
 	if err != nil {
-		glog.Warning("Error unmarshalling RestartFailure: %v", err)
+		glog.Warningf("Error unmarshalling RestartFailure: %v", err)
 		return
 	}
 	err = client.ctl.ds.RestartFailure(failure.InstanceUUID, failure.Reason)
@@ -376,7 +376,7 @@ func (client *ssntpClient) unassignError(payload []byte) {
 	var failure payloads.ErrorPublicIPFailure
 	err := yaml.Unmarshal(payload, &failure)
 	if err != nil {
-		glog.Warning("Error unmarshalling ErrorPublicIPFailure: %v", err)
+		glog.Warningf("Error unmarshalling ErrorPublicIPFailure: %v", err)
 		return
 	}
 
