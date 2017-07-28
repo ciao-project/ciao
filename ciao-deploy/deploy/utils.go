@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/01org/ciao/ssntp"
+	"github.com/01org/ciao/ssntp/certs"
 	"github.com/pkg/errors"
 )
 
@@ -148,4 +150,48 @@ func InGoPath(path string) string {
 		gp = filepath.Clean(strings.TrimSpace(string(data)))
 	}
 	return filepath.Join(gp, path)
+}
+
+func hostnameWithFallback() string {
+	hs, err := os.Hostname()
+	if err != nil {
+		hs = "localhost"
+	}
+	return hs
+}
+
+// CertName gives file name to use for downloaded certificate
+func CertName(role ssntp.Role) string {
+	return fmt.Sprintf("cert-%s-%s.pem", role.String(), hostnameWithFallback())
+}
+
+// GenerateCert creates a certificate signed by the anchor certificate for a given role
+func GenerateCert(anchorCertPath string, role ssntp.Role) (path string, errOut error) {
+	anchorCertBytes, err := ioutil.ReadFile(anchorCertPath)
+	if err != nil {
+		return "", errors.Wrap(err, "Error reading anchor cert")
+	}
+
+	t, err := certs.CreateCertTemplate(role, "Ciao Deployment", "", []string{}, []string{})
+	if err != nil {
+		return "", errors.Wrap(err, "Error creating certificate template")
+	}
+
+	f, err := ioutil.TempFile("", "cert")
+	if err != nil {
+		return "", errors.Wrap(err, "Error creating temporary certifate file")
+	}
+	defer func() {
+		_ = f.Close()
+		if errOut != nil {
+			_ = os.Remove(f.Name())
+		}
+	}()
+
+	err = certs.CreateCert(t, false, anchorCertBytes, f)
+	if err != nil {
+		return "", errors.Wrap(err, "Error creating certificate from anchor")
+	}
+
+	return f.Name(), nil
 }
