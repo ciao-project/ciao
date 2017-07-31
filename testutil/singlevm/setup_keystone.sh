@@ -1,8 +1,19 @@
+#!/bin/bash
+
+ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
+source $ciao_scripts/config.sh
+
+mysql_data_dir="${ciao_bin}"/mysql
+
+mkdir -p $ciao_bin
+mkdir -p $ciao_pki_path
+
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout "$keystone_key" -out "$keystone_cert" -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
+    -keyout "$ciao_bin/keystone_key.pem" -out "$ciao_bin/keystone_cert.pem" -subj "/C=US/ST=CA/L=Santa Clara/O=ciao/CN=$ciao_host"
 
 #Copy the certs
-sudo install -m 0644 -t "$ciao_pki_path" "$keystone_cert"
+sudo install -m 0644 -t "$ciao_pki_path" "$ciao_bin/keystone_cert.pem"
+sudo install -m 0644 -t "$ciao_pki_path" "$ciao_bin/keystone_key.pem"
 
 #Update system's trusted certificates
 cacert_prog_ubuntu=$(type -p update-ca-certificates)

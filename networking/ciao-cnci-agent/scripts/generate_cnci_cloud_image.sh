@@ -91,10 +91,10 @@ sudo chroot "$tmpdir" /bin/bash -c "sudo ln -s /usr/lib/systemd/system/ciao-cnci
 
 echo -e "Copying CA certificates"
 sudo mkdir -p "$tmpdir"/var/lib/ciao/
-sudo cp "$certs_dir"/CAcert-* "$tmpdir"/var/lib/ciao/CAcert-server-localhost.pem
+sudo cp "$certs_dir"/CAcert* "$tmpdir"/var/lib/ciao/CAcert-server-localhost.pem
 
 echo -e "Copying CNCI Agent certificate"
-sudo cp "$certs_dir"/cert-CNCIAgent-* "$tmpdir"/var/lib/ciao/cert-client-localhost.pem
+sudo cp "$certs_dir"/cert-CNCIAgent* "$tmpdir"/var/lib/ciao/cert-client-localhost.pem
 
 echo -e "Removing cloud-init traces"
 sudo rm -rf "$tmpdir"/var/lib/cloud

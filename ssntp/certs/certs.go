@@ -176,6 +176,7 @@ func CreateAnchorCert(template *x509.Certificate, useElliptic bool, certOutput i
 	}
 
 	template.IsCA = true
+	template.KeyUsage = template.KeyUsage | x509.KeyUsageCertSign
 
 	// Create self-signed certificate
 	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, publicKey(priv), priv)

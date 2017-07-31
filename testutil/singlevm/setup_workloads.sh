@@ -1,4 +1,9 @@
+#!/bin/bash
 
+ciao_scripts="$GOPATH"/src/github.com/01org/ciao/testutil/singlevm
+source $ciao_scripts/config.sh
+
+test_sshkey=$(< "$workload_sshkey".pub)
 function createWorkloads() {
 	mkdir -p ${ciao_bin}/workload_examples
 	if [ ! -d ${ciao_bin}/workload_examples ]
