@@ -1,0 +1,142 @@
+// Copyright © 2017 Intel Corporation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package deploy
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"os/exec"
+	"os/user"
+	"path"
+	"path/filepath"
+	"strings"
+
+	"github.com/pkg/errors"
+)
+
+// DefaultImageCacheDir provides the default location for downloaded images
+func DefaultImageCacheDir() string {
+	u, err := user.Current()
+	if err != nil {
+		return ""
+	}
+
+	return path.Join(u.HomeDir, ".cache", "ciao", "images")
+}
+
+// DownloadImage checks for a cached image in the cache directory and downloads
+// otherwise. The returned string is the path to the file and the boolean
+// indicates if it was downloaded on this function call.
+func DownloadImage(ctx context.Context, url string, imageCacheDir string) (string, bool, error) {
+	ss := strings.Split(url, "/")
+	localName := ss[len(ss)-1]
+
+	imagePath := path.Join(imageCacheDir, localName)
+	if _, err := os.Stat(imagePath); err == nil {
+		fmt.Printf("Using already downloaded image: %s\n", imagePath)
+		return imagePath, false, nil
+	} else if !os.IsNotExist(err) {
+		return "", false, errors.Wrap(err, "Error when stat()ing expected image path")
+	}
+
+	if err := os.MkdirAll(imageCacheDir, 0755); err != nil {
+		return "", false, errors.Wrap(err, "Unable to create image cache directory")
+	}
+
+	f, err := ioutil.TempFile(imageCacheDir, localName)
+	if err != nil {
+		return "", false, errors.Wrap(err, "Unable to create temporary file for download")
+	}
+	defer func() { _ = f.Close() }()
+	defer func() { _ = os.Remove(f.Name()) }()
+
+	fmt.Printf("Downloading: %s\n", url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", false, errors.Wrap(err, "Error creating HTTP request")
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", false, errors.Wrap(err, "Error making HTTP request")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", false, fmt.Errorf("Unexpected status when downloading URL: %s: %s", url, resp.Status)
+	}
+
+	buf := make([]byte, 1<<20)
+	_, err = io.CopyBuffer(f, resp.Body, buf)
+	if err != nil {
+		return "", false, errors.Wrap(err, "Error copying from HTTP response to file")
+	}
+
+	if err := os.Rename(f.Name(), imagePath); err != nil {
+		return "", false, errors.Wrap(err, "Error moving downloaded image to destination")
+	}
+
+	fmt.Printf("Image downloaded to %s\n", imagePath)
+
+	return imagePath, true, nil
+}
+
+// SudoCommandContext runs the given command with root privileges
+func SudoCommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
+	newArgs := append([]string{name}, args...)
+	return exec.CommandContext(ctx, "sudo", newArgs...)
+}
+
+// SudoCopyFile copies the file from the source to dest as root
+func SudoCopyFile(ctx context.Context, dest string, src string) error {
+	cmd := SudoCommandContext(ctx, "cp", src, dest)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+	return nil
+}
+
+// SudoMakeDirectory creates the desired directory hiearchy as root
+func SudoMakeDirectory(ctx context.Context, dest string) error {
+	cmd := SudoCommandContext(ctx, "mkdir", "-p", dest)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+	return nil
+}
+
+// SudoRemoveDirectory deletes the directory hiearchy as root
+func SudoRemoveDirectory(ctx context.Context, dest string) error {
+	cmd := SudoCommandContext(ctx, "rm", "-rf", dest)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+	return nil
+}
+
+// InGoPath returns the desired path relative to $GOPATH
+func InGoPath(path string) string {
+	data, err := exec.Command("go", "env", "GOPATH").Output()
+	gp := ""
+	if err == nil {
+		gp = filepath.Clean(strings.TrimSpace(string(data)))
+	}
+	return filepath.Join(gp, path)
+}
