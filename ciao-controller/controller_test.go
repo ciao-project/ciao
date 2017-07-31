@@ -79,6 +79,19 @@ users:
 	return ctl.ds.AddWorkload(wl)
 }
 
+func addFakeCNCI(tenant *types.Tenant) error {
+	err := ctl.ds.AddTenantCNCI(tenant.ID, uuid.Generate().String(), tenant.CNCIMAC)
+	if err != nil {
+		return err
+	}
+	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func addTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
@@ -87,12 +100,7 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 		return
 	}
 
-	// Add fake CNCI
-	err = ctl.ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
-	if err != nil {
-		return
-	}
-	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+	err = addFakeCNCI(tenant)
 	if err != nil {
 		return
 	}
@@ -125,12 +133,7 @@ func addComputeTestTenant() (tenant *types.Tenant, err error) {
 	}
 
 	// Add fake CNCI
-	err = ctl.ds.AddTenantCNCI(testutil.ComputeUser, uuid.Generate().String(), tenant.CNCIMAC)
-	if err != nil {
-		return
-	}
-
-	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.2")
+	err = addFakeCNCI(tenant)
 	if err != nil {
 		return
 	}
@@ -1083,12 +1086,31 @@ func startTestWorkload(t *testing.T, instanceCh chan []*types.Instance, workload
 	instanceCh <- instances
 }
 
+func startTenantWorkload(t *testing.T, tenantID string, instanceCh chan []*types.Instance) {
+	wls, err := ctl.ds.GetWorkloads(tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(wls) == 0 {
+		t.Fatal("No workloads for this tenant")
+	}
+
+	startTestWorkload(t, instanceCh, wls[0].ID, tenantID, 1)
+}
+
 // NOTE: the caller is responsible for calling Shutdown() on the *SsntpTestClient
-func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClient, []*types.Instance) {
+func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClient, *testutil.SsntpTestClient, []*types.Instance) {
 	netClient, err := testutil.NewSsntpTestClientConnection("StartWorkloadLaunchCNCI", ssntp.NETAGENT, testutil.NetAgentUUID)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	client, err := testutil.NewSsntpTestClientConnection("StartWorkload", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// caller of TestStartWorkloadLaunchCNCI owns doing the close.
 
 	tt, err := addTestTenantNoCNCI()
 	if err != nil {
@@ -1100,21 +1122,14 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	// caller of testStartWorkloadLaunchCNCI() owns doing the close
 	//defer netClient.Shutdown()
 
-	wls, err := ctl.ds.GetWorkloads(newTenant)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(wls) == 0 {
-		t.Fatal("No workloads, expected len(wls) > 0, got len(wls) == 0")
-	}
-
 	serverCmdCh := server.AddCmdChan(ssntp.START)
 	netClientCmdCh := netClient.AddCmdChan(ssntp.START)
+	clientCmdCh := client.AddCmdChan(ssntp.START)
 
 	// trigger the START command flow, and await results
 	instanceCh := make(chan []*types.Instance)
 
-	go startTestWorkload(t, instanceCh, newTenant, wls[0].ID, 1)
+	go startTenantWorkload(t, newTenant, instanceCh)
 
 	_, err = netClient.GetCmdChanResult(netClientCmdCh, ssntp.START)
 	if err != nil {
@@ -1160,12 +1175,21 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 		t.Fatalf("Did not get correct Instance ID, got %s, expected %s", result.InstanceUUID, tenantCNCI[0].InstanceID)
 	}
 
+	result, err = client.GetCmdChanResult(clientCmdCh, ssntp.START)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.TenantUUID != newTenant {
+		t.Fatal("Did not get correct tenant ID")
+	}
+
 	instances := <-instanceCh
 	if instances == nil {
 		t.Fatal("did not receive instance")
 	}
 
-	return netClient, instances
+	return netClient, client, instances
 }
 
 func TestGetStorageForVolume(t *testing.T) {
@@ -1928,6 +1952,9 @@ func TestMain(m *testing.M) {
 		os.RemoveAll(dir)
 		os.Exit(1)
 	}
+
+	ctl.ds.GenerateCNCIWorkload(4, 128, 128, "", "")
+
 	ctl.qs.Init()
 
 	config := &ssntp.Config{
