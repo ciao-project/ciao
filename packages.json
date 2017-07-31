@@ -74,6 +74,16 @@
 		"version": "248dadf",
 		"license": "BSD (2-clause)"
 	},
+	"github.com/spf13/cobra": {
+		"url": "https://github.com/spf13/cobra.git",
+		"version": "9c28e4b",
+		"license": "Apache v2.0"
+	},
+	"github.com/spf13/pflag": {
+		"url": "https://github.com/spf13/pflag.git",
+		"version": "e57e3ee",
+		"license": "BSD (3 clause)"
+	},
 	"github.com/vishvananda/netlink": {
 		"url": "https://github.com/vishvananda/netlink.git",
 		"version": "1890b34",

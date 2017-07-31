@@ -112,7 +112,6 @@ func createCertificates(role ssntp.Role) {
 	CAcertName := fmt.Sprintf("%s/CAcert-%s.pem", *installDir, firstHost)
 	certName := fmt.Sprintf("%s/cert-%s-%s.pem", *installDir, role.String(), firstHost)
 	if *isAnchor == true {
-		template.KeyUsage = template.KeyUsage | x509.KeyUsageCertSign
 		CAcertOut, err := os.Create(CAcertName)
 		if err != nil {
 			log.Fatalf("Failed to open %s for writing: %s", CAcertName, err)
