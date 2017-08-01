@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -26,6 +27,10 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/knownhosts"
 
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/certs"
@@ -194,4 +199,119 @@ func GenerateCert(anchorCertPath string, role ssntp.Role) (path string, errOut e
 	}
 
 	return f.Name(), nil
+}
+
+// DialSSHContext is the equivalent of ssh.Dial but allowing the use of a context
+func DialSSHContext(ctx context.Context, network string, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	d := &net.Dialer{}
+	conn, err := d.DialContext(ctx, network, addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error dialing connection")
+	}
+
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error creating connection")
+	}
+	return ssh.NewClient(c, chans, reqs), nil
+}
+
+func sshClient(ctx context.Context, username string, host string) (*ssh.Client, error) {
+	if sshAuthSock := os.Getenv("SSH_AUTH_SOCK"); sshAuthSock == "" {
+		return nil, errors.New("ssh-agent must be running and populated with key for node")
+	}
+
+	d := &net.Dialer{}
+	c, err := d.DialContext(ctx, "unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err != nil {
+		return nil, errors.Wrap(err, "Error connectin to SSH agent")
+	}
+
+	agentMethod := ssh.PublicKeysCallback(agent.NewClient(c).Signers)
+
+	home := ""
+	u, err := user.Current()
+	if err == nil {
+		home = u.HomeDir
+	}
+
+	knownHostsPath := path.Join(home, ".ssh", "known_hosts")
+	hkcb, err := knownhosts.New(knownHostsPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error loading SSH host key verification file")
+	}
+
+	sshConfig := &ssh.ClientConfig{
+		User: username,
+		Auth: []ssh.AuthMethod{
+			agentMethod,
+		},
+		HostKeyCallback: hkcb,
+	}
+
+	client, err := DialSSHContext(ctx, "tcp", fmt.Sprintf("%s:22", host), sshConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error dialing SSH connection")
+	}
+
+	return client, nil
+}
+
+// SSHRunCommand is a convenience function to run a command on a given host.
+// This assumes the key is already in the keyring for the provided user.
+func SSHRunCommand(ctx context.Context, user string, host string, command string) error {
+	client, err := sshClient(ctx, user, host)
+	if err != nil {
+		return errors.Wrap(err, "Error creating client")
+	}
+	defer func() { _ = client.Close() }()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return errors.Wrap(err, "Error creating session")
+	}
+	defer func() { _ = session.Close() }()
+
+	return session.Run(command)
+}
+
+// SSHCreateFile creates a file on a remote machine
+func SSHCreateFile(ctx context.Context, user string, host string, dest string, f io.Reader) error {
+	client, err := sshClient(ctx, user, host)
+	if err != nil {
+		return errors.Wrap(err, "Error creating client")
+	}
+	defer func() { _ = client.Close() }()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return errors.Wrap(err, "Error creating session")
+	}
+	defer func() { _ = session.Close() }()
+
+	p, err := session.StdinPipe()
+	if err != nil {
+		return errors.Wrap(err, "Error getting STDIN pipe")
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		defer func() { _ = p.Close() }()
+
+		buf := make([]byte, 1<<20)
+		_, err := io.CopyBuffer(p, f, buf)
+		errCh <- err
+		close(errCh)
+	}()
+
+	err = session.Run(fmt.Sprintf("sudo tee %s", dest))
+	if err != nil {
+		return errors.Wrap(err, "Error running tee command")
+	}
+
+	err = <-errCh
+	if err != nil {
+		return errors.Wrap(err, "Error copying data to target")
+	}
+	return nil
 }
