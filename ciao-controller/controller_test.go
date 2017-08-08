@@ -80,14 +80,27 @@ users:
 }
 
 func addFakeCNCI(tenant *types.Tenant) error {
-	err := ctl.ds.AddTenantCNCI(tenant.ID, uuid.Generate().String(), tenant.CNCIMAC)
+	mac, err := newHardwareAddr()
 	if err != nil {
 		return err
 	}
-	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+
+	// Add fake CNCI
+	CNCI := types.Instance{
+		TenantID:   tenant.ID,
+		State:      payloads.Running,
+		ID:         uuid.Generate().String(),
+		CNCI:       true,
+		IPAddress:  "192.168.0.1",
+		MACAddress: mac.String(),
+	}
+
+	err = ctl.ds.AddInstance(&CNCI)
 	if err != nil {
 		return err
 	}
+
+	tenant.CNCIID = CNCI.ID
 
 	return nil
 }

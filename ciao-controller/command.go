@@ -118,7 +118,14 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 		return nil
 	}
 
-	if tenant.CNCIIP == "" {
+	i, err := c.ds.GetInstance(tenant.CNCIID)
+	if err != nil {
+		if tenant.CNCIID != "" {
+			return err
+		}
+	}
+
+	if i == nil || i.IPAddress == "" {
 		err := c.launchCNCI(tenantID)
 		if err != nil {
 			return err
@@ -129,7 +136,12 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 			return err
 		}
 
-		if tenant.CNCIIP == "" {
+		i, err := c.ds.GetInstance(tenant.CNCIID)
+		if err != nil {
+			return err
+		}
+
+		if i.IPAddress == "" {
 			return errors.New("Unable to Launch Tenant CNCI")
 		}
 	}

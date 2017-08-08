@@ -17,6 +17,7 @@
 package datastore
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"encoding/binary"
 	"flag"
@@ -31,6 +32,7 @@ import (
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/pkg/errors"
 )
 
 func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
@@ -41,6 +43,28 @@ func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
 	copy(buf[2:6], ipBytes)
 	hw = net.HardwareAddr(buf)
 	return
+}
+
+func newHardwareAddr() (net.HardwareAddr, error) {
+	buf := make([]byte, 6)
+	_, err := rand.Read(buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading random data")
+	}
+
+	// vnic creation seems to require not just the
+	// bit 1 to be set, but the entire byte to be
+	// set to 2.  Also, ensure that we get no
+	// overlap with tenant mac addresses by not allowing
+	// byte 1 to ever be zero.
+	buf[0] = 2
+	if buf[1] == 0 {
+		buf[1] = 3
+	}
+
+	hw := net.HardwareAddr(buf)
+
+	return hw, nil
 }
 
 func addInstance(tenant *types.Tenant, workload types.Workload, name string) (instance *types.Instance, err error) {
@@ -150,15 +174,27 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 		return
 	}
 
+	mac, err := newHardwareAddr()
+	if err != nil {
+		return
+	}
+
 	// Add fake CNCI
-	err = ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
+	CNCI := types.Instance{
+		TenantID:   tenant.ID,
+		State:      payloads.Running,
+		ID:         uuid.Generate().String(),
+		CNCI:       true,
+		IPAddress:  "192.168.0.1",
+		MACAddress: mac.String(),
+	}
+
+	err = ds.AddInstance(&CNCI)
 	if err != nil {
 		return
 	}
-	err = ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
-	if err != nil {
-		return
-	}
+
+	tenant.CNCIID = CNCI.ID
 
 	err = addTestWorkload(tuuid.String())
 
@@ -896,37 +932,6 @@ func TestGetCNCIWorkloadID(t *testing.T) {
 	}
 }
 
-func TestRemoveTenantCNCI(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = ds.removeTenantCNCI(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// make sure cache was updated
-	ds.tenantsLock.Lock()
-	t2 := ds.tenants[tenant.ID]
-	delete(ds.tenants, tenant.ID)
-	ds.tenantsLock.Unlock()
-
-	if t2.CNCIID != "" || t2.CNCIIP != "" {
-		t.Fatal("Cache Not Updated")
-	}
-
-	// check database was updated
-	testTenant, err := ds.GetTenant(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if testTenant.CNCIID != "" || testTenant.CNCIIP != "" {
-		t.Fatal("Database not updated")
-	}
-}
-
 func TestGetTenant(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
@@ -951,16 +956,8 @@ func TestGetAllTenants(t *testing.T) {
 	// errors.
 }
 
-func TestAddCNCIIP(t *testing.T) {
-	/* add a new tenant */
-	tuuid := uuid.Generate()
-	tenant, err := ds.AddTenant(tuuid.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Add fake CNCI
-	err = ds.AddTenantCNCI(tenant.ID, uuid.Generate().String(), tenant.CNCIMAC)
+func TestCNCIAdded(t *testing.T) {
+	tenant, err := addTestTenant()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -972,7 +969,7 @@ func TestAddCNCIIP(t *testing.T) {
 	ds.cnciAddedLock.Unlock()
 
 	go func() {
-		err := ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+		err := ds.CNCIAdded(tenant.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
