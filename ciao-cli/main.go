@@ -33,6 +33,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/openstack/block"
 	"github.com/golang/glog"
 )
 
@@ -172,6 +173,11 @@ func buildComputeURL(format string, args ...interface{}) string {
 
 func buildCiaoURL(format string, args ...interface{}) string {
 	prefix := fmt.Sprintf("https://%s:%d/", *controllerURL, *ciaoPort)
+	return fmt.Sprintf(prefix+format, args...)
+}
+
+func buildBlockURL(format string, args ...interface{}) string {
+	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, block.APIPort)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
