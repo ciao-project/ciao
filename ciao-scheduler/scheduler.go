@@ -192,7 +192,11 @@ func (sched *ssntpSchedulerServer) sendNodeConnectionEvents(nodeUUID string, nod
 	defer sched.controllerMutex.RUnlock()
 
 	for _, ctl := range sched.controllerMap {
-		sched.ssntp.SendEvent(ctl.uuid, ssntp.NodeConnected, b)
+		if connected {
+			sched.ssntp.SendEvent(ctl.uuid, ssntp.NodeConnected, b)
+		} else {
+			sched.ssntp.SendEvent(ctl.uuid, ssntp.NodeDisconnected, b)
+		}
 	}
 }
 
