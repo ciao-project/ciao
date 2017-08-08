@@ -17,20 +17,20 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"sort"
 	"text/template"
 	"time"
 
 	"github.com/01org/ciao/templateutils"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumetenants"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
-	"github.com/gophercloud/gophercloud/pagination"
 )
 
 type customVolume volumes.Volume
@@ -87,11 +87,6 @@ func (cmd *volumeAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *volumeAddCommand) run(args []string) error {
-	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get volume service client [%s]\n", err)
-	}
-
 	opts := volumes.CreateOpts{
 		Description: cmd.description,
 		Name:        cmd.name,
@@ -106,11 +101,39 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		fatalf("Unknown source type [%s]\n", cmd.sourceType)
 	}
 
-	var vol customVolume
-	err = volumes.Create(client, opts).ExtractInto(&vol)
-	if err == nil {
-		fmt.Printf("Created new volume: %s\n", vol.ID)
+	var createReq = struct {
+		Volume volumes.CreateOpts
+	}{
+		Volume: opts,
 	}
+
+	b, err := json.Marshal(createReq)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	body := bytes.NewReader(b)
+	url := buildBlockURL("%s/volumes", *tenantID)
+	resp, err := sendHTTPRequest("POST", url, nil, body)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusAccepted {
+		fatalf("Volume creation failed: %s", resp.Status)
+	}
+
+	var vol = struct {
+		Volume customVolume
+	}{}
+
+	err = unmarshalHTTPResponse(resp, &vol)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	fmt.Printf("Created new volume: %s\n", vol.Volume.ID)
+
 	return err
 }
 
@@ -153,12 +176,8 @@ func (ss byName) Less(i, j int) bool {
 }
 
 func (cmd *volumeListCommand) run(args []string) error {
-	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get volume service client [%s]\n", err)
-	}
-
 	var t *template.Template
+	var err error
 	if cmd.template != "" {
 		t, err = templateutils.CreateTemplate("volume-list", cmd.template, nil)
 		if err != nil {
@@ -166,20 +185,27 @@ func (cmd *volumeListCommand) run(args []string) error {
 		}
 	}
 
-	pager := volumes.List(client, volumes.ListOpts{})
+	url := buildBlockURL("%s/volumes/detail", *tenantID)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
 
-	sortedVolumes := []extendedVolume{}
-	err = pager.EachPage(func(page pagination.Page) (bool, error) {
-		volumeList := []extendedVolume{}
-		err := volumes.ExtractVolumesInto(page, &volumeList)
-		if err != nil {
-			errorf("Could not extract volume [%s]\n", err)
-		}
+	if resp.StatusCode != http.StatusOK {
+		fatalf("Volume list failed: %s", resp.Status)
+	}
 
-		sortedVolumes = append(sortedVolumes, volumeList...)
+	var vols = struct {
+		Volumes []extendedVolume
+	}{}
 
-		return false, nil
-	})
+	err = unmarshalHTTPResponse(resp, &vols)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	sortedVolumes := vols.Volumes
 	sort.Sort(byName(sortedVolumes))
 
 	if t != nil {
@@ -230,17 +256,27 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
+	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
-		fatalf("Could not get volume service client [%s]\n", err)
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		fatalf("Volume show failed: %s", resp.Status)
 	}
 
-	volume := extendedVolume{}
-	err = volumes.Get(client, cmd.volume).ExtractInto(&volume)
+	var vol = struct {
+		Volume extendedVolume
+	}{}
+
+	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
-		return err
+		fatalf(err.Error())
 	}
 
+	volume := vol.Volume
 	volume.customVolume.CreatedAt = volume.CreatedAt
 	volume.customVolume.UpdatedAt = volume.UpdatedAt
 
@@ -286,20 +322,47 @@ func (cmd *volumeUpdateCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get volume service client [%s]\n", err)
-	}
-
 	opts := volumes.UpdateOpts{
 		Name:        cmd.name,
 		Description: cmd.description,
 	}
 
-	vol, err := volumes.Update(client, cmd.volume, opts).Extract()
-	if err == nil {
-		fmt.Printf("Updated volume: %s\n", vol.ID)
+	var updateReq = struct {
+		Volume volumes.UpdateOpts
+	}{
+		Volume: opts,
 	}
+
+	b, err := json.Marshal(updateReq)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	body := bytes.NewReader(b)
+	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
+	resp, err := sendHTTPRequest("PUT", url, nil, body)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		fatalf("Volume update failed: %s", resp.Status)
+	}
+
+	var vol = struct {
+		Volume customVolume
+	}{}
+
+	err = unmarshalHTTPResponse(resp, &vol)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if err == nil {
+		fmt.Printf("Updated volume: %s\n", vol.Volume.ID)
+	}
+
 	return err
 }
 
@@ -332,15 +395,17 @@ func (cmd *volumeDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
+	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
+	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
 	if err != nil {
-		fatalf("Could not get volume service client [%s]\n", err)
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusAccepted {
+		fatalf("Volume delete failed: %s", resp.Status)
 	}
 
-	err = volumes.Delete(client, cmd.volume).ExtractErr()
-	if err == nil {
-		fmt.Printf("Deleted volume: %s\n", cmd.volume)
-	}
 	return err
 }
 
@@ -386,18 +451,35 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 
 	// mountpoint or mode isn't required
 
-	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get volume service client [%s]\n", err)
-	}
-
-	options := &volumeactions.AttachOpts{
+	options := volumeactions.AttachOpts{
 		MountPoint:   cmd.mountpoint,
 		Mode:         volumeactions.AttachMode(cmd.mode),
 		InstanceUUID: cmd.instance,
 	}
 
-	err = volumeactions.Attach(client, cmd.volume, options).ExtractErr()
+	var attachReq = struct {
+		Attach volumeactions.AttachOpts `json:"os-attach"`
+	}{
+		Attach: options,
+	}
+
+	b, err := json.Marshal(attachReq)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	body := bytes.NewReader(b)
+	url := buildBlockURL("%s/volumes/%s/action", *tenantID, cmd.volume)
+	resp, err := sendHTTPRequest("POST", url, nil, body)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusAccepted {
+		fatalf("Volume attach failed: %s", resp.Status)
+	}
+
 	if err == nil {
 		fmt.Printf("Attached volume: %s\n", cmd.volume)
 	}
@@ -435,38 +517,33 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 
 	// mountpoint or mode isn't required
 
-	client, err := storageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get volume service client [%s]\n", err)
+	var detachReq = struct {
+		Detach volumeactions.DetachOpts `json:"os-detach"`
+	}{
+		Detach: volumeactions.DetachOpts{},
 	}
 
-	err = volumeactions.Detach(client, cmd.volume, volumeactions.DetachOpts{}).ExtractErr()
+	b, err := json.Marshal(detachReq)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	body := bytes.NewReader(b)
+	url := buildBlockURL("%s/volumes/%s/action", *tenantID, cmd.volume)
+	resp, err := sendHTTPRequest("POST", url, nil, body)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusAccepted {
+		fatalf("Volume detach failed: %s", resp.Status)
+	}
+
 	if err == nil {
 		fmt.Printf("Detached volume: %s\n", cmd.volume)
 	}
 	return err
-}
-
-func storageServiceClient(username, password, tenant string) (*gophercloud.ServiceClient, error) {
-	opt := gophercloud.AuthOptions{
-		IdentityEndpoint: *identityURL + "/v3/",
-		Username:         username,
-		Password:         password,
-		DomainID:         "default",
-		TenantID:         tenant,
-		AllowReauth:      true,
-	}
-
-	provider, err := newAuthenticatedClient(opt)
-	if err != nil {
-		errorf("Could not get AuthenticatedClient %s\n", err)
-		return nil, err
-	}
-
-	return openstack.NewBlockStorageV2(provider, gophercloud.EndpointOpts{
-		Name:   "cinderv2",
-		Region: "RegionOne",
-	})
 }
 
 func dumpVolume(v *customVolume) {
