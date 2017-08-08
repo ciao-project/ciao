@@ -140,11 +140,9 @@ func (s SortedNodesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
 
 // Tenant contains information about a tenant or project.
 type Tenant struct {
-	ID      string
-	Name    string
-	CNCIID  string
-	CNCIMAC string
-	CNCIIP  string
+	ID     string
+	Name   string
+	CNCIID string
 }
 
 // LogEntry stores information about events.
