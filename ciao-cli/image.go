@@ -17,19 +17,18 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"text/template"
 
 	"github.com/01org/ciao/templateutils"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/imagedata"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
-	"github.com/gophercloud/gophercloud/pagination"
 )
 
 var imageCommand = &command{
@@ -95,11 +94,6 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Could not open %s [%s]\n", cmd.file, err)
 	}
 
-	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get Image service client [%s]\n", err)
-	}
-
 	imageVisibility := images.ImageVisibilityPrivate
 	if cmd.visibility != "" {
 		imageVisibility = images.ImageVisibility(cmd.visibility)
@@ -119,15 +113,44 @@ func (cmd *imageAddCommand) run(args []string) error {
 		Tags:       tags,
 	}
 
-	image, err := images.Create(client, opts).Extract()
+	b, err := json.Marshal(opts)
 	if err != nil {
-		fatalf("Could not create image [%s]\n", err)
+		fatalf(err.Error())
+	}
+
+	body := bytes.NewReader(b)
+	url := buildImageURL("images")
+	resp, err := sendHTTPRequest("POST", url, nil, body)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusCreated {
+		fatalf("Image creation failed: %s", resp.Status)
+	}
+
+	image := new(images.Image)
+	err = unmarshalHTTPResponse(resp, image)
+	if err != nil {
+		fatalf(err.Error())
 	}
 
 	uploadTenantImage(*identityUser, *identityPassword, *tenantID, image.ID, cmd.file)
-	image, err = images.Get(client, image.ID).Extract()
+
+	url = buildImageURL("images/%s", image.ID)
+	resp, err = sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
-		fatalf("Could not retrieve new created image [%s]\n", err)
+		fatalf(err.Error())
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		fatalf("Image get failed: %s", resp.Status)
+	}
+
+	err = unmarshalHTTPResponse(resp, image)
+	if err != nil {
+		fatalf(err.Error())
 	}
 
 	if cmd.template != "" {
@@ -168,21 +191,29 @@ func (cmd *imageShowCommand) run(args []string) error {
 		return errors.New("Missing required -image parameter")
 	}
 
-	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
+	url := buildImageURL("images/%s", cmd.image)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
-		fatalf("Could not get Image service client [%s]\n", err)
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		fatalf("Image show failed: %s", resp.Status)
 	}
 
-	i, err := images.Get(client, cmd.image).Extract()
+	var i images.Image
+
+	err = unmarshalHTTPResponse(resp, &i)
 	if err != nil {
-		fatalf("Could not retrieve image %s [%s]\n", cmd.image, err)
+		fatalf(err.Error())
 	}
 
 	if cmd.template != "" {
 		return templateutils.OutputToTemplate(os.Stdout, "image-show", cmd.template, i, nil)
 	}
 
-	dumpImage(i)
+	dumpImage(&i)
 
 	return nil
 }
@@ -219,12 +250,8 @@ func (cmd *imageListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *imageListCommand) run(args []string) error {
-	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
-	if err != nil {
-		fatalf("Could not get Image service client [%s]\n", err)
-	}
-
 	var t *template.Template
+	var err error
 	if cmd.template != "" {
 		t, err = templateutils.CreateTemplate("image-list", cmd.template, nil)
 		if err != nil {
@@ -232,19 +259,27 @@ func (cmd *imageListCommand) run(args []string) error {
 		}
 	}
 
-	pager := images.List(client, images.ListOpts{})
+	url := buildImageURL("images")
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
 
-	var allImages []images.Image
-	err = pager.EachPage(func(page pagination.Page) (bool, error) {
-		imageList, err := images.ExtractImages(page)
-		if err != nil {
-			errorf("Could not extract image [%s]\n", err)
-		}
-		allImages = append(allImages, imageList...)
+	if resp.StatusCode != http.StatusOK {
+		fatalf("Image list failed: %s", resp.Status)
+	}
 
-		return false, nil
-	})
+	var images = struct {
+		Images []images.Image
+	}{}
 
+	err = unmarshalHTTPResponse(resp, &images)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	allImages := images.Images
 	if t != nil {
 		if err = t.Execute(os.Stdout, &allImages); err != nil {
 			fatalf(err.Error())
@@ -286,36 +321,34 @@ func (cmd *imageDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *imageDeleteCommand) run(args []string) error {
-	client, err := imageServiceClient(*identityUser, *identityPassword, *tenantID)
+	url := buildImageURL("images/%s", cmd.image)
+	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
 	if err != nil {
-		fatalf("Could not get Image service client [%s]\n", err)
+		fatalf(err.Error())
 	}
 
-	res := images.Delete(client, cmd.image)
-	if res.Err != nil {
-		fatalf("Could not delete Image [%s]\n", res.Err)
+	if resp.StatusCode != http.StatusNoContent {
+		fatalf("Image delete failed: %s", resp.Status)
 	}
+
 	fmt.Printf("Deleted image %s\n", cmd.image)
-	return res.Err
+
+	return nil
 }
 
 func uploadTenantImage(username, password, tenant, image, filename string) error {
-	client, err := imageServiceClient(username, password, tenant)
-	if err != nil {
-		fatalf("Could not get Image service client [%s]\n", err)
-	}
-
 	file, err := os.Open(filename)
 	if err != nil {
 		fatalf("Could not open %s [%s]", filename, err)
 	}
 	defer file.Close()
 
-	res := imagedata.Upload(client, image, file)
-	if res.Err != nil {
-		fatalf("Could not upload %s [%s]", filename, res.Err)
-	}
-	return res.Err
+	contentType := "octet-stream"
+	url := buildImageURL("images/%s/file", image)
+	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, &contentType)
+	defer func() { _ = resp.Body.Close() }()
+
+	return err
 }
 
 func dumpImage(i *images.Image) {
@@ -326,26 +359,4 @@ func dumpImage(i *images.Image) {
 	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)
 	fmt.Printf("\tTags             %v\n", i.Tags)
 	fmt.Printf("\tCreatedAt        [%s]\n", i.CreatedAt)
-}
-
-func imageServiceClient(username, password, tenant string) (*gophercloud.ServiceClient, error) {
-	opt := gophercloud.AuthOptions{
-		IdentityEndpoint: *identityURL + "/v3/",
-		Username:         username,
-		Password:         password,
-		DomainID:         "default",
-		TenantID:         tenant,
-		AllowReauth:      true,
-	}
-
-	provider, err := newAuthenticatedClient(opt)
-	if err != nil {
-		errorf("Could not get AuthenticatedClient %s\n", err)
-		return nil, err
-	}
-
-	return openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{
-		Name:   "glance",
-		Region: "RegionOne",
-	})
 }
