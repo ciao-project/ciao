@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/01org/ciao/ssntp"
 	"github.com/pkg/errors"
@@ -178,6 +179,84 @@ func SetupNodes(ctx context.Context, sshUser string, networkNode bool, hosts []s
 			err := setupNode(ctx, anchorCertPath, caCertPath, hostname, sshUser, networkNode)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error setting up node: %s: %v\n", hostname, err)
+			}
+			wg.Done()
+		}(host)
+	}
+	wg.Wait()
+	return nil
+}
+
+func teardownNode(ctx context.Context, hostname string, sshUser string) error {
+	tool := "ciao-launcher"
+	fmt.Printf("%s: Stopping %s\n", hostname, tool)
+	err := SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl stop %s", tool))
+	if err != nil {
+		return errors.Wrap(err, "Error stopping tool on node")
+	}
+
+	fmt.Printf("%s: Removing %s service file\n", hostname, tool)
+	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", tool))
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", serviceFilePath))
+	if err != nil {
+		return errors.Wrap(err, "Error removing systemd service file")
+	}
+
+	fmt.Printf("%s: Reloading systemd unit files\n", hostname)
+	err = SSHRunCommand(ctx, sshUser, hostname, "sudo systemctl daemon-reload")
+	if err != nil {
+		return errors.Wrap(err, "Error restarting systemctl on node")
+	}
+
+	fmt.Printf("%s: Removing %s certificates\n", hostname, tool)
+	caCertPath := path.Join(ciaoPKIDir, "CAcert.pem")
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", caCertPath))
+	if err != nil {
+		return errors.Wrap(err, "Error removing CA certificate")
+	}
+
+	// One of these can fail so ignore errors on both.
+	var computeAgentRole ssntp.Role = ssntp.AGENT
+	computeAgentCertPath := path.Join(ciaoPKIDir, fmt.Sprintf("cert-%s-%s.pem", computeAgentRole.String(), hostname))
+	_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", computeAgentCertPath))
+
+	var networkAgentRole ssntp.Role = ssntp.NETAGENT
+	networkAgentCertPath := path.Join(ciaoPKIDir, fmt.Sprintf("cert-%s-%s.pem", networkAgentRole.String(), hostname))
+	_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", networkAgentCertPath))
+
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rmdir %s", ciaoPKIDir))
+	if err != nil {
+		return errors.Wrap(err, "Error removing ciao PKI directory")
+	}
+
+	// Need extra timeout here due to #343
+	fmt.Printf("%s: Performing ciao-launcher hard reset\n", hostname)
+	timeoutContext, cancelFunc := context.WithTimeout(ctx, time.Second*60)
+	err = SSHRunCommand(timeoutContext, sshUser, hostname, "sudo ciao-launcher --hard-reset")
+	cancelFunc()
+	if timeoutContext.Err() != context.DeadlineExceeded && err != nil {
+		return errors.Wrap(err, "Error doing hard-reset on ciao-launcher")
+	}
+
+	fmt.Printf("%s: Removing %s binary\n", hostname, tool)
+	systemToolPath := path.Join("/usr/local/bin/", tool)
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", systemToolPath))
+	if err != nil {
+		return errors.Wrap(err, "Error removing tool binary")
+	}
+
+	return nil
+}
+
+// TeardownNodes removes launcher from the given nodes
+func TeardownNodes(ctx context.Context, sshUser string, hosts []string) error {
+	var wg sync.WaitGroup
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(hostname string) {
+			err := teardownNode(ctx, hostname, sshUser)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error tearing down node: %s: %v\n", hostname, err)
 			}
 			wg.Done()
 		}(host)

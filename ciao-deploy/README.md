@@ -141,7 +141,17 @@ ciao-deploy join ciao-cn01 ciao-cn02 ciao-cn03
 
 ## Teardown
 
-Tearing down the cluster is not currently implemented.
+To remove ciao from the worker nodes in the cluster `ciao-deploy unjoin` can be
+used.
+
+```
+ciao-deploy unjoin ciao-nn ciao-cn01 ciao-cn02 ciao-cn03
+```
+
+The same command can be used for both network and compute nodes without
+differentiation.
+
+Teardown of the master node is not currently supported.
 
 ## Support 
 
