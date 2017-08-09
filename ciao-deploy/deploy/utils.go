@@ -307,12 +307,12 @@ func SSHCreateFile(ctx context.Context, user string, host string, dest string, f
 
 	errCh := make(chan error, 1)
 	go func() {
-		defer func() { _ = p.Close() }()
-
 		buf := make([]byte, 1<<20)
 		_, err := io.CopyBuffer(p, f, buf)
 		errCh <- err
-		close(errCh)
+
+		err = p.Close()
+		errCh <- err
 	}()
 
 	err = session.Run(fmt.Sprintf("sudo tee %s", dest))
@@ -322,7 +322,14 @@ func SSHCreateFile(ctx context.Context, user string, host string, dest string, f
 
 	err = <-errCh
 	if err != nil {
+		<-errCh
 		return errors.Wrap(err, "Error copying data to target")
 	}
+
+	err = <-errCh
+	if err != nil {
+		return errors.Wrap(err, "Error closing SSH pipe to target")
+	}
+
 	return nil
 }
