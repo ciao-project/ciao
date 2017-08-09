@@ -50,7 +50,7 @@ func DefaultImageCacheDir() string {
 // DownloadImage checks for a cached image in the cache directory and downloads
 // otherwise. The returned string is the path to the file and the boolean
 // indicates if it was downloaded on this function call.
-func DownloadImage(ctx context.Context, url string, imageCacheDir string) (string, bool, error) {
+func DownloadImage(ctx context.Context, url string, imageCacheDir string) (_ string, _ bool, errOut error) {
 	ss := strings.Split(url, "/")
 	localName := ss[len(ss)-1]
 
@@ -70,7 +70,13 @@ func DownloadImage(ctx context.Context, url string, imageCacheDir string) (strin
 	if err != nil {
 		return "", false, errors.Wrap(err, "Unable to create temporary file for download")
 	}
-	defer func() { _ = f.Close() }()
+	defer func() {
+		if err := f.Close(); err != nil {
+			if errOut == nil {
+				errOut = errors.Wrap(err, "Error closing temporary file")
+			}
+		}
+	}()
 	defer func() { _ = os.Remove(f.Name()) }()
 
 	fmt.Printf("Downloading: %s\n", url)
