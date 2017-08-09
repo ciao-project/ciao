@@ -343,9 +343,8 @@ func uploadTenantImage(username, password, tenant, image, filename string) error
 	}
 	defer file.Close()
 
-	contentType := "octet-stream"
 	url := buildImageURL("images/%s/file", image)
-	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, &contentType)
+	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, "octet-stream")
 	defer func() { _ = resp.Body.Close() }()
 
 	return err
