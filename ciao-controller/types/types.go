@@ -716,3 +716,10 @@ type QuotaUpdateRequest struct {
 type QuotaListResponse struct {
 	Quotas []QuotaDetails `json:"quotas"`
 }
+
+// UserInfo represents users in Ciao's basic authentication architecture
+type UserInfo struct {
+	Username     string
+	PasswordHash string
+	Grants       []string
+}
