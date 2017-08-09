@@ -193,7 +193,6 @@ func GenerateCert(anchorCertPath string, role ssntp.Role) (path string, errOut e
 		return "", errors.Wrap(err, "Error creating temporary certifate file")
 	}
 	defer func() {
-		_ = f.Close()
 		if errOut != nil {
 			_ = os.Remove(f.Name())
 		}
@@ -201,7 +200,13 @@ func GenerateCert(anchorCertPath string, role ssntp.Role) (path string, errOut e
 
 	err = certs.CreateCert(t, false, anchorCertBytes, f)
 	if err != nil {
+		_ = f.Close()
 		return "", errors.Wrap(err, "Error creating certificate from anchor")
+	}
+
+	err = f.Close()
+	if err != nil {
+		return "", errors.Wrap(err, "Error closing certificate file")
 	}
 
 	return f.Name(), nil
