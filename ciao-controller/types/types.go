@@ -544,6 +544,9 @@ var (
 
 	// ErrWorkloadInUse is returned by DeleteWorkload when an instance of a workload is still active.
 	ErrWorkloadInUse = errors.New("Workload definition still in use")
+
+	// ErrUserNotFound is returned when the user does not exist.
+	ErrUserNotFound = errors.New("User not found")
 )
 
 // Link provides a url and relationship for a resource.

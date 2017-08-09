@@ -184,6 +184,9 @@ type Datastore struct {
 	externalIPs     map[string]bool
 	mappedIPs       map[string]types.MappedIP
 	poolsLock       *sync.RWMutex
+
+	users     map[string]*types.UserInfo
+	usersLock *sync.RWMutex
 }
 
 func (ds *Datastore) initExternalIPs() {
@@ -323,6 +326,12 @@ func (ds *Datastore) Init(config Config) error {
 	ds.attachLock = &sync.RWMutex{}
 
 	ds.initExternalIPs()
+
+	ds.usersLock = &sync.RWMutex{}
+	ds.users, err = ds.db.getUsers()
+	if err != nil {
+		return errors.Wrap(err, "Error populating datastore with users")
+	}
 
 	return nil
 }
@@ -2505,4 +2514,107 @@ func (ds *Datastore) ResolveInstance(tenantID string, name string) (string, erro
 	}
 
 	return "", nil
+}
+
+// AddUser adds a user to the datastore
+func (ds *Datastore) AddUser(username, pwhash string) error {
+	ds.usersLock.Lock()
+	defer ds.usersLock.Unlock()
+
+	err := ds.db.addUser(username, pwhash)
+	if err != nil {
+		return errors.Wrap(err, "Error adding user to database")
+	}
+
+	ds.users[username] = &types.UserInfo{
+		Username:     username,
+		PasswordHash: pwhash,
+	}
+
+	return nil
+}
+
+// DelUser removes a user from the datastore
+func (ds *Datastore) DelUser(username string) error {
+	ds.usersLock.Lock()
+	defer ds.usersLock.Unlock()
+
+	err := ds.db.delUser(username)
+	if err != nil {
+		return errors.Wrap(err, "Error deleting user from database")
+	}
+
+	delete(ds.users, username)
+	return nil
+}
+
+// Grant gives a user access to a tenant
+func (ds *Datastore) Grant(username, tenantID string) error {
+	ds.usersLock.Lock()
+	defer ds.usersLock.Unlock()
+
+	err := ds.db.grant(username, tenantID)
+	if err != nil {
+		return errors.Wrap(err, "Error adding grant to database")
+	}
+
+	ui, ok := ds.users[username]
+	if !ok {
+		return fmt.Errorf("User not found: %s", username)
+	}
+
+	ui.Grants = append(ui.Grants, tenantID)
+
+	return nil
+}
+
+// Revoke removes a users access to a tenant
+func (ds *Datastore) Revoke(username, tenantID string) error {
+	ds.usersLock.Lock()
+	defer ds.usersLock.Unlock()
+
+	err := ds.db.grant(username, tenantID)
+	if err != nil {
+		return errors.Wrap(err, "Error deleting grant from database")
+	}
+
+	ui, ok := ds.users[username]
+	if !ok {
+		return types.ErrUserNotFound
+	}
+
+	for i, g := range ui.Grants {
+		if g == tenantID {
+			ui.Grants = append(ui.Grants[:i], ui.Grants[i+1:]...)
+			break
+		}
+	}
+
+	return nil
+}
+
+// GetUserInfo returns the information about a given user.
+func (ds *Datastore) GetUserInfo(username string) (types.UserInfo, error) {
+	ds.usersLock.RLock()
+	defer ds.usersLock.RUnlock()
+
+	ui, ok := ds.users[username]
+	if !ok {
+		return types.UserInfo{}, types.ErrUserNotFound
+	}
+
+	return *ui, nil
+}
+
+// GetUsers returns details of all known users
+func (ds *Datastore) GetUsers() ([]types.UserInfo, error) {
+	ds.usersLock.RLock()
+	defer ds.usersLock.RUnlock()
+
+	uis := make([]types.UserInfo, 0)
+	for _, ui := range ds.users {
+		uis = append(uis, *ui)
+	}
+
+	return uis, nil
 }
