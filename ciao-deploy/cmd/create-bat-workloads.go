@@ -15,12 +15,9 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/01org/ciao/ciao-deploy/deploy"
 	"github.com/spf13/cobra"
@@ -32,15 +29,8 @@ var password string
 var imageCacheDirectory string
 
 func createBatWorkloads() int {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := getSignalContext()
 	defer cancelFunc()
-
-	sigCh := make(chan os.Signal, 1)
-	go func() {
-		<-sigCh
-		cancelFunc()
-	}()
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	var sshPublicKey []byte
 	var err error

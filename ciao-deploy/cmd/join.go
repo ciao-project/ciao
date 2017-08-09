@@ -15,12 +15,9 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"os/user"
-	"syscall"
 
 	"github.com/01org/ciao/ciao-deploy/deploy"
 	"github.com/spf13/cobra"
@@ -30,15 +27,8 @@ var networkNode bool
 var sshUser string
 
 func join(args []string) int {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := getSignalContext()
 	defer cancelFunc()
-
-	sigCh := make(chan os.Signal, 1)
-	go func() {
-		<-sigCh
-		cancelFunc()
-	}()
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	hosts := args
 	err := deploy.SetupNodes(ctx, sshUser, networkNode, hosts)

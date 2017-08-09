@@ -15,11 +15,8 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/01org/ciao/ciao-deploy/deploy"
 	"github.com/spf13/cobra"
@@ -29,15 +26,8 @@ var anchorCertPath string
 var caCertPath string
 
 func createCNCI() int {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := getSignalContext()
 	defer cancelFunc()
-
-	sigCh := make(chan os.Signal, 1)
-	go func() {
-		<-sigCh
-		cancelFunc()
-	}()
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	err := deploy.CreateCNCIImage(ctx, anchorCertPath, caCertPath, imageCacheDirectory)
 	if err != nil {

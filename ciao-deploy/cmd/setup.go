@@ -15,13 +15,10 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/01org/ciao/ciao-deploy/deploy"
 	"github.com/spf13/cobra"
@@ -33,15 +30,8 @@ var force bool
 var localLauncher bool
 
 func setup() int {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := getSignalContext()
 	defer cancelFunc()
-
-	sigCh := make(chan os.Signal, 1)
-	go func() {
-		<-sigCh
-		cancelFunc()
-	}()
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	err := deploy.SetupMaster(ctx, force, imageCacheDirectory, clusterConf)
 	if err != nil {
