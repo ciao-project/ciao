@@ -26,6 +26,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func unjoin(args []string) int {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	sigCh := make(chan os.Signal, 1)
+	go func() {
+		<-sigCh
+		cancelFunc()
+	}()
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	hosts := args
+	err := deploy.TeardownNodes(ctx, sshUser, hosts)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error unprovisioning nodes: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
 // unjoinCmd represents the unjoin command
 var unjoinCmd = &cobra.Command{
 	Use:   "unjoin <hosts>",
@@ -33,23 +53,7 @@ var unjoinCmd = &cobra.Command{
 	Long: `Remove the nodes from the cluster. Removing certificates and
 	 uninstalling software.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
-
-		sigCh := make(chan os.Signal, 1)
-		go func() {
-			<-sigCh
-			cancelFunc()
-		}()
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-		hosts := args
-		err := deploy.TeardownNodes(ctx, sshUser, hosts)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error unprovisioning nodes: %v\n", err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+		os.Exit(unjoin(args))
 	},
 	Args: cobra.MinimumNArgs(1),
 }

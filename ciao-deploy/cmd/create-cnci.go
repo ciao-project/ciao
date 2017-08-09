@@ -28,6 +28,25 @@ import (
 var anchorCertPath string
 var caCertPath string
 
+func createCNCI() int {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	sigCh := make(chan os.Signal, 1)
+	go func() {
+		<-sigCh
+		cancelFunc()
+	}()
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	err := deploy.CreateCNCIImage(ctx, anchorCertPath, caCertPath, imageCacheDirectory)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating CNCI: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
 // createCNCICmd represents the create-cnci command
 var createCNCICmd = &cobra.Command{
 	Use:   "create-cnci",
@@ -35,22 +54,7 @@ var createCNCICmd = &cobra.Command{
 	Long: `Downloads the image needed for the CNCI, makes local customisations and
 	 uploads to server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
-
-		sigCh := make(chan os.Signal, 1)
-		go func() {
-			<-sigCh
-			cancelFunc()
-		}()
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-		err := deploy.CreateCNCIImage(ctx, anchorCertPath, caCertPath, imageCacheDirectory)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating CNCI: %v\n", err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+		os.Exit(createCNCI())
 	},
 }
 

@@ -29,28 +29,32 @@ import (
 var networkNode bool
 var sshUser string
 
+func join(args []string) int {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	sigCh := make(chan os.Signal, 1)
+	go func() {
+		<-sigCh
+		cancelFunc()
+	}()
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	hosts := args
+	err := deploy.SetupNodes(ctx, sshUser, networkNode, hosts)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error provisioning nodes: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
 var joinCmd = &cobra.Command{
 	Use:   "join <hostname>",
 	Short: "Join a node to the Ciao cluster",
 	Long:  `Join a node of the desired role to the cluster`,
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
-
-		sigCh := make(chan os.Signal, 1)
-		go func() {
-			<-sigCh
-			cancelFunc()
-		}()
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-		hosts := args
-		err := deploy.SetupNodes(ctx, sshUser, networkNode, hosts)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error provisioning nodes: %v\n", err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+		os.Exit(join(args))
 	},
 	Args: cobra.MinimumNArgs(1),
 }

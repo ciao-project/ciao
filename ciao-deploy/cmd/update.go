@@ -24,37 +24,41 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func update() int {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	sigCh := make(chan os.Signal, 1)
+	go func() {
+		<-sigCh
+		cancelFunc()
+	}()
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	err := deploy.UpdateMaster(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error updating master node")
+		return 1
+	}
+
+	if localLauncher {
+		err = deploy.SetupLocalLauncher(ctx)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error setting up local launcher")
+			return 1
+		}
+	}
+
+	return 0
+}
+
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update the master node on the cluster",
 	Long:  `Use on an already setup master node to update the current software on the node`,
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
-
-		sigCh := make(chan os.Signal, 1)
-		go func() {
-			<-sigCh
-			cancelFunc()
-		}()
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-		err := deploy.UpdateMaster(ctx)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error updating master node")
-			os.Exit(1)
-		}
-
-		if localLauncher {
-			err = deploy.SetupLocalLauncher(ctx)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error setting up local launcher")
-				os.Exit(1)
-			}
-		}
-
-		os.Exit(0)
+		os.Exit(update())
 	},
 }
 

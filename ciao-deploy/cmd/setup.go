@@ -32,37 +32,41 @@ var clusterConf = &deploy.ClusterConfiguration{}
 var force bool
 var localLauncher bool
 
+func setup() int {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	sigCh := make(chan os.Signal, 1)
+	go func() {
+		<-sigCh
+		cancelFunc()
+	}()
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	err := deploy.SetupMaster(ctx, force, imageCacheDirectory, clusterConf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error provisioning system as master: %v\n", err)
+		return 1
+	}
+
+	if localLauncher {
+		err = deploy.SetupLocalLauncher(ctx)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error setting up local launcher: %v\n", err)
+		}
+	}
+
+	deploy.OutputEnvironment(clusterConf)
+	return 0
+}
+
 // setupCmd represents the master command
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Sets up this machine as the master node",
 	Long:  "Configures this machine as the master node for a ciao cluster",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
-
-		sigCh := make(chan os.Signal, 1)
-		go func() {
-			<-sigCh
-			cancelFunc()
-		}()
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-		err := deploy.SetupMaster(ctx, force, imageCacheDirectory, clusterConf)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error provisioning system as master: %v\n", err)
-			os.Exit(1)
-		}
-
-		if localLauncher {
-			err = deploy.SetupLocalLauncher(ctx)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error setting up local launcher: %v\n", err)
-			}
-		}
-
-		deploy.OutputEnvironment(clusterConf)
-		os.Exit(0)
+		os.Exit(setup())
 	},
 }
 

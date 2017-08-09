@@ -31,6 +31,35 @@ var sshPublicKeyPath string
 var password string
 var imageCacheDirectory string
 
+func createBatWorkloads() int {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	sigCh := make(chan os.Signal, 1)
+	go func() {
+		<-sigCh
+		cancelFunc()
+	}()
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	var sshPublicKey []byte
+	var err error
+	if sshPublicKeyPath != "" {
+		sshPublicKey, err = ioutil.ReadFile(sshPublicKeyPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading from SSH key file: %s\n", err)
+			return 1
+		}
+	}
+
+	err = deploy.CreateBatWorkloads(ctx, allWorkloads, string(sshPublicKey), password, imageCacheDirectory)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating BAT workloads: %s\n", err)
+		return 1
+	}
+	return 0
+}
+
 // createBatWorkloadsCmd represents the create-bat-workloads command
 var createBatWorkloadsCmd = &cobra.Command{
 	Use:   "create-bat-workloads",
@@ -38,32 +67,7 @@ var createBatWorkloadsCmd = &cobra.Command{
 	Long: `Downloads the images and creates the workloads necessary for running
 	 the Basic Acceptance Tests (BAT)`,
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		defer cancelFunc()
-
-		sigCh := make(chan os.Signal, 1)
-		go func() {
-			<-sigCh
-			cancelFunc()
-		}()
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-		var sshPublicKey []byte
-		var err error
-		if sshPublicKeyPath != "" {
-			sshPublicKey, err = ioutil.ReadFile(sshPublicKeyPath)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error reading from SSH key file: %s\n", err)
-				os.Exit(1)
-			}
-		}
-
-		err = deploy.CreateBatWorkloads(ctx, allWorkloads, string(sshPublicKey), password, imageCacheDirectory)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating BAT workloads: %s\n", err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+		os.Exit(createBatWorkloads())
 	},
 }
 
