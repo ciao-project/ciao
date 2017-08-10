@@ -109,6 +109,7 @@ func (h *authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if ok, isAdmin := h.Auth.Authenticate(username, password, vars["tenant"]); ok {
 		ctx := service.SetPrivilege(r.Context(), isAdmin)
+		ctx = service.SetUsername(ctx, username)
 
 		h.RealHandler.ServeHTTP(w, r.WithContext(ctx))
 		return

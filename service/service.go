@@ -29,6 +29,9 @@ const PrivKey key = 0
 // tenant id which is being used in the API call
 const TenantIDKey key = 1
 
+// UsernameKey is the key for the username in the context map
+const UsernameKey key = 2
+
 // GetPrivilege returns the value of PrivKey
 func GetPrivilege(ctx context.Context) bool {
 	privilege, ok := ctx.Value(PrivKey).(bool)
@@ -52,4 +55,18 @@ func GetTenantID(ctx context.Context) (string, error) {
 // SetTenantID sets the value of Tenant ID
 func SetTenantID(ctx context.Context, tenantID string) context.Context {
 	return context.WithValue(ctx, TenantIDKey, tenantID)
+}
+
+// SetUsername sets the value of username
+func SetUsername(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, UsernameKey, username)
+}
+
+// GetUsername returns the value of username on context
+func GetUsername(ctx context.Context) string {
+	username, ok := ctx.Value(UsernameKey).(string)
+	if ok {
+		return username
+	}
+	return ""
 }
