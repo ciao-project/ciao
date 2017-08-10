@@ -314,7 +314,7 @@ func (c *controller) createImageServer() (*http.Server, error) {
 			ValidAdmins:   validAdmins,
 		}
 
-		route.Handler(h)
+		route.Handler(c.auth.GetHandler(route.GetHandler(), h))
 		return nil
 	})
 	if err != nil {

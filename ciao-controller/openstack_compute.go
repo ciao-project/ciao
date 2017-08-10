@@ -628,7 +628,7 @@ func (c *controller) createComputeServer() (*http.Server, error) {
 			ValidAdmins:   validAdmins,
 		}
 
-		route.Handler(h)
+		route.Handler(c.auth.GetHandler(route.GetHandler(), h))
 
 		return nil
 	})
