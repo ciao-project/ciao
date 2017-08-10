@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/api"
+	"github.com/01org/ciao/ciao-controller/internal/auth"
 	"github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/internal/quotas"
 	storage "github.com/01org/ciao/ciao-storage"
@@ -59,6 +60,7 @@ type controller struct {
 	tenantReadinessLock sync.Mutex
 	qs                  *quotas.Quotas
 	httpServers         []*http.Server
+	auth                auth.Auth
 }
 
 var cert = flag.String("cert", "", "Client certificate")
@@ -165,6 +167,12 @@ func main() {
 	cnciVCPUs := clusterConfig.Configure.Controller.CNCIVcpus
 	cnciMem := clusterConfig.Configure.Controller.CNCIMem
 	cnciDisk := clusterConfig.Configure.Controller.CNCIDisk
+
+	err = ctl.auth.Init(ctl.ds, clusterConfig.Configure.Controller.InitialAdminPasswordHash)
+	if err != nil {
+		glog.Fatalf("Error setting initial admin credentials")
+		return
+	}
 
 	adminSSHKey = clusterConfig.Configure.Controller.AdminSSHKey
 
