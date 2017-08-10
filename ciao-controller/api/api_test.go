@@ -308,6 +308,30 @@ func (ts testCiaoService) UpdateQuotas(tenantID string, qds []types.QuotaDetails
 	return nil
 }
 
+func (ts testCiaoService) AddUser(username, pwhash string) error {
+	return nil
+}
+
+func (ts testCiaoService) DelUser(username string) error {
+	return nil
+}
+
+func (ts testCiaoService) ListUsers() ([]string, error) {
+	return []string{}, nil
+}
+
+func (ts testCiaoService) ListUserGrants(username string) ([]string, error) {
+	return []string{}, nil
+}
+
+func (ts testCiaoService) GrantUser(username, tenantID string) error {
+	return nil
+}
+
+func (ts testCiaoService) RevokeUser(username, tenantID string) error {
+	return nil
+}
+
 func TestResponse(t *testing.T) {
 	var ts testCiaoService
 
