@@ -257,6 +257,7 @@ func (c *controller) launchCNCI(tenantID string) error {
 		WorkloadID: workloadID,
 		TenantID:   tenantID,
 		Instances:  1,
+		Name:       "cnci-" + tenantID,
 	}
 	_, err = c.startWorkload(w)
 	if err != nil {

@@ -285,102 +285,115 @@ func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s ty
 	return
 }
 
+func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.NetworkResources, cnci bool) error {
+	networking.VnicUUID = uuid.Generate().String()
+
+	if cnci {
+		networking.VnicMAC = tenant.CNCIMAC
+		return nil
+	}
+
+	ipAddress, err := ctl.ds.AllocateTenantIP(tenant.ID)
+	if err != nil {
+		fmt.Println("Unable to allocate IP address: ", err)
+		return err
+	}
+
+	networking.VnicMAC = newTenantHardwareAddr(ipAddress).String()
+
+	// send in CIDR notation?
+	networking.PrivateIP = ipAddress.String()
+	mask := net.IPv4Mask(255, 255, 255, 0)
+	ipnet := net.IPNet{
+		IP:   ipAddress.Mask(mask),
+		Mask: mask,
+	}
+	networking.Subnet = ipnet.String()
+	networking.ConcentratorUUID = tenant.CNCIID
+
+	// in theory we should refuse to go on if ip is null
+	// for now let's keep going
+	networking.ConcentratorIP = tenant.CNCIIP
+
+	return nil
+}
+
+func storageConfig(ctl *controller, tenant *types.Tenant, instanceID string, volumes []storage.BlockDevice) ([]payloads.StorageResource, error) {
+	var storage []payloads.StorageResource
+
+	// handle storage resources for just this instance
+	for _, volume := range volumes {
+		instanceStorage := payloads.StorageResource{
+			ID:        volume.ID,
+			Bootable:  volume.Bootable,
+			Ephemeral: volume.Ephemeral,
+			Local:     volume.Local,
+			Swap:      volume.Swap,
+			BootIndex: volume.BootIndex,
+			Tag:       volume.Tag,
+			Size:      volume.Size,
+		}
+
+		// controller created (as opposed to launcher
+		// created) instance storage (workload storage is later)
+		if volume.ID == "" && !volume.Local {
+			// auto-create empty
+			device, err := ctl.CreateBlockDevice("", "", volume.Size)
+			if err != nil {
+				return storage, err
+			}
+
+			instanceStorage.ID = device.ID
+			s := controllerStorageResourceFromPayload(instanceStorage)
+			_, err = addBlockDevice(ctl, tenant.ID, instanceID, device, s)
+			if err != nil {
+				return storage, err
+			}
+		} /* else {
+			// volume.ID != "": launcher will attach pre-existing volume
+			// volume.Local: launcher will create ephemeral volume
+		} */
+
+		storage = append(storage, instanceStorage)
+	}
+
+	return storage, nil
+}
+
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
 	volumes []storage.BlockDevice, name string) (config, error) {
-
 	var metaData userData
 	var config config
+	var networking payloads.NetworkResources
+	var storage []payloads.StorageResource
 
 	baseConfig := wl.Config
 	defaults := wl.Defaults
 	fwType := wl.FWType
+	config.cnci = isCNCIWorkload(wl)
+	metaData.UUID = instanceID
 
 	tenant, err := ctl.ds.GetTenant(tenantID)
 	if err != nil {
 		fmt.Println("unable to get tenant")
 	}
 
-	config.cnci = isCNCIWorkload(wl)
-
-	var networking payloads.NetworkResources
-	var storage []payloads.StorageResource
-
-	// do we ever need to save the vnic uuid?
-	networking.VnicUUID = uuid.Generate().String()
-
-	if config.cnci == false {
-		ipAddress, err := ctl.ds.AllocateTenantIP(tenantID)
-		if err != nil {
-			fmt.Println("Unable to allocate IP address: ", err)
-			return config, err
-		}
-
-		networking.VnicMAC = newTenantHardwareAddr(ipAddress).String()
-
-		// send in CIDR notation?
-		networking.PrivateIP = ipAddress.String()
-		config.ip = ipAddress.String()
-		mask := net.IPv4Mask(255, 255, 255, 0)
-		ipnet := net.IPNet{
-			IP:   ipAddress.Mask(mask),
-			Mask: mask,
-		}
-		networking.Subnet = ipnet.String()
-		networking.ConcentratorUUID = tenant.CNCIID
-
-		// in theory we should refuse to go on if ip is null
-		// for now let's keep going
-		networking.ConcentratorIP = tenant.CNCIIP
-
-		// set the hostname and uuid for userdata
-		metaData.UUID = instanceID
-		metaData.Hostname = instanceID
-		if name != "" {
-			metaData.Hostname = name
-		}
-
-		// handle storage resources for just this instance
-		for _, volume := range volumes {
-			instanceStorage := payloads.StorageResource{
-				ID:        volume.ID,
-				Bootable:  volume.Bootable,
-				Ephemeral: volume.Ephemeral,
-				Local:     volume.Local,
-				Swap:      volume.Swap,
-				BootIndex: volume.BootIndex,
-				Tag:       volume.Tag,
-				Size:      volume.Size,
-			}
-
-			// controller created (as opposed to launcher
-			// created) instance storage (workload storage is later)
-			if volume.ID == "" && !volume.Local {
-				// auto-create empty
-				device, err := ctl.CreateBlockDevice("", "", volume.Size)
-				if err != nil {
-					return config, err
-				}
-
-				instanceStorage.ID = device.ID
-				s := controllerStorageResourceFromPayload(instanceStorage)
-				_, err = addBlockDevice(ctl, tenantID, instanceID, device, s)
-				if err != nil {
-					return config, err
-				}
-			} /* else {
-				// volume.ID != "": launcher will attach pre-existing volume
-				// volume.Local: launcher will create ephemeral volume
-			} */
-
-			storage = append(storage, instanceStorage)
-		}
-	} else {
-		networking.VnicMAC = tenant.CNCIMAC
-
-		// set the hostname and uuid for userdata
-		metaData.UUID = instanceID
-		metaData.Hostname = "cnci-" + tenantID
+	err = networkConfig(ctl, tenant, &networking, config.cnci)
+	if err != nil {
+		return config, err
 	}
+
+	metaData.Hostname = instanceID
+	if name != "" {
+		metaData.Hostname = name
+	}
+
+	storage, err = storageConfig(ctl, tenant, instanceID, volumes)
+	if err != nil {
+		return config, err
+	}
+
+	config.ip = networking.PrivateIP
 
 	// handle storage resources in workload definition
 	for i := range wl.Storage {
