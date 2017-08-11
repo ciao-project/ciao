@@ -1390,6 +1390,21 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 	return errors.Wrapf(ds.db.addInstanceStats(stats, nodeID), "error adding instance stats to database")
 }
 
+// ByTenantID is used to sort CNCI instances by Tenant ID.
+type ByTenantID []types.TenantCNCI
+
+func (c ByTenantID) Len() int {
+	return len(c)
+}
+
+func (c ByTenantID) Swap(i int, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func (c ByTenantID) Less(i int, j int) bool {
+	return c[i].TenantID < c[j].TenantID
+}
+
 // GetTenantCNCISummary retrieves information about a given CNCI id, or all CNCIs
 // If the cnci string is the null string, then this function will retrieve all
 // tenants.  If cnci is not null, it will only provide information about a specific
@@ -1438,6 +1453,8 @@ func (ds *Datastore) GetTenantCNCISummary(cnci string) ([]types.TenantCNCI, erro
 	}
 
 	ds.tenantsLock.RUnlock()
+
+	sort.Sort(ByTenantID(cncis))
 
 	return cncis, nil
 }
