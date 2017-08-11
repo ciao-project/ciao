@@ -210,6 +210,8 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.Header.Add("X-Auth-Token", token)
 	}
 
+	req.SetBasicAuth(*identityUser, *identityPassword)
+
 	if content != "" {
 		contentType := fmt.Sprintf("application/%s", content)
 		req.Header.Set("Content-Type", contentType)
@@ -386,10 +388,6 @@ func getCiaoEnvVariables() {
 func checkCompulsoryOptions() {
 	fatal := ""
 
-	if *identityURL == "" {
-		fatal += "Missing required identity URL\n"
-	}
-
 	if *identityUser == "" {
 		fatal += "Missing required username\n"
 	}
@@ -422,18 +420,20 @@ func prepareForCommand() {
 		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
-	/* If we're missing the tenant name let's try to fetch one */
-	if *tenantName == "" {
-		*tenantName, *tenantID, err = getTenant(*identityUser, *identityPassword, *tenantID)
+	if *identityURL != "" {
+		/* If we're missing the tenant name let's try to fetch one */
+		if *tenantName == "" {
+			*tenantName, *tenantID, err = getTenant(*identityUser, *identityPassword, *tenantID)
+			if err != nil {
+				fatalf(err.Error())
+			}
+			warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
+		}
+
+		scopedToken, *tenantID, _, err = getScopedToken(*identityUser, *identityPassword, *tenantName)
 		if err != nil {
 			fatalf(err.Error())
 		}
-		warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
-	}
-
-	scopedToken, *tenantID, _, err = getScopedToken(*identityUser, *identityPassword, *tenantName)
-	if err != nil {
-		fatalf(err.Error())
 	}
 }
 
