@@ -95,13 +95,7 @@ func addFakeCNCI(tenant *types.Tenant) (*types.Instance, error) {
 		IPAddress:  "192.168.0.1",
 		MACAddress: mac.String(),
 		Subnet:     "172.16.0.0/24",
-		MACAddress: mac.String(),
 		StateLock:  &sync.RWMutex{},
-	}
-
-	err = ctl.ds.AddInstance(&CNCI)
-	if err != nil {
-		return err
 	}
 
 	return &CNCI, ctl.ds.AddInstance(&CNCI)

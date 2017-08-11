@@ -92,7 +92,12 @@ func (client *ssntpClient) deleteEphemeralStorage(instanceID string) {
 	}
 }
 
-func (client *ssntpClient) releaseResources(i *types.Instance) error {
+func (client *ssntpClient) releaseResources(instanceID string) error {
+	i, err := client.ctl.ds.GetInstance(instanceID)
+	if err != nil {
+		return errors.Wrapf(err, "error getting instance from datastore")
+	}
+
 	// CNCI resources are not quota tracked
 	if i.CNCI {
 		return nil
@@ -109,26 +114,32 @@ func (client *ssntpClient) releaseResources(i *types.Instance) error {
 	return nil
 }
 
-func (client *ssntpClient) removeInstance(i *types.Instance) {
-	tenant, err := client.ctl.ds.GetTenant(i.TenantID)
-	if err != nil {
-		glog.Warningf("Error retrieving tenant %v", err)
-		return
-	}
-
-	err = client.releaseResources(i)
+func (client *ssntpClient) removeInstance(instanceID string) {
+	err := client.releaseResources(instanceID)
 	if err != nil {
 		glog.Warningf("Error when releasing resources for deleted instance: %v", err)
 	}
 
-	client.deleteEphemeralStorage(i.ID)
+	client.deleteEphemeralStorage(instanceID)
 
-	err = client.ctl.ds.DeleteInstance(i.ID)
+	i, err := client.ctl.ds.GetInstance(instanceID)
+	if err != nil {
+		glog.Warningf("Error getting instance from datastore: %v", err)
+		return
+	}
+
+	err = client.ctl.ds.DeleteInstance(instanceID)
 	if err != nil {
 		glog.Warningf("Error deleting instance from datastore: %v", err)
 	}
 
 	if i.CNCI {
+		tenant, err := client.ctl.ds.GetTenant(i.TenantID)
+		if err != nil {
+			glog.Warningf("Error retrieving tenant %v", err)
+			return
+		}
+
 		err = tenant.CNCIctrl.ConcentratorInstanceRemoved(i.ID)
 		if err != nil {
 			glog.Warningf("Error removing CNCI: %v", err)
@@ -144,13 +155,7 @@ func (client *ssntpClient) instanceDeleted(payload []byte) {
 		return
 	}
 
-	i, err := client.ctl.ds.GetInstance(event.InstanceDeleted.InstanceUUID)
-	if err != nil {
-		glog.Warningf("error getting instance from datastore: %v")
-		return
-	}
-
-	client.removeInstance(i)
+	client.removeInstance(event.InstanceDeleted.InstanceUUID)
 }
 
 func (client *ssntpClient) instanceStopped(payload []byte) {
@@ -328,13 +333,8 @@ func (client *ssntpClient) startFailure(payload []byte) {
 		return
 	}
 	if failure.Reason.IsFatal() && !failure.Restart {
-		i, err := client.ctl.ds.GetInstance(failure.InstanceUUID)
-		if err != nil {
-			glog.Warningf("error getting instance from datastore: %v", err)
-			return
-		}
 		client.deleteEphemeralStorage(failure.InstanceUUID)
-		err = client.releaseResources(i)
+		err = client.releaseResources(failure.InstanceUUID)
 		if err != nil {
 			glog.Warningf("Error when releasing resources for start failed instance: %v", err)
 		}
@@ -527,16 +527,11 @@ func (client *ssntpClient) deleteInstance(payload *payloads.Delete, instanceID s
 
 func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) error {
 	if nodeID == "" {
-		i, err := client.ctl.ds.GetInstance(instanceID)
-		if err != nil {
-			return err
-		}
-
 		// This instance is not running and not assigned to a node.  We
 		// can just remove its details from controller's db and delete
 		// any ephemeral storage.
 		glog.Info("Deleting unassigned instance")
-		client.removeInstance(i)
+		client.removeInstance(instanceID)
 		return nil
 	}
 
@@ -584,11 +579,6 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 	metaData := userData{
 		UUID:     i.ID,
 		Hostname: hostname,
-	}
-
-	cnci, err := client.ctl.ds.GetInstance(t.CNCIID)
-	if err != nil {
-		return err
 	}
 
 	restartCmd := payloads.StartCmd{
