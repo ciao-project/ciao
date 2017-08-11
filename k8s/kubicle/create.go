@@ -505,30 +505,35 @@ func (c *creator) cleanup() {
 	}
 }
 
-func startHTTPServer(adminPath string, listener net.Listener, errCh chan error) {
+func writeFile(path string, r *http.Request) error {
+	d, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, d, 0600)
+}
+
+func startHTTPServer(adminPath, logPath string, listener net.Listener, errCh chan error) {
 	finished := false
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		d, err := ioutil.ReadAll(r.Body)
-		defer func() {
-			_ = listener.Close()
-		}()
-
-		if err != nil {
-			return
-		}
-		err = ioutil.WriteFile(adminPath, d, 0600)
-		if err != nil {
-			return
-		}
-
+	var err error
+	http.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
+		err = writeFile(adminPath, r)
 		finished = true
+		_ = listener.Close()
+	})
+	http.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
+		err = fmt.Errorf("Master node setup failed.  See %s for details",
+			logPath)
+		_ = writeFile(logPath, r)
+		finished = true
+		_ = listener.Close()
 	})
 
 	server := &http.Server{}
 	go func() {
 		_ = server.Serve(listener)
 		if finished {
-			errCh <- nil
+			errCh <- err
 		} else {
 			errCh <- fmt.Errorf("HTTP server exited prematurely")
 		}
@@ -548,7 +553,8 @@ func (c *creator) startServer() {
 	c.listener = listener
 	c.errCh = make(chan error)
 	c.adminPath = filepath.Join(c.cwd, "admin.conf")
-	startHTTPServer(c.adminPath, listener, c.errCh)
+	logPath := filepath.Join(c.cwd, "cloud-init-output.log")
+	startHTTPServer(c.adminPath, logPath, listener, c.errCh)
 }
 
 func (c *creator) waitForAdminConf(ctx context.Context) error {
@@ -565,7 +571,7 @@ func (c *creator) waitForAdminConf(ctx context.Context) error {
 		err = ctx.Err()
 	case err = <-c.errCh:
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Failed: %s\n", err)
 		}
 	}
 
