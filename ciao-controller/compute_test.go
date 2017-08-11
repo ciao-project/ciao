@@ -35,6 +35,21 @@ import (
 	"github.com/01org/ciao/testutil"
 )
 
+// ByTenantID is used to sort CNCI instances by Tenant ID.
+type ByTenantID []types.CiaoCNCI
+
+func (c ByTenantID) Len() int {
+	return len(c)
+}
+
+func (c ByTenantID) Swap(i int, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func (c ByTenantID) Less(i int, j int) bool {
+	return c[i].TenantID < c[j].TenantID
+}
+
 func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse int, data []byte, validToken bool) []byte {
 	req, err := http.NewRequest(method, URL, bytes.NewBuffer(data))
 	if err != nil {
@@ -989,9 +1004,9 @@ func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 		t.Fatal(err)
 	}
 
-	var subnets []types.CiaoCNCISubnet
-
 	for _, cnci := range cncis {
+		var subnets []types.CiaoCNCISubnet
+
 		if cnci.InstanceID == "" {
 			continue
 		}
@@ -1014,6 +1029,8 @@ func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 		)
 	}
 
+	sort.Sort(ByTenantID(expected.CNCIs))
+
 	url := testutil.ComputeURL + "/v2.1/cncis"
 
 	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
@@ -1028,6 +1045,8 @@ func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	sort.Sort(ByTenantID(result.CNCIs))
 
 	if reflect.DeepEqual(expected, result) == false {
 		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
