@@ -71,7 +71,8 @@ func errorResponse(err error) Response {
 		types.ErrTenantNotFound,
 		types.ErrAddressNotFound,
 		types.ErrInstanceNotFound,
-		types.ErrWorkloadNotFound:
+		types.ErrWorkloadNotFound,
+		types.ErrUserNotFound:
 		return Response{http.StatusNotFound, nil}
 
 	case types.ErrQuota,
@@ -572,6 +573,159 @@ func updateQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusCreated, resp}, nil
 }
 
+// ListUsersResponse is a response to listing users
+type ListUsersResponse struct {
+	Users []string `json:"users"`
+}
+
+// ListUsersGrants is a response to listing user grants
+type ListUsersGrants struct {
+	Username string   `json:"username"`
+	Grants   []string `json:"grants"`
+}
+
+// AddUserRequest is the request for adding users
+type AddUserRequest struct {
+	Username     string `json:"username"`
+	PasswordHash string `json:"pwhash"`
+}
+
+// GrantRequest is the request for adding a grant to a user
+type GrantRequest struct {
+	Grants []string `json:"grants"`
+}
+
+func listUsers(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	if !service.GetPrivilege(r.Context()) {
+		return Response{http.StatusForbidden, nil}, nil
+	}
+
+	users, err := c.ListUsers()
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	resp := ListUsersResponse{
+		Users: users,
+	}
+
+	return Response{http.StatusOK, resp}, nil
+}
+
+func listGrants(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	privileged := service.GetPrivilege(r.Context())
+	vars := mux.Vars(r)
+	username := vars["username"]
+
+	if privileged || username == service.GetUsername(r.Context()) {
+		grants, err := c.ListUserGrants(username)
+		if err != nil {
+			return errorResponse(err), err
+		}
+
+		resp := ListUsersGrants{
+			Username: username,
+			Grants:   grants,
+		}
+
+		return Response{http.StatusOK, resp}, nil
+
+	}
+
+	return Response{http.StatusForbidden, nil}, nil
+}
+
+// for now grants == tenants
+func listUserTenants(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	return listGrants(c, w, r)
+}
+
+func addUser(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	if !service.GetPrivilege(r.Context()) {
+		return Response{http.StatusForbidden, nil}, nil
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	var req AddUserRequest
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	err = c.AddUser(req.Username, req.PasswordHash)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusCreated, nil}, nil
+}
+
+func grant(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	if !service.GetPrivilege(r.Context()) {
+		return Response{http.StatusForbidden, nil}, nil
+	}
+
+	vars := mux.Vars(r)
+	username := vars["username"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	var req GrantRequest
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	for _, g := range req.Grants {
+		err = c.GrantUser(username, g)
+		if err != nil {
+			return errorResponse(err), err
+		}
+	}
+
+	return Response{http.StatusCreated, nil}, nil
+}
+
+func revoke(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	if !service.GetPrivilege(r.Context()) {
+		return Response{http.StatusForbidden, nil}, nil
+	}
+
+	vars := mux.Vars(r)
+	username := vars["username"]
+	grant := vars["grant"]
+
+	err := c.RevokeUser(username, grant)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
+func deleteUser(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	if !service.GetPrivilege(r.Context()) {
+		return Response{http.StatusForbidden, nil}, nil
+	}
+
+	vars := mux.Vars(r)
+	username := vars["username"]
+
+	err := c.DelUser(username)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -588,6 +742,12 @@ type Service interface {
 	ShowWorkload(tenantID string, workloadID string) (types.Workload, error)
 	ListQuotas(tenantID string) []types.QuotaDetails
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
+	AddUser(username, pwhash string) error
+	DelUser(username string) error
+	ListUsers() ([]string, error)
+	ListUserGrants(username string) ([]string, error)
+	GrantUser(username, tenantID string) error
+	RevokeUser(username, tenantID string) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -722,6 +882,29 @@ func Routes(config Config) *mux.Router {
 	route = r.Handle("/tenants/{for_tenant:"+uuid.UUIDRegex+"}/quotas", Handler{context, updateQuotas, true})
 	route.Methods("PUT")
 	route.HeadersRegexp("Content-Type", matchContent)
+
+	// users
+
+	route = r.Handle("/users", Handler{context, listUsers, true})
+	route.Methods("GET")
+
+	route = r.Handle("/users/{username}/grants", Handler{context, listGrants, false})
+	route.Methods("GET")
+
+	route = r.Handle("/users/{username}/tenants", Handler{context, listUserTenants, false})
+	route.Methods("GET")
+
+	route = r.Handle("/users", Handler{context, addUser, true})
+	route.Methods("POST")
+
+	route = r.Handle("/users/{username}/grants", Handler{context, grant, true})
+	route.Methods("POST")
+
+	route = r.Handle("/users/{username}/grants/{grant}", Handler{context, revoke, true})
+	route.Methods("DELETE")
+
+	route = r.Handle("/users/{username}", Handler{context, deleteUser, true})
+	route.Methods("DELETE")
 
 	return r
 }

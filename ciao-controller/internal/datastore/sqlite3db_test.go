@@ -1157,3 +1157,98 @@ func TestInstanceNameConstraint(t *testing.T) {
 		t.Fatal("Expected instance add to fail (duplicate name)")
 	}
 }
+
+func addTestUser(db persistentStore, username string, t *testing.T) {
+	err := db.addUser(username, "testhash")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, err := db.getUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, ok := users[username]
+	if !ok {
+		t.Fatal("User missing")
+	}
+
+	if ui.Username != username || ui.PasswordHash != "testhash" {
+		t.Fatal("User data not as expected")
+	}
+}
+
+func TestUserAdd(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addTestUser(db, "test", t)
+}
+
+func TestUserDelete(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addTestUser(db, "test", t)
+
+	err = db.delUser("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, err := db.getUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := users["test"]
+	if ok {
+		t.Fatal("User not missing")
+	}
+}
+
+func TestUserGrants(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addTestUser(db, "test", t)
+
+	tenant := createTestTenant(db, t)
+
+	err = db.grant("test", tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, err := db.getUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, _ := users["test"]
+	if len(ui.Grants) != 1 || ui.Grants[0] != tenant.ID {
+		t.Fatal("Grant missing")
+	}
+
+	err = db.revoke(ui.Username, tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, err = db.getUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, _ = users["test"]
+	if len(ui.Grants) != 0 {
+		t.Fatal("Expected no grants")
+	}
+}

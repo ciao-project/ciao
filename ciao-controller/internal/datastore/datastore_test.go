@@ -2687,6 +2687,127 @@ func TestAddNamedInstance(t *testing.T) {
 	}
 }
 
+func addUser(ds *Datastore, username string, t *testing.T) {
+	err := ds.AddUser(username, "testhash")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, err := ds.GetUserInfo(username)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ui.Username != username || ui.PasswordHash != "testhash" {
+		t.Fatal("User data not as expected")
+	}
+}
+
+func TestAddDeleteUser(t *testing.T) {
+	addUser(ds, "test", t)
+
+	users, _ := ds.GetUsers()
+	if len(users) != 1 {
+		t.Fatal("Expected user")
+	}
+
+	if users[0].Username != "test" && len(users[0].Grants) != 0 {
+		t.Fatal("User not as expected")
+	}
+
+	err := ds.DelUser("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, _ = ds.GetUsers()
+	if len(users) != 0 {
+		t.Fatal("Unexpected user")
+	}
+}
+
+func TestMultipleUsers(t *testing.T) {
+	addUser(ds, "test1", t)
+	addUser(ds, "test2", t)
+
+	users, _ := ds.GetUsers()
+	if len(users) != 2 {
+		t.Fatal("Expected 2 users")
+	}
+
+	err := ds.DelUser("test1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, _ = ds.GetUsers()
+	if len(users) != 1 {
+		t.Fatal("Expected 1 user")
+	}
+
+	err = ds.DelUser("test2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, _ = ds.GetUsers()
+	if len(users) != 0 {
+		t.Fatal("Expected no users")
+	}
+}
+
+func TestGrants(t *testing.T) {
+	addUser(ds, "test1", t)
+
+	tenant1, _ := addTestTenant()
+	tenant2, _ := addTestTenant()
+
+	ui, _ := ds.GetUserInfo("test1")
+	if len(ui.Grants) != 0 {
+		t.Fatal("Grant should be empty")
+	}
+
+	err := ds.Grant("test1", tenant1.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, _ = ds.GetUserInfo("test1")
+	if len(ui.Grants) != 1 && ui.Grants[0] != tenant1.ID {
+		t.Fatal("Grant missing")
+	}
+
+	err = ds.Grant("test1", tenant2.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, _ = ds.GetUserInfo("test1")
+	if len(ui.Grants) != 2 {
+		t.Fatal("Grant missing")
+	}
+
+	err = ds.Revoke("test1", tenant1.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, _ = ds.GetUserInfo("test1")
+	if len(ui.Grants) != 1 {
+		t.Fatal("Unexpected grant count")
+	}
+
+	err = ds.Revoke("test1", tenant2.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, _ = ds.GetUserInfo("test1")
+	if len(ui.Grants) != 0 {
+		t.Fatal("Unexpected grant count")
+	}
+}
+
 var ds *Datastore
 
 var workloadsPath = flag.String("workloads_path", "../../workloads", "path to yaml files")

@@ -241,3 +241,24 @@ func (db *MemoryDB) updateQuotas(tenantID string, qds []types.QuotaDetails) erro
 func (db *MemoryDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
 	return []types.QuotaDetails{}, nil
 }
+
+func (db *MemoryDB) addUser(username, pwhash string) error {
+	return nil
+}
+
+func (db *MemoryDB) delUser(username string) (err error) {
+	return nil
+}
+
+func (db *MemoryDB) grant(username string, tenantID string) error {
+	return nil
+}
+
+func (db *MemoryDB) revoke(username string, tenantID string) error {
+	return nil
+}
+
+func (db *MemoryDB) getUsers() (map[string]*types.UserInfo, error) {
+	users := make(map[string]*types.UserInfo)
+	return users, nil
+}

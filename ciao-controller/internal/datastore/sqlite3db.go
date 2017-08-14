@@ -413,6 +413,34 @@ func (d quotaData) Init() error {
 	return d.ds.exec(d.db, cmd)
 }
 
+type usersData struct {
+	namedData
+}
+
+func (d usersData) Init() error {
+	cmd := `CREATE TABLE IF NOT EXISTS users
+		(
+			username string,
+			pwhash string
+		);`
+	return d.ds.exec(d.db, cmd)
+}
+
+type grantsData struct {
+	namedData
+}
+
+func (d grantsData) Init() error {
+	cmd := `CREATE TABLE IF NOT EXISTS grants
+		(
+			username string,
+			tenant_id string,
+			foreign key(tenant_id) references tenants(id),
+			foreign key(username) references users(username)
+		);`
+	return d.ds.exec(d.db, cmd)
+}
+
 func (ds *sqliteDB) exec(db *sql.DB, cmd string) error {
 	glog.V(2).Info("exec: ", cmd)
 
@@ -517,6 +545,8 @@ func (ds *sqliteDB) init(config Config) error {
 		addressData{namedData{ds: ds, name: "address_pool", db: ds.db}},
 		mappedIPData{namedData{ds: ds, name: "mapped_ips", db: ds.db}},
 		quotaData{namedData{ds: ds, name: "quotas", db: ds.db}},
+		usersData{namedData{ds: ds, name: "users", db: ds.db}},
+		grantsData{namedData{ds: ds, name: "grants", db: ds.db}},
 	}
 
 	ds.workloadsPath = config.InitWorkloadsPath
@@ -2414,4 +2444,123 @@ func (ds *sqliteDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
 	}
 
 	return results, nil
+}
+
+func (ds *sqliteDB) addUser(username, pwhash string) error {
+	db := ds.getTableDB("users")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	_, err := db.Exec("INSERT INTO users (username, pwhash) VALUES (?, ?)", username, pwhash)
+	if err != nil {
+		return errors.Wrap(err, "Error adding user to database")
+	}
+
+	return nil
+}
+
+func (ds *sqliteDB) delUser(username string) (err error) {
+	db := ds.getTableDB("users")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return errors.Wrap(err, "Error starting transaction for user deletion")
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	_, err = tx.Exec("DELETE FROM grants WHERE username = ?", username)
+	if err != nil {
+		return errors.Wrap(err, "Error deleting grants for user")
+	}
+
+	_, err = tx.Exec("DELETE FROM users WHERE username = ?", username)
+	if err != nil {
+		return errors.Wrap(err, "Error deleting user")
+	}
+
+	return nil
+}
+
+func (ds *sqliteDB) grant(username string, tenantID string) error {
+	db := ds.getTableDB("grants")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	_, err := db.Exec("INSERT INTO grants (username, tenant_id) VALUES (?, ?)", username, tenantID)
+	if err != nil {
+		return errors.Wrap(err, "Error adding grant to database")
+	}
+
+	return nil
+}
+
+func (ds *sqliteDB) revoke(username string, tenantID string) error {
+	db := ds.getTableDB("grants")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	_, err := db.Exec("DELETE FROM grants WHERE username = ? AND tenant_id = ?", username, tenantID)
+	if err != nil {
+		return errors.Wrap(err, "Error deleting grant from database")
+	}
+
+	return nil
+}
+
+func (ds *sqliteDB) getUsers() (map[string]*types.UserInfo, error) {
+	db := ds.getTableDB("users")
+	users := make(map[string]*types.UserInfo)
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+	query := `
+	SELECT users.username, users.pwhash, grants.tenant_id
+		FROM users 
+		JOIN grants
+		ON users.username=grants.username
+		UNION
+		SELECT users.username, users.pwhash, ""
+		FROM users`
+	rows, err := db.Query(query)
+	if err != nil {
+		return users, errors.Wrap(err, "error getting users from database")
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var username string
+		var pwhash string
+		var tenantID string
+
+		err = rows.Scan(&username, &pwhash, &tenantID)
+		if err != nil {
+			return users, errors.Wrap(err, "error reading users row from database")
+		}
+
+		_, ok := users[username]
+		if !ok {
+			users[username] = &types.UserInfo{
+				Username:     username,
+				PasswordHash: pwhash,
+				Grants:       make([]string, 0),
+			}
+		}
+		if tenantID != "" {
+			users[username].Grants = append(users[username].Grants, tenantID)
+		}
+	}
+
+	return users, nil
 }

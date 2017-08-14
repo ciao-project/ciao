@@ -544,6 +544,9 @@ var (
 
 	// ErrWorkloadInUse is returned by DeleteWorkload when an instance of a workload is still active.
 	ErrWorkloadInUse = errors.New("Workload definition still in use")
+
+	// ErrUserNotFound is returned when the user does not exist.
+	ErrUserNotFound = errors.New("User not found")
 )
 
 // Link provides a url and relationship for a resource.
@@ -715,4 +718,11 @@ type QuotaUpdateRequest struct {
 // QuotaListResponse holds the layout for returning quotas in the API
 type QuotaListResponse struct {
 	Quotas []QuotaDetails `json:"quotas"`
+}
+
+// UserInfo represents users in Ciao's basic authentication architecture
+type UserInfo struct {
+	Username     string
+	PasswordHash string
+	Grants       []string
 }
