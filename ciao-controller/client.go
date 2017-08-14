@@ -119,10 +119,31 @@ func (client *ssntpClient) removeInstance(instanceID string) {
 	if err != nil {
 		glog.Warningf("Error when releasing resources for deleted instance: %v", err)
 	}
+
 	client.deleteEphemeralStorage(instanceID)
+
+	i, err := client.ctl.ds.GetInstance(instanceID)
+	if err != nil {
+		glog.Warningf("Error getting instance from datastore: %v", err)
+		return
+	}
+
 	err = client.ctl.ds.DeleteInstance(instanceID)
 	if err != nil {
 		glog.Warningf("Error deleting instance from datastore: %v", err)
+	}
+
+	if i.CNCI {
+		tenant, err := client.ctl.ds.GetTenant(i.TenantID)
+		if err != nil {
+			glog.Warningf("Error retrieving tenant %v", err)
+			return
+		}
+
+		err = tenant.CNCIctrl.ConcentratorInstanceRemoved(i.ID)
+		if err != nil {
+			glog.Warningf("Error removing CNCI: %v", err)
+		}
 	}
 }
 
@@ -133,6 +154,7 @@ func (client *ssntpClient) instanceDeleted(payload []byte) {
 		glog.Warningf("Error unmarshalling InstanceDeleted: %v", err)
 		return
 	}
+
 	client.removeInstance(event.InstanceDeleted.InstanceUUID)
 }
 
@@ -158,10 +180,33 @@ func (client *ssntpClient) concentratorInstanceAdded(payload []byte) {
 		return
 	}
 	newCNCI := event.CNCIAdded
-	err = client.ctl.ds.AddCNCIIP(newCNCI.ConcentratorMAC, newCNCI.ConcentratorIP)
+
+	i, err := client.ctl.ds.GetInstance(newCNCI.InstanceUUID)
 	if err != nil {
-		glog.Warningf("Error adding CNCI IP to datastore: %v", err)
+		glog.Warningf("Error getting instance: %v", err)
+		return
 	}
+
+	// update the instance mac, ip, and subnet (TBD)
+	i.IPAddress = newCNCI.ConcentratorIP
+	i.MACAddress = newCNCI.ConcentratorMAC
+
+	err = client.ctl.ds.UpdateInstance(i)
+	if err != nil {
+		glog.Warningf("Error updating CNCI Info: %v", err)
+	}
+
+	tenant, err := client.ctl.ds.GetTenant(i.TenantID)
+	if err != nil || tenant == nil {
+		glog.Warningf("Error getting tenant: %v", err)
+		return
+	}
+
+	if tenant.CNCIctrl == nil {
+		glog.Info("No CNCI controller saved")
+		return
+	}
+	tenant.CNCIctrl.ConcentratorInstanceAdded(newCNCI.InstanceUUID)
 }
 
 func (client *ssntpClient) traceReport(payload []byte) {
@@ -294,9 +339,28 @@ func (client *ssntpClient) startFailure(payload []byte) {
 			glog.Warningf("Error when releasing resources for start failed instance: %v", err)
 		}
 	}
+
+	i, err := client.ctl.ds.GetInstance(failure.InstanceUUID)
+	if err != nil {
+		glog.Warningf("Error getting instance: %v", err)
+		return
+	}
+
+	cnci := i.CNCI
+	tenantID := i.TenantID
+
 	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason, failure.Restart)
 	if err != nil {
 		glog.Warningf("Error adding StartFailure to datastore: %v", err)
+	}
+
+	if cnci {
+		tenant, err := client.ctl.ds.GetTenant(tenantID)
+		if err != nil {
+			glog.Warningf("Error adding StartFailure to datastore: %v", err)
+		}
+
+		tenant.CNCIctrl.StartFailure(failure.InstanceUUID)
 	}
 }
 
@@ -501,6 +565,12 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		return errors.Wrapf(err, "Unable to update instance state before restarting")
 	}
 
+	// get the CNCI for this instance
+	cnci, err := t.CNCIctrl.GetInstanceCNCI(i.ID)
+	if err != nil {
+		return err
+	}
+
 	hostname := i.ID
 	if i.Name != "" {
 		hostname = i.Name
@@ -521,8 +591,8 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		Networking: payloads.NetworkResources{
 			VnicMAC:          i.MACAddress,
 			VnicUUID:         i.VnicUUID,
-			ConcentratorUUID: t.CNCIID,
-			ConcentratorIP:   t.CNCIIP,
+			ConcentratorUUID: cnci.ID,
+			ConcentratorIP:   cnci.IPAddress,
 			Subnet:           i.Subnet,
 			PrivateIP:        i.IPAddress,
 		},
@@ -647,14 +717,20 @@ func (client *ssntpClient) Disconnect() {
 }
 
 func (client *ssntpClient) mapExternalIP(t types.Tenant, m types.MappedIP) error {
+	// get the CNCI for this instance
+	i, err := t.CNCIctrl.GetInstanceCNCI(m.InstanceID)
+	if err != nil {
+		return err
+	}
+
 	payload := payloads.CommandAssignPublicIP{
 		AssignIP: payloads.PublicIPCommand{
-			ConcentratorUUID: t.CNCIID,
+			ConcentratorUUID: i.ID,
 			TenantUUID:       m.TenantID,
 			InstanceUUID:     m.InstanceID,
 			PublicIP:         m.ExternalIP,
 			PrivateIP:        m.InternalIP,
-			VnicMAC:          t.CNCIMAC,
+			VnicMAC:          i.MACAddress,
 		},
 	}
 
@@ -671,14 +747,20 @@ func (client *ssntpClient) mapExternalIP(t types.Tenant, m types.MappedIP) error
 }
 
 func (client *ssntpClient) unMapExternalIP(t types.Tenant, m types.MappedIP) error {
+	// get the CNCI for this instance
+	i, err := t.CNCIctrl.GetInstanceCNCI(m.InstanceID)
+	if err != nil {
+		return err
+	}
+
 	payload := payloads.CommandReleasePublicIP{
 		ReleaseIP: payloads.PublicIPCommand{
-			ConcentratorUUID: t.CNCIID,
+			ConcentratorUUID: i.ID,
 			TenantUUID:       m.TenantID,
 			InstanceUUID:     m.InstanceID,
 			PublicIP:         m.ExternalIP,
 			PrivateIP:        m.InternalIP,
-			VnicMAC:          t.CNCIMAC,
+			VnicMAC:          i.MACAddress,
 		},
 	}
 

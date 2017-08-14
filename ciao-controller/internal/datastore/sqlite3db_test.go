@@ -602,7 +602,7 @@ func TestCreateMappedIP(t *testing.T) {
 
 	err = db.addInstance(&i)
 	if err != nil {
-		t.Fatal("unable to store instance")
+		t.Fatalf("unable to store instance: %v\n", err)
 	}
 
 	instances, err := db.getInstances()
@@ -660,7 +660,7 @@ func TestDeleteMappedIP(t *testing.T) {
 
 	err = db.addInstance(&i)
 	if err != nil {
-		t.Fatal("unable to store instance")
+		t.Fatalf("unable to store instance: %v\n", err)
 	}
 
 	instances, err := db.getInstances()
@@ -715,11 +715,9 @@ func TestDeleteMappedIP(t *testing.T) {
 
 func createTestTenant(db persistentStore, t *testing.T) *tenant {
 	tid := uuid.Generate().String()
-	thw, err := newHardwareAddr()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = db.addTenant(tid, thw.String())
+	name := "TestTenant"
+
+	err := db.addTenant(tid, name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -732,8 +730,8 @@ func createTestTenant(db persistentStore, t *testing.T) *tenant {
 		t.Fatal("Expected added tenant")
 	}
 
-	if tn.CNCIMAC != thw.String() {
-		t.Fatal("Expected added tenant CNCI MACs to be equal")
+	if tn.Name != name {
+		t.Fatalf("Expected %v, got %v", name, tn.Name)
 	}
 	return tn
 }
@@ -773,25 +771,6 @@ func TestSQLiteDBTestTenants(t *testing.T) {
 		if !reflect.DeepEqual(tn, tn2) {
 			t.Fatal("Expected tenant equality")
 		}
-	}
-}
-
-func TestSQLiteDBTestUpdateTenant(t *testing.T) {
-	db, err := getPersistentStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tn := createTestTenant(db, t)
-	tn.CNCIIP = "127.0.0.2"
-
-	err = db.updateTenant(tn)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if tn.CNCIIP != "127.0.0.2" {
-		t.Fatal("Tenant not updated")
 	}
 }
 
@@ -1140,7 +1119,7 @@ func TestInstanceNameConstraint(t *testing.T) {
 
 	err = db.addInstance(&i)
 	if err != nil {
-		t.Fatal("unable to store instance")
+		t.Fatalf("unable to store instance %v\n", err)
 	}
 
 	i2 := types.Instance{
@@ -1156,4 +1135,37 @@ func TestInstanceNameConstraint(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected instance add to fail (duplicate name)")
 	}
+}
+
+func TestAddCNCIInstance(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	i := types.Instance{
+		ID:         uuid.Generate().String(),
+		TenantID:   tenantID,
+		WorkloadID: uuid.Generate().String(),
+		IPAddress:  "172.16.0.2",
+		Name:       "test",
+		CNCI:       true,
+	}
+
+	err = db.addInstance(&i)
+	if err != nil {
+		t.Fatalf("unable to store instance %v\n", err)
+	}
+
+	instances, err := db.getInstances()
+	if err != nil || len(instances) != 1 {
+		t.Fatal(err)
+	}
+
+	if instances[0].CNCI != true {
+		t.Fatal("CNCI Instance not properly stored")
+	}
+
+	db.disconnect()
 }

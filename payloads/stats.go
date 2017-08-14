@@ -129,13 +129,20 @@ const (
 	// Running indicates an instance is running
 	Running = ComputeStatusRunning
 
+	// Stopping is used to indicate that a request to pause an instance
+	// has been issued by controller and is in progress.
+	Stopping = "stopping"
+
 	// Exited indicates that an instance has been successfully created but
 	// is not currently running, either because it failed to start or was
 	// explicitly stopped by a STOP command or perhaps by a CN reboot.
 	Exited = ComputeStatusStopped
-	// ExitFailed is not currently used
+
+	// ExitFailed is used by controller to indicate that a workload failed
+	// to launch.
 	ExitFailed = "exit_failed"
-	// ExitPaused is not currently used
+
+	// ExitPaused is not currently used.
 	ExitPaused = "exit_paused"
 )
 

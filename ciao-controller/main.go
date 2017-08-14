@@ -199,6 +199,12 @@ func main() {
 		return
 	}
 
+	err = initializeCNCICtrls(ctl)
+	if err != nil {
+		glog.Fatal("Unable to initialize CNCI controllers: ", err)
+		return
+	}
+
 	server, err := ctl.createComputeServer()
 	if err != nil {
 		glog.Fatalf("Error creating compute server: %v", err)

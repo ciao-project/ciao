@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -79,17 +80,25 @@ users:
 	return ctl.ds.AddWorkload(wl)
 }
 
-func addFakeCNCI(tenant *types.Tenant) error {
-	err := ctl.ds.AddTenantCNCI(tenant.ID, uuid.Generate().String(), tenant.CNCIMAC)
+func addFakeCNCI(tenant *types.Tenant) (*types.Instance, error) {
+	mac, err := newHardwareAddr()
 	if err != nil {
-		return err
-	}
-	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	// Add fake CNCI
+	CNCI := types.Instance{
+		TenantID:   tenant.ID,
+		State:      payloads.Running,
+		ID:         uuid.Generate().String(),
+		CNCI:       true,
+		IPAddress:  "192.168.0.1",
+		MACAddress: mac.String(),
+		Subnet:     "172.16.0.0/24",
+		StateLock:  &sync.RWMutex{},
+	}
+
+	return &CNCI, ctl.ds.AddInstance(&CNCI)
 }
 
 func addTestTenant() (tenant *types.Tenant, err error) {
@@ -100,7 +109,12 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 		return
 	}
 
-	err = addFakeCNCI(tenant)
+	_, err = addFakeCNCI(tenant)
+	if err != nil {
+		return
+	}
+
+	tenant.CNCIctrl, err = newCNCIManager(ctl, tenant.ID)
 	if err != nil {
 		return
 	}
@@ -119,6 +133,11 @@ func addTestTenantNoCNCI() (tenant *types.Tenant, err error) {
 		return
 	}
 
+	tenant.CNCIctrl, err = newCNCIManager(ctl, tenant.ID)
+	if err != nil {
+		return
+	}
+
 	// give this tenant a workload to run.
 	err = addTestWorkload(tenant.ID)
 
@@ -132,8 +151,12 @@ func addComputeTestTenant() (tenant *types.Tenant, err error) {
 		return
 	}
 
-	// Add fake CNCI
-	err = addFakeCNCI(tenant)
+	_, err = addFakeCNCI(tenant)
+	if err != nil {
+		return
+	}
+
+	tenant.CNCIctrl, err = newCNCIManager(ctl, tenant.ID)
 	if err != nil {
 		return
 	}
@@ -146,6 +169,7 @@ func addComputeTestTenant() (tenant *types.Tenant, err error) {
 func BenchmarkStartSingleWorkload(b *testing.B) {
 	var err error
 
+	/* add a new tenant */
 	tenant, err := addTestTenant()
 	if err != nil {
 		b.Error(err)
@@ -174,6 +198,7 @@ func BenchmarkStartSingleWorkload(b *testing.B) {
 func BenchmarkStart1000Workload(b *testing.B) {
 	var err error
 
+	/* add a new tenant */
 	tenant, err := addTestTenant()
 	if err != nil {
 		b.Error(err)
@@ -1074,6 +1099,7 @@ func startTestWorkload(t *testing.T, instanceCh chan []*types.Instance, workload
 		TenantID:   tenantID,
 		Instances:  num,
 	}
+
 	instances, err := ctl.startWorkload(w)
 	if err != nil {
 		t.Fatal(err)
@@ -1135,6 +1161,7 @@ func testStartWorkloadLaunchCNCI(t *testing.T, num int) (*testutil.SsntpTestClie
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	result, err := server.GetCmdChanResult(serverCmdCh, ssntp.START)
 	if err != nil {
 		t.Fatal(err)

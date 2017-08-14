@@ -862,7 +862,8 @@ func testListNodeServers(t *testing.T, httpExpectedStatus int, validToken bool) 
 		}
 
 		if result.TotalServers != len(instances) {
-			t.Fatal("Incorrect number of servers")
+			fmt.Printf("result: %v\n", result)
+			t.Fatalf("Incorrect number of servers: expected %d, got %d", len(instances), result.TotalServers)
 		}
 
 		// TBD: make sure result exactly matches expected results.

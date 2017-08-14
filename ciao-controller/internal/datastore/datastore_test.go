@@ -17,6 +17,7 @@
 package datastore
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"encoding/binary"
 	"flag"
@@ -24,6 +25,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +33,7 @@ import (
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/pkg/errors"
 )
 
 func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
@@ -41,6 +44,28 @@ func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
 	copy(buf[2:6], ipBytes)
 	hw = net.HardwareAddr(buf)
 	return
+}
+
+func newHardwareAddr() (net.HardwareAddr, error) {
+	buf := make([]byte, 6)
+	_, err := rand.Read(buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading random data")
+	}
+
+	// vnic creation seems to require not just the
+	// bit 1 to be set, but the entire byte to be
+	// set to 2.  Also, ensure that we get no
+	// overlap with tenant mac addresses by not allowing
+	// byte 1 to ever be zero.
+	buf[0] = 2
+	if buf[1] == 0 {
+		buf[1] = 3
+	}
+
+	hw := net.HardwareAddr(buf)
+
+	return hw, nil
 }
 
 func addInstance(tenant *types.Tenant, workload types.Workload, name string) (instance *types.Instance, err error) {
@@ -150,12 +175,23 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 		return
 	}
 
-	// Add fake CNCI
-	err = ds.AddTenantCNCI(tuuid.String(), uuid.Generate().String(), tenant.CNCIMAC)
+	mac, err := newHardwareAddr()
 	if err != nil {
 		return
 	}
-	err = ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+
+	// Add fake CNCI
+	CNCI := types.Instance{
+		TenantID:   tenant.ID,
+		State:      payloads.Running,
+		ID:         uuid.Generate().String(),
+		CNCI:       true,
+		IPAddress:  "192.168.0.1",
+		MACAddress: mac.String(),
+		StateLock:  &sync.RWMutex{},
+	}
+
+	err = ds.AddInstance(&CNCI)
 	if err != nil {
 		return
 	}
@@ -896,37 +932,6 @@ func TestGetCNCIWorkloadID(t *testing.T) {
 	}
 }
 
-func TestRemoveTenantCNCI(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = ds.removeTenantCNCI(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// make sure cache was updated
-	ds.tenantsLock.Lock()
-	t2 := ds.tenants[tenant.ID]
-	delete(ds.tenants, tenant.ID)
-	ds.tenantsLock.Unlock()
-
-	if t2.CNCIID != "" || t2.CNCIIP != "" {
-		t.Fatal("Cache Not Updated")
-	}
-
-	// check database was updated
-	testTenant, err := ds.GetTenant(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if testTenant.CNCIID != "" || testTenant.CNCIIP != "" {
-		t.Fatal("Database not updated")
-	}
-}
-
 func TestGetTenant(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
@@ -951,47 +956,6 @@ func TestGetAllTenants(t *testing.T) {
 	// errors.
 }
 
-func TestAddCNCIIP(t *testing.T) {
-	/* add a new tenant */
-	tuuid := uuid.Generate()
-	tenant, err := ds.AddTenant(tuuid.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Add fake CNCI
-	err = ds.AddTenantCNCI(tenant.ID, uuid.Generate().String(), tenant.CNCIMAC)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// make sure that AddCNCIIP signals the channel it's supposed to
-	c := make(chan bool)
-	ds.cnciAddedLock.Lock()
-	ds.cnciAddedChans[tenant.ID] = c
-	ds.cnciAddedLock.Unlock()
-
-	go func() {
-		err := ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	success := <-c
-	if !success {
-		t.Fatal(err)
-	}
-
-	// confirm that the channel was cleared
-	ds.cnciAddedLock.Lock()
-	c = ds.cnciAddedChans[tenant.ID]
-	ds.cnciAddedLock.Unlock()
-	if c != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestHandleTraceReport(t *testing.T) {
 	trace := payloads.Trace{
 		Frames: createTestFrameTraces("test"),
@@ -1009,10 +973,17 @@ func TestGetCNCISummary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// test without null cnciid
-	_, err = ds.GetTenantCNCISummary(tenant.CNCIID)
+	instances, err := ds.GetTenantCNCIs(tenant.ID)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	// test without null cnciid
+	for _, i := range instances {
+		_, err = ds.GetTenantCNCISummary(i.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// test with null cnciid
@@ -1051,6 +1022,11 @@ func TestReleaseTenantIP(t *testing.T) {
 		t.Fatal("IP Address not marked Used")
 	}
 
+	// confirm that subnets has been incremented
+	if len(newTenant.subnets) != 1 {
+		t.Fatal("subnet not allocated in cache")
+	}
+
 	err = ds.ReleaseTenantIP(tenant.ID, ip.String())
 	if err != nil {
 		t.Fatal(err)
@@ -1067,6 +1043,10 @@ func TestReleaseTenantIP(t *testing.T) {
 		t.Fatal("IP Address not released from cache")
 	}
 
+	if len(newTenant.subnets) != 0 {
+		t.Fatal("subnet not released from cache")
+	}
+
 	// clear tenant from cache
 	ds.tenantsLock.Lock()
 	delete(ds.tenants, tenant.ID)
@@ -1081,27 +1061,6 @@ func TestReleaseTenantIP(t *testing.T) {
 	// confirm that tenant map shows it not used.
 	if newTenant.network[int(subnetInt)][int(ipBytes[3])] != false {
 		t.Fatal("IP Address not released from database")
-	}
-}
-
-func TestAddTenantChan(t *testing.T) {
-	c := make(chan bool)
-
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ds.AddTenantChan(c, tenant.ID)
-
-	// check cncisAddedChans
-	ds.cnciAddedLock.Lock()
-	c1 := ds.cnciAddedChans[tenant.ID]
-	delete(ds.cnciAddedChans, tenant.ID)
-	ds.cnciAddedLock.Unlock()
-
-	if c1 != c {
-		t.Fatal("Did not update Added Chans properly")
 	}
 }
 

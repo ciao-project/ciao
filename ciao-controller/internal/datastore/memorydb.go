@@ -79,11 +79,11 @@ func (db *MemoryDB) getEventLog() ([]*types.LogEntry, error) {
 	return db.logEntries, nil
 }
 
-func (db *MemoryDB) addTenant(id string, MAC string) error {
+func (db *MemoryDB) addTenant(id string, name string) error {
 	t := &tenant{
 		Tenant: types.Tenant{
-			ID:      id,
-			CNCIMAC: MAC,
+			ID:   id,
+			Name: name,
 		},
 		network:   make(map[int]map[int]bool),
 		instances: make(map[string]*types.Instance),
@@ -107,15 +107,6 @@ func (db *MemoryDB) getTenants() ([]*tenant, error) {
 		tenants = append(tenants, t)
 	}
 	return tenants, nil
-}
-
-func (db *MemoryDB) updateTenant(t *tenant) error {
-	_, ok := db.tenants[t.ID]
-	if !ok {
-		return fmt.Errorf("Tenant %s not found", t.ID)
-	}
-	db.tenants[t.ID] = t
-	return nil
 }
 
 func (db *MemoryDB) releaseTenantIP(tenantID string, subnetInt int, rest int) error {
@@ -240,4 +231,8 @@ func (db *MemoryDB) updateQuotas(tenantID string, qds []types.QuotaDetails) erro
 
 func (db *MemoryDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
 	return []types.QuotaDetails{}, nil
+}
+
+func (db *MemoryDB) updateInstance(instance *types.Instance) error {
+	return nil
 }

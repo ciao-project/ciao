@@ -17,9 +17,11 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
@@ -62,7 +64,7 @@ func isCNCIWorkload(workload *types.Workload) bool {
 }
 
 func newInstance(ctl *controller, tenantID string, workload *types.Workload,
-	volumes []storage.BlockDevice, name string) (*instance, error) {
+	volumes []storage.BlockDevice, name string, subnet string) (*instance, error) {
 	id := uuid.Generate()
 
 	if name != "" {
@@ -93,6 +95,11 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		MACAddress: config.mac,
 		CreateTime: time.Now(),
 		Name:       name,
+		StateLock:  &sync.RWMutex{},
+	}
+
+	if subnet != "" {
+		newInstance.Subnet = subnet
 	}
 
 	i := &instance{
@@ -107,14 +114,12 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 func (i *instance) Add() error {
 	ds := i.ctl.ds
 	var err error
-	if i.CNCI == false {
-		err = ds.AddInstance(&i.Instance)
-	} else {
-		err = ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
-	}
+
+	err = ds.AddInstance(&i.Instance)
 	if err != nil {
 		return errors.Wrapf(err, "Error creating instance in datastore")
 	}
+
 	for _, volume := range i.newConfig.sc.Start.Storage {
 		if volume.ID == "" && volume.Local {
 			// these are launcher auto-created ephemeral
@@ -172,6 +177,37 @@ func (i *instance) Allowed() (bool, error) {
 
 	// Cleanup on disallowed happens in Clean()
 	return res.Allowed(), nil
+}
+
+func transitionInstanceState(i *types.Instance, to string) error {
+	i.StateLock.Lock()
+	defer i.StateLock.Unlock()
+
+	switch to {
+	case payloads.Stopping:
+		if i.State != payloads.Running {
+			return errors.New("Stop operation not allowed")
+		}
+	case payloads.Running:
+		if i.State != payloads.Pending {
+			return errors.New("Set active without pending")
+		}
+	}
+
+	i.State = to
+
+	return nil
+}
+
+func instanceActive(i *types.Instance) bool {
+	i.StateLock.RLock()
+	defer i.StateLock.RUnlock()
+
+	if i.State == payloads.Running {
+		return true
+	}
+
+	return false
 }
 
 func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s types.StorageResource) (payloads.StorageResource, error) {
@@ -289,7 +325,12 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 	networking.VnicUUID = uuid.Generate().String()
 
 	if cnci {
-		networking.VnicMAC = tenant.CNCIMAC
+		hwaddr, err := newHardwareAddr()
+		if err != nil {
+			return err
+		}
+
+		networking.VnicMAC = hwaddr.String()
 		return nil
 	}
 
@@ -309,12 +350,17 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 		Mask: mask,
 	}
 	networking.Subnet = ipnet.String()
-	networking.ConcentratorUUID = tenant.CNCIID
+
+	cnciInstance, err := tenant.CNCIctrl.GetSubnetCNCI(networking.Subnet)
+	if err != nil {
+		return err
+	}
+
+	networking.ConcentratorUUID = cnciInstance.ID
 
 	// in theory we should refuse to go on if ip is null
 	// for now let's keep going
-	networking.ConcentratorIP = tenant.CNCIIP
-
+	networking.ConcentratorIP = cnciInstance.IPAddress
 	return nil
 }
 
@@ -450,4 +496,26 @@ func newTenantHardwareAddr(ip net.IP) net.HardwareAddr {
 	buf[1] = 0
 	copy(buf[2:6], ipBytes)
 	return net.HardwareAddr(buf)
+}
+
+func newHardwareAddr() (net.HardwareAddr, error) {
+	buf := make([]byte, 6)
+	_, err := rand.Read(buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading random data")
+	}
+
+	// vnic creation seems to require not just the
+	// bit 1 to be set, but the entire byte to be
+	// set to 2.  Also, ensure that we get no
+	// overlap with tenant mac addresses by not allowing
+	// byte 1 to ever be zero.
+	buf[0] = 2
+	if buf[1] == 0 {
+		buf[1] = 3
+	}
+
+	hw := net.HardwareAddr(buf)
+
+	return hw, nil
 }

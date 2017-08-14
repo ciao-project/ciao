@@ -121,6 +121,7 @@ func (d instanceData) Init() error {
 		ip string,
 		create_time DATETIME,
 		name string,
+		cnci int,
 		foreign key(tenant_id) references tenants(id),
 		foreign key(workload_id) references workload_template(id),
 		unique(tenant_id, ip, mac_address)
@@ -202,10 +203,7 @@ func (d tenantData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS tenants
 		(
 		id varchar(32) primary key,
-		name text,
-		cnci_id varchar(32) default null,
-		cnci_mac string default null,
-		cnci_ip string default null
+		name text
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -766,9 +764,9 @@ func (ds *sqliteDB) getWorkloadStorage(ID string) ([]types.StorageResource, erro
 	return res, nil
 }
 
-func (ds *sqliteDB) addTenant(ID string, MAC string) error {
+func (ds *sqliteDB) addTenant(ID string, name string) error {
 	ds.dbLock.Lock()
-	err := ds.create("tenants", ID, "", "", MAC, "")
+	err := ds.create("tenants", ID, name)
 	ds.dbLock.Unlock()
 
 	return err
@@ -776,10 +774,7 @@ func (ds *sqliteDB) addTenant(ID string, MAC string) error {
 
 func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 	query := `SELECT	tenants.id,
-				tenants.name,
-				tenants.cnci_id,
-				tenants.cnci_mac,
-				tenants.cnci_ip
+				tenants.name
 		  FROM tenants
 		  WHERE tenants.id = ?`
 
@@ -789,7 +784,7 @@ func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 
 	t := &tenant{}
 
-	err := row.Scan(&t.ID, &t.Name, &t.CNCIID, &t.CNCIMAC, &t.CNCIIP)
+	err := row.Scan(&t.ID, &t.Name)
 	if err != nil {
 		glog.Warning("unable to retrieve tenant from tenants")
 
@@ -989,41 +984,13 @@ func (ds *sqliteDB) deleteWorkload(ID string) error {
 	return nil
 }
 
-func (ds *sqliteDB) updateTenant(t *tenant) error {
-	db := ds.getTableDB("tenants")
-
-	ds.dbLock.Lock()
-
-	tx, err := db.Begin()
-	if err != nil {
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	_, err = tx.Exec("UPDATE tenants SET cnci_id = ?, cnci_mac = ?, cnci_ip = ? WHERE id = ?", t.CNCIID, t.CNCIMAC, t.CNCIIP, t.ID)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-
-	ds.dbLock.Unlock()
-
-	return err
-}
-
 func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	var tenants []*tenant
 
 	datastore := ds.getTableDB("tenants")
 
 	query := `SELECT	tenants.id,
-				tenants.name,
-				tenants.cnci_id,
-				tenants.cnci_mac,
-				tenants.cnci_ip
+				tenants.name
 		  FROM tenants `
 
 	rows, err := datastore.Query(query)
@@ -1035,12 +1002,9 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	for rows.Next() {
 		var id sql.NullString
 		var name sql.NullString
-		var cnciID sql.NullString
-		var cnciMAC sql.NullString
-		var cnciIP sql.NullString
 
 		t := new(tenant)
-		err = rows.Scan(&id, &name, &cnciID, &cnciMAC, &cnciIP)
+		err = rows.Scan(&id, &name)
 		if err != nil {
 			return nil, err
 		}
@@ -1051,18 +1015,6 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 
 		if name.Valid {
 			t.Name = name.String
-		}
-
-		if cnciID.Valid {
-			t.CNCIID = cnciID.String
-		}
-
-		if cnciMAC.Valid {
-			t.CNCIMAC = cnciMAC.String
-		}
-
-		if cnciIP.Valid {
-			t.CNCIIP = cnciIP.String
 		}
 
 		err = ds.getTenantNetwork(t)
@@ -1235,7 +1187,8 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 		vnic_uuid,
 		subnet,
 		ip,
-		name
+		name,
+		cnci
 	FROM instances
 	LEFT JOIN latest
 	ON instances.id = latest.instance_id
@@ -1254,7 +1207,7 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 
 		var sshPort sql.NullInt64
 
-		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &i.WorkloadID, &i.SSHIP, &sshPort, &i.NodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name)
+		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &i.WorkloadID, &i.SSHIP, &sshPort, &i.NodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name, &i.CNCI)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
@@ -1315,7 +1268,8 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 		vnic_uuid,
 		subnet,
 		ip,
-		name
+		name,
+		cnci
 	FROM instances
 	LEFT JOIN latest
 	ON instances.id = latest.instance_id
@@ -1338,7 +1292,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 
 		i := &types.Instance{}
 
-		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &sshIP, &sshPort, &i.WorkloadID, &nodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name)
+		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &sshIP, &sshPort, &i.WorkloadID, &nodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name, &i.CNCI)
 		if err != nil {
 			tx.Rollback()
 			ds.tdbLock.RUnlock()
@@ -1374,12 +1328,24 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 }
 
 func (ds *sqliteDB) addInstance(instance *types.Instance) error {
+	datastore := ds.getTableDB("instances")
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
-	err := ds.create("instances", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.VnicUUID, instance.Subnet, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano), instance.Name)
+	tx, err := datastore.Begin()
+	if err != nil {
+		return err
+	}
 
-	ds.dbLock.Unlock()
-	return err
+	_, err = tx.Exec("INSERT INTO instances VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.VnicUUID, instance.Subnet, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano), instance.Name, instance.CNCI)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+
+	return nil
 }
 
 func (ds *sqliteDB) deleteInstance(instanceID string) error {
@@ -1405,6 +1371,28 @@ func (ds *sqliteDB) deleteInstance(instanceID string) error {
 	ds.dbLock.Unlock()
 
 	return err
+}
+
+func (ds *sqliteDB) updateInstance(instance *types.Instance) error {
+	datastore := ds.getTableDB("instances")
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	tx, err := datastore.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE instances SET mac_address = ?, ip = ? WHERE id = ?", instance.MACAddress, instance.IPAddress, instance.ID)
+	if err != nil {
+		tx.Rollback()
+		ds.dbLock.Unlock()
+		return err
+	}
+
+	tx.Commit()
+
+	return nil
 }
 
 func (ds *sqliteDB) addNodeStat(stat payloads.Stat) error {
