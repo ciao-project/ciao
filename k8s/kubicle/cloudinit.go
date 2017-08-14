@@ -80,12 +80,12 @@ const udMasterTemplate = `
  - apt-get update && apt-get install -y apt-transport-https
  - {{template "PROXIES" .}}curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
  - echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" >/etc/apt/sources.list.d/kubernetes.list
- - apt-get update
- - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y docker-engine
+ - for i in $( seq 1 5 ) ; do apt-get update && break || sleep 2; done
+ - for i in $( seq 1 5 ) ; do DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y docker-engine && break || sleep 2; done
 {{with .K8sVersion}}
- - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet={{.}}-00 kubeadm={{.}}-00 kubectl={{.}}-00 kubernetes-cni
+ - for i in $( seq 1 5 ) ; do DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet={{.}}-00 kubeadm={{.}}-00 kubectl={{.}}-00 kubernetes-cni && break || sleep 2; done
 {{else}}
- - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet kubeadm kubectl kubernetes-cni
+ - for i in $( seq 1 5 ) ; do DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet kubeadm kubectl kubernetes-cni && break || sleep 2; done
 {{end}}
  - {{template "PROXIES" .}}no_proxy=` + "`hostname -i`" + ` kubeadm init --pod-network-cidr 10.244.0.0/16 --token {{.Token}} {{if len .ExternalIP}}--apiserver-cert-extra-sans={{.ExternalIP}}{{end}}
  - cp /etc/kubernetes/admin.conf /home/{{.User}}/
@@ -94,7 +94,7 @@ const udMasterTemplate = `
  - KUBECONFIG=/home/{{.User}}/admin.conf kubectl create -f kube-flannel-rbac.yml
  - {{template "PROXIES" .}}wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
  - KUBECONFIG=/home/{{.User}}/admin.conf kubectl create --namespace kube-system -f kube-flannel.yml
- - cat /home/{{.User}}/admin.conf | sed -E 's/\/\/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/\/\/{{.ExternalIP}}/' | curl -T - {{.PhoneHomeIP}}:9000
+ - if [ $? -eq 0 ] ; then cat /home/{{.User}}/admin.conf | sed -E 's/\/\/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/\/\/{{.ExternalIP}}/' | curl -T - {{.PhoneHomeIP}}:9000/success ; else cat /var/log/cloud-init-output.log | curl -T - {{.PhoneHomeIP}}:9000/failure; fi
 ...
 `
 
@@ -102,12 +102,12 @@ const udNodeTemplate = `
  - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get update && apt-get install -y apt-transport-https
  - {{template "PROXIES" .}} curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
  - echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" >/etc/apt/sources.list.d/kubernetes.list
- - apt-get update
- - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y docker-engine
+ - for i in $( seq 1 5 ) ; do apt-get update && break || sleep 2; done
+ - for i in $( seq 1 5 ) ; do DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y docker-engine && break || sleep 2; done
 {{with .K8sVersion}}
- - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet={{.}}-00 kubeadm={{.}}-00 kubectl={{.}}-00 kubernetes-cni
+ - for i in $( seq 1 5 ) ; do DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet={{.}}-00 kubeadm={{.}}-00 kubectl={{.}}-00 kubernetes-cni && break || sleep 2; done
 {{else}}
- - DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet kubeadm kubectl kubernetes-cni
+ - for i in $( seq 1 5 ) ; do DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true apt-get install -y kubelet kubeadm kubectl kubernetes-cni && break || sleep 2; done
 {{end}}
  - kubeadm join --token {{.Token}} {{.MasterIP}}:6443
 ...
