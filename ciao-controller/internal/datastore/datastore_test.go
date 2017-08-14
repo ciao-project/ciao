@@ -17,7 +17,6 @@
 package datastore
 
 import (
-	"crypto/rand"
 	"database/sql"
 	"encoding/binary"
 	"flag"
@@ -29,43 +28,11 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-controller/utils"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
-	"github.com/pkg/errors"
 )
-
-func newTenantHardwareAddr(ip net.IP) (hw net.HardwareAddr) {
-	buf := make([]byte, 6)
-	ipBytes := ip.To4()
-	buf[0] |= 2
-	buf[1] = 0
-	copy(buf[2:6], ipBytes)
-	hw = net.HardwareAddr(buf)
-	return
-}
-
-func newHardwareAddr() (net.HardwareAddr, error) {
-	buf := make([]byte, 6)
-	_, err := rand.Read(buf)
-	if err != nil {
-		return nil, errors.Wrap(err, "error reading random data")
-	}
-
-	// vnic creation seems to require not just the
-	// bit 1 to be set, but the entire byte to be
-	// set to 2.  Also, ensure that we get no
-	// overlap with tenant mac addresses by not allowing
-	// byte 1 to ever be zero.
-	buf[0] = 2
-	if buf[1] == 0 {
-		buf[1] = 3
-	}
-
-	hw := net.HardwareAddr(buf)
-
-	return hw, nil
-}
 
 func addInstance(tenant *types.Tenant, workload types.Workload, name string) (instance *types.Instance, err error) {
 	id := uuid.Generate()
@@ -75,7 +42,7 @@ func addInstance(tenant *types.Tenant, workload types.Workload, name string) (in
 		return
 	}
 
-	mac := newTenantHardwareAddr(ip)
+	mac := utils.NewTenantHardwareAddr(ip)
 
 	resources := make(map[string]int)
 	rr := workload.Defaults
@@ -174,7 +141,7 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 		return
 	}
 
-	mac, err := newHardwareAddr()
+	mac, err := utils.NewHardwareAddr()
 	if err != nil {
 		return
 	}

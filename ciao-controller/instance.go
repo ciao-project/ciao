@@ -17,13 +17,13 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-controller/utils"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
@@ -296,7 +296,7 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 	networking.VnicUUID = uuid.Generate().String()
 
 	if cnci {
-		hwaddr, err := newHardwareAddr()
+		hwaddr, err := utils.NewHardwareAddr()
 		if err != nil {
 			return err
 		}
@@ -311,7 +311,7 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 		return err
 	}
 
-	networking.VnicMAC = newTenantHardwareAddr(ipAddress).String()
+	networking.VnicMAC = utils.NewTenantHardwareAddr(ipAddress).String()
 
 	// send in CIDR notation?
 	networking.PrivateIP = ipAddress.String()
@@ -458,35 +458,4 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	config.mac = networking.VnicMAC
 
 	return config, err
-}
-
-func newTenantHardwareAddr(ip net.IP) net.HardwareAddr {
-	buf := make([]byte, 6)
-	ipBytes := ip.To4()
-	buf[0] |= 2
-	buf[1] = 0
-	copy(buf[2:6], ipBytes)
-	return net.HardwareAddr(buf)
-}
-
-func newHardwareAddr() (net.HardwareAddr, error) {
-	buf := make([]byte, 6)
-	_, err := rand.Read(buf)
-	if err != nil {
-		return nil, errors.Wrap(err, "error reading random data")
-	}
-
-	// vnic creation seems to require not just the
-	// bit 1 to be set, but the entire byte to be
-	// set to 2.  Also, ensure that we get no
-	// overlap with tenant mac addresses by not allowing
-	// byte 1 to ever be zero.
-	buf[0] = 2
-	if buf[1] == 0 {
-		buf[1] = 3
-	}
-
-	hw := net.HardwareAddr(buf)
-
-	return hw, nil
 }
