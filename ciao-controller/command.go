@@ -118,20 +118,12 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 		return nil
 	}
 
-	if tenant.CNCIIP == "" {
-		err := c.launchCNCI(tenantID)
-		if err != nil {
-			return err
-		}
-
-		tenant, err = c.ds.GetTenant(tenantID)
-		if err != nil {
-			return err
-		}
-
-		if tenant.CNCIIP == "" {
-			return errors.New("Unable to Launch Tenant CNCI")
-		}
+	if tenant.CNCIID != "" {
+		return nil
+	}
+	err = c.launchCNCI(tenantID)
+	if err != nil {
+		return err
 	}
 
 	return nil

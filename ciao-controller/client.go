@@ -158,9 +158,23 @@ func (client *ssntpClient) concentratorInstanceAdded(payload []byte) {
 		return
 	}
 	newCNCI := event.CNCIAdded
-	err = client.ctl.ds.AddCNCIIP(newCNCI.ConcentratorMAC, newCNCI.ConcentratorIP)
+	i, err := client.ctl.ds.GetInstance(newCNCI.InstanceUUID)
 	if err != nil {
-		glog.Warningf("Error adding CNCI IP to datastore: %v", err)
+		glog.Warningf("Error getting instance: %v", err)
+		return
+	}
+
+	i.IPAddress = newCNCI.ConcentratorIP
+	i.MACAddress = newCNCI.ConcentratorMAC
+
+	err = client.ctl.ds.UpdateInstance(i)
+	if err != nil {
+		glog.Warningf("Error updating CNCI Info: %v", err)
+	}
+
+	err = client.ctl.ds.CNCIAdded(i.TenantID)
+	if err != nil {
+		glog.Warningf("Error adding CNCI: %v", err)
 	}
 }
 
@@ -511,6 +525,11 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		Hostname: hostname,
 	}
 
+	cnci, err := client.ctl.ds.GetInstance(t.CNCIID)
+	if err != nil {
+		return err
+	}
+
 	restartCmd := payloads.StartCmd{
 		TenantUUID:          i.TenantID,
 		InstanceUUID:        i.ID,
@@ -522,7 +541,7 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 			VnicMAC:          i.MACAddress,
 			VnicUUID:         i.VnicUUID,
 			ConcentratorUUID: t.CNCIID,
-			ConcentratorIP:   t.CNCIIP,
+			ConcentratorIP:   cnci.IPAddress,
 			Subnet:           i.Subnet,
 			PrivateIP:        i.IPAddress,
 		},
@@ -647,6 +666,11 @@ func (client *ssntpClient) Disconnect() {
 }
 
 func (client *ssntpClient) mapExternalIP(t types.Tenant, m types.MappedIP) error {
+	i, err := client.ctl.ds.GetInstance(t.CNCIID)
+	if err != nil {
+		return err
+	}
+
 	payload := payloads.CommandAssignPublicIP{
 		AssignIP: payloads.PublicIPCommand{
 			ConcentratorUUID: t.CNCIID,
@@ -654,7 +678,7 @@ func (client *ssntpClient) mapExternalIP(t types.Tenant, m types.MappedIP) error
 			InstanceUUID:     m.InstanceID,
 			PublicIP:         m.ExternalIP,
 			PrivateIP:        m.InternalIP,
-			VnicMAC:          t.CNCIMAC,
+			VnicMAC:          i.MACAddress,
 		},
 	}
 
@@ -671,6 +695,11 @@ func (client *ssntpClient) mapExternalIP(t types.Tenant, m types.MappedIP) error
 }
 
 func (client *ssntpClient) unMapExternalIP(t types.Tenant, m types.MappedIP) error {
+	i, err := client.ctl.ds.GetInstance(t.CNCIID)
+	if err != nil {
+		return err
+	}
+
 	payload := payloads.CommandReleasePublicIP{
 		ReleaseIP: payloads.PublicIPCommand{
 			ConcentratorUUID: t.CNCIID,
@@ -678,7 +707,7 @@ func (client *ssntpClient) unMapExternalIP(t types.Tenant, m types.MappedIP) err
 			InstanceUUID:     m.InstanceID,
 			PublicIP:         m.ExternalIP,
 			PrivateIP:        m.InternalIP,
-			VnicMAC:          t.CNCIMAC,
+			VnicMAC:          i.MACAddress,
 		},
 	}
 

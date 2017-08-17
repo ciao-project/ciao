@@ -522,9 +522,9 @@ func listCNCIs(c *controller, w http.ResponseWriter, r *http.Request) (APIRespon
 		return errorResponse(err), err
 	}
 
-	var subnets []types.CiaoCNCISubnet
-
 	for _, cnci := range cncis {
+		var subnets []types.CiaoCNCISubnet
+
 		if cnci.InstanceID == "" {
 			continue
 		}

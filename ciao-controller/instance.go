@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-controller/utils"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
@@ -107,14 +108,20 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 func (i *instance) Add() error {
 	ds := i.ctl.ds
 	var err error
-	if i.CNCI == false {
-		err = ds.AddInstance(&i.Instance)
-	} else {
-		err = ds.AddTenantCNCI(i.TenantID, i.ID, i.MACAddress)
-	}
+	err = ds.AddInstance(&i.Instance)
 	if err != nil {
 		return errors.Wrapf(err, "Error creating instance in datastore")
 	}
+
+	if i.CNCI == true {
+		t, err := ds.GetTenant(i.TenantID)
+		if err != nil {
+			return errors.Wrap(err, "Error creating instance: unable to retrieve tenant")
+		}
+
+		t.CNCIID = i.ID
+	}
+
 	for _, volume := range i.newConfig.sc.Start.Storage {
 		if volume.ID == "" && volume.Local {
 			// these are launcher auto-created ephemeral
@@ -289,7 +296,12 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 	networking.VnicUUID = uuid.Generate().String()
 
 	if cnci {
-		networking.VnicMAC = tenant.CNCIMAC
+		hwaddr, err := utils.NewHardwareAddr()
+		if err != nil {
+			return err
+		}
+
+		networking.VnicMAC = hwaddr.String()
 		return nil
 	}
 
@@ -299,7 +311,7 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 		return err
 	}
 
-	networking.VnicMAC = newTenantHardwareAddr(ipAddress).String()
+	networking.VnicMAC = utils.NewTenantHardwareAddr(ipAddress).String()
 
 	// send in CIDR notation?
 	networking.PrivateIP = ipAddress.String()
@@ -311,9 +323,14 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 	networking.Subnet = ipnet.String()
 	networking.ConcentratorUUID = tenant.CNCIID
 
+	i, err := ctl.ds.GetInstance(tenant.CNCIID)
+	if err != nil {
+		return err
+	}
+
 	// in theory we should refuse to go on if ip is null
 	// for now let's keep going
-	networking.ConcentratorIP = tenant.CNCIIP
+	networking.ConcentratorIP = i.IPAddress
 
 	return nil
 }
@@ -441,13 +458,4 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	config.mac = networking.VnicMAC
 
 	return config, err
-}
-
-func newTenantHardwareAddr(ip net.IP) net.HardwareAddr {
-	buf := make([]byte, 6)
-	ipBytes := ip.To4()
-	buf[0] |= 2
-	buf[1] = 0
-	copy(buf[2:6], ipBytes)
-	return net.HardwareAddr(buf)
 }

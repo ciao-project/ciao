@@ -30,6 +30,7 @@ import (
 	"github.com/01org/ciao/ciao-controller/internal/datastore"
 	"github.com/01org/ciao/ciao-controller/internal/quotas"
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/ciao-controller/utils"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
 	"github.com/01org/ciao/payloads"
@@ -80,14 +81,27 @@ users:
 }
 
 func addFakeCNCI(tenant *types.Tenant) error {
-	err := ctl.ds.AddTenantCNCI(tenant.ID, uuid.Generate().String(), tenant.CNCIMAC)
+	mac, err := utils.NewHardwareAddr()
 	if err != nil {
 		return err
 	}
-	err = ctl.ds.AddCNCIIP(tenant.CNCIMAC, "192.168.0.1")
+
+	// Add fake CNCI
+	CNCI := types.Instance{
+		TenantID:   tenant.ID,
+		State:      payloads.Running,
+		ID:         uuid.Generate().String(),
+		CNCI:       true,
+		IPAddress:  "192.168.0.1",
+		MACAddress: mac.String(),
+	}
+
+	err = ctl.ds.AddInstance(&CNCI)
 	if err != nil {
 		return err
 	}
+
+	tenant.CNCIID = CNCI.ID
 
 	return nil
 }
@@ -293,18 +307,6 @@ func TestTenantOutOfBounds(t *testing.T) {
 		{Name: "tenant-instances-quota", Value: -1},
 	}
 	ctl.qs.Update(tenant.ID, quotas)
-}
-
-// TestNewTenantHardwareAddr
-// Confirm that the mac addresses generated from a given
-// IP address is as expected.
-func TestNewTenantHardwareAddr(t *testing.T) {
-	ip := net.ParseIP("172.16.0.2")
-	expectedMAC := "02:00:ac:10:00:02"
-	hw := newTenantHardwareAddr(ip)
-	if hw.String() != expectedMAC {
-		t.Error("Expected: ", expectedMAC, " Received: ", hw.String())
-	}
 }
 
 func TestStartWorkload(t *testing.T) {
