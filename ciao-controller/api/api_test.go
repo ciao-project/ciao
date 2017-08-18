@@ -23,13 +23,13 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/payloads"
+	"github.com/01org/ciao/service"
 )
 
 type test struct {
 	method           string
-	pattern          string
-	handler          func(*Context, http.ResponseWriter, *http.Request) (Response, error)
 	request          string
+	requestBody      string
 	media            string
 	expectedStatus   int
 	expectedResponse string
@@ -39,7 +39,6 @@ var tests = []test{
 	{
 		"GET",
 		"/",
-		listResources,
 		"",
 		"application/text",
 		http.StatusOK,
@@ -48,126 +47,112 @@ var tests = []test{
 	{
 		"GET",
 		"/pools",
-		listPools,
 		"",
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", PoolsV1),
 		http.StatusOK,
-		`{"pools":[{"id":"validID","name":"testpool","free":0,"total_ips":0,"links":[{"rel":"self","href":"/pools/validID"}]}]}`,
+		`{"pools":[{"id":"ba58f471-0735-4773-9550-188e2d012941","name":"testpool","free":0,"total_ips":0,"links":[{"rel":"self","href":"/pools/ba58f471-0735-4773-9550-188e2d012941"}]}]}`,
 	},
 	{
 		"GET",
 		"/pools?name=testpool",
-		listPools,
 		"",
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", PoolsV1),
 		http.StatusOK,
-		`{"pools":[{"id":"validID","name":"testpool","free":0,"total_ips":0,"links":[{"rel":"self","href":"/pools/validID"}]}]}`,
+		`{"pools":[{"id":"ba58f471-0735-4773-9550-188e2d012941","name":"testpool","free":0,"total_ips":0,"links":[{"rel":"self","href":"/pools/ba58f471-0735-4773-9550-188e2d012941"}]}]}`,
 	},
 	{
 		"POST",
 		"/pools",
-		addPool,
 		`{"name":"testpool"}`,
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", PoolsV1),
 		http.StatusNoContent,
 		"null",
 	},
 	{
 		"GET",
-		"/pools/validID",
-		showPool,
+		"/pools/ba58f471-0735-4773-9550-188e2d012941",
 		"",
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", PoolsV1),
 		http.StatusOK,
-		`{"id":"validID","name":"testpool","free":0,"total_ips":0,"links":[{"rel":"self","href":"/pools/validID"}],"subnets":[],"ips":[]}`,
+		`{"id":"ba58f471-0735-4773-9550-188e2d012941","name":"testpool","free":0,"total_ips":0,"links":[{"rel":"self","href":"/pools/ba58f471-0735-4773-9550-188e2d012941"}],"subnets":[],"ips":[]}`,
 	},
 	{
 		"DELETE",
-		"/pools/validID",
-		deletePool,
+		"/pools/ba58f471-0735-4773-9550-188e2d012941",
 		"",
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", PoolsV1),
 		http.StatusNoContent,
 		"null",
 	},
 	{
 		"POST",
-		"/pools/validID",
-		addToPool,
+		"/pools/ba58f471-0735-4773-9550-188e2d012941",
 		`{"subnet":"192.168.0.0/24"}`,
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", PoolsV1),
 		http.StatusNoContent,
 		"null",
 	},
 	{
 		"DELETE",
-		"/pools/validID/subnets/validID",
-		deleteSubnet,
+		"/pools/ba58f471-0735-4773-9550-188e2d012941/subnets/ba58f471-0735-4773-9550-188e2d012941",
 		"",
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", PoolsV1),
 		http.StatusNoContent,
 		"null",
 	},
 	{
 		"DELETE",
-		"/pools/validID/external-ips/validID",
-		deleteExternalIP,
+		"/pools/ba58f471-0735-4773-9550-188e2d012941/external-ips/ba58f471-0735-4773-9550-188e2d012941",
 		"",
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", PoolsV1),
 		http.StatusNoContent,
 		"null",
 	},
 	{
 		"GET",
 		"/external-ips",
-		listMappedIPs,
 		"",
-		ExternalIPsV1,
+		fmt.Sprintf("application/%s", ExternalIPsV1),
 		http.StatusOK,
-		`[{"mapping_id":"validID","external_ip":"192.168.0.1","internal_ip":"172.16.0.1","instance_id":"","tenant_id":"validtenant","pool_id":"validpool","pool_name":"mypool","links":[{"rel":"self","href":"/external-ips/validID"},{"rel":"pool","href":"/pools/validpool"}]}]`,
+		`[{"mapping_id":"ba58f471-0735-4773-9550-188e2d012941","external_ip":"192.168.0.1","internal_ip":"172.16.0.1","instance_id":"","tenant_id":"8a497c68-a88a-4c1c-be56-12a4883208d3","pool_id":"f384ffd8-e7bd-40c2-8552-2efbe7e3ad6e","pool_name":"mypool","links":[{"rel":"self","href":"/external-ips/ba58f471-0735-4773-9550-188e2d012941"},{"rel":"pool","href":"/pools/f384ffd8-e7bd-40c2-8552-2efbe7e3ad6e"}]}]`,
 	},
 	{
 		"POST",
-		"/validID/external-ips",
-		mapExternalIP,
+		"/19df9b86-eda3-489d-b75f-d38710e210cb/external-ips",
 		`{"pool_name":"apool","instance_id":"validinstanceID"}`,
-		"application/x.ciao.v1.pools",
+		fmt.Sprintf("application/%s", ExternalIPsV1),
 		http.StatusNoContent,
 		"null",
 	},
 	{
 		"POST",
 		"/workloads",
-		addWorkload,
 		`{"id":"","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":[]}`,
-		"application/x.ciao.v1.workloads",
+		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusCreated,
 		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":[],"storage":null},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
 	},
 	{
 		"DELETE",
-		"/workloads/validID",
-		deleteWorkload,
+		"/workloads/76f4fa99-e533-4cbd-ab36-f6c0f51292ed",
 		"",
-		"application/x.ciao.v1.workloads",
+		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusNoContent,
 		"null",
 	},
 	{
 		"GET",
 		"/workloads/ba58f471-0735-4773-9550-188e2d012941",
-		showWorkload,
 		"",
-		"application/x.ciao.v1.workloads",
+		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusOK,
 		`{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":null,"storage":null}`,
 	},
 	{
 		"GET",
-		"/tenants/test-tenant-id/quotas/",
-		listQuotas,
+		"/tenants/093ae09b-f653-464e-9ae6-5ae28bd03a22/quotas",
 		"",
-		"application/x.ciao.v1.tenants",
+		fmt.Sprintf("application/%s", TenantsV1),
 		http.StatusOK,
 		`{"quotas":[{"name":"test-quota-1","value":"10","usage":"3"},{"name":"test-quota-2","value":"unlimited","usage":"10"},{"name":"test-limit","value":"123"}]}`,
 	},
@@ -178,11 +163,11 @@ type testCiaoService struct{}
 func (ts testCiaoService) ListPools() ([]types.Pool, error) {
 	self := types.Link{
 		Rel:  "self",
-		Href: "/pools/validID",
+		Href: "/pools/ba58f471-0735-4773-9550-188e2d012941",
 	}
 
 	resp := types.Pool{
-		ID:       "validID",
+		ID:       "ba58f471-0735-4773-9550-188e2d012941",
 		Name:     "testpool",
 		Free:     0,
 		TotalIPs: 0,
@@ -199,13 +184,14 @@ func (ts testCiaoService) AddPool(name string, subnet *string, ips []string) (ty
 }
 
 func (ts testCiaoService) ShowPool(id string) (types.Pool, error) {
+	fmt.Println("ShowPool")
 	self := types.Link{
 		Rel:  "self",
-		Href: "/pools/validID",
+		Href: "/pools/ba58f471-0735-4773-9550-188e2d012941",
 	}
 
 	resp := types.Pool{
-		ID:       "validID",
+		ID:       "ba58f471-0735-4773-9550-188e2d012941",
 		Name:     "testpool",
 		Free:     0,
 		TotalIPs: 0,
@@ -233,11 +219,11 @@ func (ts testCiaoService) ListMappedAddresses(tenant *string) []types.MappedIP {
 	var ref string
 
 	m := types.MappedIP{
-		ID:         "validID",
+		ID:         "ba58f471-0735-4773-9550-188e2d012941",
 		ExternalIP: "192.168.0.1",
 		InternalIP: "172.16.0.1",
-		TenantID:   "validtenant",
-		PoolID:     "validpool",
+		TenantID:   "8a497c68-a88a-4c1c-be56-12a4883208d3",
+		PoolID:     "f384ffd8-e7bd-40c2-8552-2efbe7e3ad6e",
 		PoolName:   "mypool",
 	}
 
@@ -311,28 +297,28 @@ func (ts testCiaoService) UpdateQuotas(tenantID string, qds []types.QuotaDetails
 func TestResponse(t *testing.T) {
 	var ts testCiaoService
 
-	context := &Context{"", ts}
+	mux := Routes(Config{"", ts})
 
-	for _, tt := range tests {
-		req, err := http.NewRequest(tt.method, tt.pattern, bytes.NewBuffer([]byte(tt.request)))
+	for i, tt := range tests {
+		req, err := http.NewRequest(tt.method, tt.request, bytes.NewBuffer([]byte(tt.requestBody)))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		req.Header.Set("Content-Type", tt.media)
+		req = req.WithContext(service.SetPrivilege(req.Context(), true))
 
 		rr := httptest.NewRecorder()
-		handler := Handler{context, tt.handler, false}
+		req.Header.Set("Content-Type", tt.media)
 
-		handler.ServeHTTP(rr, req)
+		mux.ServeHTTP(rr, req)
 
 		status := rr.Code
 		if status != tt.expectedStatus {
-			t.Errorf("got %v, expected %v", status, tt.expectedStatus)
+			t.Errorf("test %d: got %v, expected %v", i, status, tt.expectedStatus)
 		}
 
 		if rr.Body.String() != tt.expectedResponse {
-			t.Errorf("%s: failed\ngot: %v\nexp: %v", tt.pattern, rr.Body.String(), tt.expectedResponse)
+			t.Errorf("test %d: %s: failed\ngot: %v\nexp: %v", i, tt.request, rr.Body.String(), tt.expectedResponse)
 		}
 	}
 }
