@@ -278,11 +278,13 @@ func (h APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.Handler(h.Context, w, r)
 	if err != nil {
 		http.Error(w, err.Error(), resp.status)
+		return
 	}
 
 	b, err := json.Marshal(resp.response)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
