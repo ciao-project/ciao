@@ -113,6 +113,7 @@ func main() {
 	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
 	ctl.qs = new(quotas.Quotas)
+	ctl.is = new(ImageService)
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:" + *persistentDatastoreLocation,
@@ -170,6 +171,10 @@ func main() {
 
 	if clusterConfig.Configure.Controller.AdminPassword != "" {
 		adminPassword = clusterConfig.Configure.Controller.AdminPassword
+	}
+
+	if err := ctl.is.Init(ctl.qs); err != nil {
+		glog.Fatalf("Error initialising image service: %v", err)
 	}
 
 	ctl.ds.GenerateCNCIWorkload(cnciVCPUs, cnciMem, cnciDisk, adminSSHKey, adminPassword)

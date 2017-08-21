@@ -206,27 +206,8 @@ func (is *ImageService) GetImage(tenantID, imageID string) (image.DefaultRespons
 	return response, nil
 }
 
-// ImageConfig is required to setup the API context for the image service.
-type ImageConfig struct {
-	// Port represents the http port that should be used for the service.
-	Port int
-
-	// HTTPSCACert is the path to the http ca cert to use.
-	HTTPSCACert string
-
-	// HTTPSKey is the path to the https cert key.
-	HTTPSKey string
-
-	// DataStore is an interface to a persistent datastore for the image raw data.
-	RawDataStore imageDatastore.RawDataStore
-
-	// MetaDataStore is an interface to a persistent datastore for the image meta data.
-	MetaDataStore imageDatastore.MetaDataStore
-}
-
-// createImageServer will get the Image API endpoints from the OpenStack image api,
-// then wrap them in keystone validation.
-func (c *controller) createImageServer() (*http.Server, error) {
+// Init initialises the image service
+func (is *ImageService) Init(qs *quotas.Quotas) error {
 	dbDir := filepath.Dir(*imageDatastoreLocation)
 	dbFile := filepath.Base(*imageDatastoreLocation)
 
@@ -246,12 +227,12 @@ func (c *controller) createImageServer() (*http.Server, error) {
 	err := metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "Error on DB Initialization")
+		return errors.Wrap(err, "Error on DB Initialization")
 	}
 
 	err = metaDs.DbTablesInit(metaDsTables)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error on DB Tables Initialization")
+		return errors.Wrap(err, "Error on DB Tables Initialization")
 	}
 
 	rawDs := &imageDatastore.Ceph{
@@ -281,14 +262,39 @@ func (c *controller) createImageServer() (*http.Server, error) {
 	glog.Infof("RawDataStore  : %T", config.RawDataStore)
 	glog.Infof("MetaDataStore : %T", config.MetaDataStore)
 
-	c.is = &ImageService{ds: &imageDatastore.ImageStore{}, qs: c.qs}
-	err = c.is.ds.Init(config.RawDataStore, config.MetaDataStore)
+	is.ds = &imageDatastore.ImageStore{}
+	is.qs = qs
+	err = is.ds.Init(config.RawDataStore, config.MetaDataStore)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	return nil
+}
+
+// ImageConfig is required to setup the API context for the image service.
+type ImageConfig struct {
+	// Port represents the http port that should be used for the service.
+	Port int
+
+	// HTTPSCACert is the path to the http ca cert to use.
+	HTTPSCACert string
+
+	// HTTPSKey is the path to the https cert key.
+	HTTPSKey string
+
+	// DataStore is an interface to a persistent datastore for the image raw data.
+	RawDataStore imageDatastore.RawDataStore
+
+	// MetaDataStore is an interface to a persistent datastore for the image meta data.
+	MetaDataStore imageDatastore.MetaDataStore
+}
+
+// createImageServer will get the Image API endpoints from the OpenStack image api,
+// then wrap them in keystone validation.
+func (c *controller) createImageServer() (*http.Server, error) {
 	apiConfig := image.APIConfig{
-		Port:         config.Port,
+		Port:         image.APIPort,
 		ImageService: c.is,
 	}
 
@@ -306,7 +312,7 @@ func (c *controller) createImageServer() (*http.Server, error) {
 		{Project: "admin", Role: "admin"},
 	}
 
-	err = r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		h := osIdentity.Handler{
 			Client:        c.id.scV3,
 			Next:          route.GetHandler(),
@@ -321,7 +327,7 @@ func (c *controller) createImageServer() (*http.Server, error) {
 		return nil, err
 	}
 
-	service := fmt.Sprintf(":%d", config.Port)
+	service := fmt.Sprintf(":%d", image.APIPort)
 
 	server := &http.Server{
 		Handler: r,
