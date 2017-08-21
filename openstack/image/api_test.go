@@ -221,7 +221,7 @@ func TestRoutes(t *testing.T) {
 	var is testImageService
 	config := APIConfig{9292, is}
 
-	r := Routes(config, nil)
+	r := Routes(config, nil, nil)
 	if r == nil {
 		t.Fatalf("No routes returned")
 	}

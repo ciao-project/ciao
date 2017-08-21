@@ -271,7 +271,7 @@ func TestRoutes(t *testing.T) {
 	var cs testComputeService
 	config := APIConfig{8774, cs}
 
-	r := Routes(config)
+	r := Routes(config, nil)
 	if r == nil {
 		t.Fatalf("No routes returned")
 	}

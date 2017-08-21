@@ -700,10 +700,12 @@ func showFlavorDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIR
 }
 
 // Routes returns a gorilla mux router for the compute endpoints.
-func Routes(config APIConfig) *mux.Router {
+func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	context := &Context{config.Port, config.ComputeService}
 
-	r := mux.NewRouter()
+	if r == nil {
+		r = mux.NewRouter()
+	}
 
 	// servers endpoints
 	r.Handle("/v2.1/{tenant}/servers",

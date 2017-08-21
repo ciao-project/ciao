@@ -540,11 +540,13 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.
-func Routes(config APIConfig, serviceClient *gophercloud.ServiceClient) *mux.Router {
+func Routes(config APIConfig, serviceClient *gophercloud.ServiceClient, r *mux.Router) *mux.Router {
 	// make new Context
 	context := &Context{config.Port, config.ImageService, serviceClient}
 
-	r := mux.NewRouter()
+	if r == nil {
+		r = mux.NewRouter()
+	}
 
 	// API versions
 	r.Handle("/", APIHandler{context, listAPIVersions}).Methods("GET")

@@ -665,11 +665,13 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.
-func Routes(config APIConfig) *mux.Router {
+func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	// make new Context
 	context := &Context{config.Port, config.VolService}
 
-	r := mux.NewRouter()
+	if r == nil {
+		r = mux.NewRouter()
+	}
 
 	// API versions
 	r.Handle("/", APIHandler{context, listAPIVersions}).Methods("GET")

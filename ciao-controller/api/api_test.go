@@ -297,7 +297,7 @@ func (ts testCiaoService) UpdateQuotas(tenantID string, qds []types.QuotaDetails
 func TestResponse(t *testing.T) {
 	var ts testCiaoService
 
-	mux := Routes(Config{"", ts})
+	mux := Routes(Config{"", ts}, nil)
 
 	for i, tt := range tests {
 		req, err := http.NewRequest(tt.method, tt.request, bytes.NewBuffer([]byte(tt.requestBody)))
@@ -327,7 +327,7 @@ func TestRoutes(t *testing.T) {
 	var ts testCiaoService
 	config := Config{"", ts}
 
-	r := Routes(config)
+	r := Routes(config, nil)
 	if r == nil {
 		t.Fatalf("No routes returned")
 	}

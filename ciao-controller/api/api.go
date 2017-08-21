@@ -610,11 +610,13 @@ type Config struct {
 // since we only have one version of this api so far, that means
 // most routes will match both json as well as our custom
 // content type.
-func Routes(config Config) *mux.Router {
+func Routes(config Config, r *mux.Router) *mux.Router {
 	// make new Context
 	context := &Context{config.URL, config.CiaoService}
 
-	r := mux.NewRouter()
+	if r == nil {
+		r = mux.NewRouter()
+	}
 
 	// external IP pools
 	route := r.Handle("/", Handler{context, listResources, true})

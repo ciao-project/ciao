@@ -40,7 +40,6 @@ import (
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
 )
 
 type tenantConfirmMemo struct {
@@ -260,13 +259,10 @@ func main() {
 	ctl.client.Disconnect()
 }
 
-func (c *controller) createCiaoServer() (*http.Server, error) {
+func (c *controller) createCiaoRoutes(r *mux.Router) error {
 	config := api.Config{URL: c.apiURL, CiaoService: c}
 
-	r := api.Routes(config)
-	if r == nil {
-		return nil, errors.New("Unable to start Ciao API Service")
-	}
+	r = api.Routes(config, r)
 
 	// wrap each route in keystone validation.
 	validServices := []osIdentity.ValidService{
@@ -292,6 +288,13 @@ func (c *controller) createCiaoServer() (*http.Server, error) {
 		return nil
 	})
 
+	return err
+}
+
+func (c *controller) createCiaoServer() (*http.Server, error) {
+	r := mux.NewRouter()
+
+	err := c.createCiaoRoutes(r)
 	if err != nil {
 		return nil, err
 	}

@@ -296,7 +296,7 @@ func TestRoutes(t *testing.T) {
 	var vs testVolumeService
 	config := APIConfig{8776, vs}
 
-	r := Routes(config)
+	r := Routes(config, nil)
 	if r == nil {
 		t.Fatalf("No routes returned")
 	}

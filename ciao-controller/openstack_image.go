@@ -290,16 +290,14 @@ type ImageConfig struct {
 	MetaDataStore imageDatastore.MetaDataStore
 }
 
-// createImageServer will get the Image API endpoints from the OpenStack image api,
-// then wrap them in keystone validation.
-func (c *controller) createImageServer() (*http.Server, error) {
+func (c *controller) createImageRoutes(r *mux.Router) error {
 	apiConfig := image.APIConfig{
 		Port:         image.APIPort,
 		ImageService: c.is,
 	}
 
 	// get our routes.
-	r := image.Routes(apiConfig, c.id.scV3)
+	image.Routes(apiConfig, c.id.scV3, r)
 
 	// setup identity for these routes.
 	validServices := []osIdentity.ValidService{
@@ -323,6 +321,16 @@ func (c *controller) createImageServer() (*http.Server, error) {
 		route.Handler(h)
 		return nil
 	})
+
+	return err
+}
+
+// createImageServer will get the Image API endpoints from the OpenStack image api,
+// then wrap them in keystone validation.
+func (c *controller) createImageServer() (*http.Server, error) {
+	r := mux.NewRouter()
+
+	err := c.createImageRoutes(r)
 	if err != nil {
 		return nil, err
 	}
