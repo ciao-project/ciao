@@ -120,9 +120,29 @@ func (client *ssntpClient) removeInstance(instanceID string) {
 		glog.Warningf("Error when releasing resources for deleted instance: %v", err)
 	}
 	client.deleteEphemeralStorage(instanceID)
+
+	i, err := client.ctl.ds.GetInstance(instanceID)
+	if err != nil {
+		glog.Warningf("Error getting instance from datastore: %v", err)
+		return
+	}
+
 	err = client.ctl.ds.DeleteInstance(instanceID)
 	if err != nil {
 		glog.Warningf("Error deleting instance from datastore: %v", err)
+	}
+
+	if i.CNCI {
+		tenant, err := client.ctl.ds.GetTenant(i.TenantID)
+		if err != nil {
+			glog.Warningf("Error retrieving tenant %v", err)
+			return
+		}
+
+		err = tenant.CNCIctrl.CNCIRemoved(i.ID)
+		if err != nil {
+			glog.Warningf("Error removing CNCI: %v", err)
+		}
 	}
 }
 
@@ -172,10 +192,13 @@ func (client *ssntpClient) concentratorInstanceAdded(payload []byte) {
 		glog.Warningf("Error updating CNCI Info: %v", err)
 	}
 
-	err = client.ctl.ds.CNCIAdded(i.TenantID)
-	if err != nil {
-		glog.Warningf("Error adding CNCI: %v", err)
+	tenant, err := client.ctl.ds.GetTenant(i.TenantID)
+	if err != nil || tenant == nil {
+		glog.Warningf("Error getting tenant: %v", err)
+		return
 	}
+
+	tenant.CNCIctrl.CNCIAdded(newCNCI.InstanceUUID)
 }
 
 func (client *ssntpClient) traceReport(payload []byte) {
@@ -308,9 +331,29 @@ func (client *ssntpClient) startFailure(payload []byte) {
 			glog.Warningf("Error when releasing resources for start failed instance: %v", err)
 		}
 	}
+
+	i, err := client.ctl.ds.GetInstance(failure.InstanceUUID)
+	if err != nil {
+		glog.Warningf("Error getting instance: %v", err)
+		return
+	}
+
+	cnci := i.CNCI
+	tenantID := i.TenantID
+
 	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason, failure.Restart)
 	if err != nil {
 		glog.Warningf("Error adding StartFailure to datastore: %v", err)
+	}
+
+	if cnci {
+		tenant, err := client.ctl.ds.GetTenant(tenantID)
+		if err != nil {
+			glog.Warningf("Unable to send start failure event: Error getting tenant %v", err)
+			return
+		}
+
+		tenant.CNCIctrl.StartFailure(failure.InstanceUUID)
 	}
 }
 
@@ -515,6 +558,12 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		return errors.Wrapf(err, "Unable to update instance state before restarting")
 	}
 
+	// get the CNCI for this instance
+	cnci, err := t.CNCIctrl.GetInstanceCNCI(i.ID)
+	if err != nil {
+		return err
+	}
+
 	hostname := i.ID
 	if i.Name != "" {
 		hostname = i.Name
@@ -523,11 +572,6 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 	metaData := userData{
 		UUID:     i.ID,
 		Hostname: hostname,
-	}
-
-	cnci, err := client.ctl.ds.GetInstance(t.CNCIID)
-	if err != nil {
-		return err
 	}
 
 	restartCmd := payloads.StartCmd{
@@ -540,7 +584,7 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		Networking: payloads.NetworkResources{
 			VnicMAC:          i.MACAddress,
 			VnicUUID:         i.VnicUUID,
-			ConcentratorUUID: t.CNCIID,
+			ConcentratorUUID: cnci.ID,
 			ConcentratorIP:   cnci.IPAddress,
 			Subnet:           i.Subnet,
 			PrivateIP:        i.IPAddress,
@@ -666,14 +710,15 @@ func (client *ssntpClient) Disconnect() {
 }
 
 func (client *ssntpClient) mapExternalIP(t types.Tenant, m types.MappedIP) error {
-	i, err := client.ctl.ds.GetInstance(t.CNCIID)
+	// get the CNCI for this instance
+	i, err := t.CNCIctrl.GetInstanceCNCI(m.InstanceID)
 	if err != nil {
 		return err
 	}
 
 	payload := payloads.CommandAssignPublicIP{
 		AssignIP: payloads.PublicIPCommand{
-			ConcentratorUUID: t.CNCIID,
+			ConcentratorUUID: i.ID,
 			TenantUUID:       m.TenantID,
 			InstanceUUID:     m.InstanceID,
 			PublicIP:         m.ExternalIP,
@@ -695,14 +740,15 @@ func (client *ssntpClient) mapExternalIP(t types.Tenant, m types.MappedIP) error
 }
 
 func (client *ssntpClient) unMapExternalIP(t types.Tenant, m types.MappedIP) error {
-	i, err := client.ctl.ds.GetInstance(t.CNCIID)
+	// get the CNCI for this instance
+	i, err := t.CNCIctrl.GetInstanceCNCI(m.InstanceID)
 	if err != nil {
 		return err
 	}
 
 	payload := payloads.CommandReleasePublicIP{
 		ReleaseIP: payloads.PublicIPCommand{
-			ConcentratorUUID: t.CNCIID,
+			ConcentratorUUID: i.ID,
 			TenantUUID:       m.TenantID,
 			InstanceUUID:     m.InstanceID,
 			PublicIP:         m.ExternalIP,

@@ -198,6 +198,12 @@ func main() {
 		return
 	}
 
+	err = initializeCNCICtrls(ctl)
+	if err != nil {
+		glog.Fatal("Unable to initialize CNCI controllers: ", err)
+		return
+	}
+
 	host := clusterConfig.Configure.Controller.ControllerFQDN
 	if host == "" {
 		host, _ = os.Hostname()
@@ -216,6 +222,7 @@ func main() {
 		s := <-signalCh
 		glog.Warningf("Received signal: %s", s)
 		ctl.ShutdownHTTPServers()
+		shutdownCNCICtrls(ctl)
 	}()
 
 	for _, server := range ctl.httpServers {

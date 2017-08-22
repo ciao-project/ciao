@@ -105,23 +105,16 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 		return err
 	}
 
-	if tenant == nil {
-		tenant, err = c.ds.AddTenant(tenantID)
-		if err != nil {
-			return err
-		}
-	}
-
-	// "public" can exit in the database as a valid tenant and is only used for
-	// labelling workloads as public. But we musn't start a CNCI for it.
-	if tenantID == "public" {
+	if tenant != nil {
 		return nil
 	}
 
-	if tenant.CNCIID != "" {
-		return nil
+	tenant, err = c.ds.AddTenant(tenantID)
+	if err != nil {
+		return err
 	}
-	err = c.launchCNCI(tenantID)
+
+	tenant.CNCIctrl, err = newCNCIManager(c, tenantID)
 	if err != nil {
 		return err
 	}
@@ -177,11 +170,9 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		return nil, err
 	}
 
-	if !isCNCIWorkload(&wl) {
-		err := c.confirmTenant(w.TenantID)
-		if err != nil {
-			return nil, err
-		}
+	err = c.confirmTenant(w.TenantID)
+	if err != nil {
+		return nil, err
 	}
 
 	var newInstances []*types.Instance
@@ -196,7 +187,7 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 			}
 		}
 
-		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name)
+		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name, w.Subnet)
 		if err != nil {
 			e = errors.Wrap(err, "Error creating instance")
 			continue
@@ -233,36 +224,6 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 	}
 
 	return newInstances, e
-}
-
-func (c *controller) launchCNCI(tenantID string) error {
-	workloadID, err := c.ds.GetCNCIWorkloadID()
-	if err != nil {
-		return err
-	}
-
-	ch := make(chan bool)
-
-	c.ds.AddTenantChan(ch, tenantID)
-
-	w := types.WorkloadRequest{
-		WorkloadID: workloadID,
-		TenantID:   tenantID,
-		Instances:  1,
-		Name:       "cnci-" + tenantID,
-	}
-	_, err = c.startWorkload(w)
-	if err != nil {
-		return err
-	}
-
-	success := <-ch
-
-	if success {
-		return nil
-	}
-	msg := fmt.Sprintf("Failed to Launch CNCI for %s", tenantID)
-	return errors.New(msg)
 }
 
 func (c *controller) deleteEphemeralStorage(instanceID string) error {
