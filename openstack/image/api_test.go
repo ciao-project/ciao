@@ -39,14 +39,6 @@ type test struct {
 
 var tests = []test{
 	{
-		"GET",
-		"/",
-		listAPIVersions,
-		"",
-		http.StatusOK,
-		`{"versions":[{"status":"CURRENT","id":"v2.3","links":[{"href":"` + fmt.Sprintf("https://%s:9292/v2/", myHostname()) + `","rel":"self"}]}]}`,
-	},
-	{
 		"POST",
 		"/v2/images",
 		createImage,

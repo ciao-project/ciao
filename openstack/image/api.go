@@ -17,11 +17,9 @@ package image
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/01org/ciao/service"
@@ -317,40 +315,6 @@ func validPrivilege(visibility Visibility, privileged bool) bool {
 	return visibility == Private || (visibility == Public || visibility == Internal) && privileged
 }
 
-// endpoints
-func listAPIVersions(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	host := r.Host
-	var href string
-	if host == "" {
-		var err error
-		host, err = os.Hostname()
-		if err != nil {
-			return APIResponse{http.StatusInternalServerError, nil}, err
-		}
-		href = fmt.Sprintf("https://%s:%d/v2/", host, context.port)
-	} else {
-		href = fmt.Sprintf("https://%s/v2/", host)
-	}
-
-	// TBD clean up this code
-	var resp Versions
-
-	selfLink := Link{
-		Href: href,
-		Rel:  "self",
-	}
-
-	v := Version{
-		Status: Current,
-		ID:     "v2.3",
-		Links:  []Link{selfLink},
-	}
-
-	resp.Versions = append(resp.Versions, v)
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
 // createImage creates information about an image, but doesn't contain
 // any actual image.
 func createImage(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
@@ -548,8 +512,6 @@ func Routes(config APIConfig, serviceClient *gophercloud.ServiceClient, r *mux.R
 		r = mux.NewRouter()
 	}
 
-	// API versions
-	r.Handle("/", APIHandler{context, listAPIVersions}).Methods("GET")
 	r.Handle("/v2/images", APIHandler{context, createImage}).Methods("POST")
 	r.Handle("/v2/images/{image_id:"+uuid.UUIDRegex+"}/file", APIHandler{context, uploadImage}).Methods("PUT")
 	r.Handle("/v2/images", APIHandler{context, listImages}).Methods("GET")

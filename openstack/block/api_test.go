@@ -16,7 +16,6 @@ package block
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -39,22 +38,6 @@ func myHostname() string {
 }
 
 var tests = []test{
-	{
-		"GET",
-		"/",
-		listAPIVersions,
-		"",
-		http.StatusOK,
-		`{"versions":[{"status":"SUPPORTED","updated":"2014-06-28T12:20:21Z","links":[{"href":"http://docs.openstack.org/","type":"text/html","rel":"describedby"},{"href":"` + fmt.Sprintf("https://%s:8776/v2/", myHostname()) + `","rel":"self"}],"min_version":"","version":"","media-types":[{"base":"application/json","type":"application/vnd.openstack.volume+json;version=1"}],"id":"v2.0"}]}`,
-	},
-	{
-		"GET",
-		"/v2",
-		showAPIv2Details,
-		"",
-		http.StatusOK,
-		`{"choices":[{"status":"CURRENT","media-types":[{"base":"application/json","type":"application/vnd.openstack.volume+json;version=1"}],"id":"v2.0","links":[{"href":"` + fmt.Sprintf("https://%s:8776/v2/v2.json", myHostname()) + `","rel":"self"}]}]}`,
-	},
 	{
 		"GET",
 		"/v2/validtenantid/limits",

@@ -17,10 +17,8 @@ package block
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -389,93 +387,6 @@ func (h APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-// not completed
-func listAPIVersions(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	host := r.Host
-	var href string
-	if host == "" {
-		var err error
-		host, err = os.Hostname()
-		if err != nil {
-			return APIResponse{http.StatusInternalServerError, nil}, err
-		}
-		href = fmt.Sprintf("https://%s:%d/v2/", host, context.port)
-	} else {
-		href = fmt.Sprintf("https://%s/v2/", host)
-	}
-
-	// TBD clean up this code
-	var resp Versions
-
-	// need to create Links
-	docLink := Link{
-		Href: "http://docs.openstack.org/",
-		Type: "text/html",
-		Rel:  "describedby",
-	}
-
-	selfLink := Link{
-		Href: href,
-		Rel:  "self",
-	}
-
-	jsonType := MediaType{
-		Base: "application/json",
-		Type: "application/vnd.openstack.volume+json;version=1",
-	}
-
-	// I'm not sure how much of this struct is important
-	v := Version{
-		Status:     Supported,
-		ID:         "v2.0",
-		Links:      []Link{docLink, selfLink},
-		MediaTypes: []MediaType{jsonType},
-		Updated:    "2014-06-28T12:20:21Z",
-	}
-
-	resp.Versions = append(resp.Versions, v)
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
-// not completed
-func showAPIv2Details(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	host := r.Host
-	var href string
-	if host == "" {
-		var err error
-		host, err = os.Hostname()
-		if err != nil {
-			return APIResponse{http.StatusInternalServerError, nil}, err
-		}
-		href = fmt.Sprintf("https://%s:%d/v2/v2.json", host, context.port)
-	} else {
-		href = fmt.Sprintf("https://%s/v2/v2.json", host)
-	}
-
-	// we only support json
-	mt := MediaType{
-		Base: "application/json",
-		Type: "application/vnd.openstack.volume+json;version=1",
-	}
-
-	selfLink := Link{
-		Href: href,
-		Rel:  "self",
-	}
-
-	choice := Choice{
-		Status:     Current,
-		ID:         "v2.0",
-		MediaTypes: []MediaType{mt},
-		Links:      []Link{selfLink},
-	}
-
-	resp := Choices{Choices: []Choice{choice}}
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
 func showAbsoluteLimits(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
@@ -672,10 +583,6 @@ func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	if r == nil {
 		r = mux.NewRouter()
 	}
-
-	// API versions
-	r.Handle("/", APIHandler{context, listAPIVersions}).Methods("GET")
-	r.Handle("/v2", APIHandler{context, showAPIv2Details}).Methods("GET")
 
 	// Limits
 	r.Handle("/v2/{tenant}/limits",
