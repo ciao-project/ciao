@@ -423,7 +423,7 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.Volu
 }
 
 func (c *controller) createVolumeRoutes(r *mux.Router) error {
-	config := block.APIConfig{Port: volumeAPIPort, VolService: c}
+	config := block.APIConfig{VolService: c}
 
 	r = block.Routes(config, r)
 

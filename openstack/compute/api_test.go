@@ -243,7 +243,7 @@ func TestAPIResponse(t *testing.T) {
 	// TBD: add context to test definition so it can be created per
 	// endpoint with either a pass testComputeService or a failure
 	// one.
-	context := &Context{8774, cs}
+	context := &Context{cs}
 
 	for _, tt := range tests {
 		req, err := http.NewRequest(tt.method, tt.pattern, bytes.NewBuffer([]byte(tt.request)))
@@ -269,7 +269,7 @@ func TestAPIResponse(t *testing.T) {
 
 func TestRoutes(t *testing.T) {
 	var cs testComputeService
-	config := APIConfig{8774, cs}
+	config := APIConfig{cs}
 
 	r := Routes(config, nil)
 	if r == nil {

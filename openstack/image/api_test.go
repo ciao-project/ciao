@@ -211,7 +211,7 @@ func (is testImageService) DeleteImage(string, string) (NoContentImageResponse, 
 
 func TestRoutes(t *testing.T) {
 	var is testImageService
-	config := APIConfig{9292, is}
+	config := APIConfig{is}
 
 	r := Routes(config, nil, nil)
 	if r == nil {
@@ -225,7 +225,7 @@ func TestAPIResponse(t *testing.T) {
 	// TBD: add context to test definition so it can be created per
 	// endpoint with either a pass testVolumeService or a failure
 	// one.
-	context := &Context{9292, is, nil}
+	context := &Context{is, nil}
 
 	for _, tt := range tests {
 		req, err := http.NewRequest(tt.method, tt.pattern, bytes.NewBuffer([]byte(tt.request)))

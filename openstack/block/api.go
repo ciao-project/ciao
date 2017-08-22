@@ -24,9 +24,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// APIPort is the standard OpenStack Volume port
-const APIPort = 8776
-
 // VersionStatus defines whether a reported version is supported or not.
 type VersionStatus string
 
@@ -329,7 +326,6 @@ func errorResponse(err error) APIResponse {
 
 // APIConfig contains information needed to start the block api service.
 type APIConfig struct {
-	Port       int     // the https port of the block api service
 	VolService Service // the service interface
 }
 
@@ -350,7 +346,6 @@ type Service interface {
 // Context contains data and interfaces that the block api will need.
 // TBD: do we really need this, or is just a service interface sufficient?
 type Context struct {
-	port int
 	Service
 }
 
@@ -578,7 +573,7 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 // Routes provides gorilla mux routes for the supported endpoints.
 func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	// make new Context
-	context := &Context{config.Port, config.VolService}
+	context := &Context{config.VolService}
 
 	if r == nil {
 		r = mux.NewRouter()

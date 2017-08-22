@@ -247,7 +247,6 @@ func (is *ImageService) Init(qs *quotas.Quotas) error {
 	glog.Infof("ID           : %v", rawDs.BlockDriver.ID)
 
 	config := ImageConfig{
-		Port:          image.APIPort,
 		HTTPSCACert:   httpsCAcert,
 		HTTPSKey:      httpsKey,
 		RawDataStore:  rawDs,
@@ -255,7 +254,6 @@ func (is *ImageService) Init(qs *quotas.Quotas) error {
 	}
 
 	glog.Info("ciao-image - Configuration")
-	glog.Infof("Port          : %v", config.Port)
 	glog.Infof("HTTPSCACert   : %v", config.HTTPSCACert)
 	glog.Infof("HTTPSKey      : %v", config.HTTPSKey)
 	glog.Infof("RawDataStore  : %T", config.RawDataStore)
@@ -273,9 +271,6 @@ func (is *ImageService) Init(qs *quotas.Quotas) error {
 
 // ImageConfig is required to setup the API context for the image service.
 type ImageConfig struct {
-	// Port represents the http port that should be used for the service.
-	Port int
-
 	// HTTPSCACert is the path to the http ca cert to use.
 	HTTPSCACert string
 
@@ -291,7 +286,6 @@ type ImageConfig struct {
 
 func (c *controller) createImageRoutes(r *mux.Router) error {
 	apiConfig := image.APIConfig{
-		Port:         image.APIPort,
 		ImageService: c.is,
 	}
 

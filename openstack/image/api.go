@@ -28,9 +28,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// APIPort is the standard OpenStack Image port
-const APIPort = 9292
-
 // TBD - are these thing shared enough between OpenStack services
 // to be pulled out to a common area?
 // ---------
@@ -234,7 +231,6 @@ type NoContentImageResponse struct {
 
 // APIConfig contains information needed to start the block api service.
 type APIConfig struct {
-	Port         int     // the https port of the block api service
 	ImageService Service // the service interface
 }
 
@@ -251,7 +247,6 @@ type Service interface {
 // Context contains data and interfaces that the image api will need.
 // TBD: do we really need this, or is just a service interface sufficient?
 type Context struct {
-	port int
 	Service
 	*gophercloud.ServiceClient
 }
@@ -506,7 +501,7 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 // Routes provides gorilla mux routes for the supported endpoints.
 func Routes(config APIConfig, serviceClient *gophercloud.ServiceClient, r *mux.Router) *mux.Router {
 	// make new Context
-	context := &Context{config.Port, config.ImageService, serviceClient}
+	context := &Context{config.ImageService, serviceClient}
 
 	if r == nil {
 		r = mux.NewRouter()

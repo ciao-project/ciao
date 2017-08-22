@@ -593,7 +593,7 @@ func (c *controller) ShowFlavorDetails(tenant string, flavorID string) (compute.
 	return flavor, nil
 }
 func (c *controller) createComputeRoutes(r *mux.Router) error {
-	config := compute.APIConfig{Port: computeAPIPort, ComputeService: c}
+	config := compute.APIConfig{ComputeService: c}
 	r = compute.Routes(config, r)
 
 	// we add on some ciao specific routes for legacy purposes

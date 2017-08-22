@@ -33,8 +33,6 @@ import (
 	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/database"
-	"github.com/01org/ciao/openstack/block"
-	"github.com/01org/ciao/openstack/compute"
 	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
@@ -67,8 +65,6 @@ var serverURL = flag.String("url", "", "Server URL")
 var identityURL = "identity:35357"
 var serviceUser = "csr"
 var servicePassword = ""
-var volumeAPIPort = block.APIPort
-var computeAPIPort = compute.APIPort
 var controllerAPIPort = api.Port
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
@@ -151,8 +147,6 @@ func main() {
 		return
 	}
 
-	volumeAPIPort = clusterConfig.Configure.Controller.VolumePort
-	computeAPIPort = clusterConfig.Configure.Controller.ComputePort
 	controllerAPIPort = clusterConfig.Configure.Controller.CiaoPort
 	httpsCAcert = clusterConfig.Configure.Controller.HTTPSCACert
 	httpsKey = clusterConfig.Configure.Controller.HTTPSKey
