@@ -28,7 +28,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"text/template"
 
 	"github.com/01org/ciao/ciao-controller/api"
@@ -99,9 +98,6 @@ var commands = map[string]subCommand{
 
 var scopedToken string
 
-const openstackComputePort = 8774
-const openstackComputeVersion = "v2.1"
-
 func infof(format string, args ...interface{}) {
 	if glog.V(1) {
 		glog.InfoDepth(1, fmt.Sprintf("ciao-cli INFO: "+format, args...))
@@ -127,19 +123,17 @@ var (
 	controllerURL    = flag.String("controller", "", "Controller URL")
 	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
-	computePort      = flag.Int("computeport", openstackComputePort, "Openstack Compute API port")
 	ciaoPort         = flag.Int("ciaoport", api.Port, "ciao API port")
 	caCertFile       = flag.String("ca-file", "", "CA Certificate")
 )
 
 const (
-	ciaoIdentityEnv    = "CIAO_IDENTITY"
-	ciaoControllerEnv  = "CIAO_CONTROLLER"
-	ciaoUsernameEnv    = "CIAO_USERNAME"
-	ciaoPasswordEnv    = "CIAO_PASSWORD"
-	ciaoComputePortEnv = "CIAO_COMPUTEPORT"
-	ciaoTenantNameEnv  = "CIAO_TENANT_NAME"
-	ciaoCACertFileEnv  = "CIAO_CA_CERT_FILE"
+	ciaoIdentityEnv   = "CIAO_IDENTITY"
+	ciaoControllerEnv = "CIAO_CONTROLLER"
+	ciaoUsernameEnv   = "CIAO_USERNAME"
+	ciaoPasswordEnv   = "CIAO_PASSWORD"
+	ciaoTenantNameEnv = "CIAO_TENANT_NAME"
+	ciaoCACertFileEnv = "CIAO_CA_CERT_FILE"
 )
 
 var caCertPool *x509.CertPool
@@ -166,7 +160,7 @@ func dumpJSON(body interface{}) {
 }
 
 func buildComputeURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("https://%s:%d/%s/", *controllerURL, *ciaoPort, openstackComputeVersion)
+	prefix := fmt.Sprintf("https://%s:%d/v2.1/", *controllerURL, *ciaoPort)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
@@ -339,7 +333,6 @@ func getCiaoEnvVariables() {
 	controller := os.Getenv(ciaoControllerEnv)
 	username := os.Getenv(ciaoUsernameEnv)
 	password := os.Getenv(ciaoPasswordEnv)
-	port := os.Getenv(ciaoComputePortEnv)
 	tenant := os.Getenv(ciaoTenantNameEnv)
 	ca := os.Getenv(ciaoCACertFileEnv)
 
@@ -348,7 +341,6 @@ func getCiaoEnvVariables() {
 	infof("\t%s:%s\n", ciaoControllerEnv, controller)
 	infof("\t%s:%s\n", ciaoUsernameEnv, username)
 	infof("\t%s:%s\n", ciaoPasswordEnv, password)
-	infof("\t%s:%s\n", ciaoComputePortEnv, port)
 	infof("\t%s:%s\n", ciaoTenantNameEnv, tenantName)
 	infof("\t%s:%s\n", ciaoCACertFileEnv, ca)
 
@@ -366,10 +358,6 @@ func getCiaoEnvVariables() {
 
 	if password != "" && *identityPassword == "" {
 		*identityPassword = password
-	}
-
-	if port != "" && *computePort == openstackComputePort {
-		*computePort, _ = strconv.Atoi(port)
 	}
 
 	if tenant != "" && *tenantName == "" {

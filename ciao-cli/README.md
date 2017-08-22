@@ -21,8 +21,6 @@ The options are:
         log to standard error as well as files
   -ca-file string
         CA Certificate
-  -computeport int
-        Openstack Compute API port (default 8774)
   -controller string
         Controller URL
   -identity string
@@ -72,7 +70,6 @@ credentials and networking information:
 
 * `CIAO_CONTROLLER` exports the Ciao controller URL
 * `CIAO_IDENTITY` exports the Ciao keystone instance URL
-* `CIAO_COMPUTEPORT` exports the Ciao compute alternative port
 * `CIAO_USERNAME` exports the Ciao username
 * `CIAO_PASSWORD` export the Ciao password for `CIAO_USERNAME`
 * `CIAO_TENANT_NAME` export the Ciao tenant name for `CIAO_USERNAME`
