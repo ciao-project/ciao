@@ -22,10 +22,10 @@ broker a ciao based cloud.
 In addressing the broader problem of dispatching a workload for a
 user, ciao splits the problem:
 
-     +--------------+  +------------+
-     |  ciao-webui  |  |  ciao-cli  |
-     +--------------+  +------------+
-                 |        |
+              +--------------+
+              |     cli      |
+              +--------------+
+                     |
               +--------------+
               |  controller  |
               +--------------+
@@ -42,8 +42,7 @@ user, ciao splits the problem:
                 | launcher |
                 +----------+
 
-At the top level, ciao-webui
-(https://github.com/01org/ciao-webui), ciao-cli
+At the top level, ciao-cli
 (https://github.com/01org/ciao/tree/master/ciao-cli) and ciao-controller
 (https://github.com/01org/ciao/tree/master/ciao-controller) are
 responsible for interacting with the user.  Ciao-controller enforces

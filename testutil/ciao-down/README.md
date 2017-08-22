@@ -372,12 +372,9 @@ Installing QEMU : [OK]
 Installing xorriso : [OK]
 Installing ceph-common : [OK]
 Installing Openstack client : [OK]
-Updating NodeJS sources : [OK]
-Installing NodeJS : [OK]
 Auto removing unused components : [OK]
 Building ciao : [OK]
 Installing Go development utils : [OK]
-Retrieving ciao-webui  : [OK]
 Pulling ceph/demo : [OK]
 Pulling clearlinux/keystone : [OK]
 Downloading Fedora-Cloud-Base-24-1.2.x86_64.qcow2 : [OK]
@@ -398,20 +395,6 @@ example,
 ciao-down create --cpus 2 -mem 2 ciao
 
 Creates and boots a VM with 2 VCPUs and 2 GB of RAM.
-
-In addition to downloading and building the ciao source code, ciao-down also
-downloads the code for ciao's ui, ciao-webui.  By default it will place the
-source in a local directory in $HOME/ciao-webui.  However, if you are modifying
-the code of the webui it is convenient to have the code shared between your host
-machine and the ciao-down VM.  This can be achieved using the --mount option.  This
-option takes a path to the location on your host machine where the UI code is
-stored.  This path gets mounted to the same location inside the VM, allowing you to
-modify the sources on your host and compile inside the VM.  For example,
-
-ciao-down create --mount hostui,mapped,$HOME/src/ciao-webui ciao
-
-will create a new ciao-down VM in which the $HOME/src/ciao-webui folder on
-your host will be mounted at $HOME/src/ciao-webui.
 
 The --package-upgrade option can be used to provide a hint to workloads
 indicating whether packages contained within the base image should be updated or not

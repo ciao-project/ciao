@@ -10,9 +10,6 @@ vm:
     security_model: passthrough
     path: {{.}}
 {{end}}
-  ports:
-  - host: 3000
-    guest: 3000
 ...
 ---
 {{ define "GOPATH" }}{{with .GoPath}}{{$.MountPath "hostgo"}}{{else}}/home/{{.User}}/go{{end}}{{end}}
@@ -44,13 +41,6 @@ write_files:
      
      cd {{template "GOPATH" .}}/src/github.com/01org/ciao/testutil/singlevm
      ./setup.sh
-
-     To start the web-ui:
-
-     cd {{with .MountPath "hostui"}}{{.}}{{else}}/home/{{.User}}/ciao-webui{{end}}
-     ./deploy.sh production --config_file=/home/{{.User}}/local/webui_config.json
-     
-     Point your host's browser at https://localhost:3000
    path: /etc/motd
    permissions: '0755'
     
