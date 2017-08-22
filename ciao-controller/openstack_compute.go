@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -626,24 +625,4 @@ func (c *controller) createComputeRoutes(r *mux.Router) error {
 	})
 
 	return err
-}
-
-// Start will get the Compute API endpoints from the OpenStack compute api,
-// then wrap them in keystone validation.
-func (c *controller) createComputeServer() (*http.Server, error) {
-	r := mux.NewRouter()
-
-	err := c.createComputeRoutes(r)
-	if err != nil {
-		return nil, err
-	}
-
-	service := fmt.Sprintf(":%d", computeAPIPort)
-
-	server := &http.Server{
-		Handler: r,
-		Addr:    service,
-	}
-
-	return server, nil
 }

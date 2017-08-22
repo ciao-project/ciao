@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
@@ -323,24 +322,4 @@ func (c *controller) createImageRoutes(r *mux.Router) error {
 	})
 
 	return err
-}
-
-// createImageServer will get the Image API endpoints from the OpenStack image api,
-// then wrap them in keystone validation.
-func (c *controller) createImageServer() (*http.Server, error) {
-	r := mux.NewRouter()
-
-	err := c.createImageRoutes(r)
-	if err != nil {
-		return nil, err
-	}
-
-	service := fmt.Sprintf(":%d", image.APIPort)
-
-	server := &http.Server{
-		Handler: r,
-		Addr:    service,
-	}
-
-	return server, nil
 }
