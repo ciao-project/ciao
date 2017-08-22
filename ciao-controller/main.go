@@ -40,6 +40,7 @@ import (
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 type tenantConfirmMemo struct {
@@ -203,31 +204,13 @@ func main() {
 		return
 	}
 
-	server, err := ctl.createComputeServer()
-	if err != nil {
-		glog.Fatalf("Error creating compute server: %v", err)
-	}
-	ctl.httpServers = append(ctl.httpServers, server)
-
-	server, err = ctl.createVolumeServer()
-	if err != nil {
-		glog.Fatalf("Error creating volume server: %v", err)
-	}
-	ctl.httpServers = append(ctl.httpServers, server)
-
-	server, err = ctl.createImageServer()
-	if err != nil {
-		glog.Fatalf("Error creating image server: %v", err)
-	}
-	ctl.httpServers = append(ctl.httpServers, server)
-
 	host := clusterConfig.Configure.Controller.ControllerFQDN
 	if host == "" {
 		host, _ = os.Hostname()
 	}
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
-	server, err = ctl.createCiaoServer()
+	server, err := ctl.createCiaoServer()
 	if err != nil {
 		glog.Fatalf("Error creating ciao server: %v", err)
 	}
@@ -294,9 +277,21 @@ func (c *controller) createCiaoRoutes(r *mux.Router) error {
 func (c *controller) createCiaoServer() (*http.Server, error) {
 	r := mux.NewRouter()
 
+	if err := c.createComputeRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding compute routes")
+	}
+
+	if err := c.createImageRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding image routes")
+	}
+
+	if err := c.createVolumeRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding volume routes")
+	}
+
 	err := c.createCiaoRoutes(r)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error adding ciao routes")
 	}
 
 	service := fmt.Sprintf(":%d", controllerAPIPort)

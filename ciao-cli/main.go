@@ -33,8 +33,6 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/openstack/block"
-	"github.com/01org/ciao/openstack/image"
 	"github.com/golang/glog"
 )
 
@@ -168,7 +166,7 @@ func dumpJSON(body interface{}) {
 }
 
 func buildComputeURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("https://%s:%d/%s/", *controllerURL, *computePort, openstackComputeVersion)
+	prefix := fmt.Sprintf("https://%s:%d/%s/", *controllerURL, *ciaoPort, openstackComputeVersion)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
@@ -178,12 +176,12 @@ func buildCiaoURL(format string, args ...interface{}) string {
 }
 
 func buildBlockURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, block.APIPort)
+	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, *ciaoPort)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
 func buildImageURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, image.APIPort)
+	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, *ciaoPort)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
