@@ -5,8 +5,7 @@ Ciao controller is responsible for policy choices around tenant workloads.
 It provides [compute API
 endpoints](https://github.com/01org/ciao/blob/master/ciao-controller/compute.go)
 for access from
-[ciao-cli](https://github.com/01org/ciao/tree/master/ciao-cli) and
-[ciao-webui](https://github.com/01org/ciao-webui) over HTTPS.
+[ciao-cli](https://github.com/01org/ciao/tree/master/ciao-cli)
 
 
 

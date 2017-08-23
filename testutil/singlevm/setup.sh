@@ -245,8 +245,6 @@ source $ciao_scripts/setup_keystone.sh
     -email="$ciao_email" -organization="$ciao_org" -host="$ciao_host" \
     -ip="$ciao_vlan_ip" -verify
 
-source $ciao_scripts/setup_webui.sh
-
 # Set macvlan interface
 if [ -x "$(command -v ip)" ]; then
     sudo ip link del "$ciao_bridge"

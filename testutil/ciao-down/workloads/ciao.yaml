@@ -9,9 +9,6 @@ vm:
     security_model: passthrough
     path: {{.}}
 {{end}}
-  ports:
-  - host: 3000
-    guest: 3000
 ...
 ---
 {{- define "ENV" -}}
@@ -40,12 +37,6 @@ write_files:
      printf "cd {{template "GOPATH" .}}/src/github.com/01org/ciao/testutil/singlevm\n"
      printf "./setup.sh\n"
      printf "\n"
-     printf "To start the web-ui:\n"
-     printf "\n"
-     printf "cd {{with .MountPath "hostui"}}{{.}}{{else}}/home/{{.User}}/ciao-webui{{end}}\n"
-     printf "./deploy.sh production --config_file=/home/{{.User}}/local/webui_config.json\n"
-     printf "\n"
-     printf "Point your host's browser at https://localhost:3000"
    path: /etc/update-motd.d/10-ciao-help-text
    permissions: '0755'
  - content: |
@@ -152,14 +143,6 @@ runcmd:
  - {{template "ENV" .}}apt-get install python-openstackclient -y
  - {{endTaskCheck .}}
 
- - {{beginTask . "Updating NodeJS sources" }}
- - {{template "ENV" .}}curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
- - {{endTaskCheck .}}
-
- - {{beginTask . "Installing NodeJS"}}
- - {{template "ENV" .}}apt-get install nodejs -y
- - {{endTaskCheck .}}
-
  - {{beginTask . "Auto removing unused components"}}
  - {{template "ENV" .}}apt-get auto-remove -y
  - {{endTaskCheck .}}
@@ -173,25 +156,6 @@ runcmd:
  - {{endTaskCheck .}}
 
  - chown {{.User}}:{{.User}} -R {{template "GOPATH" .}}
-
- - {{beginTask . "Retrieving ciao-webui"}}
-{{with .MountPath "hostui"}}
- - cd {{.}}
- - git status || {{template "ENV" $}} git clone https://github.com/01org/ciao-webui.git .
- - {{endTaskCheck $}}
- - chown {{$.User}}:{{$.User}} -R {{.}}
-{{else}}
- - cd /home/{{.User}}
- - sudo -u {{.User}} {{template "ENV" .}} git clone https://github.com/01org/ciao-webui.git
- - {{endTaskCheck .}}
-{{end}}
-
-{{if len .HTTPProxy}} - sudo -u {{.User}} npm config set proxy {{.HTTPProxy}}{{end}}
-{{if len .HTTPSProxy}} - sudo -u {{.User}} npm config set https-proxy {{.HTTPSProxy}}{{end}}
-
- - mkdir -p /usr/local/nodejs
- - chown {{.User}}:{{.User}} /usr/local/nodejs
- - sudo -u {{.User}} npm config set prefix '/usr/local/nodejs'
 
  - {{beginTask . "Pulling ceph/demo" }}
  - {{template "ENV" .}} docker pull ceph/demo
@@ -236,7 +200,7 @@ runcmd:
 {{end}}
 
  - echo "export GOPATH={{template "GOPATH" . }}" >> /home/{{.User}}/.profile
- - echo "export PATH=$PATH:{{template "GOPATH" . }}/bin:/usr/local/go/bin:/usr/local/nodejs/bin" >> /home/{{.User}}/.profile
+ - echo "export PATH=$PATH:{{template "GOPATH" . }}/bin:/usr/local/go/bin" >> /home/{{.User}}/.profile
 
  - {{finished .}}
 

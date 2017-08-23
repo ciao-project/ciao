@@ -81,10 +81,9 @@ type workloadSpec struct {
 func (in *VMSpec) loadLegacyInstance(ws *workspace) error {
 	// Check for legacy state files.
 
-	vmType := CIAO
 	data, err := ioutil.ReadFile(path.Join(ws.instanceDir, "vmtype.txt"))
 	if err == nil {
-		vmType = string(data)
+		vmType := string(data)
 		if vmType != CIAO && vmType != CLEARCONTAINERS {
 			err := fmt.Errorf("Unsupported vmType %s. Should be one of "+CIAO+"|"+CLEARCONTAINERS, vmType)
 			return err
@@ -110,13 +109,6 @@ func (in *VMSpec) loadLegacyInstance(ws *workspace) error {
 			Host:  10022,
 			Guest: 22,
 		},
-	}
-
-	if vmType == CIAO {
-		in.PortMappings = append(in.PortMappings, portMapping{
-			Host:  3000,
-			Guest: 3000,
-		})
 	}
 
 	if uiPath != "" {

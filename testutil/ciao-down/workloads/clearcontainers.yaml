@@ -93,7 +93,7 @@ runcmd:
  - {{endTaskOk . }}
 
  - echo "GOPATH=\"{{template "GOPATH" .}}\"" >> /etc/environment
- - echo "PATH=\"$PATH:/usr/local/go/bin:{{template "GOPATH" .}}/bin:/usr/local/nodejs/bin\""  >> /etc/environment
+ - echo "PATH=\"$PATH:/usr/local/go/bin:{{template "GOPATH" .}}/bin\""  >> /etc/environment
 
  - {{beginTask . "Downloading Go" }}
  - {{download . "https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz" "/tmp/go1.7.4.linux-amd64.tar.gz"}}

@@ -134,12 +134,10 @@ Installing QEMU : [OK]
 Installing xorriso : [OK]
 Installing ceph-common : [OK]
 Installing Openstack client : [OK]
-Updating NodeJS sources : [OK]
-Installing NodeJS : [OK]
+
 Auto removing unused components : [OK]
 Building ciao : [OK]
 Installing Go development utils : [OK]
-Retrieving ciao-webui : [OK]
 Pulling ceph/demo : [OK]
 Pulling clearlinux/keystone : [OK]
 Downloading Fedora-Cloud-Base-24-1.2.x86_64.qcow2 : [OK]
@@ -171,13 +169,6 @@ To run Single VM:
 
 cd /home/<user>/go-fork/src/github.com/01org/ciao/testutil/singlevm
 ./setup.sh
-
-To start the web-ui:
-
-cd /home/markus/ciao-webui
-./deploy.sh production --config_file=/home/markus/local/webui_config.json
-
-Point your host's browser at https://localhost:3000
 ```
 
 Follow the instructions for running Single VM, replace <user> with your user name, e.g.,
@@ -459,10 +450,10 @@ sudo gpasswd -a $USER kvm
 
 ### Port Conflict
 
-By default, ciao-down maps two ports on your computer's network interface to two ports on the
-VM it creates.  One of these ports, 10022, is used for SSH access.  The other, 3000, is used
-for ciao's webui.  This port mapping is necessary to access these services in the VM from
-the host.  For example, the ciao-down connect command is implementing by executing
+ By default, ciao-down map a port on your computer's network interface to a port
+ on the VM it creates. One of these ports, 10022, is used for SSH access. This
+ port mapping is necessary to access these services in the VM from the host. For
+ example, the ciao-down connect command is implementing by executing
 
 ```
 ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i /home/$USER/.ciao-down/id_rsa 127.0.0.1 -p 10022
@@ -476,15 +467,15 @@ Installing host dependencies
 OS Detected: ubuntu
 Downloading Ubuntu 16.04
 Booting VM with 6 GB RAM and 2 cpus
-Failed to launch qemu : exit status 1, qemu-system-x86_64: -net user,hostfwd=tcp::3000-:3000,hostfwd=tcp::10022-:22: could not set up host forwarding rule 'tcp::10022-:22'
-qemu-system-x86_64: -net user,hostfwd=tcp::3000-:3000,hostfwd=tcp::10022-:22: Device 'user' could not be initialized
+Failed to launch qemu : exit status 1, qemu-system-x86_64: -net user,hostfwd=tcp::10022-:22: could not set up host forwarding rule 'tcp::10022-:22'
+qemu-system-x86_64: -net user,hostfwd=tcp::10022-:22: Device 'user' could not be initialized
 
 ```
 
 Here we can see that port 10022 is already taken.  Going forward we will modify ciao-down to dynamically select available host ports.  In the meantime however, we can work around this problem by overriding the default ports on the command line, as follows:
 
 ```
-ciao-down create -mem=6 -cpus=2 -port "10024-3000" -port "10023-22" ciao
+ciao-down create -mem=6 -cpus=2 -port "10023-22" ciao
 ```
 
 ## Closing Remarks
