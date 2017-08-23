@@ -21,7 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io"
@@ -33,6 +33,7 @@ import (
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 )
 
 // Item serves to represent a group of related commands
@@ -125,18 +126,21 @@ var (
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
 	ciaoPort         = flag.Int("ciaoport", api.Port, "ciao API port")
 	caCertFile       = flag.String("ca-file", "", "CA Certificate")
+	clientCertFile   = flag.String("client-cert-file", "", "Path to certificate for authenticating with controller")
 )
 
 const (
-	ciaoIdentityEnv   = "CIAO_IDENTITY"
-	ciaoControllerEnv = "CIAO_CONTROLLER"
-	ciaoUsernameEnv   = "CIAO_USERNAME"
-	ciaoPasswordEnv   = "CIAO_PASSWORD"
-	ciaoTenantNameEnv = "CIAO_TENANT_NAME"
-	ciaoCACertFileEnv = "CIAO_CA_CERT_FILE"
+	ciaoIdentityEnv       = "CIAO_IDENTITY"
+	ciaoControllerEnv     = "CIAO_CONTROLLER"
+	ciaoUsernameEnv       = "CIAO_USERNAME"
+	ciaoPasswordEnv       = "CIAO_PASSWORD"
+	ciaoTenantNameEnv     = "CIAO_TENANT_NAME"
+	ciaoCACertFileEnv     = "CIAO_CA_CERT_FILE"
+	ciaoClientCertFileEnv = "CIAO_CLIENT_CERT_FILE"
 )
 
 var caCertPool *x509.CertPool
+var clientCert *tls.Certificate
 
 type queryValue struct {
 	name, value string
@@ -215,6 +219,11 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 
 	if caCertPool != nil {
 		tlsConfig.RootCAs = caCertPool
+	}
+
+	if clientCert != nil {
+		tlsConfig.Certificates = []tls.Certificate{*clientCert}
+		tlsConfig.BuildNameToCertificate()
 	}
 
 	transport := &http.Transport{
@@ -335,6 +344,7 @@ func getCiaoEnvVariables() {
 	password := os.Getenv(ciaoPasswordEnv)
 	tenant := os.Getenv(ciaoTenantNameEnv)
 	ca := os.Getenv(ciaoCACertFileEnv)
+	clientCert := os.Getenv(ciaoClientCertFileEnv)
 
 	infof("Ciao environment variables:\n")
 	infof("\t%s:%s\n", ciaoIdentityEnv, identity)
@@ -343,6 +353,7 @@ func getCiaoEnvVariables() {
 	infof("\t%s:%s\n", ciaoPasswordEnv, password)
 	infof("\t%s:%s\n", ciaoTenantNameEnv, tenantName)
 	infof("\t%s:%s\n", ciaoCACertFileEnv, ca)
+	infof("\t%s:%s\n", ciaoClientCertFileEnv, clientCert)
 
 	if identity != "" && *identityURL == "" {
 		*identityURL = identity
@@ -367,25 +378,32 @@ func getCiaoEnvVariables() {
 	if ca != "" && *caCertFile == "" {
 		*caCertFile = ca
 	}
+
+	if clientCert != "" && *clientCertFile == "" {
+		*clientCertFile = clientCert
+	}
 }
 
 func checkCompulsoryOptions() {
 	fatal := ""
 
-	if *identityURL == "" {
-		fatal += "Missing required identity URL\n"
-	}
+	// If a client cert file is provided use that over keystone for authentication
+	if *clientCertFile == "" {
+		if *identityURL == "" {
+			fatal += "Missing required identity URL\n"
+		}
 
-	if *identityUser == "" {
-		fatal += "Missing required username\n"
-	}
+		if *identityUser == "" {
+			fatal += "Missing required username\n"
+		}
 
-	if *identityPassword == "" {
-		fatal += "Missing required password\n"
-	}
+		if *identityPassword == "" {
+			fatal += "Missing required password\n"
+		}
 
-	if *controllerURL == "" {
-		fatal += "Missing required Ciao controller URL\n"
+		if *controllerURL == "" {
+			fatal += "Missing required Ciao controller URL\n"
+		}
 	}
 
 	if fatal != "" {
@@ -393,8 +411,86 @@ func checkCompulsoryOptions() {
 	}
 }
 
-func prepareForCommand() {
+func prepareWithKeystone() {
 	var err error
+	/* If we're missing the tenant name let's try to fetch one */
+	if *tenantName == "" {
+		*tenantName, *tenantID, err = getTenant(*identityUser, *identityPassword, *tenantID)
+		if err != nil {
+			fatalf(err.Error())
+		}
+		warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
+	}
+
+	scopedToken, *tenantID, _, err = getScopedToken(*identityUser, *identityPassword, *tenantName)
+	if err != nil {
+		fatalf(err.Error())
+	}
+}
+
+func getTenantsFromCertFile(clientCertFile string) ([]string, error) {
+	var certBlock, p *pem.Block
+
+	data, err := ioutil.ReadFile(clientCertFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error loading client cert file")
+	}
+
+	for {
+		p, data = pem.Decode(data)
+		if p == nil {
+			break
+		}
+		if p.Type == "CERTIFICATE" {
+			if certBlock != nil {
+				return nil, errors.Wrap(err, "Incorrect number of certificate blocks in file")
+			}
+			certBlock = p
+		}
+	}
+
+	if certBlock == nil {
+		return nil, errors.New("No certificate block block in cert file")
+	}
+
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, errors.New("Unable to parse x509 certificate data")
+	}
+
+	return cert.Subject.Organization, nil
+}
+
+func prepareWithClientCert() {
+	cert, err := tls.LoadX509KeyPair(*clientCertFile, *clientCertFile)
+	if err != nil {
+		fatalf("Unable to load client certiticate: %s", err)
+	}
+	clientCert = &cert
+
+	if *tenantID == "" {
+		tenants, err := getTenantsFromCertFile(*clientCertFile)
+		if err != nil {
+			fatalf("No tenant specified and unable to parse from certificate file")
+		}
+
+		if len(tenants) == 0 {
+			fatalf("No tenants specified in certificate")
+		}
+
+		if len(tenants) > 1 {
+			fmt.Println("Tenants available:")
+			for i := range tenants {
+				fmt.Println(tenants[i])
+			}
+			fatalf("Multiple tenants available. Please specify one with -tenant-id")
+		}
+
+		*tenantID = tenants[0]
+	}
+}
+
+func prepareForCommand() {
 	/* Load CA file if necessary */
 	if *caCertFile != "" {
 		caCert, err := ioutil.ReadFile(*caCertFile)
@@ -408,18 +504,10 @@ func prepareForCommand() {
 		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
-	/* If we're missing the tenant name let's try to fetch one */
-	if *tenantName == "" {
-		*tenantName, *tenantID, err = getTenant(*identityUser, *identityPassword, *tenantID)
-		if err != nil {
-			fatalf(err.Error())
-		}
-		warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
-	}
-
-	scopedToken, *tenantID, _, err = getScopedToken(*identityUser, *identityPassword, *tenantName)
-	if err != nil {
-		fatalf(err.Error())
+	if *clientCertFile != "" {
+		prepareWithClientCert()
+	} else {
+		prepareWithKeystone()
 	}
 }
 
