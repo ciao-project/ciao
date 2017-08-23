@@ -33,6 +33,8 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/01org/ciao/openstack/block"
+	"github.com/01org/ciao/openstack/image"
 	"github.com/golang/glog"
 )
 
@@ -175,7 +177,17 @@ func buildCiaoURL(format string, args ...interface{}) string {
 	return fmt.Sprintf(prefix+format, args...)
 }
 
-func sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader, content *string) (*http.Response, error) {
+func buildBlockURL(format string, args ...interface{}) string {
+	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, block.APIPort)
+	return fmt.Sprintf(prefix+format, args...)
+}
+
+func buildImageURL(format string, args ...interface{}) string {
+	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, image.APIPort)
+	return fmt.Sprintf(prefix+format, args...)
+}
+
+func sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader, content string) (*http.Response, error) {
 	req, err := http.NewRequest(method, os.ExpandEnv(url), body)
 	if err != nil {
 		return nil, err
@@ -198,8 +210,8 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.Header.Add("X-Auth-Token", token)
 	}
 
-	if content != nil {
-		contentType := fmt.Sprintf("application/%s", *content)
+	if content != "" {
+		contentType := fmt.Sprintf("application/%s", content)
 		req.Header.Set("Content-Type", contentType)
 		req.Header.Set("Accept", contentType)
 	} else if body != nil {
@@ -241,7 +253,7 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 }
 
 func sendHTTPRequest(method string, url string, values []queryValue, body io.Reader) (*http.Response, error) {
-	return sendHTTPRequestToken(method, url, values, scopedToken, body, nil)
+	return sendHTTPRequestToken(method, url, values, scopedToken, body, "")
 }
 
 func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
@@ -266,7 +278,7 @@ func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
 	return nil
 }
 
-func sendCiaoRequest(method string, url string, values []queryValue, body io.Reader, content *string) (*http.Response, error) {
+func sendCiaoRequest(method string, url string, values []queryValue, body io.Reader, content string) (*http.Response, error) {
 	return sendHTTPRequestToken(method, url, values, scopedToken, body, content)
 }
 
@@ -289,7 +301,7 @@ func getCiaoResource(name string, minVersion string) (string, error) {
 		url = buildCiaoURL(fmt.Sprintf("%s", *tenantID))
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, nil)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, "")
 	if err != nil {
 		return "", err
 	}
