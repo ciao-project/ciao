@@ -24,23 +24,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// ComputeAPIPort is the compute service port the testutil identity service will use by default
-const ComputeAPIPort = "8774"
-
-// VolumeAPIPort is the volume service port the testutil identity service will use by default
-const VolumeAPIPort = "8776"
-
-// ImageAPIPort is the image service port the testutil identity service will use by default
-const ImageAPIPort = "9292"
+// CiaoAPIPort is the Ciao API port that API services are running on
+const CiaoAPIPort = "8889"
 
 // ComputeURL is the compute service URL the testutil identity service will use by default
-var ComputeURL = "https://localhost:" + ComputeAPIPort
+var ComputeURL = "https://localhost:" + CiaoAPIPort
 
 // VolumeURL is the volume service URL the testutil identity service will use by default
-var VolumeURL = "https://localhost:" + VolumeAPIPort
+var VolumeURL = "https://localhost:" + CiaoAPIPort
 
 // ImageURL is the image service URL the testutil identity service will use by default
-var ImageURL = "https://localhost:" + ImageAPIPort
+var ImageURL = "https://localhost:" + CiaoAPIPort
 
 // IdentityURL is the URL for the testutil identity service
 var IdentityURL string

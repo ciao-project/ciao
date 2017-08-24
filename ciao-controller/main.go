@@ -33,8 +33,6 @@ import (
 	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/database"
-	"github.com/01org/ciao/openstack/block"
-	"github.com/01org/ciao/openstack/compute"
 	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
@@ -67,8 +65,6 @@ var serverURL = flag.String("url", "", "Server URL")
 var identityURL = "identity:35357"
 var serviceUser = "csr"
 var servicePassword = ""
-var volumeAPIPort = block.APIPort
-var computeAPIPort = compute.APIPort
 var controllerAPIPort = api.Port
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
@@ -113,6 +109,7 @@ func main() {
 	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
 	ctl.qs = new(quotas.Quotas)
+	ctl.is = new(ImageService)
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:" + *persistentDatastoreLocation,
@@ -150,8 +147,6 @@ func main() {
 		return
 	}
 
-	volumeAPIPort = clusterConfig.Configure.Controller.VolumePort
-	computeAPIPort = clusterConfig.Configure.Controller.ComputePort
 	controllerAPIPort = clusterConfig.Configure.Controller.CiaoPort
 	httpsCAcert = clusterConfig.Configure.Controller.HTTPSCACert
 	httpsKey = clusterConfig.Configure.Controller.HTTPSKey
@@ -170,6 +165,10 @@ func main() {
 
 	if clusterConfig.Configure.Controller.AdminPassword != "" {
 		adminPassword = clusterConfig.Configure.Controller.AdminPassword
+	}
+
+	if err := ctl.is.Init(ctl.qs); err != nil {
+		glog.Fatalf("Error initialising image service: %v", err)
 	}
 
 	ctl.ds.GenerateCNCIWorkload(cnciVCPUs, cnciMem, cnciDisk, adminSSHKey, adminPassword)
@@ -199,31 +198,13 @@ func main() {
 		return
 	}
 
-	server, err := ctl.createComputeServer()
-	if err != nil {
-		glog.Fatalf("Error creating compute server: %v", err)
-	}
-	ctl.httpServers = append(ctl.httpServers, server)
-
-	server, err = ctl.createVolumeServer()
-	if err != nil {
-		glog.Fatalf("Error creating volume server: %v", err)
-	}
-	ctl.httpServers = append(ctl.httpServers, server)
-
-	server, err = ctl.createImageServer()
-	if err != nil {
-		glog.Fatalf("Error creating image server: %v", err)
-	}
-	ctl.httpServers = append(ctl.httpServers, server)
-
 	host := clusterConfig.Configure.Controller.ControllerFQDN
 	if host == "" {
 		host, _ = os.Hostname()
 	}
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
-	server, err = ctl.createCiaoServer()
+	server, err := ctl.createCiaoServer()
 	if err != nil {
 		glog.Fatalf("Error creating ciao server: %v", err)
 	}
@@ -255,13 +236,10 @@ func main() {
 	ctl.client.Disconnect()
 }
 
-func (c *controller) createCiaoServer() (*http.Server, error) {
+func (c *controller) createCiaoRoutes(r *mux.Router) error {
 	config := api.Config{URL: c.apiURL, CiaoService: c}
 
-	r := api.Routes(config)
-	if r == nil {
-		return nil, errors.New("Unable to start Ciao API Service")
-	}
+	r = api.Routes(config, r)
 
 	// wrap each route in keystone validation.
 	validServices := []osIdentity.ValidService{
@@ -287,8 +265,27 @@ func (c *controller) createCiaoServer() (*http.Server, error) {
 		return nil
 	})
 
+	return err
+}
+
+func (c *controller) createCiaoServer() (*http.Server, error) {
+	r := mux.NewRouter()
+
+	if err := c.createComputeRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding compute routes")
+	}
+
+	if err := c.createImageRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding image routes")
+	}
+
+	if err := c.createVolumeRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding volume routes")
+	}
+
+	err := c.createCiaoRoutes(r)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Error adding ciao routes")
 	}
 
 	service := fmt.Sprintf(":%d", controllerAPIPort)

@@ -63,8 +63,6 @@ const fullValidConf = `configure:
   storage:
     ceph_id: ciao
   controller:
-    volume_port: 8776
-    compute_port: 8774
     ciao_port: 8889
     compute_fqdn: ""
     compute_ca: /etc/pki/ciao/compute_ca.pem
@@ -181,9 +179,7 @@ func TestPayloadCorrectBlob(t *testing.T) {
 }
 
 func saneDefaults(conf *payloads.Configure) bool {
-	return (conf.Configure.Controller.VolumePort == 8776 &&
-		conf.Configure.Controller.ComputePort == 8774 &&
-		conf.Configure.Controller.CiaoPort == 8889 &&
+	return (conf.Configure.Controller.CiaoPort == 8889 &&
 		conf.Configure.IdentityService.Type == payloads.Keystone &&
 		conf.Configure.Launcher.DiskLimit == true &&
 		conf.Configure.Launcher.MemoryLimit == true)

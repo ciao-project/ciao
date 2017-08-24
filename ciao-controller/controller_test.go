@@ -1991,10 +1991,13 @@ func TestMain(m *testing.M) {
 	}
 
 	_, _ = addComputeTestTenant()
-	s, _ := ctl.createComputeServer()
-	go s.ListenAndServeTLS(httpsCAcert, httpsKey)
-	time.Sleep(1 * time.Second)
-	s, _ = ctl.createVolumeServer()
+
+	s, err := ctl.createCiaoServer()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating ciao server: %v", err)
+		os.Exit(1)
+	}
+
 	go s.ListenAndServeTLS(httpsCAcert, httpsKey)
 	time.Sleep(1 * time.Second)
 

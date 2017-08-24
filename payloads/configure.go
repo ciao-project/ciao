@@ -66,8 +66,6 @@ type ConfigureScheduler struct {
 // ConfigureController contains the unmarshalled configurations for the
 // controller service.
 type ConfigureController struct {
-	VolumePort       int    `yaml:"volume_port"`
-	ComputePort      int    `yaml:"compute_port"`
 	CiaoPort         int    `yaml:"ciao_port"`
 	ControllerFQDN   string `yaml:"compute_fqdn"`
 	HTTPSCACert      string `yaml:"compute_ca"`
@@ -121,8 +119,6 @@ type Configure struct {
 
 // InitDefaults initializes default vaulues for Configure structure.
 func (conf *Configure) InitDefaults() {
-	conf.Configure.Controller.VolumePort = 8776
-	conf.Configure.Controller.ComputePort = 8774
 	conf.Configure.Controller.CiaoPort = 8889
 	conf.Configure.IdentityService.Type = Keystone
 	conf.Configure.Launcher.DiskLimit = true

@@ -17,11 +17,9 @@ package image
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/01org/ciao/service"
@@ -29,9 +27,6 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gorilla/mux"
 )
-
-// APIPort is the standard OpenStack Image port
-const APIPort = 9292
 
 // TBD - are these thing shared enough between OpenStack services
 // to be pulled out to a common area?
@@ -236,7 +231,6 @@ type NoContentImageResponse struct {
 
 // APIConfig contains information needed to start the block api service.
 type APIConfig struct {
-	Port         int     // the https port of the block api service
 	ImageService Service // the service interface
 }
 
@@ -253,7 +247,6 @@ type Service interface {
 // Context contains data and interfaces that the image api will need.
 // TBD: do we really need this, or is just a service interface sufficient?
 type Context struct {
-	port int
 	Service
 	*gophercloud.ServiceClient
 }
@@ -315,40 +308,6 @@ func errorResponse(err error) APIResponse {
 
 func validPrivilege(visibility Visibility, privileged bool) bool {
 	return visibility == Private || (visibility == Public || visibility == Internal) && privileged
-}
-
-// endpoints
-func listAPIVersions(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	host := r.Host
-	var href string
-	if host == "" {
-		var err error
-		host, err = os.Hostname()
-		if err != nil {
-			return APIResponse{http.StatusInternalServerError, nil}, err
-		}
-		href = fmt.Sprintf("https://%s:%d/v2/", host, context.port)
-	} else {
-		href = fmt.Sprintf("https://%s/v2/", host)
-	}
-
-	// TBD clean up this code
-	var resp Versions
-
-	selfLink := Link{
-		Href: href,
-		Rel:  "self",
-	}
-
-	v := Version{
-		Status: Current,
-		ID:     "v2.3",
-		Links:  []Link{selfLink},
-	}
-
-	resp.Versions = append(resp.Versions, v)
-
-	return APIResponse{http.StatusOK, resp}, nil
 }
 
 // createImage creates information about an image, but doesn't contain
@@ -540,14 +499,14 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.
-func Routes(config APIConfig, serviceClient *gophercloud.ServiceClient) *mux.Router {
+func Routes(config APIConfig, serviceClient *gophercloud.ServiceClient, r *mux.Router) *mux.Router {
 	// make new Context
-	context := &Context{config.Port, config.ImageService, serviceClient}
+	context := &Context{config.ImageService, serviceClient}
 
-	r := mux.NewRouter()
+	if r == nil {
+		r = mux.NewRouter()
+	}
 
-	// API versions
-	r.Handle("/", APIHandler{context, listAPIVersions}).Methods("GET")
 	r.Handle("/v2/images", APIHandler{context, createImage}).Methods("POST")
 	r.Handle("/v2/images/{image_id:"+uuid.UUIDRegex+"}/file", APIHandler{context, uploadImage}).Methods("PUT")
 	r.Handle("/v2/images", APIHandler{context, listImages}).Methods("GET")

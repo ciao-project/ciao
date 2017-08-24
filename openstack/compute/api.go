@@ -29,9 +29,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// APIPort is the OpenStack compute port
-const APIPort = 8774
-
 // PrivateAddresses contains information about a single instance network
 // interface.
 type PrivateAddresses struct {
@@ -280,7 +277,6 @@ type CreateServerRequest struct {
 
 // APIConfig contains information needed to start the compute api service.
 type APIConfig struct {
-	Port           int     // the https port of the compute api service
 	ComputeService Service // the service interface
 }
 
@@ -454,7 +450,6 @@ type HTTPReturnErrorCode struct {
 
 // Context contains information needed by the compute API service
 type Context struct {
-	port int
 	Service
 }
 
@@ -700,10 +695,12 @@ func showFlavorDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIR
 }
 
 // Routes returns a gorilla mux router for the compute endpoints.
-func Routes(config APIConfig) *mux.Router {
-	context := &Context{config.Port, config.ComputeService}
+func Routes(config APIConfig, r *mux.Router) *mux.Router {
+	context := &Context{config.ComputeService}
 
-	r := mux.NewRouter()
+	if r == nil {
+		r = mux.NewRouter()
+	}
 
 	// servers endpoints
 	r.Handle("/v2.1/{tenant}/servers",

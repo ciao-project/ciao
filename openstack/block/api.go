@@ -17,17 +17,12 @@ package block
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/mux"
 )
-
-// APIPort is the standard OpenStack Volume port
-const APIPort = 8776
 
 // VersionStatus defines whether a reported version is supported or not.
 type VersionStatus string
@@ -331,7 +326,6 @@ func errorResponse(err error) APIResponse {
 
 // APIConfig contains information needed to start the block api service.
 type APIConfig struct {
-	Port       int     // the https port of the block api service
 	VolService Service // the service interface
 }
 
@@ -352,7 +346,6 @@ type Service interface {
 // Context contains data and interfaces that the block api will need.
 // TBD: do we really need this, or is just a service interface sufficient?
 type Context struct {
-	port int
 	Service
 }
 
@@ -387,93 +380,6 @@ func (h APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.status)
 	w.Write(b)
-}
-
-// not completed
-func listAPIVersions(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	host := r.Host
-	var href string
-	if host == "" {
-		var err error
-		host, err = os.Hostname()
-		if err != nil {
-			return APIResponse{http.StatusInternalServerError, nil}, err
-		}
-		href = fmt.Sprintf("https://%s:%d/v2/", host, context.port)
-	} else {
-		href = fmt.Sprintf("https://%s/v2/", host)
-	}
-
-	// TBD clean up this code
-	var resp Versions
-
-	// need to create Links
-	docLink := Link{
-		Href: "http://docs.openstack.org/",
-		Type: "text/html",
-		Rel:  "describedby",
-	}
-
-	selfLink := Link{
-		Href: href,
-		Rel:  "self",
-	}
-
-	jsonType := MediaType{
-		Base: "application/json",
-		Type: "application/vnd.openstack.volume+json;version=1",
-	}
-
-	// I'm not sure how much of this struct is important
-	v := Version{
-		Status:     Supported,
-		ID:         "v2.0",
-		Links:      []Link{docLink, selfLink},
-		MediaTypes: []MediaType{jsonType},
-		Updated:    "2014-06-28T12:20:21Z",
-	}
-
-	resp.Versions = append(resp.Versions, v)
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
-// not completed
-func showAPIv2Details(context *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	host := r.Host
-	var href string
-	if host == "" {
-		var err error
-		host, err = os.Hostname()
-		if err != nil {
-			return APIResponse{http.StatusInternalServerError, nil}, err
-		}
-		href = fmt.Sprintf("https://%s:%d/v2/v2.json", host, context.port)
-	} else {
-		href = fmt.Sprintf("https://%s/v2/v2.json", host)
-	}
-
-	// we only support json
-	mt := MediaType{
-		Base: "application/json",
-		Type: "application/vnd.openstack.volume+json;version=1",
-	}
-
-	selfLink := Link{
-		Href: href,
-		Rel:  "self",
-	}
-
-	choice := Choice{
-		Status:     Current,
-		ID:         "v2.0",
-		MediaTypes: []MediaType{mt},
-		Links:      []Link{selfLink},
-	}
-
-	resp := Choices{Choices: []Choice{choice}}
-
-	return APIResponse{http.StatusOK, resp}, nil
 }
 
 func showAbsoluteLimits(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
@@ -665,15 +571,13 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.
-func Routes(config APIConfig) *mux.Router {
+func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	// make new Context
-	context := &Context{config.Port, config.VolService}
+	context := &Context{config.VolService}
 
-	r := mux.NewRouter()
-
-	// API versions
-	r.Handle("/", APIHandler{context, listAPIVersions}).Methods("GET")
-	r.Handle("/v2", APIHandler{context, showAPIv2Details}).Methods("GET")
+	if r == nil {
+		r = mux.NewRouter()
+	}
 
 	// Limits
 	r.Handle("/v2/{tenant}/limits",

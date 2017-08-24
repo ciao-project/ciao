@@ -15,9 +15,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -594,16 +592,9 @@ func (c *controller) ShowFlavorDetails(tenant string, flavorID string) (compute.
 
 	return flavor, nil
 }
-
-// Start will get the Compute API endpoints from the OpenStack compute api,
-// then wrap them in keystone validation.
-func (c *controller) createComputeServer() (*http.Server, error) {
-	config := compute.APIConfig{Port: computeAPIPort, ComputeService: c}
-
-	r := compute.Routes(config)
-	if r == nil {
-		return nil, errors.New("Unable to start Compute Service")
-	}
+func (c *controller) createComputeRoutes(r *mux.Router) error {
+	config := compute.APIConfig{ComputeService: c}
+	r = compute.Routes(config, r)
 
 	// we add on some ciao specific routes for legacy purposes
 	// using the openstack compute port.
@@ -633,16 +624,5 @@ func (c *controller) createComputeServer() (*http.Server, error) {
 		return nil
 	})
 
-	if err != nil {
-		return nil, err
-	}
-
-	service := fmt.Sprintf(":%d", computeAPIPort)
-
-	server := &http.Server{
-		Handler: r,
-		Addr:    service,
-	}
-
-	return server, nil
+	return err
 }

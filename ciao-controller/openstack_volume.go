@@ -16,8 +16,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -424,16 +422,10 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.Volu
 	return vol, nil
 }
 
-// Start will get the Volume API endpoints from the OpenStack block api,
-// then wrap them in keystone validation. It will then start the https
-// service.
-func (c *controller) createVolumeServer() (*http.Server, error) {
-	config := block.APIConfig{Port: volumeAPIPort, VolService: c}
+func (c *controller) createVolumeRoutes(r *mux.Router) error {
+	config := block.APIConfig{VolService: c}
 
-	r := block.Routes(config)
-	if r == nil {
-		return nil, errors.New("Unable to start Volume Service")
-	}
+	r = block.Routes(config, r)
 
 	// setup identity for these routes.
 	validServices := []osIdentity.ValidService{
@@ -461,16 +453,5 @@ func (c *controller) createVolumeServer() (*http.Server, error) {
 		return nil
 	})
 
-	if err != nil {
-		return nil, err
-	}
-
-	service := fmt.Sprintf(":%d", block.APIPort)
-
-	server := &http.Server{
-		Handler: r,
-		Addr:    service,
-	}
-
-	return server, nil
+	return err
 }

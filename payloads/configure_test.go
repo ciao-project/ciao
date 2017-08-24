@@ -49,15 +49,6 @@ func TestConfigureUnmarshal(t *testing.T) {
 	if cfg.Configure.Storage.CephID != testutil.ManagementID {
 		t.Errorf("Wrong launcher ceph id %v", cfg.Configure.Storage.CephID)
 	}
-
-	p, _ := strconv.Atoi(testutil.VolumePort)
-	if cfg.Configure.Controller.VolumePort != p {
-		t.Errorf("Wrong controller volume port [%d]", cfg.Configure.Controller.VolumePort)
-	}
-	p, _ = strconv.Atoi(testutil.ComputePort)
-	if cfg.Configure.Controller.ComputePort != p {
-		t.Errorf("Wrong controller compute port [%d]", cfg.Configure.Controller.ComputePort)
-	}
 }
 
 func TestConfigureMarshal(t *testing.T) {
@@ -71,11 +62,7 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Launcher.DiskLimit = false
 	cfg.Configure.Launcher.MemoryLimit = false
 
-	p, _ := strconv.Atoi(testutil.VolumePort)
-	cfg.Configure.Controller.VolumePort = p
-	p, _ = strconv.Atoi(testutil.ComputePort)
-	cfg.Configure.Controller.ComputePort = p
-	p, _ = strconv.Atoi(testutil.CiaoPort)
+	p, _ := strconv.Atoi(testutil.CiaoPort)
 	cfg.Configure.Controller.CiaoPort = p
 	cfg.Configure.Controller.HTTPSCACert = testutil.HTTPSCACert
 	cfg.Configure.Controller.HTTPSKey = testutil.HTTPSKey

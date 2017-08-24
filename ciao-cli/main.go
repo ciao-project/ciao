@@ -28,7 +28,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"text/template"
 
 	"github.com/01org/ciao/ciao-controller/api"
@@ -99,9 +98,6 @@ var commands = map[string]subCommand{
 
 var scopedToken string
 
-const openstackComputePort = 8774
-const openstackComputeVersion = "v2.1"
-
 func infof(format string, args ...interface{}) {
 	if glog.V(1) {
 		glog.InfoDepth(1, fmt.Sprintf("ciao-cli INFO: "+format, args...))
@@ -127,19 +123,17 @@ var (
 	controllerURL    = flag.String("controller", "", "Controller URL")
 	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
 	tenantName       = flag.String("tenant-name", "", "Tenant name")
-	computePort      = flag.Int("computeport", openstackComputePort, "Openstack Compute API port")
 	ciaoPort         = flag.Int("ciaoport", api.Port, "ciao API port")
 	caCertFile       = flag.String("ca-file", "", "CA Certificate")
 )
 
 const (
-	ciaoIdentityEnv    = "CIAO_IDENTITY"
-	ciaoControllerEnv  = "CIAO_CONTROLLER"
-	ciaoUsernameEnv    = "CIAO_USERNAME"
-	ciaoPasswordEnv    = "CIAO_PASSWORD"
-	ciaoComputePortEnv = "CIAO_COMPUTEPORT"
-	ciaoTenantNameEnv  = "CIAO_TENANT_NAME"
-	ciaoCACertFileEnv  = "CIAO_CA_CERT_FILE"
+	ciaoIdentityEnv   = "CIAO_IDENTITY"
+	ciaoControllerEnv = "CIAO_CONTROLLER"
+	ciaoUsernameEnv   = "CIAO_USERNAME"
+	ciaoPasswordEnv   = "CIAO_PASSWORD"
+	ciaoTenantNameEnv = "CIAO_TENANT_NAME"
+	ciaoCACertFileEnv = "CIAO_CA_CERT_FILE"
 )
 
 var caCertPool *x509.CertPool
@@ -166,7 +160,7 @@ func dumpJSON(body interface{}) {
 }
 
 func buildComputeURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("https://%s:%d/%s/", *controllerURL, *computePort, openstackComputeVersion)
+	prefix := fmt.Sprintf("https://%s:%d/v2.1/", *controllerURL, *ciaoPort)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
@@ -175,7 +169,17 @@ func buildCiaoURL(format string, args ...interface{}) string {
 	return fmt.Sprintf(prefix+format, args...)
 }
 
-func sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader, content *string) (*http.Response, error) {
+func buildBlockURL(format string, args ...interface{}) string {
+	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, *ciaoPort)
+	return fmt.Sprintf(prefix+format, args...)
+}
+
+func buildImageURL(format string, args ...interface{}) string {
+	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, *ciaoPort)
+	return fmt.Sprintf(prefix+format, args...)
+}
+
+func sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader, content string) (*http.Response, error) {
 	req, err := http.NewRequest(method, os.ExpandEnv(url), body)
 	if err != nil {
 		return nil, err
@@ -198,8 +202,8 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.Header.Add("X-Auth-Token", token)
 	}
 
-	if content != nil {
-		contentType := fmt.Sprintf("application/%s", *content)
+	if content != "" {
+		contentType := fmt.Sprintf("application/%s", content)
 		req.Header.Set("Content-Type", contentType)
 		req.Header.Set("Accept", contentType)
 	} else if body != nil {
@@ -241,7 +245,7 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 }
 
 func sendHTTPRequest(method string, url string, values []queryValue, body io.Reader) (*http.Response, error) {
-	return sendHTTPRequestToken(method, url, values, scopedToken, body, nil)
+	return sendHTTPRequestToken(method, url, values, scopedToken, body, "")
 }
 
 func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
@@ -266,7 +270,7 @@ func unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
 	return nil
 }
 
-func sendCiaoRequest(method string, url string, values []queryValue, body io.Reader, content *string) (*http.Response, error) {
+func sendCiaoRequest(method string, url string, values []queryValue, body io.Reader, content string) (*http.Response, error) {
 	return sendHTTPRequestToken(method, url, values, scopedToken, body, content)
 }
 
@@ -289,7 +293,7 @@ func getCiaoResource(name string, minVersion string) (string, error) {
 		url = buildCiaoURL(fmt.Sprintf("%s", *tenantID))
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, nil)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, "")
 	if err != nil {
 		return "", err
 	}
@@ -329,7 +333,6 @@ func getCiaoEnvVariables() {
 	controller := os.Getenv(ciaoControllerEnv)
 	username := os.Getenv(ciaoUsernameEnv)
 	password := os.Getenv(ciaoPasswordEnv)
-	port := os.Getenv(ciaoComputePortEnv)
 	tenant := os.Getenv(ciaoTenantNameEnv)
 	ca := os.Getenv(ciaoCACertFileEnv)
 
@@ -338,7 +341,6 @@ func getCiaoEnvVariables() {
 	infof("\t%s:%s\n", ciaoControllerEnv, controller)
 	infof("\t%s:%s\n", ciaoUsernameEnv, username)
 	infof("\t%s:%s\n", ciaoPasswordEnv, password)
-	infof("\t%s:%s\n", ciaoComputePortEnv, port)
 	infof("\t%s:%s\n", ciaoTenantNameEnv, tenantName)
 	infof("\t%s:%s\n", ciaoCACertFileEnv, ca)
 
@@ -356,10 +358,6 @@ func getCiaoEnvVariables() {
 
 	if password != "" && *identityPassword == "" {
 		*identityPassword = password
-	}
-
-	if port != "" && *computePort == openstackComputePort {
-		*computePort, _ = strconv.Atoi(port)
 	}
 
 	if tenant != "" && *tenantName == "" {

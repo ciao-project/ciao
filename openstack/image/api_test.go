@@ -39,14 +39,6 @@ type test struct {
 
 var tests = []test{
 	{
-		"GET",
-		"/",
-		listAPIVersions,
-		"",
-		http.StatusOK,
-		`{"versions":[{"status":"CURRENT","id":"v2.3","links":[{"href":"` + fmt.Sprintf("https://%s:9292/v2/", myHostname()) + `","rel":"self"}]}]}`,
-	},
-	{
 		"POST",
 		"/v2/images",
 		createImage,
@@ -219,9 +211,9 @@ func (is testImageService) DeleteImage(string, string) (NoContentImageResponse, 
 
 func TestRoutes(t *testing.T) {
 	var is testImageService
-	config := APIConfig{9292, is}
+	config := APIConfig{is}
 
-	r := Routes(config, nil)
+	r := Routes(config, nil, nil)
 	if r == nil {
 		t.Fatalf("No routes returned")
 	}
@@ -233,7 +225,7 @@ func TestAPIResponse(t *testing.T) {
 	// TBD: add context to test definition so it can be created per
 	// endpoint with either a pass testVolumeService or a failure
 	// one.
-	context := &Context{9292, is, nil}
+	context := &Context{is, nil}
 
 	for _, tt := range tests {
 		req, err := http.NewRequest(tt.method, tt.pattern, bytes.NewBuffer([]byte(tt.request)))
