@@ -41,9 +41,8 @@ func validMinConf(conf *payloads.Configure) bool {
 	return (conf.Configure.Scheduler.ConfigStorageURI != "" &&
 		conf.Configure.Controller.HTTPSCACert != "" &&
 		conf.Configure.Controller.HTTPSKey != "" &&
-		conf.Configure.Controller.IdentityUser != "" &&
-		conf.Configure.Controller.IdentityPassword != "" &&
-		conf.Configure.IdentityService.URL != "")
+		conf.Configure.Controller.ClientAuthCACertPath != "" ||
+		(conf.Configure.Controller.IdentityUser != "" && conf.Configure.Controller.IdentityPassword != "" && conf.Configure.IdentityService.URL != ""))
 }
 
 func discoverDriver(uriStr string) (storageType payloads.StorageType, err error) {

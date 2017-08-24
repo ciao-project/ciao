@@ -74,6 +74,7 @@ const fullValidConf = `configure:
     cnci_disk: 128
     admin_ssh_key: ""
     admin_password: ""
+    client_auth_ca_cert_path: ""
   launcher:
     compute_net:
     - 192.168.1.0/24

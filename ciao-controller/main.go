@@ -18,8 +18,11 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,6 +38,7 @@ import (
 	"github.com/01org/ciao/database"
 	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/osprepare"
+	"github.com/01org/ciao/service"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -72,6 +76,8 @@ var workloadsPath = flag.String("workloads_path", "/var/lib/ciao/data/controller
 var persistentDatastoreLocation = flag.String("database_path", "/var/lib/ciao/data/controller/ciao-controller.db", "path to persistent database")
 var imageDatastoreLocation = flag.String("image_database_path", "/var/lib/ciao/data/image/ciao-image.db", "path to image persistent database")
 var logDir = "/var/lib/ciao/logs/controller"
+
+var clientCertCAPath = ""
 
 var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
 
@@ -167,6 +173,10 @@ func main() {
 		adminPassword = clusterConfig.Configure.Controller.AdminPassword
 	}
 
+	if clusterConfig.Configure.Controller.ClientAuthCACertPath != "" {
+		clientCertCAPath = clusterConfig.Configure.Controller.ClientAuthCACertPath
+	}
+
 	if err := ctl.is.Init(ctl.qs); err != nil {
 		glog.Fatalf("Error initialising image service: %v", err)
 	}
@@ -243,6 +253,47 @@ func main() {
 	ctl.client.Disconnect()
 }
 
+type clientCertAuthHandler struct {
+	Next http.Handler
+}
+
+func (h *clientCertAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if len(r.TLS.VerifiedChains) != 1 {
+		http.Error(w, "Unexpected number of certificate chains presented", http.StatusUnauthorized)
+		return
+	}
+
+	certs := r.TLS.VerifiedChains[0]
+	cert := certs[0]
+	tenants := cert.Subject.Organization
+
+	privileged := false
+	if len(tenants) == 1 && tenants[0] == "admin" {
+		privileged = true
+	}
+
+	r = r.WithContext(service.SetPrivilege(r.Context(), true))
+
+	vars := mux.Vars(r)
+	tenantFromVars := vars["tenant"]
+	if !privileged {
+		tenantMatched := false
+		for i := range tenants {
+			if tenants[i] == tenantFromVars {
+				tenantMatched = true
+				break
+			}
+		}
+		if !tenantMatched {
+			http.Error(w, "Access to tenant not permitted with certificate", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	r = r.WithContext(service.SetTenantID(r.Context(), tenantFromVars))
+	h.Next.ServeHTTP(w, r)
+}
+
 func (c *controller) createCiaoRoutes(r *mux.Router) error {
 	config := api.Config{URL: c.apiURL, CiaoService: c}
 
@@ -266,14 +317,21 @@ func (c *controller) createCiaoRoutes(r *mux.Router) error {
 	}
 
 	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		h := osIdentity.Handler{
-			Client:        c.id.scV3,
-			Next:          route.GetHandler(),
-			ValidServices: validServices,
-			ValidAdmins:   validAdmins,
-		}
+		if clientCertCAPath != "" {
+			h := &clientCertAuthHandler{
+				Next: route.GetHandler(),
+			}
+			route.Handler(h)
+		} else {
+			osHandler := osIdentity.Handler{
+				Client:        c.id.scV3,
+				Next:          route.GetHandler(),
+				ValidServices: validServices,
+				ValidAdmins:   validAdmins,
+			}
 
-		route.Handler(h)
+			route.Handler(osHandler)
+		}
 
 		return nil
 	})
@@ -301,11 +359,28 @@ func (c *controller) createCiaoServer() (*http.Server, error) {
 		return nil, errors.Wrap(err, "Error adding ciao routes")
 	}
 
-	service := fmt.Sprintf(":%d", controllerAPIPort)
+	addr := fmt.Sprintf(":%d", controllerAPIPort)
 
 	server := &http.Server{
 		Handler: r,
-		Addr:    service,
+		Addr:    addr,
+	}
+
+	if clientCertCAPath != "" {
+		clientCertCAbytes, err := ioutil.ReadFile(clientCertCAPath)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error loading client cert CA")
+		}
+		certPool := x509.NewCertPool()
+		ok := certPool.AppendCertsFromPEM(clientCertCAbytes)
+		if !ok {
+			return nil, errors.New("Error importing client auth CA to poool")
+		}
+		tlsConfig := tls.Config{
+			ClientAuth: tls.RequireAndVerifyClientCert,
+			ClientCAs:  certPool,
+		}
+		server.TLSConfig = &tlsConfig
 	}
 
 	return server, nil
