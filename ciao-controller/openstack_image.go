@@ -25,7 +25,6 @@ import (
 	imageDatastore "github.com/01org/ciao/ciao-image/datastore"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/database"
-	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/openstack/image"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
@@ -292,28 +291,5 @@ func (c *controller) createImageRoutes(r *mux.Router) error {
 	// get our routes.
 	image.Routes(apiConfig, c.id.scV3, r)
 
-	// setup identity for these routes.
-	validServices := []osIdentity.ValidService{
-		{ServiceType: "image", ServiceName: "ciao"},
-		{ServiceType: "image", ServiceName: "glance"},
-	}
-
-	validAdmins := []osIdentity.ValidAdmin{
-		{Project: "service", Role: "admin"},
-		{Project: "admin", Role: "admin"},
-	}
-
-	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		h := osIdentity.Handler{
-			Client:        c.id.scV3,
-			Next:          route.GetHandler(),
-			ValidServices: validServices,
-			ValidAdmins:   validAdmins,
-		}
-
-		route.Handler(h)
-		return nil
-	})
-
-	return err
+	return nil
 }

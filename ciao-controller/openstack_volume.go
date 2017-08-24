@@ -22,7 +22,6 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/block"
-	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/payloads"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -425,33 +424,7 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.Volu
 func (c *controller) createVolumeRoutes(r *mux.Router) error {
 	config := block.APIConfig{VolService: c}
 
-	r = block.Routes(config, r)
+	block.Routes(config, r)
 
-	// setup identity for these routes.
-	validServices := []osIdentity.ValidService{
-		{ServiceType: "volume", ServiceName: "ciao"},
-		{ServiceType: "volumev2", ServiceName: "ciao"},
-		{ServiceType: "volume", ServiceName: "cinder"},
-		{ServiceType: "volumev2", ServiceName: "cinderv2"},
-	}
-
-	validAdmins := []osIdentity.ValidAdmin{
-		{Project: "service", Role: "admin"},
-		{Project: "admin", Role: "admin"},
-	}
-
-	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		h := osIdentity.Handler{
-			Client:        c.id.scV3,
-			Next:          route.GetHandler(),
-			ValidServices: validServices,
-			ValidAdmins:   validAdmins,
-		}
-
-		route.Handler(h)
-
-		return nil
-	})
-
-	return err
+	return nil
 }

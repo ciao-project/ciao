@@ -245,6 +245,12 @@ func (c *controller) createCiaoRoutes(r *mux.Router) error {
 	validServices := []osIdentity.ValidService{
 		{ServiceType: "compute", ServiceName: "ciao"},
 		{ServiceType: "compute", ServiceName: "nova"},
+		{ServiceType: "image", ServiceName: "glance"},
+		{ServiceType: "image", ServiceName: "ciao"},
+		{ServiceType: "volume", ServiceName: "ciao"},
+		{ServiceType: "volumev2", ServiceName: "ciao"},
+		{ServiceType: "volume", ServiceName: "cinder"},
+		{ServiceType: "volumev2", ServiceName: "cinderv2"},
 	}
 
 	validAdmins := []osIdentity.ValidAdmin{

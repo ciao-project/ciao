@@ -23,7 +23,6 @@ import (
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/openstack/compute"
-	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/gorilla/mux"
@@ -594,35 +593,11 @@ func (c *controller) ShowFlavorDetails(tenant string, flavorID string) (compute.
 }
 func (c *controller) createComputeRoutes(r *mux.Router) error {
 	config := compute.APIConfig{ComputeService: c}
-	r = compute.Routes(config, r)
+	compute.Routes(config, r)
 
 	// we add on some ciao specific routes for legacy purposes
 	// using the openstack compute port.
-	r = legacyComputeRoutes(c, r)
+	legacyComputeRoutes(c, r)
 
-	// setup identity for these routes.
-	validServices := []osIdentity.ValidService{
-		{ServiceType: "compute", ServiceName: "ciao"},
-		{ServiceType: "compute", ServiceName: "nova"},
-	}
-
-	validAdmins := []osIdentity.ValidAdmin{
-		{Project: "service", Role: "admin"},
-		{Project: "admin", Role: "admin"},
-	}
-
-	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		h := osIdentity.Handler{
-			Client:        c.id.scV3,
-			Next:          route.GetHandler(),
-			ValidServices: validServices,
-			ValidAdmins:   validAdmins,
-		}
-
-		route.Handler(h)
-
-		return nil
-	})
-
-	return err
+	return nil
 }
