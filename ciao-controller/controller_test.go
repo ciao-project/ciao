@@ -1988,17 +1988,9 @@ func TestMain(m *testing.M) {
 
 	id := testutil.StartIdentityServer(testIdentityConfig)
 
-	idConfig := identityConfig{
-		endpoint:        id.URL,
-		serviceUserName: "test",
-		servicePassword: "iheartciao",
-	}
-
-	ctl.id, err = newIdentityClient(idConfig)
-	if err != nil {
-		fmt.Println(err)
-		// keep going anyway - any compute api tests will fail.
-	}
+	identityURL = id.URL
+	serviceUser = "test"
+	servicePassword = "iheartciao"
 
 	_, _ = addComputeTestTenant()
 

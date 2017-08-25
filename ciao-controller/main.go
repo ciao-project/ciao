@@ -181,24 +181,12 @@ func main() {
 	osprepare.Bootstrap(context.TODO(), logger)
 	osprepare.InstallDeps(context.TODO(), controllerDeps, logger)
 
-	idConfig := identityConfig{
-		endpoint:        identityURL,
-		serviceUserName: serviceUser,
-		servicePassword: servicePassword,
-	}
-
 	ctl.BlockDriver = func() storage.BlockDriver {
 		driver := storage.CephDriver{
 			ID: *cephID,
 		}
 		return driver
 	}()
-
-	ctl.id, err = newIdentityClient(idConfig)
-	if err != nil {
-		glog.Fatal("Unable to authenticate to Keystone: ", err)
-		return
-	}
 
 	err = initializeCNCICtrls(ctl)
 	if err != nil {

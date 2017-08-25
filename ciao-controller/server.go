@@ -121,23 +121,6 @@ func (c *controller) createCiaoRoutes(r *mux.Router) error {
 func (c *controller) createCiaoServer() (*http.Server, error) {
 	r := mux.NewRouter()
 
-	if err := c.createComputeRoutes(r); err != nil {
-		return nil, errors.Wrap(err, "Error adding compute routes")
-	}
-
-	if err := c.createImageRoutes(r); err != nil {
-		return nil, errors.Wrap(err, "Error adding image routes")
-	}
-
-	if err := c.createVolumeRoutes(r); err != nil {
-		return nil, errors.Wrap(err, "Error adding volume routes")
-	}
-
-	err := c.createCiaoRoutes(r)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error adding ciao routes")
-	}
-
 	addr := fmt.Sprintf(":%d", controllerAPIPort)
 
 	server := &http.Server{
@@ -160,6 +143,36 @@ func (c *controller) createCiaoServer() (*http.Server, error) {
 			ClientCAs:  certPool,
 		}
 		server.TLSConfig = &tlsConfig
+	} else {
+		idConfig := identityConfig{
+			endpoint:        identityURL,
+			serviceUserName: serviceUser,
+			servicePassword: servicePassword,
+		}
+
+		var err error
+		c.id, err = newIdentityClient(idConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "Unable to authenticate to Keystone")
+		}
+
+	}
+
+	if err := c.createComputeRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding compute routes")
+	}
+
+	if err := c.createImageRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding image routes")
+	}
+
+	if err := c.createVolumeRoutes(r); err != nil {
+		return nil, errors.Wrap(err, "Error adding volume routes")
+	}
+
+	err := c.createCiaoRoutes(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error adding ciao routes")
 	}
 
 	return server, nil
