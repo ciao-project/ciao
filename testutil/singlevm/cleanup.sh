@@ -18,10 +18,8 @@ if [ "$ciao_host" == "singlevm" ]; then
 fi
 sudo ip link del ciao_br
 sudo pkill -F /tmp/dnsmasq.ciaovlan.pid
-sudo docker rm -v -f keystone
 sudo docker rm -v -f ceph-demo
 sudo rm /etc/ceph/*
 sudo rm -rf /var/lib/ciao/ciao-image
 sudo docker network rm $(sudo docker network ls --filter driver=ciao -q)
-sudo rm -r ~/local/mysql/
 sudo rm -f /var/lib/ciao/networking/docker_plugin.db
