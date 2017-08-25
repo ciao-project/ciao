@@ -141,6 +141,7 @@ const (
 
 var caCertPool *x509.CertPool
 var clientCert *tls.Certificate
+var tenants []string
 
 type queryValue struct {
 	name, value string
@@ -322,8 +323,16 @@ func getCiaoResource(name string, minVersion string) (string, error) {
 }
 
 func checkPrivilege() bool {
-	if *tenantName == "admin" {
-		return true
+	if clientCert != nil {
+		for i := range tenants {
+			if tenants[i] == "admin" {
+				return true
+			}
+		}
+	} else {
+		if *tenantName == "admin" {
+			return true
+		}
 	}
 
 	return false
@@ -468,12 +477,12 @@ func prepareWithClientCert() {
 	}
 	clientCert = &cert
 
-	if *tenantID == "" {
-		tenants, err := getTenantsFromCertFile(*clientCertFile)
-		if err != nil {
-			fatalf("No tenant specified and unable to parse from certificate file")
-		}
+	tenants, err = getTenantsFromCertFile(*clientCertFile)
+	if err != nil {
+		fatalf("No tenant specified and unable to parse from certificate file")
+	}
 
+	if *tenantID == "" {
 		if len(tenants) == 0 {
 			fatalf("No tenants specified in certificate")
 		}
@@ -488,6 +497,7 @@ func prepareWithClientCert() {
 
 		*tenantID = tenants[0]
 	}
+
 }
 
 func prepareForCommand() {

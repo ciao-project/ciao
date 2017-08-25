@@ -108,30 +108,43 @@ func (cmd *tenantListCommand) run(args []string) error {
 }
 
 func listAllTenants(t *template.Template) error {
-	projects, err := getAllProjects(*identityUser, *identityPassword)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if t != nil {
-		if err := t.Execute(os.Stdout, &projects.Projects); err != nil {
+	if clientCert != nil {
+		fatalf("Tenant listing for all tenants not implemented with client certificate authentication")
+	} else {
+		projects, err := getAllProjects(*identityUser, *identityPassword)
+		if err != nil {
 			fatalf(err.Error())
 		}
-		return nil
-	}
 
-	for i, project := range projects.Projects {
-		fmt.Printf("Tenant [%d]\n", i+1)
-		fmt.Printf("\tUUID: %s\n", project.ID)
-		fmt.Printf("\tName: %s\n", project.Name)
+		if t != nil {
+			if err := t.Execute(os.Stdout, &projects.Projects); err != nil {
+				fatalf(err.Error())
+			}
+			return nil
+		}
+
+		for i, project := range projects.Projects {
+			fmt.Printf("Tenant [%d]\n", i+1)
+			fmt.Printf("\tUUID: %s\n", project.ID)
+			fmt.Printf("\tName: %s\n", project.Name)
+		}
 	}
 	return nil
 }
 
 func listUserTenants(t *template.Template) error {
-	projects, err := getUserProjects(*identityUser, *identityPassword)
-	if err != nil {
-		fatalf(err.Error())
+	var projects []Project
+	var err error
+	if clientCert != nil {
+		for _, t := range tenants {
+			projects = append(projects, Project{ID: t})
+		}
+	} else {
+		projects, err = getUserProjects(*identityUser, *identityPassword)
+		if err != nil {
+			fatalf(err.Error())
+		}
+
 	}
 
 	if t != nil {
@@ -146,6 +159,7 @@ func listUserTenants(t *template.Template) error {
 		fmt.Printf("\tUUID: %s\n", project.ID)
 		fmt.Printf("\tName: %s\n", project.Name)
 	}
+
 	return nil
 }
 
