@@ -24,7 +24,6 @@ import (
 
 	"github.com/01org/ciao/service"
 	"github.com/01org/ciao/ssntp/uuid"
-	"github.com/gophercloud/gophercloud"
 	"github.com/gorilla/mux"
 )
 
@@ -248,7 +247,6 @@ type Service interface {
 // TBD: do we really need this, or is just a service interface sufficient?
 type Context struct {
 	Service
-	*gophercloud.ServiceClient
 }
 
 // APIResponse is returned from the API handlers.
@@ -499,9 +497,9 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (APIR
 }
 
 // Routes provides gorilla mux routes for the supported endpoints.
-func Routes(config APIConfig, serviceClient *gophercloud.ServiceClient, r *mux.Router) *mux.Router {
+func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	// make new Context
-	context := &Context{config.ImageService, serviceClient}
+	context := &Context{config.ImageService}
 
 	if r == nil {
 		r = mux.NewRouter()

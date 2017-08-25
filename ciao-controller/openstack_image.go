@@ -289,7 +289,7 @@ func (c *controller) createImageRoutes(r *mux.Router) error {
 	}
 
 	// get our routes.
-	image.Routes(apiConfig, c.id.scV3, r)
+	image.Routes(apiConfig, r)
 
 	return nil
 }
