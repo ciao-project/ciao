@@ -37,8 +37,13 @@ type MemoryDB struct {
 }
 
 func (db *MemoryDB) fillWorkloads() error {
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
 	// add dummy public tenant.
-	return db.addTenant("public", "")
+	return db.addTenant("public", config)
 }
 
 func (db *MemoryDB) init(config Config) error {
@@ -79,11 +84,12 @@ func (db *MemoryDB) getEventLog() ([]*types.LogEntry, error) {
 	return db.logEntries, nil
 }
 
-func (db *MemoryDB) addTenant(id string, name string) error {
+func (db *MemoryDB) addTenant(id string, config types.TenantConfig) error {
 	t := &tenant{
 		Tenant: types.Tenant{
-			ID:   id,
-			Name: name,
+			ID:         id,
+			Name:       config.Name,
+			SubnetBits: config.SubnetBits,
 		},
 		network:   make(map[int]map[int]bool),
 		instances: make(map[string]*types.Instance),

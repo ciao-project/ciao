@@ -90,7 +90,7 @@ type persistentStore interface {
 	deleteWorkload(ID string) error
 
 	// interfaces related to tenants
-	addTenant(id string, MAC string) (err error)
+	addTenant(id string, config types.TenantConfig) (err error)
 	getTenant(id string) (t *tenant, err error)
 	getTenants() ([]*tenant, error)
 	releaseTenantIP(tenantID string, subnetInt int, rest int) (err error)
@@ -316,7 +316,12 @@ func (ds *Datastore) Exit() {
 // AddTenant stores information about a tenant into the datastore.
 // and makes sure that this new tenant is cached.
 func (ds *Datastore) AddTenant(id string) (*types.Tenant, error) {
-	err := ds.db.addTenant(id, "")
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	err := ds.db.addTenant(id, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error adding tenant (%v) to database", id)
 	}
@@ -556,6 +561,22 @@ func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) error {
 	return ds.db.releaseTenantIP(tenantID, int(subnetInt), int(ipBytes[3]))
 }
 
+func getMaxHost(bits int) (int, error) {
+	_, ipNet, err := net.ParseCIDR(fmt.Sprintf("172.16.0.0/%d", bits))
+	if err != nil {
+		return -1, errors.Wrapf(err, "Invalid tenant config")
+	}
+	ones, bits := ipNet.Mask.Size()
+
+	// deduct .0 and .1, and .255
+	maxHosts := (1 << uint32(bits-ones)) - 3
+	if maxHosts <= 0 {
+		return -1, errors.Wrapf(err, "Invalid tenant config")
+	}
+
+	return maxHosts, nil
+}
+
 // AllocateTenantIP will find a free IP address within a tenant network.
 // For now we make each tenant have unique subnets even though it
 // isn't actually needed because of a docker issue.
@@ -568,11 +589,16 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
 	network := ds.tenants[tenantID].network
 	subnets := ds.tenants[tenantID].subnets
 
+	maxHosts, err := getMaxHost(ds.tenants[tenantID].SubnetBits)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Invalid tenant config")
+	}
+
 	// find any subnet assigned to this tenant with available addresses
 	sort.Ints(subnets)
 
 	for _, k := range subnets {
-		if len(network[k]) < 253 {
+		if len(network[k]) < maxHosts {
 			subnetInt = uint16(k)
 		}
 	}
@@ -639,7 +665,7 @@ func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
 
 	ds.tenantsLock.Unlock()
 
-	err := ds.db.claimTenantIP(tenantID, int(subnetInt), rest)
+	err = ds.db.claimTenantIP(tenantID, int(subnetInt), rest)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error claiming tenant IP in database")
 	}

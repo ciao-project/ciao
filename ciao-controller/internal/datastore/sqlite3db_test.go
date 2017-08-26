@@ -99,9 +99,12 @@ func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
 
 	// add a tenant.
 	tenantID := uuid.Generate().String()
-	mac := "validmac"
+	config := types.TenantConfig{
+		Name:       "validname",
+		SubnetBits: 24,
+	}
 
-	err = db.addTenant(tenantID, mac)
+	err = db.addTenant(tenantID, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -720,9 +723,12 @@ func TestDeleteMappedIP(t *testing.T) {
 
 func createTestTenant(db persistentStore, t *testing.T) *tenant {
 	tid := uuid.Generate().String()
-	name := "TestTenant"
+	config := types.TenantConfig{
+		Name:       "TestTenant",
+		SubnetBits: 24,
+	}
 
-	err := db.addTenant(tid, name)
+	err := db.addTenant(tid, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -735,8 +741,12 @@ func createTestTenant(db persistentStore, t *testing.T) *tenant {
 		t.Fatal("Expected added tenant")
 	}
 
-	if tn.Name != name {
-		t.Fatalf("Expected %v, got %v", name, tn.Name)
+	if tn.Name != config.Name {
+		t.Fatalf("Expected %v, got %v", config.Name, tn.Name)
+	}
+
+	if tn.SubnetBits != config.SubnetBits {
+		t.Fatalf("Expected SubnetBits %v , got %v\n", config.SubnetBits, tn.SubnetBits)
 	}
 	return tn
 }

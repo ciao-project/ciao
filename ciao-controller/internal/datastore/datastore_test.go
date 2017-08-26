@@ -1224,11 +1224,21 @@ func TestDetachVolumeFailure(t *testing.T) {
 }
 
 func testAllocateTenantIPs(t *testing.T, nIPs int) {
-	nIPsPerSubnet := 253
-
 	newTenant, err := addTestTenant()
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	_, ipNet, err := net.ParseCIDR(fmt.Sprintf("172.16.0.0/%d", newTenant.SubnetBits))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ones, bits := ipNet.Mask.Size()
+
+	// deduct .0 and .1, and .255
+	nIPsPerSubnet := (1 << uint32(bits-ones)) - 3
+	if nIPsPerSubnet <= 0 {
+		t.Fatal("Invalid tenant config")
 	}
 
 	// make this tenant have some network hosts assigned to them.
@@ -1245,19 +1255,31 @@ func testAllocateTenantIPs(t *testing.T, nIPs int) {
 		t.Fatal(err)
 	}
 
-	if len(tenant.subnets) != (nIPs/nIPsPerSubnet)+1 {
-		t.Fatal("Too many subnets created")
+	var expSubnets int
+	expSubnets = (nIPs / nIPsPerSubnet)
+	remain := nIPs % nIPsPerSubnet
+	if remain > 0 {
+		expSubnets++
+	}
+
+	if len(tenant.subnets) != expSubnets {
+		t.Fatalf("expected %d subnets, got %d", expSubnets, len(tenant.subnets))
 	}
 
 	for i, subnet := range tenant.subnets {
+		var expHosts int
+
 		if ((i + 1) * nIPsPerSubnet) < nIPs {
-			if len(tenant.network[subnet]) != nIPsPerSubnet {
-				t.Fatal("Missing IPs")
-			}
+			expHosts = nIPsPerSubnet
 		} else {
-			if len(tenant.network[subnet]) != nIPs%nIPsPerSubnet {
-				t.Fatal("Missing IPs")
+			expHosts = nIPs % nIPsPerSubnet
+			if expHosts == 0 {
+				expHosts++
 			}
+		}
+
+		if len(tenant.network[subnet]) != expHosts {
+			t.Fatalf("Missing IPs: expected %d, got %d", expHosts, len(tenant.network[subnet]))
 		}
 	}
 }

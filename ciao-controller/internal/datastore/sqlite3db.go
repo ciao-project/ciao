@@ -204,7 +204,8 @@ func (d tenantData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS tenants
 		(
 		id varchar(32) primary key,
-		name text
+		name text,
+		subnet_bits int
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -771,9 +772,9 @@ func (ds *sqliteDB) getWorkloadStorage(ID string) ([]types.StorageResource, erro
 	return res, nil
 }
 
-func (ds *sqliteDB) addTenant(ID string, name string) error {
+func (ds *sqliteDB) addTenant(ID string, config types.TenantConfig) error {
 	ds.dbLock.Lock()
-	err := ds.create("tenants", ID, name)
+	err := ds.create("tenants", ID, config.Name, config.SubnetBits)
 	ds.dbLock.Unlock()
 
 	return err
@@ -781,7 +782,8 @@ func (ds *sqliteDB) addTenant(ID string, name string) error {
 
 func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 	query := `SELECT	tenants.id,
-				tenants.name
+				tenants.name,
+				tenants.subnet_bits
 		  FROM tenants
 		  WHERE tenants.id = ?`
 
@@ -791,7 +793,7 @@ func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 
 	t := &tenant{}
 
-	err := row.Scan(&t.ID, &t.Name)
+	err := row.Scan(&t.ID, &t.Name, &t.SubnetBits)
 	if err != nil {
 		glog.Warning("unable to retrieve tenant from tenants")
 
@@ -997,7 +999,8 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	datastore := ds.getTableDB("tenants")
 
 	query := `SELECT	tenants.id,
-				tenants.name
+				tenants.name,
+				tenants.subnet_bits
 		  FROM tenants `
 
 	rows, err := datastore.Query(query)
@@ -1011,7 +1014,7 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 		var name sql.NullString
 
 		t := new(tenant)
-		err = rows.Scan(&id, &name)
+		err = rows.Scan(&id, &name, &t.SubnetBits)
 		if err != nil {
 			return nil, err
 		}
