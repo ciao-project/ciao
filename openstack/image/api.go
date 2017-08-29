@@ -505,11 +505,15 @@ func Routes(config APIConfig, r *mux.Router) *mux.Router {
 		r = mux.NewRouter()
 	}
 
+	r.Handle("/v2/{tenant}/images", APIHandler{context, createImage}).Methods("POST")
+	r.Handle("/v2/{tenant}/images/{image_id:"+uuid.UUIDRegex+"}/file", APIHandler{context, uploadImage}).Methods("PUT")
+	r.Handle("/v2/{tenant}/images", APIHandler{context, listImages}).Methods("GET")
+	r.Handle("/v2/{tenant}/images/{image_id:"+uuid.UUIDRegex+"}", APIHandler{context, getImage}).Methods("GET")
+	r.Handle("/v2/{tenant}/images/{image_id:"+uuid.UUIDRegex+"}", APIHandler{context, deleteImage}).Methods("DELETE")
 	r.Handle("/v2/images", APIHandler{context, createImage}).Methods("POST")
 	r.Handle("/v2/images/{image_id:"+uuid.UUIDRegex+"}/file", APIHandler{context, uploadImage}).Methods("PUT")
 	r.Handle("/v2/images", APIHandler{context, listImages}).Methods("GET")
 	r.Handle("/v2/images/{image_id:"+uuid.UUIDRegex+"}", APIHandler{context, getImage}).Methods("GET")
 	r.Handle("/v2/images/{image_id:"+uuid.UUIDRegex+"}", APIHandler{context, deleteImage}).Methods("DELETE")
-
 	return r
 }
