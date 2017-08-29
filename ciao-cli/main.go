@@ -181,6 +181,7 @@ func buildBlockURL(format string, args ...interface{}) string {
 
 func buildImageURL(format string, args ...interface{}) string {
 	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, *ciaoPort)
+	prefix = fmt.Sprintf("%s%s/", prefix, *tenantID)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
