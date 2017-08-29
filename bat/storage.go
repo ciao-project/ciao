@@ -41,9 +41,8 @@ type Volume struct {
 }
 
 // GetVolume returns a Volume structure containing information about a specific
-// volume.  The information is retrieved by calling ciao-cli volume show.  An
-// error will be returned if the following environment variables are not set;
-// CIAO_IDENTITY,  CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+// volume. An error will be returned if the following environment variables are
+// not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetVolume(ctx context.Context, tenant, ID string) (*Volume, error) {
 	var vol *Volume
 	args := []string{"volume", "show", "--volume", ID, "-f", "{{tojson .}}"}
@@ -55,20 +54,19 @@ func GetVolume(ctx context.Context, tenant, ID string) (*Volume, error) {
 	return vol, nil
 }
 
-// DeleteVolume deletes the specified volume from a given tenant.  The volume
-// is deleted by calling ciao-cli volume delete.  An error will be returned
-// if the following environment variables are not set; CIAO_IDENTITY,
-// CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+// DeleteVolume deletes the specified volume from a given tenant. The volume is
+// deleted by calling ciao-cli volume delete. An error will be returned if the
+// following environment variables are not set; CIAO_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func DeleteVolume(ctx context.Context, tenant, ID string) error {
 	args := []string{"volume", "delete", "--volume", ID}
 	_, err := RunCIAOCLI(ctx, tenant, args)
 	return err
 }
 
-// AddVolume adds a new volume to a tenant.  The volume is added using
-// ciao-cli volume add.  An error will be returned if the following environment
-// variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME,
-// CIAO_PASSWORD.
+// AddVolume adds a new volume to a tenant. The volume is added using ciao-cli
+// volume add. An error will be returned if the following environment variables
+// are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func AddVolume(ctx context.Context, tenant, source, sourceType string,
 	options *VolumeOptions) (string, error) {
 	args := []string{"volume", "add"}
@@ -110,10 +108,9 @@ func AddVolume(ctx context.Context, tenant, source, sourceType string,
 }
 
 // GetAllVolumes returns a map of all the volumes defined in the specified
-// tenant.  The map is indexed by volume ID.  The map is retrieved by calling
-// ciao-cli volume list.  An error will be returned if the following environment
-// variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME,
-// CIAO_PASSWORD.
+// tenant. The map is indexed by volume ID. The map is retrieved by calling
+// ciao-cli volume list. An error will be returned if the following environment
+// variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetAllVolumes(ctx context.Context, tenant string) (map[string]*Volume, error) {
 	var volumes map[string]*Volume
 
@@ -135,9 +132,9 @@ func GetAllVolumes(ctx context.Context, tenant string) (map[string]*Volume, erro
 }
 
 // WaitForVolumeStatus blocks until the status of the specified volume matches
-// the status parameter or the context is cancelled.    An error will be returned
-// if the following environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_USERNAME, CIAO_PASSWORD.
+// the status parameter or the context is cancelled. An error will be returned
+// if the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func WaitForVolumeStatus(ctx context.Context, tenant, volume, status string) error {
 	for {
 		vol, err := GetVolume(ctx, tenant, volume)
@@ -159,9 +156,9 @@ func WaitForVolumeStatus(ctx context.Context, tenant, volume, status string) err
 	return nil
 }
 
-// AttachVolume attaches a volume to an instance.    An error will be returned
-// if the following environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_USERNAME, CIAO_PASSWORD.
+// AttachVolume attaches a volume to an instance. An error will be returned if
+// the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func AttachVolume(ctx context.Context, tenant, instance, volume string) error {
 	args := []string{"volume", "attach", "--volume", volume,
 		"--instance", instance}
@@ -169,9 +166,10 @@ func AttachVolume(ctx context.Context, tenant, instance, volume string) error {
 	return err
 }
 
-// AttachVolumeAndWait attaches a volume to an instance and waits for the status of that
-// volume to transition to "in-use".  An error will be returned if the following environment
-// variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+// AttachVolumeAndWait attaches a volume to an instance and waits for the status
+// of that volume to transition to "in-use". An error will be returned if the
+// following environment variables are not set; CIAO_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func AttachVolumeAndWait(ctx context.Context, tenant, instance, volume string) error {
 	err := AttachVolume(ctx, tenant, instance, volume)
 	if err != nil {
@@ -180,18 +178,19 @@ func AttachVolumeAndWait(ctx context.Context, tenant, instance, volume string) e
 	return WaitForVolumeStatus(ctx, tenant, volume, "in-use")
 }
 
-// DetachVolume detaches a volume from an instance.    An error will be returned
-// if the following environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_USERNAME, CIAO_PASSWORD.
+// DetachVolume detaches a volume from an instance. An error will be returned if
+// the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func DetachVolume(ctx context.Context, tenant, volume string) error {
 	args := []string{"volume", "detach", "--volume", volume}
 	_, err := RunCIAOCLI(ctx, tenant, args)
 	return err
 }
 
-// DetachVolumeAndWait attaches a volume to an instance and waits for the status of that
-// volume to transition to "available".  An error will be returned if the following environment
-// variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_USERNAME, CIAO_PASSWORD.
+// DetachVolumeAndWait attaches a volume to an instance and waits for the status
+// of that volume to transition to "available". An error will be returned if the
+// following environment variables are not set; CIAO_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func DetachVolumeAndWait(ctx context.Context, tenant, volume string) error {
 	err := DetachVolume(ctx, tenant, volume)
 	if err != nil {

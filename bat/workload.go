@@ -184,9 +184,8 @@ func CreateWorkload(ctx context.Context, tenant string, opt WorkloadOptions, con
 }
 
 // GetAllWorkloads retrieves a list of all workloads in the cluster by calling
-// ciao-cli workload list.  An error will be returned if the following
-// environment variables are not set; CIAO_IDENTITY,  CIAO_CONTROLLER,
-// CIAO_USERNAME, CIAO_PASSWORD.
+// ciao-cli workload list. An error will be returned if the following
+// environment variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetAllWorkloads(ctx context.Context, tenant string) ([]Workload, error) {
 	var workloads []Workload
 
