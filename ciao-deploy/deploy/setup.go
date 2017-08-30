@@ -34,19 +34,16 @@ import (
 
 // ClusterConfiguration provides cluster setup information
 type ClusterConfiguration struct {
-	CephID                  string
-	HTTPSCaCertPath         string
-	HTTPSCertPath           string
-	KeystoneServiceUser     string
-	KeystoneServicePassword string
-	KeystoneAdminUser       string
-	KeystoneAdminPassword   string
-	KeystoneURL             string
-	AdminSSHKeyPath         string
-	AdminSSHPassword        string
-	ComputeNet              string
-	MgmtNet                 string
-	ServerIP                string
+	CephID            string
+	HTTPSCaCertPath   string
+	HTTPSCertPath     string
+	AdminSSHKeyPath   string
+	AdminSSHPassword  string
+	ComputeNet        string
+	MgmtNet           string
+	ServerIP          string
+	AuthCACertPath    string
+	AuthAdminCertPath string
 }
 
 var ciaoConfigDir = "/etc/ciao"
@@ -73,10 +70,7 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 	// TODO: Generate certs if not supplied
 	config.Configure.Controller.HTTPSCACert = clusterConf.HTTPSCaCertPath
 	config.Configure.Controller.HTTPSKey = clusterConf.HTTPSCertPath
-
-	config.Configure.Controller.IdentityUser = clusterConf.KeystoneServiceUser
-	config.Configure.Controller.IdentityPassword = clusterConf.KeystoneServicePassword
-	config.Configure.IdentityService.URL = clusterConf.KeystoneURL
+	config.Configure.Controller.ClientAuthCACertPath = clusterConf.AuthCACertPath
 
 	config.Configure.Controller.AdminPassword = clusterConf.AdminSSHPassword
 	config.Configure.Controller.AdminSSHKey = adminSSHKeyData
@@ -312,24 +306,34 @@ func installController(ctx context.Context, controllerCertPath string, caCertPat
 }
 
 func setupEnvironment(conf *ClusterConfiguration) {
-	_ = os.Setenv("CIAO_ADMIN_USERNAME", conf.KeystoneAdminUser)
-	_ = os.Setenv("CIAO_ADMIN_PASSWORD", conf.KeystoneAdminPassword)
 	_ = os.Setenv("CIAO_CONTROLLER", hostnameWithFallback())
-	_ = os.Setenv("CIAO_IDENTITY", conf.KeystoneURL)
+	_ = os.Setenv("CIAO_ADMIN_CLIENT_CERT_FILE", conf.AuthAdminCertPath)
 }
 
 // OutputEnvironment prints the environment to be used to access cluster
 func OutputEnvironment(conf *ClusterConfiguration) {
 	fmt.Printf("Environment variables to access cluster:\n\n")
 
-	fmt.Printf("export CIAO_ADMIN_USERNAME=\"%s\"\n", conf.KeystoneAdminUser)
-	fmt.Printf("export CIAO_ADMIN_PASSWORD=\"%s\"\n", conf.KeystoneAdminPassword)
 	fmt.Printf("export CIAO_CONTROLLER=\"%s\"\n", hostnameWithFallback())
-	fmt.Printf("export CIAO_IDENTITY=\"%s\"\n", conf.KeystoneURL)
+	fmt.Printf("export CIAO_ADMIN_CLIENT_CERT_FILE=\"%s\"\n", conf.AuthAdminCertPath)
 }
 
 // SetupMaster configures this machine to be a master node of the cluster
 func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration) (errOut error) {
+	authCaCertPath, authCertPath, err := CreateAdminCert(ctx, force)
+	if err != nil {
+		return errors.Wrap(err, "Error creating authentication certs")
+	}
+	defer func() {
+		if errOut != nil {
+			_ = SudoRemoveFile(context.Background(), authCaCertPath)
+			_ = SudoRemoveFile(context.Background(), authCertPath)
+		}
+	}()
+
+	clusterConf.AuthCACertPath = authCaCertPath
+	clusterConf.AuthAdminCertPath = authCertPath
+
 	ciaoConfigPath, err := createConfigurationFile(ctx, clusterConf)
 	if err != nil {
 		return errors.Wrap(err, "Error creating cluster configuration file")
