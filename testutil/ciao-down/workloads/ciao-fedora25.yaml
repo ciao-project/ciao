@@ -99,14 +99,14 @@ runcmd:
  - {{endTaskCheck .}}
 
  - {{beginTask . "Downloading Go" }}
- - {{download . "https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz" "/tmp/go1.8.linux-amd64.tar.gz"}}
+ - {{download . "https://storage.googleapis.com/golang/go1.9.linux-amd64.tar.gz" "/tmp/go1.9.linux-amd64.tar.gz"}}
  - {{endTaskCheck .}}
  
  - {{beginTask . "Unpacking Go" }}
- - tar -C /usr/local -xzf /tmp/go1.8.linux-amd64.tar.gz
+ - tar -C /usr/local -xzf /tmp/go1.9.linux-amd64.tar.gz
  - {{endTaskCheck .}}
 
- - rm /tmp/go1.8.linux-amd64.tar.gz
+ - rm /tmp/go1.9.linux-amd64.tar.gz
 
  - {{beginTask . "Installing GCC"}}
  - dnf install -y gcc
