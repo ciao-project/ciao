@@ -52,16 +52,12 @@ configure:
     compute_ca: string [The HTTPS compute endpoint CA]
     compute_cert: string [The HTTPS compute endpoint private key]
     compute_fqdn: string [The HTTPS server fully qualified domain name, MUST match name for which compute_cert is valid]
-    identity_user: string [The identity (e.g. Keystone) user]
-    identity_password: string [The identity (e.g. Keystone) password]
+    client_auth_ca_cert_path: string [Path to CA to verify client certificates with]
   launcher:
     compute_net: list [The launcher compute network(s)]
     mgmt_net: list [The launcher management network(s)]
     disk_limit: bool
     mem_limit: bool
-  identity_service:
-    type: string [The identity service type, e.g. keystone]
-    url: string [The identity service URL]
 ```
 
 ## Configuration Examples
@@ -76,15 +72,11 @@ configure:
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
     compute_fqdn: compute.example.com
-    identity_user: controller
-    identity_password: ciao
   launcher:
     compute_net:
     - 192.168.0.0/16
     mgmt_net:
     - 192.168.0.0/16
-  identity_service:
-    url: http://keystone.example.com:35357
 ```
 
 ### Complete
@@ -100,8 +92,6 @@ configure:
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
     compute_fqdn: compute.example.com
-    identity_user: controller
-    identity_password: ciao
   launcher:
     compute_net:
     - 192.168.0.0/16
@@ -109,7 +99,4 @@ configure:
     - 192.168.0.0/16
     disk_limit: true
     mem_limit: true
-  identity_service:
-    type: keystone
-    url: http://keystone.example.com:35357
 ```

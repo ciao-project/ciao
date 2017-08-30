@@ -27,7 +27,7 @@ import (
 
 // we can have values set to default, except for
 //    scheduler { storage_uri }
-//    controller { compute_ca, compute_cert, identity_user, identity_password }
+//    controller { compute_ca, compute_cert }
 //    launcher { compute_net, mgmt_net }
 //    identity_service { url }
 //
@@ -41,8 +41,7 @@ func validMinConf(conf *payloads.Configure) bool {
 	return (conf.Configure.Scheduler.ConfigStorageURI != "" &&
 		conf.Configure.Controller.HTTPSCACert != "" &&
 		conf.Configure.Controller.HTTPSKey != "" &&
-		conf.Configure.Controller.ClientAuthCACertPath != "" ||
-		(conf.Configure.Controller.IdentityUser != "" && conf.Configure.Controller.IdentityPassword != "" && conf.Configure.IdentityService.URL != ""))
+		conf.Configure.Controller.ClientAuthCACertPath != "")
 }
 
 func discoverDriver(uriStr string) (storageType payloads.StorageType, err error) {

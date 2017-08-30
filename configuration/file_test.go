@@ -32,13 +32,9 @@ scheduler:
 controller:
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
-    identity_user: controller
-    identity_password: ciao
 launcher:
     compute_net: 192.168.1.110
     mgmt_net: 192.168.1.111
-identity_service:
-    url: http://keystone.example.com
 `
 
 func TestLoadFile(t *testing.T) {

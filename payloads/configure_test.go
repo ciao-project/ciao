@@ -34,10 +34,6 @@ func TestConfigureUnmarshal(t *testing.T) {
 		t.Error(err)
 	}
 
-	if cfg.Configure.IdentityService.Type != Keystone {
-		t.Errorf("Wrong identity service type [%s]", cfg.Configure.IdentityService.Type)
-	}
-
 	if libsnnet.EqualNetSlice(cfg.Configure.Launcher.ManagementNetwork, []string{testutil.MgmtNet}) == false {
 		t.Errorf("Wrong launcher management network %v", cfg.Configure.Launcher.ManagementNetwork)
 	}
@@ -54,9 +50,6 @@ func TestConfigureUnmarshal(t *testing.T) {
 func TestConfigureMarshal(t *testing.T) {
 	var cfg Configure
 
-	cfg.Configure.IdentityService.Type = Keystone
-	cfg.Configure.IdentityService.URL = testutil.KeystoneURL
-
 	cfg.Configure.Launcher.ComputeNetwork = []string{testutil.ComputeNet}
 	cfg.Configure.Launcher.ManagementNetwork = []string{testutil.MgmtNet}
 	cfg.Configure.Launcher.DiskLimit = false
@@ -66,8 +59,6 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Controller.CiaoPort = p
 	cfg.Configure.Controller.HTTPSCACert = testutil.HTTPSCACert
 	cfg.Configure.Controller.HTTPSKey = testutil.HTTPSKey
-	cfg.Configure.Controller.IdentityUser = testutil.IdentityUser
-	cfg.Configure.Controller.IdentityPassword = testutil.IdentityPassword
 
 	cfg.Configure.Storage.CephID = testutil.ManagementID
 
@@ -89,23 +80,6 @@ func TestConfigureStorageTypeString(t *testing.T) {
 		expected string
 	}{
 		{Filesystem, Filesystem.String()},
-	}
-	for _, test := range stringTests {
-		obj := test.s
-		out := obj.String()
-		if out != test.expected {
-			t.Errorf("expected \"%s\", got \"%s\"", test.expected, out)
-		}
-	}
-}
-
-func TestConfigureServiceTypeString(t *testing.T) {
-	var stringTests = []struct {
-		s        ServiceType
-		expected string
-	}{
-		{Glance, Glance.String()},
-		{Keystone, Keystone.String()},
 	}
 	for _, test := range stringTests {
 		obj := test.s
