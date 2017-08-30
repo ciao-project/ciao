@@ -1981,17 +1981,6 @@ func TestMain(m *testing.M) {
 	}
 	ctl.client = wrappedClient
 
-	testIdentityConfig := testutil.IdentityConfig{
-		ComputeURL: testutil.ComputeURL,
-		ProjectID:  testutil.ComputeUser,
-	}
-
-	id := testutil.StartIdentityServer(testIdentityConfig)
-
-	identityURL = id.URL
-	serviceUser = "test"
-	servicePassword = "iheartciao"
-
 	_, _ = addComputeTestTenant()
 
 	s, err := ctl.createCiaoServer()
@@ -2008,7 +1997,6 @@ func TestMain(m *testing.M) {
 	ctl.client.Disconnect()
 	ctl.ds.Exit()
 	ctl.qs.Shutdown()
-	id.Close()
 	server.Shutdown()
 	f.Close()
 	os.RemoveAll(dir)
