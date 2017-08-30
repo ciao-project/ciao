@@ -47,7 +47,6 @@ type controller struct {
 	client              controllerClient
 	ds                  *datastore.Datastore
 	is                  *ImageService
-	id                  *identity
 	apiURL              string
 	tenantReadiness     map[string]*tenantConfirmMemo
 	tenantReadinessLock sync.Mutex
@@ -58,9 +57,6 @@ type controller struct {
 var cert = flag.String("cert", "", "Client certificate")
 var caCert = flag.String("cacert", "", "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
-var identityURL = "identity:35357"
-var serviceUser = "csr"
-var servicePassword = ""
 var controllerAPIPort = api.Port
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
@@ -69,7 +65,7 @@ var persistentDatastoreLocation = flag.String("database_path", "/var/lib/ciao/da
 var imageDatastoreLocation = flag.String("image_database_path", "/var/lib/ciao/data/image/ciao-image.db", "path to image persistent database")
 var logDir = "/var/lib/ciao/logs/controller"
 
-var clientCertCAPath = ""
+var clientCertCAPath = "/etc/pki/ciao/auth-CA.pem"
 
 var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
 
@@ -148,9 +144,6 @@ func main() {
 	controllerAPIPort = clusterConfig.Configure.Controller.CiaoPort
 	httpsCAcert = clusterConfig.Configure.Controller.HTTPSCACert
 	httpsKey = clusterConfig.Configure.Controller.HTTPSKey
-	identityURL = clusterConfig.Configure.IdentityService.URL
-	serviceUser = clusterConfig.Configure.Controller.IdentityUser
-	servicePassword = clusterConfig.Configure.Controller.IdentityPassword
 	if *cephID == "" {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}

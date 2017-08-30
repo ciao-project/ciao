@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/api"
-	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/service"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -78,39 +77,11 @@ func (c *controller) createCiaoRoutes(r *mux.Router) error {
 
 	r = api.Routes(config, r)
 
-	// wrap each route in keystone validation.
-	validServices := []osIdentity.ValidService{
-		{ServiceType: "compute", ServiceName: "ciao"},
-		{ServiceType: "compute", ServiceName: "nova"},
-		{ServiceType: "image", ServiceName: "glance"},
-		{ServiceType: "image", ServiceName: "ciao"},
-		{ServiceType: "volume", ServiceName: "ciao"},
-		{ServiceType: "volumev2", ServiceName: "ciao"},
-		{ServiceType: "volume", ServiceName: "cinder"},
-		{ServiceType: "volumev2", ServiceName: "cinderv2"},
-	}
-
-	validAdmins := []osIdentity.ValidAdmin{
-		{Project: "service", Role: "admin"},
-		{Project: "admin", Role: "admin"},
-	}
-
 	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		if clientCertCAPath != "" {
-			h := &clientCertAuthHandler{
-				Next: route.GetHandler(),
-			}
-			route.Handler(h)
-		} else {
-			osHandler := osIdentity.Handler{
-				Client:        c.id.scV3,
-				Next:          route.GetHandler(),
-				ValidServices: validServices,
-				ValidAdmins:   validAdmins,
-			}
-
-			route.Handler(osHandler)
+		h := &clientCertAuthHandler{
+			Next: route.GetHandler(),
 		}
+		route.Handler(h)
 
 		return nil
 	})
@@ -128,35 +99,20 @@ func (c *controller) createCiaoServer() (*http.Server, error) {
 		Addr:    addr,
 	}
 
-	if clientCertCAPath != "" {
-		clientCertCAbytes, err := ioutil.ReadFile(clientCertCAPath)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error loading client cert CA")
-		}
-		certPool := x509.NewCertPool()
-		ok := certPool.AppendCertsFromPEM(clientCertCAbytes)
-		if !ok {
-			return nil, errors.New("Error importing client auth CA to poool")
-		}
-		tlsConfig := tls.Config{
-			ClientAuth: tls.RequireAndVerifyClientCert,
-			ClientCAs:  certPool,
-		}
-		server.TLSConfig = &tlsConfig
-	} else {
-		idConfig := identityConfig{
-			endpoint:        identityURL,
-			serviceUserName: serviceUser,
-			servicePassword: servicePassword,
-		}
-
-		var err error
-		c.id, err = newIdentityClient(idConfig)
-		if err != nil {
-			return nil, errors.Wrap(err, "Unable to authenticate to Keystone")
-		}
-
+	clientCertCAbytes, err := ioutil.ReadFile(clientCertCAPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error loading client cert CA")
 	}
+	certPool := x509.NewCertPool()
+	ok := certPool.AppendCertsFromPEM(clientCertCAbytes)
+	if !ok {
+		return nil, errors.New("Error importing client auth CA to poool")
+	}
+	tlsConfig := tls.Config{
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  certPool,
+	}
+	server.TLSConfig = &tlsConfig
 
 	if err := c.createComputeRoutes(r); err != nil {
 		return nil, errors.Wrap(err, "Error adding compute routes")
@@ -170,7 +126,7 @@ func (c *controller) createCiaoServer() (*http.Server, error) {
 		return nil, errors.Wrap(err, "Error adding volume routes")
 	}
 
-	err := c.createCiaoRoutes(r)
+	err = c.createCiaoRoutes(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error adding ciao routes")
 	}
