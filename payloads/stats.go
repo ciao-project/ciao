@@ -129,6 +129,11 @@ const (
 	// Running indicates an instance is running
 	Running = ComputeStatusRunning
 
+	// Stopping indicates that an instance has been issued a delete
+	// command, however, we are unalbe to ascertain whether the
+	// instance has been deleted yet.
+	Stopping = "stopping"
+
 	// Exited indicates that an instance has been successfully created but
 	// is not currently running, either because it failed to start or was
 	// explicitly stopped by a STOP command or perhaps by a CN reboot.

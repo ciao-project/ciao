@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
@@ -63,7 +64,7 @@ func isCNCIWorkload(workload *types.Workload) bool {
 }
 
 func newInstance(ctl *controller, tenantID string, workload *types.Workload,
-	volumes []storage.BlockDevice, name string) (*instance, error) {
+	volumes []storage.BlockDevice, name string, subnet string) (*instance, error) {
 	id := uuid.Generate()
 
 	if name != "" {
@@ -94,6 +95,11 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		MACAddress: config.mac,
 		CreateTime: time.Now(),
 		Name:       name,
+		StateLock:  &sync.RWMutex{},
+	}
+
+	if subnet != "" {
+		newInstance.Subnet = subnet
 	}
 
 	i := &instance{
@@ -111,15 +117,6 @@ func (i *instance) Add() error {
 	err = ds.AddInstance(&i.Instance)
 	if err != nil {
 		return errors.Wrapf(err, "Error creating instance in datastore")
-	}
-
-	if i.CNCI == true {
-		t, err := ds.GetTenant(i.TenantID)
-		if err != nil {
-			return errors.Wrap(err, "Error creating instance: unable to retrieve tenant")
-		}
-
-		t.CNCIID = i.ID
 	}
 
 	for _, volume := range i.newConfig.sc.Start.Storage {
@@ -179,6 +176,37 @@ func (i *instance) Allowed() (bool, error) {
 
 	// Cleanup on disallowed happens in Clean()
 	return res.Allowed(), nil
+}
+
+func transitionInstanceState(i *types.Instance, to string) error {
+	i.StateLock.Lock()
+	defer i.StateLock.Unlock()
+
+	switch to {
+	case payloads.Stopping:
+		if i.State != payloads.Running {
+			return errors.New("Stop operation not allowed")
+		}
+	case payloads.Running:
+		if i.State != payloads.Pending {
+			return errors.New("Set active without pending")
+		}
+	}
+
+	i.State = to
+
+	return nil
+}
+
+func instanceActive(i *types.Instance) bool {
+	i.StateLock.RLock()
+	defer i.StateLock.RUnlock()
+
+	if i.State == payloads.Running {
+		return true
+	}
+
+	return false
 }
 
 func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s types.StorageResource) (payloads.StorageResource, error) {
@@ -321,17 +349,17 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 		Mask: mask,
 	}
 	networking.Subnet = ipnet.String()
-	networking.ConcentratorUUID = tenant.CNCIID
 
-	i, err := ctl.ds.GetInstance(tenant.CNCIID)
+	cnciInstance, err := tenant.CNCIctrl.GetSubnetCNCI(networking.Subnet)
 	if err != nil {
 		return err
 	}
 
+	networking.ConcentratorUUID = cnciInstance.ID
+
 	// in theory we should refuse to go on if ip is null
 	// for now let's keep going
-	networking.ConcentratorIP = i.IPAddress
-
+	networking.ConcentratorIP = cnciInstance.IPAddress
 	return nil
 }
 
