@@ -460,7 +460,7 @@ func qmpDetach(cmd virtualizerDetachCmd, q *qemu.QMP) {
 		glog.Errorf("Failed to execute device_del: %v", err)
 	} else {
 		blockdevID := fmt.Sprintf("drive_%s", cmd.volumeUUID)
-		err = q.ExecuteXBlockdevDel(context.Background(), blockdevID)
+		err = q.ExecuteBlockdevDel(context.Background(), blockdevID)
 		if err != nil {
 			glog.Errorf("Failed to execute x-blockdev-del: %v", err)
 		}
