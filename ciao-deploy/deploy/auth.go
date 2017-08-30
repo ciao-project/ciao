@@ -22,6 +22,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -63,16 +64,15 @@ func createCertTemplate(username string, tenants []string) (*x509.Certificate, e
 	return &template, nil
 }
 
-// CreateAdminCert creates and installs the authentication certificates
-func CreateAdminCert(ctx context.Context) (_ string, _ string, errOut error) {
+func populateAdminCerts(certFile, caCertFile io.Writer) error {
 	template, err := createCertTemplate("admin", []string{"admin"})
 	if err != nil {
-		return "", "", errors.Wrap(err, "Error creating certificate template")
+		return errors.Wrap(err, "Error creating certificate template")
 	}
 
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to create private key")
+		return errors.Wrap(err, "Unable to create private key")
 	}
 
 	template.IsCA = true
@@ -80,7 +80,47 @@ func CreateAdminCert(ctx context.Context) (_ string, _ string, errOut error) {
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
 	if err != nil {
-		return "", "", errors.Wrap(err, "Error creating certificate")
+		return errors.Wrap(err, "Error creating certificate")
+	}
+
+	err = pem.Encode(caCertFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err != nil {
+		return errors.Wrap(err, "Unable to encode PEM block")
+	}
+
+	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err != nil {
+		return errors.Wrap(err, "Unable to encode PEM block")
+	}
+
+	err = pem.Encode(certFile,
+		&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(priv),
+		})
+	if err != nil {
+		return errors.Wrap(err, "Unable to encode PEM block")
+	}
+
+	return nil
+}
+
+// CreateAdminCert creates and installs the authentication certificates
+func CreateAdminCert(ctx context.Context, force bool) (_ string, _ string, errOut error) {
+	caCertPath := path.Join(ciaoPKIDir, "auth-CA.pem")
+	certPath := path.Join(ciaoPKIDir, "auth-admin.pem")
+
+	if !force {
+		if _, err := os.Stat(caCertPath); err == nil {
+			if _, err := os.Stat(certPath); err == nil {
+				fmt.Printf("Authentication certificates already installed. Skipping creation.")
+				return caCertPath, certPath, nil
+			} else if !os.IsNotExist(err) {
+				return "", "", errors.Wrap(err, "Error stat()ing cert file")
+			}
+		} else if !os.IsNotExist(err) {
+			return "", "", errors.Wrap(err, "Error stat()ing CA cert file")
+		}
 	}
 
 	caCertFile, err := ioutil.TempFile("", "auth-CA")
@@ -90,11 +130,6 @@ func CreateAdminCert(ctx context.Context) (_ string, _ string, errOut error) {
 	defer func() { _ = caCertFile.Close() }()
 	defer func() { _ = os.Remove(caCertFile.Name()) }()
 
-	err = pem.Encode(caCertFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to encode PEM block")
-	}
-
 	certFile, err := ioutil.TempFile("", "auth-admin")
 	if err != nil {
 		return "", "", errors.Wrap(err, "Error creating temporary file")
@@ -102,18 +137,9 @@ func CreateAdminCert(ctx context.Context) (_ string, _ string, errOut error) {
 	defer func() { _ = certFile.Close() }()
 	defer func() { _ = os.Remove(certFile.Name()) }()
 
-	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	err = populateAdminCerts(certFile, caCertFile)
 	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to encode PEM block")
-	}
-
-	err = pem.Encode(certFile,
-		&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(priv),
-		})
-	if err != nil {
-		return "", "", errors.Wrap(err, "Unable to encode PEM block")
+		return "", "", err
 	}
 
 	if err := SudoMakeDirectory(ctx, ciaoPKIDir); err != nil {
@@ -127,9 +153,6 @@ func CreateAdminCert(ctx context.Context) (_ string, _ string, errOut error) {
 	if err := os.Chmod(caCertFile.Name(), 0644); err != nil {
 		return "", "", errors.Wrap(err, "Error chmod()ing CA certificate")
 	}
-
-	caCertPath := path.Join(ciaoPKIDir, "auth-CA.pem")
-	certPath := path.Join(ciaoPKIDir, "auth-admin.pem")
 
 	if err := SudoCopyFile(ctx, certPath, certFile.Name()); err != nil {
 		return "", "", errors.Wrap(err, "Error copying admin auth certificate to system location")

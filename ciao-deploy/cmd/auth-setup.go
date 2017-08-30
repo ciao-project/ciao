@@ -22,11 +22,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func setupAuth() int {
+func setupAuth(force bool) int {
 	ctx, cancelFunc := getSignalContext()
 	defer cancelFunc()
 
-	caCertPath, certPath, err := deploy.CreateAdminCert(ctx)
+	caCertPath, certPath, err := deploy.CreateAdminCert(ctx, force)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating admin certificate: %v\n", err)
 		return 1
@@ -42,11 +42,11 @@ var authSetupCmd = &cobra.Command{
 	Short: "Create initial authentication certificates",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		os.Exit(setupAuth())
+		os.Exit(setupAuth(force))
 	},
 }
 
 func init() {
-
 	authCmd.AddCommand(authSetupCmd)
+	authSetupCmd.Flags().BoolVar(&force, "force", false, "Overwrite existing files which might break the cluster")
 }
