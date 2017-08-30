@@ -105,10 +105,6 @@ func infof(format string, args ...interface{}) {
 	}
 }
 
-func warningf(format string, args ...interface{}) {
-	glog.WarningDepth(1, fmt.Sprintf("ciao-cli WARNING: "+format, args...))
-}
-
 func errorf(format string, args ...interface{}) {
 	glog.ErrorDepth(1, fmt.Sprintf("ciao-cli ERROR: "+format, args...))
 }
@@ -118,23 +114,15 @@ func fatalf(format string, args ...interface{}) {
 }
 
 var (
-	identityURL      = flag.String("identity", "", "Keystone URL")
-	identityUser     = flag.String("username", "", "Openstack Service Username")
-	identityPassword = flag.String("password", "", "Openstack Service Password")
-	controllerURL    = flag.String("controller", "", "Controller URL")
-	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
-	tenantName       = flag.String("tenant-name", "", "Tenant name")
-	ciaoPort         = flag.Int("ciaoport", api.Port, "ciao API port")
-	caCertFile       = flag.String("ca-file", "", "CA Certificate")
-	clientCertFile   = flag.String("client-cert-file", "", "Path to certificate for authenticating with controller")
+	controllerURL  = flag.String("controller", "", "Controller URL")
+	tenantID       = flag.String("tenant-id", "", "Tenant UUID")
+	ciaoPort       = flag.Int("ciaoport", api.Port, "ciao API port")
+	caCertFile     = flag.String("ca-file", "", "CA Certificate")
+	clientCertFile = flag.String("client-cert-file", "", "Path to certificate for authenticating with controller")
 )
 
 const (
-	ciaoIdentityEnv       = "CIAO_IDENTITY"
 	ciaoControllerEnv     = "CIAO_CONTROLLER"
-	ciaoUsernameEnv       = "CIAO_USERNAME"
-	ciaoPasswordEnv       = "CIAO_PASSWORD"
-	ciaoTenantNameEnv     = "CIAO_TENANT_NAME"
 	ciaoCACertFileEnv     = "CIAO_CA_CERT_FILE"
 	ciaoClientCertFileEnv = "CIAO_CLIENT_CERT_FILE"
 )
@@ -202,10 +190,6 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		}
 
 		req.URL.RawQuery = v.Encode()
-	}
-
-	if token != "" {
-		req.Header.Add("X-Auth-Token", token)
 	}
 
 	if content != "" {
@@ -324,14 +308,8 @@ func getCiaoResource(name string, minVersion string) (string, error) {
 }
 
 func checkPrivilege() bool {
-	if clientCert != nil {
-		for i := range tenants {
-			if tenants[i] == "admin" {
-				return true
-			}
-		}
-	} else {
-		if *tenantName == "admin" {
+	for i := range tenants {
+		if tenants[i] == "admin" {
 			return true
 		}
 	}
@@ -348,41 +326,17 @@ func limitToString(limit int) string {
 }
 
 func getCiaoEnvVariables() {
-	identity := os.Getenv(ciaoIdentityEnv)
 	controller := os.Getenv(ciaoControllerEnv)
-	username := os.Getenv(ciaoUsernameEnv)
-	password := os.Getenv(ciaoPasswordEnv)
-	tenant := os.Getenv(ciaoTenantNameEnv)
 	ca := os.Getenv(ciaoCACertFileEnv)
 	clientCert := os.Getenv(ciaoClientCertFileEnv)
 
 	infof("Ciao environment variables:\n")
-	infof("\t%s:%s\n", ciaoIdentityEnv, identity)
 	infof("\t%s:%s\n", ciaoControllerEnv, controller)
-	infof("\t%s:%s\n", ciaoUsernameEnv, username)
-	infof("\t%s:%s\n", ciaoPasswordEnv, password)
-	infof("\t%s:%s\n", ciaoTenantNameEnv, tenantName)
 	infof("\t%s:%s\n", ciaoCACertFileEnv, ca)
 	infof("\t%s:%s\n", ciaoClientCertFileEnv, clientCert)
 
-	if identity != "" && *identityURL == "" {
-		*identityURL = identity
-	}
-
 	if controller != "" && *controllerURL == "" {
 		*controllerURL = controller
-	}
-
-	if username != "" && *identityUser == "" {
-		*identityUser = username
-	}
-
-	if password != "" && *identityPassword == "" {
-		*identityPassword = password
-	}
-
-	if tenant != "" && *tenantName == "" {
-		*tenantName = tenant
 	}
 
 	if ca != "" && *caCertFile == "" {
@@ -397,44 +351,15 @@ func getCiaoEnvVariables() {
 func checkCompulsoryOptions() {
 	fatal := ""
 
-	// If a client cert file is provided use that over keystone for authentication
 	if *clientCertFile == "" {
-		if *identityURL == "" {
-			fatal += "Missing required identity URL\n"
-		}
-
-		if *identityUser == "" {
-			fatal += "Missing required username\n"
-		}
-
-		if *identityPassword == "" {
-			fatal += "Missing required password\n"
-		}
-
-		if *controllerURL == "" {
-			fatal += "Missing required Ciao controller URL\n"
-		}
+		fatal += "Missing required client certificate file\n"
+	}
+	if *controllerURL == "" {
+		fatal += "Missing required Ciao controller URL\n"
 	}
 
 	if fatal != "" {
 		fatalf(fatal)
-	}
-}
-
-func prepareWithKeystone() {
-	var err error
-	/* If we're missing the tenant name let's try to fetch one */
-	if *tenantName == "" {
-		*tenantName, *tenantID, err = getTenant(*identityUser, *identityPassword, *tenantID)
-		if err != nil {
-			fatalf(err.Error())
-		}
-		warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
-	}
-
-	scopedToken, *tenantID, _, err = getScopedToken(*identityUser, *identityPassword, *tenantName)
-	if err != nil {
-		fatalf(err.Error())
 	}
 }
 
@@ -515,11 +440,8 @@ func prepareForCommand() {
 		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
-	if *clientCertFile != "" {
-		prepareWithClientCert()
-	} else {
-		prepareWithKeystone()
-	}
+	prepareWithClientCert()
+
 }
 
 func main() {
