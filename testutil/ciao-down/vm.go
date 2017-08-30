@@ -59,6 +59,7 @@ func bootVM(ctx context.Context, ws *workspace, in *VMSpec) error {
 		"-drive", fmt.Sprintf("file=%s,if=virtio,media=cdrom", isoPath),
 		"-daemonize", "-enable-kvm", "-cpu", "host",
 		"-net", "nic,model=virtio",
+		"-device", "virtio-rng-pci",
 	}
 
 	for i, m := range in.Mounts {
