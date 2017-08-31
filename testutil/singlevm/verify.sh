@@ -49,7 +49,7 @@ function rebootCNCI {
 	EOF
 
 	#Now wait for it to come back up
-	ping -w 90 -c 3 $ssh_ip
+	ping -w 120 -c 3 $ssh_ip
 	exitOnError $?  "Unable to ping CNCI after restart"
 
 	#Dump the tables for visual verification

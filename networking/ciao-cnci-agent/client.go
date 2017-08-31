@@ -19,6 +19,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -66,6 +67,8 @@ const (
 	lockFile      = "cnci-agent.lock"
 	interfacesDir = "/var/lib/ciao/network/interfaces"
 )
+
+var cnciRand io.Reader
 
 type cmdWrapper struct {
 	cmd interface{}
@@ -349,7 +352,7 @@ func connectToServer(db *cnciDatabase, doneCh chan struct{}, statusCh chan struc
 	}()
 
 	cfg := &ssntp.Config{UUID: agentUUID, URI: serverURL, CAcert: serverCertPath, Cert: clientCertPath,
-		Log: ssntp.Log}
+		Log: ssntp.Log, Rand: cnciRand}
 	client := &agentClient{db: db, cmdCh: make(chan *cmdWrapper)}
 
 	dialCh := make(chan error)
