@@ -163,10 +163,30 @@ func (client *ssntpClient) instanceStopped(payload []byte) {
 		glog.Warning("Error unmarshalling InstanceStopped: %v")
 		return
 	}
-	glog.Infof("Stopped instance %s", event.InstanceStopped.InstanceUUID)
-	err = client.ctl.ds.InstanceStopped(event.InstanceStopped.InstanceUUID)
+	instanceID := event.InstanceStopped.InstanceUUID
+	glog.Infof("Stopped instance %s", instanceID)
+
+	i, err := client.ctl.ds.GetInstance(instanceID)
+	if err != nil {
+		glog.Warningf("Error getting instance from datastore: %v", err)
+		return
+	}
+
+	err = client.ctl.ds.InstanceStopped(instanceID)
 	if err != nil {
 		glog.Warningf("Error stopping instance from datastore: %v", err)
+	}
+
+	if i.CNCI {
+		tenant, err := client.ctl.ds.GetTenant(i.TenantID)
+		if err != nil {
+			glog.Warningf("Error retrieving tenant %v", err)
+			return
+		}
+		err = tenant.CNCIctrl.CNCIStopped(i.ID)
+		if err != nil {
+			glog.Warningf("Error stopping CNCI: %v", err)
+		}
 	}
 }
 
@@ -552,16 +572,19 @@ func (client *ssntpClient) StopInstance(instanceID string, nodeID string) error 
 
 func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 	t *types.Tenant) error {
+	var cnci *types.Instance
 
 	err := client.ctl.ds.InstanceRestarting(i.ID)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to update instance state before restarting")
 	}
 
-	// get the CNCI for this instance
-	cnci, err := t.CNCIctrl.GetInstanceCNCI(i.ID)
-	if err != nil {
-		return err
+	if !i.CNCI {
+		// get the CNCI for this instance
+		cnci, err = t.CNCIctrl.GetInstanceCNCI(i.ID)
+		if err != nil {
+			return err
+		}
 	}
 
 	hostname := i.ID
@@ -574,6 +597,8 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		Hostname: hostname,
 	}
 
+	attachments := client.ctl.ds.GetStorageAttachments(i.ID)
+
 	restartCmd := payloads.StartCmd{
 		TenantUUID:          i.TenantID,
 		InstanceUUID:        i.ID,
@@ -582,26 +607,29 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		InstancePersistence: payloads.Host,
 		RequestedResources:  w.Defaults,
 		Networking: payloads.NetworkResources{
-			VnicMAC:          i.MACAddress,
-			VnicUUID:         i.VnicUUID,
-			ConcentratorUUID: cnci.ID,
-			ConcentratorIP:   cnci.IPAddress,
-			Subnet:           i.Subnet,
-			PrivateIP:        i.IPAddress,
+			VnicMAC:  i.MACAddress,
+			VnicUUID: i.VnicUUID,
 		},
-		Storage: make([]payloads.StorageResource, len(i.Attachments)),
+		Storage: make([]payloads.StorageResource, len(attachments)),
 		Restart: true,
+	}
+
+	if cnci != nil {
+		restartCmd.Networking.ConcentratorUUID = cnci.ID
+		restartCmd.Networking.ConcentratorIP = cnci.IPAddress
+		restartCmd.Networking.Subnet = i.Subnet
+		restartCmd.Networking.PrivateIP = i.IPAddress
 	}
 
 	if w.VMType == payloads.Docker {
 		restartCmd.DockerImage = w.ImageName
 	}
 
-	for k := range i.Attachments {
+	for k := range attachments {
 		vol := &restartCmd.Storage[k]
-		vol.ID = i.Attachments[k].BlockID
-		vol.Bootable = i.Attachments[k].Boot
-		vol.Ephemeral = i.Attachments[k].Ephemeral
+		vol.ID = attachments[k].BlockID
+		vol.Bootable = attachments[k].Boot
+		vol.Ephemeral = attachments[k].Ephemeral
 	}
 
 	payload := payloads.Start{

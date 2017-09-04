@@ -100,6 +100,8 @@ func waitForEventTimeout(ch chan event, e event, timeout time.Duration) error {
 }
 
 func (c *CNCI) transitionState(to CNCIState) {
+	glog.Infof("State transition to %s received for %s", to, c.instance.ID)
+
 	transitionInstanceState(c.instance, (string(to)))
 
 	// some state changes cause events
@@ -317,6 +319,23 @@ func (c *CNCIManager) CNCIRemoved(id string) error {
 	cnci.transitionState(exited)
 
 	delete(c.cncis, cnci.instance.ID)
+
+	return nil
+}
+
+// CNCIStopped will move the CNCI to the exited state
+// and send an event through the event channel.
+func (c *CNCIManager) CNCIStopped(id string) error {
+	c.cnciLock.Lock()
+	defer c.cnciLock.Unlock()
+
+	cnci, ok := c.cncis[id]
+	if !ok {
+		return errors.New("No CNCI found")
+	}
+
+	cnci.transitionState(exited)
+	c.ctrl.restartInstance(cnci.instance.ID)
 
 	return nil
 }

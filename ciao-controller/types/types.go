@@ -722,6 +722,7 @@ type QuotaListResponse struct {
 type CNCIController interface {
 	CNCIAdded(ID string) error
 	CNCIRemoved(ID string) error
+	CNCIStopped(id string) error
 	StartFailure(ID string) error
 	Active(ID string) bool
 	ScheduleRemoveSubnet(subnet int) error
