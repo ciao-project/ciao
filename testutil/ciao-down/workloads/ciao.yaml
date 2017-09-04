@@ -161,10 +161,6 @@ runcmd:
  - {{template "ENV" .}} docker pull ceph/demo
  - {{endTaskCheck .}}
 
- - {{beginTask . "Pulling clearlinux/keystone" }}
- - {{template "ENV" .}} docker pull clearlinux/keystone:stable
- - {{endTaskCheck .}}
-
  - mkdir -p /home/{{.User}}/local
 
  - {{beginTask . "Downloading Fedora-Cloud-Base-24-1.2.x86_64.qcow2"}}
