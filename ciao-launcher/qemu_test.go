@@ -36,7 +36,6 @@ func genQEMUParams(networkParams []string) []string {
 	baseParams = append(baseParams, networkParams...)
 	baseParams = append(baseParams, "-enable-kvm", "-cpu", "host", "-daemonize",
 		"-qmp", "unix:/var/lib/ciao/instance/1/socket,server,nowait")
-	baseParams = append(baseParams, "-device", "virtio-rng-pci")
 
 	return baseParams
 }

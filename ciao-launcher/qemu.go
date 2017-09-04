@@ -336,7 +336,6 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
 	qmpSocket := path.Join(instanceDir, "socket")
 	qmpParam := fmt.Sprintf("unix:%s,server,nowait", qmpSocket)
 	params = append(params, "-qmp", qmpParam)
-	params = append(params, "-device", "virtio-rng-pci")
 
 	if cfg.Mem > 0 {
 		memoryParam := fmt.Sprintf("%d", cfg.Mem)
@@ -350,7 +349,6 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
 	if !cfg.Legacy {
 		params = append(params, "-bios", qemuEfiFw)
 	}
-
 	return params
 }
 
