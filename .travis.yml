@@ -6,7 +6,7 @@ services:
 
 go:
     - 1.8
-    - go1.9beta2
+    - 1.9
     - tip
 
 env:
@@ -14,7 +14,6 @@ env:
 matrix:
   allow_failures:
   - go: tip
-  - go: go1.9beta2
 
 go_import_path: github.com/01org/ciao
 
