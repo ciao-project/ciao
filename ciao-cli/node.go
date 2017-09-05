@@ -112,6 +112,18 @@ func (cmd *nodeListCommand) run(args []string) error {
 	return nil
 }
 
+func dumpNode(node *types.CiaoNode) {
+	fmt.Printf("\tUUID: %s\n", node.ID)
+	fmt.Printf("\tStatus: %s\n", node.Status)
+	fmt.Printf("\tLoad: %d\n", node.Load)
+	fmt.Printf("\tAvailable/Total memory: %d/%d MB\n", node.MemAvailable, node.MemTotal)
+	fmt.Printf("\tAvailable/Total disk: %d/%d MB\n", node.DiskAvailable, node.DiskTotal)
+	fmt.Printf("\tTotal Instances: %d\n", node.TotalInstances)
+	fmt.Printf("\t\tRunning Instances: %d\n", node.TotalRunningInstances)
+	fmt.Printf("\t\tPending Instances: %d\n", node.TotalPendingInstances)
+	fmt.Printf("\t\tPaused Instances: %d\n", node.TotalPausedInstances)
+}
+
 func dumpNodes(headerText string, url string, t *template.Template) {
 	var nodes types.CiaoNodes
 
@@ -134,15 +146,7 @@ func dumpNodes(headerText string, url string, t *template.Template) {
 
 	for i, node := range nodes.Nodes {
 		fmt.Printf("%s %d\n", headerText, i+1)
-		fmt.Printf("\tUUID: %s\n", node.ID)
-		fmt.Printf("\tStatus: %s\n", node.Status)
-		fmt.Printf("\tLoad: %d\n", node.Load)
-		fmt.Printf("\tAvailable/Total memory: %d/%d MB\n", node.MemAvailable, node.MemTotal)
-		fmt.Printf("\tAvailable/Total disk: %d/%d MB\n", node.DiskAvailable, node.DiskTotal)
-		fmt.Printf("\tTotal Instances: %d\n", node.TotalInstances)
-		fmt.Printf("\t\tRunning Instances: %d\n", node.TotalRunningInstances)
-		fmt.Printf("\t\tPending Instances: %d\n", node.TotalPendingInstances)
-		fmt.Printf("\t\tPaused Instances: %d\n", node.TotalPausedInstances)
+		dumpNode(&node)
 	}
 }
 
@@ -285,8 +289,46 @@ func (cmd *nodeShowCommand) run(args []string) error {
 	if cmd.cnci {
 		return showCNCINode(cmd)
 	}
+	return showNode(cmd)
+}
 
-	cmd.usage()
+func showNode(cmd *nodeShowCommand) error {
+	if cmd.nodeID == "" {
+		fatalf("Missing required -node-id parameter")
+	}
+
+	url := buildComputeURL("nodes")
+
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	var nodes types.CiaoNodes
+	err = unmarshalHTTPResponse(resp, &nodes)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	var node *types.CiaoNode
+	for i := range nodes.Nodes {
+		if nodes.Nodes[i].ID == cmd.nodeID {
+			node = &nodes.Nodes[i]
+			break
+		}
+	}
+
+	if node == nil {
+		fatalf("Node not found: %s", cmd.nodeID)
+	}
+
+	if cmd.template != "" {
+		return templateutils.OutputToTemplate(os.Stdout, "node-show", cmd.template,
+			node, nil)
+	}
+
+	dumpNode(node)
+
 	return nil
 }
 
