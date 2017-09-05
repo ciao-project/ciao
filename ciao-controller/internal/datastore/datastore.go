@@ -299,11 +299,6 @@ func (ds *Datastore) Init(config Config) error {
 		}
 
 		ds.instanceVolumes[link] = key
-
-		instance := ds.instances[value.InstanceID]
-		if instance != nil {
-			instance.Attachments = append(instance.Attachments, value)
-		}
 	}
 
 	ds.attachLock = &sync.RWMutex{}

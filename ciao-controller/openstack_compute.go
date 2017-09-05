@@ -31,9 +31,9 @@ import (
 func instanceToServer(ctl *controller, instance *types.Instance) (compute.ServerDetails, error) {
 	var volumes []string
 
-	instance.Attachments = ctl.ds.GetStorageAttachments(instance.ID)
+	attachments := ctl.ds.GetStorageAttachments(instance.ID)
 
-	for _, vol := range instance.Attachments {
+	for _, vol := range attachments {
 		volumes = append(volumes, vol.BlockID)
 	}
 
