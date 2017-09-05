@@ -253,6 +253,7 @@ type BlockData struct {
 	CreateTime  time.Time  // when we created the volume
 	Name        string     // a human readable name for this volume
 	Description string     // some text to describe this volume.
+	Internal    bool       // whether this storage should be shown to the user
 }
 
 // StorageAttachment represents a link between a block device and
