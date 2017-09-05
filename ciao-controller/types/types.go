@@ -72,6 +72,9 @@ type StorageResource struct {
 
 	// Tag is a piece of abitrary search/sort identifier text
 	Tag string
+
+	// Internal indicates whether this storage should be shown to the user
+	Internal bool
 }
 
 // Workload contains resource and configuration information for a user

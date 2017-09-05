@@ -218,6 +218,7 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 		TenantID:    tenant,
 		Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
 		Description: s.Tag,
+		Internal:    s.Internal,
 	}
 
 	res := <-c.qs.Consume(tenant,

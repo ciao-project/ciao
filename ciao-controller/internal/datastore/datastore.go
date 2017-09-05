@@ -2370,6 +2370,7 @@ users:
 		Ephemeral:  false,
 		SourceType: types.ImageService,
 		SourceID:   "4e16e743-265a-4bf2-9fd1-57ada0b28904",
+		Internal:   true,
 	}
 
 	wl := types.Workload{
