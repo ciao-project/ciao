@@ -449,6 +449,12 @@ func (ds *sqliteDB) create(tableName string, record ...interface{}) error {
 		// enclose strings in quotes to not confuse sqlite
 		if v.Kind() == reflect.String {
 			newval = fmt.Sprintf("'%v'", val)
+		} else if v.Kind() == reflect.Bool {
+			if val.(bool) {
+				newval = "1"
+			} else {
+				newval = "0"
+			}
 		} else {
 			newval = fmt.Sprintf("%v", val)
 		}
