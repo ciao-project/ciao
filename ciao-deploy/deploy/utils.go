@@ -198,7 +198,7 @@ func GenerateCert(anchorCertPath string, role ssntp.Role) (path string, errOut e
 		}
 	}()
 
-	err = certs.CreateCert(t, false, anchorCertBytes, f)
+	err = certs.CreateCert(t, anchorCertBytes, f)
 	if err != nil {
 		_ = f.Close()
 		return "", errors.Wrap(err, "Error creating certificate from anchor")

@@ -17,8 +17,6 @@ Usage of ciao-cert:
         Installation directory (default ".")
   -dump string
         Print details about provided certificate
-  -elliptic-key
-        Use elliptic curve algorithms
   -email string
         Certificate email address (default "ciao-devel@lists.clearlinux.org")
   -host string

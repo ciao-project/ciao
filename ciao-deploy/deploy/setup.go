@@ -160,7 +160,7 @@ func createSchedulerCerts(ctx context.Context, force bool, serverIP string) (str
 		return "", "", errors.Wrap(err, "Error creating scheduler certificate template")
 	}
 
-	if err := certs.CreateAnchorCert(template, false, certFile, caCertFile); err != nil {
+	if err := certs.CreateAnchorCert(template, certFile, caCertFile); err != nil {
 		return "", "", errors.Wrap(err, "Error creating anchor certificate")
 	}
 
