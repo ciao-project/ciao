@@ -248,9 +248,11 @@ func (c *controller) deleteEphemeralStorage(instanceID string) error {
 		if err != nil {
 			return errors.Wrap(err, "Error deleting block device")
 		}
-		c.qs.Release(bd.TenantID,
-			payloads.RequestedResource{Type: payloads.Volume, Value: 1},
-			payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: bd.Size})
+		if !bd.Internal {
+			c.qs.Release(bd.TenantID,
+				payloads.RequestedResource{Type: payloads.Volume, Value: 1},
+				payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: bd.Size})
+		}
 	}
 	return nil
 }
