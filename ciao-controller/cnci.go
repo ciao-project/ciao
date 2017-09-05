@@ -367,11 +367,10 @@ func (c *CNCIManager) StartFailure(id string) error {
 		return errors.New("No CNCI found")
 	}
 
-	cnci.transitionState(failed)
+	delete(c.cncis, id)
+	delete(c.subnets, cnci.subnet)
 
-	// we should probably not do this, and instead we should
-	// delete from the map?
-	cnci.instance = nil
+	cnci.transitionState(failed)
 
 	return nil
 }
