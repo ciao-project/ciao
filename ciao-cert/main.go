@@ -46,7 +46,6 @@ var (
 	anchorCert   = flag.String("anchor-cert", "", "Trust anchor certificate for signing")
 	isAnchor     = flag.Bool("anchor", false, "Whether this cert should be the trust anchor")
 	verify       = flag.Bool("verify", false, "Verify certificate")
-	isElliptic   = flag.Bool("elliptic-key", false, "Use elliptic curve algorithms")
 	email        = flag.String("email", "ciao-devel@lists.clearlinux.org", "Certificate email address")
 	organization = flag.String("organization", "", "Certificates organization")
 	installDir   = flag.String("directory", ".", "Installation directory")
@@ -120,7 +119,7 @@ func createCertificates(role ssntp.Role) {
 		if err != nil {
 			log.Fatalf("Failed to open %s for writing: %s", certName, err)
 		}
-		err = certs.CreateAnchorCert(template, *isElliptic, certOut, CAcertOut)
+		err = certs.CreateAnchorCert(template, certOut, CAcertOut)
 		if err != nil {
 			log.Fatalf("Failed to create certificate: %v", err)
 		}
@@ -145,7 +144,7 @@ func createCertificates(role ssntp.Role) {
 			log.Fatalf("Failed to open %s for writing: %s", certName, err)
 		}
 
-		err = certs.CreateCert(template, *isElliptic, bytesCert, certOut)
+		err = certs.CreateCert(template, bytesCert, certOut)
 		if err != nil {
 			log.Fatalf("Failed to create certificate: %v", err)
 		}

@@ -565,7 +565,7 @@ func makeTestCert(role ssntp.Role) (err error) {
 				err = fmt.Errorf("Unable to close ca file: %v", err1)
 			}
 		}()
-		err = certs.CreateAnchorCert(template, true, writer, caWriter)
+		err = certs.CreateAnchorCert(template, writer, caWriter)
 		if err != nil {
 			return fmt.Errorf("Unable to populate cert file: %v", err)
 		}
@@ -580,7 +580,7 @@ func makeTestCert(role ssntp.Role) (err error) {
 		if err != nil {
 			return fmt.Errorf("Unable to read scheduler cert file: %v", err)
 		}
-		err = certs.CreateCert(template, true, anchorCert, writer)
+		err = certs.CreateCert(template, anchorCert, writer)
 		if err != nil {
 			return fmt.Errorf("Unable to populate cert file: %v", err)
 		}

@@ -27,7 +27,6 @@ package certs
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -108,11 +107,9 @@ func addOIDs(role ssntp.Role, oids []asn1.ObjectIdentifier) []asn1.ObjectIdentif
 	return oids
 }
 
-func generatePrivateKey(ell bool) (interface{}, error) {
-	if ell == false {
-		return rsa.GenerateKey(rand.Reader, 2048)
-	}
-	return ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+func generatePrivateKey() (interface{}, error) {
+	return rsa.GenerateKey(rand.Reader, 2048)
+
 }
 
 func addMgmtIPs(mgmtIPs []string, ips []net.IP) []net.IP {
@@ -169,8 +166,8 @@ func CreateCertTemplate(role ssntp.Role, organization string, email string, host
 }
 
 // CreateAnchorCert creates the trust anchor certificate and the CA certificate. Both are written out PEM encoded.
-func CreateAnchorCert(template *x509.Certificate, useElliptic bool, certOutput io.Writer, caCertOutput io.Writer) error {
-	priv, err := generatePrivateKey(useElliptic)
+func CreateAnchorCert(template *x509.Certificate, certOutput io.Writer, caCertOutput io.Writer) error {
+	priv, err := generatePrivateKey()
 	if err != nil {
 		return fmt.Errorf("Unable to create private key: %v", err)
 	}
@@ -208,8 +205,8 @@ func CreateAnchorCert(template *x509.Certificate, useElliptic bool, certOutput i
 }
 
 // CreateCert creates the certificate signed by the giver trust anchor certificate. It is written PEM encoded.
-func CreateCert(template *x509.Certificate, useElliptic bool, anchorCert []byte, certOutput io.Writer) error {
-	priv, err := generatePrivateKey(useElliptic)
+func CreateCert(template *x509.Certificate, anchorCert []byte, certOutput io.Writer) error {
+	priv, err := generatePrivateKey()
 	if err != nil {
 		return fmt.Errorf("Unable to create private key: %v", err)
 	}
@@ -345,7 +342,7 @@ func CreateCertFromCSR(role ssntp.Role, csr []byte, anchorCert []byte, certOutpu
 }
 
 // CreateCertificateRequest creates a certificate request template from the supplied details.
-func CreateCertificateRequest(useElliptic bool, organization string, email string, hosts []string, mgmtIPs []string) *x509.CertificateRequest {
+func CreateCertificateRequest(organization string, email string, hosts []string, mgmtIPs []string) *x509.CertificateRequest {
 	request := x509.CertificateRequest{
 		Subject: pkix.Name{
 			Organization: []string{organization},
@@ -358,17 +355,14 @@ func CreateCertificateRequest(useElliptic bool, organization string, email strin
 	request.IPAddresses = addMgmtIPs(mgmtIPs, request.IPAddresses)
 
 	request.SignatureAlgorithm = x509.SHA1WithRSA
-	if useElliptic {
-		request.SignatureAlgorithm = x509.ECDSAWithSHA1
-	}
 
 	return &request
 }
 
 // CreateCSR creates a CSR from the incoming template for a newly generated private key.
-func CreateCSR(template *x509.CertificateRequest, useElliptic bool, csrOutput io.Writer, privKeyOutput io.Writer) error {
+func CreateCSR(template *x509.CertificateRequest, csrOutput io.Writer, privKeyOutput io.Writer) error {
 	// Generate private key
-	priv, err := generatePrivateKey(useElliptic)
+	priv, err := generatePrivateKey()
 	if err != nil {
 		return errors.Wrap(err, "error generating private key")
 	}

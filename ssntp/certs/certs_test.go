@@ -18,7 +18,6 @@ package certs
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
@@ -33,7 +32,7 @@ import (
 )
 
 func TestGenerateKey(t *testing.T) {
-	key, err := generatePrivateKey(false)
+	key, err := generatePrivateKey()
 
 	_, ok := key.(*rsa.PrivateKey)
 	if !ok || err != nil {
@@ -45,23 +44,10 @@ func TestGenerateKey(t *testing.T) {
 	if !ok {
 		t.Error("RSA public key expected")
 	}
-
-	key, err = generatePrivateKey(true)
-	_, ok = key.(*ecdsa.PrivateKey)
-
-	if !ok || err != nil {
-		t.Errorf("ECDSA key expected from generatePrivateKey: %v", err)
-	}
-
-	pKey = publicKey(key)
-	_, ok = pKey.(*ecdsa.PublicKey)
-	if !ok {
-		t.Error("ECDSA public key expected")
-	}
 }
 
 func TestPemBlockParsing(t *testing.T) {
-	origKey, _ := generatePrivateKey(false)
+	origKey, _ := generatePrivateKey()
 
 	block, err := pemBlockForKey(origKey)
 
@@ -76,20 +62,6 @@ func TestPemBlockParsing(t *testing.T) {
 		t.Errorf("Expected RSA private key: %v", err)
 	}
 
-	origKey, _ = generatePrivateKey(true)
-
-	block, err = pemBlockForKey(origKey)
-
-	if block.Type != "EC PRIVATE KEY" || err != nil {
-		t.Errorf("Unexpected PEM block type: %v: err: %v", block.Type, err)
-	}
-
-	parsedKey, err = keyFromPemBlock(block)
-	_, ok = parsedKey.(*ecdsa.PrivateKey)
-
-	if !ok || err != nil {
-		t.Errorf("Expected ECDSA private key: %v", err)
-	}
 }
 
 func TestAddOIDs(t *testing.T) {
@@ -179,7 +151,7 @@ func TestCreateAnchorCert(t *testing.T) {
 		t.Errorf("Unexpected error when creating cert template: %v", err)
 	}
 
-	err = CreateAnchorCert(template, false, &certOutput, &caCertOutput)
+	err = CreateAnchorCert(template, &certOutput, &caCertOutput)
 	if err != nil {
 		t.Errorf("Unexpected error when creating anchor cert: %v", err)
 	}
@@ -237,12 +209,12 @@ func TestCreateCert(t *testing.T) {
 		t.Errorf("Unexpected error when creating cert template: %v", err)
 	}
 
-	err = CreateAnchorCert(template, false, &anchorCertOutput, &caCertOutput)
+	err = CreateAnchorCert(template, &anchorCertOutput, &caCertOutput)
 	if err != nil {
 		t.Errorf("Unexpected error when creating anchor cert: %v", err)
 	}
 
-	err = CreateCert(template, false, anchorCertOutput.Bytes(), &certOutput)
+	err = CreateCert(template, anchorCertOutput.Bytes(), &certOutput)
 	if err != nil {
 		t.Errorf("Unexpected error when creating signed cert: %v", err)
 	}
@@ -300,14 +272,14 @@ func TestCSRFlow(t *testing.T) {
 		t.Fatalf("Unexpected error when creating cert template: %v", err)
 	}
 
-	err = CreateAnchorCert(template, true, &anchorCertOutput, &caCertOutput)
+	err = CreateAnchorCert(template, &anchorCertOutput, &caCertOutput)
 	if err != nil {
 		t.Fatalf("Unexpected error when creating anchor cert: %v", err)
 	}
 
-	request := CreateCertificateRequest(true, "ACME Corp", "test@example.com", hosts, mgmtIPs)
+	request := CreateCertificateRequest("ACME Corp", "test@example.com", hosts, mgmtIPs)
 
-	err = CreateCSR(request, true, &csrOutput, &privKeyOutput)
+	err = CreateCSR(request, &csrOutput, &privKeyOutput)
 	if err != nil {
 		t.Fatalf("Unexpected error when creating CSR: %v", err)
 	}
