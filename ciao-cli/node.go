@@ -334,7 +334,7 @@ func showNode(cmd *nodeShowCommand) error {
 
 func showCNCINode(cmd *nodeShowCommand) error {
 	if cmd.nodeID == "" {
-		fatalf("Missing required -cnci-id parameter")
+		fatalf("Missing required -node-id parameter")
 	}
 
 	var cnci types.CiaoCNCI
