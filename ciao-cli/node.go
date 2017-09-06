@@ -1,4 +1,5 @@
 //
+
 // Copyright (c) 2016 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,18 +20,21 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"text/template"
 
+	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
 )
 
 var nodeCommand = &command{
 	SubCommands: map[string]subCommand{
-		"list":   new(nodeListCommand),
-		"status": new(nodeStatusCommand),
-		"show":   new(nodeShowCommand),
+		"list":     new(nodeListCommand),
+		"status":   new(nodeStatusCommand),
+		"show":     new(nodeShowCommand),
+		"evacuate": new(nodeEvacuateCommand),
 	},
 }
 
@@ -363,5 +367,57 @@ func showCNCINode(cmd *nodeShowCommand) error {
 	for _, subnet := range cnci.Subnets {
 		fmt.Printf("\t\t%s\n", subnet.Subnet)
 	}
+	return nil
+}
+
+func getCiaoNodeResource() (string, error) {
+	return getCiaoResource("node", api.NodeV1)
+}
+
+type nodeEvacuateCommand struct {
+	Flag   flag.FlagSet
+	nodeID string
+}
+
+func (cmd *nodeEvacuateCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] node evacuate
+
+Evacuate a node
+
+The evacuate flags are:
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *nodeEvacuateCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.nodeID, "node-id", "", "Node ID")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *nodeEvacuateCommand) run(args []string) error {
+	if !checkPrivilege() {
+		fatalf("The evacuation of nodes is restricted to admin users")
+	}
+
+	url, err := getCiaoNodeResource()
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	url = fmt.Sprintf("%s/%s", url, cmd.nodeID)
+
+	ver := api.NodeV1
+	resp, err := sendCiaoRequest("DELETE", url, nil, nil, ver)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		fatalf("Node evacuation failed: %s", resp.Status)
+	}
+
 	return nil
 }
