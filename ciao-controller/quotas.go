@@ -58,6 +58,9 @@ func populateQuotasFromDatastore(qs *quotas.Quotas, ds *datastore.Datastore) err
 		}
 		var size, count int
 		for _, bd := range bds {
+			if bd.Internal {
+				continue
+			}
 			size += bd.Size
 			count++
 		}

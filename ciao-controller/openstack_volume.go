@@ -319,6 +319,10 @@ func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
 	}
 
 	for _, bd := range data {
+		if bd.Internal {
+			continue
+		}
+
 		// TBD create links
 		vol := block.ListVolume{
 			ID: bd.ID,
@@ -344,6 +348,11 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 
 	for i := range devs {
 		data := &devs[i]
+
+		if data.Internal {
+			continue
+		}
+
 		var vol block.VolumeDetail
 
 		vol.ID = data.ID

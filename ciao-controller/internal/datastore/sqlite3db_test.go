@@ -155,6 +155,7 @@ func TestSQLiteDBGetAllBlockData(t *testing.T) {
 		State:       types.Available,
 		TenantID:    uuid.Generate().String(),
 		CreateTime:  time.Now(),
+		Internal:    true,
 	}
 
 	err = db.addBlockData(data)
@@ -170,6 +171,10 @@ func TestSQLiteDBGetAllBlockData(t *testing.T) {
 	_, ok := devices[data.ID]
 	if !ok {
 		t.Fatal(err)
+	}
+
+	if reflect.DeepEqual(devices[data.ID], data) {
+		t.Fatal("Retrieved block device does not match added")
 	}
 
 	db.disconnect()

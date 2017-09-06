@@ -145,6 +145,7 @@ func (d blockData) Init() error {
 		create_time DATETIME,
 		name string,
 		description string,
+		internal int,
 		foreign key(tenant_id) references tenants(id)
 		);`
 
@@ -449,6 +450,12 @@ func (ds *sqliteDB) create(tableName string, record ...interface{}) error {
 		// enclose strings in quotes to not confuse sqlite
 		if v.Kind() == reflect.String {
 			newval = fmt.Sprintf("'%v'", val)
+		} else if v.Kind() == reflect.Bool {
+			if val.(bool) {
+				newval = "1"
+			} else {
+				newval = "0"
+			}
 		} else {
 			newval = fmt.Sprintf("%v", val)
 		}
@@ -1756,7 +1763,8 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 				block_data.state,
 				block_data.create_time,
 				block_data.name,
-				block_data.description
+				block_data.description,
+				block_data.internal
 		  FROM	block_data
 		  WHERE block_data.tenant_id = ?`
 
@@ -1771,7 +1779,7 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 		var state string
 		var data types.BlockData
 
-		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime, &data.Name, &data.Description)
+		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime, &data.Name, &data.Description, &data.Internal)
 		if err != nil {
 			continue
 		}
@@ -1800,7 +1808,8 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 				block_data.state,
 				block_data.create_time,
 				block_data.name,
-				block_data.description
+				block_data.description,
+				block_data.internal
 		  FROM	block_data `
 
 	rows, err := datastore.Query(query)
@@ -1813,7 +1822,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 		var data types.BlockData
 		var state string
 
-		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime, &data.Name, &data.Description)
+		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime, &data.Name, &data.Description, &data.Internal)
 		if err != nil {
 			continue
 		}
@@ -1830,7 +1839,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 
 func (ds *sqliteDB) addBlockData(data types.BlockData) error {
 	ds.dbLock.Lock()
-	err := ds.create("block_data", data.ID, data.TenantID, data.Size, string(data.State), data.CreateTime.Format(time.RFC3339Nano), data.Name, data.Description)
+	err := ds.create("block_data", data.ID, data.TenantID, data.Size, string(data.State), data.CreateTime.Format(time.RFC3339Nano), data.Name, data.Description, data.Internal)
 	ds.dbLock.Unlock()
 
 	return err
