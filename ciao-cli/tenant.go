@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/templateutils"
+	"github.com/intel/tfortools"
 )
 
 var tenantCommand = &command{
@@ -65,12 +65,12 @@ no options:
 --resources:
 
 %s`,
-		templateutils.GenerateUsageUndecorated([]Project{}),
-		templateutils.GenerateUsageUndecorated(IdentityProjects{}.Projects),
-		templateutils.GenerateUsageUndecorated(types.CiaoTenantResources{}),
-		templateutils.GenerateUsageUndecorated(types.CiaoUsageHistory{}.Usages))
+		tfortools.GenerateUsageUndecorated([]Project{}),
+		tfortools.GenerateUsageUndecorated(IdentityProjects{}.Projects),
+		tfortools.GenerateUsageUndecorated(types.CiaoTenantResources{}),
+		tfortools.GenerateUsageUndecorated(types.CiaoUsageHistory{}.Usages))
 
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
+	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -88,7 +88,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 	var t *template.Template
 	if cmd.template != "" {
 		var err error
-		t, err = templateutils.CreateTemplate("tenant-list", cmd.template, nil)
+		t, err = tfortools.CreateTemplate("tenant-list", cmd.template, nil)
 		if err != nil {
 			fatalf(err.Error())
 		}

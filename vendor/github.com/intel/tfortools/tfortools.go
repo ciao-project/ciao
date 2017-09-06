@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-// Package templateutils provides a set of functions that are designed to
+// Package tfortools provides a set of functions that are designed to
 // make it easier for developers to add template based scripting to their
 // command line tools.
 //
@@ -59,14 +59,16 @@
 //
 // The functions head, sort, tables and col are provided by this package.
 //
-package templateutils
+package tfortools
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"text/template"
+	"unicode"
 )
 
 // BUG(markdryan): Map to slice
@@ -83,14 +85,19 @@ const (
 	helpFilterRegexpIndex
 	helpToJSONIndex
 	helpSelectIndex
+	helpSelectAltIndex
 	helpTableIndex
+	helpTableAltIndex
 	helpTableXIndex
+	helpTableXAltIndex
 	helpColsIndex
 	helpSortIndex
 	helpRowsIndex
 	helpHeadIndex
 	helpTailIndex
 	helpDescribeIndex
+	helpPromoteIndex
+	helpSliceofIndex
 	helpIndexCount
 )
 
@@ -101,7 +108,7 @@ type funcHelpInfo struct {
 
 // Config is used to specify which functions should be added Go's template
 // language.  It's not necessary to create a Config option.  Nil can be passed
-// to all templateutils functions that take a Context object indicating the
+// to all tfortools functions that take a Context object indicating the
 // default behaviour is desired.  However, if you wish to restrict the
 // number of functions added to Go's template language or you want to add your
 // own functions, you'll need to create a Config object.  This can be done
@@ -118,7 +125,7 @@ func (c *Config) Swap(i, j int)      { c.funcHelp[i], c.funcHelp[j] = c.funcHelp
 func (c *Config) Less(i, j int) bool { return c.funcHelp[i].index < c.funcHelp[j].index }
 
 // AddCustomFn adds a custom function to the template language understood by
-// templateutils.CreateTemplate and templateutils.OutputToTemplate.  The function
+// tfortools.CreateTemplate and tfortools.OutputToTemplate.  The function
 // implementation is provided by fn, its name, i.e., the name used to invoke the
 // function in a program, is provided by name and the help for the function is
 // provided by helpText.  An error will be returned if a function with the same
@@ -128,7 +135,9 @@ func (c *Config) AddCustomFn(fn interface{}, name, helpText string) error {
 		return fmt.Errorf("%s already exists", name)
 	}
 	c.funcMap[name] = fn
+	helpText = strings.TrimRightFunc(helpText, unicode.IsSpace)
 	if helpText != "" {
+		helpText = helpText + "\n"
 		c.funcHelp = append(c.funcHelp, funcHelpInfo{helpText, helpIndexCount})
 	}
 	return nil
@@ -311,6 +320,19 @@ func OptSelect(c *Config) {
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSelect, helpSelectIndex})
 }
 
+const helpSelectAlt = `- 'selectalt' Similar to select except that objects are formatted using %#v
+`
+
+// OptSelectAlt indicates that the 'selectalt' function should be enabled.
+// 'selectalt' Similar to select except that objects are formatted using %#v
+func OptSelectAlt(c *Config) {
+	if _, ok := c.funcMap["selectalt"]; ok {
+		return
+	}
+	c.funcMap["selectalt"] = selectFieldAlt
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSelectAlt, helpSelectAltIndex})
+}
+
 const helpTable = `- 'table' outputs a table given an array or a slice of structs.  The table
   headings are taken from the names of the structs fields.  Hidden fields and
   fields of type channel are ignored.  The tabwidth and minimum column width
@@ -332,6 +354,19 @@ func OptTable(c *Config) {
 	}
 	c.funcMap["table"] = table
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTable, helpTableIndex})
+}
+
+const helpTableAlt = `- 'tablealt' Similar to table except that objects are formatted using %#v
+`
+
+// OptTableAlt indicates that the 'tablealt' function should be enabled.
+// 'tablealt' Similar to table except that objects are formatted using %#v
+func OptTableAlt(c *Config) {
+	if _, ok := c.funcMap["tablealt"]; ok {
+		return
+	}
+	c.funcMap["tablealt"] = tableAlt
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTableAlt, helpTableAltIndex})
 }
 
 const helpTableX = `- 'tablex' is similar to table but it allows the caller more control over the
@@ -365,6 +400,19 @@ func OptTableX(c *Config) {
 	}
 	c.funcMap["tablex"] = tablex
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTableX, helpTableXIndex})
+}
+
+const helpTableXAlt = `- 'tablexalt' Similar to tablex except that objects are formatted using %#v
+`
+
+// OptTableXAlt indicates that the 'tablexalt' function should be enabled.
+// 'tablexalt' Similar to tablex except that objects are formatted using %#v
+func OptTableXAlt(c *Config) {
+	if _, ok := c.funcMap["tablexalt"]; ok {
+		return
+	}
+	c.funcMap["tablexalt"] = tablexAlt
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTableXAlt, helpTableXAltIndex})
 }
 
 const helpCols = `- 'cols' can be used to extract certain columns from a table consisting of a
@@ -542,19 +590,86 @@ func OptDescribe(c *Config) {
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpDescribe, helpDescribeIndex})
 }
 
+const helpPromote = `- 'promote' takes two arguments, a slice or an array of structures and a field
+  path.  It returns a new slice containing only the objects identified by the
+  field path.  The field path is a period separated list of structure field
+  names.  Promote can be useful to extract a set of objects deep within a data
+  structure into a new slice that can be passed to other functions, e.g., table.
+  For example, given the following type
+ 
+   []struct {
+      uninteresting int
+      user struct {
+          credentials struct {
+              name string
+              password string
+          }
+      }
+  }
+
+  {{promote . "user.credentials"}}
+
+  returns a slice of credentials one for each element of the original top level
+  slice.
+`
+
+// OptPromote indicates that the 'promote' function should be enabled.
+// 'promote' takes two arguments, a slice or an array of structures and a field
+// path.  It returns a new slice containing only the objects identified by the
+// field path.  The field path is a period separated list of structure field
+// names.  Promote can be useful to extract a set of objects deep within a data
+// structure into a new slice that can be passed to other functions, e.g., table.
+// For example, given the following type
+//
+//  []struct {
+//      uninteresting int
+//      user struct {
+//          credentials struct {
+//              name string
+//              password string
+//          }
+//      }
+//  }
+//
+//  {{promote . "user.credentials"}}
+//
+// returns a slice of credentials one for each element of the original top level
+// slice.
+func OptPromote(c *Config) {
+	if _, ok := c.funcMap["promote"]; ok {
+		return
+	}
+	c.funcMap["promote"] = promote
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpPromote, helpPromoteIndex})
+}
+
+const helpSliceof = `- 'sliceof' takes one argument and returns a new slice containing only that
+argument.
+`
+
+// OptSliceof indicates that the 'sliceof' function should be enabled.  'sliceof'
+// takes one argument and returns a new slice containing only that argument.
+func OptSliceof(c *Config) {
+	if _, ok := c.funcMap["sliceof"]; ok {
+		return
+	}
+	c.funcMap["sliceof"] = sliceof
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSliceof, helpSliceofIndex})
+}
+
 // NewConfig creates a new Config object that can be passed to other functions
 // in this package.  The Config option keeps track of which new functions are
 // added to Go's template libray.  If this function is called without arguments,
 // none of the functions defined in this package are enabled in the resulting Config
 // object.  To control which functions get added specify some options, e.g.,
 //
-//  ctx := templateutils.NewConfig(templateutils.OptHead, templateutils.OptTail)
+//  ctx := tfortools.NewConfig(tfortools.OptHead, tfortools.OptTail)
 //
 // creates a new Config object that enables the 'head' and 'tail' functions only.
 //
 // To add all the functions, use the OptAllFNs options, e.g.,
 //
-//    ctx := templateutils.NewConfig(templateutils.OptAllFNs)
+//    ctx := tfortools.NewConfig(tfortools.OptAllFNs)
 func NewConfig(options ...func(*Config)) *Config {
 	c := &Config{
 		funcMap: make(template.FuncMap),
@@ -570,7 +685,7 @@ func NewConfig(options ...func(*Config)) *Config {
 // TemplateFunctionHelp generates formatted documentation that describes the
 // additional functions that the Config object c adds to Go's templating language.
 // If c is nil, documentation is generated for all functions provided by
-// templateutils.
+// tfortools.
 func TemplateFunctionHelp(c *Config) string {
 	b := &bytes.Buffer{}
 	_, _ = b.WriteString("Some new functions have been added to Go's template language\n\n")
@@ -586,7 +701,7 @@ func TemplateFunctionHelp(c *Config) string {
 // the name parameter.  The results of the execution are output to w.
 // The functions enabled in the cfg parameter will be made available to the
 // template source code specified in tmplSrc.  If cfg is nil, all the
-// additional functions provided by templateutils will be enabled.
+// additional functions provided by tfortools will be enabled.
 func OutputToTemplate(w io.Writer, name, tmplSrc string, obj interface{}, cfg *Config) (err error) {
 	t, err := template.New(name).Funcs(getFuncMap(cfg)).Parse(tmplSrc)
 	if err != nil {
@@ -602,7 +717,7 @@ func OutputToTemplate(w io.Writer, name, tmplSrc string, obj interface{}, cfg *C
 // tmplSrc parameter and whose name is given by the name parameter. The functions
 // enabled in the cfg parameter will be made available to the template source code
 // specified in tmplSrc.  If cfg is nil, all the additional functions provided by
-// templateutils will be enabled.
+// tfortools will be enabled.
 func CreateTemplate(name, tmplSrc string, cfg *Config) (*template.Template, error) {
 	if tmplSrc == "" {
 		return nil, fmt.Errorf("template %s contains no source", name)

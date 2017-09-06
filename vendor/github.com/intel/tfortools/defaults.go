@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package templateutils
+package tfortools
 
 import "text/template"
 
@@ -27,14 +27,19 @@ var funcMap = template.FuncMap{
 	"filterRegexp":    filterByRegexp,
 	"tojson":          toJSON,
 	"select":          selectField,
+	"selectalt":       selectFieldAlt,
 	"table":           table,
+	"tablealt":        tableAlt,
 	"tablex":          tablex,
+	"tablexalt":       tablexAlt,
 	"cols":            cols,
 	"sort":            sortSlice,
 	"rows":            rows,
 	"head":            head,
 	"tail":            tail,
 	"describe":        describe,
+	"promote":         promote,
+	"sliceof":         sliceof,
 }
 
 var funcHelpSlice = []funcHelpInfo{
@@ -46,14 +51,19 @@ var funcHelpSlice = []funcHelpInfo{
 	{helpFilterRegexp, helpFilterRegexpIndex},
 	{helpToJSON, helpToJSONIndex},
 	{helpSelect, helpSelectIndex},
+	{helpSelectAlt, helpSelectAltIndex},
 	{helpTable, helpTableIndex},
+	{helpTableAlt, helpTableAltIndex},
 	{helpTableX, helpTableXIndex},
+	{helpTableXAlt, helpTableXAltIndex},
 	{helpCols, helpColsIndex},
 	{helpSort, helpSortIndex},
 	{helpRows, helpRowsIndex},
 	{helpHead, helpHeadIndex},
 	{helpTail, helpTailIndex},
 	{helpDescribe, helpDescribeIndex},
+	{helpPromote, helpPromoteIndex},
+	{helpSliceof, helpSliceofIndex},
 }
 
 func getFuncMap(cfg *Config) template.FuncMap {

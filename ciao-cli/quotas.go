@@ -29,7 +29,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/templateutils"
+	"github.com/intel/tfortools"
 )
 
 var quotasCommand = &command{
@@ -156,8 +156,8 @@ The list flags are:
 The template passed to the -f option operates on a 
 
 %s`,
-		templateutils.GenerateUsageUndecorated([]types.QuotaDetails{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
+		tfortools.GenerateUsageUndecorated([]types.QuotaDetails{}))
+	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 
 	os.Exit(2)
 }
@@ -210,7 +210,7 @@ func (cmd *quotasListCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "quotas-list", cmd.template,
+		return tfortools.OutputToTemplate(os.Stdout, "quotas-list", cmd.template,
 			results.Quotas, nil)
 	}
 

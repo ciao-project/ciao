@@ -1,4 +1,4 @@
-Package templateutils provides a set of functions that are designed to
+Package tfortools provides a set of functions that are designed to
 make it easier for developers to add template based scripting to their
 command line tools.
 
