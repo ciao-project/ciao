@@ -27,10 +27,10 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/01org/ciao/templateutils"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumetenants"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
+	"github.com/intel/tfortools"
 )
 
 type customVolume volumes.Volume
@@ -155,8 +155,8 @@ The template passed to the -f option operates on a
 As volumes are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of volumes.
-`, templateutils.GenerateUsageUndecorated([]volumes.Volume{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
+`, tfortools.GenerateUsageUndecorated([]volumes.Volume{}))
+	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -179,7 +179,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 	var t *template.Template
 	var err error
 	if cmd.template != "" {
-		t, err = templateutils.CreateTemplate("volume-list", cmd.template, nil)
+		t, err = tfortools.CreateTemplate("volume-list", cmd.template, nil)
 		if err != nil {
 			fatalf(err.Error())
 		}
@@ -238,7 +238,7 @@ Show information about a volume
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", volumes.Volume{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", volumes.Volume{}, nil))
 	os.Exit(2)
 }
 
@@ -281,7 +281,7 @@ func (cmd *volumeShowCommand) run(args []string) error {
 	volume.customVolume.UpdatedAt = volume.UpdatedAt
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "volume-show", cmd.template,
+		return tfortools.OutputToTemplate(os.Stdout, "volume-show", cmd.template,
 			&volume, nil)
 	}
 

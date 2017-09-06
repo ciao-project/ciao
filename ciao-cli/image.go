@@ -27,8 +27,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/01org/ciao/templateutils"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
+	"github.com/intel/tfortools"
 )
 
 var imageCommand = &command{
@@ -63,7 +63,7 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", images.Image{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", images.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -154,7 +154,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "image-add", cmd.template, image, nil)
+		return tfortools.OutputToTemplate(os.Stdout, "image-add", cmd.template, image, nil)
 	}
 
 	fmt.Printf("Created image:\n")
@@ -174,7 +174,7 @@ func (cmd *imageShowCommand) usage(...string) {
 Show images
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", images.Image{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", images.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -210,7 +210,7 @@ func (cmd *imageShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "image-show", cmd.template, i, nil)
+		return tfortools.OutputToTemplate(os.Stdout, "image-show", cmd.template, i, nil)
 	}
 
 	dumpImage(&i)
@@ -237,8 +237,8 @@ The template passed to the -f option operates on a
 As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
-`, templateutils.GenerateUsageUndecorated([]images.Image{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
+`, tfortools.GenerateUsageUndecorated([]images.Image{}))
+	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -253,7 +253,7 @@ func (cmd *imageListCommand) run(args []string) error {
 	var t *template.Template
 	var err error
 	if cmd.template != "" {
-		t, err = templateutils.CreateTemplate("image-list", cmd.template, nil)
+		t, err = tfortools.CreateTemplate("image-list", cmd.template, nil)
 		if err != nil {
 			fatalf(err.Error())
 		}

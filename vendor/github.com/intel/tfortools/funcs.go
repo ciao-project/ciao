@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package templateutils
+package tfortools
 
 import (
 	"bytes"
@@ -127,17 +127,25 @@ func (v *valueSorter) Len() int {
 	return v.val.Len()
 }
 
+func (v *valueSorter) index(i int) reflect.Value {
+	val := v.val.Index(i)
+	if val.Kind() == reflect.Ptr {
+		val = reflect.Indirect(val)
+	}
+	return val
+}
+
 func (v *valueSorter) Less(i, j int) bool {
-	iVal := v.val.Index(i)
-	jVal := v.val.Index(j)
+	iVal := v.index(i)
+	jVal := v.index(j)
 	return v.less(iVal.Field(v.field).Interface(), jVal.Field(v.field).Interface())
 }
 
 func (v *valueSorter) Swap(i, j int) {
-	iVal := v.val.Index(i).Interface()
-	jVal := v.val.Index(j).Interface()
-	v.val.Index(i).Set(reflect.ValueOf(jVal))
-	v.val.Index(j).Set(reflect.ValueOf(iVal))
+	iVal := v.index(i).Interface()
+	jVal := v.index(j).Interface()
+	v.index(i).Set(reflect.ValueOf(jVal))
+	v.index(j).Set(reflect.ValueOf(iVal))
 }
 
 func getValue(obj interface{}) reflect.Value {
@@ -159,6 +167,9 @@ func newValueSorter(obj interface{}, field string, ascending bool) *valueSorter 
 	val := reflect.ValueOf(obj)
 	typ := reflect.TypeOf(obj)
 	sTyp := typ.Elem()
+	if sTyp.Kind() == reflect.Ptr {
+		sTyp = sTyp.Elem()
+	}
 
 	var index int
 	var fTyp reflect.StructField
@@ -201,6 +212,21 @@ func findField(fieldPath []string, v reflect.Value) reflect.Value {
 		f = f.FieldByName(seg)
 		if f.Kind() == reflect.Ptr {
 			f = reflect.Indirect(f)
+		}
+	}
+	return f
+}
+
+func findFieldType(fnName string, fieldPath []string, t reflect.Type) reflect.Type {
+	f := t
+	for _, seg := range fieldPath {
+		sf, found := f.FieldByName(seg)
+		if !found {
+			fatalf(fnName, "Field %s not found", seg)
+		}
+		f = sf.Type
+		if f.Kind() == reflect.Ptr {
+			f = f.Elem()
 		}
 	}
 	return f
@@ -268,7 +294,7 @@ func filterByRegexp(obj interface{}, field, val string) interface{} {
 	})
 }
 
-func selectField(obj interface{}, field string) string {
+func selectFieldBase(obj interface{}, field, format string) string {
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -289,10 +315,18 @@ func selectField(obj interface{}, field string) string {
 
 		f := findField(fieldPath, v)
 
-		fmt.Fprintf(&b, "%v\n", f.Interface())
+		fmt.Fprintf(&b, format+"\n", f.Interface())
 	}
 
 	return string(b.Bytes())
+}
+
+func selectField(obj interface{}, field string) string {
+	return selectFieldBase(obj, field, "%v")
+}
+
+func selectFieldAlt(obj interface{}, field string) string {
+	return selectFieldBase(obj, field, "%#v")
 }
 
 func toJSON(obj interface{}) string {
@@ -307,11 +341,12 @@ func assertCollectionOfStructs(fnName string, v reflect.Value) {
 	typ := v.Type()
 	kind := typ.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		fatalf(fnName, "slice or an array of structs expected")
+		fatalf(fnName, "slice or an array of structs or pointers to structs expected")
 	}
 	styp := typ.Elem()
-	if styp.Kind() != reflect.Struct {
-		fatalf(fnName, "slice or an array of structs expected")
+	if !(styp.Kind() == reflect.Struct ||
+		(styp.Kind() == reflect.Ptr && styp.Elem().Kind() == reflect.Struct)) {
+		fatalf(fnName, "slice or an array of structs or pointers to structs expected")
 	}
 }
 
@@ -320,6 +355,9 @@ func getTableHeadings(fnName string, v reflect.Value) []tableHeading {
 
 	typ := v.Type()
 	styp := typ.Elem()
+	if styp.Kind() == reflect.Ptr {
+		styp = styp.Elem()
+	}
 
 	var headings []tableHeading
 	for i := 0; i < styp.NumField(); i++ {
@@ -336,7 +374,8 @@ func getTableHeadings(fnName string, v reflect.Value) []tableHeading {
 	return headings
 }
 
-func createTable(v reflect.Value, minWidth, tabWidth, padding int, headings []tableHeading) string {
+func createTable(v reflect.Value, minWidth, tabWidth, padding int,
+	format string, headings []tableHeading) string {
 	var b bytes.Buffer
 	w := tabwriter.NewWriter(&b, minWidth, tabWidth, padding, ' ', 0)
 	for _, h := range headings {
@@ -346,8 +385,11 @@ func createTable(v reflect.Value, minWidth, tabWidth, padding int, headings []ta
 
 	for i := 0; i < v.Len(); i++ {
 		el := v.Index(i)
+		if el.Kind() == reflect.Ptr {
+			el = el.Elem()
+		}
 		for _, h := range headings {
-			fmt.Fprintf(w, "%v\t", el.Field(h.index).Interface())
+			fmt.Fprintf(w, format+"\t", el.Field(h.index).Interface())
 		}
 		fmt.Fprintln(w)
 	}
@@ -358,10 +400,16 @@ func createTable(v reflect.Value, minWidth, tabWidth, padding int, headings []ta
 
 func table(obj interface{}) string {
 	val := getValue(obj)
-	return createTable(val, 8, 8, 1, getTableHeadings("table", val))
+	return createTable(val, 8, 8, 1, "%v", getTableHeadings("table", val))
 }
 
-func tablex(obj interface{}, minWidth, tabWidth, padding int, userHeadings ...string) string {
+func tableAlt(obj interface{}) string {
+	val := getValue(obj)
+	return createTable(val, 8, 8, 1, "%#v", getTableHeadings("table", val))
+}
+
+func tablexBase(obj interface{}, minWidth, tabWidth, padding int,
+	format string, userHeadings ...string) string {
 	val := getValue(obj)
 	headings := getTableHeadings("tablex", val)
 	if len(headings) < len(userHeadings) {
@@ -371,7 +419,15 @@ func tablex(obj interface{}, minWidth, tabWidth, padding int, userHeadings ...st
 	for i := range userHeadings {
 		headings[i].name = userHeadings[i]
 	}
-	return createTable(val, minWidth, tabWidth, padding, headings)
+	return createTable(val, minWidth, tabWidth, padding, format, headings)
+}
+
+func tablex(obj interface{}, minWidth, tabWidth, padding int, userHeadings ...string) string {
+	return tablexBase(obj, minWidth, tabWidth, padding, "%v", userHeadings...)
+}
+
+func tablexAlt(obj interface{}, minWidth, tabWidth, padding int, userHeadings ...string) string {
+	return tablexBase(obj, minWidth, tabWidth, padding, "%#v", userHeadings...)
 }
 
 func cols(obj interface{}, fields ...string) interface{} {
@@ -384,6 +440,9 @@ func cols(obj interface{}, fields ...string) interface{} {
 	var newFields []reflect.StructField
 	var indicies []int
 	styp := val.Type().Elem()
+	if styp.Kind() == reflect.Ptr {
+		styp = styp.Elem()
+	}
 	for i := 0; i < styp.NumField(); i++ {
 		field := styp.Field(i)
 		if field.PkgPath != "" || ignoreKind(field.Type.Kind()) {
@@ -412,6 +471,9 @@ func cols(obj interface{}, fields ...string) interface{} {
 	newVal := reflect.MakeSlice(reflect.SliceOf(newStyp), val.Len(), val.Len())
 	for i := 0; i < val.Len(); i++ {
 		sval := val.Index(i)
+		if sval.Kind() == reflect.Ptr {
+			sval = sval.Elem()
+		}
 		newSval := reflect.New(newStyp).Elem()
 		for j, origIndex := range indicies {
 			newSval.Field(j).Set(sval.Field(origIndex))
@@ -510,6 +572,50 @@ func tail(obj interface{}, count ...int) interface{} {
 	}
 
 	return copy.Interface()
+}
+
+func promote(obj interface{}, field string) interface{} {
+	defer func() {
+		err := recover()
+		if err != nil {
+			fatalf("promote", "Invalid use of promote: %v", err)
+		}
+	}()
+
+	if len(strings.TrimSpace(field)) == 0 {
+		fatalf("promote", "Empty field specifier given")
+	}
+
+	fieldPath := strings.Split(field, ".")
+
+	val := getValue(obj)
+	assertCollectionOfStructs("promote", val)
+
+	ftype := val.Type().Elem()
+	if ftype.Kind() == reflect.Ptr {
+		ftype = ftype.Elem()
+	}
+	ftype = findFieldType("promote", fieldPath, ftype)
+
+	rows := val.Len()
+	copy := reflect.MakeSlice(reflect.SliceOf(ftype), 0, rows)
+	for i := 0; i < rows; i++ {
+		el := val.Index(i)
+		if el.Kind() == reflect.Ptr {
+			el = reflect.Indirect(el)
+		}
+		el = findField(fieldPath, el)
+		copy = reflect.Append(copy, el)
+	}
+
+	return copy.Interface()
+}
+
+func sliceof(obj interface{}) interface{} {
+	val := reflect.ValueOf(obj)
+	sl := reflect.MakeSlice(reflect.SliceOf(val.Type()), 0, 1)
+	sl = reflect.Append(sl, val)
+	return sl.Interface()
 }
 
 func describe(obj interface{}) string {

@@ -23,7 +23,7 @@ import (
 	"text/template"
 
 	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/templateutils"
+	"github.com/intel/tfortools"
 )
 
 var nodeCommand = &command{
@@ -69,11 +69,11 @@ The template passed to the -f option operates on one of the following types:
 --all
 
 %s`,
-		templateutils.GenerateUsageUndecorated([]types.CiaoCNCI{}),
-		templateutils.GenerateUsageUndecorated([]types.CiaoNode{}),
-		templateutils.GenerateUsageUndecorated([]types.CiaoNode{}),
-		templateutils.GenerateUsageUndecorated([]types.CiaoNode{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
+		tfortools.GenerateUsageUndecorated([]types.CiaoCNCI{}),
+		tfortools.GenerateUsageUndecorated([]types.CiaoNode{}),
+		tfortools.GenerateUsageUndecorated([]types.CiaoNode{}),
+		tfortools.GenerateUsageUndecorated([]types.CiaoNode{}))
+	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -92,7 +92,7 @@ func (cmd *nodeListCommand) run(args []string) error {
 	var t *template.Template
 	if cmd.template != "" {
 		var err error
-		t, err = templateutils.CreateTemplate("node-list", cmd.template, nil)
+		t, err = tfortools.CreateTemplate("node-list", cmd.template, nil)
 		if err != nil {
 			fatalf(err.Error())
 		}
@@ -212,7 +212,7 @@ Show cluster status
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		templateutils.GenerateUsageDecorated("f", types.CiaoClusterStatus{}.Status, nil))
+		tfortools.GenerateUsageDecorated("f", types.CiaoClusterStatus{}.Status, nil))
 	os.Exit(2)
 }
 
@@ -238,7 +238,7 @@ func (cmd *nodeStatusCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "node-status", cmd.template,
+		return tfortools.OutputToTemplate(os.Stdout, "node-status", cmd.template,
 			&status.Status, nil)
 	}
 
@@ -271,8 +271,8 @@ The template passed to the -f option operates on one of the following types:
 
 --cnci
 
-%s`, templateutils.GenerateUsageUndecorated(types.CiaoCNCI{}))
-	fmt.Fprintln(os.Stderr, templateutils.TemplateFunctionHelp(nil))
+%s`, tfortools.GenerateUsageUndecorated(types.CiaoCNCI{}))
+	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
 
@@ -323,7 +323,7 @@ func showNode(cmd *nodeShowCommand) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "node-show", cmd.template,
+		return tfortools.OutputToTemplate(os.Stdout, "node-show", cmd.template,
 			node, nil)
 	}
 
@@ -352,7 +352,7 @@ func showCNCINode(cmd *nodeShowCommand) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "node-show", cmd.template,
+		return tfortools.OutputToTemplate(os.Stdout, "node-show", cmd.template,
 			&cnci, nil)
 	}
 

@@ -32,7 +32,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/01org/ciao/openstack/compute"
-	"github.com/01org/ciao/templateutils"
+	"github.com/intel/tfortools"
 )
 
 const (
@@ -396,7 +396,7 @@ The add flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	printVolumeFlagUsage()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -543,7 +543,7 @@ func (cmd *instanceAddCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "instance-add", cmd.template,
+		return tfortools.OutputToTemplate(os.Stdout, "instance-add", cmd.template,
 			&servers.Servers, nil)
 	}
 
@@ -731,7 +731,7 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -814,7 +814,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 	sort.Sort(byCreated(sortedServers))
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "instance-list", cmd.template,
+		return tfortools.OutputToTemplate(os.Stdout, "instance-list", cmd.template,
 			&sortedServers, nil)
 	}
 
@@ -861,7 +861,7 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", templateutils.GenerateUsageDecorated("f", compute.ServerDetails{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", compute.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -892,7 +892,7 @@ func (cmd *instanceShowCommand) run(args []string) error {
 	}
 
 	if cmd.template != "" {
-		return templateutils.OutputToTemplate(os.Stdout, "instance-show", cmd.template,
+		return tfortools.OutputToTemplate(os.Stdout, "instance-show", cmd.template,
 			&server.Server, nil)
 	}
 
