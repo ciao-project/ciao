@@ -423,6 +423,11 @@ func (cmd *instanceAddCommand) validateAddCommandArgs() {
 		cmd.usage()
 	}
 
+	if cmd.instances < 1 {
+		errorf("Invalid value for -instances: %d", cmd.instances)
+		cmd.usage()
+	}
+
 	if cmd.name != "" {
 		r := regexp.MustCompile("^[a-z0-9-]{1,64}?$")
 		if !r.MatchString(cmd.name) {
