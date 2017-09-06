@@ -140,10 +140,6 @@ runcmd:
  - dnf install -y redhat-rpm-config
  - {{endTaskCheck .}}
 
- - {{beginTask . "Installing Openstack client"}}
- - {{proxyVars .}} pip install python-openstackclient
- - {{endTaskCheck .}}
-
  - {{beginTask . "Building ciao" }}
  - sudo -u {{.User}} {{proxyVars .}} /usr/local/go/bin/go get github.com/01org/ciao/...
  - {{endTaskCheck .}}
