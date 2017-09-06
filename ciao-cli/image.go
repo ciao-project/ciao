@@ -136,7 +136,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	uploadTenantImage(*identityUser, *identityPassword, *tenantID, image.ID, cmd.file)
+	uploadTenantImage(*tenantID, image.ID, cmd.file)
 
 	url = buildImageURL("images/%s", image.ID)
 	resp, err = sendHTTPRequest("GET", url, nil, nil)
@@ -336,7 +336,7 @@ func (cmd *imageDeleteCommand) run(args []string) error {
 	return nil
 }
 
-func uploadTenantImage(username, password, tenant, image, filename string) error {
+func uploadTenantImage(tenant, image, filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		fatalf("Could not open %s [%s]", filename, err)

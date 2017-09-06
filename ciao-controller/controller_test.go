@@ -1981,25 +1981,6 @@ func TestMain(m *testing.M) {
 	}
 	ctl.client = wrappedClient
 
-	testIdentityConfig := testutil.IdentityConfig{
-		ComputeURL: testutil.ComputeURL,
-		ProjectID:  testutil.ComputeUser,
-	}
-
-	id := testutil.StartIdentityServer(testIdentityConfig)
-
-	idConfig := identityConfig{
-		endpoint:        id.URL,
-		serviceUserName: "test",
-		servicePassword: "iheartciao",
-	}
-
-	ctl.id, err = newIdentityClient(idConfig)
-	if err != nil {
-		fmt.Println(err)
-		// keep going anyway - any compute api tests will fail.
-	}
-
 	_, _ = addComputeTestTenant()
 
 	s, err := ctl.createCiaoServer()
@@ -2016,7 +1997,6 @@ func TestMain(m *testing.M) {
 	ctl.client.Disconnect()
 	ctl.ds.Exit()
 	ctl.qs.Shutdown()
-	id.Close()
 	server.Shutdown()
 	f.Close()
 	os.RemoveAll(dir)

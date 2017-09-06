@@ -54,12 +54,6 @@ const CNCIMAC = "CA:FE:C0:00:01:02"
 // SchedulerAddr is a test scheduler address
 const SchedulerAddr = "192.168.42.5"
 
-// KeystoneURL is a test Keystone identity server url
-const KeystoneURL = "http://keystone.example.com"
-
-// GlanceURL is a test Glance image server url
-const GlanceURL = "http://glance.example.com"
-
 // ComputeNet is a test compute network
 const ComputeNet = "192.168.1.110"
 
@@ -377,13 +371,12 @@ const ConfigureYaml = `configure:
     compute_fqdn: ""
     compute_ca: ` + HTTPSCACert + `
     compute_cert: ` + HTTPSKey + `
-    identity_user: ` + IdentityUser + `
-    identity_password: ` + IdentityPassword + `
     cnci_vcpus: 0
     cnci_mem: 0
     cnci_disk: 0
     admin_ssh_key: ""
     admin_password: ""
+    client_auth_ca_cert_path: ""
   launcher:
     compute_net:
     - ` + ComputeNet + `
@@ -391,9 +384,6 @@ const ConfigureYaml = `configure:
     - ` + MgmtNet + `
     disk_limit: false
     mem_limit: false
-  identity_service:
-    type: keystone
-    url: ` + KeystoneURL + `
 `
 
 // DeleteFailureYaml is a sample workload DeleteFailure ssntp.Error payload for test cases

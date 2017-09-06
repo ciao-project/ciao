@@ -23,24 +23,14 @@ The options are:
         CA Certificate
   -controller string
         Controller URL
-  -identity string
-        Keystone URL
   -log_backtrace_at value
         when logging hits line file:N, emit a stack trace (default :0)
   -log_dir string
         If non-empty, write log files in this directory
   -logtostderr
         log to standard error instead of files
-  -password string
-        Openstack Service Password
   -stderrthreshold value
         logs at or above this threshold go to stderr
-  -tenant-id string
-        Tenant UUID
-  -tenant-name string
-        Tenant name
-  -username string
-        Openstack Service Username
   -v value
         log level for V logs
   -vmodule value
@@ -69,10 +59,7 @@ ciao-cli first looks for Ciao specific environment variables to retrieve
 credentials and networking information:
 
 * `CIAO_CONTROLLER` exports the Ciao controller URL
-* `CIAO_IDENTITY` exports the Ciao keystone instance URL
-* `CIAO_USERNAME` exports the Ciao username
-* `CIAO_PASSWORD` export the Ciao password for `CIAO_USERNAME`
-* `CIAO_TENANT_NAME` export the Ciao tenant name for `CIAO_USERNAME`
+* `CIAO_CLIENT_CERT_FILE` provides the certificate to authenticate against the controller
 * `CIAO_CA_CERT_FILE` (optional) use the supplied certificate as the CA
 
 All those environment variables can be set through an rc file.
@@ -82,30 +69,27 @@ For example:
 $ cat ciao-cli-example.sh
 
 export CIAO_CONTROLLER=ciao-ctl.intel.com
-export CIAO_IDENTITY=https://ciao-identity.intel.com:35357
-export CIAO_USERNAME=user
-export CIAO_PASSWORD=ciaouser
-export CIAO_TENANT_NAME=admin
+export CIAO_CLIENT_CERT_FILE=$HOME/auth-testuser.pem
 ```
 
 Exporting those variables is not compulsory and they can be defined
 or overridden from the `ciao-cli` command line.
 
-## Keystone certificates
+## Controller certificate
 
-ciao-cli interacts with the CIAO keystone instance over HTTPS.  As such you
-will need to have the keystone CA certificate available in order to make
+ciao-cli interacts with the CIAO controller instance over HTTPS.  As such you
+will need to have the controller CA certificate available in order to make
 requests. You can either install the CA certificate system-wide:
 
 * On Fedora:
 ```shell
-sudo cp keystone_ca_cert.pem /etc/pki/ca-trust/source/anchors/
+sudo cp controller_ca_cert.pem /etc/pki/ca-trust/source/anchors/
 sudo update-ca-trust
 ```
 
 * On Ubuntu
 ```shell
-sudo cp keystone_ca_cert.pem /usr/local/share/ca-certificates/keystone.crt
+sudo cp controller_ca_cert.pem /usr/local/share/ca-certificates/controller.crt
 sudo update-ca-certificates
 ```
 
@@ -114,31 +98,30 @@ command line or with the `CIAO_CA_CERT_FILE` environment variable.
 
 ## Priviledged versus non priviledged CIAO users
 
-Administrators of a CIAO cluster are privileged users that are part of the
-`admin` or `service` projects. They are allowed to run each and every
-ciao-cli commands.
-Some ciao-cli commands are privileged and can only be run by administrators.
+ Administrators of a CIAO cluster are privileged users. They are allowed to run
+ each and every ciao-cli commands. Some ciao-cli commands are privileged and can
+ only be run by administrators.
 
 Non privileged commands can be run by all users. Administrators will have to specify
-a tenant/project UUID through the -tenant option in order to specify against which
+a tenant/project UUID through the -tenant-id option in order to specify against which
 CIAO tenant/project they're running the command:
 ```shell
-$GOBIN/ciao-cli -password ciao -username admin instance list -tenant 68a76514-5c8e-40a8-8c9e-0570a11d035b
+$GOBIN/ciao-cli -tenant-id 68a76514-5c8e-40a8-8c9e-0570a11d035b instance list 
 ```
 
-Non privileged users belonging to several tenants/projects will also have to specify
-a tenant/project UUID or name through either the -tenant-id or -tenant-name options
-in order to specify against which CIAO tenant/project they're running the command:
+ Non privileged users belonging to several tenants/projects will also have to
+ specify a tenant/project UUID through the -tenant-id option in order to specify
+ against which CIAO tenant/project they're running the command:
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser -tenant-name project1 instance list
+$GOBIN/ciao-cli -tenant-id 68a76514-5c8e-40a8-8c9e-0570a11d035b instance list
 ```
 
 Non privileged users belonging to only one single tenant/project do not need to
 pass the tenant/project UUID or name when running non privileged commands:
 
 ```shell
-$GOBIN/ciao-cli -username user -password ciaouser instance list
+$GOBIN/ciao-cli instance list
 ```
 
 
@@ -147,13 +130,8 @@ $GOBIN/ciao-cli -username user -password ciaouser instance list
 Let's assume we're running a Ciao cluster with the following settings:
 
 * The Ciao controller is running at `ciao-ctl.intel.com`
-* The Keystone server is running at `https://ciao-identity.intel.com:35357`
-* The `admin` user is part of the `admin` project
-* The admin password is `ciao`
-* The `user` user is part of only one project: `project1`
-* The password for `user` is `ciaouser`
-* `project1` UUID is `68a76514-5c8e-40a8-8c9e-0570a11d035b`
-*
+* The admin certificate is stored in `/etc/pki/ciao/auth-admin.pem`
+* A user certificate with access to one tenant is in `$HOME/auth-user.pem`
 
 This can be defined through the following Ciao rc file:
 
@@ -161,34 +139,31 @@ This can be defined through the following Ciao rc file:
 $ cat ciao-cli-example.sh
 
 export CIAO_CONTROLLER=ciao-ctl.intel.com
-export CIAO_IDENTITY=https://ciao-identity.intel.com:35357
-export CIAO_USERNAME=user
-export CIAO_PASSWORD=ciaouser
-export CIAO_TENANT_NAME=project1
+export CIAO_CLIENT_CERT_FILE=$HOME/auth-user.pem
 ```
 
 ### Cluster status (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao node status
+CIAO_CLIENT_CERT_FILE=/etc/pki/ciao/auth-admin.pem $GOBIN/ciao-cli ciao node status
 ```
 
 ### List all compute nodes (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao node list -compute
+CIAO_CLIENT_CERT_FILE=/etc/pki/ciao/auth-admin.pem $GOBIN/ciao-cli ciao node list -compute
 ```
 
 ### List all CNCIs (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao node list -cnci
+CIAO_CLIENT_CERT_FILE=/etc/pki/ciao/auth-admin.pem $GOBIN/ciao-cli ciao node list -cnci
 ```
 
 ### List all tenants/projects (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao tenant list -all
+CIAO_CLIENT_CERT_FILE=/etc/pki/ciao/auth-admin.pem $GOBIN/ciao-cli ciao tenant list -all
 ```
 
 ### List quotas
@@ -207,18 +182,6 @@ $GOBIN/ciao-cli tenant list -resources
 
 ```shell
 $GOBIN/ciao-cli instance list
-```
-
-### List at most the first 10 instances
-
-```shell
-$GOBIN/ciao-cli instance list -limit 10
-```
-
-### List at most the 20 instances starting from instance number 10
-
-```shell
-$GOBIN/ciao-cli instance list -limit 20 -offset 10
 ```
 
 ### List all workloads
@@ -272,19 +235,19 @@ $GOBIN/ciao-cli instance delete -all
 ### List all available trace labels (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao trace list
+CIAO_CLIENT_CERT_FILE=/etc/pki/ciao/auth-admin.pem $GOBIN/ciao-cli race list
 ```
 
 ### Dump and display trace data from a given trace label (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao trace show -label start_trace_20160415
+CIAO_CLIENT_CERT_FILE=/etc/pki/ciao/auth-admin.pem $GOBIN/ciao-cli ciao trace show -label start_trace_20160415
 ```
 
 ### List all cluster events (Privileged)
 
 ```shell
-$GOBIN/ciao-cli -username admin -password ciao event list -all
+CIAO_CLIENT_CERT_FILE=/etc/pki/ciao/auth-admin.pem $GOBIN/ciao-cli event list -all
 ```
 
 ### List all cluster events for a given tenant

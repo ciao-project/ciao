@@ -213,7 +213,7 @@ func TestRoutes(t *testing.T) {
 	var is testImageService
 	config := APIConfig{is}
 
-	r := Routes(config, nil, nil)
+	r := Routes(config, nil)
 	if r == nil {
 		t.Fatalf("No routes returned")
 	}
@@ -225,7 +225,7 @@ func TestAPIResponse(t *testing.T) {
 	// TBD: add context to test definition so it can be created per
 	// endpoint with either a pass testVolumeService or a failure
 	// one.
-	context := &Context{is, nil}
+	context := &Context{is}
 
 	for _, tt := range tests {
 		req, err := http.NewRequest(tt.method, tt.pattern, bytes.NewBuffer([]byte(tt.request)))

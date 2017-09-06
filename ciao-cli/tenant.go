@@ -27,6 +27,12 @@ import (
 	"github.com/intel/tfortools"
 )
 
+// Project represents a tenant UUID and friendly name.
+type Project struct {
+	ID   string `mapstructure:"id"`
+	Name string `mapstructure:"name"`
+}
+
 var tenantCommand = &command{
 	SubCommands: map[string]subCommand{
 		"list": new(tenantListCommand),
@@ -35,7 +41,6 @@ var tenantCommand = &command{
 
 type tenantListCommand struct {
 	Flag      flag.FlagSet
-	all       bool
 	quotas    bool
 	resources bool
 	template  string
@@ -56,9 +61,6 @@ The template passed to the -f option operates on the following structs:
 no options:
 
 %s
---all:
-
-%s
 --quotas:
 
 %s
@@ -66,7 +68,6 @@ no options:
 
 %s`,
 		tfortools.GenerateUsageUndecorated([]Project{}),
-		tfortools.GenerateUsageUndecorated(IdentityProjects{}.Projects),
 		tfortools.GenerateUsageUndecorated(types.CiaoTenantResources{}),
 		tfortools.GenerateUsageUndecorated(types.CiaoUsageHistory{}.Usages))
 
@@ -75,7 +76,6 @@ no options:
 }
 
 func (cmd *tenantListCommand) parseArgs(args []string) []string {
-	cmd.Flag.BoolVar(&cmd.all, "all", false, "List all tenants")
 	cmd.Flag.BoolVar(&cmd.quotas, "quotas", false, "List quotas status for a tenant")
 	cmd.Flag.BoolVar(&cmd.resources, "resources", false, "List consumed resources for a tenant for the past 15mn")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
@@ -94,9 +94,6 @@ func (cmd *tenantListCommand) run(args []string) error {
 		}
 	}
 
-	if cmd.all {
-		return listAllTenants(t)
-	}
 	if cmd.quotas {
 		return listTenantQuotas(t)
 	}
@@ -107,31 +104,10 @@ func (cmd *tenantListCommand) run(args []string) error {
 	return listUserTenants(t)
 }
 
-func listAllTenants(t *template.Template) error {
-	projects, err := getAllProjects(*identityUser, *identityPassword)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if t != nil {
-		if err := t.Execute(os.Stdout, &projects.Projects); err != nil {
-			fatalf(err.Error())
-		}
-		return nil
-	}
-
-	for i, project := range projects.Projects {
-		fmt.Printf("Tenant [%d]\n", i+1)
-		fmt.Printf("\tUUID: %s\n", project.ID)
-		fmt.Printf("\tName: %s\n", project.Name)
-	}
-	return nil
-}
-
 func listUserTenants(t *template.Template) error {
-	projects, err := getUserProjects(*identityUser, *identityPassword)
-	if err != nil {
-		fatalf(err.Error())
+	var projects []Project
+	for _, t := range tenants {
+		projects = append(projects, Project{ID: t})
 	}
 
 	if t != nil {
@@ -141,11 +117,12 @@ func listUserTenants(t *template.Template) error {
 		return nil
 	}
 
-	fmt.Printf("Projects for user %s\n", *identityUser)
+	fmt.Printf("Projects for user\n")
 	for _, project := range projects {
 		fmt.Printf("\tUUID: %s\n", project.ID)
 		fmt.Printf("\tName: %s\n", project.Name)
 	}
+
 	return nil
 }
 

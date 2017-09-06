@@ -95,14 +95,13 @@ func computeImageAddArgs(options *ImageOptions) []string {
 	return args
 }
 
-// AddImage uploads a new image to the ciao-image service.  The caller can
-// supply a number of pieces of meta data about the image via the options
-// parameter.  It is implemented by calling ciao-cli image add.
-// On success the function returns the entire meta data of the
-// newly updated image that includes the caller supplied meta data and the
-// meta data added by the image service.  An error will be returned
-// if the following environment variables are not set; CIAO_IDENTITY,
-// CIAO_CONTROLLER, CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+// AddImage uploads a new image to the ciao-image service. The caller can supply
+// a number of pieces of meta data about the image via the options parameter. It
+// is implemented by calling ciao-cli image add. On success the function returns
+// the entire meta data of the newly updated image that includes the caller
+// supplied meta data and the meta data added by the image service. An error
+// will be returned if the following environment variables are not set;
+// CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (*Image, error) {
 	var img *Image
 	args := []string{"image", "add", "-f", "{{tojson .}}", "-file", path}
@@ -115,14 +114,13 @@ func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (
 	return img, nil
 }
 
-// AddRandomImage uploads a new image of the desired size using random data.
-// The caller can supply a number of pieces of meta data about the image via
-// the options parameter.  It is implemented by calling ciao-cli image add.  On
+// AddRandomImage uploads a new image of the desired size using random data. The
+// caller can supply a number of pieces of meta data about the image via the
+// options parameter. It is implemented by calling ciao-cli image add. On
 // success the function returns the entire meta data of the newly updated image
 // that includes the caller supplied meta data and the meta data added by the
-// image service.  An error will be returned if the following environment
-// variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_ADMIN_USERNAME,
-// CIAO_ADMIN_PASSWORD.
+// image service. An error will be returned if the following environment
+// variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func AddRandomImage(ctx context.Context, tenant string, size int, options *ImageOptions) (*Image, error) {
 	path, err := CreateRandomFile(size)
 	if err != nil {
@@ -132,20 +130,20 @@ func AddRandomImage(ctx context.Context, tenant string, size int, options *Image
 	return AddImage(ctx, tenant, path, options)
 }
 
-// DeleteImage deletes an image from the image service.  It is implemented
-// by calling ciao-cli image delete.  An error will be returned if the following
-// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+// DeleteImage deletes an image from the image service. It is implemented by
+// calling ciao-cli image delete. An error will be returned if the following
+// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func DeleteImage(ctx context.Context, tenant, ID string) error {
 	args := []string{"image", "delete", "-image", ID}
 	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
 	return err
 }
 
-// GetImage retrieves the meta data for a given image.  It is implemented by
-// calling ciao-cli image show.  An error will be returned if the following
-// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+// GetImage retrieves the meta data for a given image. It is implemented by
+// calling ciao-cli image show. An error will be returned if the following
+// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func GetImage(ctx context.Context, tenant, ID string) (*Image, error) {
 	var img *Image
 	args := []string{"image", "show", "-image", ID, "-f", "{{tojson .}}"}
@@ -158,10 +156,10 @@ func GetImage(ctx context.Context, tenant, ID string) (*Image, error) {
 	return img, nil
 }
 
-// GetImages retrieves the meta data for all images.  It is implemented by
-// calling ciao-cli image list.  An error will be returned if the following
-// environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+// GetImages retrieves the meta data for all images. It is implemented by
+// calling ciao-cli image list. An error will be returned if the following
+// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func GetImages(ctx context.Context, tenant string) (map[string]*Image, error) {
 	var images map[string]*Image
 	template := `
@@ -181,11 +179,9 @@ func GetImages(ctx context.Context, tenant string) (map[string]*Image, error) {
 	return images, nil
 }
 
-// GetImageCount returns the number of images currently stored in the
-// image service.  It is implemented by calling ciao-cli image list.
-// An error will be returned if the following environment variables are
-// not set; CIAO_IDENTITY, CIAO_CONTROLLER, CIAO_ADMIN_USERNAME,
-// CIAO_ADMIN_PASSWORD.
+// GetImageCount returns the number of images currently stored in the image
+// service. An error will be returned if the following environment variables are
+// not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetImageCount(ctx context.Context, tenant string) (int, error) {
 	args := []string{"image", "list", "-f", "{{len .}}"}
 
@@ -197,10 +193,10 @@ func GetImageCount(ctx context.Context, tenant string) (int, error) {
 	return strconv.Atoi(string(data))
 }
 
-// UploadImage overrides the contents of an existing image with a new file.  It is
-// implemented by calling ciao-cli image upload.  An error will be returned if the
-// following environment variables are not set; CIAO_IDENTITY, CIAO_CONTROLLER,
-// CIAO_ADMIN_USERNAME, CIAO_ADMIN_PASSWORD.
+// UploadImage overrides the contents of an existing image with a new file. It
+// is implemented by calling ciao-cli image upload. An error will be returned if
+// the following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func UploadImage(ctx context.Context, tenant, ID, path string) error {
 	args := []string{"image", "upload", "-image", ID, "-file", path}
 	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)

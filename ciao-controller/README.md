@@ -19,12 +19,10 @@ client which generates commands sent to
 and receives node and workload statistics from
 [ciao-launcher](https://github.com/01org/ciao/tree/master/ciao-launcher).
 
-Controller integrates with Keystone to allow isolation both between
-tenants of a cloud and the administrators of that cloud.  Users within
-distinct tenants are also isolated from each other.  Tenant users can
-access usage statistics for their tenant workloads and issue commands
-to manage their workloads.  Admin users can access usage statistics for
-the overall cloud infrastructure and issue commands to manage it.
+Users within distinct tenants are also isolated from each other.  Tenant users
+can access usage statistics for their tenant workloads and issue commands to
+manage their workloads.  Admin users can access usage statistics for the
+overall cloud infrastructure and issue commands to manage it.
 
 When a first workload is launched for a tenant,
 ciao-controller automatically prepares a [CNCI
@@ -35,40 +33,16 @@ network and not any other tenant networks.  New workload instances within
 the tenant are automatically assigned network connectivity within that
 tenant's private network.
 
-Ciao-controller currently has early, developer oriented workload definition
-files and a cloud-init template which demonstrate launching virtual
-machines and docker workloads (see \*.csv and \*.yaml).
-
-
 Running Controller
 ------------------
 
 Controller has many configuration options and depends on connectivity
-to a keystone server as well as ciao network node, ciao-scheduler, and
+to ciao network nodes, ciao-scheduler, and
 ciao compute nodes configured for ciao-launcher.
 
 The key ciao-controller configuration options describe your keys (-cacert,
--cert, -httpscert, -httpskey), your keystone connection information
-(-identity, -username, -password), and the location of your ciao-scheduler
-SSNTP server (-url).
-
-### Keystone Configuration
-
-For demonstration purposes, your keystone server needs a the following
-minimal configuration for controller:
-
-```shell
-$ openstack service create --name ciao compute
-$ openstack user create --password hello csr
-$ openstack role add --project service --user csr admin
-$ openstack user create --password giveciaoatry demo
-$ openstack role add --project demo --user demo user
-```
-
-This adds a ciao compute service, a keystone user and project for the
-controller (aka csr) node, and a demo user with the password
-"giveciaoatry".
-
+-cert, -httpscert, -httpskey) and the location of your ciao-scheduler SSNTP
+server (-url).
 
 ### Certificates
 
@@ -133,14 +107,3 @@ Usage of ciao-controller/ciao-controller:
 sudo ./ciao-controller --cacert=/etc/pki/ciao/CAcert-ciao-ctl.intel.com.pem --cert=/etc/pki/ciao/cert-Controller-localhost.pem --url ciao.ctl.intel.com
 ```
 
-# OpenStack Compatibility
-
-In order to gain compatibility with common projects/tools as OpenStack Client, Rally Benchmarking and others you need to create the compute service and its corresponding endpoint for keystone. Run the following commands according to your environment as follows:
-
-```
-$ source <your-openrc>
-$ openstack service create --name ciao --description "CIAO compute" compute
-$ openstack endpoint create  compute --region RegionOne public https://<controller>:8774/v2.1/%\(tenant_id\)s
-$ openstack endpoint create  compute --region RegionOne admin https://<controller>:8774/v2.1/%\(tenant_id\)s
-$ openstack endpoint create  compute --region RegionOne internal https://<controller>:8774/v2.1/%\(tenant_id\)s
-```

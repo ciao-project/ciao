@@ -104,10 +104,9 @@ function restoreIPTables {
 
 function clearAllEvents() {
 	#Clear out all prior events. Currently this is an admin only operation.
-	ciao_user=$CIAO_USERNAME
-	ciao_passwd=$CIAO_PASSWORD
-	export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
-	export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
+
+	ciao_client_cert_file=$CIAO_CLIENT_CERT_FILE
+	export CIAO_CLIENT_CERT_FILE=$CIAO_ADMIN_CLIENT_CERT_FILE
 
 	"$ciao_gobin"/ciao-cli event delete
 
@@ -127,8 +126,7 @@ function clearAllEvents() {
 		sleep 1
 	done
 
-	export CIAO_USERNAME=$ciao_user
-	export CIAO_PASSWORD=$ciao_passwd
+	export CIAO_CLIENT_CERT_FILE=$ciao_client_cert_file
 
 	exitOnError $ciao_events "ciao events not deleted properly"
 }
@@ -182,26 +180,24 @@ function createExternalIPPool() {
 	# are set accordingly. Since user admin might belong to more than one
 	# tenant, make sure to specify that we are logging in as part of the
 	# "admin" tenant/project.
-	ciao_user=$CIAO_USERNAME
-	ciao_passwd=$CIAO_PASSWORD
-	export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
-	export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
-	"$ciao_gobin"/ciao-cli -tenant-name admin pool create -name test
-	"$ciao_gobin"/ciao-cli -tenant-name admin pool add -subnet 203.0.113.0/24 -name test
-	export CIAO_USERNAME=$ciao_user
-	export CIAO_PASSWORD=$ciao_passwd
+	ciao_client_cert_file=$CIAO_CLIENT_CERT_FILE
+	export CIAO_CLIENT_CERT_FILE=$CIAO_ADMIN_CLIENT_CERT_FILE
+	
+	"$ciao_gobin"/ciao-cli pool create -name test
+	"$ciao_gobin"/ciao-cli pool add -subnet 203.0.113.0/24 -name test
+	
+	export CIAO_CLIENT_CERT_FILE=$ciao_client_cert_file
 }
 
 function deleteExternalIPPool() {
 	#Cleanup the pool
-	export CIAO_USERNAME=$CIAO_ADMIN_USERNAME
-	export CIAO_PASSWORD=$CIAO_ADMIN_PASSWORD
+	ciao_client_cert_file=$CIAO_CLIENT_CERT_FILE
+	export CIAO_CLIENT_CERT_FILE=$CIAO_ADMIN_CLIENT_CERT_FILE
 
-	"$ciao_gobin"/ciao-cli -tenant-name admin pool delete -name test
+	"$ciao_gobin"/ciao-cli pool delete -name test
 	exitOnError $?  "Unable to delete pool"
 
-	export CIAO_USERNAME=$ciao_user
-	export CIAO_PASSWORD=$ciao_passwd
+	export CIAO_CLIENT_CERT_FILE=$ciao_client_cert_file
 }
 
 # Read cluster env variables

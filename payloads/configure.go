@@ -16,37 +16,14 @@
 
 package payloads
 
-// ServiceType is used to define OpenStack service types, like e.g. the image
-// or identity ones.
-type ServiceType string
-
 // StorageType is used to define the configuration backend storage type.
 type StorageType string
-
-const (
-	// Glance is used to define the imaging service.
-	Glance ServiceType = "glance"
-
-	// Keystone is used to define the identity service.
-	Keystone ServiceType = "keystone"
-)
 
 const (
 	// Filesystem defines the local filesystem backend storage type for the
 	// configuration data.
 	Filesystem StorageType = "file"
 )
-
-func (s ServiceType) String() string {
-	switch s {
-	case Glance:
-		return "glance"
-	case Keystone:
-		return "keystone"
-	}
-
-	return ""
-}
 
 func (s StorageType) String() string {
 	switch s {
@@ -66,17 +43,16 @@ type ConfigureScheduler struct {
 // ConfigureController contains the unmarshalled configurations for the
 // controller service.
 type ConfigureController struct {
-	CiaoPort         int    `yaml:"ciao_port"`
-	ControllerFQDN   string `yaml:"compute_fqdn"`
-	HTTPSCACert      string `yaml:"compute_ca"`
-	HTTPSKey         string `yaml:"compute_cert"`
-	IdentityUser     string `yaml:"identity_user"`
-	IdentityPassword string `yaml:"identity_password"`
-	CNCIVcpus        int    `yaml:"cnci_vcpus"`
-	CNCIMem          int    `yaml:"cnci_mem"`
-	CNCIDisk         int    `yaml:"cnci_disk"`
-	AdminSSHKey      string `yaml:"admin_ssh_key"`
-	AdminPassword    string `yaml:"admin_password"`
+	CiaoPort             int    `yaml:"ciao_port"`
+	ControllerFQDN       string `yaml:"compute_fqdn"`
+	HTTPSCACert          string `yaml:"compute_ca"`
+	HTTPSKey             string `yaml:"compute_cert"`
+	CNCIVcpus            int    `yaml:"cnci_vcpus"`
+	CNCIMem              int    `yaml:"cnci_mem"`
+	CNCIDisk             int    `yaml:"cnci_disk"`
+	AdminSSHKey          string `yaml:"admin_ssh_key"`
+	AdminPassword        string `yaml:"admin_password"`
+	ClientAuthCACertPath string `yaml:"client_auth_ca_cert_path"`
 }
 
 // ConfigureLauncher contains the unmarshalled configurations for the
@@ -94,22 +70,14 @@ type ConfigureStorage struct {
 	CephID string `yaml:"ceph_id"`
 }
 
-// ConfigureService contains the unmarshalled configurations for the resources
-// of the configurations.
-type ConfigureService struct {
-	Type ServiceType `yaml:"type"`
-	URL  string      `yaml:"url"`
-}
-
 // ConfigurePayload is a wrapper to read and unmarshall all posible
 // configurations for the following services: scheduler, controller, launcher,
 //  imaging and identity.
 type ConfigurePayload struct {
-	Scheduler       ConfigureScheduler  `yaml:"scheduler"`
-	Storage         ConfigureStorage    `yaml:"storage"`
-	Controller      ConfigureController `yaml:"controller"`
-	Launcher        ConfigureLauncher   `yaml:"launcher"`
-	IdentityService ConfigureService    `yaml:"identity_service"`
+	Scheduler  ConfigureScheduler  `yaml:"scheduler"`
+	Storage    ConfigureStorage    `yaml:"storage"`
+	Controller ConfigureController `yaml:"controller"`
+	Launcher   ConfigureLauncher   `yaml:"launcher"`
 }
 
 // Configure represents the SSNTP CONFIGURE command payload.
@@ -120,7 +88,6 @@ type Configure struct {
 // InitDefaults initializes default vaulues for Configure structure.
 func (conf *Configure) InitDefaults() {
 	conf.Configure.Controller.CiaoPort = 8889
-	conf.Configure.IdentityService.Type = Keystone
 	conf.Configure.Launcher.DiskLimit = true
 	conf.Configure.Launcher.MemoryLimit = true
 	conf.Configure.Controller.CNCIDisk = 2048

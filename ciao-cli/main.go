@@ -21,7 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io"
@@ -33,6 +33,7 @@ import (
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 )
 
 // Item serves to represent a group of related commands
@@ -104,10 +105,6 @@ func infof(format string, args ...interface{}) {
 	}
 }
 
-func warningf(format string, args ...interface{}) {
-	glog.WarningDepth(1, fmt.Sprintf("ciao-cli WARNING: "+format, args...))
-}
-
 func errorf(format string, args ...interface{}) {
 	glog.ErrorDepth(1, fmt.Sprintf("ciao-cli ERROR: "+format, args...))
 }
@@ -117,26 +114,22 @@ func fatalf(format string, args ...interface{}) {
 }
 
 var (
-	identityURL      = flag.String("identity", "", "Keystone URL")
-	identityUser     = flag.String("username", "", "Openstack Service Username")
-	identityPassword = flag.String("password", "", "Openstack Service Password")
-	controllerURL    = flag.String("controller", "", "Controller URL")
-	tenantID         = flag.String("tenant-id", "", "Tenant UUID")
-	tenantName       = flag.String("tenant-name", "", "Tenant name")
-	ciaoPort         = flag.Int("ciaoport", api.Port, "ciao API port")
-	caCertFile       = flag.String("ca-file", "", "CA Certificate")
+	controllerURL  = flag.String("controller", "", "Controller URL")
+	tenantID       = flag.String("tenant-id", "", "Tenant UUID")
+	ciaoPort       = flag.Int("ciaoport", api.Port, "ciao API port")
+	caCertFile     = flag.String("ca-file", "", "CA Certificate")
+	clientCertFile = flag.String("client-cert-file", "", "Path to certificate for authenticating with controller")
 )
 
 const (
-	ciaoIdentityEnv   = "CIAO_IDENTITY"
-	ciaoControllerEnv = "CIAO_CONTROLLER"
-	ciaoUsernameEnv   = "CIAO_USERNAME"
-	ciaoPasswordEnv   = "CIAO_PASSWORD"
-	ciaoTenantNameEnv = "CIAO_TENANT_NAME"
-	ciaoCACertFileEnv = "CIAO_CA_CERT_FILE"
+	ciaoControllerEnv     = "CIAO_CONTROLLER"
+	ciaoCACertFileEnv     = "CIAO_CA_CERT_FILE"
+	ciaoClientCertFileEnv = "CIAO_CLIENT_CERT_FILE"
 )
 
 var caCertPool *x509.CertPool
+var clientCert *tls.Certificate
+var tenants []string
 
 type queryValue struct {
 	name, value string
@@ -176,6 +169,7 @@ func buildBlockURL(format string, args ...interface{}) string {
 
 func buildImageURL(format string, args ...interface{}) string {
 	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, *ciaoPort)
+	prefix = fmt.Sprintf("%s%s/", prefix, *tenantID)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
@@ -198,10 +192,6 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 		req.URL.RawQuery = v.Encode()
 	}
 
-	if token != "" {
-		req.Header.Add("X-Auth-Token", token)
-	}
-
 	if content != "" {
 		contentType := fmt.Sprintf("application/%s", content)
 		req.Header.Set("Content-Type", contentType)
@@ -215,6 +205,11 @@ func sendHTTPRequestToken(method string, url string, values []queryValue, token 
 
 	if caCertPool != nil {
 		tlsConfig.RootCAs = caCertPool
+	}
+
+	if clientCert != nil {
+		tlsConfig.Certificates = []tls.Certificate{*clientCert}
+		tlsConfig.BuildNameToCertificate()
 	}
 
 	transport := &http.Transport{
@@ -313,8 +308,10 @@ func getCiaoResource(name string, minVersion string) (string, error) {
 }
 
 func checkPrivilege() bool {
-	if *tenantName == "admin" {
-		return true
+	for i := range tenants {
+		if tenants[i] == "admin" {
+			return true
+		}
 	}
 
 	return false
@@ -329,61 +326,34 @@ func limitToString(limit int) string {
 }
 
 func getCiaoEnvVariables() {
-	identity := os.Getenv(ciaoIdentityEnv)
 	controller := os.Getenv(ciaoControllerEnv)
-	username := os.Getenv(ciaoUsernameEnv)
-	password := os.Getenv(ciaoPasswordEnv)
-	tenant := os.Getenv(ciaoTenantNameEnv)
 	ca := os.Getenv(ciaoCACertFileEnv)
+	clientCert := os.Getenv(ciaoClientCertFileEnv)
 
 	infof("Ciao environment variables:\n")
-	infof("\t%s:%s\n", ciaoIdentityEnv, identity)
 	infof("\t%s:%s\n", ciaoControllerEnv, controller)
-	infof("\t%s:%s\n", ciaoUsernameEnv, username)
-	infof("\t%s:%s\n", ciaoPasswordEnv, password)
-	infof("\t%s:%s\n", ciaoTenantNameEnv, tenantName)
 	infof("\t%s:%s\n", ciaoCACertFileEnv, ca)
-
-	if identity != "" && *identityURL == "" {
-		*identityURL = identity
-	}
+	infof("\t%s:%s\n", ciaoClientCertFileEnv, clientCert)
 
 	if controller != "" && *controllerURL == "" {
 		*controllerURL = controller
 	}
 
-	if username != "" && *identityUser == "" {
-		*identityUser = username
-	}
-
-	if password != "" && *identityPassword == "" {
-		*identityPassword = password
-	}
-
-	if tenant != "" && *tenantName == "" {
-		*tenantName = tenant
-	}
-
 	if ca != "" && *caCertFile == "" {
 		*caCertFile = ca
+	}
+
+	if clientCert != "" && *clientCertFile == "" {
+		*clientCertFile = clientCert
 	}
 }
 
 func checkCompulsoryOptions() {
 	fatal := ""
 
-	if *identityURL == "" {
-		fatal += "Missing required identity URL\n"
+	if *clientCertFile == "" {
+		fatal += "Missing required client certificate file\n"
 	}
-
-	if *identityUser == "" {
-		fatal += "Missing required username\n"
-	}
-
-	if *identityPassword == "" {
-		fatal += "Missing required password\n"
-	}
-
 	if *controllerURL == "" {
 		fatal += "Missing required Ciao controller URL\n"
 	}
@@ -393,8 +363,70 @@ func checkCompulsoryOptions() {
 	}
 }
 
+func getTenantsFromCertFile(clientCertFile string) ([]string, error) {
+	var certBlock, p *pem.Block
+
+	data, err := ioutil.ReadFile(clientCertFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error loading client cert file")
+	}
+
+	for {
+		p, data = pem.Decode(data)
+		if p == nil {
+			break
+		}
+		if p.Type == "CERTIFICATE" {
+			if certBlock != nil {
+				return nil, errors.Wrap(err, "Incorrect number of certificate blocks in file")
+			}
+			certBlock = p
+		}
+	}
+
+	if certBlock == nil {
+		return nil, errors.New("No certificate block block in cert file")
+	}
+
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, errors.New("Unable to parse x509 certificate data")
+	}
+
+	return cert.Subject.Organization, nil
+}
+
+func prepareWithClientCert() {
+	cert, err := tls.LoadX509KeyPair(*clientCertFile, *clientCertFile)
+	if err != nil {
+		fatalf("Unable to load client certiticate: %s", err)
+	}
+	clientCert = &cert
+
+	tenants, err = getTenantsFromCertFile(*clientCertFile)
+	if err != nil {
+		fatalf("No tenant specified and unable to parse from certificate file")
+	}
+
+	if *tenantID == "" {
+		if len(tenants) == 0 {
+			fatalf("No tenants specified in certificate")
+		}
+
+		if len(tenants) > 1 {
+			fmt.Println("Tenants available:")
+			for i := range tenants {
+				fmt.Println(tenants[i])
+			}
+			fatalf("Multiple tenants available. Please specify one with -tenant-id")
+		}
+
+		*tenantID = tenants[0]
+	}
+
+}
+
 func prepareForCommand() {
-	var err error
 	/* Load CA file if necessary */
 	if *caCertFile != "" {
 		caCert, err := ioutil.ReadFile(*caCertFile)
@@ -408,19 +440,8 @@ func prepareForCommand() {
 		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
-	/* If we're missing the tenant name let's try to fetch one */
-	if *tenantName == "" {
-		*tenantName, *tenantID, err = getTenant(*identityUser, *identityPassword, *tenantID)
-		if err != nil {
-			fatalf(err.Error())
-		}
-		warningf("Unspecified scope, using (%s, %s)", *tenantName, *tenantID)
-	}
+	prepareWithClientCert()
 
-	scopedToken, *tenantID, _, err = getScopedToken(*identityUser, *identityPassword, *tenantName)
-	if err != nil {
-		fatalf(err.Error())
-	}
 }
 
 func main() {

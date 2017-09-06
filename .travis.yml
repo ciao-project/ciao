@@ -31,6 +31,7 @@ before_install:
 before_script:
    - sudo mkdir -p /etc/pki/ciao/
    - sudo mkdir -p /var/lib/ciao/logs/scheduler
+   - sudo -E $GOPATH/bin/ciao-deploy auth setup
    - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor -role scheduler
    - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent
    - sudo -E $GOPATH/bin/ciao-cert -directory /etc/pki/ciao -host localhost -anchor-cert /etc/pki/ciao/cert-Scheduler-localhost.pem -role agent,netagent

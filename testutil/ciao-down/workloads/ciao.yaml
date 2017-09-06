@@ -139,10 +139,6 @@ runcmd:
  - {{template "ENV" .}}apt-get install ceph-common -y
  - {{endTaskCheck .}}
 
- - {{beginTask . "Installing Openstack client"}}
- - {{template "ENV" .}}apt-get install python-openstackclient -y
- - {{endTaskCheck .}}
-
  - {{beginTask . "Auto removing unused components"}}
  - {{template "ENV" .}}apt-get auto-remove -y
  - {{endTaskCheck .}}
@@ -159,10 +155,6 @@ runcmd:
 
  - {{beginTask . "Pulling ceph/demo" }}
  - {{template "ENV" .}} docker pull ceph/demo
- - {{endTaskCheck .}}
-
- - {{beginTask . "Pulling clearlinux/keystone" }}
- - {{template "ENV" .}} docker pull clearlinux/keystone:stable
  - {{endTaskCheck .}}
 
  - mkdir -p /home/{{.User}}/local

@@ -1,10 +1,10 @@
-// Copyright (c) 2016 Intel Corporation
+// Copyright © 2017 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,23 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package testutil_test
+package cmd
 
 import (
-	"testing"
-
-	. "github.com/01org/ciao/testutil"
+	"github.com/spf13/cobra"
 )
 
-func TestStartIdentityServer(t *testing.T) {
-	config := IdentityConfig{
-		ComputeURL: "https://localhost:8888",
-		ProjectID:  "30dedd5c-48d9-45d3-8b44-f973e4f35e48",
-	}
+// authCmd represents the auth command
+var authCmd = &cobra.Command{
+	Use:   "auth",
+	Short: "Commands for managing authentication in a Ciao cluster",
+}
 
-	id := StartIdentityServer(config)
-	if id == nil {
-		t.Fatal("Could not start test identity server")
-	}
-	defer id.Close()
+func init() {
+	RootCmd.AddCommand(authCmd)
 }

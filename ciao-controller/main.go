@@ -25,7 +25,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/internal/datastore"
@@ -33,12 +32,9 @@ import (
 	storage "github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/clogger/gloginterface"
 	"github.com/01org/ciao/database"
-	osIdentity "github.com/01org/ciao/openstack/identity"
 	"github.com/01org/ciao/osprepare"
 	"github.com/01org/ciao/ssntp"
 	"github.com/golang/glog"
-	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
 )
 
 type tenantConfirmMemo struct {
@@ -51,7 +47,6 @@ type controller struct {
 	client              controllerClient
 	ds                  *datastore.Datastore
 	is                  *ImageService
-	id                  *identity
 	apiURL              string
 	tenantReadiness     map[string]*tenantConfirmMemo
 	tenantReadinessLock sync.Mutex
@@ -62,9 +57,6 @@ type controller struct {
 var cert = flag.String("cert", "", "Client certificate")
 var caCert = flag.String("cacert", "", "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
-var identityURL = "identity:35357"
-var serviceUser = "csr"
-var servicePassword = ""
 var controllerAPIPort = api.Port
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
@@ -72,6 +64,8 @@ var workloadsPath = flag.String("workloads_path", "/var/lib/ciao/data/controller
 var persistentDatastoreLocation = flag.String("database_path", "/var/lib/ciao/data/controller/ciao-controller.db", "path to persistent database")
 var imageDatastoreLocation = flag.String("image_database_path", "/var/lib/ciao/data/image/ciao-image.db", "path to image persistent database")
 var logDir = "/var/lib/ciao/logs/controller"
+
+var clientCertCAPath = "/etc/pki/ciao/auth-CA.pem"
 
 var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
 
@@ -150,9 +144,6 @@ func main() {
 	controllerAPIPort = clusterConfig.Configure.Controller.CiaoPort
 	httpsCAcert = clusterConfig.Configure.Controller.HTTPSCACert
 	httpsKey = clusterConfig.Configure.Controller.HTTPSKey
-	identityURL = clusterConfig.Configure.IdentityService.URL
-	serviceUser = clusterConfig.Configure.Controller.IdentityUser
-	servicePassword = clusterConfig.Configure.Controller.IdentityPassword
 	if *cephID == "" {
 		*cephID = clusterConfig.Configure.Storage.CephID
 	}
@@ -167,6 +158,10 @@ func main() {
 		adminPassword = clusterConfig.Configure.Controller.AdminPassword
 	}
 
+	if clusterConfig.Configure.Controller.ClientAuthCACertPath != "" {
+		clientCertCAPath = clusterConfig.Configure.Controller.ClientAuthCACertPath
+	}
+
 	if err := ctl.is.Init(ctl.qs); err != nil {
 		glog.Fatalf("Error initialising image service: %v", err)
 	}
@@ -179,24 +174,12 @@ func main() {
 	osprepare.Bootstrap(context.TODO(), logger)
 	osprepare.InstallDeps(context.TODO(), controllerDeps, logger)
 
-	idConfig := identityConfig{
-		endpoint:        identityURL,
-		serviceUserName: serviceUser,
-		servicePassword: servicePassword,
-	}
-
 	ctl.BlockDriver = func() storage.BlockDriver {
 		driver := storage.CephDriver{
 			ID: *cephID,
 		}
 		return driver
 	}()
-
-	ctl.id, err = newIdentityClient(idConfig)
-	if err != nil {
-		glog.Fatal("Unable to authenticate to Keystone: ", err)
-		return
-	}
 
 	err = initializeCNCICtrls(ctl)
 	if err != nil {
@@ -241,90 +224,4 @@ func main() {
 	ctl.ds.Exit()
 	ctl.is.ds.Shutdown()
 	ctl.client.Disconnect()
-}
-
-func (c *controller) createCiaoRoutes(r *mux.Router) error {
-	config := api.Config{URL: c.apiURL, CiaoService: c}
-
-	r = api.Routes(config, r)
-
-	// wrap each route in keystone validation.
-	validServices := []osIdentity.ValidService{
-		{ServiceType: "compute", ServiceName: "ciao"},
-		{ServiceType: "compute", ServiceName: "nova"},
-		{ServiceType: "image", ServiceName: "glance"},
-		{ServiceType: "image", ServiceName: "ciao"},
-		{ServiceType: "volume", ServiceName: "ciao"},
-		{ServiceType: "volumev2", ServiceName: "ciao"},
-		{ServiceType: "volume", ServiceName: "cinder"},
-		{ServiceType: "volumev2", ServiceName: "cinderv2"},
-	}
-
-	validAdmins := []osIdentity.ValidAdmin{
-		{Project: "service", Role: "admin"},
-		{Project: "admin", Role: "admin"},
-	}
-
-	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		h := osIdentity.Handler{
-			Client:        c.id.scV3,
-			Next:          route.GetHandler(),
-			ValidServices: validServices,
-			ValidAdmins:   validAdmins,
-		}
-
-		route.Handler(h)
-
-		return nil
-	})
-
-	return err
-}
-
-func (c *controller) createCiaoServer() (*http.Server, error) {
-	r := mux.NewRouter()
-
-	if err := c.createComputeRoutes(r); err != nil {
-		return nil, errors.Wrap(err, "Error adding compute routes")
-	}
-
-	if err := c.createImageRoutes(r); err != nil {
-		return nil, errors.Wrap(err, "Error adding image routes")
-	}
-
-	if err := c.createVolumeRoutes(r); err != nil {
-		return nil, errors.Wrap(err, "Error adding volume routes")
-	}
-
-	err := c.createCiaoRoutes(r)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error adding ciao routes")
-	}
-
-	service := fmt.Sprintf(":%d", controllerAPIPort)
-
-	server := &http.Server{
-		Handler: r,
-		Addr:    service,
-	}
-
-	return server, nil
-}
-
-func (c *controller) ShutdownHTTPServers() {
-	glog.Warning("Shutting down HTTP servers")
-	var wg sync.WaitGroup
-	for _, server := range c.httpServers {
-		wg.Add(1)
-		go func(server *http.Server) {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-			defer cancel()
-			err := server.Shutdown(ctx)
-			if err != nil {
-				glog.Errorf("Error during HTTP server shutdown")
-			}
-			wg.Done()
-		}(server)
-	}
-	wg.Wait()
 }

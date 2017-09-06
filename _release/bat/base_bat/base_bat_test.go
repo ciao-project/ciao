@@ -117,6 +117,7 @@ func TestListComputeNodes(t *testing.T) {
 // The test passes if the list of tenants defined for the cluster can
 // be retrieved, even if the list is empty.
 func TestGetTenants(t *testing.T) {
+	t.Skip("Getting all tenants not currently available")
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	_, err := bat.GetAllTenants(ctx)
 	cancelFunc()

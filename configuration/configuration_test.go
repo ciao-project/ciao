@@ -31,15 +31,13 @@ const badScheme = "badScheme://non-existent/path/nofile"
 const invalidURI = "file://%z invalid uri with spaces"
 const emptyPathURI = "file://"
 
-const keystoneURL = "http://keystone.example.com"
 const computeNet = "192.168.1.0/24"
 const mgmtNet = "192.168.1.0/24"
 const storageURI = "/etc/ciao/configuration.yaml"
-const identityUser = "controller"
-const identityPassword = "ciao"
 const httpsKey = "/etc/pki/ciao/compute_key.pem"
 const httpsCACert = "/etc/pki/ciao/compute_ca.pem"
 const cephID = "ciao"
+const clientAuthCACert = "/etc/pki/ciao/auth-CA.pem"
 
 const minValidConf = `configure:
   scheduler:
@@ -47,15 +45,11 @@ const minValidConf = `configure:
   controller:
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
-    identity_user: controller
-    identity_password: ciao
   launcher:
     compute_net:
     - 192.168.1.0/24
     mgmt_net:
     - 192.168.1.0/24
-  identity_service:
-    url: http://keystone.example.com
 `
 const fullValidConf = `configure:
   scheduler:
@@ -67,13 +61,12 @@ const fullValidConf = `configure:
     compute_fqdn: ""
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
-    identity_user: controller
-    identity_password: ciao
     cnci_vcpus: 4
     cnci_mem: 128
     cnci_disk: 128
     admin_ssh_key: ""
     admin_password: ""
+    client_auth_ca_cert_path: /etc/pki/ciao/auth-CA.pem
   launcher:
     compute_net:
     - 192.168.1.0/24
@@ -81,9 +74,6 @@ const fullValidConf = `configure:
     - 192.168.1.0/24
     disk_limit: true
     mem_limit: true
-  identity_service:
-    type: keystone
-    url: http://keystone.example.com
 `
 
 func testBlob(t *testing.T, conf *payloads.Configure, expectedBlob []byte, positive bool) {
@@ -126,14 +116,12 @@ func fillPayload(conf *payloads.Configure) {
 	conf.Configure.Scheduler.ConfigStorageURI = storageURI
 	conf.Configure.Controller.HTTPSCACert = httpsCACert
 	conf.Configure.Controller.HTTPSKey = httpsKey
-	conf.Configure.Controller.IdentityUser = identityUser
-	conf.Configure.Controller.IdentityPassword = identityPassword
 	conf.Configure.Controller.CNCIVcpus = 4
 	conf.Configure.Controller.CNCIMem = 128
 	conf.Configure.Controller.CNCIDisk = 128
+	conf.Configure.Controller.ClientAuthCACertPath = clientAuthCACert
 	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
 	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
-	conf.Configure.IdentityService.URL = keystoneURL
 	conf.Configure.Storage.CephID = cephID
 }
 
@@ -180,7 +168,6 @@ func TestPayloadCorrectBlob(t *testing.T) {
 
 func saneDefaults(conf *payloads.Configure) bool {
 	return (conf.Configure.Controller.CiaoPort == 8889 &&
-		conf.Configure.IdentityService.Type == payloads.Keystone &&
 		conf.Configure.Launcher.DiskLimit == true &&
 		conf.Configure.Launcher.MemoryLimit == true)
 }
@@ -200,8 +187,6 @@ func TestValidMinConf(t *testing.T) {
 	conf.Configure.Scheduler.ConfigStorageURI = storageURI
 	conf.Configure.Controller.HTTPSCACert = httpsCACert
 	conf.Configure.Controller.HTTPSKey = httpsKey
-	conf.Configure.Controller.IdentityUser = identityUser
-	conf.Configure.Controller.IdentityPassword = identityPassword
 	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
 	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
 
@@ -211,7 +196,7 @@ func TestValidMinConf(t *testing.T) {
 	}
 
 	// missing value to get minimal valid Configuration
-	conf.Configure.IdentityService.URL = keystoneURL
+	conf.Configure.Controller.ClientAuthCACertPath = clientAuthCACert
 
 	valid = validMinConf(&conf)
 	if valid != true {
