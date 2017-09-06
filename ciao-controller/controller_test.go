@@ -499,7 +499,7 @@ func TestEvacuateNode(t *testing.T) {
 
 	// ok to not send workload first?
 
-	err = ctl.evacuateNode(client.UUID)
+	err = ctl.EvacuateNode(client.UUID)
 	if err != nil {
 		t.Error(err)
 	}
