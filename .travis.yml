@@ -9,8 +9,6 @@ go:
     - 1.9
     - tip
 
-env:
-    - COVERALLS_TOKEN=mwTn1pOFqEOUT13vylZNHq53NanoMznO7
 matrix:
   allow_failures:
   - go: tip
