@@ -53,6 +53,19 @@ type ovsGetCmd struct {
 	targetCh chan<- ovsGetResult
 }
 
+type ovsInstance struct {
+	instance string
+	cmdCh    chan<- interface{}
+}
+
+type ovsGetAllResult struct {
+	instances []ovsInstance
+}
+
+type ovsGetAllCmd struct {
+	targetCh chan<- ovsGetAllResult
+}
+
 type ovsRemoveCmd struct {
 	instance string
 	errCh    chan<- error
@@ -384,6 +397,16 @@ func (ovs *overseer) processGetCommand(cmd *ovsGetCmd) {
 	cmd.targetCh <- insState
 }
 
+func (ovs *overseer) processGetAllCommand(cmd *ovsGetAllCmd) {
+	glog.Infof("Overseer: Enumerating instances")
+	var res ovsGetAllResult
+	for k, v := range ovs.instances {
+		glog.Infof("Overseer: Found %s", k)
+		res.instances = append(res.instances, ovsInstance{k, v.cmdCh})
+	}
+	cmd.targetCh <- res
+}
+
 func (ovs *overseer) processAddCommand(cmd *ovsAddCmd) {
 	glog.Infof("Overseer: adding %s", cmd.instance)
 	var targetCh chan<- interface{}
@@ -497,6 +520,8 @@ func (ovs *overseer) processCommand(cmd interface{}) {
 	switch cmd := cmd.(type) {
 	case *ovsGetCmd:
 		ovs.processGetCommand(cmd)
+	case *ovsGetAllCmd:
+		ovs.processGetAllCommand(cmd)
 	case *ovsAddCmd:
 		ovs.processAddCommand(cmd)
 	case *ovsRemoveCmd:

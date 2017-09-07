@@ -149,6 +149,13 @@ func insCmdChannel(instance string, ovsCh chan<- interface{}) chan<- interface{}
 	return target.cmdCh
 }
 
+func getAllInstances(ovsCh chan<- interface{}) []ovsInstance {
+	targetCh := make(chan ovsGetAllResult)
+	ovsCh <- &ovsGetAllCmd{targetCh}
+	target := <-targetCh
+	return target.instances
+}
+
 func insState(instance string, ovsCh chan<- interface{}) ovsGetResult {
 	targetCh := make(chan ovsGetResult)
 	ovsCh <- &ovsGetCmd{instance, targetCh}
@@ -156,13 +163,37 @@ func insState(instance string, ovsCh chan<- interface{}) ovsGetResult {
 }
 
 func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) {
+	if cmd.instance != "" {
+		processInstanceCommand(conn, cmd, ovsCh)
+		return
+	}
+
+	switch cmd.cmd.(type) {
+	case *statusCmd:
+		ovsCh <- &ovsStatsStatusCmd{}
+		return
+	case *evacuateCmd:
+		var wg sync.WaitGroup
+		for _, i := range getAllInstances(ovsCh) {
+			wg.Add(1)
+			go func(i ovsInstance) {
+				i.cmdCh <- &insDeleteCmd{stop: true}
+				errCh := make(chan error)
+				ovsCh <- &ovsRemoveCmd{i.instance, errCh}
+				<-errCh
+				wg.Done()
+			}(i)
+		}
+		wg.Wait()
+		glog.Info("All instances evacuated")
+	}
+}
+
+func processInstanceCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) {
 	var target chan<- interface{}
 	var delCmd *insDeleteCmd
 
 	switch insCmd := cmd.cmd.(type) {
-	case *statusCmd:
-		ovsCh <- &ovsStatsStatusCmd{}
-		return
 	case *insStartCmd:
 		targetCh := make(chan ovsAddResult)
 		ovsCh <- &ovsAddCmd{cmd.instance, insCmd.cfg, targetCh}
