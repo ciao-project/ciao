@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -68,6 +69,16 @@ func bootVM(ctx context.Context, ws *workspace, in *VMSpec) error {
 		devParam := fmt.Sprintf("virtio-9p-pci,id=fs%[1]d,fsdev=fsdev%[1]d,mount_tag=%s",
 			i, m.Tag)
 		args = append(args, "-fsdev", fsdevParam, "-device", devParam)
+	}
+
+	for _, d := range in.Drives {
+		options := strings.TrimSpace(d.Options)
+		if options != "" {
+			options = "," + options
+		}
+		driveParam := fmt.Sprintf("file=%s,if=virtio,format=%s%s", d.Path,
+			d.Format, options)
+		args = append(args, "-drive", driveParam)
 	}
 
 	var b bytes.Buffer

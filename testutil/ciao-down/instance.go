@@ -56,12 +56,23 @@ func (m mount) String() string {
 	return fmt.Sprintf("%s,%s,%s", m.Tag, m.SecurityModel, m.Path)
 }
 
+type drive struct {
+	Path    string
+	Format  string
+	Options string
+}
+
+func (d drive) String() string {
+	return fmt.Sprintf("%s,%s,%s", d.Path, d.Format, d.Options)
+}
+
 // VMSpec holds the per-VM state.
 type VMSpec struct {
 	MemGiB       int           `yaml:"mem_gib"`
 	CPUs         int           `yaml:"cpus"`
 	PortMappings []portMapping `yaml:"ports"`
 	Mounts       []mount       `yaml:"mounts"`
+	Drives       []drive       `yaml:"drives"`
 }
 
 type workloadSpec struct {
@@ -208,6 +219,24 @@ func (in *VMSpec) mergePorts(p ports) {
 			in.PortMappings = append(in.PortMappings, port)
 		} else {
 			in.PortMappings[i] = port
+		}
+	}
+}
+
+func (in *VMSpec) mergeDrives(d drives) {
+	driveCount := len(in.Drives)
+	for _, drive := range d {
+		var i int
+		for i = 0; i < driveCount; i++ {
+			if drive.Path == in.Drives[i].Path {
+				break
+			}
+		}
+
+		if i == driveCount {
+			in.Drives = append(in.Drives, drive)
+		} else {
+			in.Drives[i] = drive
 		}
 	}
 }

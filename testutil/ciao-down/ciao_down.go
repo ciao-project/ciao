@@ -117,10 +117,34 @@ func (p *packageUpgrade) Set(value string) error {
 	return nil
 }
 
-func vmFlags(fs *flag.FlagSet, memGB, CPUs *int, m *mounts, p *ports) {
+type drives []drive
+
+func (d *drives) String() string {
+	return fmt.Sprint(*d)
+}
+
+func (d *drives) Set(value string) error {
+	components := strings.Split(value, ",")
+	if len(components) < 2 {
+		return fmt.Errorf("--drive parameter should be of format path,format[,option]*")
+	}
+	_, err := os.Stat(components[0])
+	if err != nil {
+		return fmt.Errorf("Unable to access %s : %v", components[1], err)
+	}
+	*d = append(*d, drive{
+		Path:    components[0],
+		Format:  components[1],
+		Options: strings.Join(components[2:], ","),
+	})
+	return nil
+}
+
+func vmFlags(fs *flag.FlagSet, memGB, CPUs *int, m *mounts, p *ports, d *drives) {
 	fs.IntVar(memGB, "mem", *memGB, "Gigabytes of RAM allocated to VM")
 	fs.IntVar(CPUs, "cpus", *CPUs, "VCPUs assigned to VM")
 	fs.Var(m, "mount", "directory to mount in guest VM via 9p. Format is tag,security_model,path")
+	fs.Var(d, "drive", "Host accessible resource to appear as block device in guest VM.  Format is path,format[,option]*")
 	fs.Var(p, "port", "port mapping. Format is host_port-guest_port, e.g., -port 10022-22")
 }
 
@@ -149,6 +173,7 @@ func createFlags(ctx context.Context, ws *workspace) (*workload, bool, error) {
 	var debug bool
 	var m mounts
 	var p ports
+	var d drives
 	var memGiB, CPUs int
 	var update packageUpgrade
 
@@ -158,7 +183,7 @@ func createFlags(ctx context.Context, ws *workspace) (*workload, bool, error) {
 		fmt.Fprintf(os.Stderr, "  <workload>\tName of the workload to create\n\n")
 		fs.PrintDefaults()
 	}
-	vmFlags(fs, &memGiB, &CPUs, &m, &p)
+	vmFlags(fs, &memGiB, &CPUs, &m, &p, &d)
 	fs.BoolVar(&debug, "debug", false, "Enables debug mode")
 	fs.Var(&update, "package-upgrade",
 		"Hint to enable or disable update of VM packages. Should be true or false")
@@ -194,6 +219,7 @@ func createFlags(ctx context.Context, ws *workspace) (*workload, bool, error) {
 
 	in.mergeMounts(m)
 	in.mergePorts(p)
+	in.mergeDrives(d)
 
 	ws.Mounts = in.Mounts
 	ws.Hostname = wkl.spec.Hostname
@@ -210,12 +236,13 @@ func createFlags(ctx context.Context, ws *workspace) (*workload, bool, error) {
 func startFlags(in *VMSpec) error {
 	var m mounts
 	var p ports
+	var d drives
 
 	CPUs := in.CPUs
 	memGiB := in.MemGiB
 
 	fs := flag.NewFlagSet("start", flag.ExitOnError)
-	vmFlags(fs, &memGiB, &CPUs, &m, &p)
+	vmFlags(fs, &memGiB, &CPUs, &m, &p, &d)
 	if err := fs.Parse(flag.Args()[1:]); err != nil {
 		return err
 	}
@@ -230,6 +257,7 @@ func startFlags(in *VMSpec) error {
 	in.MemGiB = memGiB
 	in.mergeMounts(m)
 	in.mergePorts(p)
+	in.mergeDrives(d)
 
 	return nil
 }
