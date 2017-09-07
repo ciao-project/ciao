@@ -196,7 +196,7 @@ DONE:
 		}
 	}
 
-	if !addResult.canAdd {
+	if addResult.errorCode != "" {
 		t.Error("Unable to add instance")
 	}
 

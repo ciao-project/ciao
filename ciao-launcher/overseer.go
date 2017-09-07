@@ -33,8 +33,8 @@ import (
 )
 
 type ovsAddResult struct {
-	cmdCh  chan<- interface{}
-	canAdd bool
+	cmdCh     chan<- interface{}
+	errorCode payloads.StartFailureReason // Empty string indicates no error
 }
 
 type ovsAddCmd struct {
@@ -82,6 +82,10 @@ type ovsStatsUpdateCmd struct {
 	diskUsageMB   int
 	CPUUsage      int
 	volumes       []string
+}
+
+type ovsMaintenanceCmd struct {
+	doneCh chan struct{}
 }
 
 type ovsTraceFrame struct {
@@ -162,6 +166,7 @@ type overseer struct {
 	traceFrames        *list.List
 	statsInterval      time.Duration
 	di                 deviceInfo
+	maintenance        bool
 }
 
 type cnStats struct {
@@ -173,11 +178,14 @@ type cnStats struct {
 	cpusOnline      int
 }
 
-func (ovs *overseer) roomAvailable(cfg *vmConfig) bool {
+func (ovs *overseer) roomAvailable(cfg *vmConfig) payloads.StartFailureReason {
+	if ovs.maintenance {
+		return payloads.NodeInMaintenance
+	}
 
 	if len(ovs.instances) >= maxInstances {
 		glog.Warningf("We're FULL.  Too many instances %d", len(ovs.instances))
-		return false
+		return payloads.FullComputeNode
 	}
 
 	diskSpaceAvailable := ovs.diskSpaceAvailable - cfg.Disk
@@ -187,17 +195,17 @@ func (ovs *overseer) roomAvailable(cfg *vmConfig) bool {
 
 	if diskSpaceAvailable < diskSpaceLWM {
 		if diskLimit == true {
-			return false
+			return payloads.FullComputeNode
 		}
 	}
 
 	if memoryAvailable < memLWM {
 		if memLimit == true {
-			return false
+			return payloads.FullComputeNode
 		}
 	}
 
-	return true
+	return ""
 }
 
 func (ovs *overseer) updateAvailableResources(cns *cnStats) {
@@ -230,6 +238,9 @@ func (ovs *overseer) updateAvailableResources(cns *cnStats) {
 }
 
 func (ovs *overseer) computeStatus() ssntp.Status {
+	if ovs.maintenance {
+		return ssntp.MAINTENANCE
+	}
 
 	if len(ovs.instances) >= maxInstances {
 		return ssntp.FULL
@@ -282,6 +293,8 @@ func (ovs *overseer) sendStatusCommand(cns *cnStats, status ssntp.Status) {
 	case ssntp.READY:
 		ovs.sendReadyStatusCommand(cns)
 	case ssntp.FULL:
+		fallthrough
+	case ssntp.MAINTENANCE:
 		fallthrough
 	case ssntp.OFFLINE:
 		_, err := ovs.ac.conn.SendStatus(status, nil)
@@ -408,14 +421,16 @@ func (ovs *overseer) processGetAllCommand(cmd *ovsGetAllCmd) {
 }
 
 func (ovs *overseer) processAddCommand(cmd *ovsAddCmd) {
-	glog.Infof("Overseer: adding %s", cmd.instance)
 	var targetCh chan<- interface{}
+	var errCode payloads.StartFailureReason
+
+	glog.Infof("Overseer: adding %s", cmd.instance)
+
 	target := ovs.instances[cmd.instance]
-	canAdd := true
 	cfg := cmd.cfg
 	if target != nil {
 		targetCh = target.cmdCh
-	} else if ovs.roomAvailable(cfg) {
+	} else if errCode = ovs.roomAvailable(cfg); errCode == "" {
 		ovs.vcpusAllocated += cfg.Cpus
 		ovs.diskSpaceAllocated += cfg.Disk
 		ovs.memoryAllocated += cfg.Mem
@@ -433,10 +448,8 @@ func (ovs *overseer) processAddCommand(cmd *ovsAddCmd) {
 			sshIP:          cfg.ConcIP,
 			sshPort:        cfg.SSHPort,
 		}
-	} else {
-		canAdd = false
 	}
-	cmd.targetCh <- ovsAddResult{targetCh, canAdd}
+	cmd.targetCh <- ovsAddResult{targetCh, errCode}
 }
 
 func (ovs *overseer) processRemoveCommand(cmd *ovsRemoveCmd) {
@@ -516,6 +529,23 @@ func (ovs *overseer) processTraceFrameCommand(cmd *ovsTraceFrame) {
 	ovs.traceFrames.PushBack(cmd.frame)
 }
 
+func (ovs *overseer) processMaintenanceCommand(cmd *ovsMaintenanceCmd) {
+	defer close(cmd.doneCh)
+	if ovs.maintenance {
+		glog.Warning("Node is already in maintenance mode")
+		return
+	}
+	glog.Info("Node entering maintenance mode")
+	ovs.maintenance = true
+	f, err := os.OpenFile(maintenanceFile, os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		glog.Errorf("Unable to create maintenance file %s : %v",
+			maintenanceFile, err)
+	} else {
+		_ = f.Close()
+	}
+}
+
 func (ovs *overseer) processCommand(cmd interface{}) {
 	switch cmd := cmd.(type) {
 	case *ovsGetCmd:
@@ -536,6 +566,8 @@ func (ovs *overseer) processCommand(cmd interface{}) {
 		ovs.processStatusUpdateCommand(cmd)
 	case *ovsTraceFrame:
 		ovs.processTraceFrameCommand(cmd)
+	case *ovsMaintenanceCmd:
+		ovs.processMaintenanceCommand(cmd)
 	default:
 		panic("Unknown Overseer Command")
 	}
@@ -662,6 +694,13 @@ func startOverseerFull(instancesDir string, wg *sync.WaitGroup, ac *agentClient,
 		return filepath.SkipDir
 	})
 
+	_, err := os.Stat(maintenanceFile)
+	maintenance := err == nil
+
+	if maintenance {
+		glog.Info("Node is in MAINTENANCE mode")
+	}
+
 	ovs := &overseer{
 		instancesDir:       instancesDir,
 		instances:          instances,
@@ -677,6 +716,7 @@ func startOverseerFull(instancesDir string, wg *sync.WaitGroup, ac *agentClient,
 		traceFrames:        list.New(),
 		statsInterval:      statsInterval,
 		di:                 di,
+		maintenance:        maintenance,
 	}
 	ovs.parentWg.Add(1)
 	glog.Info("Starting Overseer")
