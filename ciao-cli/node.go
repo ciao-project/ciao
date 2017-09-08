@@ -35,6 +35,7 @@ var nodeCommand = &command{
 		"status":   new(nodeStatusCommand),
 		"show":     new(nodeShowCommand),
 		"evacuate": new(nodeEvacuateCommand),
+		"restore":  new(nodeRestoreCommand),
 	},
 }
 
@@ -417,6 +418,54 @@ func (cmd *nodeEvacuateCommand) run(args []string) error {
 
 	if resp.StatusCode != http.StatusNoContent {
 		fatalf("Node evacuation failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+type nodeRestoreCommand struct {
+	Flag   flag.FlagSet
+	nodeID string
+}
+
+func (cmd *nodeRestoreCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] node restore
+
+Restore a node.  Once restored instances can be scheduled on the node
+
+The restore flags are:
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *nodeRestoreCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.nodeID, "node-id", "", "Node ID")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *nodeRestoreCommand) run(args []string) error {
+	if !checkPrivilege() {
+		fatalf("The restoration of nodes is restricted to admin users")
+	}
+
+	url, err := getCiaoNodeResource()
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	url = fmt.Sprintf("%s/%s", url, cmd.nodeID)
+
+	ver := api.NodeV1
+	resp, err := sendCiaoRequest("PUT", url, nil, nil, ver)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		fatalf("Node restoration failed: %s", resp.Status)
 	}
 
 	return nil
