@@ -53,6 +53,7 @@ can specify:
 - The resources to be consumed by the VM
 - The base image from which the VM is to be created
 - The folders that should be shared between the host and the VM
+- Any file backed storage that should appear as a device in the VM
 - An annotated cloud-init file that contains the set of instructions
   to run on the first boot of the VM.  This file is used to create
   user accounts, install packages and configure the VM.
@@ -177,6 +178,7 @@ the instance.    Four fields are currently defined:
 - cpus    : Number of CPUs to assign to the VM.  Defaults to half the cores on your machine
 - ports   : Slice of port objects which map host ports on 127.0.0.1 to guest ports
 - mounts  : Slice of mount objects which describe the folders shared between the host and the guest
+- drives  : Slice of drive objects which identify resources accessible on the host to be made available as block devices on the guest.
 
 Each port object has two members, host and guest.  They are both integers and they specify
 the mapping of port numbers from host to guest.  A default mapping of 10022 to 22 is always
@@ -209,6 +211,25 @@ Note that specifying a mount in the instance data document only creates a
 9p device which is visible inside the guest.  To actually access the shared
 folder from inside the guest you need to mount the folder.  This can be
 done in the cloud-init file discussed below.
+
+Drive objects allow the user to make a resource accessible from the host
+available as a block device in the guest VM.   Currently, these resources
+are restricted to being file backed storage located on the host.  Each
+drive object has three pieces of information.
+
+- path          : The path of the resource as accessed from the host
+- format        : The format of the resource, e.g., qcow2
+- options       : A comma separate list of options.  This field is optional.
+
+An example of a drive is given below.
+
+```
+  drives:
+  - path: /tmp/img.qcow2
+    format: qcow2
+    options: aio=native
+```
+
 
 ### The Cloudinit document
 
@@ -406,10 +427,10 @@ the workloads define the following in their cloudinit documents.
 package_upgrade: {{with .PackageUpgrade}}{{.}}{{else}}false{{end}}
 ```
 
-#### Port mappings and Mounts
+#### Port mappings, Mounts and Drives
 
 By default, ciao-down creates one port mapping for new VMs, 10022-22 for SSH
-access.  You can specify additional port mappings or mounts or even override
+access.  You can specify additional port mappings, mounts or drives or even override
 the default settings on the command line.
 
 For example,
@@ -421,11 +442,26 @@ passthrough security model.  The directory can be mounted inside the VM using
 the docs tag.  The command also adds a new port mapping.  127.0.0.1:10000 on
 the host now maps to port 80 on the guest.
 
-Multiple --mount and --port options can be provided and it's also possible to
-override the default ports.  Default mounts, ones specified in the
-instance data document, can be overridden by specifying
-an existing tag with new options, and default ports can be overridden by
-mapping a new host port to an existing guest port.  For example,
+New file backed storage devices can be added to the guest using the
+drive option.  --drive requires at least two parameters.  The first is
+the location of the file backed storage, e.g., the location on the
+host of a qcow2 file.  The second indicates the format of that storage.
+A user can specify additional options which are passed straight
+through to the underlying hypervisor.  For example, let's suppose we
+have a qcow2 file called $HOME/img.qcow2.  We could make this file
+accessible as a block device in our VM as follows.
+
+./ciao-down create --drive $HOME/img.qcow2,qcow2,aio=threads
+
+The drive will appear as a device, e.g., /dev/vdc in the VM.
+
+Multiple --mount, --drive and --port options can be provided and it's
+also possible to override the existing values.  Existing mounts, ones
+specified in the instance data document, can be overridden by
+specifying an existing tag with new options, existing ports can be
+overridden by mapping a new host port to an existing guest port and
+existing drives can be overridden by providing a new set of options for
+an existing drive path.  For example,
 
 ./ciao-down create --mount hostgo,none,$HOME/go -port 10023-22 xenial
 
