@@ -294,6 +294,10 @@ func (ts testCiaoService) EvacuateNode(nodeID string) error {
 	return nil
 }
 
+func (ts testCiaoService) RestoreNode(nodeID string) error {
+	return nil
+}
+
 func (ts testCiaoService) UpdateQuotas(tenantID string, qds []types.QuotaDetails) error {
 	return nil
 }

@@ -19,3 +19,8 @@ func (c *controller) EvacuateNode(nodeID string) error {
 	go c.client.EvacuateNode(nodeID)
 	return nil
 }
+
+func (c *controller) RestoreNode(nodeID string) error {
+	go c.client.RestoreNode(nodeID)
+	return nil
+}

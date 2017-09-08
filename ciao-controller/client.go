@@ -38,6 +38,7 @@ type controllerClient interface {
 	StopInstance(instanceID string, nodeID string) error
 	RestartInstance(i *types.Instance, w *types.Workload, t *types.Tenant) error
 	EvacuateNode(nodeID string) error
+	RestoreNode(nodeID string) error
 	Disconnect()
 	mapExternalIP(t types.Tenant, m types.MappedIP) error
 	unMapExternalIP(t types.Tenant, m types.MappedIP) error
@@ -681,6 +682,28 @@ func (client *ssntpClient) EvacuateNode(nodeID string) error {
 	glog.V(1).Info(string(y))
 
 	_, err = client.ssntp.SendCommand(ssntp.EVACUATE, y)
+
+	return err
+}
+
+func (client *ssntpClient) RestoreNode(nodeID string) error {
+	restoreCmd := payloads.RestoreCmd{
+		WorkloadAgentUUID: nodeID,
+	}
+
+	payload := payloads.Restore{
+		Restore: restoreCmd,
+	}
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	glog.Info("Restore node: ", nodeID)
+	glog.V(1).Info(string(y))
+
+	_, err = client.ssntp.SendCommand(ssntp.Restore, y)
 
 	return err
 }

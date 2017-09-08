@@ -603,6 +603,18 @@ func evacuateNode(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusNoContent, nil}, nil
 }
 
+func restoreNode(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	ID := vars["node_id"]
+
+	err := c.RestoreNode(ID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -620,6 +632,7 @@ type Service interface {
 	ListQuotas(tenantID string) []types.QuotaDetails
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
 	EvacuateNode(nodeID string) error
+	RestoreNode(nodeID string) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -757,11 +770,15 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 	route.Methods("PUT")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	// evacuation
+	// evacuation and restore
 	matchContent = fmt.Sprintf("application/(%s|json)", NodeV1)
 
 	route = r.Handle("/node/{node_id:"+uuid.UUIDRegex+"}", Handler{context, evacuateNode, true})
 	route.Methods("DELETE")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/node/{node_id:"+uuid.UUIDRegex+"}", Handler{context, restoreNode, true})
+	route.Methods("PUT")
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	return r

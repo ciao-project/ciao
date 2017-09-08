@@ -513,6 +513,29 @@ func TestEvacuateNode(t *testing.T) {
 	}
 }
 
+func TestRestoreNode(t *testing.T) {
+	client, err := testutil.NewSsntpTestClientConnection("RestoreNode", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Shutdown()
+
+	serverCh := server.AddCmdChan(ssntp.Restore)
+
+	err = ctl.RestoreNode(client.UUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	result, err := server.GetCmdChanResult(serverCh, ssntp.Restore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.NodeUUID != client.UUID {
+		t.Fatal("Did not get node ID")
+	}
+}
+
 func TestAttachVolume(t *testing.T) {
 	client, err := testutil.NewSsntpTestClientConnection("AttachVolume", ssntp.AGENT, testutil.AgentUUID)
 	if err != nil {
