@@ -290,6 +290,11 @@ const EvacuateYaml = `evacuate:
   workload_agent_uuid: ` + AgentUUID + `
 `
 
+// RestoreYaml is a sample node Restore ssntp.Command payload for test cases
+const RestoreYaml = `restore:
+  workload_agent_uuid: ` + AgentUUID + `
+`
+
 // CNCIAddedYaml is a sample ConcentratorInstanceAdded ssntp.Event payload for test cases
 const CNCIAddedYaml = `concentrator_instance_added:
   instance_uuid: ` + CNCIUUID + `
