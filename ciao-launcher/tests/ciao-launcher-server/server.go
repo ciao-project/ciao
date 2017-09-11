@@ -462,6 +462,14 @@ func serve(done chan os.Signal) {
 			func(w http.ResponseWriter, r *http.Request) {
 				yamlCommand(w, r, ssntp.DetachVolume)
 			})
+		http.HandleFunc("/evacuate",
+			func(w http.ResponseWriter, r *http.Request) {
+				yamlCommand(w, r, ssntp.EVACUATE)
+			})
+		http.HandleFunc("/restore",
+			func(w http.ResponseWriter, r *http.Request) {
+				yamlCommand(w, r, ssntp.Restore)
+			})
 		http.HandleFunc("/stats", stats)
 		http.HandleFunc("/status", status)
 		http.HandleFunc("/drain", drain)
