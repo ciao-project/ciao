@@ -31,6 +31,11 @@ import (
 	"github.com/01org/ciao/ssntp"
 )
 
+type fakeStatus struct {
+	status ssntp.Status
+	ready  *payloads.Ready
+}
+
 type fakeDeviceInfo struct{}
 
 func (fakeDeviceInfo) GetLoadAvg() int {
@@ -52,7 +57,7 @@ func (fakeDeviceInfo) GetMemoryInfo() (total, available int) {
 type overseerTestState struct {
 	t        *testing.T
 	ac       *agentClient
-	statusCh chan *payloads.Ready
+	statusCh chan *fakeStatus
 	statsCh  chan *payloads.Stat
 }
 
@@ -79,9 +84,11 @@ func (v *overseerTestState) SendStatus(status ssntp.Status, payload []byte) (int
 		if err != nil {
 			v.t.Errorf("Failed to unmarshall READY status %v", err)
 		}
-		v.statusCh <- ready
+		v.statusCh <- &fakeStatus{status, ready}
 	case ssntp.FULL:
-		v.statusCh <- nil
+		fallthrough
+	case ssntp.MAINTENANCE:
+		v.statusCh <- &fakeStatus{status, nil}
 	}
 
 	return 0, nil
@@ -248,25 +255,25 @@ DONE:
 }
 
 func getStatusStats(t *testing.T, ovsCh chan<- interface{},
-	state *overseerTestState) (*payloads.Ready, *payloads.Stat) {
+	state *overseerTestState) (*fakeStatus, *payloads.Stat) {
 	select {
 	case ovsCh <- &ovsStatsStatusCmd{}:
 	case <-time.After(time.Second):
 		t.Fatal("Unable to send ovsStatsStatusCmd")
 	}
 
-	var ready *payloads.Ready
+	var status *fakeStatus
 	var stats *payloads.Stat
 	timer := time.After(time.Second)
 DONE:
 	for {
 		select {
-		case ready = <-state.statusCh:
+		case status = <-state.statusCh:
 			if state.statsCh == nil || stats != nil {
 				break DONE
 			}
 		case stats = <-state.statsCh:
-			if state.statusCh == nil || ready != nil {
+			if state.statusCh == nil || status != nil {
 				break DONE
 			}
 		case <-timer:
@@ -275,7 +282,7 @@ DONE:
 		}
 	}
 
-	return ready, stats
+	return status, stats
 }
 
 func createTestInstance(t *testing.T, instancesDir string) {
@@ -405,7 +412,7 @@ func TestEmptyStatus(t *testing.T) {
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:        t,
-		statusCh: make(chan *payloads.Ready),
+		statusCh: make(chan *fakeStatus),
 	}
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
@@ -417,12 +424,12 @@ func TestEmptyStatus(t *testing.T) {
 		t.Fatal("Unable to send ovsStatusCmd")
 	}
 
-	var ready *payloads.Ready
+	var status *fakeStatus
 	timer := time.After(time.Second)
 DONE:
 	for {
 		select {
-		case ready = <-state.statusCh:
+		case status = <-state.statusCh:
 			break DONE
 		case <-timer:
 			t.Fatal("Timed out waiting for Status or Stats")
@@ -430,9 +437,9 @@ DONE:
 		}
 	}
 
-	if ready.NodeUUID != state.UUID() {
+	if status.ready.NodeUUID != state.UUID() {
 		t.Errorf("Unexpected UUID received for READY event, expected %s got %s",
-			state.UUID(), ready.NodeUUID)
+			state.UUID(), status.ready.NodeUUID)
 	}
 
 	shutdownOverseer(ovsCh, state)
@@ -460,7 +467,7 @@ func TestFullStatus(t *testing.T) {
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:        t,
-		statusCh: make(chan *payloads.Ready),
+		statusCh: make(chan *fakeStatus),
 	}
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
 
@@ -472,12 +479,12 @@ func TestFullStatus(t *testing.T) {
 		t.Fatal("Unable to send ovsStatusCmd")
 	}
 
-	var ready *payloads.Ready
+	var status *fakeStatus
 	timer := time.After(time.Second)
 DONE:
 	for {
 		select {
-		case ready = <-state.statusCh:
+		case status = <-state.statusCh:
 			break DONE
 		case <-timer:
 			t.Fatal("Timed out waiting for Status or Stats")
@@ -485,8 +492,81 @@ DONE:
 		}
 	}
 
-	if ready != nil {
+	if status.status != ssntp.FULL {
 		t.Errorf("Expected a FULL status message")
+	}
+
+	shutdownOverseer(ovsCh, state)
+	wg.Wait()
+}
+
+// Check the overseer sends a MAINTENANCE status command when in maintenance
+// mode.
+//
+// Start the overseer, send an ovsMaintenanceCmd command, followed by an
+// ovsStatusCmd followed by ovsRestoreCommand followed by another ovsStatusCmd
+// command.  Then shutdown the overseer.
+//
+// A ssntp.MAINTENANCE status command should be received for the first status
+// command and a ssntp.READY command should be received for the second.  The
+// overseer should shut down cleanly.
+func TestMaintenanceStatus(t *testing.T) {
+	instancesDir, err := ioutil.TempDir("", "overseer-tests")
+	if err != nil {
+		t.Fatalf("Unable to create temporary directory")
+	}
+	defer func() { _ = os.RemoveAll(instancesDir) }()
+
+	var wg sync.WaitGroup
+	state := &overseerTestState{
+		t:        t,
+		statusCh: make(chan *fakeStatus),
+	}
+	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
+
+	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
+		fakeDeviceInfo{})
+
+	mCh := make(chan struct{})
+	rCh := make(chan struct{})
+
+	for _, s := range []struct {
+		doneCh chan struct{}
+		status ssntp.Status
+		cmd    interface{}
+	}{
+		{mCh, ssntp.MAINTENANCE, &ovsMaintenanceCmd{mCh}},
+		{rCh, ssntp.READY, &ovsRestoreCmd{rCh}},
+	} {
+		select {
+		case ovsCh <- s.cmd:
+		case <-time.After(time.Second):
+			t.Fatal("Unable to send ovsMaintenanceCmd")
+		}
+
+		select {
+		case <-s.doneCh:
+		case <-time.After(time.Second):
+			t.Fatal("Timed out waiting for ovsMaintenanceCmd to complete")
+		}
+
+		select {
+		case ovsCh <- &ovsStatusCmd{}:
+		case <-time.After(time.Second):
+			t.Fatal("Unable to send ovsStatusCmd")
+		}
+
+		var status *fakeStatus
+		timer := time.After(time.Second)
+		select {
+		case status = <-state.statusCh:
+		case <-timer:
+			t.Fatal("Timed out waiting for status update from overseer")
+		}
+
+		if status.status != s.status {
+			t.Errorf("Expected a %s status message", status.status)
+		}
 	}
 
 	shutdownOverseer(ovsCh, state)
@@ -666,7 +746,7 @@ func TestStatsStatus(t *testing.T) {
 	var wg sync.WaitGroup
 	state := &overseerTestState{
 		t:        t,
-		statusCh: make(chan *payloads.Ready),
+		statusCh: make(chan *fakeStatus),
 		statsCh:  make(chan *payloads.Stat),
 	}
 	state.ac = &agentClient{conn: state, cmdCh: make(chan *cmdWrapper)}
@@ -674,10 +754,10 @@ func TestStatsStatus(t *testing.T) {
 	ovsCh := startOverseerFull(instancesDir, &wg, state.ac, time.Second*1000,
 		fakeDeviceInfo{})
 
-	ready, stats := getStatusStats(t, ovsCh, state)
-	if ready.NodeUUID != state.UUID() {
+	status, stats := getStatusStats(t, ovsCh, state)
+	if status.ready.NodeUUID != state.UUID() {
 		t.Errorf("Unexpected UUID received for READY event, expected %s got %s",
-			state.UUID(), ready.NodeUUID)
+			state.UUID(), status.ready.NodeUUID)
 	}
 
 	if len(stats.Instances) != 0 {
