@@ -88,6 +88,10 @@ type ovsMaintenanceCmd struct {
 	doneCh chan struct{}
 }
 
+type ovsRestoreCmd struct {
+	doneCh chan struct{}
+}
+
 type ovsTraceFrame struct {
 	frame *ssntp.Frame
 }
@@ -546,6 +550,21 @@ func (ovs *overseer) processMaintenanceCommand(cmd *ovsMaintenanceCmd) {
 	}
 }
 
+func (ovs *overseer) processRestoreCommand(cmd *ovsRestoreCmd) {
+	defer close(cmd.doneCh)
+	if !ovs.maintenance {
+		glog.Warning("Node not in maintenance mode")
+		return
+	}
+	glog.Info("Restoring node")
+	ovs.maintenance = false
+	err := os.Remove(maintenanceFile)
+	if err != nil {
+		glog.Errorf("Unable to remove maintenance file %s : %v",
+			maintenanceFile, err)
+	}
+}
+
 func (ovs *overseer) processCommand(cmd interface{}) {
 	switch cmd := cmd.(type) {
 	case *ovsGetCmd:
@@ -568,6 +587,8 @@ func (ovs *overseer) processCommand(cmd interface{}) {
 		ovs.processTraceFrameCommand(cmd)
 	case *ovsMaintenanceCmd:
 		ovs.processMaintenanceCommand(cmd)
+	case *ovsRestoreCmd:
+		ovs.processRestoreCommand(cmd)
 	default:
 		panic("Unknown Overseer Command")
 	}

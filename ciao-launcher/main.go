@@ -192,6 +192,11 @@ func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) 
 		}
 		wg.Wait()
 		glog.Info("All instances evacuated")
+	case *restoreCmd:
+		doneCh := make(chan struct{})
+		ovsCh <- &ovsRestoreCmd{doneCh}
+		<-doneCh
+		glog.Info("Node restored")
 	}
 }
 
