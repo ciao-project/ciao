@@ -482,6 +482,7 @@ func createConfigFile(confPath string) error {
 	conf.Configure.Scheduler.ConfigStorageURI = "file://" + confPath
 	conf.Configure.Controller.HTTPSCACert = "n/a"
 	conf.Configure.Controller.HTTPSKey = "n/a"
+	conf.Configure.Controller.ClientAuthCACertPath = "n/a"
 
 	conf.Configure.Launcher.DiskLimit = diskLimit
 	conf.Configure.Launcher.MemoryLimit = memLimit
