@@ -731,6 +731,7 @@ type CNCIController interface {
 	ScheduleRemoveSubnet(subnet int) error
 	RemoveSubnet(subnet int) error
 	WaitForActive(subnet int) error
+	WaitForActiveSubnetString(subnet string) error
 	GetInstanceCNCI(InstanceID string) (*Instance, error)
 	GetSubnetCNCI(subnet string) (*Instance, error)
 	Shutdown()

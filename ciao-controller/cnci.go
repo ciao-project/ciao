@@ -166,6 +166,17 @@ func (c *CNCIManager) launch(subnet string) (*types.Instance, error) {
 	return instances[0], nil
 }
 
+// WaitForActiveSubnetString will, given a subnet string, launch a cnci if
+// needed and wait for it to be active, or wait for an existing cnci to become
+// active.
+func (c *CNCIManager) WaitForActiveSubnetString(subnet string) error {
+	subnetInt, err := subnetStringToInt(subnet)
+	if err != nil {
+		return err
+	}
+	return c.WaitForActive(subnetInt)
+}
+
 // WaitForActive will launch a cnci if needed and wait for it to be active,
 // or wait for an existing cnci to become active.
 func (c *CNCIManager) WaitForActive(subnet int) error {

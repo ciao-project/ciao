@@ -46,6 +46,10 @@ func (c *controller) restartInstance(instanceID string) error {
 		return err
 	}
 
+	if !i.CNCI {
+		t.CNCIctrl.WaitForActiveSubnetString(i.Subnet)
+	}
+
 	go c.client.RestartInstance(i, &w, t)
 	return nil
 }
