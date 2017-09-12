@@ -337,14 +337,10 @@ func StopInstance(ctx context.Context, tenant string, instance string) error {
 	return err
 }
 
-// StopInstanceAndWait stops a ciao instance by invoking the ciao-cli instance
-// stop command. It then waits until the instance's status changes to exited. An
-// error will be returned if the following environment variables are not set;
-// CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
-func StopInstanceAndWait(ctx context.Context, tenant string, instance string) error {
-	if err := StopInstance(ctx, tenant, instance); err != nil {
-		return err
-	}
+// WaitForInstanceExit blocks until the specified instance has exited or the
+// context is cancelled.  An error will be returned if the following environment
+// variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func WaitForInstanceExit(ctx context.Context, tenant string, instance string) error {
 	for {
 		status, err := RetrieveInstanceStatus(ctx, tenant, instance)
 		if err != nil {
@@ -362,6 +358,17 @@ func StopInstanceAndWait(ctx context.Context, tenant string, instance string) er
 			return ctx.Err()
 		}
 	}
+}
+
+// StopInstanceAndWait stops a ciao instance by invoking the ciao-cli instance
+// stop command. It then waits until the instance's status changes to exited. An
+// error will be returned if the following environment variables are not set;
+// CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func StopInstanceAndWait(ctx context.Context, tenant string, instance string) error {
+	if err := StopInstance(ctx, tenant, instance); err != nil {
+		return err
+	}
+	return WaitForInstanceExit(ctx, tenant, instance)
 }
 
 // RestartInstance restarts a ciao instance by invoking the ciao-cli instance
@@ -630,6 +637,42 @@ func getNodes(ctx context.Context, args []string) (map[string]*NodeStatus, error
 	return nodeMap, nil
 }
 
+// GetComputeNode returns status information for a given node in the cluster.
+// The information is retrieved using ciao-cli show -compute command. An error will
+// be returned if the following environment variables are not set;
+// CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func GetComputeNode(ctx context.Context, nodeID string) (*NodeStatus, error) {
+	var node NodeStatus
+	args := []string{"node", "show", "-node-id", nodeID, "-f", "{{tojson .}}"}
+	err := RunCIAOCLIAsAdminJS(ctx, "", args, &node)
+	if err != nil {
+		return nil, err
+	}
+	return &node, nil
+}
+
+// WaitForComputeNodeStatus waits for the status of a node to transition to a
+// given state.  An error will be returned if the following environment variables
+// are not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func WaitForComputeNodeStatus(ctx context.Context, nodeID, status string) error {
+	for {
+		node, err := GetComputeNode(ctx, nodeID)
+		if err != nil {
+			return err
+		}
+
+		if node.Status == status {
+			return nil
+		}
+
+		select {
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
 // GetComputeNodes returns a map containing status information about each
 // compute node in the cluster. The key of the map is the Node ID. The
 // information is retrieved using ciao-cli list -compute command. An error will
@@ -663,4 +706,22 @@ func GetClusterStatus(ctx context.Context) (*ClusterStatus, error) {
 	}
 
 	return cs, nil
+}
+
+// Evacuate evacuates a given node of a ciao cluster.  An error will be returned
+// if the following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
+func Evacuate(ctx context.Context, nodeid string) error {
+	args := []string{"node", "evacuate", "-node-id", nodeid}
+	_, err := RunCIAOCLIAsAdmin(ctx, "", args)
+	return err
+}
+
+// Restore restores a given node of a ciao cluster.  An error will be returned
+// if the following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
+func Restore(ctx context.Context, nodeid string) error {
+	args := []string{"node", "restore", "-node-id", nodeid}
+	_, err := RunCIAOCLIAsAdmin(ctx, "", args)
+	return err
 }
