@@ -591,23 +591,30 @@ func updateQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusCreated, resp}, nil
 }
 
-func evacuateNode(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+func changeNodeStatus(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	ID := vars["node_id"]
 
-	err := c.EvacuateNode(ID)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return errorResponse(err), err
 	}
 
-	return Response{http.StatusNoContent, nil}, nil
-}
+	var status types.CiaoNodeStatus
+	err = json.Unmarshal(body, &status)
+	if err != nil {
+		return errorResponse(err), err
+	}
 
-func restoreNode(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
-	vars := mux.Vars(r)
-	ID := vars["node_id"]
+	if status.Status == types.NodeStatusReady {
+		err = c.RestoreNode(ID)
+	} else if status.Status == types.NodeStatusMaintenance {
+		err = c.EvacuateNode(ID)
+	} else {
+		err = fmt.Errorf("Cannot transition node %s to %s",
+			ID, status.Status)
+	}
 
-	err := c.RestoreNode(ID)
 	if err != nil {
 		return errorResponse(err), err
 	}
@@ -773,11 +780,7 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 	// evacuation and restore
 	matchContent = fmt.Sprintf("application/(%s|json)", NodeV1)
 
-	route = r.Handle("/node/{node_id:"+uuid.UUIDRegex+"}", Handler{context, evacuateNode, true})
-	route.Methods("DELETE")
-	route.HeadersRegexp("Content-Type", matchContent)
-
-	route = r.Handle("/node/{node_id:"+uuid.UUIDRegex+"}", Handler{context, restoreNode, true})
+	route = r.Handle("/node/{node_id:"+uuid.UUIDRegex+"}", Handler{context, changeNodeStatus, true})
 	route.Methods("PUT")
 	route.HeadersRegexp("Content-Type", matchContent)
 

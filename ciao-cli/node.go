@@ -18,6 +18,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -371,8 +373,36 @@ func showCNCINode(cmd *nodeShowCommand) error {
 	return nil
 }
 
-func getCiaoNodeResource() (string, error) {
-	return getCiaoResource("node", api.NodeV1)
+func nodeChangeStatus(nodeID string, status types.NodeStatusType) error {
+	if !checkPrivilege() {
+		fatalf("The evacuation of nodes is restricted to admin users")
+	}
+
+	nodeStatus := types.CiaoNodeStatus{Status: status}
+	b, err := json.Marshal(&nodeStatus)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	url, err := getCiaoResource("node", api.NodeV1)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	url = fmt.Sprintf("%s/%s", url, nodeID)
+
+	ver := api.NodeV1
+	resp, err := sendCiaoRequest("PUT", url, nil, bytes.NewReader(b), ver)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		fatalf("Node evacuation failed: %s", resp.Status)
+	}
+
+	return nil
+
 }
 
 type nodeEvacuateCommand struct {
@@ -399,28 +429,7 @@ func (cmd *nodeEvacuateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeEvacuateCommand) run(args []string) error {
-	if !checkPrivilege() {
-		fatalf("The evacuation of nodes is restricted to admin users")
-	}
-
-	url, err := getCiaoNodeResource()
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	url = fmt.Sprintf("%s/%s", url, cmd.nodeID)
-
-	ver := api.NodeV1
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Node evacuation failed: %s", resp.Status)
-	}
-
-	return nil
+	return nodeChangeStatus(cmd.nodeID, types.NodeStatusMaintenance)
 }
 
 type nodeRestoreCommand struct {
@@ -447,26 +456,5 @@ func (cmd *nodeRestoreCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeRestoreCommand) run(args []string) error {
-	if !checkPrivilege() {
-		fatalf("The restoration of nodes is restricted to admin users")
-	}
-
-	url, err := getCiaoNodeResource()
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	url = fmt.Sprintf("%s/%s", url, cmd.nodeID)
-
-	ver := api.NodeV1
-	resp, err := sendCiaoRequest("PUT", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Node restoration failed: %s", resp.Status)
-	}
-
-	return nil
+	return nodeChangeStatus(cmd.nodeID, types.NodeStatusReady)
 }
