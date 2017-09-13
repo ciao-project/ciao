@@ -242,3 +242,7 @@ func (db *MemoryDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
 func (db *MemoryDB) updateInstance(instance *types.Instance) error {
 	return nil
 }
+
+func (db *MemoryDB) updateTenant(tenant *types.Tenant) error {
+	return nil
+}

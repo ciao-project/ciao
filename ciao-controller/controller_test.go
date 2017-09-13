@@ -1944,6 +1944,91 @@ func TestMapAddressNoPool(t *testing.T) {
 	}
 }
 
+func TestListTenants(t *testing.T) {
+	tenants, err := ctl.ds.GetAllTenants()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	summary, err := ctl.ListTenants()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tenant := range tenants {
+		var match bool
+
+		if tenant.ID == "public" {
+			continue
+		}
+
+		for _, s := range summary {
+			if s.ID != tenant.ID {
+				continue
+			}
+
+			if s.Name != tenant.Name {
+				t.Fatal("bad name")
+			}
+			match = true
+
+			break
+		}
+
+		if match == false {
+			t.Fatal("did not list all tenants")
+		}
+	}
+}
+
+func TestShowTenant(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := ctl.ShowTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if config.Name != tenant.Name ||
+		config.SubnetBits != tenant.SubnetBits {
+		fmt.Printf("expect name %s, got %s\n", tenant.Name, config.Name)
+		fmt.Printf("expect bits %d, got %d\n", tenant.SubnetBits, config.SubnetBits)
+		t.Fatal("incorrect config returned")
+	}
+}
+
+func TestUpdateTenant(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := ctl.ShowTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config.Name = "test1"
+	config.SubnetBits = 30
+
+	err = ctl.UpdateTenant(tenant.ID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err = ctl.ShowTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if config.Name != "test1" || config.SubnetBits != 30 {
+		t.Fatal("Tenant Update not successful")
+	}
+}
+
 var ctl *controller
 var server *testutil.SsntpTestServer
 var wrappedClient *ssntpClientWrapper

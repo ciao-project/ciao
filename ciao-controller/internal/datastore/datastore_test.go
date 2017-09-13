@@ -923,6 +923,29 @@ func TestGetAllTenants(t *testing.T) {
 	// errors.
 }
 
+func TestUpdateTenant(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config := types.TenantConfig{
+		Name:       "name1",
+		SubnetBits: 20,
+	}
+
+	err = ds.UpdateTenant(tenant.ID, config)
+
+	testTenant, err := ds.GetTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if testTenant.Name != "name1" || testTenant.SubnetBits != 20 {
+		t.Fatal("Tenant update not successful")
+	}
+}
+
 func TestHandleTraceReport(t *testing.T) {
 	trace := payloads.Trace{
 		Frames: createTestFrameTraces("test"),

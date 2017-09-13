@@ -145,8 +145,8 @@ func (s SortedNodesByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
 
 // TenantConfig stores the configurable attributes of a tenant.
 type TenantConfig struct {
-	Name       string
-	SubnetBits int
+	Name       string `json:"name"`
+	SubnetBits int    `json:"subnet_bits"`
 }
 
 // Tenant contains information about a tenant or project.
@@ -155,6 +155,18 @@ type Tenant struct {
 	Name       string
 	CNCIctrl   CNCIController
 	SubnetBits int
+}
+
+// TenantSummary is a short form of Tenant
+type TenantSummary struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Links []Link `json:"links,omitempty"`
+}
+
+// TenantsListResponse stores a list of tenants retrieved by listTenants
+type TenantsListResponse struct {
+	Tenants []TenantSummary `json:"tenants"`
 }
 
 // LogEntry stores information about events.

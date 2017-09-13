@@ -1184,3 +1184,46 @@ func TestAddCNCIInstance(t *testing.T) {
 
 	db.disconnect()
 }
+
+func TestSQLiteDBUpdateTenant(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	config := types.TenantConfig{
+		Name:       "name1",
+		SubnetBits: 24,
+	}
+
+	err = db.addTenant(tenantID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenant, err := db.getTenant(tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// change the name and subnet bits
+	tenant.Name = "name2"
+	tenant.SubnetBits = 20
+
+	err = db.updateTenant(&tenant.Tenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenant, err = db.getTenant(tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tenant.Name != "name2" || tenant.SubnetBits != 20 {
+		t.Fatal("update not successful")
+	}
+
+	db.disconnect()
+}

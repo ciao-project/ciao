@@ -1161,6 +1161,28 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
 	return err
 }
 
+func (ds *sqliteDB) updateTenant(tenant *types.Tenant) error {
+	datastore := ds.getTableDB("tenants")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	tx, err := datastore.Begin()
+	if err != nil {
+		return errors.Wrap(err, "error starting transaction for tenant update")
+	}
+	_, err = tx.Exec("UPDATE tenants SET name = ?, subnet_bits = ? WHERE id = ?", tenant.Name, tenant.SubnetBits, tenant.ID)
+	if err != nil {
+		tx.Rollback()
+		return errors.Wrap(err, "error executing query for tenant update")
+	}
+
+	tx.Commit()
+
+	return nil
+
+}
+
 func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 	var instances []*types.Instance
 

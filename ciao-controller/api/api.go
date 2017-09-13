@@ -622,6 +622,69 @@ func changeNodeStatus(c *Context, w http.ResponseWriter, r *http.Request) (Respo
 	return Response{http.StatusNoContent, nil}, nil
 }
 
+func listTenants(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	var resp types.TenantsListResponse
+
+	queries := r.URL.Query()
+	IDs, returnSingleTenant := queries["id"]
+
+	tenants, err := c.ListTenants()
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	if returnSingleTenant != true {
+		resp.Tenants = tenants
+		return Response{http.StatusOK, resp}, nil
+	}
+
+	for _, t := range tenants {
+		for _, tenantID := range IDs {
+			if t.ID == tenantID {
+				resp.Tenants = append(resp.Tenants, t)
+			}
+		}
+	}
+
+	return Response{http.StatusOK, resp}, nil
+}
+
+func showTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	ID := vars["tenant"]
+
+	resp, err := c.ShowTenant(ID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusOK, resp}, nil
+}
+
+func updateTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	var config types.TenantConfig
+
+	vars := mux.Vars(r)
+	ID := vars["tenant"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	err = json.Unmarshal(body, &config)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	err = c.UpdateTenant(ID, config)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -640,6 +703,9 @@ type Service interface {
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
 	EvacuateNode(nodeID string) error
 	RestoreNode(nodeID string) error
+	ListTenants() ([]types.TenantSummary, error)
+	ShowTenant(ID string) (types.TenantConfig, error)
+	UpdateTenant(ID string, config types.TenantConfig) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -762,9 +828,26 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
-	// tenant quotas
+	// tenants
 	matchContent = fmt.Sprintf("application/(%s|json)", TenantsV1)
 
+	route = r.Handle("/tenants", Handler{context, listTenants, true})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/tenants/{tenant:"+uuid.UUIDRegex+"}", Handler{context, showTenant, true})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/tenants", Handler{context, showTenant, false})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/tenants/{tenant:"+uuid.UUIDRegex+"}", Handler{context, updateTenant, true})
+	route.Methods("PUT")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	// tenant quotas
 	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/tenants/quotas", Handler{context, listQuotas, false})
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)

@@ -95,6 +95,7 @@ type persistentStore interface {
 	getTenants() ([]*tenant, error)
 	releaseTenantIP(tenantID string, subnetInt int, rest int) (err error)
 	claimTenantIP(tenantID string, subnetInt int, rest int) (err error)
+	updateTenant(tenant *types.Tenant) error
 
 	// interfaces related to instances
 	getInstances() (instances []*types.Instance, err error)
@@ -360,6 +361,21 @@ func (ds *Datastore) GetTenant(id string) (*types.Tenant, error) {
 	}
 
 	return &t.Tenant, nil
+}
+
+func (ds *Datastore) UpdateTenant(ID string, config types.TenantConfig) error {
+	ds.tenantsLock.Lock()
+	defer ds.tenantsLock.Unlock()
+
+	tenant, ok := ds.tenants[ID]
+	if !ok {
+		return ErrNoTenant
+	}
+
+	tenant.Name = config.Name
+	tenant.SubnetBits = config.SubnetBits
+
+	return ds.db.updateTenant(&tenant.Tenant)
 }
 
 // AddWorkload is used to add a new workload to the datastore.
