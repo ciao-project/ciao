@@ -77,10 +77,16 @@ func qemuKillInstance(instanceDir string) {
 	_, err = fmt.Fprintln(conn, "{ \"execute\": \"quit\" }")
 	if err != nil {
 		glog.Errorf("Unable to send power down command to %s: %v\n", instanceDir, err)
+		return
 	}
 
 	// Keep reading until the socket fails.  If we close the socket straight away, qemu does not
 	// honour our quit command.
+
+	err = conn.SetReadDeadline(time.Now().Add(time.Minute))
+	if err != nil {
+		glog.Errorf("Unable to set time out on domain socket connection : %v ", err)
+	}
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
