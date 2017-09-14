@@ -93,7 +93,7 @@ func initDockerNetworking(ctx context.Context) error {
 	return nil
 }
 
-func shutdownNetwork() {
+func shutdownDockerNetwork() {
 	if dockerNet == nil {
 		return
 	}
@@ -107,6 +107,10 @@ func shutdownNetwork() {
 	}
 
 	glog.Infof("Docker networking shutdown successfully")
+}
+
+func shutdownNetwork() {
+	shutdownDockerNetwork()
 }
 
 func initNetwork(ctx context.Context) error {

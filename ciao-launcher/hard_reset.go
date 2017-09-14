@@ -102,18 +102,14 @@ func purgeLauncherState() {
 	glog.Info("Shutting down running instances")
 
 	toRemove := make([]string, 0, 1024)
-	dockerNetworking := false
 
 	glog.Info("Init networking")
 
 	if err := initNetworkPhase1(); err != nil {
 		glog.Warningf("Failed to init network: %v\n", err)
 	} else {
-		defer shutdownNetwork()
 		if err := initDockerNetworking(context.Background()); err != nil {
 			glog.Info("Unable to initialise docker networking")
-		} else {
-			dockerNetworking = true
 		}
 	}
 
@@ -147,11 +143,15 @@ func purgeLauncherState() {
 		}
 	}
 
-	if dockerNetworking {
-		glog.Info("Reset docker networking")
+	glog.Info("Reset docker networking")
 
-		resetDockerNetworking()
-	}
+	// We're always going to do this, even if we have failed to initialise
+	// docker networking.  A corrupt DB could result in docker networking
+	// failing to initialise.  We still want to delete the DB and any
+	// ciao created docker networks.
+
+	shutdownDockerNetwork()
+	resetDockerNetworking()
 
 	glog.Info("Reset networking")
 

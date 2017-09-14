@@ -88,6 +88,8 @@ func destroyDockerNetwork(ctx context.Context, bridge string) error {
 }
 
 func resetDockerNetworking() {
+	_ = libsnnet.WipeDockerPluginDB()
+
 	cli, err := getDockerClient()
 	if err != nil {
 		return
