@@ -874,3 +874,9 @@ func (d *DockerPlugin) Stop() error {
 func (d *DockerPlugin) Close() error {
 	return d.DbClose()
 }
+
+// WipeDockerPluginDB deletes the database.  The function assumes that the
+// database is not open
+func WipeDockerPluginDB() error {
+	return os.Remove(path.Join(DockerPluginCfg.DataDir, DockerPluginCfg.DbFile))
+}
