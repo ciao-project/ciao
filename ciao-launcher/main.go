@@ -75,10 +75,21 @@ func (f *qemuVirtualisationFlag) Set(val string) error {
 	return nil
 }
 
+type networks []string
+
+func (n *networks) String() string {
+	return fmt.Sprint(*n)
+}
+
+func (n *networks) Set(value string) error {
+	*n = append(*n, value)
+	return nil
+}
+
 var serverCertPath string
 var clientCertPath string
-var computeNet []string
-var mgmtNet []string
+var computeNet networks
+var mgmtNet networks
 var networking bool
 var hardReset bool
 var diskLimit bool
@@ -92,6 +103,8 @@ func init() {
 	flag.StringVar(&clientCertPath, "cert", "", "CA certificate")
 	flag.BoolVar(&networking, "network", true, "Enable networking")
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
+	flag.Var(&computeNet, "compute-net", "Compute subnet.  Multiple subnets can be specified")
+	flag.Var(&mgmtNet, "mgmt-net", "Management subnet. Multiple subnets can be specified")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
 	flag.StringVar(&cephID, "ceph_id", "", "ceph client id")
 }
@@ -231,8 +244,12 @@ func loadClusterConfig(conn serverConn) error {
 	if err != nil {
 		return err
 	}
-	computeNet = clusterConfig.Configure.Launcher.ComputeNetwork
-	mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
+	if len(computeNet) == 0 {
+		computeNet = clusterConfig.Configure.Launcher.ComputeNetwork
+	}
+	if len(mgmtNet) == 0 {
+		mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
+	}
 	diskLimit = clusterConfig.Configure.Launcher.DiskLimit
 	memLimit = clusterConfig.Configure.Launcher.MemoryLimit
 	if cephID == "" {
