@@ -171,7 +171,7 @@ func (d *DockerEpMap) NewTable() {
 
 //Name provides the name of the map
 func (d *DockerEpMap) Name() string {
-	return tableNetworkMap
+	return tableEndPointMap
 }
 
 //NewElement allocates and returns an endpoint value
@@ -202,7 +202,7 @@ func (d *DockerNwMap) NewTable() {
 
 //Name provides the name of the map
 func (d *DockerNwMap) Name() string {
-	return tableEndPointMap
+	return tableNetworkMap
 }
 
 //NewElement allocates and returns an network value
@@ -873,4 +873,10 @@ func (d *DockerPlugin) Stop() error {
 //failing to close may lead to database corruption
 func (d *DockerPlugin) Close() error {
 	return d.DbClose()
+}
+
+// WipeDockerPluginDB deletes the database.  The function assumes that the
+// database is not open
+func WipeDockerPluginDB() error {
+	return os.Remove(path.Join(DockerPluginCfg.DataDir, DockerPluginCfg.DbFile))
 }

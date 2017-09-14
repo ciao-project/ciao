@@ -77,10 +77,16 @@ func qemuKillInstance(instanceDir string) {
 	_, err = fmt.Fprintln(conn, "{ \"execute\": \"quit\" }")
 	if err != nil {
 		glog.Errorf("Unable to send power down command to %s: %v\n", instanceDir, err)
+		return
 	}
 
 	// Keep reading until the socket fails.  If we close the socket straight away, qemu does not
 	// honour our quit command.
+
+	err = conn.SetReadDeadline(time.Now().Add(time.Minute))
+	if err != nil {
+		glog.Errorf("Unable to set time out on domain socket connection : %v ", err)
+	}
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
@@ -96,18 +102,14 @@ func purgeLauncherState() {
 	glog.Info("Shutting down running instances")
 
 	toRemove := make([]string, 0, 1024)
-	dockerNetworking := false
 
 	glog.Info("Init networking")
 
 	if err := initNetworkPhase1(); err != nil {
 		glog.Warningf("Failed to init network: %v\n", err)
 	} else {
-		defer shutdownNetwork()
 		if err := initDockerNetworking(context.Background()); err != nil {
 			glog.Info("Unable to initialise docker networking")
-		} else {
-			dockerNetworking = true
 		}
 	}
 
@@ -141,11 +143,15 @@ func purgeLauncherState() {
 		}
 	}
 
-	if dockerNetworking {
-		glog.Info("Reset docker networking")
+	glog.Info("Reset docker networking")
 
-		resetDockerNetworking()
-	}
+	// We're always going to do this, even if we have failed to initialise
+	// docker networking.  A corrupt DB could result in docker networking
+	// failing to initialise.  We still want to delete the DB and any
+	// ciao created docker networks.
+
+	shutdownDockerNetwork()
+	resetDockerNetworking()
 
 	glog.Info("Reset networking")
 
