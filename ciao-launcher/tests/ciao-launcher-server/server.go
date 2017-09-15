@@ -462,6 +462,14 @@ func serve(done chan os.Signal) {
 			func(w http.ResponseWriter, r *http.Request) {
 				yamlCommand(w, r, ssntp.DetachVolume)
 			})
+		http.HandleFunc("/evacuate",
+			func(w http.ResponseWriter, r *http.Request) {
+				yamlCommand(w, r, ssntp.EVACUATE)
+			})
+		http.HandleFunc("/restore",
+			func(w http.ResponseWriter, r *http.Request) {
+				yamlCommand(w, r, ssntp.Restore)
+			})
 		http.HandleFunc("/stats", stats)
 		http.HandleFunc("/status", status)
 		http.HandleFunc("/drain", drain)
@@ -482,6 +490,7 @@ func createConfigFile(confPath string) error {
 	conf.Configure.Scheduler.ConfigStorageURI = "file://" + confPath
 	conf.Configure.Controller.HTTPSCACert = "n/a"
 	conf.Configure.Controller.HTTPSKey = "n/a"
+	conf.Configure.Controller.ClientAuthCACertPath = "n/a"
 
 	conf.Configure.Launcher.DiskLimit = diskLimit
 	conf.Configure.Launcher.MemoryLimit = memLimit

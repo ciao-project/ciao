@@ -172,6 +172,24 @@ is running when the DELETE command is received it will be powered down.
 
 See [here](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/delete_legacy.yaml) for an example of the DELETE command.
 
+## EVACUATE
+
+The EVACUATE command serves two purposes.
+
+1. It places the receiving node into mainteance mode.  The node's status changes to
+MAINTENANCE.  Scheduler should not send it any instance start requests and any
+such received requests will be rejected.
+
+2. It stops all instances running on the node.  These instances will transistion to
+the exited state and may be restarted on another node.
+
+A node will remain in the maintenance state until it receives a Restore command.
+
+## Restore
+
+The Restore command returns a node in maintenance state to Ready.  The node is
+capable of receiving new launch requests.
+
 # Recovery
 
 When launcher starts up it checks to see if any VM instances exist and if they
@@ -212,13 +230,16 @@ And instance statistics are computed like this
 <tr><td>CPUUsage</td><td>Amount of cpuTime consumed by instance over 30 second period, normalized for number of VCPUs</td></tr>
 </table>
 
-ciao-launcher sends two different STATUS updates, READY and FULL.  FULL is sent
-when launcher determines that there is insufficient memory or disk space available
-on the node on which it runs to launch another instance.  It also returns FULL
-if it determines that the launcher process is running low on file descriptors.
-The memory and disk space checks can be disabled using the -mem-limit and
--disk-limit command line options.  The file descriptor limit check cannot be
-disabled.
+ciao-launcher sends three different STATUS updates, READY, FULL and
+MAINTEANCE.  FULL is sent when launcher determines that there is
+insufficient memory or disk space available on the node on which it
+runs to launch another instance.  It also returns FULL if it
+determines that the launcher process is running low on file
+descriptors.  The memory and disk space checks can be disabled using
+the -mem-limit and -disk-limit command line options.  The file
+descriptor limit check cannot be disabled.  The MAINTENANCE status
+is transmitted when the node has been placed into maintenance mode.
+See the MAINTENANCE command above for more details.
 
 # Testing ciao-launcher in Isolation
 
@@ -350,7 +371,7 @@ where ip is the ip address of the instance as specified in the START command.
 For example, if the IP address of the instance is 192.168.0.2, the ssh port
 would be 33002.  Launcher actually sends the SSH IP address and port number
 of each instance in the stats commands.  This information should normally be
-shown in the ciao UI.
+shown in the ciao cli.
 
 Please note that ssh is typically only used when you are running a complete
 ciao stack, including ciao-scheduler, ciao-controller and a network node.

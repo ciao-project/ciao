@@ -587,6 +587,83 @@ func TestDeleteAllInstances(t *testing.T) {
 	}
 }
 
+// Start a random workload, evacuate and restore its node, restart instance
+//
+// Start a random instance and wait for the instance to be scheduled.  Evacuate
+// the node on which the instance is running.  Restore the node and restart the
+// instance.
+//
+// The instance should be started and scheduled, the node should be evacuated
+// correctly and its status should transition to MAINTENANCE.  On restoration
+// the status of the node should transition back to READY and the attempt to
+// restart the instance should succeed. Note when testing outside of singlevm
+// there is no guarantee that the instance will be restarted on the same node.
+func TestEvacuateRestore(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	instances, err := bat.StartRandomInstances(ctx, "", 1)
+	if err != nil {
+		t.Fatalf("Failed to launch instance: %v", err)
+	}
+
+	defer func() {
+		err := bat.DeleteInstance(ctx, "", instances[0])
+		if err != nil {
+			t.Errorf("Failed to delete instance %s: %v", instances[0], err)
+		}
+	}()
+
+	_, err = bat.WaitForInstancesLaunch(ctx, "", instances, false)
+	if err != nil {
+		t.Fatalf("Instance %s did not launch: %v", instances[0], err)
+	}
+
+	i, err := bat.GetInstance(ctx, "", instances[0])
+	if err != nil {
+		t.Fatalf("Failed to retrieve instance %s: %v", instances[0], err)
+	}
+
+	err = bat.Evacuate(ctx, i.HostID)
+	if err != nil {
+		t.Fatalf("Unable to evacuate node %s : %v", i.HostID, err)
+	}
+
+	err = bat.WaitForInstanceExit(ctx, "", instances[0])
+	if err != nil {
+		t.Fatalf("instance %s did not exit: %v", instances[0], err)
+	}
+
+	err = bat.WaitForComputeNodeStatus(ctx, i.HostID, "MAINTENANCE")
+	if err != nil {
+		t.Fatalf("Node %s did not transition to MAINTENANCE mode: %v",
+			instances[0], err)
+	}
+
+	err = bat.Restore(ctx, i.HostID)
+	if err != nil {
+		t.Fatalf("Unable to evacuate node %s : %v", i.HostID, err)
+	}
+
+	err = bat.WaitForComputeNodeStatus(ctx, i.HostID, "READY")
+	if err != nil {
+		t.Fatalf("Node %s did not transition back to READY: %v",
+			instances[0], err)
+	}
+
+	err = bat.RestartInstance(ctx, "", instances[0])
+	if err != nil {
+		t.Fatalf("Failed to restart instance %s : %v", instances[0], err)
+	}
+
+	_, err = bat.WaitForInstancesLaunch(ctx, "", instances,
+		i.Status == "active")
+	if err != nil {
+		t.Errorf("Timed out waiting for instance %s to restart : %v",
+			instances[0], err)
+	}
+}
+
 // TestMain ensures that all instances have been deleted when the tests finish.
 // The individual tests do try to clean up after themselves but there's always
 // the chance that a bug somewhere in ciao could lead to something not getting

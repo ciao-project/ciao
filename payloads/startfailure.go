@@ -35,6 +35,11 @@ const (
 	// was sent had insufficient resources to start the requested instance.
 	FullComputeNode = "full_cn"
 
+	// NodeInMaintenance indicates that the node to which the START command
+	// was sent cannot host the instance as it is currently in maintenance
+	// mode.
+	NodeInMaintenance = "node_maintenance"
+
 	// NoComputeNodes is returned by the scheduler if no compute nodes are
 	// running in the cluster upon which the instance can be started.
 	NoComputeNodes = "no_cn"
@@ -100,6 +105,8 @@ func (r StartFailureReason) String() string {
 		return "Cloud is full"
 	case FullComputeNode:
 		return "Compute node is full"
+	case NodeInMaintenance:
+		return "Node is undergoing maintenance"
 	case NoComputeNodes:
 		return "No compute node available"
 	case NoNetworkNodes:
@@ -129,6 +136,7 @@ func (r StartFailureReason) IsFatal() bool {
 	switch r {
 	case FullCloud,
 		FullComputeNode,
+		NodeInMaintenance,
 		NoComputeNodes,
 		NoNetworkNodes,
 		InvalidPayload,

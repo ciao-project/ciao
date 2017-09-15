@@ -110,13 +110,16 @@ func init() {
 }
 
 const (
-	lockDir        = "/tmp/lock/ciao"
-	instancesDir   = "/var/lib/ciao/instances"
-	logDir         = "/var/lib/ciao/logs/launcher"
-	instanceState  = "state"
-	lockFile       = "client-agent.lock"
-	statsPeriod    = 6
-	resourcePeriod = 30
+	lockDir         = "/tmp/lock/ciao"
+	ciaoDir         = "/var/lib/ciao"
+	instancesDir    = ciaoDir + "/instances"
+	dataDir         = ciaoDir + "/data/launcher/"
+	logDir          = ciaoDir + "/logs/launcher"
+	maintenanceFile = dataDir + "/maintenance"
+	instanceState   = "state"
+	lockFile        = "client-agent.lock"
+	statsPeriod     = 6
+	resourcePeriod  = 30
 )
 
 func installLauncherDeps(role ssntp.Role, doneCh chan struct{}) {
@@ -162,6 +165,13 @@ func insCmdChannel(instance string, ovsCh chan<- interface{}) chan<- interface{}
 	return target.cmdCh
 }
 
+func getAllInstances(ovsCh chan<- interface{}) []ovsInstance {
+	targetCh := make(chan ovsGetAllResult)
+	ovsCh <- &ovsGetAllCmd{targetCh}
+	target := <-targetCh
+	return target.instances
+}
+
 func insState(instance string, ovsCh chan<- interface{}) ovsGetResult {
 	targetCh := make(chan ovsGetResult)
 	ovsCh <- &ovsGetCmd{instance, targetCh}
@@ -169,21 +179,62 @@ func insState(instance string, ovsCh chan<- interface{}) ovsGetResult {
 }
 
 func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) {
+	if cmd.instance != "" {
+		processInstanceCommand(conn, cmd, ovsCh)
+		return
+	}
+
+	switch cmd.cmd.(type) {
+	case *statusCmd:
+		ovsCh <- &ovsStatsStatusCmd{}
+		return
+	case *evacuateCmd:
+		doneCh := make(chan struct{})
+		ovsCh <- &ovsMaintenanceCmd{doneCh}
+		<-doneCh
+		var wg sync.WaitGroup
+		for _, i := range getAllInstances(ovsCh) {
+			wg.Add(1)
+			go func(i ovsInstance) {
+				i.cmdCh <- &insDeleteCmd{
+					stop:    true,
+					running: i.running,
+				}
+				errCh := make(chan error)
+				ovsCh <- &ovsRemoveCmd{i.instance, errCh}
+				<-errCh
+				wg.Done()
+			}(i)
+		}
+		wg.Wait()
+		glog.Info("All instances evacuated")
+	case *restoreCmd:
+		doneCh := make(chan struct{})
+		ovsCh <- &ovsRestoreCmd{doneCh}
+		<-doneCh
+		glog.Info("Node restored")
+	}
+}
+
+func processInstanceCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) {
 	var target chan<- interface{}
 	var delCmd *insDeleteCmd
 
 	switch insCmd := cmd.cmd.(type) {
-	case *statusCmd:
-		ovsCh <- &ovsStatsStatusCmd{}
-		return
 	case *insStartCmd:
 		targetCh := make(chan ovsAddResult)
 		ovsCh <- &ovsAddCmd{cmd.instance, insCmd.cfg, targetCh}
 		addResult := <-targetCh
-		if !addResult.canAdd {
-			glog.Errorf("Instance will make node full: Disk %d Mem %d CPUs %d",
-				insCmd.cfg.Disk, insCmd.cfg.Mem, insCmd.cfg.Cpus)
-			se := startError{nil, payloads.FullComputeNode, insCmd.cfg.Restart}
+		if addResult.errorCode != "" {
+			if addResult.errorCode == payloads.FullComputeNode {
+				glog.Errorf("Instance %s will make node full: Disk %d Mem %d CPUs %d",
+					insCmd.cfg.Instance, insCmd.cfg.Disk, insCmd.cfg.Mem,
+					insCmd.cfg.Cpus)
+			} else {
+				glog.Errorf("Node in maintenance mode.  Instance %s cannot be launched",
+					insCmd.cfg.Instance)
+			}
+			se := startError{nil, addResult.errorCode, insCmd.cfg.Restart}
 			se.send(conn, cmd.instance)
 			return
 		}
@@ -413,6 +464,10 @@ func createMandatoryDirs() error {
 	if err := os.MkdirAll(instancesDir, 0755); err != nil {
 		return fmt.Errorf("Unable to create instances directory (%s) %v",
 			instancesDir, err)
+	}
+
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		return fmt.Errorf("Unable to create data directory (%s) %v", dataDir, err)
 	}
 
 	return nil

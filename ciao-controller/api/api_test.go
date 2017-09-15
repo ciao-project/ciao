@@ -42,7 +42,7 @@ var tests = []test{
 		"",
 		"application/text",
 		http.StatusOK,
-		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"},{"rel":"tenants","href":"/tenants","version":"x.ciao.tenants.v1","minimum_version":"x.ciao.tenants.v1"}]`,
+		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"},{"rel":"tenants","href":"/tenants","version":"x.ciao.tenants.v1","minimum_version":"x.ciao.tenants.v1"},{"rel":"node","href":"/node","version":"x.ciao.node.v1","minimum_version":"x.ciao.node.v1"}]`,
 	},
 	{
 		"GET",
@@ -288,6 +288,14 @@ func (ts testCiaoService) ListQuotas(tenantID string) []types.QuotaDetails {
 		{Name: "test-quota-2", Value: -1, Usage: 10},
 		{Name: "test-limit", Value: 123, Usage: 0},
 	}
+}
+
+func (ts testCiaoService) EvacuateNode(nodeID string) error {
+	return nil
+}
+
+func (ts testCiaoService) RestoreNode(nodeID string) error {
+	return nil
 }
 
 func (ts testCiaoService) UpdateQuotas(tenantID string, qds []types.QuotaDetails) error {

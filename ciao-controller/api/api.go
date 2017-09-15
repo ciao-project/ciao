@@ -41,6 +41,9 @@ const (
 
 	// TenantsV1 is the content-type string for v1 of our tenants resource
 	TenantsV1 = "x.ciao.tenants.v1"
+
+	// NodeV1 is the content-type string for v1 of our node resource
+	NodeV1 = "x.ciao.node.v1"
 )
 
 // HTTPErrorData represents the HTTP response body for
@@ -212,6 +215,19 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 	}
 
 	links = append(links, link)
+
+	// for the "node" resource
+
+	if !ok {
+		link = types.APILink{
+			Rel:        "node",
+			Version:    NodeV1,
+			MinVersion: NodeV1,
+		}
+
+		link.Href = fmt.Sprintf("%s/node", c.URL)
+		links = append(links, link)
+	}
 
 	return Response{http.StatusOK, links}, nil
 }
@@ -575,6 +591,37 @@ func updateQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusCreated, resp}, nil
 }
 
+func changeNodeStatus(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	ID := vars["node_id"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	var status types.CiaoNodeStatus
+	err = json.Unmarshal(body, &status)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	if status.Status == types.NodeStatusReady {
+		err = c.RestoreNode(ID)
+	} else if status.Status == types.NodeStatusMaintenance {
+		err = c.EvacuateNode(ID)
+	} else {
+		err = fmt.Errorf("Cannot transition node %s to %s",
+			ID, status.Status)
+	}
+
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -591,6 +638,8 @@ type Service interface {
 	ShowWorkload(tenantID string, workloadID string) (types.Workload, error)
 	ListQuotas(tenantID string) []types.QuotaDetails
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
+	EvacuateNode(nodeID string) error
+	RestoreNode(nodeID string) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -725,6 +774,13 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	route = r.Handle("/tenants/{for_tenant:"+uuid.UUIDRegex+"}/quotas", Handler{context, updateQuotas, true})
+	route.Methods("PUT")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	// evacuation and restore
+	matchContent = fmt.Sprintf("application/(%s|json)", NodeV1)
+
+	route = r.Handle("/node/{node_id:"+uuid.UUIDRegex+"}", Handler{context, changeNodeStatus, true})
 	route.Methods("PUT")
 	route.HeadersRegexp("Content-Type", matchContent)
 

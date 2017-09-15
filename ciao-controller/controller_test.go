@@ -499,12 +499,35 @@ func TestEvacuateNode(t *testing.T) {
 
 	// ok to not send workload first?
 
-	err = ctl.evacuateNode(client.UUID)
+	err = ctl.EvacuateNode(client.UUID)
 	if err != nil {
 		t.Error(err)
 	}
 
 	result, err := server.GetCmdChanResult(serverCh, ssntp.EVACUATE)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.NodeUUID != client.UUID {
+		t.Fatal("Did not get node ID")
+	}
+}
+
+func TestRestoreNode(t *testing.T) {
+	client, err := testutil.NewSsntpTestClientConnection("RestoreNode", ssntp.AGENT, testutil.AgentUUID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Shutdown()
+
+	serverCh := server.AddCmdChan(ssntp.Restore)
+
+	err = ctl.RestoreNode(client.UUID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	result, err := server.GetCmdChanResult(serverCh, ssntp.Restore)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -287,6 +287,28 @@ type CiaoNode struct {
 	TotalPausedInstances  int       `json:"total_paused_instances"`
 }
 
+// NodeStatusType contains the valid values of a node's status
+type NodeStatusType string
+
+const (
+	// NodeStatusReady indicates that a node is ready to receive start
+	// requests.
+	NodeStatusReady NodeStatusType = "READY"
+
+	// NodeStatusFull indicates that a node is full and cannot satisfy
+	// start requests.
+	NodeStatusFull NodeStatusType = "FULL"
+
+	// NodeStatusMaintenance indicates that a node is in maintenance mode
+	// and cannot satisfy start requests.
+	NodeStatusMaintenance NodeStatusType = "MAINTENANCE"
+)
+
+// CiaoNodeStatus contains status information for an individual node.
+type CiaoNodeStatus struct {
+	Status NodeStatusType `json:"status"`
+}
+
 // CiaoNodes represents the unmarshalled version of the contents of a
 // /v2.1/nodes response.  It contains status and statistics information
 // for a set of nodes.
@@ -731,6 +753,7 @@ type CNCIController interface {
 	ScheduleRemoveSubnet(subnet int) error
 	RemoveSubnet(subnet int) error
 	WaitForActive(subnet int) error
+	WaitForActiveSubnetString(subnet string) error
 	GetInstanceCNCI(InstanceID string) (*Instance, error)
 	GetSubnetCNCI(subnet string) (*Instance, error)
 	Shutdown()

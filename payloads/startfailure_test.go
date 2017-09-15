@@ -63,6 +63,7 @@ func TestStartFailureString(t *testing.T) {
 	}{
 		{FullCloud, "Cloud is full"},
 		{FullComputeNode, "Compute node is full"},
+		{NodeInMaintenance, "Node is undergoing maintenance"},
 		{NoComputeNodes, "No compute node available"},
 		{NoNetworkNodes, "No network node available"},
 		{InvalidPayload, "YAML payload is corrupt"},

@@ -25,12 +25,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (c *controller) evacuateNode(nodeID string) error {
-	// should I bother to see if nodeID is valid?
-	go c.client.EvacuateNode(nodeID)
-	return nil
-}
-
 func (c *controller) restartInstance(instanceID string) error {
 	// should I bother to see if instanceID is valid?
 	i, err := c.ds.GetInstance(instanceID)
@@ -50,6 +44,10 @@ func (c *controller) restartInstance(instanceID string) error {
 	t, err := c.ds.GetTenant(i.TenantID)
 	if err != nil {
 		return err
+	}
+
+	if !i.CNCI {
+		t.CNCIctrl.WaitForActiveSubnetString(i.Subnet)
 	}
 
 	go c.client.RestartInstance(i, &w, t)

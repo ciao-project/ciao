@@ -358,6 +358,26 @@ func getStartResults(payload []byte, result *Result) {
 	}
 }
 
+func getEvacuateResults(payload []byte, result *Result) {
+	var evacCmd payloads.Evacuate
+
+	err := yaml.Unmarshal(payload, &evacCmd)
+	result.Err = err
+	if err == nil {
+		result.NodeUUID = evacCmd.Evacuate.WorkloadAgentUUID
+	}
+}
+
+func getRestoreResults(payload []byte, result *Result) {
+	var restoreCmd payloads.Restore
+
+	err := yaml.Unmarshal(payload, &restoreCmd)
+	result.Err = err
+	if err == nil {
+		result.NodeUUID = restoreCmd.Restore.WorkloadAgentUUID
+	}
+}
+
 // CommandNotify implements an SSNTP CommandNotify callback for SsntpTestServer
 func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command, frame *ssntp.Frame) {
 	var result Result
@@ -405,13 +425,10 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 		}
 
 	case ssntp.EVACUATE:
-		var evacCmd payloads.Evacuate
+		getEvacuateResults(payload, &result)
 
-		err := yaml.Unmarshal(payload, &evacCmd)
-		result.Err = err
-		if err == nil {
-			result.NodeUUID = evacCmd.Evacuate.WorkloadAgentUUID
-		}
+	case ssntp.Restore:
+		getRestoreResults(payload, &result)
 
 	case ssntp.STATS:
 		var statsCmd payloads.Stat

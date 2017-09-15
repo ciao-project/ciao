@@ -99,6 +99,10 @@ func (client *ssntpClientWrapper) EvacuateNode(nodeID string) error {
 	return client.realClient.EvacuateNode(nodeID)
 }
 
+func (client *ssntpClientWrapper) RestoreNode(nodeID string) error {
+	return client.realClient.RestoreNode(nodeID)
+}
+
 func (client *ssntpClientWrapper) mapExternalIP(t types.Tenant, m types.MappedIP) error {
 	return client.realClient.mapExternalIP(t, m)
 }

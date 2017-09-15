@@ -50,6 +50,8 @@ func init() {
 		fmt.Fprintln(os.Stderr, "\tstatus")
 		fmt.Fprintln(os.Stderr, "\tattach")
 		fmt.Fprintln(os.Stderr, "\tdetach")
+		fmt.Fprintln(os.Stderr, "\tevacuate")
+		fmt.Fprintln(os.Stderr, "\trestore")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Flags:")
 		flag.PrintDefaults()
@@ -454,6 +456,35 @@ func detach(host string) error {
 	return postYaml(host, "detach", client, &detach)
 }
 
+func evacuate(host string) error {
+	fs := flag.NewFlagSet("evacuate", flag.ExitOnError)
+	cp := ""
+	fs.StringVar(&cp, "client", "", "UUID of client")
+
+	if err := fs.Parse(flag.Args()[1:]); err != nil {
+		return err
+	}
+
+	var evac payloads.Evacuate
+	evac.Evacuate.WorkloadAgentUUID = cp
+
+	return postYaml(host, "evacuate", cp, &evac)
+}
+
+func restore(host string) error {
+	fs := flag.NewFlagSet("restore", flag.ExitOnError)
+	cp := ""
+	fs.StringVar(&cp, "client", "", "UUID of client")
+
+	if err := fs.Parse(flag.Args()[1:]); err != nil {
+		return err
+	}
+
+	var res payloads.Restore
+	res.Restore.WorkloadAgentUUID = cp
+	return postYaml(host, "restore", cp, &res)
+}
+
 func main() {
 
 	flag.Parse()
@@ -474,6 +505,8 @@ func main() {
 		"startf":    startf,
 		"attach":    attach,
 		"detach":    detach,
+		"evacuate":  evacuate,
+		"restore":   restore,
 	}
 
 	cmd := cmdMap[os.Args[1]]

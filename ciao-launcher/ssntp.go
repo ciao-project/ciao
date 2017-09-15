@@ -30,6 +30,8 @@ type cmdWrapper struct {
 	cmd      interface{}
 }
 type statusCmd struct{}
+type evacuateCmd struct{}
+type restoreCmd struct{}
 
 // serverConn is an abstract interface representing a connection to
 // a server.  It contains methods to connect to the server and to
@@ -146,6 +148,10 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 			return
 		}
 		client.cmdCh <- &cmdWrapper{instance, &insDetachVolumeCmd{volume}}
+	case ssntp.EVACUATE:
+		client.cmdCh <- &cmdWrapper{"", &evacuateCmd{}}
+	case ssntp.Restore:
+		client.cmdCh <- &cmdWrapper{"", &restoreCmd{}}
 	}
 }
 
