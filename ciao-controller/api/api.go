@@ -662,8 +662,6 @@ func showTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response, e
 }
 
 func updateTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
-	var config types.TenantConfig
-
 	vars := mux.Vars(r)
 	ID := vars["tenant"]
 
@@ -672,12 +670,7 @@ func updateTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 		return errorResponse(err), err
 	}
 
-	err = json.Unmarshal(body, &config)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	err = c.UpdateTenant(ID, config)
+	err = c.PatchTenant(ID, body)
 	if err != nil {
 		return errorResponse(err), err
 	}
@@ -705,7 +698,7 @@ type Service interface {
 	RestoreNode(nodeID string) error
 	ListTenants() ([]types.TenantSummary, error)
 	ShowTenant(ID string) (types.TenantConfig, error)
-	UpdateTenant(ID string, config types.TenantConfig) error
+	PatchTenant(ID string, patch []byte) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -844,8 +837,8 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	route = r.Handle("/tenants/{tenant:"+uuid.UUIDRegex+"}", Handler{context, updateTenant, true})
-	route.Methods("PUT")
-	route.HeadersRegexp("Content-Type", matchContent)
+	route.Methods("PATCH")
+	route.HeadersRegexp("Content-Type", `application/merge-patch\+json`)
 
 	// tenant quotas
 	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/tenants/quotas", Handler{context, listQuotas, false})

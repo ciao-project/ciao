@@ -65,7 +65,7 @@ func (c *controller) ShowTenant(tenantID string) (types.TenantConfig, error) {
 	return config, err
 }
 
-func (c *controller) UpdateTenant(tenantID string, config types.TenantConfig) error {
+func (c *controller) PatchTenant(tenantID string, patch []byte) error {
 	// we need to update through datastore.
-	return c.ds.UpdateTenant(tenantID, config)
+	return c.ds.JSONPatchTenant(tenantID, patch)
 }

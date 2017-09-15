@@ -19,6 +19,7 @@ package datastore
 import (
 	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net"
@@ -33,6 +34,7 @@ import (
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
+	jsonpatch "github.com/evanphx/json-patch"
 )
 
 func addInstance(tenant *types.Tenant, workload types.Workload, name string) (instance *types.Instance, err error) {
@@ -929,12 +931,35 @@ func TestUpdateTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	oldconfig := types.TenantConfig{
+		Name:       tenant.Name,
+		SubnetBits: tenant.SubnetBits,
+	}
+
+	a, err := json.Marshal(oldconfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	config := types.TenantConfig{
 		Name:       "name1",
 		SubnetBits: 20,
 	}
 
-	err = ds.UpdateTenant(tenant.ID, config)
+	b, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	merge, err := jsonpatch.CreateMergePatch(a, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.JSONPatchTenant(tenant.ID, merge)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	testTenant, err := ds.GetTenant(tenant.ID)
 	if err != nil {

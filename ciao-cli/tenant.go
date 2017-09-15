@@ -28,6 +28,7 @@ import (
 
 	"github.com/01org/ciao/ciao-controller/api"
 	"github.com/01org/ciao/ciao-controller/types"
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/intel/tfortools"
 )
 
@@ -109,6 +110,8 @@ func putCiaoTenantConfig(ID string, name string, bits int) error {
 
 	err = unmarshalHTTPResponse(resp, &config)
 
+	oldconfig := config
+
 	if name != "" {
 		config.Name = name
 	}
@@ -117,14 +120,26 @@ func putCiaoTenantConfig(ID string, name string, bits int) error {
 		config.SubnetBits = bits
 	}
 
+	a, err := json.Marshal(oldconfig)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
 	b, err := json.Marshal(config)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	body := bytes.NewReader(b)
+	merge, err := jsonpatch.CreateMergePatch(a, b)
+	if err != nil {
+		fatalf(err.Error())
+	}
 
-	_, err = sendCiaoRequest("PUT", url, nil, body, api.TenantsV1)
+	fmt.Println(string(merge))
+
+	body := bytes.NewReader(merge)
+
+	_, err = sendCiaoRequest("PATCH", url, nil, body, "merge-patch+json")
 
 	return err
 }

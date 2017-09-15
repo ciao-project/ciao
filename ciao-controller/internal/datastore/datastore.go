@@ -21,6 +21,7 @@ package datastore
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
@@ -31,6 +32,7 @@ import (
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/uuid"
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 )
@@ -363,13 +365,36 @@ func (ds *Datastore) GetTenant(id string) (*types.Tenant, error) {
 	return &t.Tenant, nil
 }
 
-func (ds *Datastore) UpdateTenant(ID string, config types.TenantConfig) error {
+// JSONPatchTenant will update a tenant with changes from a json merge patch.
+func (ds *Datastore) JSONPatchTenant(ID string, patch []byte) error {
+	var config types.TenantConfig
+
 	ds.tenantsLock.Lock()
 	defer ds.tenantsLock.Unlock()
 
 	tenant, ok := ds.tenants[ID]
 	if !ok {
 		return ErrNoTenant
+	}
+
+	oldconfig := types.TenantConfig{
+		Name:       tenant.Name,
+		SubnetBits: tenant.SubnetBits,
+	}
+
+	orig, err := json.Marshal(oldconfig)
+	if err != nil {
+		return errors.Wrap(err, "error updating tenant")
+	}
+
+	new, err := jsonpatch.MergePatch(orig, patch)
+	if err != nil {
+		return errors.Wrap(err, "error updating tenant")
+	}
+
+	err = json.Unmarshal(new, &config)
+	if err != nil {
+		return errors.Wrap(err, "error updating tenant")
 	}
 
 	tenant.Name = config.Name

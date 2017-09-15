@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -38,6 +39,7 @@ import (
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/01org/ciao/testutil"
+	jsonpatch "github.com/evanphx/json-patch"
 )
 
 func addTestWorkload(tenantID string) error {
@@ -2011,10 +2013,27 @@ func TestUpdateTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	oldconfig := config
+
 	config.Name = "test1"
 	config.SubnetBits = 30
 
-	err = ctl.UpdateTenant(tenant.ID, config)
+	a, err := json.Marshal(oldconfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	merge, err := jsonpatch.CreateMergePatch(a, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ctl.PatchTenant(tenant.ID, merge)
 	if err != nil {
 		t.Fatal(err)
 	}

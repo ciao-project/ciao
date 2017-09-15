@@ -173,10 +173,10 @@ var tests = []test{
 		`{"name":"Test Tenant","subnet_bits":24}`,
 	},
 	{
-		"PUT",
+		"PATCH",
 		"/tenants/093ae09b-f653-464e-9ae6-5ae28bd03a22",
 		`{"name":"Updated Test Tenant","subnet_bits":4}`,
-		fmt.Sprintf("application/%s", TenantsV1),
+		fmt.Sprintf("application/%s", "merge-patch+json"),
 		http.StatusNoContent,
 		"null",
 	},
@@ -353,7 +353,7 @@ func (ts testCiaoService) ShowTenant(ID string) (types.TenantConfig, error) {
 	return config, nil
 }
 
-func (ts testCiaoService) UpdateTenant(string, types.TenantConfig) error {
+func (ts testCiaoService) PatchTenant(string, []byte) error {
 	return nil
 }
 
