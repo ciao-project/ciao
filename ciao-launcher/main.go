@@ -183,7 +183,10 @@ func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) 
 		for _, i := range getAllInstances(ovsCh) {
 			wg.Add(1)
 			go func(i ovsInstance) {
-				i.cmdCh <- &insDeleteCmd{stop: true}
+				i.cmdCh <- &insDeleteCmd{
+					stop:    true,
+					running: i.running,
+				}
 				errCh := make(chan error)
 				ovsCh <- &ovsRemoveCmd{i.instance, errCh}
 				<-errCh

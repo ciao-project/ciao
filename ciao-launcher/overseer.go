@@ -55,6 +55,7 @@ type ovsGetCmd struct {
 
 type ovsInstance struct {
 	instance string
+	running  ovsRunningState
 	cmdCh    chan<- interface{}
 }
 
@@ -419,7 +420,12 @@ func (ovs *overseer) processGetAllCommand(cmd *ovsGetAllCmd) {
 	var res ovsGetAllResult
 	for k, v := range ovs.instances {
 		glog.Infof("Overseer: Found %s", k)
-		res.instances = append(res.instances, ovsInstance{k, v.cmdCh})
+		res.instances = append(res.instances,
+			ovsInstance{
+				instance: k,
+				running:  v.running,
+				cmdCh:    v.cmdCh,
+			})
 	}
 	cmd.targetCh <- res
 }
