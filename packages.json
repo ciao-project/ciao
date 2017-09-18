@@ -39,6 +39,11 @@
 		"version": "dbb0722",
 		"license": "Apache v2.0"
 	},
+	"github.com/evanphx/json-patch": {
+		"url": "https://github.com/evanphx/json-patch",
+		"version": "944e072",
+		"license": "BSD 3-clause"
+	},
 	"github.com/golang/glog": {
 		"url": "https://github.com/golang/glog.git",
 		"version": "23def4e",
