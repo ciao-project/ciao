@@ -69,11 +69,6 @@
 		"version": "6f2749a",
 		"license": "MIT + Public domain"
 	},
-	"github.com/mitchellh/mapstructure": {
-		"url": "https://github.com/mitchellh/mapstructure.git",
-		"version": "d2dd026",
-		"license": "MIT"
-	},
 	"github.com/opencontainers/runc": {
 		"url": "https://github.com/opencontainers/runc.git",
 		"version": "v0.1.0",
