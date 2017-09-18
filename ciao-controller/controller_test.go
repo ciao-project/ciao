@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -38,6 +39,7 @@ import (
 	"github.com/01org/ciao/ssntp"
 	"github.com/01org/ciao/ssntp/uuid"
 	"github.com/01org/ciao/testutil"
+	jsonpatch "github.com/evanphx/json-patch"
 )
 
 func addTestWorkload(tenantID string) error {
@@ -1941,6 +1943,108 @@ func TestMapAddressNoPool(t *testing.T) {
 	mappedIPs := ctl.ListMappedAddresses(&instances[0].TenantID)
 	if len(mappedIPs) != 1 {
 		t.Fatal("mapped IP not in list")
+	}
+}
+
+func TestListTenants(t *testing.T) {
+	tenants, err := ctl.ds.GetAllTenants()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	summary, err := ctl.ListTenants()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tenant := range tenants {
+		var match bool
+
+		if tenant.ID == "public" {
+			continue
+		}
+
+		for _, s := range summary {
+			if s.ID != tenant.ID {
+				continue
+			}
+
+			if s.Name != tenant.Name {
+				t.Fatal("bad name")
+			}
+			match = true
+
+			break
+		}
+
+		if match == false {
+			t.Fatal("did not list all tenants")
+		}
+	}
+}
+
+func TestShowTenant(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := ctl.ShowTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if config.Name != tenant.Name ||
+		config.SubnetBits != tenant.SubnetBits {
+		fmt.Printf("expect name %s, got %s\n", tenant.Name, config.Name)
+		fmt.Printf("expect bits %d, got %d\n", tenant.SubnetBits, config.SubnetBits)
+		t.Fatal("incorrect config returned")
+	}
+}
+
+func TestUpdateTenant(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := ctl.ShowTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	oldconfig := config
+
+	config.Name = "test1"
+	config.SubnetBits = 30
+
+	a, err := json.Marshal(oldconfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	merge, err := jsonpatch.CreateMergePatch(a, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ctl.PatchTenant(tenant.ID, merge)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err = ctl.ShowTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if config.Name != "test1" || config.SubnetBits != 30 {
+		t.Fatal("Tenant Update not successful")
 	}
 }
 

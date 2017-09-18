@@ -156,6 +156,30 @@ var tests = []test{
 		http.StatusOK,
 		`{"quotas":[{"name":"test-quota-1","value":"10","usage":"3"},{"name":"test-quota-2","value":"unlimited","usage":"10"},{"name":"test-limit","value":"123"}]}`,
 	},
+	{
+		"GET",
+		"/tenants",
+		"",
+		fmt.Sprintf("application/%s", TenantsV1),
+		http.StatusOK,
+		`{"tenants":[{"id":"bc70dcd6-7298-4933-98a9-cded2d232d02","name":"Test Tenant","links":[{"rel":"self","href":"/tenants/bc70dcd6-7298-4933-98a9-cded2d232d02"}]}]}`,
+	},
+	{
+		"GET",
+		"/tenants/093ae09b-f653-464e-9ae6-5ae28bd03a22",
+		"",
+		fmt.Sprintf("application/%s", TenantsV1),
+		http.StatusOK,
+		`{"name":"Test Tenant","subnet_bits":24}`,
+	},
+	{
+		"PATCH",
+		"/tenants/093ae09b-f653-464e-9ae6-5ae28bd03a22",
+		`{"name":"Updated Test Tenant","subnet_bits":4}`,
+		fmt.Sprintf("application/%s", "merge-patch+json"),
+		http.StatusNoContent,
+		"null",
+	},
 }
 
 type testCiaoService struct{}
@@ -299,6 +323,37 @@ func (ts testCiaoService) RestoreNode(nodeID string) error {
 }
 
 func (ts testCiaoService) UpdateQuotas(tenantID string, qds []types.QuotaDetails) error {
+	return nil
+}
+
+func (ts testCiaoService) ListTenants() ([]types.TenantSummary, error) {
+	summary := types.TenantSummary{
+		ID:   "bc70dcd6-7298-4933-98a9-cded2d232d02",
+		Name: "Test Tenant",
+	}
+
+	ref := fmt.Sprintf("/tenants/%s", summary.ID)
+
+	link := types.Link{
+		Rel:  "self",
+		Href: ref,
+	}
+
+	summary.Links = append(summary.Links, link)
+
+	return []types.TenantSummary{summary}, nil
+}
+
+func (ts testCiaoService) ShowTenant(ID string) (types.TenantConfig, error) {
+	config := types.TenantConfig{
+		Name:       "Test Tenant",
+		SubnetBits: 24,
+	}
+
+	return config, nil
+}
+
+func (ts testCiaoService) PatchTenant(string, []byte) error {
 	return nil
 }
 

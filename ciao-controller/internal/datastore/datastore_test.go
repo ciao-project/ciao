@@ -19,6 +19,7 @@ package datastore
 import (
 	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net"
@@ -33,6 +34,7 @@ import (
 	"github.com/01org/ciao/ciao-storage"
 	"github.com/01org/ciao/payloads"
 	"github.com/01org/ciao/ssntp/uuid"
+	jsonpatch "github.com/evanphx/json-patch"
 )
 
 func addInstance(tenant *types.Tenant, workload types.Workload, name string) (instance *types.Instance, err error) {
@@ -923,6 +925,52 @@ func TestGetAllTenants(t *testing.T) {
 	// errors.
 }
 
+func TestUpdateTenant(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	oldconfig := types.TenantConfig{
+		Name:       tenant.Name,
+		SubnetBits: tenant.SubnetBits,
+	}
+
+	a, err := json.Marshal(oldconfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config := types.TenantConfig{
+		Name:       "name1",
+		SubnetBits: 20,
+	}
+
+	b, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	merge, err := jsonpatch.CreateMergePatch(a, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.JSONPatchTenant(tenant.ID, merge)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testTenant, err := ds.GetTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if testTenant.Name != "name1" || testTenant.SubnetBits != 20 {
+		t.Fatal("Tenant update not successful")
+	}
+}
+
 func TestHandleTraceReport(t *testing.T) {
 	trace := payloads.Trace{
 		Frames: createTestFrameTraces("test"),
@@ -1224,11 +1272,21 @@ func TestDetachVolumeFailure(t *testing.T) {
 }
 
 func testAllocateTenantIPs(t *testing.T, nIPs int) {
-	nIPsPerSubnet := 253
-
 	newTenant, err := addTestTenant()
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	_, ipNet, err := net.ParseCIDR(fmt.Sprintf("172.16.0.0/%d", newTenant.SubnetBits))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ones, bits := ipNet.Mask.Size()
+
+	// deduct .0 and .1, and .255
+	nIPsPerSubnet := (1 << uint32(bits-ones)) - 3
+	if nIPsPerSubnet <= 0 {
+		t.Fatal("Invalid tenant config")
 	}
 
 	// make this tenant have some network hosts assigned to them.
@@ -1245,19 +1303,31 @@ func testAllocateTenantIPs(t *testing.T, nIPs int) {
 		t.Fatal(err)
 	}
 
-	if len(tenant.subnets) != (nIPs/nIPsPerSubnet)+1 {
-		t.Fatal("Too many subnets created")
+	var expSubnets int
+	expSubnets = (nIPs / nIPsPerSubnet)
+	remain := nIPs % nIPsPerSubnet
+	if remain > 0 {
+		expSubnets++
+	}
+
+	if len(tenant.subnets) != expSubnets {
+		t.Fatalf("expected %d subnets, got %d", expSubnets, len(tenant.subnets))
 	}
 
 	for i, subnet := range tenant.subnets {
+		var expHosts int
+
 		if ((i + 1) * nIPsPerSubnet) < nIPs {
-			if len(tenant.network[subnet]) != nIPsPerSubnet {
-				t.Fatal("Missing IPs")
-			}
+			expHosts = nIPsPerSubnet
 		} else {
-			if len(tenant.network[subnet]) != nIPs%nIPsPerSubnet {
-				t.Fatal("Missing IPs")
+			expHosts = nIPs % nIPsPerSubnet
+			if expHosts == 0 {
+				expHosts++
 			}
+		}
+
+		if len(tenant.network[subnet]) != expHosts {
+			t.Fatalf("Missing IPs: expected %d, got %d", expHosts, len(tenant.network[subnet]))
 		}
 	}
 }

@@ -99,9 +99,12 @@ func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
 
 	// add a tenant.
 	tenantID := uuid.Generate().String()
-	mac := "validmac"
+	config := types.TenantConfig{
+		Name:       "validname",
+		SubnetBits: 24,
+	}
 
-	err = db.addTenant(tenantID, mac)
+	err = db.addTenant(tenantID, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -720,9 +723,12 @@ func TestDeleteMappedIP(t *testing.T) {
 
 func createTestTenant(db persistentStore, t *testing.T) *tenant {
 	tid := uuid.Generate().String()
-	name := "TestTenant"
+	config := types.TenantConfig{
+		Name:       "TestTenant",
+		SubnetBits: 24,
+	}
 
-	err := db.addTenant(tid, name)
+	err := db.addTenant(tid, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -735,8 +741,12 @@ func createTestTenant(db persistentStore, t *testing.T) *tenant {
 		t.Fatal("Expected added tenant")
 	}
 
-	if tn.Name != name {
-		t.Fatalf("Expected %v, got %v", name, tn.Name)
+	if tn.Name != config.Name {
+		t.Fatalf("Expected %v, got %v", config.Name, tn.Name)
+	}
+
+	if tn.SubnetBits != config.SubnetBits {
+		t.Fatalf("Expected SubnetBits %v , got %v\n", config.SubnetBits, tn.SubnetBits)
 	}
 	return tn
 }
@@ -1170,6 +1180,49 @@ func TestAddCNCIInstance(t *testing.T) {
 
 	if instances[0].CNCI != true {
 		t.Fatal("CNCI Instance not properly stored")
+	}
+
+	db.disconnect()
+}
+
+func TestSQLiteDBUpdateTenant(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	config := types.TenantConfig{
+		Name:       "name1",
+		SubnetBits: 24,
+	}
+
+	err = db.addTenant(tenantID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenant, err := db.getTenant(tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// change the name and subnet bits
+	tenant.Name = "name2"
+	tenant.SubnetBits = 20
+
+	err = db.updateTenant(&tenant.Tenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenant, err = db.getTenant(tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tenant.Name != "name2" || tenant.SubnetBits != 20 {
+		t.Fatal("update not successful")
 	}
 
 	db.disconnect()
