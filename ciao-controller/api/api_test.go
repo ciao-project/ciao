@@ -180,6 +180,14 @@ var tests = []test{
 		http.StatusNoContent,
 		"null",
 	},
+	{
+		"POST",
+		"/tenants",
+		`{"id":"093ae09b-f653-464e-9ae6-5ae28bd03a22","config":{"name":"New Tenant","subnet_bits":4}}`,
+		fmt.Sprintf("application/%s", TenantsV1),
+		http.StatusCreated,
+		`{"id":"093ae09b-f653-464e-9ae6-5ae28bd03a22","name":"New Tenant","links":[{"rel":"self","href":"/tenants/093ae09b-f653-464e-9ae6-5ae28bd03a22"}]}`,
+	},
 }
 
 type testCiaoService struct{}
@@ -355,6 +363,22 @@ func (ts testCiaoService) ShowTenant(ID string) (types.TenantConfig, error) {
 
 func (ts testCiaoService) PatchTenant(string, []byte) error {
 	return nil
+}
+
+func (ts testCiaoService) CreateTenant(ID string, config types.TenantConfig) (types.TenantSummary, error) {
+	summary := types.TenantSummary{
+		ID:   ID,
+		Name: config.Name,
+	}
+
+	ref := fmt.Sprintf("/tenants/%s", summary.ID)
+	link := types.Link{
+		Rel:  "self",
+		Href: ref,
+	}
+	summary.Links = append(summary.Links, link)
+
+	return summary, nil
 }
 
 func TestResponse(t *testing.T) {

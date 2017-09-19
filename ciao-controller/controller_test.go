@@ -2065,6 +2065,28 @@ func TestUpdateTenant(t *testing.T) {
 	}
 }
 
+func TestCreateTenant(t *testing.T) {
+	config := types.TenantConfig{
+		Name:       "createTenant",
+		SubnetBits: 21,
+	}
+
+	ID := uuid.Generate()
+
+	summary, err := ctl.CreateTenant(ID.String(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if summary.Name != "createTenant" || summary.ID != ID.String() {
+		t.Fatal(err)
+	}
+
+	if len(summary.Links) != 1 {
+		t.Fatal("Link not built correctly")
+	}
+}
+
 var ctl *controller
 var server *testutil.SsntpTestServer
 var wrappedClient *ssntpClientWrapper

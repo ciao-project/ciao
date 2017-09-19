@@ -169,6 +169,12 @@ type TenantsListResponse struct {
 	Tenants []TenantSummary `json:"tenants"`
 }
 
+// TenantRequest contains information for creating a new tenant.
+type TenantRequest struct {
+	ID     string       `json:"id"`
+	Config TenantConfig `json:"config"`
+}
+
 // LogEntry stores information about events.
 type LogEntry struct {
 	Timestamp time.Time `json:"time_stamp"`
