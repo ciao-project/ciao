@@ -318,10 +318,13 @@ func (ds *Datastore) Exit() {
 
 // AddTenant stores information about a tenant into the datastore.
 // and makes sure that this new tenant is cached.
-func (ds *Datastore) AddTenant(id string) (*types.Tenant, error) {
-	config := types.TenantConfig{
-		Name:       "",
-		SubnetBits: 24,
+func (ds *Datastore) AddTenant(id string, config types.TenantConfig) (*types.Tenant, error) {
+	ds.tenantsLock.Lock()
+	defer ds.tenantsLock.Unlock()
+
+	t, ok := ds.tenants[id]
+	if ok {
+		return nil, errors.New("Duplicate Tenant ID")
 	}
 
 	err := ds.db.addTenant(id, config)
@@ -329,14 +332,12 @@ func (ds *Datastore) AddTenant(id string) (*types.Tenant, error) {
 		return nil, errors.Wrapf(err, "error adding tenant (%v) to database", id)
 	}
 
-	t, err := ds.getTenant(id)
+	t, err = ds.db.getTenant(id)
 	if err != nil || t == nil {
 		return nil, err
 	}
 
-	ds.tenantsLock.Lock()
 	ds.tenants[id] = t
-	ds.tenantsLock.Unlock()
 
 	return &t.Tenant, nil
 }

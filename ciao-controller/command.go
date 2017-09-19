@@ -107,7 +107,13 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 		return nil
 	}
 
-	tenant, err = c.ds.AddTenant(tenantID)
+	// if we are adding tenant this way, we need to use defaults
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	tenant, err = c.ds.AddTenant(tenantID, config)
 	if err != nil {
 		return err
 	}

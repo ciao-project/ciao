@@ -139,7 +139,13 @@ users:
 func addTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err = ds.AddTenant(tuuid.String())
+
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	tenant, err = ds.AddTenant(tuuid.String(), config)
 	if err != nil {
 		return
 	}
@@ -232,7 +238,12 @@ func addTestInstanceStats(t *testing.T) ([]*types.Instance, payloads.Stat) {
 func BenchmarkGetTenantNoCache(b *testing.B) {
 	/* add a new tenant */
 	tuuid := uuid.Generate().String()
-	_, err := ds.AddTenant(tuuid)
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	_, err := ds.AddTenant(tuuid, config)
 	if err != nil {
 		b.Error(err)
 	}
@@ -249,7 +260,12 @@ func BenchmarkGetTenantNoCache(b *testing.B) {
 func BenchmarkAllocateTenantIP(b *testing.B) {
 	/* add a new tenant */
 	tuuid := uuid.Generate().String()
-	_, err := ds.AddTenant(tuuid)
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	_, err := ds.AddTenant(tuuid, config)
 	if err != nil {
 		b.Error(err)
 	}
@@ -275,7 +291,12 @@ func BenchmarkGetAllInstances(b *testing.B) {
 func TestTenantCreate(t *testing.T) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	_, err := ds.AddTenant(tuuid.String())
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	_, err := ds.AddTenant(tuuid.String(), config)
 	if err != nil {
 		t.Fatal(err)
 	}

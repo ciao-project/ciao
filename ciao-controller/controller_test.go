@@ -107,7 +107,13 @@ func addFakeCNCI(tenant *types.Tenant) (*types.Instance, error) {
 func addTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err = ctl.ds.AddTenant(tuuid.String())
+
+	config := types.TenantConfig{
+		Name:       "controller test tenant",
+		SubnetBits: 24,
+	}
+
+	tenant, err = ctl.ds.AddTenant(tuuid.String(), config)
 	if err != nil {
 		return
 	}
@@ -131,7 +137,13 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 func addTestTenantNoCNCI() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err = ctl.ds.AddTenant(tuuid.String())
+
+	config := types.TenantConfig{
+		Name:       "controller test tenant no CNCI",
+		SubnetBits: 24,
+	}
+
+	tenant, err = ctl.ds.AddTenant(tuuid.String(), config)
 	if err != nil {
 		return
 	}
@@ -149,7 +161,12 @@ func addTestTenantNoCNCI() (tenant *types.Tenant, err error) {
 
 func addComputeTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
-	tenant, err = ctl.ds.AddTenant(testutil.ComputeUser)
+	config := types.TenantConfig{
+		Name:       "compute test tenant",
+		SubnetBits: 24,
+	}
+
+	tenant, err = ctl.ds.AddTenant(testutil.ComputeUser, config)
 	if err != nil {
 		return
 	}
