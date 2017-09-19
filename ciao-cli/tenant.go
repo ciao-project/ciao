@@ -135,8 +135,6 @@ func putCiaoTenantConfig(ID string, name string, bits int) error {
 		fatalf(err.Error())
 	}
 
-	fmt.Println(string(merge))
-
 	body := bytes.NewReader(merge)
 
 	_, err = sendCiaoRequest("PATCH", url, nil, body, "merge-patch+json")
