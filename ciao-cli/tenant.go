@@ -154,6 +154,7 @@ var tenantCommand = &command{
 		"list":   new(tenantListCommand),
 		"update": new(tenantUpdateCommand),
 		"create": new(tenantCreateCommand),
+		"delete": new(tenantDeleteCommand),
 	},
 }
 
@@ -180,6 +181,11 @@ type tenantCreateCommand struct {
 	subnetBits int
 	tenantID   string
 	template   string
+}
+
+type tenantDeleteCommand struct {
+	Flag     flag.FlagSet
+	tenantID string
 }
 
 func (cmd *tenantUpdateCommand) usage(...string) {
@@ -318,6 +324,48 @@ func (cmd *tenantCreateCommand) run(args []string) error {
 
 	fmt.Printf("Tenant [%s]\n", summary.ID)
 	fmt.Printf("\tName: %s\n", summary.Name)
+
+	return nil
+}
+
+func (cmd *tenantDeleteCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] tenant delete [flags]
+
+Deletes a tenant
+
+The delete flags are:
+
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *tenantDeleteCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.tenantID, "tenant", "", "ID for new tenant")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *tenantDeleteCommand) run(args []string) error {
+	if !checkPrivilege() {
+		fatalf("Creating tenants is only available for privileged users")
+	}
+
+	if cmd.tenantID == "" {
+		errorf("Missing required tenantID")
+		cmd.usage()
+	}
+
+	url, err := getCiaoTenantRef(cmd.tenantID)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	_, err = sendCiaoRequest("DELETE", url, nil, nil, api.TenantsV1)
+	if err != nil {
+		fatalf(err.Error())
+	}
 
 	return nil
 }
