@@ -62,6 +62,13 @@ func TestCreateTenant(t *testing.T) {
 		t.Fatalf("Failed to create tenant : %v", err)
 	}
 
+	defer func() {
+		err = bat.DeleteTenant(ctx, tenant.ID)
+		if err != nil {
+			t.Fatalf("Failed to delete tenant: %v", err)
+		}
+	}()
+
 	if tenant.Name != config.Name {
 		t.Fatalf("Failed to create tenant")
 	}
@@ -100,6 +107,13 @@ func TestGetTenantConfig(t *testing.T) {
 		t.Fatalf("Failed to create tenant : %v", err)
 	}
 
+	defer func() {
+		err = bat.DeleteTenant(ctx, tenant.ID)
+		if err != nil {
+			t.Fatalf("Failed to delete tenant: %v", err)
+		}
+	}()
+
 	if tenant.Name != config.Name {
 		t.Fatalf("Failed to create tenant")
 	}
@@ -132,6 +146,13 @@ func TestUpdateTenantConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create tenant : %v", err)
 	}
+
+	defer func() {
+		err = bat.DeleteTenant(ctx, tenant.ID)
+		if err != nil {
+			t.Fatalf("Failed to delete tenant: %v", err)
+		}
+	}()
 
 	if tenant.Name != config.Name {
 		t.Fatalf("Failed to create tenant")

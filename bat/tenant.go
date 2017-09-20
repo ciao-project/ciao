@@ -94,3 +94,12 @@ func GetTenantConfig(ctx context.Context, ID string) (TenantConfig, error) {
 
 	return config, err
 }
+
+// DeleteTenant will delete the given tenant.
+// It calls ciao-cli tenant delete.
+func DeleteTenant(ctx context.Context, ID string) error {
+	args := []string{"tenant", "delete", "-tenant", ID}
+	_, err := RunCIAOCLIAsAdmin(ctx, "", args)
+
+	return err
+}
