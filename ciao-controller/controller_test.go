@@ -2087,6 +2087,25 @@ func TestCreateTenant(t *testing.T) {
 	}
 }
 
+func TestDeleteTenant(t *testing.T) {
+	config := types.TenantConfig{
+		Name:       "deleteTenant",
+		SubnetBits: 24,
+	}
+
+	ID := uuid.Generate()
+
+	_, err := ctl.CreateTenant(ID.String(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ctl.DeleteTenant(ID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 var ctl *controller
 var server *testutil.SsntpTestServer
 var wrappedClient *ssntpClientWrapper
@@ -2101,6 +2120,7 @@ func TestMain(m *testing.M) {
 	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
 	ctl.qs = new(quotas.Quotas)
+	ctl.is = new(ImageService)
 
 	ctl.BlockDriver = func() storage.BlockDriver {
 		return &storage.NoopDriver{}
@@ -2134,6 +2154,11 @@ func TestMain(m *testing.M) {
 	ctl.ds.GenerateCNCIWorkload(4, 128, 128, "", "")
 
 	ctl.qs.Init()
+
+	err = ctl.is.Init(ctl.qs)
+	if err != nil {
+		os.Exit(1)
+	}
 
 	config := &ssntp.Config{
 		URI:    "localhost",

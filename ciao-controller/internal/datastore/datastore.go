@@ -98,6 +98,7 @@ type persistentStore interface {
 	releaseTenantIP(tenantID string, subnetInt int, rest int) (err error)
 	claimTenantIP(tenantID string, subnetInt int, rest int) (err error)
 	updateTenant(tenant *types.Tenant) error
+	deleteTenant(tenantID string) error
 
 	// interfaces related to instances
 	getInstances() (instances []*types.Instance, err error)
@@ -342,6 +343,23 @@ func (ds *Datastore) AddTenant(id string, config types.TenantConfig) (*types.Ten
 	return &t.Tenant, nil
 }
 
+// DeleteTenant removes a tenant from the datastore.
+// It is the responsibility of the caller to ensure all tenant artifacts
+// are removed first.
+func (ds *Datastore) DeleteTenant(ID string) error {
+	ds.tenantsLock.Lock()
+	defer ds.tenantsLock.Unlock()
+
+	_, ok := ds.tenants[ID]
+	if !ok {
+		return ErrNoTenant
+	}
+
+	delete(ds.tenants, ID)
+
+	return ds.db.deleteTenant(ID)
+}
+
 func (ds *Datastore) getTenant(id string) (*tenant, error) {
 	// check cache first
 	ds.tenantsLock.RLock()
@@ -506,6 +524,15 @@ func (ds *Datastore) GetWorkload(tenantID string, ID string) (types.Workload, er
 // GetWorkloads retrieves the list of workloads for a particular tenant.
 // if there are any public workloads, they will be included in the returned list.
 func (ds *Datastore) GetWorkloads(tenantID string) ([]types.Workload, error) {
+	return ds.getWorkloads(tenantID, true)
+}
+
+// GetTenantWorkloads retrieves a list of private workloads.
+func (ds *Datastore) GetTenantWorkloads(tenantID string) ([]types.Workload, error) {
+	return ds.getWorkloads(tenantID, false)
+}
+
+func (ds *Datastore) getWorkloads(tenantID string, includePublic bool) ([]types.Workload, error) {
 	var workloads []types.Workload
 
 	// check the cache first
@@ -514,10 +541,12 @@ func (ds *Datastore) GetWorkloads(tenantID string) ([]types.Workload, error) {
 
 	// get any public workloads. These are part of our
 	// dummy tenant "public".
-	public, ok := ds.tenants["public"]
-	if ok {
-		for _, wl := range public.workloads {
-			workloads = append(workloads, wl)
+	if includePublic {
+		public, ok := ds.tenants["public"]
+		if ok {
+			for _, wl := range public.workloads {
+				workloads = append(workloads, wl)
+			}
 		}
 	}
 

@@ -992,6 +992,23 @@ func TestUpdateTenant(t *testing.T) {
 	}
 }
 
+func TestDeleteTenant(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.DeleteTenant(tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testTenant, err := ds.GetTenant(tenant.ID)
+	if err == nil || testTenant != nil {
+		t.Fatal("Tenant not deleted")
+	}
+}
+
 func TestHandleTraceReport(t *testing.T) {
 	trace := payloads.Trace{
 		Frames: createTestFrameTraces("test"),

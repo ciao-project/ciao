@@ -15,11 +15,13 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/golang/glog"
+	"github.com/pkg/errors"
 )
 
 func (c *controller) ListTenants() ([]types.TenantSummary, error) {
@@ -93,6 +95,11 @@ func (c *controller) CreateTenant(tenantID string, config types.TenantConfig) (t
 		return types.TenantSummary{}, err
 	}
 
+	tenant.CNCIctrl, err = newCNCIManager(c, tenantID)
+	if err != nil {
+		return types.TenantSummary{}, err
+	}
+
 	ts := types.TenantSummary{
 		ID:   tenant.ID,
 		Name: tenant.Name,
@@ -106,4 +113,143 @@ func (c *controller) CreateTenant(tenantID string, config types.TenantConfig) (t
 	ts.Links = append(ts.Links, link)
 
 	return ts, nil
+}
+
+func (c *controller) deleteCNCIInstances(tenantID string) error {
+	// We need to explicitly delete all CNCIs synchronously
+	tenant, err := c.ds.GetTenant(tenantID)
+	if err != nil {
+		return errors.Wrap(err, "Unable to remove tenant")
+	}
+	tenant.CNCIctrl.Shutdown()
+
+	cncis, err := c.ds.GetTenantCNCIs(tenantID)
+	if err != nil {
+		return errors.Wrap(err, "Unable to remove tenant")
+	}
+
+	var wg sync.WaitGroup
+
+	for _, i := range cncis {
+		wg.Add(1)
+		go func(ID string, CIDR string) {
+			defer wg.Done()
+
+			subnet, err := subnetStringToInt(CIDR)
+			if err != nil {
+				c.client.RemoveInstance(ID)
+				glog.Warningf("Unable to remove tenant cnci: %v", err)
+				return
+			}
+
+			err = tenant.CNCIctrl.RemoveSubnet(subnet)
+			if err != nil {
+				// remove directly.
+				c.client.RemoveInstance(ID)
+				glog.Warningf("Unable to remove tenant cnci: %v", err)
+				// keep going.
+			}
+			return
+
+		}(i.ID, i.Subnet)
+	}
+
+	wg.Wait()
+
+	return nil
+}
+
+func (c *controller) deleteInstances(tenantID string) error {
+	// remove any external IPs
+	ips := c.ListMappedAddresses(&tenantID)
+	for _, addr := range ips {
+		err := c.UnMapAddress(addr.ExternalIP)
+		if err != nil {
+			return errors.Wrap(err, "Unable to remove tenant")
+		}
+	}
+
+	// delete all this tenant's instances.
+	instances, err := c.ds.GetAllInstancesFromTenant(tenantID)
+	if err != nil {
+		return errors.Wrap(err, "Unable to remove tenant")
+	}
+
+	var wg sync.WaitGroup
+
+	for _, i := range instances {
+		wg.Add(1)
+		go func(ID string) {
+			err := c.deleteInstanceSync(ID)
+			if err != nil {
+				// remove directly.
+				c.client.RemoveInstance(ID)
+				glog.Warningf("Unable to remove tenant instance: %v", err)
+			}
+			wg.Done()
+		}(i.ID)
+	}
+
+	wg.Wait()
+
+	return nil
+}
+
+// DeleteTenant will remove any object associated with this tenant.
+// at this point we can assume the admin has already
+// revoked the tenant's certificate. So no more
+// activity can happen for this tenant while this
+// command is going.
+func (c *controller) DeleteTenant(tenantID string) error {
+	err := c.deleteInstances(tenantID)
+	if err != nil {
+		return err
+	}
+
+	err = c.deleteCNCIInstances(tenantID)
+	if err != nil {
+		return err
+	}
+
+	// remove any private workloads associated with this tenant.
+	workloads, err := c.ds.GetTenantWorkloads(tenantID)
+	if err != nil {
+		return err
+	}
+
+	for _, w := range workloads {
+		err := c.DeleteWorkload(tenantID, w.ID)
+		if err != nil {
+			return errors.Wrap(err, "Unable to remove tenant")
+		}
+	}
+
+	// remove any images for this tenant.
+	images, err := c.is.ds.GetAllImages(tenantID)
+	if err != nil {
+		return err
+	}
+
+	for _, i := range images {
+		_, err := c.is.DeleteImage(tenantID, i.ID)
+		if err != nil {
+			return errors.Wrap(err, "Unable to remove tenant")
+		}
+	}
+
+	// remove any storage for this tenant.
+	bds, err := c.ds.GetBlockDevices(tenantID)
+	if err != nil {
+		return errors.Wrap(err, "Unable to remove tenant")
+	}
+
+	for _, bd := range bds {
+		err := c.DeleteBlockDevice(bd.ID)
+		if err != nil {
+			return errors.Wrap(err, "Unable to remove tenant")
+		}
+	}
+
+	// quotas get deleted as side effect to deleting tenant
+	return c.ds.DeleteTenant(tenantID)
 }

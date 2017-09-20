@@ -84,18 +84,19 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 	}
 
 	newInstance := types.Instance{
-		TenantID:   tenantID,
-		WorkloadID: workload.ID,
-		State:      payloads.Pending,
-		ID:         id.String(),
-		CNCI:       config.cnci,
-		IPAddress:  config.ip,
-		VnicUUID:   config.sc.Start.Networking.VnicUUID,
-		Subnet:     config.sc.Start.Networking.Subnet,
-		MACAddress: config.mac,
-		CreateTime: time.Now(),
-		Name:       name,
-		StateLock:  &sync.RWMutex{},
+		TenantID:    tenantID,
+		WorkloadID:  workload.ID,
+		State:       payloads.Pending,
+		ID:          id.String(),
+		CNCI:        config.cnci,
+		IPAddress:   config.ip,
+		VnicUUID:    config.sc.Start.Networking.VnicUUID,
+		Subnet:      config.sc.Start.Networking.Subnet,
+		MACAddress:  config.mac,
+		CreateTime:  time.Now(),
+		Name:        name,
+		StateLock:   &sync.RWMutex{},
+		StateChange: sync.NewCond(&sync.Mutex{}),
 	}
 
 	if subnet != "" {
@@ -182,6 +183,8 @@ func transitionInstanceState(i *types.Instance, to string) error {
 	i.StateLock.Lock()
 	defer i.StateLock.Unlock()
 
+	glog.V(2).Infof("Instance %s: %s -> %s", i.ID, i.State, to)
+
 	switch to {
 	case payloads.Stopping:
 		if i.State != payloads.Running {
@@ -193,7 +196,10 @@ func transitionInstanceState(i *types.Instance, to string) error {
 		}
 	}
 
+	i.StateChange.L.Lock()
 	i.State = to
+	i.StateChange.L.Unlock()
+	i.StateChange.Signal()
 
 	return nil
 }

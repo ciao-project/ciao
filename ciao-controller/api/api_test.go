@@ -188,6 +188,14 @@ var tests = []test{
 		http.StatusCreated,
 		`{"id":"093ae09b-f653-464e-9ae6-5ae28bd03a22","name":"New Tenant","links":[{"rel":"self","href":"/tenants/093ae09b-f653-464e-9ae6-5ae28bd03a22"}]}`,
 	},
+	{
+		"DELETE",
+		"/tenants/093ae09b-f653-464e-9ae6-5ae28bd03a22",
+		"",
+		fmt.Sprintf("application/%s", TenantsV1),
+		http.StatusNoContent,
+		"null",
+	},
 }
 
 type testCiaoService struct{}
@@ -379,6 +387,10 @@ func (ts testCiaoService) CreateTenant(ID string, config types.TenantConfig) (ty
 	summary.Links = append(summary.Links, link)
 
 	return summary, nil
+}
+
+func (ts testCiaoService) DeleteTenant(string) error {
+	return nil
 }
 
 func TestResponse(t *testing.T) {
