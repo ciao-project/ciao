@@ -12,4 +12,4 @@ without having to care about the details of whether that happens via a call
 to apt or rpm or any other package/update manager software.
 
 For more detailed technical information see the [osprepare package godoc
-page](https://godoc.org/github.com/01org/ciao/osprepare).
+page](https://godoc.org/github.com/ciao-project/ciao/osprepare).

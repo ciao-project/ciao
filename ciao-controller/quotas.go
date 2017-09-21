@@ -15,10 +15,10 @@
 package main
 
 import (
-	"github.com/01org/ciao/ciao-controller/internal/datastore"
-	"github.com/01org/ciao/ciao-controller/internal/quotas"
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/ciao-controller/internal/datastore"
+	"github.com/ciao-project/ciao/ciao-controller/internal/quotas"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/pkg/errors"
 )
 

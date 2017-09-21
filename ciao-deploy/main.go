@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/01org/ciao/ciao-deploy/cmd"
+import "github.com/ciao-project/ciao/ciao-deploy/cmd"
 
 func main() {
 	cmd.Execute()

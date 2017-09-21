@@ -18,8 +18,8 @@ package datastore
 import (
 	"fmt"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
 )
 
 // MemoryDB is a memory backed persistentStore implementation for unit testing

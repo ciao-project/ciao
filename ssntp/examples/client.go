@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/ssntp"
 )
 
 type logger struct{}

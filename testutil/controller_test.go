@@ -20,8 +20,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/01org/ciao/ssntp"
-	. "github.com/01org/ciao/testutil"
+	"github.com/ciao-project/ciao/ssntp"
+	. "github.com/ciao-project/ciao/testutil"
 )
 
 func TestNewSsntpTestControllerConnectionArgs(t *testing.T) {

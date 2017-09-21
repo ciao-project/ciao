@@ -17,7 +17,7 @@
 
 package main
 
-import "github.com/01org/ciao/osprepare"
+import "github.com/ciao-project/ciao/osprepare"
 
 var controllerDeps = osprepare.PackageRequirements{
 	/* sqlite3 is not strictly required, but useful for debug */

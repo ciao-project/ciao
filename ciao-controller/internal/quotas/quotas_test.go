@@ -18,8 +18,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
 )
 
 func TestConsumeAndRelease(t *testing.T) {

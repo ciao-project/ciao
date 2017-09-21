@@ -120,7 +120,7 @@ installed on your machine is:
 Once Go is installed you simply need to type
 
 ```
-go get github.com/01org/ciao/testutil/ciao-down
+go get github.com/ciao-project/ciao/testutil/ciao-down
 $GOPATH/bin/ciao-down create ciao
 ```
 
@@ -199,7 +199,7 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 Download and build the ciao sources: 
 ```
 cd $GOPATH/src
-go get -v -u -tags debug github.com/01org/ciao/...
+go get -v -u -tags debug github.com/ciao-project/ciao/...
 ```
 
 You should see no errors.
@@ -216,7 +216,7 @@ These steps are performed inside the machine.
 
 To do this simply run the following:
 ```
-cd $GOPATH/src/github.com/01org/ciao/testutil/singlevm
+cd $GOPATH/src/github.com/ciao-project/ciao/testutil/singlevm
 . ~/local/demo.sh
 #Cleanup any previous setup
 ./cleanup.sh
@@ -252,7 +252,7 @@ teardown containers and VMs is on the order of one minute total elapsed time.
 
 Once it's finished, the ```setup.sh``` script leaves behind a virtual cluster 
 which can be used to perform manual tests.  These tests are performed using 
-the [ciao-cli](https://github.com/01org/ciao/blob/master/ciao-cli/README.md) tool.  
+the [ciao-cli](https://github.com/ciao-project/ciao/blob/master/ciao-cli/README.md) tool.  
 
 The ciao-cli tool requires that some environment variables be set up before it 
 will work properly.  These variables contain the URLs of the various ciao 
@@ -280,17 +280,17 @@ machine
 ```
 # Source the demo.sh file if you have not already done so
 . ~/local/demo.sh
-cd $GOPATH/src/github.com/01org/ciao/_release/bat
+cd $GOPATH/src/github.com/ciao-project/ciao/_release/bat
 test-cases -v ./...
 ```
 
-For more information on the BAT tests please see the [README](https://github.com/01org/ciao/blob/master/_release/bat/README.md).
+For more information on the BAT tests please see the [README](https://github.com/ciao-project/ciao/blob/master/_release/bat/README.md).
 
 # Cleanup / Teardown
 
 To cleanup and tear down the cluster:
 ```
-cd $GOPATH/src/github.com/01org/ciao/testutil/singlevm
+cd $GOPATH/src/github.com/ciao-project/ciao/testutil/singlevm
 #Cleanup any previous setup
 . ~/local/demo.sh
 ./cleanup.sh
@@ -299,7 +299,7 @@ cd $GOPATH/src/github.com/01org/ciao/testutil/singlevm
 # Known Issues with Bare Metal
 
 - Does not work on Fedora due to default firewall rules. 
-https://github.com/01org/ciao/issues/526
+https://github.com/ciao-project/ciao/issues/526
 
 In order to allow the traffic required by the test cases you can add temporary 
 rules like the ones show below

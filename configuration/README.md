@@ -39,7 +39,7 @@ Currently supported configuration storage backends is:
 
 ## Configuration data
 
-The ciao configuration data follows a [YAML scheme] (https://github.com/01org/ciao/blob/master/payloads/configure.go):
+The ciao configuration data follows a [YAML scheme] (https://github.com/ciao-project/ciao/blob/master/payloads/configure.go):
 
 ```
 configure:

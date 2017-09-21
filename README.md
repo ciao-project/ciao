@@ -14,42 +14,42 @@ separates logic into "controller", "scheduler" and "launcher" components
 which communicate over the "Simple and Secure Node Transfer Protocol
 (SSNTP)".
 
-[Controller](https://github.com/01org/ciao/blob/master/ciao-controller)
+[Controller](https://github.com/ciao-project/ciao/blob/master/ciao-controller)
 is responsible for policy choices around tenant workloads.
 
-[Scheduler](https://github.com/01org/ciao/blob/master/ciao-scheduler)
+[Scheduler](https://github.com/ciao-project/ciao/blob/master/ciao-scheduler)
 implements a "push/pull" scheduling algorithm.  In response to a
 controller approved workload instance arriving at the scheduler, it
 finds a first fit among cluster compute nodes currently requesting work.
 
-[Launcher](https://github.com/01org/ciao/blob/master/ciao-launcher)
+[Launcher](https://github.com/ciao-project/ciao/blob/master/ciao-launcher)
 abstracts the specific launching details for the different workload
 types (eg: virtual machine, container, bare metal).  Launcher reports
 compute node statistics to the scheduler and controller.  It also reports
 per-instance statistics up to controller.
 
 An additional set of componentry provides [ciao
-network](https://github.com/01org/ciao/blob/master/networking)
+network](https://github.com/ciao-project/ciao/blob/master/networking)
 connectivity for workload instances and insures tenant isolation.
 Workloads (whether container or VM) are automatically placed in a unified
 L2 network, one such network per tenant.
 
-A [cli](https://github.com/01org/ciao/tree/master/ciao-cli) is available.
+A [cli](https://github.com/ciao-project/ciao/tree/master/ciao-cli) is available.
 
 All ciao components communicate with each other via
-[SSNTP](https://github.com/01org/ciao/blob/master/ssntp/README.md) using a
-set of [payloads](https://github.com/01org/ciao/blob/master/payloads).
+[SSNTP](https://github.com/ciao-project/ciao/blob/master/ssntp/README.md) using a
+set of [payloads](https://github.com/ciao-project/ciao/blob/master/payloads).
 
 This GitHub repository contains documentation on the
 various sub-components of ciao in their respective
 subdirectories.
 
 If you would like to contribute to ciao, check our [Contributing
-guide](https://github.com/01org/ciao/blob/master/CONTRIBUTING.md).
-There's a [wiki page](https://github.com/01org/ciao/blob/master/DeveloperQuickStart.md)
+guide](https://github.com/ciao-project/ciao/blob/master/CONTRIBUTING.md).
+There's a [wiki page](https://github.com/ciao-project/ciao/blob/master/DeveloperQuickStart.md)
 that illustrates how to easily setup a development environment without
 needing a cluster. We also recommend taking a look at the ['janitorial'
-bugs](https://github.com/01org/ciao/issues?q=is%3Aopen+is%3Aissue+label%3AJanitorial)
+bugs](https://github.com/ciao-project/ciao/issues?q=is%3Aopen+is%3Aissue+label%3AJanitorial)
 in our list of open issues as these bugs can be solved without an
 extensive knowledge of ciao.
 We would love to help you start contributing!

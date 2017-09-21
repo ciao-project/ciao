@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/01org/ciao/service"
+	"github.com/ciao-project/ciao/service"
 )
 
 // TBD - can some of this stuff be pulled out into a common test area?

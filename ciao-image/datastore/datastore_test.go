@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/01org/ciao/database"
+	"github.com/ciao-project/ciao/database"
 )
 
 var mountPoint = "/tmp"

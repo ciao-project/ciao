@@ -19,9 +19,9 @@ package payloads_test
 import (
 	"testing"
 
-	. "github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp/uuid"
-	"github.com/01org/ciao/testutil"
+	. "github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/testutil"
 	"gopkg.in/yaml.v2"
 )
 

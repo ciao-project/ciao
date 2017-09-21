@@ -16,7 +16,7 @@
 
 package main
 
-import "github.com/01org/ciao/osprepare"
+import "github.com/ciao-project/ciao/osprepare"
 
 var schedDeps = osprepare.PackageRequirements{
 	// no known dependencies

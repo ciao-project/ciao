@@ -17,7 +17,7 @@
 // ciao-launcher is an ssntp agent that runs on compute and network nodes.
 // Its primary purpose is to launch and manage containers and virtual
 // machines.  For more information on installing and running ciao-launcher
-// see https://github.com/01org/ciao/blob/master/ciao-launcher/README.md
+// see https://github.com/ciao-project/ciao/blob/master/ciao-launcher/README.md
 // for more information.
 //
 // Introduction
@@ -155,7 +155,7 @@
 // This is for legacy reasons and in the future this file will probably go away and
 // its contents will be redistributed.  It should not be assumed as of the time of
 // writing that all the code in payloads.go runs in an instance go routine.
-// payloads.go needs cleaning up (https://github.com/01org/ciao/issues/10).
+// payloads.go needs cleaning up (https://github.com/ciao-project/ciao/issues/10).
 //
 // The virtualizer
 //
@@ -178,6 +178,6 @@
 // docker.go contains methods to manage docker containers.
 //
 // For more information about the virtualizer API, please see the comments
-// in https://github.com/01org/ciao/blob/master/ciao-launcher/virtualizer.go
+// in https://github.com/ciao-project/ciao/blob/master/ciao-launcher/virtualizer.go
 //
 package main

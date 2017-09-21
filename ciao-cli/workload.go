@@ -26,10 +26,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/01org/ciao/ciao-controller/api"
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/openstack/compute"
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/openstack/compute"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/intel/tfortools"
 
 	"gopkg.in/yaml.v2"

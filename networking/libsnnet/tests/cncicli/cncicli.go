@@ -23,8 +23,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/01org/ciao/clogger/gloginterface"
-	"github.com/01org/ciao/networking/libsnnet"
+	"github.com/ciao-project/ciao/clogger/gloginterface"
+	"github.com/ciao-project/ciao/networking/libsnnet"
 )
 
 func cnciInit(cnci *libsnnet.Cnci) error {

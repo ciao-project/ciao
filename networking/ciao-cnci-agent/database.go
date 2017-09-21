@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/database"
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/database"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/pkg/errors"
 )
 

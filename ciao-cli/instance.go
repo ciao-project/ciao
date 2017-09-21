@@ -30,8 +30,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/openstack/compute"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/openstack/compute"
 	"github.com/intel/tfortools"
 )
 

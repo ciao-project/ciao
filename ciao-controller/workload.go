@@ -17,9 +17,9 @@ package main
 import (
 	"github.com/golang/glog"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp/uuid"
 )
 
 func validateVMWorkload(req types.Workload) error {

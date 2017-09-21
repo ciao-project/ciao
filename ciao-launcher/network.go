@@ -24,9 +24,9 @@ import (
 
 	"context"
 
-	"github.com/01org/ciao/networking/libsnnet"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/networking/libsnnet"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
 	"github.com/golang/glog"
 )
 
@@ -310,7 +310,7 @@ func destroyVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) error {
 			// docker in which some launcher and libssnet state gets out of
 			// sync with docker.  Launcher needs a cleanup routine that detects
 			// these inconsistencies and cleans up:
-			// https://github.com/01org/ciao/issues/4
+			// https://github.com/ciao-project/ciao/issues/4
 			_ = destroyDockerNetwork(context.Background(), info.SubnetID)
 		}
 

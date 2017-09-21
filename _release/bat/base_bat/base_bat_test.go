@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/01org/ciao/bat"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/bat"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp/uuid"
 )
 
 const standardTimeout = time.Second * 300
@@ -564,7 +564,7 @@ func TestDeleteAllInstances(t *testing.T) {
 
 	// TODO:  The correct thing to do here is to wait for the Delete Events
 	// But these aren't correctly reported yet, see
-	// https://github.com/01org/ciao/issues/792
+	// https://github.com/ciao-project/ciao/issues/792
 
 	var i int
 	var instancesFound int

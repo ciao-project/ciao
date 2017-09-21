@@ -30,7 +30,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/01org/ciao/qemu"
+	"github.com/ciao-project/ciao/qemu"
 )
 
 // Download Parameters

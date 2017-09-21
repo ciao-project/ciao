@@ -29,9 +29,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/01org/ciao/osprepare"
-	"github.com/01org/ciao/qemu"
-	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/osprepare"
+	"github.com/ciao-project/ciao/qemu"
+	"github.com/ciao-project/ciao/ssntp/uuid"
 )
 
 const metaDataTemplate = `

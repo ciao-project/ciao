@@ -19,9 +19,9 @@ import (
 	"io"
 	"sync"
 
-	"github.com/01org/ciao/clogger/gloginterface"
-	"github.com/01org/ciao/database"
-	"github.com/01org/ciao/openstack/image"
+	"github.com/ciao-project/ciao/clogger/gloginterface"
+	"github.com/ciao-project/ciao/database"
+	"github.com/ciao-project/ciao/openstack/image"
 )
 
 const (

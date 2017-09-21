@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/01org/ciao/ciao-deploy/deploy"
+	"github.com/ciao-project/ciao/ciao-deploy/deploy"
 	"github.com/spf13/cobra"
 )
 

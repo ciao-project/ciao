@@ -23,7 +23,7 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/ssntp"
 )
 
 type ssntpEchoServer struct {

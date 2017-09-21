@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/ssntp/uuid"
 )
 
 // NoopDriver is a driver which does nothing.

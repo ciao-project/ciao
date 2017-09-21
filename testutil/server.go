@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
 	"gopkg.in/yaml.v2"
 )
 

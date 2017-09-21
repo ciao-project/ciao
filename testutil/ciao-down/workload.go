@@ -33,7 +33,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-const ciaoDownPkg = "github.com/01org/ciao/testutil/ciao-down"
+const ciaoDownPkg = "github.com/ciao-project/ciao/testutil/ciao-down"
 
 var indentedRegexp *regexp.Regexp
 

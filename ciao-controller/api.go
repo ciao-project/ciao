@@ -24,9 +24,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )

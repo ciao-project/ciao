@@ -29,11 +29,11 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/openstack/compute"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/testutil"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/openstack/compute"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
+	"github.com/ciao-project/ciao/testutil"
 )
 
 // ByTenantID is used to sort CNCI instances by Tenant ID.

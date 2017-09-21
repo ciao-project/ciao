@@ -28,7 +28,7 @@ import (
 
 	"crypto/tls"
 
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/ssntp"
 )
 
 func TestGenerateKey(t *testing.T) {

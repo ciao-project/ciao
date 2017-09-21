@@ -20,7 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/01org/ciao/ciao-storage"
+	"github.com/ciao-project/ciao/ciao-storage"
 )
 
 // Ceph implements the RawDataStore interface for Ceph RBD based storage

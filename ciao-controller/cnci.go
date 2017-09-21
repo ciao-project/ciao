@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 )

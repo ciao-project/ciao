@@ -43,15 +43,15 @@ user, ciao splits the problem:
                 +----------+
 
 At the top level, ciao-cli
-(https://github.com/01org/ciao/tree/master/ciao-cli) and ciao-controller
-(https://github.com/01org/ciao/tree/master/ciao-controller) are
+(https://github.com/ciao-project/ciao/tree/master/ciao-cli) and ciao-controller
+(https://github.com/ciao-project/ciao/tree/master/ciao-controller) are
 responsible for interacting with the user.  Ciao-controller enforces
 policy, checking that the users' actions are allowed.  For allowed
 actions, ciao-controller sends SSNTP command frames down to
 ciao-scheduler.
 
 At the lowest level, ciao-launcher
-(https://github.com/01org/ciao/tree/master/ciao-launcher) is running
+(https://github.com/ciao-project/ciao/tree/master/ciao-launcher) is running
 on each compute node.  It connects to the ciao-scheduler and sends node
 level statistics regularly so that the scheduler always knows the current
 resource state of the cluster.  The launchers also send up statistics
@@ -102,7 +102,7 @@ Data Structures and Scale
 In the initial implementation, the scheduling choice
 focuses primarily on RAM, disk and CPU availability (see
 the "Resource" enumeration type in the START payload at
-https://github.com/01org/ciao/blob/master/payloads/start.go for more
+https://github.com/ciao-project/ciao/blob/master/payloads/start.go for more
 details) on compute nodes relative to the requested workload start.
 This list of tracked resource types will grow over time to encompass
 many more compute node and workload characteristics.  We don't expect

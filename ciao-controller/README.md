@@ -3,9 +3,9 @@ Ciao Controller
 
 Ciao controller is responsible for policy choices around tenant workloads.
 It provides [compute API
-endpoints](https://github.com/01org/ciao/blob/master/ciao-controller/compute.go)
+endpoints](https://github.com/ciao-project/ciao/blob/master/ciao-controller/compute.go)
 for access from
-[ciao-cli](https://github.com/01org/ciao/tree/master/ciao-cli)
+[ciao-cli](https://github.com/ciao-project/ciao/tree/master/ciao-cli)
 
 
 
@@ -13,11 +13,11 @@ Overview
 --------
 
 The ciao controller implements an
-[SSNTP](https://github.com/01org/ciao/tree/master/ssntp)
+[SSNTP](https://github.com/ciao-project/ciao/tree/master/ssntp)
 client which generates commands sent to
-[ciao-scheduler](https://github.com/01org/ciao/tree/master/ciao-scheduler)
+[ciao-scheduler](https://github.com/ciao-project/ciao/tree/master/ciao-scheduler)
 and receives node and workload statistics from
-[ciao-launcher](https://github.com/01org/ciao/tree/master/ciao-launcher).
+[ciao-launcher](https://github.com/ciao-project/ciao/tree/master/ciao-launcher).
 
 Users within distinct tenants are also isolated from each other.  Tenant users
 can access usage statistics for their tenant workloads and issue commands to
@@ -26,7 +26,7 @@ overall cloud infrastructure and issue commands to manage it.
 
 When a first workload is launched for a tenant,
 ciao-controller automatically prepares a [CNCI
-appliance](https://github.com/01org/ciao/tree/master/networking/ciao-cnci-agent)
+appliance](https://github.com/ciao-project/ciao/tree/master/networking/ciao-cnci-agent)
 for the tenant.  This provides a virtual network which spans the tenant's
 workloads.  Tenant workloads have access only to their tenant private
 network and not any other tenant networks.  New workload instances within
@@ -49,7 +49,7 @@ server (-url).
 Certificates are assumed to be in /etc/pki/ciao, or can be
 specified on the command line via the "-cert" and "-cacert"
 command line options.  Certificates are created with the
-[ciao-cert](https://github.com/01org/ciao/tree/master/ssntp/ciao-cert)
+[ciao-cert](https://github.com/ciao-project/ciao/tree/master/ssntp/ciao-cert)
 tool.
 
 You must also generate SSL certificates for use with the controller’s

@@ -25,7 +25,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/01org/ciao/clogger"
+	"github.com/ciao-project/ciao/clogger"
 )
 
 // pathExists is a helper function which handles the

@@ -20,9 +20,9 @@ rm -f "$ciao_cnci_image".qcow
 if [ $download -eq 1 ] || [ ! -f "$ciao_cnci_image" ] 
 then
 	rm -f "$ciao_cnci_image"
-	"$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image" -d -u "$ciao_cnci_url"
+	"$GOPATH"/src/github.com/ciao-project/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image" -d -u "$ciao_cnci_url"
 else
-	"$GOPATH"/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image"
+	"$GOPATH"/src/github.com/ciao-project/ciao/networking/ciao-cnci-agent/scripts/generate_cnci_cloud_image.sh -c "$ciao_bin" -i "$ciao_cnci_image"
 fi
 
 if [ $? -ne 0 ]

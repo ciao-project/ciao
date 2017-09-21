@@ -19,8 +19,8 @@ package main
 import (
 	"testing"
 
-	"github.com/01org/ciao/ciao-storage"
-	"github.com/01org/ciao/openstack/compute"
+	"github.com/ciao-project/ciao/ciao-storage"
+	"github.com/ciao-project/ciao/openstack/compute"
 )
 
 func compareStorageBlockDevices(t *testing.T, a storage.BlockDevice, b storage.BlockDevice) {

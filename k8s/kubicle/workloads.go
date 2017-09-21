@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/01org/ciao/bat"
+	"github.com/ciao-project/ciao/bat"
 )
 
 func getWorkloadUUIDs(ctx context.Context, name string) ([]string, error) {

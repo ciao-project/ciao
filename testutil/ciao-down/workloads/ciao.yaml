@@ -34,7 +34,7 @@ write_files:
      printf "\n"
      printf "To run Single VM:\n"
      printf "\n"
-     printf "cd {{template "GOPATH" .}}/src/github.com/01org/ciao/testutil/singlevm\n"
+     printf "cd {{template "GOPATH" .}}/src/github.com/ciao-project/ciao/testutil/singlevm\n"
      printf "./setup.sh\n"
      printf "\n"
    path: /etc/update-motd.d/10-ciao-help-text
@@ -144,7 +144,7 @@ runcmd:
  - {{endTaskCheck .}}
 
  - {{beginTask . "Building ciao" }}
- - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/01org/ciao/...
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/ciao-project/ciao/...
  - {{endTaskCheck .}}
 
  - {{beginTask . "Installing Go development utils"}}

@@ -26,8 +26,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/01org/ciao/ciao-controller/api"
-	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/intel/tfortools"
 )

@@ -15,7 +15,7 @@
 package datastore
 
 import (
-	"github.com/01org/ciao/database"
+	"github.com/ciao-project/ciao/database"
 )
 
 // MetaDs implements the MetaDataStore interface for persistent data

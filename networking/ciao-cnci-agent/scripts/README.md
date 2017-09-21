@@ -24,7 +24,7 @@ the certificates it needs to connect to the ciao-scheduler.
 
 2. Ensure that you have built and installed the cnci agent
 ```
-	cd $GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent
+	cd $GOPATH/src/github.com/ciao-project/ciao/networking/ciao-cnci-agent
    	go install
 3. Download the appropriate version image and run the modification script:
 ```

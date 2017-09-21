@@ -17,7 +17,7 @@
 package configuration
 
 import (
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/payloads"
 )
 
 type driver interface {

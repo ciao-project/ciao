@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/payloads"
 	"gopkg.in/yaml.v2"
 )
 

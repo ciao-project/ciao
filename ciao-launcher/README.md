@@ -2,7 +2,7 @@
 
 ciao-launcher is an SSNTP client that manages VM and container instances.  It runs on
 compute and network nodes executing commands it receives from SSNTP servers,
-primarily [scheduler](https://github.com/01org/ciao/blob/master/ciao-scheduler/README.md).  Its current feature set includes:
+primarily [scheduler](https://github.com/ciao-project/ciao/blob/master/ciao-scheduler/README.md).  Its current feature set includes:
 
 1. Launching and deleting of docker containers and qemu VMs on compute and network nodes
 2. Basic monitoring of VMs and containers
@@ -18,7 +18,7 @@ let's see what is required to install and run launcher.
 
 ciao-launcher can be downloaded and installed using go get
 
-```go get github.com/01org/ciao/ciao-launcher```
+```go get github.com/ciao-project/ciao/ciao-launcher```
 
 The resulting binary will be placed in $GOPATH/bin, which you should already have
 in your PATH.
@@ -28,7 +28,7 @@ in your PATH.
 Certificates are assumed to be in /etc/pki/ciao, or can be
 specified on the command line via the "-cert" and "-cacert"
 command line options.  Certificates are created with the
-[ciao-cert](https://github.com/01org/ciao/tree/master/ciao-cert)
+[ciao-cert](https://github.com/ciao-project/ciao/tree/master/ciao-cert)
 tool.
 
 ciao-launcher client certificates need to be generated with the agent or
@@ -126,7 +126,7 @@ default.  To enable them use the debug and profile tags,  respectively.
 START is used to create and launch a new VM instance.  Some example payloads
 are discussed below:
 
-The [first payload](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/start_legacy.yaml) creates a new CN VM instance using a ceph volume with the id
+The [first payload](https://github.com/ciao-project/ciao/blob/master/ciao-launcher/tests/examples/start_legacy.yaml) creates a new CN VM instance using a ceph volume with the id
 b286cd45-7d0c-4525-a140-4db6c95e41fa.  The disk image has a maximum size
 of 80GBs and the VM will be run with two CPUS and 370MBs of memory.  The first
 part of the payload corresponds to the cloudinit user-data file.  This data
@@ -135,10 +135,10 @@ VM instance.  Assuming cloudinit is correctly configured on the backing image,
 the file /etc/bootdone will be created and the hostname of the image will be
 set to the instance uuid.
 
-The [second payload](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/start_efi.yaml) creates a CN VM instance using a different image that
+The [second payload](https://github.com/ciao-project/ciao/blob/master/ciao-launcher/tests/examples/start_efi.yaml) creates a CN VM instance using a different image that
 needs to be booted with EFI.
 
-The [third payload](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/start_nn.yaml)
+The [third payload](https://github.com/ciao-project/ciao/blob/master/ciao-launcher/tests/examples/start_nn.yaml)
 is an example of starting a VM instance on a NN.  Note that the networking parameters are different.
 
 ciao-launcher detects and returns a number of errors when executing the start command.
@@ -170,7 +170,7 @@ DELETE can be used to destroy an existing VM instance.  It removes all the
 files associated with that instance from the compute node.  If the VM instance
 is running when the DELETE command is received it will be powered down.
 
-See [here](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/delete_legacy.yaml) for an example of the DELETE command.
+See [here](https://github.com/ciao-project/ciao/blob/master/ciao-launcher/tests/examples/delete_legacy.yaml) for an example of the DELETE command.
 
 ## EVACUATE
 
@@ -255,7 +255,7 @@ ciao-launcher-server exposes a REST API.  Commands can be sent to it
 directly using curl, if you know the URLs, or directly with the tool, ciaolc.
 We'll look at some examples of using ciaolc below.
 
-To get started copy the test certs in https://github.com/01org/ciao/tree/master/ciao-launcher/tests/ciao-launcher-server to /etc/pki/ciao.  Then run
+To get started copy the test certs in https://github.com/ciao-project/ciao/tree/master/ciao-launcher/tests/ciao-launcher-server to /etc/pki/ciao.  Then run
 ciao-launcher-server.
 
 Open a new terminal and start ciao-launcher, e.g.,
@@ -290,7 +290,7 @@ $ ciaolc instances --filter pending
 
 A new instance can be started using the startf command.  You need to provide
 a file containing a valid start payload.  There are some examples 
-[here](https://github.com/01org/ciao/tree/master/ciao-launcher/tests/examples)
+[here](https://github.com/ciao-project/ciao/tree/master/ciao-launcher/tests/examples)
 
 ```
 $ ciaolc startf start_legacy.yaml
@@ -359,7 +359,7 @@ an ssh key with that user in the cloud-init payload that gets sent with the
 START comnmand that creates the VM.  You can see an example of such a payload
 here:
 
-https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/start_efi.yaml
+https://github.com/ciao-project/ciao/blob/master/ciao-launcher/tests/examples/start_efi.yaml
 
 Once the start command has succeeded and the instance has been launched you can
 connect to it via SSH using the IP address of the concentrator.  You also need to
@@ -431,7 +431,7 @@ start:
 ```
 
 For a full example see
-[here](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/start_legacy_volume.yaml).
+[here](https://github.com/ciao-project/ciao/blob/master/ciao-launcher/tests/examples/start_legacy_volume.yaml).
 
 The id is the image-name of the RBD image to be mounted.  It does not include the
 pool name, which is assumed to be RBD for now.  The id must be a valid UUID.  The
@@ -465,7 +465,7 @@ start:
 ```
 
 For a full example see
-[here](https://github.com/01org/ciao/blob/master/ciao-launcher/tests/examples/start_legacy_volume_boot.yaml).
+[here](https://github.com/ciao-project/ciao/blob/master/ciao-launcher/tests/examples/start_legacy_volume_boot.yaml).
 
 # Attaching and Detaching RBD images
 

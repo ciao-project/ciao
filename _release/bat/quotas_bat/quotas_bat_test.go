@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/01org/ciao/bat"
+	"github.com/ciao-project/ciao/bat"
 )
 
 const standardTimeout = time.Second * 300
@@ -199,7 +199,7 @@ func TestInstanceUsage(t *testing.T) {
 	}
 }
 
-// Workaround for https://github.com/01org/ciao/issues/1203
+// Workaround for https://github.com/ciao-project/ciao/issues/1203
 func launchMultipleInstances(ctx context.Context, t *testing.T, tenantID string, count int) error {
 	wl, err := getContainerWorkload(ctx, tenantID)
 	if err != nil {

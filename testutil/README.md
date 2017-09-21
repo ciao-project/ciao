@@ -26,7 +26,7 @@ testutil package.
 For an example of how to enable basic SSNTP test flows
 and track the results through the channel helpers
 review the internals of the [example client-server
-test](https://github.com/01org/ciao/blob/master/testutil/client_server_test.go).
+test](https://github.com/ciao-project/ciao/blob/master/testutil/client_server_test.go).
 
 Additional test options
 =======================
@@ -37,10 +37,10 @@ Virtual
 The next level of test breadth comes from actually running
 a test cluster with real implementations of each ciao
 component.  This is provided in a controlled fashion via the
-[singlevm](https://github.com/01org/ciao/tree/master/testutil/singlevm)
+[singlevm](https://github.com/ciao-project/ciao/tree/master/testutil/singlevm)
 CI script, which has detailed documentation
 on the wiki at [Single VM Development
-Environment](https://github.com/01org/ciao/wiki/HOWTO:-Single-VM-Development-Environment).
+Environment](https://github.com/ciao-project/ciao/wiki/HOWTO:-Single-VM-Development-Environment).
 
 Physical
 --------
@@ -50,6 +50,6 @@ been set up according to the [cluster setup
 guide](https://clearlinux.org/documentation/ciao-cluster-setup.html).
 A minimal Build Acceptance Test (BAT) framework outputting TAP
 (Test Anything Protocol) results is published [in our release
-tools](https://github.com/01org/ciao/tree/master/_release/bat).
+tools](https://github.com/ciao-project/ciao/tree/master/_release/bat).
 The python script drives ciao-cli to query and manipulate the state of
 a cluster.

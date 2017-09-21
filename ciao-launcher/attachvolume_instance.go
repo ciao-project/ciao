@@ -17,8 +17,8 @@
 package main
 
 import (
-	storage "github.com/01org/ciao/ciao-storage"
-	"github.com/01org/ciao/payloads"
+	storage "github.com/ciao-project/ciao/ciao-storage"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/golang/glog"
 )
 

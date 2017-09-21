@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
 )
 

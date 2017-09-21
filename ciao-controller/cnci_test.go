@@ -17,7 +17,7 @@ package main
 import (
 	"testing"
 
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/ssntp"
 )
 
 func TestCNCIInitializeCtrls(t *testing.T) {

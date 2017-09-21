@@ -9,8 +9,8 @@ tenant and minimal configuration by the data center operator.
 The only configuration that is required (by the data center operator) is to
 assign roles to each physical node. Subsequent discovery and configuration of
 the network is performed automatically using the
-[ciao-controller](https://github.com/01org/ciao/tree/master/ciao-controller)
-and [ciao-launcher](https://github.com/01org/ciao/tree/master/ciao-launcher)
+[ciao-controller](https://github.com/ciao-project/ciao/tree/master/ciao-controller)
+and [ciao-launcher](https://github.com/ciao-project/ciao/tree/master/ciao-launcher)
 
 Compute Nodes and Network Nodes can be added dynamically and will be auto
 discovered and utilized without any additional network configuration.  Each
@@ -62,9 +62,9 @@ user or tenant visible)
 - libsnnet: which provides networking APIs to the ciao-launcher to create
   tenant specific network interfaces on CNs and CNCI specific network
 interfaces on a NN
-- ciao-cnci-agent: a [SSNTP](https://github.com/01org/ciao/tree/master/ssntp) client
+- ciao-cnci-agent: a [SSNTP](https://github.com/ciao-project/ciao/tree/master/ssntp) client
   which connects to the
-[ciao-scheduler](https://github.com/01org/ciao/tree/master/ciao-scheduler) and
+[ciao-scheduler](https://github.com/ciao-project/ciao/tree/master/ciao-scheduler) and
 runs within a CNCI VM and configures tenant network connectivity by interacting
 with the ciao-controller and ciao-launchers using the ciao-scheduler.
 	- The ciao-cnci-agent can also be run on physical nodes if desired

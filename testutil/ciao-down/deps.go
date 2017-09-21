@@ -16,7 +16,7 @@
 
 package main
 
-import "github.com/01org/ciao/osprepare"
+import "github.com/ciao-project/ciao/osprepare"
 
 var ciaoDevClearDeps = []osprepare.PackageRequirement{
 	{BinaryName: "/usr/bin/qemu-system-x86_64", PackageName: "cloud-control"},

@@ -20,7 +20,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/01org/ciao/clogger"
+	"github.com/ciao-project/ciao/clogger"
 )
 
 // Minimal versions supported by ciao
