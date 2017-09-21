@@ -28,8 +28,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/database"
-	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/database"
+	"github.com/ciao-project/ciao/ssntp/uuid"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/libnetwork/drivers/remote/api"
 	ipamapi "github.com/docker/libnetwork/ipams/remote/api"

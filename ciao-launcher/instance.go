@@ -23,9 +23,9 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	storage "github.com/01org/ciao/ciao-storage"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
+	storage "github.com/ciao-project/ciao/ciao-storage"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
 	"github.com/golang/glog"
 )
 

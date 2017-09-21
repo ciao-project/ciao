@@ -2,7 +2,7 @@ Ciao Scheduler
 ==============
 
 The ciao scheduler implements an
-[SSNTP](https://github.com/01org/ciao/tree/master/ssntp) server to
+[SSNTP](https://github.com/ciao-project/ciao/tree/master/ssntp) server to
 receive workloads from the ciao controller system(s), to receive status
 changes regarding ciao compute node (CN) resources and launched workload
 instances, and to reply to nodes who've checked in by giving them work.
@@ -16,7 +16,7 @@ Scheduler does not need to run as root, unlike other ciao components.
 Certificates are assumed to be in /etc/pki/ciao, or can be
 specified on the command line via the "-cert" and "-cacert"
 command line options.  Certificates are created with the
-[ciao-cert](https://github.com/01org/ciao/tree/master/ssntp/ciao-cert)
+[ciao-cert](https://github.com/ciao-project/ciao/tree/master/ssntp/ciao-cert)
 tool.
 
 For debugging or informational purposes glog options are useful.
@@ -65,5 +65,5 @@ More Information
 ----------------
 
 See
-[ciao-scheduler godoc](https://godoc.org/github.com/01org/ciao/ciao-scheduler)
+[ciao-scheduler godoc](https://godoc.org/github.com/ciao-project/ciao/ciao-scheduler)
 for more information on the design thinking behind the implementation.

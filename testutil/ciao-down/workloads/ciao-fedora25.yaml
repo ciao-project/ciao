@@ -39,7 +39,7 @@ write_files:
  
      To run Single VM:
      
-     cd {{template "GOPATH" .}}/src/github.com/01org/ciao/testutil/singlevm
+     cd {{template "GOPATH" .}}/src/github.com/ciao-project/ciao/testutil/singlevm
      ./setup.sh
    path: /etc/motd
    permissions: '0755'
@@ -141,7 +141,7 @@ runcmd:
  - {{endTaskCheck .}}
 
  - {{beginTask . "Building ciao" }}
- - sudo -u {{.User}} {{proxyVars .}} /usr/local/go/bin/go get github.com/01org/ciao/...
+ - sudo -u {{.User}} {{proxyVars .}} /usr/local/go/bin/go get github.com/ciao-project/ciao/...
  - {{endTaskCheck .}}
 
  - {{beginTask . "Installing Go development utils"}}

@@ -30,7 +30,7 @@ import (
 
 	"context"
 
-	storage "github.com/01org/ciao/ciao-storage"
+	storage "github.com/ciao-project/ciao/ciao-storage"
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/engine-api/client"

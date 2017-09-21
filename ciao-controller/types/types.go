@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/ciao-storage"
-	"github.com/01org/ciao/openstack/block"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/ciao-storage"
+	"github.com/ciao-project/ciao/openstack/block"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
 )
 
 // SourceType contains the valid values of the storage source.

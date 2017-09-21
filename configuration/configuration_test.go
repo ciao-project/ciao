@@ -23,7 +23,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/google/gofuzz"
 )
 

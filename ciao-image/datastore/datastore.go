@@ -18,7 +18,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/01org/ciao/openstack/image"
+	"github.com/ciao-project/ciao/openstack/image"
 )
 
 // State represents the state of the image.

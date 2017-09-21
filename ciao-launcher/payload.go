@@ -24,8 +24,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/01org/ciao/networking/libsnnet"
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/networking/libsnnet"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 )

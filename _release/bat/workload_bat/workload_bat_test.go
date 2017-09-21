@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/01org/ciao/bat"
+	"github.com/ciao-project/ciao/bat"
 )
 
 const standardTimeout = time.Second * 300

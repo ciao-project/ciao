@@ -17,7 +17,7 @@
 package libsnnet
 
 import (
-	"github.com/01org/ciao/clogger"
+	"github.com/ciao-project/ciao/clogger"
 )
 
 // Logger is a global variable exported to be set by the package importing

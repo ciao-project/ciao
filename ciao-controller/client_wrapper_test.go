@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/ssntp"
 )
 
 type ssntpClientWrapper struct {

@@ -18,7 +18,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/01org/ciao/bat"
+	"github.com/ciao-project/ciao/bat"
 )
 
 var noopDriver = NoopDriver{}

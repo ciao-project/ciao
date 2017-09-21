@@ -32,8 +32,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	storage "github.com/01org/ciao/ciao-storage"
-	"github.com/01org/ciao/testutil"
+	storage "github.com/ciao-project/ciao/ciao-storage"
+	"github.com/ciao-project/ciao/testutil"
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/engine-api/client"

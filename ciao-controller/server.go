@@ -24,8 +24,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/01org/ciao/ciao-controller/api"
-	"github.com/01org/ciao/service"
+	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/service"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"

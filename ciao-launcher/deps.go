@@ -16,7 +16,7 @@
 
 package main
 
-import "github.com/01org/ciao/osprepare"
+import "github.com/ciao-project/ciao/osprepare"
 
 // common launcher node needs are:
 //

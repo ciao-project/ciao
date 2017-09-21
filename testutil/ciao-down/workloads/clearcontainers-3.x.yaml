@@ -219,7 +219,7 @@ runcmd:
  - {{endTaskCheck .}}
 
  - {{beginTask . "Installing Go development utils"}}
- - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/mattn/goveralls golang.org/x/tools/cmd/cover github.com/pierrre/gotestcover github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell github.com/01org/ciao/test-cases github.com/opencontainers/runc/libcontainer/configs
+ - sudo -u {{.User}} {{template "ENV" .}} GOPATH={{template "GOPATH" .}} /usr/local/go/bin/go get github.com/mattn/goveralls golang.org/x/tools/cmd/cover github.com/pierrre/gotestcover github.com/fzipp/gocyclo github.com/gordonklaus/ineffassign github.com/golang/lint/golint github.com/client9/misspell/cmd/misspell github.com/ciao-project/ciao/test-cases github.com/opencontainers/runc/libcontainer/configs
  - {{endTaskCheck .}}
 
  - chown {{.User}}:{{.User}} -R {{template "GOPATH" .}}

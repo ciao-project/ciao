@@ -26,8 +26,8 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/01org/ciao/ciao-controller/api"
-	"github.com/01org/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
 )
 

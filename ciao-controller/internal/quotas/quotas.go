@@ -15,8 +15,8 @@
 package quotas
 
 import (
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
 )
 
 type quota struct {

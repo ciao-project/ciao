@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/testutil"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
+	"github.com/ciao-project/ciao/testutil"
 )
 
 type ssntpTestState struct {

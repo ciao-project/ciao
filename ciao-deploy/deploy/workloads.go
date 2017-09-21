@@ -27,7 +27,7 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/01org/ciao/bat"
+	"github.com/ciao-project/ciao/bat"
 	"github.com/pkg/errors"
 )
 

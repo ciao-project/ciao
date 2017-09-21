@@ -21,9 +21,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/service"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/service"
 )
 
 type test struct {

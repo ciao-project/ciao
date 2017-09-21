@@ -1,6 +1,6 @@
 # ciao-cert
 
-ciao-cert is a command line tool for generating [SSNTP](https://github.com/01org/ciao/tree/master/ssntp)
+ciao-cert is a command line tool for generating [SSNTP](https://github.com/ciao-project/ciao/tree/master/ssntp)
 specific certificates. In particular it includes SSNTP roles as part of
 the certificate extended key attribute, which is an SSNTP requirement.
 

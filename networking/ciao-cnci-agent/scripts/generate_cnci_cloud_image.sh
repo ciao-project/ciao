@@ -1,9 +1,9 @@
 #!/bin/bash
 #Defaults
 image="clear-8260-ciao-networking.img"
-certs_dir=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/certs
+certs_dir=$GOPATH/src/github.com/ciao-project/ciao/networking/ciao-cnci-agent/scripts/certs
 cnci_agent=$GOPATH/bin/ciao-cnci-agent
-cnci_sysd=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service
+cnci_sysd=$GOPATH/src/github.com/ciao-project/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service
 base_url="https://download.clearlinux.org/demos/ciao"
 partition="2"
 download=0

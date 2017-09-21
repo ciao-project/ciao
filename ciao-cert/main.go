@@ -36,8 +36,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/ssntp/certs"
+	"github.com/ciao-project/ciao/ssntp"
+	"github.com/ciao-project/ciao/ssntp/certs"
 )
 
 var (

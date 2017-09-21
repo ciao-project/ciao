@@ -23,8 +23,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/01org/ciao/bat"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/bat"
+	"github.com/ciao-project/ciao/ssntp"
 	"github.com/pkg/errors"
 )
 
@@ -107,7 +107,7 @@ func copyFiles(ctx context.Context, mntDir string, agentCertPath string, caCertP
 	}
 
 	p = path.Join(mntDir, "/usr/lib/systemd/system")
-	err = SudoCopyFile(ctx, p, InGoPath("/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service"))
+	err = SudoCopyFile(ctx, p, InGoPath("/src/github.com/ciao-project/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service"))
 	if err != nil {
 		return errors.Wrap(err, "Error copying service file into image")
 	}

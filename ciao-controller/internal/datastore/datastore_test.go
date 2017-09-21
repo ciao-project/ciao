@@ -29,11 +29,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/01org/ciao/ciao-controller/types"
-	"github.com/01org/ciao/ciao-controller/utils"
-	"github.com/01org/ciao/ciao-storage"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/ciao-controller/utils"
+	"github.com/ciao-project/ciao/ciao-storage"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp/uuid"
 	jsonpatch "github.com/evanphx/json-patch"
 )
 

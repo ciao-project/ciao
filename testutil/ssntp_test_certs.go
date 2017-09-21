@@ -24,8 +24,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/01org/ciao/ssntp"
-	"github.com/01org/ciao/ssntp/certs"
+	"github.com/ciao-project/ciao/ssntp"
+	"github.com/ciao-project/ciao/ssntp/certs"
 )
 
 // TestCACert is a snake oil Certificate Authority for test automation.

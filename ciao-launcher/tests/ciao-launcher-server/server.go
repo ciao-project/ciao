@@ -31,8 +31,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
 )
 
 var caServerPath string

@@ -26,14 +26,14 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/01org/ciao/ciao-controller/api"
-	"github.com/01org/ciao/ciao-controller/internal/datastore"
-	"github.com/01org/ciao/ciao-controller/internal/quotas"
-	storage "github.com/01org/ciao/ciao-storage"
-	"github.com/01org/ciao/clogger/gloginterface"
-	"github.com/01org/ciao/database"
-	"github.com/01org/ciao/osprepare"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/internal/datastore"
+	"github.com/ciao-project/ciao/ciao-controller/internal/quotas"
+	storage "github.com/ciao-project/ciao/ciao-storage"
+	"github.com/ciao-project/ciao/clogger/gloginterface"
+	"github.com/ciao-project/ciao/database"
+	"github.com/ciao-project/ciao/osprepare"
+	"github.com/ciao-project/ciao/ssntp"
 	"github.com/golang/glog"
 )
 

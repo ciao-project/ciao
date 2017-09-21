@@ -83,7 +83,7 @@ Created external-ips:
 Created pools:
 - k8s-pool-46959cfe-f584-45f1-9218-50ea3549a0ee
 To access k8s cluster:
-- export KUBECONFIG=$GOPATH/src/github.com/01org/ciao/testutil/singlevm/admin.conf
+- export KUBECONFIG=$GOPATH/src/github.com/ciao-project/ciao/testutil/singlevm/admin.conf
 - If you use proxies, set
   - export no_proxy=$no_proxy,198.51.100.2
   - export NO_PROXY=$NO_PROXY,198.51.100.2
@@ -91,7 +91,7 @@ To access k8s cluster:
 
 The first thing you will notice is that the command takes a lot longer to complete.  This is because when you specify an external-ip address kubicle will wait until the k8s cluster is ready before completing, thereby avoiding the problem we encountered above where kubicle had completed successfully before our k8s cluster was up and running.
 
-The second thing you should notice is that the output is slightly different.  In addition to the extra information about the ciao external-ip resources created by kubicle, we also see some information for configuring the kubectl tool.  Before we can use the kubectl tool on our host machine you may need to download and install it.  If your ciao cluster has been set up with [ciao-down](https://github.com/01org/ciao/tree/master/testutil/ciao-down) using the default ciao workload, kubectl will already be installed.  If not, you will need to install it yourself.  Assuming your host machine is Ubuntu 16.04, kubectl can be installed by running the following commands as root.
+The second thing you should notice is that the output is slightly different.  In addition to the extra information about the ciao external-ip resources created by kubicle, we also see some information for configuring the kubectl tool.  Before we can use the kubectl tool on our host machine you may need to download and install it.  If your ciao cluster has been set up with [ciao-down](https://github.com/ciao-project/ciao/tree/master/testutil/ciao-down) using the default ciao workload, kubectl will already be installed.  If not, you will need to install it yourself.  Assuming your host machine is Ubuntu 16.04, kubectl can be installed by running the following commands as root.
 
 ```
 apt-get update && apt-get install -y apt-transport-https
@@ -104,7 +104,7 @@ apt-get install kubectl
 Now we can access of cluster from the outside.
 
 ```
-$ export KUBECONFIG=$GOPATH/src/github.com/01org/ciao/testutil/singlevm/admin.conf
+$ export KUBECONFIG=$GOPATH/src/github.com/ciao-project/ciao/testutil/singlevm/admin.conf
 $ export no_proxy=$no_proxy,198.51.100.2
 $ export NO_PROXY=$NO_PROXY,198.51.100.2
 $ kubectl get nodes

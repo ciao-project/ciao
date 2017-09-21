@@ -26,9 +26,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/01org/ciao/deviceinfo"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/deviceinfo"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
 	"github.com/golang/glog"
 )
 

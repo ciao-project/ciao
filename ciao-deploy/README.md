@@ -25,7 +25,7 @@ the Go website](https://www.golang.org)
 Next download, install and build ciao:
 
 ```
-go get -u github.com/01org/ciao/...
+go get -u github.com/ciao-project/ciao/...
 ```
 
 Please ensure you have `$GOPATH/bin` in your `$PATH`. If you have not specified

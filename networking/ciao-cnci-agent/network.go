@@ -28,9 +28,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
-	"github.com/01org/ciao/networking/libsnnet"
-	"github.com/01org/ciao/payloads"
-	"github.com/01org/ciao/ssntp"
+	"github.com/ciao-project/ciao/networking/libsnnet"
+	"github.com/ciao-project/ciao/payloads"
+	"github.com/ciao-project/ciao/ssntp"
 )
 
 var gCnci *libsnnet.Cnci

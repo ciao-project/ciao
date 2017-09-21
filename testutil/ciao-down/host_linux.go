@@ -16,7 +16,7 @@
 
 package main
 
-import "github.com/01org/ciao/deviceinfo"
+import "github.com/ciao-project/ciao/deviceinfo"
 
 func getOnlineCPUs() int {
 	return deviceinfo.GetOnlineCPUs()

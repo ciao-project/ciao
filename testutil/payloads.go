@@ -16,7 +16,7 @@
 
 package testutil
 
-import "github.com/01org/ciao/payloads"
+import "github.com/ciao-project/ciao/payloads"
 
 // AgentIP is a test agent IP address
 const AgentIP = "10.2.3.4"

@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/01org/ciao/openstack/compute"
-	"github.com/01org/ciao/service"
+	"github.com/ciao-project/ciao/openstack/compute"
+	"github.com/ciao-project/ciao/service"
 	"github.com/gorilla/mux"
 )
 

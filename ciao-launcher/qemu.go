@@ -31,7 +31,7 @@ import (
 
 	"context"
 
-	"github.com/01org/ciao/qemu"
+	"github.com/ciao-project/ciao/qemu"
 	"github.com/golang/glog"
 )
 

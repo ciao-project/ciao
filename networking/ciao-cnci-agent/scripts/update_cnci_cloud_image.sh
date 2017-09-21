@@ -17,7 +17,7 @@ else
 fi
 
 if [ -z "$2" ]; then
-	CERTS_DIR=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/certs
+	CERTS_DIR=$GOPATH/src/github.com/ciao-project/ciao/networking/ciao-cnci-agent/scripts/certs
 else
 	CERTS_DIR=$2
 fi
@@ -29,7 +29,7 @@ else
 fi
 
 if [ -z "$4" ]; then
-	CNCI_SYSD=$GOPATH/src/github.com/01org/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service
+	CNCI_SYSD=$GOPATH/src/github.com/ciao-project/ciao/networking/ciao-cnci-agent/scripts/ciao-cnci-agent.service
 else
 	CNCI_SYSD=$4
 fi

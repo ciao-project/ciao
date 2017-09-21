@@ -69,7 +69,7 @@ $ export no_proxy=.my-company.com
 Once Go is installed downloading and installing ciao-down is easy.  Simply type
 
 ```
-$ go get github.com/01org/ciao/testutil/ciao-down
+$ go get github.com/ciao-project/ciao/testutil/ciao-down
 ```
 
 ## Creating a VM in which to run ciao
@@ -166,14 +166,14 @@ Welcome to Ubuntu 16.04.2 LTS (GNU/Linux 4.4.0-83-generic x86_64)
 
 To run Single VM:
 
-cd /home/<user>/go-fork/src/github.com/01org/ciao/testutil/singlevm
+cd /home/<user>/go-fork/src/github.com/ciao-project/ciao/testutil/singlevm
 ./setup.sh
 ```
 
 Follow the instructions for running Single VM, replace <user> with your user name, e.g.,
 
 ```
-$ cd /home/<user>/go-fork/src/github.com/01org/ciao/testutil/singlevm
+$ cd /home/<user>/go-fork/src/github.com/ciao-project/ciao/testutil/singlevm
 $ ./setup.sh
 ```
 
@@ -275,7 +275,7 @@ Created external-ips:
 Created pools:
 - k8s-pool-46959cfe-f584-45f1-9218-50ea3549a0ee
 To access k8s cluster:
-- export KUBECONFIG=$GOPATH/src/github.com/01org/ciao/testutil/singlevm/admin.conf
+- export KUBECONFIG=$GOPATH/src/github.com/ciao-project/ciao/testutil/singlevm/admin.conf
 - If you use proxies, set
   - export no_proxy=$no_proxy,198.51.100.2
   - export NO_PROXY=$NO_PROXY,198.51.100.2
@@ -315,7 +315,7 @@ We can manipulate our newly formed k8s cluster using the kubectl tool.  Kubectl 
 
 ```
 To access k8s cluster:
-- export KUBECONFIG=$GOPATH/src/github.com/01org/ciao/testutil/singlevm/admin.conf
+- export KUBECONFIG=$GOPATH/src/github.com/ciao-project/ciao/testutil/singlevm/admin.conf
 ```
 
 Execute this command.  If your ciao-down instance is running behind a proxy, you will also need to add the external-ip address we specified earlier to your no_proxy settings.  The reason for this is that kubectl will access the k8s cluster via this external ip address and we don’t want this access to go through a proxy.  Again the status message printed by the kubicle create command provides us with the commands we need to execute.

@@ -24,7 +24,7 @@ existing test case runner, test-cases.
 The BAT tests require a running ciao cluster to execute.  This can be a
 full ciao cluster running on hundreds of nodes or a Single VM ciao cluster
 running on a single machine.  For more information about Single VM see
-[here](https://github.com/01org/ciao/wiki/Single-Machine-Development-Environment).
+[here](https://github.com/ciao-project/ciao/wiki/Single-Machine-Development-Environment).
 
 The BAT tests have some dependencies. The device on which they are run must have
 qemu-img installed and must also have access to the ceph cluster. The controller
@@ -55,7 +55,7 @@ before running the tests, e.g.,
 ## Run the BAT Tests and Generate a Pretty Report
 
 ```
-# cd $GOPATH/src/github.com/01org/ciao/_release/bat
+# cd $GOPATH/src/github.com/ciao-project/ciao/_release/bat
 # test-cases ./...
 ```
 
@@ -65,7 +65,7 @@ You might be forgiven for thinking that the easiest way to run all the
 BAT tests would be to do the following.
 
 ```
-# cd $GOPATH/src/github.com/01org/ciao/_release/bat
+# cd $GOPATH/src/github.com/ciao-project/ciao/_release/bat
 # go test -v ./...
 ```
 
@@ -85,27 +85,27 @@ can be safely used to run the BAT tests for a specific package.
 ## Run the BAT Tests and Generate TAP report
 
 ```
-# cd $GOPATH/src/github.com/01org/ciao/_release/bat
+# cd $GOPATH/src/github.com/ciao-project/ciao/_release/bat
 # test-cases -format tap ./...
 ```
 
 ## Run the BAT Tests and Generate a Test Plan
 
 ```
-# cd $GOPATH/src/github.com/01org/ciao/_release/bat
+# cd $GOPATH/src/github.com/ciao-project/ciao/_release/bat
 # test-cases -format html ./...
 ```
 
 ## Run a Single Set of Tests
 
 ```
-# cd $GOPATH/src/github.com/01org/ciao/_release/bat
-# go test -v github.com/01org/ciao/_release/bat/base_bat
+# cd $GOPATH/src/github.com/ciao-project/ciao/_release/bat
+# go test -v github.com/ciao-project/ciao/_release/bat/base_bat
 ```
 
 ## Run a Single Test
 
 ```
-# cd $GOPATH/src/github.com/01org/ciao/_release/bat
+# cd $GOPATH/src/github.com/ciao-project/ciao/_release/bat
 # go test -v -run TestGetAllInstances ./...
 ```

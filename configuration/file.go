@@ -21,7 +21,7 @@ import (
 	"io/ioutil"
 	"net/url"
 
-	"github.com/01org/ciao/payloads"
+	"github.com/ciao-project/ciao/payloads"
 )
 
 type file struct {

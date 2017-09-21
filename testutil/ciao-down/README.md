@@ -11,7 +11,7 @@ installed on your machine is:
 Then simply type
 
 ```
-go get github.com/01org/ciao/testutil/ciao-down
+go get github.com/ciao-project/ciao/testutil/ciao-down
 $GOPATH/bin/ciao-down create xenial
 ```
 
@@ -60,7 +60,7 @@ can specify:
 
 ciao-down ships with a number of workloads for creating VMs based on standard images,
 such as Ubuntu 16.04 and Fedora 25.  Users are also free to create their own workloads.
-Standard workloads are stored in $GOPATH/src/github.com/01org/ciao/testutil/ciao-down/workloads.
+Standard workloads are stored in $GOPATH/src/github.com/ciao-project/ciao/testutil/ciao-down/workloads.
 User created workloads are stored in ~/.ciao-down/workloads.  ciao-down always checks the
 ~/.ciao-down/workloads directory first so if a workload exists in both directories
 with the same name, ciao-down will use the workload in ~/.ciao-down/workloads.
@@ -71,7 +71,7 @@ a local or remote file. If the workload is a file without the .yaml extension th
 must be present in either of the two directories mentioned above. For example,
 the create command in the introduction section creates an Ubuntu 16.04
 workload (xenial).  This caused ciao-down to load the workload definition in
-$GOPATH/src/github.com/01org/ciao/testutil/ciao-down/workloads/xenial.yaml.
+$GOPATH/src/github.com/ciao-project/ciao/testutil/ciao-down/workloads/xenial.yaml.
 In the case of a remote file the supported schemes are http, https and file. Be aware
 of the remote file will not be saved hence each time this option is used, ciao-down
 will try to get it from the remote location. For example, to create a workload using the
