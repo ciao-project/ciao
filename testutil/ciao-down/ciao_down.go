@@ -460,6 +460,7 @@ func status(ctx context.Context, errCh chan error) {
 }
 
 func connect(ctx context.Context, errCh chan error) {
+	timeout := time.NewTimer(time.Second * 30)
 	ws, err := prepareEnv(ctx)
 	if err != nil {
 		errCh <- err
@@ -494,6 +495,9 @@ func connect(ctx context.Context, errCh chan error) {
 			case <-ctx.Done():
 				errCh <- fmt.Errorf("Cancelled")
 				return
+			case <-timeout.C:
+				fmt.Println("\nCannot connect to VM, please make sure it has been started:\n\t$ ciao-down start")
+				break DONE
 			}
 
 			if sshReady(ctx, sshPort) {
