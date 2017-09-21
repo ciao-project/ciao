@@ -17,7 +17,7 @@ export no_proxy=$no_proxy,$ciao_vlan_ip,$ciao_host
 
 ciao_email="ciao-devel@lists.clearlinux.org"
 ciao_org="Intel"
-ciao_src="$GOPATH"/src/github.com/01org/ciao
+ciao_src="$GOPATH"/src/github.com/ciao-project/ciao
 ciao_gobin="$GOPATH"/bin
 ciao_scripts="$GOPATH"/src/github.com/ciao-project/ciao/testutil/singlevm
 ciao_env="$ciao_bin/demo.sh"
