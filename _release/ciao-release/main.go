@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-const repoOwner = "01org"
+const repoOwner = "ciao-project"
 const repo = "ciao"
 
 var rcSHA = flag.String("head", "", "The sha of the release candidate")
