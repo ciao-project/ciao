@@ -14,13 +14,6 @@
 // limitations under the License.
 //
 
-// Package bat contains a number of helper functions that can be used to perform
-// various operations on a ciao cluster such as creating an instance or retrieving
-// a list of all the defined workloads, etc.  All of these helper functions are
-// implemented by calling ciao-cli rather than by using ciao's REST APIs.  This
-// package is mainly intended for use by BAT tests.  Manipulating the cluster
-// via ciao-cli, rather than through the REST APIs, allows us to test a little
-// bit more of ciao.
 package bat
 
 import (
