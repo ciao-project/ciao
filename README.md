@@ -1,10 +1,9 @@
 #Ciao Project
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/01org/ciao)](https://goreportcard.com/report/github.com/01org/ciao)
-[![Build Status](https://travis-ci.org/01org/ciao.svg?branch=master)](https://travis-ci.org/01org/ciao)
-[![Coverage Status](https://coveralls.io/repos/github/01org/ciao/badge.svg?branch=master)](https://coveralls.io/github/01org/ciao?branch=master)
-[![GoDoc](https://godoc.org/github.com/01org/ciao?status.svg)](https://godoc.org/github.com/01org/ciao)
-[![Stories in Ready](https://badge.waffle.io/01org/ciao.png?label=ready&title=Ready)](https://waffle.io/01org/ciao)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ciao-project/ciao)](https://goreportcard.com/report/github.com/ciao-project/ciao)
+[![Build Status](https://travis-ci.org/ciao-project/ciao.svg?branch=master)](https://travis-ci.org/ciao-project/ciao)
+[![Coverage Status](https://coveralls.io/repos/github/ciao-project/ciao/badge.svg?branch=master)](https://coveralls.io/github/ciao-project/ciao?branch=master)
+[![GoDoc](https://godoc.org/github.com/ciao-project/ciao?status.svg)](https://godoc.org/github.com/ciao-project/ciao)
 
 Ciao is the "Cloud Integrated Advanced Orchestrator".  Its goal is
 to provide an easy to deploy, secure, scalable cloud orchestration
