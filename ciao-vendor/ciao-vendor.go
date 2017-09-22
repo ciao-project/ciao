@@ -402,8 +402,8 @@ func computeSubPackages(deps piList) map[string][]*subPackage {
 // breakage in a package we're not interested in would break
 // ciao-vendor
 //
-// We can't just go get github.com/01org/ciao this would pull down
-// the dependencies of the master version of ciao's depdendencies
+// We can't just go get github.com/ciao-project/ciao as this would pull
+// down the dependencies of the master version of ciao's depdendencies
 // which is not what we want.  This might miss some dependencies
 // which have been deleted from the master branch of ciao's
 // dependencies.
