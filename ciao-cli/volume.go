@@ -217,7 +217,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 
 	for i, v := range sortedVolumes {
 		fmt.Printf("Volume #%d\n", i+1)
-		dumpVolume(&v.customVolume)
+		dumpVolume(&v)
 		fmt.Printf("\n")
 	}
 
@@ -285,7 +285,7 @@ func (cmd *volumeShowCommand) run(args []string) error {
 			&volume, nil)
 	}
 
-	dumpVolume(&volume.customVolume)
+	dumpVolume(&volume)
 	return nil
 }
 
@@ -546,10 +546,12 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 	return err
 }
 
-func dumpVolume(v *customVolume) {
+func dumpVolume(v *extendedVolume) {
 	fmt.Printf("\tName             [%s]\n", v.Name)
 	fmt.Printf("\tSize             [%d GB]\n", v.Size)
 	fmt.Printf("\tUUID             [%s]\n", v.ID)
+	// Print out TenantID to ensure extendedVolume.customVolumeExt is not unused.
+	fmt.Printf("\tTenantID         [%s]\n", v.TenantID)
 	fmt.Printf("\tStatus           [%s]\n", v.Status)
 	fmt.Printf("\tDescription      [%s]\n", v.Description)
 }

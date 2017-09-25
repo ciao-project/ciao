@@ -155,15 +155,18 @@ type Server struct {
 	Server ServerDetails `json:"server"`
 }
 
+// FlavorBase represents a single flavor
+type FlavorBase struct {
+	ID    string `json:"id"`
+	Links []Link `json:"links"`
+	Name  string `json:"name"`
+}
+
 // Flavors represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/flavors response.  It contains information about all the
 // flavors in a cluster.
 type Flavors struct {
-	Flavors []struct {
-		ID    string `json:"id"`
-		Links []Link `json:"links"`
-		Name  string `json:"name"`
-	} `json:"flavors"`
+	Flavors []FlavorBase `json:"flavors"`
 }
 
 // NewComputeFlavors allocates a ComputeFlavors structure.
@@ -171,11 +174,7 @@ type Flavors struct {
 // JSON is an empty array and not a nil pointer, as specified
 // by the OpenStack APIs.
 func NewComputeFlavors() (flavors Flavors) {
-	flavors.Flavors = []struct {
-		ID    string `json:"id"`
-		Links []Link `json:"links"`
-		Name  string `json:"name"`
-	}{}
+	flavors.Flavors = []FlavorBase{}
 	return
 }
 
