@@ -27,7 +27,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
+	"github.com/ciao-project/ciao/openstack/image"
 	"github.com/intel/tfortools"
 )
 
@@ -50,10 +50,6 @@ type imageAddCommand struct {
 	visibility string
 }
 
-const (
-	internalImage images.ImageVisibility = "internal"
-)
-
 func (cmd *imageAddCommand) usage(...string) {
 	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] image add [flags]
 
@@ -63,7 +59,7 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", images.Image{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", image.DefaultResponse{}, nil))
 	os.Exit(2)
 }
 
@@ -72,7 +68,7 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.id, "id", "", "Image UUID")
 	cmd.Flag.StringVar(&cmd.file, "file", "", "Image file to upload")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
-	cmd.Flag.StringVar(&cmd.visibility, "visibility", string(images.ImageVisibilityPrivate),
+	cmd.Flag.StringVar(&cmd.visibility, "visibility", string(image.Private),
 		"Image visibility (internal,public,private)")
 	cmd.Flag.StringVar(&cmd.tags, "tag", "", "Image tags (comma separated)")
 	cmd.Flag.Usage = func() { cmd.usage() }
@@ -94,11 +90,11 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Could not open %s [%s]\n", cmd.file, err)
 	}
 
-	imageVisibility := images.ImageVisibilityPrivate
+	imageVisibility := image.Private
 	if cmd.visibility != "" {
-		imageVisibility = images.ImageVisibility(cmd.visibility)
+		imageVisibility = image.Visibility(cmd.visibility)
 		switch imageVisibility {
-		case images.ImageVisibilityPublic, images.ImageVisibilityPrivate, internalImage:
+		case image.Public, image.Private, image.Internal:
 		default:
 			fatalf("Invalid image visibility [%v]", imageVisibility)
 		}
@@ -106,10 +102,10 @@ func (cmd *imageAddCommand) run(args []string) error {
 
 	tags := strings.Split(cmd.tags, ",")
 
-	opts := images.CreateOpts{
+	opts := image.CreateImageRequest{
 		Name:       cmd.name,
 		ID:         cmd.id,
-		Visibility: &imageVisibility,
+		Visibility: imageVisibility,
 		Tags:       tags,
 	}
 
@@ -130,8 +126,8 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Image creation failed: %s", resp.Status)
 	}
 
-	image := new(images.Image)
-	err = unmarshalHTTPResponse(resp, image)
+	var image image.DefaultResponse
+	err = unmarshalHTTPResponse(resp, &image)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -148,7 +144,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Image get failed: %s", resp.Status)
 	}
 
-	err = unmarshalHTTPResponse(resp, image)
+	err = unmarshalHTTPResponse(resp, &image)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -158,7 +154,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 	}
 
 	fmt.Printf("Created image:\n")
-	dumpImage(image)
+	dumpImage(&image)
 	return nil
 }
 
@@ -174,7 +170,7 @@ func (cmd *imageShowCommand) usage(...string) {
 Show images
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", images.Image{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", image.DefaultResponse{}, nil))
 	os.Exit(2)
 }
 
@@ -202,7 +198,7 @@ func (cmd *imageShowCommand) run(args []string) error {
 		fatalf("Image show failed: %s", resp.Status)
 	}
 
-	var i images.Image
+	var i image.DefaultResponse
 
 	err = unmarshalHTTPResponse(resp, &i)
 	if err != nil {
@@ -237,7 +233,7 @@ The template passed to the -f option operates on a
 As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
-`, tfortools.GenerateUsageUndecorated([]images.Image{}))
+`, tfortools.GenerateUsageUndecorated([]image.DefaultResponse{}))
 	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
@@ -271,7 +267,7 @@ func (cmd *imageListCommand) run(args []string) error {
 	}
 
 	var images = struct {
-		Images []images.Image
+		Images []image.DefaultResponse
 	}{}
 
 	err = unmarshalHTTPResponse(resp, &images)
@@ -279,15 +275,14 @@ func (cmd *imageListCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	allImages := images.Images
 	if t != nil {
-		if err = t.Execute(os.Stdout, &allImages); err != nil {
+		if err = t.Execute(os.Stdout, &images.Images); err != nil {
 			fatalf(err.Error())
 		}
 		return nil
 	}
 
-	for k, i := range allImages {
+	for k, i := range images.Images {
 		fmt.Printf("Image #%d\n", k+1)
 		dumpImage(&i)
 		fmt.Printf("\n")
@@ -350,9 +345,9 @@ func uploadTenantImage(tenant, image, filename string) error {
 	return err
 }
 
-func dumpImage(i *images.Image) {
-	fmt.Printf("\tName             [%s]\n", i.Name)
-	fmt.Printf("\tSize             [%d bytes]\n", i.SizeBytes)
+func dumpImage(i *image.DefaultResponse) {
+	fmt.Printf("\tName             [%s]\n", *i.Name)
+	fmt.Printf("\tSize             [%d bytes]\n", i.Size)
 	fmt.Printf("\tUUID             [%s]\n", i.ID)
 	fmt.Printf("\tStatus           [%s]\n", i.Status)
 	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)

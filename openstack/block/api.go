@@ -158,17 +158,17 @@ type MetaData interface{}
 // http://developer.openstack.org/api-ref-blockstorage-v2.html#createVolume
 type RequestedVolume struct {
 	Size               int      `json:"size"`
-	AvailabilityZone   string   `json:"availability_zone"`
-	SourceVolID        *string  `json:"source_volid"`
-	Description        *string  `json:"description"`
+	AvailabilityZone   string   `json:"availability_zone,omitempty"`
+	SourceVolID        string   `json:"source_volid,omitempty"`
+	Description        string   `json:"description,omitempty"`
 	MultiAttach        bool     `json:"multiattach"`
-	SnapshotID         *string  `json:"snapshot_id"`
-	Name               *string  `json:"name"`
-	ImageRef           *string  `json:"imageRef"`
-	VolumeType         *string  `json:"volume_type"`
+	SnapshotID         string   `json:"snapshot_id,omitempty"`
+	Name               string   `json:"name,omitempty"`
+	ImageRef           string   `json:"imageRef,omitempty"`
+	VolumeType         string   `json:"volume_type,omitempty"`
 	MetaData           MetaData `json:"metadata"`
-	SourceReplica      *string  `json:"source_replica"`
-	ConsistencyGroupID *string  `json:"consistencygroup_id"`
+	SourceReplica      string   `json:"source_replica,omitempty"`
+	ConsistencyGroupID string   `json:"consistencygroup_id,omitempty"`
 }
 
 // VolumeCreateRequest is the json request for the createVolume endpoint.
@@ -181,12 +181,12 @@ type VolumeCreateRequest struct {
 // If this volume is attached to a server, the attachment contains
 // information about the attachment.
 type Attachment struct {
-	ServerUUID     string  `json:"server_id"`
-	AttachmentUUID string  `json:"attachment_id"`
-	HostName       *string `json:"host_name"`
-	VolumeUUID     string  `json:"volume_id"`
-	Device         string  `json:"device"`
-	DeviceUUID     string  `json:"id"`
+	ServerUUID     string `json:"server_id"`
+	AttachmentUUID string `json:"attachment_id"`
+	HostName       string `json:"host_name"`
+	VolumeUUID     string `json:"volume_id"`
+	Device         string `json:"device"`
+	DeviceUUID     string `json:"id"`
 }
 
 const (
@@ -199,25 +199,25 @@ const (
 // http://developer.openstack.org/api-ref-blockstorage-v2.html#updateVolume
 type Volume struct {
 	Status             VolumeStatus `json:"status"`
-	MigrationStatus    *string      `json:"migration_status"`
-	UserID             string       `json:"user_id"`
+	MigrationStatus    string       `json:"migration_status,omitempty"`
+	UserID             string       `json:"user_id,omitempty"`
 	Attachments        []Attachment `json:"attachments"`
 	Links              []Link       `json:"links"`
-	AvailabilityZone   *string      `json:"availability_zone"`
-	Bootable           string       `json:"bootable"`
+	AvailabilityZone   string       `json:"availability_zone,omitempty"`
+	Bootable           string       `json:"bootable,omitempty"`
 	Encrypted          bool         `json:"encrypted"`
 	CreatedAt          *time.Time   `json:"created_at"`
-	Description        *string      `json:"description"`
+	Description        string       `json:"description,omitempty"`
 	UpdatedAt          *time.Time   `json:"updated_at"`
-	VolumeType         *string      `json:"volume_type"`
-	Name               *string      `json:"name"`
-	ReplicationStatus  string       `json:"replication_status"`
-	ConsistencyGroupID *string      `json:"consistencygroup_id"`
-	SourceVolID        *string      `json:"source_volid"`
-	SnapshotID         *string      `json:"snapshot_id"`
+	VolumeType         string       `json:"volume_type,omitempty"`
+	Name               string       `json:"name,omitempty"`
+	ReplicationStatus  string       `json:"replication_status,omitempty"`
+	ConsistencyGroupID string       `json:"consistencygroup_id,omitempty"`
+	SourceVolID        string       `json:"source_volid,omitempty"`
+	SnapshotID         string       `json:"snapshot_id,omitempty"`
 	MultiAttach        bool         `json:"multiattach"`
 	MetaData           MetaData     `json:"metadata"`
-	ID                 string       `json:"id"`
+	ID                 string       `json:"id,omitempty"`
 	Size               int          `json:"size"`
 }
 
@@ -245,33 +245,33 @@ type ListVolumes struct {
 // VolumeDetail contains volume information for the listVolumeDetails endpoint.
 // http://developer.openstack.org/api-ref-blockstorage-v2.html#listVolumesDetail
 type VolumeDetail struct {
-	MigrationStatus          *string      `json:"migration_status,omitempty"`
+	MigrationStatus          string       `json:"migration_status,omitempty"`
 	Attachments              []Attachment `json:"attachments,omitempty"`
 	Links                    []Link       `json:"links,omitempty"`
-	AvailabilityZone         *string      `json:"availability_zone,omitempty"`
+	AvailabilityZone         string       `json:"availability_zone,omitempty"`
 	OSVolHostAttr            string       `json:"os-vol-host-attr:host"`
 	Encrypted                bool         `json:"encrypted"`
 	UpdatedAt                *time.Time   `json:"updated_at,omitempty"`
 	OSVolReplicationExStatus string       `json:"os-volume-replication:extended_status,omitempty"`
 	ReplicationStatus        string       `json:"replication_status"`
-	SnapshotID               *string      `json:"snapshot_id,omitempty"`
+	SnapshotID               string       `json:"snapshot_id,omitempty"`
 	ID                       string       `json:"id"`
 	Size                     int          `json:"size"`
 	UserID                   string       `json:"user_id"`
 	OSVolTenantAttr          string       `json:"os-vol-tenant-attr:tenant_id"`
-	OSVolMigStatusAttrStatus *string      `json:"os-vol-mig-status-attr:migstat,omitempty"`
+	OSVolMigStatusAttrStatus string       `json:"os-vol-mig-status-attr:migstat,omitempty"`
 	MetaData                 MetaData     `json:"metadata,omitempty"`
 	Status                   VolumeStatus `json:"status"`
-	Description              *string      `json:"description,omitempty"`
+	Description              string       `json:"description,omitempty"`
 	MultiAttach              bool         `json:"multiattach"`
 	OSVolReplicationDriver   string       `json:"os-volume-replication:driver_data,omitempty"`
-	SourceVolID              *string      `json:"source_volid,omitempty"`
-	ConsistencyGroupID       *string      `json:"consistencygroup_id,omitempty"`
-	OSVolMigStatusAttrNameID *string      `json:"os-vol-mig-status-attr:name_id,omitempty"`
-	Name                     *string      `json:"name"`
+	SourceVolID              string       `json:"source_volid,omitempty"`
+	ConsistencyGroupID       string       `json:"consistencygroup_id,omitempty"`
+	OSVolMigStatusAttrNameID string       `json:"os-vol-mig-status-attr:name_id,omitempty"`
+	Name                     string       `json:"name"`
 	Bootable                 string       `json:"bootable"`
 	CreatedAt                *time.Time   `json:"created_at"`
-	VolumeType               *string      `json:"volume_type,omitempty"`
+	VolumeType               string       `json:"volume_type,omitempty"`
 }
 
 // ListVolumesDetail is the json response for the listVolumeDetails endpoint.
@@ -468,7 +468,7 @@ func showVolumeDetails(bc *Context, w http.ResponseWriter, r *http.Request) (API
 	}
 	vol.MetaData = map[string]string{}
 	s := "None"
-	vol.VolumeType = &s
+	vol.VolumeType = s
 
 	resp := ShowVolumeDetails{Volume: vol}
 

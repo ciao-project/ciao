@@ -25,29 +25,17 @@ import (
 	"os"
 	"sort"
 	"text/template"
-	"time"
 
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactions"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumetenants"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
+	"github.com/ciao-project/ciao/openstack/block"
+
 	"github.com/intel/tfortools"
 )
-
-type customVolume volumes.Volume
-type customVolumeExt volumetenants.VolumeExt
-type extendedVolume struct {
-	customVolumeExt
-	customVolume
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
 
 var volumeCommand = &command{
 	SubCommands: map[string]subCommand{
 		"add":    new(volumeAddCommand),
 		"list":   new(volumeListCommand),
 		"show":   new(volumeShowCommand),
-		"update": new(volumeUpdateCommand),
 		"delete": new(volumeDeleteCommand),
 		"attach": new(volumeAttachCommand),
 		"detach": new(volumeDetachCommand),
@@ -87,25 +75,21 @@ func (cmd *volumeAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *volumeAddCommand) run(args []string) error {
-	opts := volumes.CreateOpts{
+	opts := block.RequestedVolume{
 		Description: cmd.description,
 		Name:        cmd.name,
 		Size:        cmd.size,
 	}
 
 	if cmd.sourceType == "image" {
-		opts.ImageID = cmd.source
+		opts.ImageRef = cmd.source
 	} else if cmd.sourceType == "volume" {
 		opts.SourceVolID = cmd.source
 	} else {
 		fatalf("Unknown source type [%s]\n", cmd.sourceType)
 	}
 
-	var createReq = struct {
-		Volume volumes.CreateOpts
-	}{
-		Volume: opts,
-	}
+	var createReq = block.VolumeCreateRequest{Volume: opts}
 
 	b, err := json.Marshal(createReq)
 	if err != nil {
@@ -124,9 +108,7 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		fatalf("Volume creation failed: %s", resp.Status)
 	}
 
-	var vol = struct {
-		Volume customVolume
-	}{}
+	var vol block.VolumeResponse
 
 	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
@@ -155,7 +137,7 @@ The template passed to the -f option operates on a
 As volumes are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of volumes.
-`, tfortools.GenerateUsageUndecorated([]volumes.Volume{}))
+`, tfortools.GenerateUsageUndecorated([]block.Volume{}))
 	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
@@ -167,7 +149,7 @@ func (cmd *volumeListCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-type byName []extendedVolume
+type byName []block.VolumeDetail
 
 func (ss byName) Len() int      { return len(ss) }
 func (ss byName) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
@@ -196,9 +178,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 		fatalf("Volume list failed: %s", resp.Status)
 	}
 
-	var vols = struct {
-		Volumes []extendedVolume
-	}{}
+	var vols block.ListVolumesDetail
 
 	err = unmarshalHTTPResponse(resp, &vols)
 	if err != nil {
@@ -238,7 +218,7 @@ Show information about a volume
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", volumes.Volume{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", block.Volume{}, nil))
 	os.Exit(2)
 }
 
@@ -267,9 +247,7 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		fatalf("Volume show failed: %s", resp.Status)
 	}
 
-	var vol = struct {
-		Volume extendedVolume
-	}{}
+	var vol block.ShowVolumeDetails
 
 	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
@@ -277,9 +255,6 @@ func (cmd *volumeShowCommand) run(args []string) error {
 	}
 
 	volume := vol.Volume
-	volume.customVolume.CreatedAt = volume.CreatedAt
-	volume.customVolume.UpdatedAt = volume.UpdatedAt
-
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "volume-show", cmd.template,
 			&volume, nil)
@@ -287,83 +262,6 @@ func (cmd *volumeShowCommand) run(args []string) error {
 
 	dumpVolume(&volume)
 	return nil
-}
-
-type volumeUpdateCommand struct {
-	Flag        flag.FlagSet
-	volume      string
-	name        string
-	description string
-}
-
-func (cmd *volumeUpdateCommand) usage(...string) {
-	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] volume update [flags]
-
-Updates a volume
-
-The update flags are:
-`)
-	cmd.Flag.PrintDefaults()
-	os.Exit(2)
-}
-
-func (cmd *volumeUpdateCommand) parseArgs(args []string) []string {
-	cmd.Flag.StringVar(&cmd.volume, "volume", "", "Volume UUID")
-	cmd.Flag.StringVar(&cmd.name, "name", "", "Volume name")
-	cmd.Flag.StringVar(&cmd.description, "description", "", "Volume description")
-	cmd.Flag.Usage = func() { cmd.usage() }
-	cmd.Flag.Parse(args)
-	return cmd.Flag.Args()
-}
-
-func (cmd *volumeUpdateCommand) run(args []string) error {
-	if cmd.volume == "" {
-		errorf("missing required -volume parameter")
-		cmd.usage()
-	}
-
-	opts := volumes.UpdateOpts{
-		Name:        cmd.name,
-		Description: cmd.description,
-	}
-
-	var updateReq = struct {
-		Volume volumes.UpdateOpts
-	}{
-		Volume: opts,
-	}
-
-	b, err := json.Marshal(updateReq)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("PUT", url, nil, body)
-	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Volume update failed: %s", resp.Status)
-	}
-
-	var vol = struct {
-		Volume customVolume
-	}{}
-
-	err = unmarshalHTTPResponse(resp, &vol)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if err == nil {
-		fmt.Printf("Updated volume: %s\n", vol.Volume.ID)
-	}
-
-	return err
 }
 
 type volumeDeleteCommand struct {
@@ -449,18 +347,21 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	// mountpoint or mode isn't required
-
-	options := volumeactions.AttachOpts{
-		MountPoint:   cmd.mountpoint,
-		Mode:         volumeactions.AttachMode(cmd.mode),
-		InstanceUUID: cmd.instance,
+	type AttachRequest struct {
+		MountPoint   string `json:"mountpoint"`
+		Mode         string `json:"mode"`
+		InstanceUUID string `json:"instance_uuid"`
 	}
 
+	// mountpoint or mode isn't required
 	var attachReq = struct {
-		Attach volumeactions.AttachOpts `json:"os-attach"`
+		Attach AttachRequest `json:"os-attach"`
 	}{
-		Attach: options,
+		Attach: AttachRequest{
+			MountPoint:   cmd.mountpoint,
+			Mode:         cmd.mode,
+			InstanceUUID: cmd.instance,
+		},
 	}
 
 	b, err := json.Marshal(attachReq)
@@ -515,12 +416,13 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	// mountpoint or mode isn't required
-
+	type DetachRequest struct {
+		AttachmentID string `json:"attachment_id,omitempty"`
+	}
 	var detachReq = struct {
-		Detach volumeactions.DetachOpts `json:"os-detach"`
+		Detach DetachRequest `json:"os-detach"`
 	}{
-		Detach: volumeactions.DetachOpts{},
+		Detach: DetachRequest{},
 	}
 
 	b, err := json.Marshal(detachReq)
@@ -546,12 +448,12 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 	return err
 }
 
-func dumpVolume(v *extendedVolume) {
+func dumpVolume(v *block.VolumeDetail) {
 	fmt.Printf("\tName             [%s]\n", v.Name)
 	fmt.Printf("\tSize             [%d GB]\n", v.Size)
 	fmt.Printf("\tUUID             [%s]\n", v.ID)
 	// Print out TenantID to ensure extendedVolume.customVolumeExt is not unused.
-	fmt.Printf("\tTenantID         [%s]\n", v.TenantID)
+	fmt.Printf("\tTenantID         [%s]\n", v.OSVolTenantAttr)
 	fmt.Printf("\tStatus           [%s]\n", v.Status)
 	fmt.Printf("\tDescription      [%s]\n", v.Description)
 }
