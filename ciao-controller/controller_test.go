@@ -107,7 +107,13 @@ func addFakeCNCI(tenant *types.Tenant) (*types.Instance, error) {
 func addTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err = ctl.ds.AddTenant(tuuid.String())
+
+	config := types.TenantConfig{
+		Name:       "controller test tenant",
+		SubnetBits: 24,
+	}
+
+	tenant, err = ctl.ds.AddTenant(tuuid.String(), config)
 	if err != nil {
 		return
 	}
@@ -131,7 +137,13 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 func addTestTenantNoCNCI() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
 	tuuid := uuid.Generate()
-	tenant, err = ctl.ds.AddTenant(tuuid.String())
+
+	config := types.TenantConfig{
+		Name:       "controller test tenant no CNCI",
+		SubnetBits: 24,
+	}
+
+	tenant, err = ctl.ds.AddTenant(tuuid.String(), config)
 	if err != nil {
 		return
 	}
@@ -149,7 +161,12 @@ func addTestTenantNoCNCI() (tenant *types.Tenant, err error) {
 
 func addComputeTestTenant() (tenant *types.Tenant, err error) {
 	/* add a new tenant */
-	tenant, err = ctl.ds.AddTenant(testutil.ComputeUser)
+	config := types.TenantConfig{
+		Name:       "compute test tenant",
+		SubnetBits: 24,
+	}
+
+	tenant, err = ctl.ds.AddTenant(testutil.ComputeUser, config)
 	if err != nil {
 		return
 	}
@@ -2048,6 +2065,47 @@ func TestUpdateTenant(t *testing.T) {
 	}
 }
 
+func TestCreateTenant(t *testing.T) {
+	config := types.TenantConfig{
+		Name:       "createTenant",
+		SubnetBits: 21,
+	}
+
+	ID := uuid.Generate()
+
+	summary, err := ctl.CreateTenant(ID.String(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if summary.Name != "createTenant" || summary.ID != ID.String() {
+		t.Fatal(err)
+	}
+
+	if len(summary.Links) != 1 {
+		t.Fatal("Link not built correctly")
+	}
+}
+
+func TestDeleteTenant(t *testing.T) {
+	config := types.TenantConfig{
+		Name:       "deleteTenant",
+		SubnetBits: 24,
+	}
+
+	ID := uuid.Generate()
+
+	_, err := ctl.CreateTenant(ID.String(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ctl.DeleteTenant(ID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 var ctl *controller
 var server *testutil.SsntpTestServer
 var wrappedClient *ssntpClientWrapper
@@ -2062,6 +2120,7 @@ func TestMain(m *testing.M) {
 	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
 	ctl.qs = new(quotas.Quotas)
+	ctl.is = new(ImageService)
 
 	ctl.BlockDriver = func() storage.BlockDriver {
 		return &storage.NoopDriver{}
@@ -2095,6 +2154,11 @@ func TestMain(m *testing.M) {
 	ctl.ds.GenerateCNCIWorkload(4, 128, 128, "", "")
 
 	ctl.qs.Init()
+
+	err = ctl.is.Init(ctl.qs)
+	if err != nil {
+		os.Exit(1)
+	}
 
 	config := &ssntp.Config{
 		URI:    "localhost",

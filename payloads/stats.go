@@ -142,6 +142,12 @@ const (
 	ExitFailed = "exit_failed"
 	// ExitPaused is not currently used
 	ExitPaused = "exit_paused"
+
+	// Deleted indicates that an instance has been successfully deleted.
+	Deleted = "deleted"
+
+	// Hung indicates that an instance is not responding to commands.
+	Hung = "hung"
 )
 
 // Init initialises instances of the Stat structure.

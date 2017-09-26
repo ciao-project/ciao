@@ -1183,6 +1183,35 @@ func (ds *sqliteDB) updateTenant(tenant *types.Tenant) error {
 
 }
 
+func (ds *sqliteDB) deleteTenant(tenantID string) error {
+	datastore := ds.getTableDB("tenants")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	tx, err := datastore.Begin()
+	if err != nil {
+		return err
+	}
+
+	// first delete any quotas associated with this tenant
+	_, err = tx.Exec("DELETE FROM quotas WHERE tenant_id = ?", tenantID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM tenants WHERE id = ?", tenantID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+
+	return err
+}
+
 func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 	var instances []*types.Instance
 

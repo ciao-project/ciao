@@ -678,6 +678,38 @@ func updateTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusNoContent, nil}, nil
 }
 
+func createTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	var req types.TenantRequest
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	resp, err := c.CreateTenant(req.ID, req.Config)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusCreated, resp}, nil
+}
+
+func deleteTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	ID := vars["tenant"]
+
+	err := c.DeleteTenant(ID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -699,6 +731,8 @@ type Service interface {
 	ListTenants() ([]types.TenantSummary, error)
 	ShowTenant(ID string) (types.TenantConfig, error)
 	PatchTenant(ID string, patch []byte) error
+	CreateTenant(ID string, config types.TenantConfig) (types.TenantSummary, error)
+	DeleteTenant(ID string) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -828,8 +862,16 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
+	route = r.Handle("/tenants", Handler{context, createTenant, true})
+	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
 	route = r.Handle("/tenants/{tenant:"+uuid.UUIDRegex+"}", Handler{context, showTenant, true})
 	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/tenants/{tenant:"+uuid.UUIDRegex+"}", Handler{context, deleteTenant, true})
+	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/tenants", Handler{context, showTenant, false})

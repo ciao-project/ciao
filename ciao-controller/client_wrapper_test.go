@@ -272,3 +272,7 @@ func (client *ssntpClientWrapper) sendAndDelEventChan(cmd ssntp.Event) {
 	}
 	client.EventChansLock.Unlock()
 }
+
+func (client *ssntpClientWrapper) RemoveInstance(ID string) {
+	client.realClient.RemoveInstance(ID)
+}
