@@ -47,7 +47,6 @@ var volumeCommand = &command{
 		"add":    new(volumeAddCommand),
 		"list":   new(volumeListCommand),
 		"show":   new(volumeShowCommand),
-		"update": new(volumeUpdateCommand),
 		"delete": new(volumeDeleteCommand),
 		"attach": new(volumeAttachCommand),
 		"detach": new(volumeDetachCommand),
@@ -287,83 +286,6 @@ func (cmd *volumeShowCommand) run(args []string) error {
 
 	dumpVolume(&volume)
 	return nil
-}
-
-type volumeUpdateCommand struct {
-	Flag        flag.FlagSet
-	volume      string
-	name        string
-	description string
-}
-
-func (cmd *volumeUpdateCommand) usage(...string) {
-	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] volume update [flags]
-
-Updates a volume
-
-The update flags are:
-`)
-	cmd.Flag.PrintDefaults()
-	os.Exit(2)
-}
-
-func (cmd *volumeUpdateCommand) parseArgs(args []string) []string {
-	cmd.Flag.StringVar(&cmd.volume, "volume", "", "Volume UUID")
-	cmd.Flag.StringVar(&cmd.name, "name", "", "Volume name")
-	cmd.Flag.StringVar(&cmd.description, "description", "", "Volume description")
-	cmd.Flag.Usage = func() { cmd.usage() }
-	cmd.Flag.Parse(args)
-	return cmd.Flag.Args()
-}
-
-func (cmd *volumeUpdateCommand) run(args []string) error {
-	if cmd.volume == "" {
-		errorf("missing required -volume parameter")
-		cmd.usage()
-	}
-
-	opts := volumes.UpdateOpts{
-		Name:        cmd.name,
-		Description: cmd.description,
-	}
-
-	var updateReq = struct {
-		Volume volumes.UpdateOpts
-	}{
-		Volume: opts,
-	}
-
-	b, err := json.Marshal(updateReq)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("PUT", url, nil, body)
-	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Volume update failed: %s", resp.Status)
-	}
-
-	var vol = struct {
-		Volume customVolume
-	}{}
-
-	err = unmarshalHTTPResponse(resp, &vol)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if err == nil {
-		fmt.Printf("Updated volume: %s\n", vol.Volume.ID)
-	}
-
-	return err
 }
 
 type volumeDeleteCommand struct {
