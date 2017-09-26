@@ -47,13 +47,13 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	var bd storage.BlockDevice
 
 	// no limits checking for now.
-	if req.ImageRef != nil {
+	if req.ImageRef != "" {
 		// create bootable volume
-		bd, err = c.CreateBlockDeviceFromSnapshot(*req.ImageRef, "ciao-image")
+		bd, err = c.CreateBlockDeviceFromSnapshot(req.ImageRef, "ciao-image")
 		bd.Bootable = true
-	} else if req.SourceVolID != nil {
+	} else if req.SourceVolID != "" {
 		// copy existing volume
-		bd, err = c.CopyBlockDevice(*req.SourceVolID)
+		bd, err = c.CopyBlockDevice(req.SourceVolID)
 	} else {
 		// create empty volume
 		bd, err = c.CreateBlockDevice("", "", req.Size)
@@ -76,14 +76,8 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 		CreateTime:  time.Now(),
 		TenantID:    tenant,
 		State:       types.Available,
-	}
-
-	if req.Name != nil {
-		data.Name = *req.Name
-	}
-
-	if req.Description != nil {
-		data.Description = *req.Description
+		Name:        req.Name,
+		Description: req.Description,
 	}
 
 	// It's best to make the quota request here as we don't know the volume
@@ -359,14 +353,8 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 		vol.Size = data.Size
 		vol.OSVolTenantAttr = data.TenantID
 		vol.Bootable = strconv.FormatBool(data.Bootable)
-
-		if data.Name != "" {
-			vol.Name = &data.Name
-		}
-
-		if data.Description != "" {
-			vol.Description = &data.Description
-		}
+		vol.Name = data.Name
+		vol.Description = data.Description
 
 		switch data.State {
 		case types.Attaching:
@@ -407,14 +395,8 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.Volu
 	vol.OSVolTenantAttr = data.TenantID
 	vol.CreatedAt = &data.CreateTime
 	vol.Bootable = strconv.FormatBool(data.Bootable)
-
-	if data.Name != "" {
-		vol.Name = &data.Name
-	}
-
-	if data.Description != "" {
-		vol.Description = &data.Description
-	}
+	vol.Name = data.Name
+	vol.Description = data.Description
 
 	switch data.State {
 	case types.Attaching:

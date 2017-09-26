@@ -1419,7 +1419,7 @@ func TestCreateImageVolume(t *testing.T) {
 
 	imageRef := "test-image-id"
 	req := block.RequestedVolume{
-		ImageRef: &imageRef,
+		ImageRef: imageRef,
 	}
 
 	vol, err := ctl.CreateVolume(tenant.ID, req)
