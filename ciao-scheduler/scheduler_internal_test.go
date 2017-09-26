@@ -757,8 +757,6 @@ func TestGetWorkloadAgentUUID(t *testing.T) {
 		expectedInstanceUUID string
 		expectedAgentUUID    string
 	}{
-		{ssntp.RESTART, []byte(testutil.RestartYaml), testutil.InstanceUUID, testutil.AgentUUID},
-		{ssntp.STOP, []byte(testutil.StopYaml), testutil.InstanceUUID, testutil.AgentUUID},
 		{ssntp.DELETE, []byte(testutil.DeleteYaml), testutil.InstanceUUID, testutil.AgentUUID},
 		{ssntp.EVACUATE, []byte(testutil.EvacuateYaml), "", testutil.AgentUUID},
 		{ssntp.Restore, []byte(testutil.RestoreYaml), "", testutil.AgentUUID},
