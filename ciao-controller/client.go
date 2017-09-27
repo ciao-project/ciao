@@ -37,6 +37,7 @@ type controllerClient interface {
 	DeleteInstance(instanceID string, nodeID string) error
 	StopInstance(instanceID string, nodeID string) error
 	RestartInstance(i *types.Instance, w *types.Workload, t *types.Tenant) error
+	RemoveInstance(instanceID string)
 	EvacuateNode(nodeID string) error
 	RestoreNode(nodeID string) error
 	Disconnect()
@@ -115,7 +116,7 @@ func (client *ssntpClient) releaseResources(instanceID string) error {
 	return nil
 }
 
-func (client *ssntpClient) removeInstance(instanceID string) {
+func (client *ssntpClient) RemoveInstance(instanceID string) {
 	err := client.releaseResources(instanceID)
 	if err != nil {
 		glog.Warningf("Error when releasing resources for deleted instance: %v", err)
@@ -145,6 +146,9 @@ func (client *ssntpClient) removeInstance(instanceID string) {
 			glog.Warningf("Error removing CNCI: %v", err)
 		}
 	}
+
+	// notify anyone is listening for a state change
+	transitionInstanceState(i, payloads.Deleted)
 }
 
 func (client *ssntpClient) instanceDeleted(payload []byte) {
@@ -154,7 +158,7 @@ func (client *ssntpClient) instanceDeleted(payload []byte) {
 		glog.Warningf("Error unmarshalling InstanceDeleted: %v", err)
 		return
 	}
-	client.removeInstance(event.InstanceDeleted.InstanceUUID)
+	client.RemoveInstance(event.InstanceDeleted.InstanceUUID)
 }
 
 func (client *ssntpClient) instanceStopped(payload []byte) {
@@ -545,7 +549,7 @@ func (client *ssntpClient) DeleteInstance(instanceID string, nodeID string) erro
 		// can just remove its details from controller's db and delete
 		// any ephemeral storage.
 		glog.Info("Deleting unassigned instance")
-		client.removeInstance(instanceID)
+		client.RemoveInstance(instanceID)
 		return nil
 	}
 

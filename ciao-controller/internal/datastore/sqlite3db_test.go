@@ -1227,3 +1227,40 @@ func TestSQLiteDBUpdateTenant(t *testing.T) {
 
 	db.disconnect()
 }
+
+func TestSQLiteDBDeleteTenant(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	config := types.TenantConfig{
+		Name:       "name1",
+		SubnetBits: 24,
+	}
+
+	err = db.addTenant(tenantID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.updateQuotas(tenantID, []types.QuotaDetails{{Name: "test-quota-name", Value: 10}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.deleteTenant(tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenant, err := db.getTenant(tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tenant != nil {
+		t.Fatal("Tenant Delete not successful")
+	}
+}

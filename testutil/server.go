@@ -404,26 +404,6 @@ func (server *SsntpTestServer) CommandNotify(uuid string, command ssntp.Command,
 			server.Ssntp.SendCommand(delCmd.Delete.WorkloadAgentUUID, command, frame.Payload)
 		}
 
-	case ssntp.STOP:
-		var stopCmd payloads.Stop
-
-		err := yaml.Unmarshal(payload, &stopCmd)
-		result.Err = err
-		if err == nil {
-			result.InstanceUUID = stopCmd.Stop.InstanceUUID
-			server.Ssntp.SendCommand(stopCmd.Stop.WorkloadAgentUUID, command, frame.Payload)
-		}
-
-	case ssntp.RESTART:
-		var restartCmd payloads.Restart
-
-		err := yaml.Unmarshal(payload, &restartCmd)
-		result.Err = err
-		if err == nil {
-			result.InstanceUUID = restartCmd.Restart.InstanceUUID
-			server.Ssntp.SendCommand(restartCmd.Restart.WorkloadAgentUUID, command, frame.Payload)
-		}
-
 	case ssntp.EVACUATE:
 		getEvacuateResults(payload, &result)
 
@@ -670,12 +650,8 @@ func (server *SsntpTestServer) CommandForward(uuid string, command ssntp.Command
 		dest = server.handleDetachVolume(payload)
 	case ssntp.EVACUATE:
 		fallthrough
-	case ssntp.STOP:
-		fallthrough
 	case ssntp.DELETE:
 		fallthrough
-	case ssntp.RESTART:
-		//TODO: dest, instanceUUID = sched.fwdCmdToComputeNode(command, payload)
 	default:
 		dest.SetDecision(ssntp.Discard)
 	}
@@ -757,14 +733,6 @@ func StartTestServer() *SsntpTestServer {
 			},
 			{ // all START command are processed by the Command forwarder
 				Operand:        ssntp.START,
-				CommandForward: server,
-			},
-			{ // all RESTART command are processed by the Command forwarder
-				Operand:        ssntp.RESTART,
-				CommandForward: server,
-			},
-			{ // all STOP command are processed by the Command forwarder
-				Operand:        ssntp.STOP,
 				CommandForward: server,
 			},
 			{ // all DELETE command are processed by the Command forwarder
