@@ -528,12 +528,6 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 	case ssntp.START:
 		result = client.handleStart(payload)
 
-	case ssntp.STOP:
-		result = client.handleStop(payload)
-
-	case ssntp.RESTART:
-		result = client.handleRestart(payload)
-
 	case ssntp.DELETE:
 		result = client.handleDelete(payload)
 
