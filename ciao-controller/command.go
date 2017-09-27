@@ -22,6 +22,7 @@ import (
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/payloads"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 )
 
@@ -73,6 +74,48 @@ func (c *controller) stopInstance(instanceID string) error {
 	return nil
 }
 
+// delete an instance, wait for the deleted event.
+func (c *controller) deleteInstanceSync(instanceID string) error {
+	wait := make(chan struct{})
+
+	i, err := c.ds.GetInstance(instanceID)
+	if err != nil {
+		return err
+	}
+
+	err = c.deleteInstance(instanceID)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		i.StateChange.L.Lock()
+		for {
+			i.StateLock.RLock()
+			if i.State == payloads.Deleted || i.State == payloads.Hung {
+				break
+			}
+			glog.V(2).Infof("waiting for %s to be deleted", i.ID)
+			i.StateLock.RUnlock()
+			i.StateChange.Wait()
+		}
+
+		i.StateLock.RUnlock()
+		i.StateChange.L.Unlock()
+
+		glog.V(2).Infof("%s is hung or deleted", i.ID)
+		close(wait)
+	}()
+
+	select {
+	case <-wait:
+		return nil
+	case <-time.After(2 * time.Minute):
+		transitionInstanceState(i, payloads.Hung)
+		return fmt.Errorf("timeout waiting for delete")
+	}
+}
+
 func (c *controller) deleteInstance(instanceID string) error {
 	// get node id.  If there is no node id and the instance is
 	// pending we can't send a delete
@@ -107,7 +150,13 @@ func (c *controller) confirmTenantRaw(tenantID string) error {
 		return nil
 	}
 
-	tenant, err = c.ds.AddTenant(tenantID)
+	// if we are adding tenant this way, we need to use defaults
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	tenant, err = c.ds.AddTenant(tenantID, config)
 	if err != nil {
 		return err
 	}

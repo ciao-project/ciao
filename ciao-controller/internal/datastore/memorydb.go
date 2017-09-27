@@ -246,3 +246,8 @@ func (db *MemoryDB) updateInstance(instance *types.Instance) error {
 func (db *MemoryDB) updateTenant(tenant *types.Tenant) error {
 	return nil
 }
+
+func (db *MemoryDB) deleteTenant(tenantID string) error {
+	delete(db.tenants, tenantID)
+	return nil
+}

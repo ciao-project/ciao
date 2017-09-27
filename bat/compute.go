@@ -216,22 +216,6 @@ func RunCIAOCLIAsAdminJS(ctx context.Context, tenant string, args []string,
 	return nil
 }
 
-// GetAllTenants retrieves a list of all tenants in the cluster by calling
-// ciao-cli tenant list -all. An error will be returned if the following
-// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
-// CIAO_CONTROLLER.
-func GetAllTenants(ctx context.Context) ([]*Tenant, error) {
-	var tenants []*Tenant
-
-	args := []string{"tenant", "list", "-all", "-f", "{{tojson .}}"}
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &tenants)
-	if err != nil {
-		return nil, err
-	}
-
-	return tenants, nil
-}
-
 // GetUserTenants retrieves a list of all the tenants the current user has
 // access to. An error will be returned if the following environment variables
 // are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
