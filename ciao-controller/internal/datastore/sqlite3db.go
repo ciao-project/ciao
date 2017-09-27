@@ -416,18 +416,7 @@ func (d quotaData) Init() error {
 func (ds *sqliteDB) exec(db *sql.DB, cmd string) error {
 	glog.V(2).Info("exec: ", cmd)
 
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(cmd)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	err = tx.Commit()
+	_, err := db.Exec(cmd)
 
 	return err
 }
@@ -549,25 +538,25 @@ var pSQLLiteConfig = []string{
 }
 
 func (ds *sqliteDB) sqliteConnect(name string, URI string, config []string) (*sql.DB, error) {
-	datastore, err := sql.Open(name, URI)
+	db, err := sql.Open(name, URI)
 	if err != nil {
 		return nil, err
 	}
 
 	for i := range config {
-		_, err = datastore.Exec(config[i])
+		_, err = db.Exec(config[i])
 		if err != nil {
 			glog.Warning(err)
 		}
 	}
 
-	err = datastore.Ping()
+	err = db.Ping()
 	if err != nil {
 		glog.Warning(err)
 		return nil, err
 	}
 
-	return datastore, nil
+	return db, nil
 }
 
 // Connect creates two sqlite3 databases.  One database is for
@@ -617,26 +606,12 @@ func (ds *sqliteDB) disconnect() {
 }
 
 func (ds *sqliteDB) logEvent(tenantID string, eventType string, message string) error {
-	datastore := ds.getTableDB("log")
+	db := ds.getTableDB("log")
 
 	ds.tdbLock.Lock()
+	defer ds.tdbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.tdbLock.Unlock()
-		return err
-	}
-
-	_, err = tx.Exec("INSERT INTO log (tenant_id, type, message) VALUES (?, ?, ?)", tenantID, eventType, message)
-	if err != nil {
-		tx.Rollback()
-		ds.tdbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-
-	ds.tdbLock.Unlock()
+	_, err := db.Exec("INSERT INTO log (tenant_id, type, message) VALUES (?, ?, ?)", tenantID, eventType, message)
 
 	return err
 }
@@ -646,13 +621,9 @@ func (ds *sqliteDB) clearLog() error {
 	db := ds.getTableDB("log")
 
 	ds.tdbLock.Lock()
+	defer ds.tdbLock.Unlock()
 
-	err := ds.exec(db, "DELETE FROM log")
-	if err != nil {
-		glog.V(2).Info("could not clear log: ", err)
-	}
-
-	ds.tdbLock.Unlock()
+	_, err := db.Exec("DELETE FROM log")
 
 	return err
 }
@@ -715,7 +686,6 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 
 // lock must be held by caller
 func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resource payloads.RequestedResource) error {
-
 	_, err := tx.Exec("INSERT INTO workload_resources (workload_id, resource_type, default_value, estimated_value, mandatory) VALUES (?, ?, ?, ?, ?)", workloadID, string(resource.Type), resource.Value, resource.Value, resource.Mandatory)
 
 	return err
@@ -723,7 +693,6 @@ func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resourc
 
 // lock must be held by caller
 func (ds *sqliteDB) deleteWorkloadDefault(tx *sql.Tx, workloadID string) error {
-
 	_, err := tx.Exec("DELETE FROM workload_resources WHERE workload_id = ?", workloadID)
 
 	return err
@@ -738,7 +707,6 @@ func (ds *sqliteDB) createWorkloadStorage(tx *sql.Tx, workloadID string, storage
 
 // lock must be held by caller
 func (ds *sqliteDB) deleteWorkloadStorage(tx *sql.Tx, workloadID string) error {
-
 	_, err := tx.Exec("DELETE FROM workload_storage WHERE workload_id = ?", workloadID)
 
 	return err
@@ -774,8 +742,9 @@ func (ds *sqliteDB) getWorkloadStorage(ID string) ([]types.StorageResource, erro
 
 func (ds *sqliteDB) addTenant(ID string, config types.TenantConfig) error {
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
 	err := ds.create("tenants", ID, config.Name, config.SubnetBits)
-	ds.dbLock.Unlock()
 
 	return err
 }
@@ -787,9 +756,9 @@ func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 		  FROM tenants
 		  WHERE tenants.id = ?`
 
-	datastore := ds.db
+	db := ds.db
 
-	row := datastore.QueryRow(query, ID)
+	row := db.QueryRow(query, ID)
 
 	t := &tenant{}
 
@@ -831,7 +800,7 @@ func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error) {
 	var workloads []types.Workload
 
-	datastore := ds.db
+	db := ds.db
 
 	query := `SELECT id,
 			 tenant_id,
@@ -843,7 +812,7 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 		  WHERE internal = 0 AND tenant_id = ?`
 
 	// handle case where tenant simply doesn't have any workloads.
-	rows, err := datastore.Query(query, tenantID)
+	rows, err := db.Query(query, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -948,8 +917,8 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 		return errors.New("Workload Update not supported yet")
 	}
 
-	tx.Commit()
-	return nil
+	err = tx.Commit()
+	return err
 }
 
 func (ds *sqliteDB) deleteWorkload(ID string) error {
@@ -989,21 +958,21 @@ func (ds *sqliteDB) deleteWorkload(ID string) error {
 		return err
 	}
 
-	tx.Commit()
-	return nil
+	err = tx.Commit()
+	return err
 }
 
 func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	var tenants []*tenant
 
-	datastore := ds.getTableDB("tenants")
+	db := ds.getTableDB("tenants")
 
 	query := `SELECT	tenants.id,
 				tenants.name,
 				tenants.subnet_bits
 		  FROM tenants `
 
-	rows, err := datastore.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -1057,46 +1026,23 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 }
 
 func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt int, rest int) error {
-	datastore := ds.getTableDB("tenant_network")
+	db := ds.getTableDB("tenant_network")
+
 	ds.dbLock.Lock()
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.dbLock.Unlock()
-		return err
-	}
+	defer ds.dbLock.Unlock()
 
-	_, err = tx.Exec("INSERT INTO tenant_network VALUES(?, ?, ?)", tenantID, subnetInt, rest)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
+	_, err := db.Exec("INSERT INTO tenant_network VALUES(?, ?, ?)", tenantID, subnetInt, rest)
 
-	tx.Commit()
-	ds.dbLock.Unlock()
-
-	return nil
+	return err
 }
 
 func (ds *sqliteDB) releaseTenantIP(tenantID string, subnetInt int, rest int) error {
-	datastore := ds.getTableDB("tenant_network")
+	db := ds.getTableDB("tenant_network")
 
 	ds.dbLock.Lock()
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.dbLock.Unlock()
-		return err
-	}
+	defer ds.dbLock.Unlock()
 
-	_, err = tx.Exec("DELETE FROM tenant_network WHERE tenant_id = ? AND subnet = ? AND rest = ?", tenantID, subnetInt, rest)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-	ds.dbLock.Unlock()
+	_, err := db.Exec("DELETE FROM tenant_network WHERE tenant_id = ? AND subnet = ? AND rest = ?", tenantID, subnetInt, rest)
 
 	return err
 }
@@ -1105,25 +1051,17 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
 	tenant.network = make(map[int]map[int]bool)
 
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
-	datastore := ds.getTableDB("tenant_network")
-
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.dbLock.Unlock()
-		return err
-	}
+	db := ds.getTableDB("tenant_network")
 
 	// get all subnet,rest values for this tenant
 	query := `SELECT subnet, rest
 		  FROM tenant_network
 		  WHERE tenant_id = ?`
 
-	rows, err := tx.Query(query, tenant.ID)
+	rows, err := db.Query(query, tenant.ID)
 	if err != nil {
-		glog.Warning(err)
-		tx.Rollback()
-		ds.dbLock.Unlock()
 		return err
 	}
 	defer rows.Close()
@@ -1134,9 +1072,6 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
 
 		err = rows.Scan(&subnetInt, &rest)
 		if err != nil {
-			glog.Warning(err)
-			tx.Rollback()
-			ds.dbLock.Unlock()
 			return err
 		}
 
@@ -1154,42 +1089,27 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
 		tenant.network[int(subnetInt)][int(rest)] = true
 	}
 
-	tx.Commit()
-
-	ds.dbLock.Unlock()
-
 	return err
 }
 
 func (ds *sqliteDB) updateTenant(tenant *types.Tenant) error {
-	datastore := ds.getTableDB("tenants")
+	db := ds.getTableDB("tenants")
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		return errors.Wrap(err, "error starting transaction for tenant update")
-	}
-	_, err = tx.Exec("UPDATE tenants SET name = ?, subnet_bits = ? WHERE id = ?", tenant.Name, tenant.SubnetBits, tenant.ID)
-	if err != nil {
-		tx.Rollback()
-		return errors.Wrap(err, "error executing query for tenant update")
-	}
+	_, err := db.Exec("UPDATE tenants SET name = ?, subnet_bits = ? WHERE id = ?", tenant.Name, tenant.SubnetBits, tenant.ID)
 
-	tx.Commit()
-
-	return nil
-
+	return err
 }
 
 func (ds *sqliteDB) deleteTenant(tenantID string) error {
-	datastore := ds.getTableDB("tenants")
+	db := ds.getTableDB("tenants")
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
+	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
@@ -1207,7 +1127,7 @@ func (ds *sqliteDB) deleteTenant(tenantID string) error {
 		return err
 	}
 
-	tx.Commit()
+	err = tx.Commit()
 
 	return err
 }
@@ -1215,15 +1135,10 @@ func (ds *sqliteDB) deleteTenant(tenantID string) error {
 func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 	var instances []*types.Instance
 
-	datastore := ds.getTableDB("instances")
+	db := ds.getTableDB("instances")
 
 	ds.tdbLock.RLock()
-
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.tdbLock.RUnlock()
-		return nil, err
-	}
+	defer ds.tdbLock.RUnlock()
 
 	query := `
 	WITH latest AS
@@ -1255,10 +1170,8 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 	ON instances.id = latest.instance_id
 	`
 
-	rows, err := tx.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
-		tx.Rollback()
-		ds.tdbLock.RUnlock()
 		return nil, err
 	}
 	defer rows.Close()
@@ -1270,8 +1183,6 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 
 		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &i.WorkloadID, &i.SSHIP, &sshPort, &i.NodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name, &i.CNCI)
 		if err != nil {
-			tx.Rollback()
-			ds.tdbLock.RUnlock()
 			return nil, err
 		}
 
@@ -1283,28 +1194,17 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 	}
 
 	if err = rows.Err(); err != nil {
-		tx.Rollback()
-		ds.tdbLock.RUnlock()
 		return nil, err
 	}
-
-	tx.Commit()
-
-	ds.tdbLock.RUnlock()
 
 	return instances, nil
 }
 
 func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Instance, error) {
-	datastore := ds.getTableDB("instances")
+	db := ds.getTableDB("instances")
 
 	ds.tdbLock.RLock()
-
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.tdbLock.RUnlock()
-		return nil, err
-	}
+	defer ds.tdbLock.RUnlock()
 
 	query := `
 	WITH latest AS
@@ -1337,10 +1237,8 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 	WHERE instances.tenant_id = ?
 	`
 
-	rows, err := tx.Query(query, tenantID)
+	rows, err := db.Query(query, tenantID)
 	if err != nil {
-		tx.Rollback()
-		ds.tdbLock.RUnlock()
 		return nil, err
 	}
 	defer rows.Close()
@@ -1355,8 +1253,6 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 
 		err = rows.Scan(&i.ID, &i.TenantID, &i.State, &sshIP, &sshPort, &i.WorkloadID, &nodeID, &i.MACAddress, &i.VnicUUID, &i.Subnet, &i.IPAddress, &i.Name, &i.CNCI)
 		if err != nil {
-			tx.Rollback()
-			ds.tdbLock.RUnlock()
 			return nil, err
 		}
 
@@ -1376,119 +1272,64 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 	}
 
 	if err = rows.Err(); err != nil {
-		tx.Rollback()
-		ds.tdbLock.RUnlock()
 		return nil, err
 	}
-
-	tx.Commit()
-
-	ds.tdbLock.RUnlock()
 
 	return instances, nil
 }
 
 func (ds *sqliteDB) addInstance(instance *types.Instance) error {
-	datastore := ds.getTableDB("instances")
+	db := ds.getTableDB("instances")
+
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		return err
-	}
+	_, err := db.Exec("INSERT INTO instances VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.VnicUUID, instance.Subnet, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano), instance.Name, instance.CNCI)
 
-	_, err = tx.Exec("INSERT INTO instances VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", instance.ID, instance.TenantID, instance.WorkloadID, instance.MACAddress, instance.VnicUUID, instance.Subnet, instance.IPAddress, instance.CreateTime.Format(time.RFC3339Nano), instance.Name, instance.CNCI)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	tx.Commit()
-
-	return nil
+	return err
 }
 
 func (ds *sqliteDB) deleteInstance(instanceID string) error {
-	datastore := ds.getTableDB("instances")
+	db := ds.getTableDB("instances")
 
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.tdbLock.Unlock()
-		return err
-	}
-
-	_, err = tx.Exec("DELETE FROM instances WHERE id = ?", instanceID)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-
-	ds.dbLock.Unlock()
+	_, err := db.Exec("DELETE FROM instances WHERE id = ?", instanceID)
 
 	return err
 }
 
 func (ds *sqliteDB) updateInstance(instance *types.Instance) error {
-	datastore := ds.getTableDB("instances")
+	db := ds.getTableDB("instances")
+
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		return err
-	}
+	_, err := db.Exec("UPDATE instances SET mac_address = ?, ip = ? WHERE id = ?", instance.MACAddress, instance.IPAddress, instance.ID)
 
-	_, err = tx.Exec("UPDATE instances SET mac_address = ?, ip = ? WHERE id = ?", instance.MACAddress, instance.IPAddress, instance.ID)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-
-	return nil
+	return err
 }
 
 func (ds *sqliteDB) addNodeStat(stat payloads.Stat) error {
-	datastore := ds.getTableDB("node_statistics")
+	db := ds.getTableDB("node_statistics")
 
 	ds.tdbLock.Lock()
+	defer ds.tdbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.tdbLock.Unlock()
-		return err
-	}
-
-	_, err = tx.Exec("INSERT INTO node_statistics (node_id, mem_total_mb, mem_available_mb, disk_total_mb, disk_available_mb, load, cpus_online) VALUES(?, ?, ?, ?, ?, ?, ?)", stat.NodeUUID, stat.MemTotalMB, stat.MemAvailableMB, stat.DiskTotalMB, stat.DiskAvailableMB, stat.Load, stat.CpusOnline)
-	if err != nil {
-		tx.Rollback()
-		ds.tdbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-
-	ds.tdbLock.Unlock()
+	_, err := db.Exec("INSERT INTO node_statistics (node_id, mem_total_mb, mem_available_mb, disk_total_mb, disk_available_mb, load, cpus_online) VALUES(?, ?, ?, ?, ?, ?, ?)", stat.NodeUUID, stat.MemTotalMB, stat.MemAvailableMB, stat.DiskTotalMB, stat.DiskAvailableMB, stat.Load, stat.CpusOnline)
 
 	return err
 }
 
 func (ds *sqliteDB) addInstanceStats(stats []payloads.InstanceStat, nodeID string) error {
-	datastore := ds.getTableDB("instance_statistics")
+	db := ds.getTableDB("instance_statistics")
 
 	ds.tdbLock.Lock()
+	defer ds.tdbLock.Unlock()
 
-	tx, err := datastore.Begin()
+	tx, err := db.Begin()
 	if err != nil {
-		ds.tdbLock.Unlock()
 		return err
 	}
 
@@ -1498,7 +1339,6 @@ func (ds *sqliteDB) addInstanceStats(stats []payloads.InstanceStat, nodeID strin
 	stmt, err := tx.Prepare(cmd)
 	if err != nil {
 		tx.Rollback()
-		ds.tdbLock.Unlock()
 		return err
 	}
 
@@ -1514,21 +1354,19 @@ func (ds *sqliteDB) addInstanceStats(stats []payloads.InstanceStat, nodeID strin
 		}
 	}
 
-	tx.Commit()
-
-	ds.tdbLock.Unlock()
+	err = tx.Commit()
 
 	return err
 }
 
 func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
-	datastore := ds.getTableDB("frame_statistics")
+	db := ds.getTableDB("frame_statistics")
 
 	ds.tdbLock.Lock()
+	defer ds.tdbLock.Unlock()
 
-	tx, err := datastore.Begin()
+	tx, err := db.Begin()
 	if err != nil {
-		ds.tdbLock.Unlock()
 		return err
 	}
 
@@ -1538,7 +1376,6 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 	_, err = tx.Exec(query, stat.Label, stat.Type, stat.Operand, stat.StartTimestamp, stat.EndTimestamp)
 	if err != nil {
 		tx.Rollback()
-		ds.tdbLock.Unlock()
 		return err
 	}
 
@@ -1547,7 +1384,6 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 	err = tx.QueryRow("SELECT last_insert_rowid();").Scan(&id)
 	if err != nil {
 		tx.Rollback()
-		ds.tdbLock.Unlock()
 		return err
 	}
 
@@ -1560,14 +1396,11 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 		_, err = tx.Exec(cmd, id, t.SSNTPUUID, t.TxTimestamp, t.RxTimestamp)
 		if err != nil {
 			tx.Rollback()
-			ds.tdbLock.Unlock()
 			return err
 		}
 	}
 
-	tx.Commit()
-
-	ds.tdbLock.Unlock()
+	err = tx.Commit()
 
 	return err
 }
@@ -1576,13 +1409,13 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 func (ds *sqliteDB) getEventLog() ([]*types.LogEntry, error) {
 	var logEntries []*types.LogEntry
 
-	datastore := ds.getTableDB("log")
+	db := ds.getTableDB("log")
 
 	ds.tdbLock.RLock()
+	defer ds.tdbLock.RUnlock()
 
-	rows, err := datastore.Query("SELECT timestamp, tenant_id, type, message FROM log")
+	rows, err := db.Query("SELECT timestamp, tenant_id, type, message FROM log")
 	if err != nil {
-		ds.tdbLock.RUnlock()
 		return nil, err
 	}
 	defer rows.Close()
@@ -1592,13 +1425,10 @@ func (ds *sqliteDB) getEventLog() ([]*types.LogEntry, error) {
 		var e types.LogEntry
 		err = rows.Scan(&e.Timestamp, &e.TenantID, &e.EventType, &e.Message)
 		if err != nil {
-			ds.tdbLock.RUnlock()
 			return nil, err
 		}
 		logEntries = append(logEntries, &e)
 	}
-
-	ds.tdbLock.RUnlock()
 
 	return logEntries, err
 }
@@ -1607,17 +1437,17 @@ func (ds *sqliteDB) getEventLog() ([]*types.LogEntry, error) {
 func (ds *sqliteDB) getBatchFrameSummary() ([]types.BatchFrameSummary, error) {
 	var stats []types.BatchFrameSummary
 
-	datastore := ds.getTableDB("frame_statistics")
+	db := ds.getTableDB("frame_statistics")
 
 	ds.tdbLock.RLock()
+	defer ds.tdbLock.RUnlock()
 
 	query := `SELECT label, count(id)
 		  FROM frame_statistics
 		  GROUP BY label;`
 
-	rows, err := datastore.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
-		ds.tdbLock.RUnlock()
 		return nil, err
 	}
 	defer rows.Close()
@@ -1629,14 +1459,11 @@ func (ds *sqliteDB) getBatchFrameSummary() ([]types.BatchFrameSummary, error) {
 
 		err = rows.Scan(&stat.BatchID, &stat.NumInstances)
 		if err != nil {
-			ds.tdbLock.RUnlock()
 			return nil, err
 		}
 
 		stats = append(stats, stat)
 	}
-
-	ds.tdbLock.RUnlock()
 
 	return stats, err
 }
@@ -1646,7 +1473,7 @@ func (ds *sqliteDB) getBatchFrameSummary() ([]types.BatchFrameSummary, error) {
 func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameStat, error) {
 	var stats []types.BatchFrameStat
 
-	datastore := ds.getTableDB("frame_statistics")
+	db := ds.getTableDB("frame_statistics")
 
 	query := `WITH total AS
 		 (
@@ -1732,10 +1559,10 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 		JOIN averages;`
 
 	ds.tdbLock.RLock()
+	defer ds.tdbLock.RUnlock()
 
-	rows, err := datastore.Query(query, label)
+	rows, err := db.Query(query, label)
 	if err != nil {
-		ds.tdbLock.RUnlock()
 		return nil, err
 	}
 	defer rows.Close()
@@ -1756,7 +1583,6 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 
 		err = rows.Scan(&numInstances, &totalElapsed, &averageElapsed, &averageControllerElapsed, &averageLauncherElapsed, &averageSchedulerElapsed, &varianceController, &varianceLauncher, &varianceScheduler)
 		if err != nil {
-			ds.tdbLock.RUnlock()
 			return nil, err
 		}
 
@@ -1799,17 +1625,16 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 		stats = append(stats, stat)
 	}
 
-	ds.tdbLock.RUnlock()
-
 	return stats, err
 }
 
 func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockData, error) {
 	devices := make(map[string]types.BlockData)
 
-	datastore := ds.getTableDB("block_data")
+	db := ds.getTableDB("block_data")
 
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	query := `SELECT	block_data.id,
 				block_data.tenant_id,
@@ -1822,9 +1647,8 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 		  FROM	block_data
 		  WHERE block_data.tenant_id = ?`
 
-	rows, err := datastore.Query(query, tenantID)
+	rows, err := db.Query(query, tenantID)
 	if err != nil {
-		ds.dbLock.Unlock()
 		return devices, err
 	}
 	defer rows.Close()
@@ -1841,12 +1665,10 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 		data.State = types.BlockState(state)
 		devices[data.ID] = data
 	}
+
 	if err = rows.Err(); err != nil {
-		ds.dbLock.Unlock()
 		return devices, err
 	}
-
-	ds.dbLock.Unlock()
 
 	return devices, nil
 }
@@ -1854,7 +1676,7 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 	devices := make(map[string]types.BlockData)
 
-	datastore := ds.getTableDB("block_data")
+	db := ds.getTableDB("block_data")
 
 	query := `SELECT	block_data.id,
 				block_data.tenant_id,
@@ -1866,7 +1688,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 				block_data.internal
 		  FROM	block_data `
 
-	rows, err := datastore.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -1893,8 +1715,9 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 
 func (ds *sqliteDB) addBlockData(data types.BlockData) error {
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
 	err := ds.create("block_data", data.ID, data.TenantID, data.Size, string(data.State), data.CreateTime.Format(time.RFC3339Nano), data.Name, data.Description, data.Internal)
-	ds.dbLock.Unlock()
 
 	return err
 }
@@ -1904,78 +1727,39 @@ func (ds *sqliteDB) updateBlockData(data types.BlockData) error {
 	db := ds.getTableDB("block_data")
 
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
-	tx, err := db.Begin()
-	if err != nil {
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	_, err = tx.Exec("UPDATE block_data SET state = ? WHERE id = ?", string(data.State), data.ID)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-
-	ds.dbLock.Unlock()
+	_, err := db.Exec("UPDATE block_data SET state = ? WHERE id = ?", string(data.State), data.ID)
 
 	return err
 }
 
 func (ds *sqliteDB) deleteBlockData(ID string) error {
-	datastore := ds.getTableDB("block_data")
+	db := ds.getTableDB("block_data")
 
 	ds.dbLock.Lock()
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.dbLock.Unlock()
-		return err
-	}
+	defer ds.dbLock.Unlock()
 
-	_, err = tx.Exec("DELETE FROM block_data WHERE id = ?", ID)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-	ds.dbLock.Unlock()
+	_, err := db.Exec("DELETE FROM block_data WHERE id = ?", ID)
 
 	return err
 }
 
 func (ds *sqliteDB) addStorageAttachment(a types.StorageAttachment) error {
-	datastore := ds.getTableDB("attachments")
+	db := ds.getTableDB("attachments")
 
 	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.dbLock.Unlock()
-		return err
-	}
+	_, err := db.Exec("INSERT INTO attachments (id, instance_id, block_id, ephemeral, boot) VALUES (?, ?, ?, ?, ?)", a.ID, a.InstanceID, a.BlockID, a.Ephemeral, a.Boot)
 
-	_, err = tx.Exec("INSERT INTO attachments (id, instance_id, block_id, ephemeral, boot) VALUES (?, ?, ?, ?, ?)", a.ID, a.InstanceID, a.BlockID, a.Ephemeral, a.Boot)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-
-	ds.dbLock.Unlock()
 	return err
 }
 
 func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachment, error) {
 	attachments := make(map[string]types.StorageAttachment)
 
-	datastore := ds.getTableDB("attachments")
+	db := ds.getTableDB("attachments")
 
 	query := `SELECT	attachments.id,
 				attachments.instance_id,
@@ -1984,7 +1768,7 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 				attachments.boot
 		  FROM	attachments `
 
-	rows, err := datastore.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return attachments, err
 	}
@@ -2008,24 +1792,12 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 }
 
 func (ds *sqliteDB) deleteStorageAttachment(ID string) error {
-	datastore := ds.getTableDB("attachments")
+	db := ds.getTableDB("attachments")
 
 	ds.dbLock.Lock()
-	tx, err := datastore.Begin()
-	if err != nil {
-		ds.dbLock.Unlock()
-		return err
-	}
+	defer ds.dbLock.Unlock()
 
-	_, err = tx.Exec("DELETE FROM attachments WHERE id = ?", ID)
-	if err != nil {
-		tx.Rollback()
-		ds.dbLock.Unlock()
-		return err
-	}
-
-	tx.Commit()
-	ds.dbLock.Unlock()
+	_, err := db.Exec("DELETE FROM attachments WHERE id = ?", ID)
 
 	return err
 }
@@ -2118,7 +1890,7 @@ func (ds *sqliteDB) updateAddresses(tx *sql.Tx, pool types.Pool) error {
 // updatePool is used to update all pool related fields even if they
 // are in different tables.
 func (ds *sqliteDB) updatePool(pool types.Pool) error {
-	datastore := ds.getTableDB("pools")
+	db := ds.getTableDB("pools")
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
@@ -2126,7 +1898,7 @@ func (ds *sqliteDB) updatePool(pool types.Pool) error {
 	pools := ds.getAllPools()
 
 	// do the below as a single transaction.
-	tx, err := datastore.Begin()
+	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
@@ -2160,15 +1932,15 @@ func (ds *sqliteDB) updatePool(pool types.Pool) error {
 		}
 	}
 
-	tx.Commit()
+	err = tx.Commit()
 
-	return nil
+	return err
 }
 
 func (ds *sqliteDB) getAllPools() map[string]types.Pool {
 	pools := make(map[string]types.Pool)
 
-	datastore := ds.getTableDB("pools")
+	db := ds.getTableDB("pools")
 
 	query := `SELECT	id,
 				name,
@@ -2176,7 +1948,7 @@ func (ds *sqliteDB) getAllPools() map[string]types.Pool {
 				total
 		  FROM	pools`
 
-	rows, err := datastore.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil
 	}
@@ -2211,12 +1983,12 @@ func (ds *sqliteDB) getAllPools() map[string]types.Pool {
 }
 
 func (ds *sqliteDB) deletePool(ID string) error {
-	datastore := ds.getTableDB("pools")
+	db := ds.getTableDB("pools")
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
+	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
@@ -2255,7 +2027,7 @@ func (ds *sqliteDB) deletePool(ID string) error {
 		return err
 	}
 
-	tx.Commit()
+	err = tx.Commit()
 
 	return err
 }
@@ -2263,14 +2035,14 @@ func (ds *sqliteDB) deletePool(ID string) error {
 func (ds *sqliteDB) getPoolSubnets(poolID string) ([]types.ExternalSubnet, error) {
 	var subnets []types.ExternalSubnet
 
-	datastore := ds.getTableDB("subnet_pool")
+	db := ds.getTableDB("subnet_pool")
 
 	query := `SELECT	id,
 				cidr
 		  FROM	subnet_pool
 		  WHERE pool_id = ?`
 
-	rows, err := datastore.Query(query, poolID)
+	rows, err := db.Query(query, poolID)
 	if err != nil {
 		return subnets, err
 	}
@@ -2297,14 +2069,14 @@ func (ds *sqliteDB) getPoolSubnets(poolID string) ([]types.ExternalSubnet, error
 func (ds *sqliteDB) getPoolAddresses(poolID string) ([]types.ExternalIP, error) {
 	var IPs []types.ExternalIP
 
-	datastore := ds.getTableDB("address_pool")
+	db := ds.getTableDB("address_pool")
 
 	query := `SELECT	id,
 				address
 		  FROM	address_pool
 		  WHERE pool_id = ?`
 
-	rows, err := datastore.Query(query, poolID)
+	rows, err := db.Query(query, poolID)
 	if err != nil {
 		return IPs, err
 	}
@@ -2329,45 +2101,23 @@ func (ds *sqliteDB) getPoolAddresses(poolID string) ([]types.ExternalIP, error) 
 }
 
 func (ds *sqliteDB) addMappedIP(m types.MappedIP) error {
-	datastore := ds.getTableDB("mapped_ips")
+	db := ds.getTableDB("mapped_ips")
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		return err
-	}
+	_, err := db.Exec("INSERT INTO mapped_ips (id, pool_id, external_ip, instance_id) VALUES (?, ?, ?, ?)", m.ID, m.PoolID, m.ExternalIP, m.InstanceID)
 
-	_, err = tx.Exec("INSERT INTO mapped_ips (id, pool_id, external_ip, instance_id) VALUES (?, ?, ?, ?)", m.ID, m.PoolID, m.ExternalIP, m.InstanceID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	tx.Commit()
-
-	return nil
+	return err
 }
 
 func (ds *sqliteDB) deleteMappedIP(ID string) error {
-	datastore := ds.getTableDB("mapped_ips")
+	db := ds.getTableDB("mapped_ips")
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("DELETE FROM mapped_ips WHERE id = ?", ID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	tx.Commit()
+	_, err := db.Exec("DELETE FROM mapped_ips WHERE id = ?", ID)
 
 	return err
 }
@@ -2375,7 +2125,7 @@ func (ds *sqliteDB) deleteMappedIP(ID string) error {
 func (ds *sqliteDB) getMappedIPs() map[string]types.MappedIP {
 	IPs := make(map[string]types.MappedIP)
 
-	datastore := ds.getTableDB("mapped_ips")
+	db := ds.getTableDB("mapped_ips")
 
 	query := `SELECT	mapped_ips.id,
 				mapped_ips.pool_id,
@@ -2390,7 +2140,7 @@ func (ds *sqliteDB) getMappedIPs() map[string]types.MappedIP {
 		  JOIN pools
 		  ON pools.id = mapped_ips.pool_id`
 
-	rows, err := datastore.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		fmt.Println(err)
 		return IPs
@@ -2416,12 +2166,12 @@ func (ds *sqliteDB) getMappedIPs() map[string]types.MappedIP {
 }
 
 func (ds *sqliteDB) updateQuotas(tenantID string, qds []types.QuotaDetails) error {
-	datastore := ds.getTableDB("quotas")
+	db := ds.getTableDB("quotas")
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	tx, err := datastore.Begin()
+	tx, err := db.Begin()
 	if err != nil {
 		return errors.Wrap(err, "error starting transaction for quota update")
 	}
@@ -2434,9 +2184,9 @@ func (ds *sqliteDB) updateQuotas(tenantID string, qds []types.QuotaDetails) erro
 		}
 	}
 
-	tx.Commit()
+	err = tx.Commit()
 
-	return nil
+	return errors.Wrap(err, "error committing transaction for quotas update")
 }
 
 func (ds *sqliteDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
