@@ -132,7 +132,10 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	uploadTenantImage(*tenantID, image.ID, cmd.file)
+	err = uploadTenantImage(*tenantID, image.ID, cmd.file)
+	if err != nil {
+		fatalf(err.Error())
+	}
 
 	url = buildImageURL("images/%s", image.ID)
 	resp, err = sendHTTPRequest("GET", url, nil, nil)
@@ -341,6 +344,10 @@ func uploadTenantImage(tenant, image, filename string) error {
 	url := buildImageURL("images/%s/file", image)
 	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, "octet-stream")
 	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Unexpected HTTP response code (%d): %s", resp.StatusCode, resp.Status)
+	}
 
 	return err
 }
