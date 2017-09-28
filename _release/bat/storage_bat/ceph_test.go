@@ -15,15 +15,26 @@
 package storagebat
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/ciao-project/ciao/bat"
 	"github.com/ciao-project/ciao/ciao-storage"
+	"gopkg.in/yaml.v2"
 )
 
-var driver = storage.CephDriver{
-	ID: "ciao",
+var driver storage.CephDriver
+
+type storageConfig struct {
+	CephID string `yaml:"ceph_id"`
+}
+
+type configuration struct {
+	Configure struct {
+		Storage storageConfig `yaml:"storage"`
+	} `yaml:"configure"`
 }
 
 // Check creating a ceph backed block device works
@@ -31,6 +42,10 @@ var driver = storage.CephDriver{
 // TestCreateBlockDevice creates a block device containing some random data,
 // checks for errors and then deletes it.
 func TestCreateBlockDevice(t *testing.T) {
+	if driver.ID == "" {
+		t.Skip("Skipping test: Ceph ID not set")
+	}
+
 	path, err := bat.CreateRandomFile(20)
 	if err != nil {
 		t.Fatal(err)
@@ -53,6 +68,10 @@ func TestCreateBlockDevice(t *testing.T) {
 // TestCreateSizedBlockDevice creates a block device of a fixed size, checking
 // for errors and then checks that the size is a expected.
 func TestCreateSizedBlockDevice(t *testing.T) {
+	if driver.ID == "" {
+		t.Skip("Skipping test: Ceph ID not set")
+	}
+
 	device, err := driver.CreateBlockDevice("", "", 1)
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +98,10 @@ func TestCreateSizedBlockDevice(t *testing.T) {
 // checks for errors and then copies it. The created volumes are then
 // deleted.
 func TestCopyBlockDevice(t *testing.T) {
+	if driver.ID == "" {
+		t.Skip("Skipping test: Ceph ID not set")
+	}
+
 	path, err := bat.CreateRandomFile(20)
 	if err != nil {
 		t.Fatal(err)
@@ -104,4 +127,22 @@ func TestCopyBlockDevice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestMain(m *testing.M) {
+	var config configuration
+	data, err := ioutil.ReadFile("/etc/ciao/configuration.yaml")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading config file: %v", err)
+	} else {
+		err = yaml.Unmarshal(data, &config)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing config file: %v", err)
+		} else {
+			driver.ID = config.Configure.Storage.CephID
+		}
+	}
+
+	code := m.Run()
+	os.Exit(code)
 }
