@@ -267,14 +267,6 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 		}
 	}
 
-	// update volume state to detaching
-	info.State = types.Detaching
-
-	err = c.ds.UpdateBlockDevice(info)
-	if err != nil {
-		return err
-	}
-
 	var retval error
 
 	// detach everything for this volume
@@ -286,6 +278,14 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 			// keep going
 			retval = err
 			continue
+		}
+
+		// update volume state to detaching
+		info.State = types.Detaching
+
+		err = c.ds.UpdateBlockDevice(info)
+		if err != nil {
+			return err
 		}
 
 		// send command to attach volume.
