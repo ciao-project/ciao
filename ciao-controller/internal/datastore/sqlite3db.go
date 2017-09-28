@@ -31,18 +31,16 @@ import (
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/golang/glog"
 	sqlite3 "github.com/mattn/go-sqlite3"
+
 	"github.com/pkg/errors"
 )
 
 type sqliteDB struct {
 	db            *sql.DB
-	tdb           *sql.DB
 	dbName        string
-	tdbName       string
 	tables        []persistentData
 	workloadsPath string
 	dbLock        *sync.Mutex
-	tdbLock       *sync.RWMutex
 }
 
 type persistentData interface {
@@ -485,25 +483,24 @@ func (ds *sqliteDB) init(config Config) error {
 		}
 	}
 
-	err = ds.Connect(config.PersistentURI, config.TransientURI)
+	err = ds.Connect(config.PersistentURI)
 	if err != nil {
 		return err
 	}
 
 	ds.dbLock = &sync.Mutex{}
-	ds.tdbLock = &sync.RWMutex{}
 
 	ds.tables = []persistentData{
 		tenantData{namedData{ds: ds, name: "tenants", db: ds.db}},
 		instanceData{namedData{ds: ds, name: "instances", db: ds.db}},
 		workloadTemplateData{namedData{ds: ds, name: "workload_template", db: ds.db}},
 		workloadResourceData{namedData{ds: ds, name: "workload_resources", db: ds.db}},
-		nodeStatisticsData{namedData{ds: ds, name: "node_statistics", db: ds.tdb}},
-		logData{namedData{ds: ds, name: "log", db: ds.tdb}},
+		nodeStatisticsData{namedData{ds: ds, name: "node_statistics", db: ds.db}},
+		logData{namedData{ds: ds, name: "log", db: ds.db}},
 		subnetData{namedData{ds: ds, name: "tenant_network", db: ds.db}},
-		instanceStatisticsData{namedData{ds: ds, name: "instance_statistics", db: ds.tdb}},
-		frameStatisticsData{namedData{ds: ds, name: "frame_statistics", db: ds.tdb}},
-		traceData{namedData{ds: ds, name: "trace_data", db: ds.tdb}},
+		instanceStatisticsData{namedData{ds: ds, name: "instance_statistics", db: ds.db}},
+		frameStatisticsData{namedData{ds: ds, name: "frame_statistics", db: ds.db}},
+		traceData{namedData{ds: ds, name: "trace_data", db: ds.db}},
 		blockData{namedData{ds: ds, name: "block_data", db: ds.db}},
 		attachments{namedData{ds: ds, name: "attachments", db: ds.db}},
 		workloadStorage{namedData{ds: ds, name: "workload_storage", db: ds.db}},
@@ -559,20 +556,10 @@ func (ds *sqliteDB) sqliteConnect(name string, URI string, config []string) (*sq
 	return db, nil
 }
 
-// Connect creates two sqlite3 databases.  One database is for
-// persistent state that needs to be restored on restart, the
-// other is for transient data that does not need to be restored
-// on restart.
-func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
-	sql.Register(transientURI, &sqlite3.SQLiteDriver{
-		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-			cmd := fmt.Sprintf("ATTACH '%s' AS tdb", transientURI)
-			conn.Exec(cmd, nil)
-			return nil
-		},
-	})
+func (ds *sqliteDB) Connect(persistentURI string) error {
+	sql.Register(persistentURI, &sqlite3.SQLiteDriver{})
 
-	db, err := ds.sqliteConnect(transientURI, persistentURI, pSQLLiteConfig)
+	db, err := ds.sqliteConnect(persistentURI, persistentURI, pSQLLiteConfig)
 	if err != nil {
 		return err
 	}
@@ -580,36 +567,19 @@ func (ds *sqliteDB) Connect(persistentURI string, transientURI string) error {
 	ds.db = db
 	ds.dbName = persistentURI
 
-	sql.Register(persistentURI, &sqlite3.SQLiteDriver{
-		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-			cmd := fmt.Sprintf("ATTACH '%s' AS db", persistentURI)
-			conn.Exec(cmd, nil)
-			return nil
-		},
-	})
-
-	tdb, err := ds.sqliteConnect(persistentURI, transientURI, pSQLLiteConfig)
-	if err != nil {
-		return err
-	}
-
-	ds.tdb = tdb
-	ds.tdbName = transientURI
-
 	return err
 }
 
 // Disconnect is used to close the connection to the sql database
 func (ds *sqliteDB) disconnect() {
 	ds.db.Close()
-	ds.tdb.Close()
 }
 
 func (ds *sqliteDB) logEvent(tenantID string, eventType string, message string) error {
 	db := ds.getTableDB("log")
 
-	ds.tdbLock.Lock()
-	defer ds.tdbLock.Unlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	_, err := db.Exec("INSERT INTO log (tenant_id, type, message) VALUES (?, ?, ?)", tenantID, eventType, message)
 
@@ -620,8 +590,8 @@ func (ds *sqliteDB) logEvent(tenantID string, eventType string, message string) 
 func (ds *sqliteDB) clearLog() error {
 	db := ds.getTableDB("log")
 
-	ds.tdbLock.Lock()
-	defer ds.tdbLock.Unlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	_, err := db.Exec("DELETE FROM log")
 
@@ -1137,20 +1107,20 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 
 	db := ds.getTableDB("instances")
 
-	ds.tdbLock.RLock()
-	defer ds.tdbLock.RUnlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	query := `
 	WITH latest AS
 	(
-		SELECT 	max(tdb.instance_statistics.timestamp),
-			tdb.instance_statistics.instance_id,
-			tdb.instance_statistics.state,
-			tdb.instance_statistics.ssh_ip,
-			tdb.instance_statistics.ssh_port,
-			tdb.instance_statistics.node_id
-		FROM tdb.instance_statistics
-		GROUP BY tdb.instance_statistics.instance_id
+		SELECT 	max(instance_statistics.timestamp),
+			instance_statistics.instance_id,
+			instance_statistics.state,
+			instance_statistics.ssh_ip,
+			instance_statistics.ssh_port,
+			instance_statistics.node_id
+		FROM instance_statistics
+		GROUP BY instance_statistics.instance_id
 	)
 	SELECT	instances.id,
 		instances.tenant_id,
@@ -1203,20 +1173,20 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Instance, error) {
 	db := ds.getTableDB("instances")
 
-	ds.tdbLock.RLock()
-	defer ds.tdbLock.RUnlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	query := `
 	WITH latest AS
 	(
-		SELECT 	max(tdb.instance_statistics.timestamp),
-			tdb.instance_statistics.instance_id,
-			tdb.instance_statistics.state,
-			tdb.instance_statistics.ssh_ip,
-			tdb.instance_statistics.ssh_port,
-			tdb.instance_statistics.node_id
-		FROM tdb.instance_statistics
-		GROUP BY tdb.instance_statistics.instance_id
+		SELECT 	max(instance_statistics.timestamp),
+			instance_statistics.instance_id,
+			instance_statistics.state,
+			instance_statistics.ssh_ip,
+			instance_statistics.ssh_port,
+			instance_statistics.node_id
+		FROM instance_statistics
+		GROUP BY instance_statistics.instance_id
 	)
 	SELECT	instances.id,
 		instances.tenant_id,
@@ -1314,8 +1284,8 @@ func (ds *sqliteDB) updateInstance(instance *types.Instance) error {
 func (ds *sqliteDB) addNodeStat(stat payloads.Stat) error {
 	db := ds.getTableDB("node_statistics")
 
-	ds.tdbLock.Lock()
-	defer ds.tdbLock.Unlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	_, err := db.Exec("INSERT INTO node_statistics (node_id, mem_total_mb, mem_available_mb, disk_total_mb, disk_available_mb, load, cpus_online) VALUES(?, ?, ?, ?, ?, ?, ?)", stat.NodeUUID, stat.MemTotalMB, stat.MemAvailableMB, stat.DiskTotalMB, stat.DiskAvailableMB, stat.Load, stat.CpusOnline)
 
@@ -1325,8 +1295,8 @@ func (ds *sqliteDB) addNodeStat(stat payloads.Stat) error {
 func (ds *sqliteDB) addInstanceStats(stats []payloads.InstanceStat, nodeID string) error {
 	db := ds.getTableDB("instance_statistics")
 
-	ds.tdbLock.Lock()
-	defer ds.tdbLock.Unlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -1362,8 +1332,8 @@ func (ds *sqliteDB) addInstanceStats(stats []payloads.InstanceStat, nodeID strin
 func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 	db := ds.getTableDB("frame_statistics")
 
-	ds.tdbLock.Lock()
-	defer ds.tdbLock.Unlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -1411,8 +1381,8 @@ func (ds *sqliteDB) getEventLog() ([]*types.LogEntry, error) {
 
 	db := ds.getTableDB("log")
 
-	ds.tdbLock.RLock()
-	defer ds.tdbLock.RUnlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	rows, err := db.Query("SELECT timestamp, tenant_id, type, message FROM log")
 	if err != nil {
@@ -1439,8 +1409,8 @@ func (ds *sqliteDB) getBatchFrameSummary() ([]types.BatchFrameSummary, error) {
 
 	db := ds.getTableDB("frame_statistics")
 
-	ds.tdbLock.RLock()
-	defer ds.tdbLock.RUnlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	query := `SELECT label, count(id)
 		  FROM frame_statistics
@@ -1558,8 +1528,8 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 		JOIN total
 		JOIN averages;`
 
-	ds.tdbLock.RLock()
-	defer ds.tdbLock.RUnlock()
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
 
 	rows, err := db.Query(query, label)
 	if err != nil {

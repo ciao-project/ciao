@@ -33,7 +33,6 @@ func getPersistentStore() (persistentStore, error) {
 	ps := &sqliteDB{}
 	config := Config{
 		PersistentURI:     fmt.Sprintf("file:memdb%d?mode=memory&cache=shared", dbCount),
-		TransientURI:      fmt.Sprintf("file:memdb%d?mode=memory&cache=shared", dbCount+1),
 		InitWorkloadsPath: *workloadsPath,
 	}
 	err := ps.init(config)
