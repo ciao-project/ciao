@@ -42,7 +42,7 @@ type config struct {
 }
 
 type instance struct {
-	types.Instance
+	*types.Instance
 	newConfig config
 	ctl       *controller
 	startTime time.Time
@@ -95,7 +95,6 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		MACAddress:  config.mac,
 		CreateTime:  time.Now(),
 		Name:        name,
-		StateLock:   &sync.RWMutex{},
 		StateChange: sync.NewCond(&sync.Mutex{}),
 	}
 
@@ -106,7 +105,7 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 	i := &instance{
 		ctl:       ctl,
 		newConfig: config,
-		Instance:  newInstance,
+		Instance:  &newInstance,
 	}
 
 	return i, nil
@@ -115,7 +114,7 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 func (i *instance) Add() error {
 	ds := i.ctl.ds
 	var err error
-	err = ds.AddInstance(&i.Instance)
+	err = ds.AddInstance(i.Instance)
 	if err != nil {
 		return errors.Wrapf(err, "Error creating instance in datastore")
 	}

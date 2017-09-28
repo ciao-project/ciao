@@ -256,7 +256,7 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 				continue
 			}
 
-			newInstances = append(newInstances, &instance.Instance)
+			newInstances = append(newInstances, instance.Instance)
 			if w.TraceLabel == "" {
 				go c.client.StartWorkload(instance.newConfig.config)
 			} else {
