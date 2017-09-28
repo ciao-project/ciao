@@ -55,9 +55,10 @@ type virtualizer interface {
 
 	// Creates the rootfs, and or any supporting images, for a new instance
 	// bridge: name of the bridge if any.  Needed for docker containers
+	// gatewayIP: IP address of the gateway if any.  Needed for docker containers
 	// userData: cloudinit userdata payload
 	// metaData: cloudinit metaData payload
-	createImage(bridge string, userData, metaData []byte) error
+	createImage(bridge, gatewayIP string, userData, metaData []byte) error
 
 	// Deletes any state related to the instance that is not stored in the
 	// instance directory.  State stored in the instance directory will be automatically,

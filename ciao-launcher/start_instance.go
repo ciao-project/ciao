@@ -34,7 +34,8 @@ type startTimes struct {
 	runStamp          time.Time
 }
 
-func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig, bridge string, userData, metaData []byte) (err error) {
+func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig,
+	bridge, gatewayIP string, userData, metaData []byte) (err error) {
 	err = os.MkdirAll(instanceDir, 0755)
 	if err != nil {
 		glog.Errorf("Cannot create instance directory for VM: %v", err)
@@ -48,7 +49,7 @@ func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig, bridge st
 		}
 	}()
 
-	err = vm.createImage(bridge, userData, metaData)
+	err = vm.createImage(bridge, gatewayIP, userData, metaData)
 	if err != nil {
 		glog.Errorf("Unable to create image %v", err)
 		panic(err)
@@ -67,6 +68,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	var err error
 	var vnicName string
 	var bridge string
+	var gatewayIP string
 	var vnicCfg *libsnnet.VnicConfig
 	var st startTimes
 
@@ -102,7 +104,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	}
 
 	if vnicCfg != nil {
-		vnicName, bridge, err = createVnic(conn, vnicCfg)
+		vnicName, bridge, gatewayIP, err = createVnic(conn, vnicCfg)
 		if err != nil {
 			return nil, &startError{err, payloads.NetworkFailure, cmd.cfg.Restart}
 		}
@@ -110,7 +112,8 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 
 	st.networkStamp = time.Now()
 
-	err = createInstance(vm, instanceDir, cfg, bridge, cmd.userData, cmd.metaData)
+	err = createInstance(vm, instanceDir, cfg, bridge, gatewayIP, cmd.userData,
+		cmd.metaData)
 	if err != nil {
 		return nil, &startError{err, payloads.ImageFailure, cmd.cfg.Restart}
 	}

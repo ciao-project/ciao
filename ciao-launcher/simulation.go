@@ -49,7 +49,7 @@ func (s *simulation) ensureBackingImage() error {
 	return nil
 }
 
-func (s *simulation) createImage(bridge string, userData, metaData []byte) error {
+func (s *simulation) createImage(bridge, gatewayIP string, userData, metaData []byte) error {
 	return nil
 }
 
