@@ -164,7 +164,6 @@ func (s *ImageStore) DeleteImage(tenant, ID string) error {
 
 // UploadImage will read an image, save it and update the image cache.
 func (s *ImageStore) UploadImage(tenant, ID string, body io.Reader) error {
-
 	s.ImageMap.RLock()
 	img, err := s.metaDs.Get(tenant, ID)
 	s.ImageMap.RUnlock()
@@ -191,7 +190,6 @@ func (s *ImageStore) UploadImage(tenant, ID string, body io.Reader) error {
 		img.Size, err = s.rawDs.GetImageSize(ID)
 		if err != nil {
 			img.State = Killed
-			return err
 		}
 	}
 
