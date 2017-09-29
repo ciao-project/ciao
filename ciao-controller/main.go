@@ -107,7 +107,6 @@ func main() {
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:" + *persistentDatastoreLocation,
-		TransientURI:      "file:transient?mode=memory&cache=shared",
 		InitWorkloadsPath: *workloadsPath,
 	}
 

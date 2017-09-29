@@ -2731,7 +2731,6 @@ func TestMain(m *testing.M) {
 	dsConfig := Config{
 		DBBackend:         &MemoryDB{},
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
-		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitWorkloadsPath: *workloadsPath,
 	}
 

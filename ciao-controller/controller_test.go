@@ -2138,7 +2138,6 @@ func TestMain(m *testing.M) {
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
-		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitWorkloadsPath: *workloadsPath,
 	}
 
