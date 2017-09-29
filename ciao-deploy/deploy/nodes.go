@@ -224,9 +224,9 @@ func teardownNode(ctx context.Context, hostname string, sshUser string) error {
 	networkAgentCertPath := path.Join(ciaoPKIDir, fmt.Sprintf("cert-%s-%s.pem", networkAgentRole.String(), hostname))
 	_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", networkAgentCertPath))
 
-	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rmdir %s", ciaoPKIDir))
+	output, err := SSHRunCommandOutput(ctx, sshUser, hostname, fmt.Sprintf("sudo rmdir %s", ciaoPKIDir))
 	if err != nil {
-		return errors.Wrap(err, "Error removing ciao PKI directory")
+		return errors.Wrap(err, fmt.Sprintf("Error removing ciao PKI directory: %s", string(output)))
 	}
 
 	// Need extra timeout here due to #343
