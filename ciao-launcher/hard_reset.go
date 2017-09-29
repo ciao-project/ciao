@@ -96,7 +96,6 @@ func qemuKillInstance(instanceDir string) {
 }
 
 func purgeLauncherState() {
-
 	glog.Info("======= HARD RESET ======")
 
 	glog.Info("Shutting down running instances")
@@ -105,11 +104,14 @@ func purgeLauncherState() {
 
 	glog.Info("Init networking")
 
+	dockerNetworking := false
 	if err := initNetworkPhase1(); err != nil {
 		glog.Warningf("Failed to init network: %v\n", err)
 	} else {
 		if err := initDockerNetworking(context.Background()); err != nil {
 			glog.Info("Unable to initialise docker networking")
+		} else {
+			dockerNetworking = true
 		}
 	}
 
@@ -145,12 +147,14 @@ func purgeLauncherState() {
 
 	glog.Info("Reset docker networking")
 
+	if dockerNetworking {
+		shutdownDockerNetwork()
+	}
 	// We're always going to do this, even if we have failed to initialise
 	// docker networking.  A corrupt DB could result in docker networking
 	// failing to initialise.  We still want to delete the DB and any
 	// ciao created docker networks.
 
-	shutdownDockerNetwork()
 	resetDockerNetworking()
 
 	glog.Info("Reset networking")
