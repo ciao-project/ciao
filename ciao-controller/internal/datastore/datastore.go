@@ -48,7 +48,6 @@ var (
 type Config struct {
 	DBBackend         persistentStore
 	PersistentURI     string
-	TransientURI      string
 	InitWorkloadsPath string
 }
 
