@@ -286,6 +286,25 @@ func SSHRunCommand(ctx context.Context, user string, host string, command string
 	return session.Run(command)
 }
 
+// SSHRunCommandOutput is a convenience function to run a command on a given host.
+// It will return the combined stdout and stderr output to the caller.
+// This assumes the key is already in the keyring for the provided user.
+func SSHRunCommandOutput(ctx context.Context, user string, host string, command string) ([]byte, error) {
+	client, err := sshClient(ctx, user, host)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error creating client")
+	}
+	defer func() { _ = client.Close() }()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error creating session")
+	}
+	defer func() { _ = session.Close() }()
+
+	return session.CombinedOutput(command)
+}
+
 // SSHCreateFile creates a file on a remote machine
 func SSHCreateFile(ctx context.Context, user string, host string, dest string, f io.Reader) error {
 	client, err := sshClient(ctx, user, host)

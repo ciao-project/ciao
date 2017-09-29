@@ -232,10 +232,10 @@ func teardownNode(ctx context.Context, hostname string, sshUser string) error {
 	// Need extra timeout here due to #343
 	fmt.Printf("%s: Performing ciao-launcher hard reset\n", hostname)
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, time.Second*60)
-	err = SSHRunCommand(timeoutContext, sshUser, hostname, "sudo ciao-launcher --hard-reset")
+	out, err := SSHRunCommandOutput(timeoutContext, sshUser, hostname, "sudo ciao-launcher --hard-reset")
 	cancelFunc()
 	if timeoutContext.Err() != context.DeadlineExceeded && err != nil {
-		return errors.Wrap(err, "Error doing hard-reset on ciao-launcher")
+		return errors.Wrap(err, fmt.Sprintf("Error doing hard-reset on ciao-launcher: %s", string(out)))
 	}
 
 	fmt.Printf("%s: Removing %s binary\n", hostname, tool)
