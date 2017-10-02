@@ -120,6 +120,7 @@ func (cmd *nodeListCommand) run(args []string) error {
 }
 
 func dumpNode(node *types.CiaoNode) {
+	fmt.Printf("\tHostname: %s\n", node.Hostname)
 	fmt.Printf("\tUUID: %s\n", node.ID)
 	fmt.Printf("\tStatus: %s\n", node.Status)
 	fmt.Printf("\tLoad: %d\n", node.Load)
