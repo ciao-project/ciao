@@ -105,6 +105,10 @@ func purgeLauncherState() {
 
 	glog.Info("Init networking")
 
+	if err := netConfig.Load(); err != nil {
+		glog.Warningf("Unable to load network state: %v.  Hard reset may be slow", err)
+	}
+
 	if err := initNetworkPhase1(); err != nil {
 		glog.Warningf("Failed to init network: %v\n", err)
 	} else {
@@ -158,5 +162,9 @@ func purgeLauncherState() {
 	err := cnNet.ResetNetwork()
 	if err != nil {
 		glog.Warningf("Unable to reset network: %v", err)
+	}
+
+	if err = os.RemoveAll(dataDir); err != nil {
+		glog.Warningf("Unable to delete data dir %s: %v", dataDir, err)
 	}
 }

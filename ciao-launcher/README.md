@@ -84,37 +84,41 @@ command line arguments added by glog, e.g., -alsologtostderr.
 Here is a full list of the command line parameters supported by launcher.
 
 ```
-Usage of ./ciao-launcher:
+Usage of ciao-launcher:
   -alsologtostderr
-    	log to standard error as well as files
+        log to standard error as well as files
   -cacert string
-    	Client certificate
+        Client certificate
   -ceph_id string
-    	ceph client id
+        ceph client id
   -cert string
-    	CA certificate
-  -compute-net value
-    	Compute subnet.  Multiple subnets can be specified
+        CA certificate
+  -cpuprofile string
+        write profile information to file
   -hard-reset
-    	Kill and delete all instances, reset networking and exit
+        Kill and delete all instances, reset networking and exit
   -log_backtrace_at value
-    	when logging hits line file:N, emit a stack trace
+        when logging hits line file:N, emit a stack trace
   -log_dir string
-    	If non-empty, write log files in this directory
+        If non-empty, write log files in this directory
   -logtostderr
-    	log to standard error instead of files
-  -mgmt-net value
-    	Management subnet. Multiple subnets can be specified
+        log to standard error instead of files
   -network
-    	Enable networking (default true)
+        Enable networking (default true)
+  -qemu-virtualisation value
+        QEMU virtualisation method. Can be 'kvm', 'auto' or 'software' (default kvm)
   -simulation
-    	Launcher simulation
+        Launcher simulation
   -stderrthreshold value
-    	logs at or above this threshold go to stderr
+        logs at or above this threshold go to stderr
+  -trace string
+        write trace information to file
   -v value
-    	log level for V logs
+        log level for V logs
   -vmodule value
-    	comma-separated list of pattern=N settings for file-filtered logging
+        comma-separated list of pattern=N settings for file-filtered logging
+  -with-ui value
+        Enables virtual consoles on VM instances.  Can be 'none', 'spice', 'nc' (default nc)
 ```
 
 The --with-ui, --qemu-virtualisation and --cpuprofile options are disabled by

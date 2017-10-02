@@ -75,21 +75,9 @@ func (f *qemuVirtualisationFlag) Set(val string) error {
 	return nil
 }
 
-type networks []string
-
-func (n *networks) String() string {
-	return fmt.Sprint(*n)
-}
-
-func (n *networks) Set(value string) error {
-	*n = append(*n, value)
-	return nil
-}
-
+var netConfig networkConfig
 var serverCertPath string
 var clientCertPath string
-var computeNet networks
-var mgmtNet networks
 var networking bool
 var hardReset bool
 var diskLimit bool
@@ -103,8 +91,6 @@ func init() {
 	flag.StringVar(&clientCertPath, "cert", "", "CA certificate")
 	flag.BoolVar(&networking, "network", true, "Enable networking")
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
-	flag.Var(&computeNet, "compute-net", "Compute subnet.  Multiple subnets can be specified")
-	flag.Var(&mgmtNet, "mgmt-net", "Management subnet. Multiple subnets can be specified")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
 	flag.StringVar(&cephID, "ceph_id", "", "ceph client id")
 }
@@ -116,6 +102,7 @@ const (
 	dataDir         = ciaoDir + "/data/launcher/"
 	logDir          = ciaoDir + "/logs/launcher"
 	maintenanceFile = dataDir + "/maintenance"
+	networkFile     = dataDir + "/network"
 	instanceState   = "state"
 	lockFile        = "client-agent.lock"
 	statsPeriod     = 6
@@ -295,25 +282,26 @@ func loadClusterConfig(conn serverConn) error {
 	if err != nil {
 		return err
 	}
-	if len(computeNet) == 0 {
-		computeNet = clusterConfig.Configure.Launcher.ComputeNetwork
-	}
-	if len(mgmtNet) == 0 {
-		mgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
-	}
+	netConfig.ComputeNet = clusterConfig.Configure.Launcher.ComputeNetwork
+	netConfig.MgmtNet = clusterConfig.Configure.Launcher.ManagementNetwork
 	diskLimit = clusterConfig.Configure.Launcher.DiskLimit
 	memLimit = clusterConfig.Configure.Launcher.MemoryLimit
 	if cephID == "" {
 		cephID = clusterConfig.Configure.Storage.CephID
 	}
+
+	if err := netConfig.Save(); err != nil {
+		glog.Warningf("Unable to save networking config: %v", err)
+	}
+
 	return nil
 }
 
 func printClusterConfig() {
 	glog.Info("Cluster Configuration")
 	glog.Info("-----------------------")
-	glog.Infof("Compute Network:      %v", computeNet)
-	glog.Infof("Management Network:   %v", mgmtNet)
+	glog.Infof("Compute Network:      %v", netConfig.ComputeNet)
+	glog.Infof("Management Network:   %v", netConfig.MgmtNet)
 	glog.Infof("Disk Limit:           %v", diskLimit)
 	glog.Infof("Memory Limit:         %v", memLimit)
 	glog.Infof("Ceph ID:              %v", cephID)
