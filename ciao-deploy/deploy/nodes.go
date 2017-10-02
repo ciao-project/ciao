@@ -224,22 +224,22 @@ func teardownNode(ctx context.Context, hostname string, sshUser string) error {
 	networkAgentCertPath := path.Join(ciaoPKIDir, fmt.Sprintf("cert-%s-%s.pem", networkAgentRole.String(), hostname))
 	_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", networkAgentCertPath))
 
-	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rmdir %s", ciaoPKIDir))
+	output, err := SSHRunCommandOutput(ctx, sshUser, hostname, fmt.Sprintf("sudo rmdir %s", ciaoPKIDir))
 	if err != nil {
-		return errors.Wrap(err, "Error removing ciao PKI directory")
+		return errors.Wrap(err, fmt.Sprintf("Error removing ciao PKI directory: %s", string(output)))
 	}
 
 	// Need extra timeout here due to #343
+	systemToolPath := path.Join("/usr/local/bin/", tool)
 	fmt.Printf("%s: Performing ciao-launcher hard reset\n", hostname)
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, time.Second*60)
-	err = SSHRunCommand(timeoutContext, sshUser, hostname, "sudo ciao-launcher --hard-reset")
+	out, err := SSHRunCommandOutput(timeoutContext, sshUser, hostname, fmt.Sprintf("sudo %s --hard-reset", systemToolPath))
 	cancelFunc()
 	if timeoutContext.Err() != context.DeadlineExceeded && err != nil {
-		return errors.Wrap(err, "Error doing hard-reset on ciao-launcher")
+		return errors.Wrap(err, fmt.Sprintf("Error doing hard-reset on ciao-launcher: %s", string(out)))
 	}
 
 	fmt.Printf("%s: Removing %s binary\n", hostname, tool)
-	systemToolPath := path.Join("/usr/local/bin/", tool)
 	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", systemToolPath))
 	if err != nil {
 		return errors.Wrap(err, "Error removing tool binary")
