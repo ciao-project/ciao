@@ -105,6 +105,10 @@ func purgeLauncherState() {
 
 	glog.Info("Init networking")
 
+	if err := netConfig.Load(); err != nil {
+		glog.Warningf("Unable to load network state: %v.  Hard reset may be slow", err)
+	}
+
 	if err := initNetworkPhase1(); err != nil {
 		glog.Warningf("Failed to init network: %v\n", err)
 	} else {

@@ -17,8 +17,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 
@@ -35,12 +38,35 @@ var hostname string
 var nicInfo []*payloads.NetworkStat
 var dockerNet *libsnnet.DockerPlugin
 
+type networkConfig struct {
+	ComputeNet []string
+	MgmtNet    []string
+}
+
+func (nc *networkConfig) Save() error {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(nc); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(networkFile, buf.Bytes(), 0600)
+}
+
+func (nc *networkConfig) Load() error {
+	data, err := ioutil.ReadFile(networkFile)
+	if err != nil {
+		return err
+	}
+	dec := gob.NewDecoder(bytes.NewBuffer(data))
+	return dec.Decode(nc)
+}
+
 func initNetworkPhase1() error {
 
 	cn := &libsnnet.ComputeNode{}
 
-	cnetList := make([]net.IPNet, len(computeNet))
-	for i, netStr := range computeNet {
+	cnetList := make([]net.IPNet, len(netConfig.ComputeNet))
+	for i, netStr := range netConfig.ComputeNet {
 		_, cnet, _ := net.ParseCIDR(netStr)
 		if cnet == nil {
 			return fmt.Errorf("Unable to Parse CIDR :" + netStr)
@@ -48,8 +74,8 @@ func initNetworkPhase1() error {
 		cnetList[i] = *cnet
 	}
 
-	mnetList := make([]net.IPNet, len(mgmtNet))
-	for i, netStr := range mgmtNet {
+	mnetList := make([]net.IPNet, len(netConfig.MgmtNet))
+	for i, netStr := range netConfig.MgmtNet {
 		_, mnet, _ := net.ParseCIDR(netStr)
 		if mnet == nil {
 			return fmt.Errorf("Unable to Parse CIDR :" + netStr)
