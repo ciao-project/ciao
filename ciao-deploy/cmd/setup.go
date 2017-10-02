@@ -120,7 +120,7 @@ func init() {
 	setupCmd.Flags().StringVar(&clusterConf.ComputeNet, "compute-net", hostNetwork, "Network range for compute network")
 	setupCmd.Flags().StringVar(&clusterConf.MgmtNet, "mgmt-net", hostNetwork, "Network range for management network")
 	setupCmd.Flags().StringVar(&clusterConf.ServerIP, "server-ip", hostIP, "IP address nodes can reach this host on")
-
+	setupCmd.Flags().StringVar(&clusterConf.ServerHostname, "server-hostname", deploy.HostnameWithFallback(), "Name or FQDN that this host can be reached on")
 	setupCmd.Flags().StringVar(&imageCacheDirectory, "image-cache-directory", deploy.DefaultImageCacheDir(), "Directory to use for caching of downloaded images")
 	setupCmd.Flags().BoolVar(&force, "force", false, "Overwrite existing files which might break the cluster")
 	setupCmd.Flags().BoolVar(&localLauncher, "local-launcher", false, "Enable a local launcher on this node (for testing)")

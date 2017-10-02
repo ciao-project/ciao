@@ -44,6 +44,7 @@ type ClusterConfiguration struct {
 	ServerIP          string
 	AuthCACertPath    string
 	AuthAdminCertPath string
+	ServerHostname    string
 }
 
 var ciaoConfigDir = "/etc/ciao"
@@ -144,7 +145,7 @@ func createSchedulerCerts(ctx context.Context, force bool, serverIP string) (str
 	defer func() { _ = caCertFile.Close() }()
 	defer func() { _ = os.Remove(caCertFile.Name()) }()
 
-	hs := hostnameWithFallback()
+	hs := HostnameWithFallback()
 
 	hosts := []string{hs}
 	mgmtIPs := []string{serverIP}
@@ -306,7 +307,7 @@ func installController(ctx context.Context, controllerCertPath string, caCertPat
 }
 
 func setupEnvironment(conf *ClusterConfiguration) {
-	_ = os.Setenv("CIAO_CONTROLLER", hostnameWithFallback())
+	_ = os.Setenv("CIAO_CONTROLLER", conf.ServerHostname)
 	_ = os.Setenv("CIAO_ADMIN_CLIENT_CERT_FILE", conf.AuthAdminCertPath)
 }
 
@@ -314,7 +315,7 @@ func setupEnvironment(conf *ClusterConfiguration) {
 func OutputEnvironment(conf *ClusterConfiguration) {
 	fmt.Printf("Environment variables to access cluster:\n\n")
 
-	fmt.Printf("export CIAO_CONTROLLER=\"%s\"\n", hostnameWithFallback())
+	fmt.Printf("export CIAO_CONTROLLER=\"%s\"\n", conf.ServerHostname)
 	fmt.Printf("export CIAO_ADMIN_CLIENT_CERT_FILE=\"%s\"\n", conf.AuthAdminCertPath)
 }
 
