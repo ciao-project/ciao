@@ -163,4 +163,8 @@ func purgeLauncherState() {
 	if err != nil {
 		glog.Warningf("Unable to reset network: %v", err)
 	}
+
+	if err = os.RemoveAll(dataDir); err != nil {
+		glog.Warningf("Unable to delete data dir %s: %v", dataDir, err)
+	}
 }
