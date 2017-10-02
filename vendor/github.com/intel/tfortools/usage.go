@@ -22,6 +22,7 @@ import (
 	"go/format"
 	"io"
 	"reflect"
+	"strings"
 )
 
 func exportedFields(typ reflect.Type) bool {
@@ -38,6 +39,58 @@ func ignoreKind(kind reflect.Kind) bool {
 	return (kind == reflect.Chan) || (kind == reflect.Invalid)
 }
 
+func generateStructTag(tag string) string {
+	var comment bytes.Buffer
+	var otherTags bytes.Buffer
+
+	otherTags.WriteString("`")
+
+	// We need to locate the tfortools key in the tag, if it exists,
+	// and extract it.  There doesn't seem to be any std library
+	// support for parsing these tags so we'll have to do it ourselves.
+
+	segment := strings.TrimSpace(tag)
+	for len(segment) > 0 {
+		index := strings.Index(segment, `:"`)
+		if index == -1 {
+			return tag
+		}
+
+		end := index + 2
+		for ; end < len(segment); end++ {
+			if segment[end] == '"' && segment[end-1] != '\\' {
+				break
+			}
+		}
+
+		if end == len(segment) {
+			return tag
+		}
+
+		if segment[:index] == "tfortools" {
+			flattened := strings.Replace(segment[index+2:end], "\\\"", "\"", -1)
+			comment.WriteString(flattened)
+		} else {
+			otherTags.WriteString(segment[:end+1])
+		}
+
+		segment = strings.TrimSpace(segment[end+1:])
+	}
+
+	if otherTags.Len() > 1 {
+		otherTags.WriteString("`")
+	} else {
+		otherTags.Reset()
+	}
+
+	if comment.Len() > 0 {
+		otherTags.WriteString(" // ")
+		otherTags.Write(comment.Bytes())
+	}
+
+	return otherTags.String()
+}
+
 func generateStruct(buf io.Writer, typ reflect.Type) {
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
@@ -47,7 +100,7 @@ func generateStruct(buf io.Writer, typ reflect.Type) {
 		fmt.Fprintf(buf, "%s ", field.Name)
 		tag := ""
 		if field.Tag != "" {
-			tag = fmt.Sprintf("`%s`", field.Tag)
+			tag = generateStructTag(string(field.Tag))
 		}
 		generateUsage(buf, field.Type, tag)
 	}

@@ -163,7 +163,8 @@ func InGoPath(path string) string {
 	return filepath.Join(gp, path)
 }
 
-func hostnameWithFallback() string {
+// HostnameWithFallback returns hostname with a fallback to localhost
+func HostnameWithFallback() string {
 	hs, err := os.Hostname()
 	if err != nil {
 		hs = "localhost"
@@ -173,7 +174,7 @@ func hostnameWithFallback() string {
 
 // CertName gives file name to use for downloaded certificate
 func CertName(role ssntp.Role) string {
-	return fmt.Sprintf("cert-%s-%s.pem", role.String(), hostnameWithFallback())
+	return fmt.Sprintf("cert-%s-%s.pem", role.String(), HostnameWithFallback())
 }
 
 // GenerateCert creates a certificate signed by the anchor certificate for a given role

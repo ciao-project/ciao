@@ -1,3 +1,9 @@
+# Templates for Tools
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/intel/tfortools)](https://goreportcard.com/report/github.com/intel/tfortools)
+[![Build Status](https://travis-ci.org/intel/tfortools.svg?branch=master)](https://travis-ci.org/intel/tfortools)
+[![GoDoc](https://godoc.org/github.com/intel/tfortools?status.svg)](https://godoc.org/github.com/intel/tfortools)
+
 Package tfortools provides a set of functions that are designed to
 make it easier for developers to add template based scripting to their
 command line tools.

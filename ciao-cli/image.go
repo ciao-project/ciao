@@ -76,6 +76,28 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
+func getImage(imageID string) image.DefaultResponse {
+	url := buildImageURL("images/%s", imageID)
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		fatalf("Image show failed: %s", resp.Status)
+	}
+
+	var i image.DefaultResponse
+
+	err = unmarshalHTTPResponse(resp, &i)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	return i
+}
+
 func (cmd *imageAddCommand) run(args []string) error {
 	if cmd.name == "" {
 		return errors.New("Missing required -name parameter")
@@ -132,22 +154,12 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	uploadTenantImage(*tenantID, image.ID, cmd.file)
-
-	url = buildImageURL("images/%s", image.ID)
-	resp, err = sendHTTPRequest("GET", url, nil, nil)
+	err = uploadTenantImage(*tenantID, image.ID, cmd.file)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Image get failed: %s", resp.Status)
-	}
-
-	err = unmarshalHTTPResponse(resp, &image)
-	if err != nil {
-		fatalf(err.Error())
-	}
+	image = getImage(image.ID)
 
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "image-add", cmd.template, image, nil)
@@ -187,23 +199,7 @@ func (cmd *imageShowCommand) run(args []string) error {
 		return errors.New("Missing required -image parameter")
 	}
 
-	url := buildImageURL("images/%s", cmd.image)
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
-	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Image show failed: %s", resp.Status)
-	}
-
-	var i image.DefaultResponse
-
-	err = unmarshalHTTPResponse(resp, &i)
-	if err != nil {
-		fatalf(err.Error())
-	}
+	i := getImage(cmd.image)
 
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "image-show", cmd.template, i, nil)
@@ -341,6 +337,10 @@ func uploadTenantImage(tenant, image, filename string) error {
 	url := buildImageURL("images/%s/file", image)
 	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, "octet-stream")
 	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Unexpected HTTP response code (%d): %s", resp.StatusCode, resp.Status)
+	}
 
 	return err
 }
