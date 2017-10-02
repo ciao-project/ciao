@@ -25,7 +25,6 @@ import (
 	"net"
 	"os"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -163,7 +162,6 @@ func addTestTenant() (tenant *types.Tenant, err error) {
 		CNCI:       true,
 		IPAddress:  "192.168.0.1",
 		MACAddress: mac.String(),
-		StateLock:  &sync.RWMutex{},
 	}
 
 	err = ds.AddInstance(&CNCI)
@@ -2733,7 +2731,6 @@ func TestMain(m *testing.M) {
 	dsConfig := Config{
 		DBBackend:         &MemoryDB{},
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
-		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitWorkloadsPath: *workloadsPath,
 	}
 
