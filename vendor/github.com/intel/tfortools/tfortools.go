@@ -102,6 +102,7 @@ const (
 )
 
 type funcHelpInfo struct {
+	name  string
 	help  string
 	index int
 }
@@ -138,7 +139,8 @@ func (c *Config) AddCustomFn(fn interface{}, name, helpText string) error {
 	helpText = strings.TrimRightFunc(helpText, unicode.IsSpace)
 	if helpText != "" {
 		helpText = helpText + "\n"
-		c.funcHelp = append(c.funcHelp, funcHelpInfo{helpText, helpIndexCount})
+		c.funcHelp = append(c.funcHelp,
+			funcHelpInfo{name, helpText, helpIndexCount})
 	}
 	return nil
 }
@@ -180,7 +182,7 @@ func OptFilter(c *Config) {
 		return
 	}
 	c.funcMap["filter"] = filterByField
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilter, helpFilterIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"filter", helpFilter, helpFilterIndex})
 }
 
 const helpFilterContains = `- 'filterContains' operates along the same lines as filter, but returns
@@ -203,7 +205,8 @@ func OptFilterContains(c *Config) {
 		return
 	}
 	c.funcMap["filterContains"] = filterByContains
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterContains, helpFilterContainsIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"filterContains", helpFilterContains, helpFilterContainsIndex})
 }
 
 const helpFilterHasPrefix = `- 'filterHasPrefix' is similar to filter, but returns prefix matches.
@@ -216,7 +219,8 @@ func OptFilterHasPrefix(c *Config) {
 		return
 	}
 	c.funcMap["filterHasPrefix"] = filterByHasPrefix
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterHasPrefix, helpFilterHasPrefixIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"filterHasPrefix", helpFilterHasPrefix, helpFilterHasPrefixIndex})
 }
 
 const helpFilterHasSuffix = `- 'filterHasSuffix' is similar to filter, but returns suffix matches.
@@ -229,7 +233,8 @@ func OptFilterHasSuffix(c *Config) {
 		return
 	}
 	c.funcMap["filterHasSuffix"] = filterByHasSuffix
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterHasSuffix, helpFilterHasSuffixIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"filterHasSuffix", helpFilterHasSuffix, helpFilterHasSuffixIndex})
 }
 
 const helpFilterFolded = `- 'filterFolded' is similar to filter, but returns matches based on equality
@@ -244,7 +249,8 @@ func OptFilterFolded(c *Config) {
 		return
 	}
 	c.funcMap["filterFolded"] = filterByFolded
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterFolded, helpFilterFoldedIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"filterFolded", helpFilterFolded, helpFilterFoldedIndex})
 }
 
 const helpFilterRegexp = `- 'filterRegexp' is similar to filter, but returns matches based on regular
@@ -269,7 +275,8 @@ func OptFilterRegexp(c *Config) {
 		return
 	}
 	c.funcMap["filterRegexp"] = filterByRegexp
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpFilterRegexp, helpFilterRegexpIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"filterRegexp", helpFilterRegexp, helpFilterRegexpIndex})
 }
 
 // OptAllFilters is a convenience function that enables the following functions;
@@ -294,7 +301,7 @@ func OptToJSON(c *Config) {
 		return
 	}
 	c.funcMap["tojson"] = toJSON
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpToJSON, helpToJSONIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"tojson", helpToJSON, helpToJSONIndex})
 }
 
 const helpSelect = `- 'select' operates on a slice of structs.  It outputs the value of a specified
@@ -317,7 +324,7 @@ func OptSelect(c *Config) {
 		return
 	}
 	c.funcMap["select"] = selectField
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSelect, helpSelectIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"select", helpSelect, helpSelectIndex})
 }
 
 const helpSelectAlt = `- 'selectalt' Similar to select except that objects are formatted using %#v
@@ -330,7 +337,8 @@ func OptSelectAlt(c *Config) {
 		return
 	}
 	c.funcMap["selectalt"] = selectFieldAlt
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSelectAlt, helpSelectAltIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"selectalt", helpSelectAlt, helpSelectAltIndex})
 }
 
 const helpTable = `- 'table' outputs a table given an array or a slice of structs.  The table
@@ -353,7 +361,7 @@ func OptTable(c *Config) {
 		return
 	}
 	c.funcMap["table"] = table
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTable, helpTableIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"table", helpTable, helpTableIndex})
 }
 
 const helpTableAlt = `- 'tablealt' Similar to table except that objects are formatted using %#v
@@ -366,7 +374,8 @@ func OptTableAlt(c *Config) {
 		return
 	}
 	c.funcMap["tablealt"] = tableAlt
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTableAlt, helpTableAltIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"tablealt", helpTableAlt, helpTableAltIndex})
 }
 
 const helpTableX = `- 'tablex' is similar to table but it allows the caller more control over the
@@ -399,7 +408,7 @@ func OptTableX(c *Config) {
 		return
 	}
 	c.funcMap["tablex"] = tablex
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTableX, helpTableXIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"tablex", helpTableX, helpTableXIndex})
 }
 
 const helpTableXAlt = `- 'tablexalt' Similar to tablex except that objects are formatted using %#v
@@ -412,7 +421,8 @@ func OptTableXAlt(c *Config) {
 		return
 	}
 	c.funcMap["tablexalt"] = tablexAlt
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTableXAlt, helpTableXAltIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"tablexalt", helpTableXAlt, helpTableXAltIndex})
 }
 
 const helpCols = `- 'cols' can be used to extract certain columns from a table consisting of a
@@ -439,7 +449,7 @@ func OptCols(c *Config) {
 		return
 	}
 	c.funcMap["cols"] = cols
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpCols, helpColsIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"cols", helpCols, helpColsIndex})
 }
 
 const helpSort = `- 'sort' sorts a slice or an array of structs.  It takes three parameters.  The
@@ -470,7 +480,7 @@ func OptSort(c *Config) {
 		return
 	}
 	c.funcMap["sort"] = sortSlice
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSort, helpSortIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"sort", helpSort, helpSortIndex})
 }
 
 const helpRows = `- 'rows' is used to extract a set of given rows from a slice or an array.  It
@@ -499,7 +509,7 @@ func OptRows(c *Config) {
 		return
 	}
 	c.funcMap["rows"] = rows
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpRows, helpRowsIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"rows", helpRows, helpRowsIndex})
 }
 
 const helpHead = `- 'head' operates on a slice or an array, returning the first n elements of
@@ -537,7 +547,7 @@ func OptHead(c *Config) {
 		return
 	}
 	c.funcMap["head"] = head
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpHead, helpHeadIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"head", helpHead, helpHeadIndex})
 }
 
 const helpTail = `- 'tail' is similar to head except that it returns a slice containing the last
@@ -560,7 +570,7 @@ func OptTail(c *Config) {
 		return
 	}
 	c.funcMap["tail"] = tail
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpTail, helpTailIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"tail", helpTail, helpTailIndex})
 }
 
 const helpDescribe = `- 'describe' takes a single argument and outputs a description of the
@@ -587,7 +597,8 @@ func OptDescribe(c *Config) {
 		return
 	}
 	c.funcMap["describe"] = describe
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpDescribe, helpDescribeIndex})
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"describe", helpDescribe, helpDescribeIndex})
 }
 
 const helpPromote = `- 'promote' takes two arguments, a slice or an array of structures and a field
@@ -640,7 +651,7 @@ func OptPromote(c *Config) {
 		return
 	}
 	c.funcMap["promote"] = promote
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpPromote, helpPromoteIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"promote", helpPromote, helpPromoteIndex})
 }
 
 const helpSliceof = `- 'sliceof' takes one argument and returns a new slice containing only that
@@ -654,7 +665,7 @@ func OptSliceof(c *Config) {
 		return
 	}
 	c.funcMap["sliceof"] = sliceof
-	c.funcHelp = append(c.funcHelp, funcHelpInfo{helpSliceof, helpSliceofIndex})
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"sliceof", helpSliceof, helpSliceofIndex})
 }
 
 // NewConfig creates a new Config object that can be passed to other functions
@@ -696,6 +707,29 @@ func TemplateFunctionHelp(c *Config) string {
 	return b.String()
 }
 
+// TemplateFunctionNames returns a slice of all the functions enabled in the
+// supplied Config object.
+func TemplateFunctionNames(c *Config) []string {
+	helpers := getHelpers(c)
+	names := make([]string, len(helpers))
+	for i := range helpers {
+		names[i] = helpers[i].name
+	}
+	return names
+}
+
+// TemplateFunctionHelpSingle returns help for a single function specified by
+// name.  An error is returned if the function cannot be found.
+func TemplateFunctionHelpSingle(name string, c *Config) (string, error) {
+	helpers := getHelpers(c)
+	for i := range helpers {
+		if helpers[i].name == name {
+			return helpers[i].help, nil
+		}
+	}
+	return "", fmt.Errorf("%s is not defined", name)
+}
+
 // OutputToTemplate executes the template, whose source is contained within the
 // tmplSrc parameter, on the object obj.  The name of the template is given by
 // the name parameter.  The results of the execution are output to w.
@@ -727,9 +761,14 @@ func CreateTemplate(name, tmplSrc string, cfg *Config) (*template.Template, erro
 }
 
 // GenerateUsageUndecorated returns a formatted string identifying the
-// elements of the type of object i that can be accessed  from inside a template.
+// elements of the type of object i that can be accessed from inside a template.
 // Unexported struct values and channels are not output as they cannot be usefully
 // accessed inside a template.
+//
+// The output produced by GenerateUsageUndecorated preserves structure tags.
+// There is one special case however.  Tags with a key of "tfortools" are
+// output as comments at the end of the line containing the field, rather
+// than as tags.  This tag can be used to document your structures.
 func GenerateUsageUndecorated(i interface{}) string {
 	var buf bytes.Buffer
 	generateIndentedUsage(&buf, i)

@@ -56,7 +56,7 @@
 	},
 	"github.com/intel/tfortools": {
 		"url": "https://github.com/intel/tfortools.git",
-		"version": "2aef60e",
+		"version": "v0.1.0",
 		"license": "Apache v2.0"
 	},
 	"github.com/mattn/go-sqlite3": {
