@@ -172,7 +172,8 @@ func (d *docker) ensureBackingImage() error {
 	return nil
 }
 
-func (d *docker) createConfigs(bridge string, userData, metaData []byte, volumes []string) (config *container.Config,
+func (d *docker) createConfigs(bridge, gatewayIP string, userData,
+	metaData []byte, volumes []string) (config *container.Config,
 	hostConfig *container.HostConfig, networkConfig *network.NetworkingConfig) {
 
 	var hostname string
@@ -210,7 +211,13 @@ func (d *docker) createConfigs(bridge string, userData, metaData []byte, volumes
 		Cmd:      cmd,
 	}
 
-	hostConfig = &container.HostConfig{Binds: volumes}
+	hostConfig = &container.HostConfig{
+		Binds: volumes,
+	}
+
+	if gatewayIP != "" {
+		hostConfig.DNS = []string{gatewayIP}
+	}
 
 	if d.cfg.Mem > 0 {
 		// Docker memory limit is in bytes.
@@ -301,7 +308,7 @@ func (d *docker) prepareVolumes() ([]string, error) {
 	return volumes, nil
 }
 
-func (d *docker) createImage(bridge string, userData, metaData []byte) error {
+func (d *docker) createImage(bridge, gatewayIP string, userData, metaData []byte) error {
 	err := d.initDockerClient()
 	if err != nil {
 		return err
@@ -313,7 +320,8 @@ func (d *docker) createImage(bridge string, userData, metaData []byte) error {
 		return err
 	}
 
-	config, hostConfig, networkConfig := d.createConfigs(bridge, userData, metaData, volumes)
+	config, hostConfig, networkConfig := d.createConfigs(bridge, gatewayIP,
+		userData, metaData, volumes)
 
 	resp, err := d.cli.ContainerCreate(context.Background(), config, hostConfig, networkConfig,
 		d.cfg.Instance)

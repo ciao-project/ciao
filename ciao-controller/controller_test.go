@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -98,7 +97,6 @@ func addFakeCNCI(tenant *types.Tenant) (*types.Instance, error) {
 		IPAddress:  "192.168.0.1",
 		MACAddress: mac.String(),
 		Subnet:     "172.16.0.0/24",
-		StateLock:  &sync.RWMutex{},
 	}
 
 	return &CNCI, ctl.ds.AddInstance(&CNCI)
@@ -2140,7 +2138,6 @@ func TestMain(m *testing.M) {
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:memdb1?mode=memory&cache=shared",
-		TransientURI:      "file:memdb2?mode=memory&cache=shared",
 		InitWorkloadsPath: *workloadsPath,
 	}
 

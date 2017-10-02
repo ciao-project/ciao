@@ -500,7 +500,7 @@ runcmd:
   "hostname": "ciao"
 }
 `
-	err = d.createImage("", []byte(ud), []byte(md))
+	err = d.createImage("", "", []byte(ud), []byte(md))
 	if err != nil {
 		t.Fatalf("Unable to create image : %v", err)
 	}
@@ -548,7 +548,7 @@ func TestDockerCreateImageFail(t *testing.T) {
 	d := &docker{instanceDir: "/tmp/i/dont/exist", cfg: &vmConfig{}, cli: tc}
 
 	for i := 0; i < 2; i++ {
-		if err := d.createImage("", nil, nil); err == nil {
+		if err := d.createImage("", "", nil, nil); err == nil {
 			t.Errorf("createImage should have failed")
 		}
 
@@ -588,7 +588,7 @@ func TestDockerCreateImageWithVolumes(t *testing.T) {
 			},
 		}}
 
-	if err := d.createImage("", nil, nil); err != nil {
+	if err := d.createImage("", "", nil, nil); err != nil {
 		t.Fatalf("Unable to create image : %v", err)
 	}
 
@@ -610,7 +610,7 @@ func TestDockerCreateImageWithVolumes(t *testing.T) {
 	}
 
 	d.cfg.Volumes[0].Bootable = true
-	if err = d.createImage("", nil, nil); err == nil {
+	if err = d.createImage("", "", nil, nil); err == nil {
 		t.Fatalf("Attempt to create image with a bootable volume should fail")
 	}
 }
@@ -638,7 +638,7 @@ func TestDockerCreateImageWithResources(t *testing.T) {
 			VnicIP:  testutil.AgentIP,
 		}}
 
-	if err := d.createImage("bridge", nil, nil); err != nil {
+	if err := d.createImage("bridge", "172.16.0.1", nil, nil); err != nil {
 		t.Fatalf("Unable to create image : %v", err)
 	}
 
@@ -681,7 +681,7 @@ func TestDockerMonitorVM(t *testing.T) {
 	tc := &dockerTestClient{containerWaitCh: make(chan struct{})}
 	d := &docker{instanceDir: tmpDir, dockerID: testutil.InstanceUUID, cfg: &vmConfig{}, cli: tc}
 
-	err = d.createImage("", nil, nil)
+	err = d.createImage("", "", nil, nil)
 	if err != nil {
 		t.Fatalf("Unable to create image : %v", err)
 	}
