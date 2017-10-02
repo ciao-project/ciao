@@ -85,10 +85,6 @@ func createMockWorkSpaceWithWorkload(t *testing.T, workload string) *workspace {
 	return ws
 }
 
-func createMockWorkspace(t *testing.T) *workspace {
-	return createMockWorkSpaceWithWorkload(t, sampleWorkload)
-}
-
 func cleanupMockWorkspace(t *testing.T, ws *workspace) {
 	err := os.RemoveAll(ws.ciaoDir)
 	assert.Nil(t, err)

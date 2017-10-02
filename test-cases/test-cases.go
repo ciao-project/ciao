@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
+	"go/doc"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -257,6 +258,16 @@ func parseTestFile(filePath string) ([]*TestInfo, error) {
 
 			parseCommentGroup(ti, decl.Doc.Text())
 		}
+	}
+
+	for _, ex := range doc.Examples(tr) {
+		if ex.Output == "" && !ex.EmptyOutput {
+			// Don't run examples with no output.
+			continue
+		}
+
+		ti := &TestInfo{Name: "Example" + ex.Name}
+		tests = append(tests, ti)
 	}
 
 	return tests, nil

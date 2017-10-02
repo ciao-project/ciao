@@ -110,22 +110,6 @@ func TestListComputeNodes(t *testing.T) {
 	}
 }
 
-// Get all tenants
-//
-// TestGetTenants calls ciao-cli tenant list -all.
-//
-// The test passes if the list of tenants defined for the cluster can
-// be retrieved, even if the list is empty.
-func TestGetTenants(t *testing.T) {
-	t.Skip("Getting all tenants not currently available")
-	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
-	_, err := bat.GetAllTenants(ctx)
-	cancelFunc()
-	if err != nil {
-		t.Fatalf("Failed to retrieve tenant list : %v", err)
-	}
-}
-
 // Confirm that the cluster is ready
 //
 // Retrieve the cluster status.

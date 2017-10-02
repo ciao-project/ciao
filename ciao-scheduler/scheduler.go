@@ -660,14 +660,6 @@ func getWorkloadAgentUUID(sched *ssntpSchedulerServer, command ssntp.Command, pa
 	switch command {
 	default:
 		return "", "", fmt.Errorf("unsupported ssntp.Command type \"%s\"", command)
-	case ssntp.RESTART:
-		var cmd payloads.Restart
-		err := yaml.Unmarshal(payload, &cmd)
-		return cmd.Restart.InstanceUUID, cmd.Restart.WorkloadAgentUUID, err
-	case ssntp.STOP:
-		var cmd payloads.Stop
-		err := yaml.Unmarshal(payload, &cmd)
-		return cmd.Stop.InstanceUUID, cmd.Stop.WorkloadAgentUUID, err
 	case ssntp.DELETE:
 		var cmd payloads.Delete
 		err := yaml.Unmarshal(payload, &cmd)
@@ -873,10 +865,6 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 	// the main command with scheduler processing
 	case ssntp.START:
 		dest, instanceUUID = startWorkload(sched, controllerUUID, payload)
-	case ssntp.RESTART:
-		fallthrough
-	case ssntp.STOP:
-		fallthrough
 	case ssntp.DELETE:
 		fallthrough
 	case ssntp.AttachVolume:
@@ -1171,14 +1159,6 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 		},
 		{ // all START command are processed by the Command forwarder
 			Operand:        ssntp.START,
-			CommandForward: sched,
-		},
-		{ // all RESTART command are processed by the Command forwarder
-			Operand:        ssntp.RESTART,
-			CommandForward: sched,
-		},
-		{ // all STOP command are processed by the Command forwarder
-			Operand:        ssntp.STOP,
 			CommandForward: sched,
 		},
 		{ // all DELETE command are processed by the Command forwarder

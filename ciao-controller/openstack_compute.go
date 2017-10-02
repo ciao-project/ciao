@@ -518,11 +518,7 @@ func (c *controller) ListFlavors(tenant string) (compute.Flavors, error) {
 
 	for _, workload := range workloads {
 		flavors.Flavors = append(flavors.Flavors,
-			struct {
-				ID    string         `json:"id"`
-				Links []compute.Link `json:"links"`
-				Name  string         `json:"name"`
-			}{
+			compute.FlavorBase{
 				ID:   workload.ID,
 				Name: workload.Description,
 			},

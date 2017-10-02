@@ -112,21 +112,22 @@ type WorkloadRequest struct {
 
 // Instance contains information about an instance of a workload.
 type Instance struct {
-	ID         string        `json:"instance_id"`
-	TenantID   string        `json:"tenant_id"`
-	State      string        `json:"instance_state"`
-	WorkloadID string        `json:"workload_id"`
-	NodeID     string        `json:"node_id"`
-	MACAddress string        `json:"mac_address"`
-	VnicUUID   string        `json:"vnic_uuid"`
-	Subnet     string        `json:"subnet"`
-	IPAddress  string        `json:"ip_address"`
-	SSHIP      string        `json:"ssh_ip"`
-	SSHPort    int           `json:"ssh_port"`
-	CNCI       bool          `json:"-"`
-	CreateTime time.Time     `json:"-"`
-	Name       string        `json:"name"`
-	StateLock  *sync.RWMutex `json:"-"`
+	ID          string       `json:"instance_id"`
+	TenantID    string       `json:"tenant_id"`
+	State       string       `json:"instance_state"`
+	WorkloadID  string       `json:"workload_id"`
+	NodeID      string       `json:"node_id"`
+	MACAddress  string       `json:"mac_address"`
+	VnicUUID    string       `json:"vnic_uuid"`
+	Subnet      string       `json:"subnet"`
+	IPAddress   string       `json:"ip_address"`
+	SSHIP       string       `json:"ssh_ip"`
+	SSHPort     int          `json:"ssh_port"`
+	CNCI        bool         `json:"-"`
+	CreateTime  time.Time    `json:"-"`
+	Name        string       `json:"name"`
+	StateLock   sync.RWMutex `json:"-"`
+	StateChange *sync.Cond   `json:"-"`
 }
 
 // SortedInstancesByID implements sort.Interface for Instance by ID string
@@ -167,6 +168,12 @@ type TenantSummary struct {
 // TenantsListResponse stores a list of tenants retrieved by listTenants
 type TenantsListResponse struct {
 	Tenants []TenantSummary `json:"tenants"`
+}
+
+// TenantRequest contains information for creating a new tenant.
+type TenantRequest struct {
+	ID     string       `json:"id"`
+	Config TenantConfig `json:"config"`
 }
 
 // LogEntry stores information about events.

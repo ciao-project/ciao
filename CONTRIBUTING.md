@@ -71,13 +71,13 @@ We request you give quality assurance some consideration by:
 ## Issue tracking
 
 If you have a problem, please let us know.  IRC is a perfectly fine place
-to quickly informally bring something up, if you get a response.  The
+to quickly and informally bring something up.  The
 [mailing list](https://lists.clearlinux.org/mailman/listinfo/ciao-devel)
-is a more durable communication channel.
+is a more reliable communication channel.
 
 If it's a bug not already documented, by all means please [open an
 issue in github](https://github.com/ciao-project/ciao/issues/new) so we all get visibility
-the problem and work toward resolution.
+of the problem and work toward resolution.
 
 For feature requests we're also using github issues, with the label
 "enhancement".

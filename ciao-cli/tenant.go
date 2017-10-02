@@ -28,6 +28,7 @@ import (
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/ssntp/uuid"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/intel/tfortools"
 )
@@ -152,6 +153,8 @@ var tenantCommand = &command{
 	SubCommands: map[string]subCommand{
 		"list":   new(tenantListCommand),
 		"update": new(tenantUpdateCommand),
+		"create": new(tenantCreateCommand),
+		"delete": new(tenantDeleteCommand),
 	},
 }
 
@@ -170,6 +173,19 @@ type tenantUpdateCommand struct {
 	name       string
 	subnetBits int
 	tenantID   string
+}
+
+type tenantCreateCommand struct {
+	Flag       flag.FlagSet
+	name       string
+	subnetBits int
+	tenantID   string
+	template   string
+}
+
+type tenantDeleteCommand struct {
+	Flag     flag.FlagSet
+	tenantID string
 }
 
 func (cmd *tenantUpdateCommand) usage(...string) {
@@ -211,6 +227,147 @@ func (cmd *tenantUpdateCommand) run(args []string) error {
 	}
 
 	return putCiaoTenantConfig(cmd.tenantID, cmd.name, cmd.subnetBits)
+}
+
+func (cmd *tenantCreateCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] tenant create [flags]
+
+Creates a new tenant with the supplied flags
+
+The create flags are:
+
+`)
+	cmd.Flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, `
+The template passed to the -f option operates on the following struct:
+
+%s`, tfortools.GenerateUsageUndecorated(types.TenantSummary{}))
+	os.Exit(2)
+}
+
+func (cmd *tenantCreateCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.tenantID, "tenant", "", "ID for new tenant")
+	cmd.Flag.IntVar(&cmd.subnetBits, "subnet-bits", 0, "Number of bits in subnet mask")
+	cmd.Flag.StringVar(&cmd.name, "name", "", "Tenant name")
+	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *tenantCreateCommand) run(args []string) error {
+	if !checkPrivilege() {
+		fatalf("Creating tenants is only available for privileged users")
+	}
+
+	if cmd.tenantID == "" {
+		errorf("Missing required tenantID")
+		cmd.usage()
+	}
+
+	// subnet bits must be between 4 and 30
+	if cmd.subnetBits != 0 && (cmd.subnetBits > 30 || cmd.subnetBits < 4) {
+		errorf("subnet_bits must be 4-30")
+		cmd.usage()
+	}
+
+	var t *template.Template
+	if cmd.template != "" {
+		var err error
+		t, err = tfortools.CreateTemplate("tenant-create", cmd.template, nil)
+		if err != nil {
+			fatalf(err.Error())
+		}
+	}
+
+	var req types.TenantRequest
+
+	url, err := getCiaoTenantsResource()
+	if err != nil {
+		return err
+	}
+
+	tuuid, err := uuid.Parse(cmd.tenantID)
+	if err != nil {
+		fatalf("Tenant ID must be a UUID4")
+	}
+
+	req.ID = tuuid.String()
+	req.Config = types.TenantConfig{
+		Name:       cmd.name,
+		SubnetBits: cmd.subnetBits,
+	}
+	b, err := json.Marshal(req)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	body := bytes.NewReader(b)
+
+	resp, err := sendCiaoRequest("POST", url, nil, body, api.TenantsV1)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	var summary types.TenantSummary
+	err = unmarshalHTTPResponse(resp, &summary)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if t != nil {
+		if err := t.Execute(os.Stdout, &summary); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
+	}
+
+	fmt.Printf("Tenant [%s]\n", summary.ID)
+	fmt.Printf("\tName: %s\n", summary.Name)
+
+	return nil
+}
+
+func (cmd *tenantDeleteCommand) usage(...string) {
+	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] tenant delete [flags]
+
+Deletes a tenant
+
+The delete flags are:
+
+`)
+	cmd.Flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func (cmd *tenantDeleteCommand) parseArgs(args []string) []string {
+	cmd.Flag.StringVar(&cmd.tenantID, "tenant", "", "ID for new tenant")
+	cmd.Flag.Usage = func() { cmd.usage() }
+	cmd.Flag.Parse(args)
+	return cmd.Flag.Args()
+}
+
+func (cmd *tenantDeleteCommand) run(args []string) error {
+	if !checkPrivilege() {
+		fatalf("Creating tenants is only available for privileged users")
+	}
+
+	if cmd.tenantID == "" {
+		errorf("Missing required tenantID")
+		cmd.usage()
+	}
+
+	url, err := getCiaoTenantRef(cmd.tenantID)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	_, err = sendCiaoRequest("DELETE", url, nil, nil, api.TenantsV1)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	return nil
 }
 
 func (cmd *tenantListCommand) usage(...string) {

@@ -20,7 +20,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -89,11 +88,6 @@ var tests = []test{
 }
 
 const testTenantID = "1bea47ed-f6a9-463b-b423-14b9cca9ad27"
-
-func myHostname() string {
-	host, _ := os.Hostname()
-	return host
-}
 
 type testImageService struct{}
 

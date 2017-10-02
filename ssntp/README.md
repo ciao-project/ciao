@@ -183,37 +183,6 @@ The START command payload is mandatory:
 +--------------------------------------------------------------------------+
 ```
 
-#### STOP ####
-The CIAO Controller client sends the STOP command to the Scheduler in
-order to stop a running instance on a given CN. The [STOP command
-YAML payload] (https://github.com/ciao-project/ciao/blob/master/payloads/stop.go)
-is mandatory and contains the instance UUID to be stopped and the
-agent UUID that manages this instance.
-
-STOPping an instance means shutting it down. Non persistent
-instances are deleted as well when being STOPped.
-Persistent instances metadata and disks images are stored and
-can be started again through the RESTART SSNTP command.
-
-There are several error cases related to the STOP command:
-
-1. If the Scheduler cannot find the Agent identified in the STOP
-   command payload, it should send a SSNTP error with the
-   StopFailure (0x3) error code back to the Controller.
-
-2. If the Agent cannot actually stop the instance (Because e.g.
-   it's already finished), it should also send a SSNTP error with
-   the StopFailure (0x3) error code back to the Scheduler. It is
-   then the Scheduler responsibility to notify the Controller about it
-   by forwarding this error frame.
-
-```
-+--------------------------------------------------------------------+
-| Major | Minor | Type  | Operand |  Payload Length | YAML formatted |
-|       |       | (0x0) |  (0x2)  |                 |     payload    |
-+--------------------------------------------------------------------+
-```
-
 #### STATS ####
 CIAO CN Agents periodically send the STATS command to the Scheduler
 in order to provide a complete view of the compute node status. It is
@@ -274,26 +243,6 @@ is the same as the STOP one.
 +--------------------------------------------------------------------+
 | Major | Minor | Type  | Operand |  Payload Length | YAML formatted |
 |       |       | (0x0) |  (0x5)  |                 |     payload    |
-+--------------------------------------------------------------------+
-```
-
-#### RESTART ####
-The CIAO Controller client may send RESTART commands in order to
-restart previously STOPped persistent instances.
-Non persistent instances cannot be RESTARTed as they are
-implicitly deleted when being STOPped.
-
-When asked to restart a non existing instance the CN Agent
-must reply with a RestartFailure error frame.
-
-The [RESTART YAML payload schema]
-(https://github.com/ciao-project/ciao/blob/master/payloads/start.go)
-is the same as the STOP one.
-
-```
-+--------------------------------------------------------------------+
-| Major | Minor | Type  | Operand |  Payload Length | YAML formatted |
-|       |       | (0x0) |  (0x6)  |                 |     payload    |
 +--------------------------------------------------------------------+
 ```
 
