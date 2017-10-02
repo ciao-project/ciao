@@ -108,7 +108,7 @@ func (q *qemuV) ensureBackingImage() error {
 	return nil
 }
 
-func (q *qemuV) createImage(bridge string, userData, metaData []byte) error {
+func (q *qemuV) createImage(bridge, gatewayIP string, userData, metaData []byte) error {
 	err := createCloudInitISO(q.instanceDir, q.isoPath, q.cfg, userData, metaData)
 	if err != nil {
 		glog.Errorf("Unable to create iso image %v", err)

@@ -84,7 +84,7 @@ func (v *instanceTestState) ensureBackingImage() error {
 	return nil
 }
 
-func (v *instanceTestState) createImage(bridge string, userData, metaData []byte) error {
+func (v *instanceTestState) createImage(bridge, gatewayIP string, userData, metaData []byte) error {
 	return nil
 }
 
