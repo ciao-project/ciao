@@ -644,7 +644,7 @@ func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
 }
 
 // Note: caller should close ssntp client
-func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestClient, tenant string, volume string) {
+func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestClient, tenant string, volume string, instanceID string) {
 	var reason payloads.StartFailureReason
 
 	client, instances := testStartWorkload(t, 1, false, reason)
@@ -721,22 +721,22 @@ func doAttachVolumeCommand(t *testing.T, fail bool) (client *testutil.SsntpTestC
 		}
 	}
 
-	return client, tenantID, data.ID
+	return client, tenantID, data.ID, instances[0].ID
 }
 
 func TestAttachVolumeCommand(t *testing.T) {
-	client, _, _ := doAttachVolumeCommand(t, false)
+	client, _, _, _ := doAttachVolumeCommand(t, false)
 	client.Ssntp.Close()
 }
 
 func TestAttachVolumeFailure(t *testing.T) {
-	client, _, _ := doAttachVolumeCommand(t, true)
+	client, _, _, _ := doAttachVolumeCommand(t, true)
 	client.Ssntp.Close()
 }
 
 func doDetachVolumeCommand(t *testing.T, fail bool) {
 	// attach volume should succeed for this test
-	client, tenantID, volume := doAttachVolumeCommand(t, false)
+	client, tenantID, volume, _ := doAttachVolumeCommand(t, false)
 	defer client.Ssntp.Close()
 
 	sendStatsCmd(client, t)
