@@ -473,12 +473,10 @@ For a full example see
 
 # Attaching and Detaching RBD images
 
-Volumes can be attach and detached from VM instances after those instance have
+Volumes can be attached to VM instances after those instances have
 been created.  This can be done regardless of whether the instance is actually
-running or not.  It is possible to detach an instance that was attached in the
-original workload that created the instance, e.g., via the storage field in
-the YAML payload.  It is not possible to attach or detach RBD images from
-containers.
+running or not.  It is possible to detach volumes from an instance only when the 
+instance is exited.  It is not possible to attach images to running containers.
 
 ## Attaching a volume to a container at creation time
 

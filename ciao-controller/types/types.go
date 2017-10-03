@@ -254,7 +254,6 @@ type Node struct {
 	StartFailures        int        `json:"start_failures"`
 	AttachVolumeFailures int        `json:"attach_failures"`
 	DeleteFailures       int        `json:"delete_failures"`
-	DetachVolumeFailures int        `json:"detach_failures"`
 	NodeRole             ssntp.Role `json:"role"`
 }
 
@@ -323,7 +322,6 @@ type CiaoNode struct {
 	StartFailures         int       `json:"start_failures"`
 	AttachVolumeFailures  int       `json:"attach_failures"`
 	DeleteFailures        int       `json:"delete_failures"`
-	DetachVolumeFailures  int       `json:"detach_failures"`
 }
 
 // NodeStatusType contains the valid values of a node's status

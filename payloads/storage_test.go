@@ -44,22 +44,6 @@ func TestAttachVolumeUnmarshal(t *testing.T) {
 	}
 }
 
-func TestDetachVolumeUnmarshal(t *testing.T) {
-	var detach DetachVolume
-	err := yaml.Unmarshal([]byte(testutil.DetachVolumeYaml), &detach)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if detach.Detach.InstanceUUID != testutil.InstanceUUID {
-		t.Errorf("Wrong instance UUID field [%s]", detach.Detach.InstanceUUID)
-	}
-
-	if detach.Detach.VolumeUUID != testutil.VolumeUUID {
-		t.Errorf("Wrong Volume UUID field [%s]", detach.Detach.VolumeUUID)
-	}
-}
-
 func TestAttachVolmeMarshal(t *testing.T) {
 	var attach AttachVolume
 	attach.Attach.InstanceUUID = testutil.InstanceUUID
@@ -74,22 +58,5 @@ func TestAttachVolmeMarshal(t *testing.T) {
 	if string(y) != testutil.AttachVolumeYaml {
 		t.Errorf("AttachVolume marshalling failed\n[%s]\n vs\n[%s]",
 			string(y), testutil.AttachVolumeYaml)
-	}
-}
-
-func TestDetachVolmeMarshal(t *testing.T) {
-	var detach DetachVolume
-	detach.Detach.InstanceUUID = testutil.InstanceUUID
-	detach.Detach.VolumeUUID = testutil.VolumeUUID
-	detach.Detach.WorkloadAgentUUID = testutil.AgentUUID
-
-	y, err := yaml.Marshal(&detach)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if string(y) != testutil.DetachVolumeYaml {
-		t.Errorf("DetachVolume marshalling failed\n[%s]\n vs\n[%s]",
-			string(y), testutil.DetachVolumeYaml)
 	}
 }

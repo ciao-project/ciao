@@ -27,10 +27,6 @@ type virtualizerAttachCmd struct {
 	volumeUUID string
 	device     string
 }
-type virtualizerDetachCmd struct {
-	responseCh chan error
-	volumeUUID string
-}
 
 var errImageNotFound = errors.New("Image Not Found")
 

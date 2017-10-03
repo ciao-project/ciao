@@ -44,7 +44,6 @@ type controllerClient interface {
 	mapExternalIP(t types.Tenant, m types.MappedIP) error
 	unMapExternalIP(t types.Tenant, m types.MappedIP) error
 	attachVolume(volID string, instanceID string, nodeID string) error
-	detachVolume(volID string, instanceID string, nodeID string) error
 	ssntpClient() *ssntp.Client
 }
 
@@ -421,20 +420,6 @@ func (client *ssntpClient) attachVolumeFailure(payload []byte) {
 	}
 }
 
-func (client *ssntpClient) detachVolumeFailure(payload []byte) {
-	var failure payloads.ErrorDetachVolumeFailure
-	err := yaml.Unmarshal(payload, &failure)
-	if err != nil {
-		glog.Warningf("Error unmarshalling DetachVolumeFailure: %v", err)
-		return
-	}
-
-	err = client.ctl.ds.DetachVolumeFailure(failure.InstanceUUID, failure.VolumeUUID, failure.Reason)
-	if err != nil {
-		glog.Warningf("Error handling DetachVolumeFailure in datastore: %v", err)
-	}
-}
-
 func (client *ssntpClient) assignError(payload []byte) {
 	var failure payloads.ErrorPublicIPFailure
 	err := yaml.Unmarshal(payload, &failure)
@@ -485,9 +470,6 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 
 	case ssntp.AttachVolumeFailure:
 		client.attachVolumeFailure(payload)
-
-	case ssntp.DetachVolumeFailure:
-		client.detachVolumeFailure(payload)
 
 	case ssntp.AssignPublicIPFailure:
 		client.assignError(payload)
@@ -730,28 +712,6 @@ func (client *ssntpClient) attachVolume(volID string, instanceID string, nodeID 
 	glog.V(1).Info(string(y))
 
 	_, err = client.ssntp.SendCommand(ssntp.AttachVolume, y)
-
-	return err
-}
-
-func (client *ssntpClient) detachVolume(volID string, instanceID string, nodeID string) error {
-	payload := payloads.DetachVolume{
-		Detach: payloads.VolumeCmd{
-			InstanceUUID:      instanceID,
-			VolumeUUID:        volID,
-			WorkloadAgentUUID: nodeID,
-		},
-	}
-
-	y, err := yaml.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	glog.Infof("DetachVolume %s to %s\n", volID, instanceID)
-	glog.V(1).Info(string(y))
-
-	_, err = client.ssntp.SendCommand(ssntp.DetachVolume, y)
 
 	return err
 }

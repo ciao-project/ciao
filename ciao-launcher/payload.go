@@ -224,16 +224,6 @@ func generateAttachVolumeError(node, instance, volume string, ave *attachVolumeE
 	return yaml.Marshal(avf)
 }
 
-func generateDetachVolumeError(node, instance, volume string, dve *detachVolumeError) (out []byte, err error) {
-	dvf := &payloads.ErrorDetachVolumeFailure{
-		NodeUUID:     node,
-		InstanceUUID: instance,
-		VolumeUUID:   volume,
-		Reason:       dve.code,
-	}
-	return yaml.Marshal(dvf)
-}
-
 func generateNetEventPayload(ssntpEvent *libsnnet.SsntpEventInfo, agentUUID string) ([]byte, error) {
 	var event interface{}
 	var eventData *payloads.TenantAddedEvent
@@ -304,18 +294,6 @@ func parseAttachVolumePayload(data []byte) (string, string, *payloadError) {
 	}
 
 	return extractVolumeInfo(&clouddata.Attach, payloads.AttachVolumeInvalidData)
-}
-
-func parseDetachVolumePayload(data []byte) (string, string, *payloadError) {
-	var clouddata payloads.DetachVolume
-
-	err := yaml.Unmarshal(data, &clouddata)
-	if err != nil {
-		glog.Errorf("YAML error: %v", err)
-		return "", "", &payloadError{err, payloads.DetachVolumeInvalidPayload}
-	}
-
-	return extractVolumeInfo(&clouddata.Detach, payloads.DetachVolumeInvalidData)
 }
 
 func linesToBytes(doc []string, buf *bytes.Buffer) {

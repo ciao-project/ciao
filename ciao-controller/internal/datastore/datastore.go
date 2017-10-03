@@ -1037,53 +1037,6 @@ func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, rea
 	return errors.Wrap(ds.db.logEvent(e), "Error logging event")
 }
 
-// DetachVolumeFailure will clean up after a failure to detach a volume.
-// The volume state will be changed back to available, and an error message
-// will be logged.
-func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, reason payloads.DetachVolumeFailureReason) error {
-	// update the block data to reflect correct state
-	data, err := ds.GetBlockDevice(volumeID)
-	if err != nil {
-		return errors.Wrapf(err, "error getting block device for volume (%v)", volumeID)
-	}
-
-	// because controller wouldn't allow a detach if state
-	// wasn't initially InUse, we can blindly set this back
-	// to InUse.
-	oldState := data.State
-	data.State = types.InUse
-	err = ds.UpdateBlockDevice(data)
-	if err != nil {
-		data.State = oldState
-		return errors.Wrapf(err, "error updating block device for volume (%v)", volumeID)
-	}
-
-	// get owner of this instance
-	i, err := ds.GetInstance(instanceID)
-	if err != nil {
-		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
-	}
-
-	msg := fmt.Sprintf("Detach Volume Failure %s from %s: %s", volumeID, instanceID, reason.String())
-	e := types.LogEntry{
-		TenantID:  i.TenantID,
-		EventType: string(userError),
-		Message:   msg,
-		NodeID:    i.NodeID,
-	}
-
-	ds.nodesLock.Lock()
-	defer ds.nodesLock.Unlock()
-
-	n, ok := ds.nodes[i.NodeID]
-	if ok {
-		n.TotalFailures++
-		n.DetachVolumeFailures++
-	}
-
-	return errors.Wrap(ds.db.logEvent(e), "Error logging event")
-}
-
 func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 	if err := ds.db.deleteInstance(instanceID); err != nil {
 		glog.Warningf("error deleting instance (%v): %v", instanceID, err)
@@ -1372,7 +1325,6 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 		StartFailures:        n.StartFailures,
 		AttachVolumeFailures: n.AttachVolumeFailures,
 		DeleteFailures:       n.DeleteFailures,
-		DetachVolumeFailures: n.DetachVolumeFailures,
 	}
 
 	ds.nodesLock.Unlock()

@@ -1258,65 +1258,6 @@ func TestAttachVolumeFailure(t *testing.T) {
 	}
 }
 
-func TestDetachVolumeFailure(t *testing.T) {
-	newTenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// add test instances
-	wls, err := ds.GetWorkloads(newTenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	instance, err := addTestInstance(newTenant, wls[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// add test block data
-	blockDevice := storage.BlockDevice{
-		ID: "validID",
-	}
-
-	data := types.BlockData{
-		BlockDevice: blockDevice,
-		State:       types.Available,
-		TenantID:    newTenant.ID,
-		CreateTime:  time.Now(),
-	}
-
-	err = ds.AddBlockDevice(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// update block data to indicate it is detaching
-	data.State = types.Detaching
-
-	err = ds.UpdateBlockDevice(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// pretend we got a failure to attach.
-	err = ds.DetachVolumeFailure(instance.ID, data.ID, payloads.DetachVolumeNotAttached)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// make sure state has been switched to InUse again.
-	bd, err := ds.GetBlockDevice(data.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if bd.State != types.InUse {
-		t.Fatalf("expected state: %s, got %s\n", types.InUse, bd.State)
-	}
-}
-
 func testAllocateTenantIPs(t *testing.T, nIPs int) {
 	newTenant, err := addTestTenant()
 	if err != nil {

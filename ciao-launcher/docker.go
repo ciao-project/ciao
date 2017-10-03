@@ -426,9 +426,6 @@ DONE:
 			case virtualizerAttachCmd:
 				err := fmt.Errorf("Live Attach of volumes not supported for containers")
 				cmd.responseCh <- err
-			case virtualizerDetachCmd:
-				err := fmt.Errorf("Live Detach of volumes not supported for containers")
-				cmd.responseCh <- err
 			}
 		}
 	}

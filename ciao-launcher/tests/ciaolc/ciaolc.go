@@ -49,7 +49,6 @@ func init() {
 		fmt.Fprintln(os.Stderr, "\tistats")
 		fmt.Fprintln(os.Stderr, "\tstatus")
 		fmt.Fprintln(os.Stderr, "\tattach")
-		fmt.Fprintln(os.Stderr, "\tdetach")
 		fmt.Fprintln(os.Stderr, "\tevacuate")
 		fmt.Fprintln(os.Stderr, "\trestore")
 		fmt.Fprintln(os.Stderr, "")
@@ -444,18 +443,6 @@ func attach(host string) error {
 	return postYaml(host, "attach", client, &attach)
 }
 
-func detach(host string) error {
-	var detach payloads.DetachVolume
-	client, instance, volume, err := getVolumePostArgs("detach")
-	if err != nil {
-		return err
-	}
-
-	detach.Detach.InstanceUUID = instance
-	detach.Detach.VolumeUUID = volume
-	return postYaml(host, "detach", client, &detach)
-}
-
 func evacuate(host string) error {
 	fs := flag.NewFlagSet("evacuate", flag.ExitOnError)
 	cp := ""
@@ -504,7 +491,6 @@ func main() {
 		"drain":     drain,
 		"startf":    startf,
 		"attach":    attach,
-		"detach":    detach,
 		"evacuate":  evacuate,
 		"restore":   restore,
 	}

@@ -161,12 +161,6 @@ func (ts *testServer) ErrorNotify(uuid string, err ssntp.Error, frame *ssntp.Fra
 		if err == nil {
 			e = &payload
 		}
-	case ssntp.DetachVolumeFailure:
-		payload := payloads.ErrorDetachVolumeFailure{}
-		err := yaml.Unmarshal(frame.Payload, &payload)
-		if err == nil {
-			e = &payload
-		}
 	}
 
 	c.events = append(c.events, e)
@@ -457,10 +451,6 @@ func serve(done chan os.Signal) {
 		http.HandleFunc("/attach",
 			func(w http.ResponseWriter, r *http.Request) {
 				yamlCommand(w, r, ssntp.AttachVolume)
-			})
-		http.HandleFunc("/detach",
-			func(w http.ResponseWriter, r *http.Request) {
-				yamlCommand(w, r, ssntp.DetachVolume)
 			})
 		http.HandleFunc("/evacuate",
 			func(w http.ResponseWriter, r *http.Request) {

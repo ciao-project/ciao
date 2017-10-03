@@ -587,40 +587,6 @@ func TestAttachVolume(t *testing.T) {
 	}
 }
 
-func TestDetachVolume(t *testing.T) {
-	client, err := testutil.NewSsntpTestClientConnection("DetachVolume", ssntp.AGENT, testutil.AgentUUID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.Ssntp.Close()
-
-	serverCh := server.AddCmdChan(ssntp.DetachVolume)
-
-	// ok to not send workload first?
-
-	err = ctl.client.detachVolume("volID", "instanceID", client.UUID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := server.GetCmdChanResult(serverCh, ssntp.DetachVolume)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if result.NodeUUID != client.UUID {
-		t.Fatal("Did not get node ID")
-	}
-
-	if result.VolumeUUID != "volID" {
-		t.Fatal("Did not get volume ID")
-	}
-
-	if result.InstanceUUID != "instanceID" {
-		t.Fatal("Did not get instance ID")
-	}
-}
-
 func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
 	bd, err := ctl.CreateBlockDevice("", "", 0)
 	if err != nil {

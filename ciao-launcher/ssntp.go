@@ -136,18 +136,6 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 			return
 		}
 		client.cmdCh <- &cmdWrapper{instance, &insAttachVolumeCmd{volume}}
-	case ssntp.DetachVolume:
-		instance, volume, payloadErr := parseDetachVolumePayload(payload)
-		if payloadErr != nil {
-			detachVolumeError := &detachVolumeError{
-				payloadErr.err,
-				payloads.DetachVolumeFailureReason(payloadErr.code),
-			}
-			detachVolumeError.send(client.conn, "", "")
-			glog.Errorf("Unable to parse YAML: %s", payloadErr.err)
-			return
-		}
-		client.cmdCh <- &cmdWrapper{instance, &insDetachVolumeCmd{volume}}
 	case ssntp.EVACUATE:
 		client.cmdCh <- &cmdWrapper{"", &evacuateCmd{}}
 	case ssntp.Restore:

@@ -441,31 +441,6 @@ func qmpAttach(cmd virtualizerAttachCmd, q *qemu.QMP) {
 	cmd.responseCh <- err
 }
 
-func qmpDetach(cmd virtualizerDetachCmd, q *qemu.QMP) {
-	glog.Info("Detach command received")
-	devID := fmt.Sprintf("device_%s", cmd.volumeUUID)
-	var err error
-	for i := 0; i < 2; i++ {
-		ctx, cancelFN := context.WithTimeout(context.Background(), time.Second*2)
-		err := q.ExecuteDeviceDel(ctx, devID)
-		cancelFN()
-		if err == nil {
-			break
-		}
-		glog.Warningf("Failed to execute device_del: %v, re-trying", err)
-	}
-	if err != nil {
-		glog.Errorf("Failed to execute device_del: %v", err)
-	} else {
-		blockdevID := fmt.Sprintf("drive_%s", cmd.volumeUUID)
-		err = q.ExecuteBlockdevDel(context.Background(), blockdevID)
-		if err != nil {
-			glog.Errorf("Failed to execute x-blockdev-del: %v", err)
-		}
-	}
-	cmd.responseCh <- err
-}
-
 func qmpConnect(qmpChannel chan interface{}, instance, instanceDir string, closedCh chan struct{},
 	connectedCh chan struct{}, wg *sync.WaitGroup, boot bool) {
 
@@ -518,8 +493,6 @@ DONE:
 			}
 		case virtualizerAttachCmd:
 			qmpAttach(cmd, q)
-		case virtualizerDetachCmd:
-			qmpDetach(cmd, q)
 		}
 	}
 }

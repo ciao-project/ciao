@@ -115,10 +115,6 @@ func (client *ssntpClientWrapper) attachVolume(volID string, instanceID string, 
 	return client.realClient.attachVolume(volID, instanceID, nodeID)
 }
 
-func (client *ssntpClientWrapper) detachVolume(volID string, instanceID string, nodeID string) error {
-	return client.realClient.detachVolume(volID, instanceID, nodeID)
-}
-
 func (client *ssntpClientWrapper) ssntpClient() *ssntp.Client {
 	return client.realClient.ssntpClient()
 }
