@@ -205,7 +205,8 @@ const PartialStartYaml = `start:
 `
 
 // StartFailureYaml is a sample workload StartFailure ssntp.Error payload for test cases
-const StartFailureYaml = `instance_uuid: ` + InstanceUUID + `
+const StartFailureYaml = `node_uuid: ` + AgentUUID + `
+instance_uuid: ` + InstanceUUID + `
 reason: full_cloud
 restart: false
 `
@@ -392,7 +393,8 @@ const ConfigureYaml = `configure:
 `
 
 // DeleteFailureYaml is a sample workload DeleteFailure ssntp.Error payload for test cases
-const DeleteFailureYaml = `instance_uuid: ` + InstanceUUID + `
+const DeleteFailureYaml = `node_uuid: ` + AgentUUID + `
+instance_uuid: ` + InstanceUUID + `
 reason: no_instance
 `
 
@@ -604,13 +606,15 @@ const BadDetachVolumeYaml = `detach_volume:
 `
 
 // AttachVolumeFailureYaml is a sample AttachVolumeFailure ssntp.Error payload for test cases
-const AttachVolumeFailureYaml = `instance_uuid: ` + InstanceUUID + `
+const AttachVolumeFailureYaml = `node_uuid: ` + AgentUUID + `
+instance_uuid: ` + InstanceUUID + `
 volume_uuid: ` + VolumeUUID + `
 reason: attach_failure
 `
 
 // DetachVolumeFailureYaml is a sample DetachVolumeFailure ssntp.Error payload for test cases
-const DetachVolumeFailureYaml = `instance_uuid: ` + InstanceUUID + `
+const DetachVolumeFailureYaml = `node_uuid: ` + AgentUUID + `
+instance_uuid: ` + InstanceUUID + `
 volume_uuid: ` + VolumeUUID + `
 reason: detach_failure
 `

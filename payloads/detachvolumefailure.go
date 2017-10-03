@@ -60,6 +60,9 @@ const (
 // ErrorDetachVolumeFailure represents the unmarshalled version of the contents of a
 // SSNTP ERROR frame whose type is set to ssntp.DetachVolumeFailure.
 type ErrorDetachVolumeFailure struct {
+	// NodeUUID is the UUID of the node that generated this error.
+	NodeUUID string `yaml:"node_uuid"`
+
 	// InstanceUUID is the UUID of the instance from which a volume could not be
 	// detached.
 	InstanceUUID string `yaml:"instance_uuid"`
