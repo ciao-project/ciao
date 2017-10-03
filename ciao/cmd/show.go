@@ -19,15 +19,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var tenantID string
-var computenode string
-var detailed bool
-var resultlimit int
-var marker string
-var offset int
-var tenant string
-var workload string
-
 var showCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show information about various ciao objects",
@@ -38,8 +29,8 @@ var eventShowCmd = &cobra.Command{
 	Use:   "event",
 	Long: `When called with no args, it will print all events.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(tenantID) != 0 {
-			args = append(args, tenantID)
+		if len(sdk.InstanceFlags.TenantID) != 0 {
+			args = append(args, sdk.InstanceFlags.TenantID)
 		}
 		sdk.Show(cmd, args)
 	},
@@ -91,7 +82,7 @@ var volumeShowCmd = &cobra.Command{
 }
 
 var workloadShowCmd = &cobra.Command{
-	Use:   "workload",
+	Use:   "workload [UUID]",
 	Long: `When called with no args, it will print all workloads.`,
 }
 	
@@ -107,13 +98,13 @@ func init() {
 
 	showCmd.PersistentFlags().StringVarP(&sdk.Template, "template", "t", "", "Template used to format output")
 
-	eventShowCmd.Flags().StringVar(&tenantID, "tenant-id", "", "Tenant ID to list events for")
+	eventShowCmd.Flags().StringVar(&sdk.InstanceFlags.TenantID, "tenant-id", "", "Tenant ID to list events for")
 
-	instanceShowCmd.Flags().StringVar(&computenode, "computenode", "", "Compute node to list instances from (defalut to all  nodes when empty)")
-	instanceShowCmd.Flags().BoolVar(&detailed, "verbose", false, "Print detailed information about each instance")
-	instanceShowCmd.Flags().IntVar(&resultlimit, "limit", 1, "Limit listing to <limit> results")
-	instanceShowCmd.Flags().StringVar(&marker, "marker", "", "Show instance list starting from the next instance after marker")
-	instanceShowCmd.Flags().IntVar(&offset, "offset", 0, "Show instance list starting from instance <offset>")
-	instanceShowCmd.Flags().StringVar(&tenant, "tenant", "", "Specify to list instances from a tenant other than -tenant-id")
-	instanceShowCmd.Flags().StringVar(&workload, "workload", "", "Workload UUID")
+	instanceShowCmd.Flags().StringVar(&sdk.InstanceFlags.Computenode, "computenode", "", "Compute node to list instances from (defalut to all  nodes when empty)")
+	instanceShowCmd.Flags().BoolVar(&sdk.InstanceFlags.Detail, "verbose", false, "Print detailed information about each instance")
+	instanceShowCmd.Flags().IntVar(&sdk.InstanceFlags.Limit, "limit", 1, "Limit listing to <limit> results")
+	instanceShowCmd.Flags().StringVar(&sdk.InstanceFlags.Marker, "marker", "", "Show instance list starting from the next instance after marker")
+	instanceShowCmd.Flags().IntVar(&sdk.InstanceFlags.Offset, "offset", 0, "Show instance list starting from instance <offset>")
+	instanceShowCmd.Flags().StringVar(&sdk.InstanceFlags.TenantID, "tenant", "", "Specify to list instances from a tenant other than -tenant-id")
+	instanceShowCmd.Flags().StringVar(&sdk.InstanceFlags.Workload, "workload", "", "Workload UUID")
 }

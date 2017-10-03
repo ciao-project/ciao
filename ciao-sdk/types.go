@@ -33,3 +33,14 @@ type workloadOptions struct {
 	CloudConfigFile string           `yaml:"cloud_init,omitempty"`
 	Disks           []disk           `yaml:"disks,omitempty"`
 }
+
+type InstanceCmd struct {
+	TenantID string
+	Computenode string
+	Detail bool
+	Limit int
+	Marker string
+	Offset int
+	Tenant string
+	Workload string
+}

@@ -41,6 +41,8 @@ var scopedToken string
 
 var Template string
 
+var InstanceFlags = new(InstanceCmd)
+
 func infof(format string, args ...interface{}) {
 	if glog.V(1) {
 		glog.InfoDepth(1, fmt.Sprintf("ciao INFO: "+format, args...))
