@@ -32,7 +32,7 @@ func (ave *attachVolumeError) send(conn serverConn, instance, volume string) {
 		return
 	}
 
-	payload, err := generateAttachVolumeError(instance, volume, ave)
+	payload, err := generateAttachVolumeError(conn.UUID(), instance, volume, ave)
 	if err != nil {
 		glog.Errorf("Unable to generate payload for attach_volume_failure: %v", err)
 		return

@@ -32,7 +32,7 @@ func (de *deleteError) send(conn serverConn, instance string) {
 		return
 	}
 
-	payload, err := generateDeleteError(instance, de)
+	payload, err := generateDeleteError(conn.UUID(), instance, de)
 	if err != nil {
 		glog.Errorf("Unable to generate payload for delete_failure: %v", err)
 		return

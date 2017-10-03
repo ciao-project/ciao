@@ -39,6 +39,9 @@ const (
 // ErrorDeleteFailure represents the unmarshalled version of the contents of a
 // SSNTP ERROR frame whose type is set to ssntp.DeleteFailure.
 type ErrorDeleteFailure struct {
+	// NodeUUID is the UUID of the node that generated this error.
+	NodeUUID string `yaml:"node_uuid"`
+
 	// InstanceUUID is the UUID of the instance that could not be deleted.
 	InstanceUUID string `yaml:"instance_uuid"`
 

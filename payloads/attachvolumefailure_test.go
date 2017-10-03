@@ -21,7 +21,7 @@ import (
 
 	. "github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/testutil"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestAttachVolumeFailureUnmarshal(t *testing.T) {
@@ -31,12 +31,16 @@ func TestAttachVolumeFailureUnmarshal(t *testing.T) {
 		t.Error(err)
 	}
 
+	if error.NodeUUID != testutil.AgentUUID {
+		t.Error("Wrong Node UUID field")
+	}
+
 	if error.InstanceUUID != testutil.InstanceUUID {
-		t.Error("Wrong UUID field")
+		t.Error("Wrong Instance UUID field")
 	}
 
 	if error.VolumeUUID != testutil.VolumeUUID {
-		t.Error("Wrong UUID field")
+		t.Error("Wrong Volume UUID field")
 	}
 
 	if error.Reason != AttachVolumeAttachFailure {
@@ -46,6 +50,7 @@ func TestAttachVolumeFailureUnmarshal(t *testing.T) {
 
 func TestAttachVolumeFailureMarshal(t *testing.T) {
 	error := ErrorAttachVolumeFailure{
+		NodeUUID:     testutil.AgentUUID,
 		InstanceUUID: testutil.InstanceUUID,
 		VolumeUUID:   testutil.VolumeUUID,
 		Reason:       AttachVolumeAttachFailure,
