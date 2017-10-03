@@ -78,6 +78,7 @@ func (d logData) Init() error {
 		(
 		id integer primary key,
 		tenant_id varchar(32),
+		node_id varchar(32),
 		type string,
 		message string,
 		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -575,13 +576,13 @@ func (ds *sqliteDB) disconnect() {
 	ds.db.Close()
 }
 
-func (ds *sqliteDB) logEvent(tenantID string, eventType string, message string) error {
+func (ds *sqliteDB) logEvent(event types.LogEntry) error {
 	db := ds.getTableDB("log")
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	_, err := db.Exec("INSERT INTO log (tenant_id, type, message) VALUES (?, ?, ?)", tenantID, eventType, message)
+	_, err := db.Exec("INSERT INTO log (tenant_id, node_id, type, message) VALUES (?, ?, ?, ?)", event.TenantID, event.NodeID, event.EventType, event.Message)
 
 	return err
 }
@@ -1384,7 +1385,7 @@ func (ds *sqliteDB) getEventLog() ([]*types.LogEntry, error) {
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	rows, err := db.Query("SELECT timestamp, tenant_id, type, message FROM log")
+	rows, err := db.Query("SELECT timestamp, tenant_id, node_id, type, message FROM log")
 	if err != nil {
 		return nil, err
 	}
@@ -1393,7 +1394,7 @@ func (ds *sqliteDB) getEventLog() ([]*types.LogEntry, error) {
 	logEntries = make([]*types.LogEntry, 0)
 	for rows.Next() {
 		var e types.LogEntry
-		err = rows.Scan(&e.Timestamp, &e.TenantID, &e.EventType, &e.Message)
+		err = rows.Scan(&e.Timestamp, &e.TenantID, &e.NodeID, &e.EventType, &e.Message)
 		if err != nil {
 			return nil, err
 		}

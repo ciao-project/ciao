@@ -777,7 +777,12 @@ func TestGetBatchFrameSummary(t *testing.T) {
 }
 
 func TestGetEventLog(t *testing.T) {
-	err := ds.db.logEvent("test-tenantID", "info", "this is a test")
+	e := types.LogEntry{
+		TenantID:  "test-tenantID",
+		EventType: "info",
+		Message:   "this is a test",
+	}
+	err := ds.db.logEvent(e)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -789,7 +794,12 @@ func TestGetEventLog(t *testing.T) {
 }
 
 func TestLogEvent(t *testing.T) {
-	err := ds.db.logEvent("test-tenantID", "info", "this is a test")
+	e := types.LogEntry{
+		TenantID:  "test-tenantID",
+		EventType: "info",
+		Message:   "this is a test",
+	}
+	err := ds.db.logEvent(e)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1181,7 +1191,7 @@ func TestStartFailureFullCloud(t *testing.T) {
 
 	reason := payloads.FullCloud
 
-	err = ds.StartFailure(instance.ID, reason, false)
+	err = ds.StartFailure(instance.ID, reason, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}

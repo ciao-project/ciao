@@ -82,7 +82,7 @@ type persistentStore interface {
 	disconnect()
 
 	// interfaces related to logging
-	logEvent(tenantID string, eventType string, message string) error
+	logEvent(event types.LogEntry) error
 	clearLog() error
 	getEventLog() (logEntries []*types.LogEntry, err error)
 
@@ -921,7 +921,13 @@ func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFa
 	}
 
 	msg := fmt.Sprintf("Restart Failure %s: %s", instanceID, reason.String())
-	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
+	event := types.LogEntry{
+		TenantID:  i.TenantID,
+		Message:   msg,
+		EventType: string(userError),
+		NodeID:    i.NodeID,
+	}
+	return errors.Wrap(ds.db.logEvent(event), "Error logging event")
 }
 
 // StopFailure logs a StopFailure in the datastore
@@ -932,8 +938,14 @@ func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureR
 	}
 
 	msg := fmt.Sprintf("Stop Failure %s: %s", instanceID, reason.String())
+	event := types.LogEntry{
+		TenantID:  i.TenantID,
+		Message:   msg,
+		EventType: string(userError),
+		NodeID:    i.NodeID,
+	}
 
-	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
+	return errors.Wrap(ds.db.logEvent(event), "Error logging event")
 }
 
 // StartFailure will clean up after a failure to start an instance.
@@ -946,7 +958,7 @@ func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureR
 // is received.  StartFailure errors may also be generated when restarting an
 // exited instance and we want to make sure that a failure to restart such
 // an instance does not result in it being deleted.
-func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailureReason, migration bool) error {
+func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailureReason, migration bool, nodeID string) error {
 	i, err := ds.GetInstance(instanceID)
 	if err != nil {
 		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
@@ -962,8 +974,23 @@ func (ds *Datastore) StartFailure(instanceID string, reason payloads.StartFailur
 		}
 	}
 
+	ds.nodesLock.Lock()
+	defer ds.nodesLock.Unlock()
+
+	n, ok := ds.nodes[nodeID]
+	if ok {
+		n.TotalFailures++
+		n.StartFailures++
+	}
+
 	msg := fmt.Sprintf("Start Failure %s: %s", instanceID, reason.String())
-	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
+	e := types.LogEntry{
+		TenantID:  i.TenantID,
+		EventType: string(userError),
+		Message:   msg,
+		NodeID:    nodeID,
+	}
+	return errors.Wrap(ds.db.logEvent(e), "Error logging event")
 }
 
 // AttachVolumeFailure will clean up after a failure to attach a volume.
@@ -990,9 +1017,24 @@ func (ds *Datastore) AttachVolumeFailure(instanceID string, volumeID string, rea
 		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
 	}
 
-	msg := fmt.Sprintf("Attach Volume Failure %s to %s: %s", volumeID, instanceID, reason.String())
+	ds.nodesLock.Lock()
+	defer ds.nodesLock.Unlock()
 
-	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
+	n, ok := ds.nodes[i.NodeID]
+	if ok {
+		n.TotalFailures++
+		n.AttachVolumeFailures++
+	}
+
+	msg := fmt.Sprintf("Attach Volume Failure %s to %s: %s", volumeID, instanceID, reason.String())
+	e := types.LogEntry{
+		TenantID:  i.TenantID,
+		EventType: string(userError),
+		Message:   msg,
+		NodeID:    i.NodeID,
+	}
+
+	return errors.Wrap(ds.db.logEvent(e), "Error logging event")
 }
 
 // DetachVolumeFailure will clean up after a failure to detach a volume.
@@ -1023,8 +1065,23 @@ func (ds *Datastore) DetachVolumeFailure(instanceID string, volumeID string, rea
 	}
 
 	msg := fmt.Sprintf("Detach Volume Failure %s from %s: %s", volumeID, instanceID, reason.String())
+	e := types.LogEntry{
+		TenantID:  i.TenantID,
+		EventType: string(userError),
+		Message:   msg,
+		NodeID:    i.NodeID,
+	}
 
-	return errors.Wrap(ds.db.logEvent(i.TenantID, string(userError), msg), "Error logging event")
+	ds.nodesLock.Lock()
+	defer ds.nodesLock.Unlock()
+
+	n, ok := ds.nodes[i.NodeID]
+	if ok {
+		n.TotalFailures++
+		n.DetachVolumeFailures++
+	}
+
+	return errors.Wrap(ds.db.logEvent(e), "Error logging event")
 }
 
 func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
@@ -1078,13 +1135,26 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 
 // DeleteInstance removes an instance from the datastore.
 func (ds *Datastore) DeleteInstance(instanceID string) error {
+	i, err := ds.GetInstance(instanceID)
+	if err != nil {
+		return errors.Wrapf(err, "error deleting instance")
+	}
+
+	nodeID := i.NodeID
+
 	tenantID, err := ds.deleteInstance(instanceID)
 	if err != nil {
 		return errors.Wrapf(err, "error deleting instance")
 	}
 
 	msg := fmt.Sprintf("Deleted Instance %s", instanceID)
-	return errors.Wrap(ds.db.logEvent(tenantID, string(userInfo), msg), "Error logging event")
+	e := types.LogEntry{
+		TenantID:  tenantID,
+		EventType: string(userError),
+		Message:   msg,
+		NodeID:    nodeID,
+	}
+	return errors.Wrap(ds.db.logEvent(e), "Error logging event")
 }
 
 func (ds *Datastore) updateInstanceStatus(status, instanceID string) error {
@@ -1288,20 +1358,24 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 	n.ID = stat.NodeUUID
 	n.Hostname = stat.NodeHostName
 
-	ds.nodesLock.Unlock()
-
 	cnStat := types.CiaoNode{
-		ID:            stat.NodeUUID,
-		Hostname:      n.Hostname,
-		Status:        stat.Status,
-		Load:          stat.Load,
-		MemTotal:      stat.MemTotalMB,
-		MemAvailable:  stat.MemAvailableMB,
-		DiskTotal:     stat.DiskTotalMB,
-		DiskAvailable: stat.DiskAvailableMB,
-		OnlineCPUs:    stat.CpusOnline,
+		ID:                   stat.NodeUUID,
+		Hostname:             n.Hostname,
+		Status:               stat.Status,
+		Load:                 stat.Load,
+		MemTotal:             stat.MemTotalMB,
+		MemAvailable:         stat.MemAvailableMB,
+		DiskTotal:            stat.DiskTotalMB,
+		DiskAvailable:        stat.DiskAvailableMB,
+		OnlineCPUs:           stat.CpusOnline,
+		TotalFailures:        n.TotalFailures,
+		StartFailures:        n.StartFailures,
+		AttachVolumeFailures: n.AttachVolumeFailures,
+		DeleteFailures:       n.DeleteFailures,
+		DetachVolumeFailures: n.DetachVolumeFailures,
 	}
 
+	ds.nodesLock.Unlock()
 	ds.nodeLastStatLock.Lock()
 
 	delete(ds.nodeLastStat, stat.NodeUUID)
@@ -1528,6 +1602,7 @@ func (ds *Datastore) GetNodeSummary() ([]*types.NodeSummary, error) {
 		}
 
 		summary.NodeID = n.ID
+		summary.TotalFailures = n.TotalFailures
 
 		nodes = append(nodes, &summary)
 	}
@@ -1566,12 +1641,22 @@ func (ds *Datastore) ClearLog() error {
 
 // LogEvent will add a message to the persistent event log.
 func (ds *Datastore) LogEvent(tenant string, msg string) error {
-	return ds.db.logEvent(tenant, string(userInfo), msg)
+	e := types.LogEntry{
+		TenantID:  tenant,
+		EventType: string(userInfo),
+		Message:   msg,
+	}
+	return ds.db.logEvent(e)
 }
 
 // LogError will add a message to the persistent event log as an error
 func (ds *Datastore) LogError(tenant string, msg string) error {
-	return ds.db.logEvent(tenant, string(userError), msg)
+	e := types.LogEntry{
+		TenantID:  tenant,
+		EventType: string(userError),
+		Message:   msg,
+	}
+	return ds.db.logEvent(e)
 }
 
 // AddBlockDevice will store information about new BlockData into

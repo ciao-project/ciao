@@ -63,13 +63,7 @@ func (db *MemoryDB) disconnect() {
 
 }
 
-func (db *MemoryDB) logEvent(tenantID string, eventType string, message string) error {
-	entry := types.LogEntry{
-		TenantID:  tenantID,
-		EventType: eventType,
-		Message:   message,
-	}
-
+func (db *MemoryDB) logEvent(entry types.LogEntry) error {
 	db.logEntries = append(db.logEntries, &entry)
 
 	return nil

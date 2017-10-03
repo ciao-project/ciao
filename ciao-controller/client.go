@@ -366,7 +366,7 @@ func (client *ssntpClient) startFailure(payload []byte) {
 	cnci := i.CNCI
 	tenantID := i.TenantID
 
-	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason, failure.Restart)
+	err = client.ctl.ds.StartFailure(failure.InstanceUUID, failure.Reason, failure.Restart, failure.NodeUUID)
 	if err != nil {
 		glog.Warningf("Error adding StartFailure to datastore: %v", err)
 	}
@@ -451,7 +451,7 @@ func (client *ssntpClient) assignError(payload []byte) {
 	client.ctl.qs.Release(failure.TenantUUID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
 
 	msg := fmt.Sprintf("Failed to map %s to %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
-	client.ctl.ds.LogEvent(failure.TenantUUID, msg)
+	client.ctl.ds.LogError(failure.TenantUUID, msg)
 }
 
 func (client *ssntpClient) unassignError(payload []byte) {
@@ -464,7 +464,7 @@ func (client *ssntpClient) unassignError(payload []byte) {
 
 	// we can't unmap the IP - all we can do is log.
 	msg := fmt.Sprintf("Failed to unmap %s from %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
-	client.ctl.ds.LogEvent(failure.TenantUUID, msg)
+	client.ctl.ds.LogError(failure.TenantUUID, msg)
 }
 
 func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {

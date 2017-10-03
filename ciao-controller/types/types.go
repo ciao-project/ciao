@@ -180,6 +180,7 @@ type TenantRequest struct {
 type LogEntry struct {
 	Timestamp time.Time `json:"time_stamp"`
 	TenantID  string    `json:"tenant_id"`
+	NodeID    string    `json:"node_id"`
 	EventType string    `json:"type"`
 	Message   string    `json:"message"`
 }
@@ -203,6 +204,7 @@ type NodeSummary struct {
 	TotalRunningInstances int    `json:"total_running_instances"`
 	TotalPendingInstances int    `json:"total_pending_instances"`
 	TotalPausedInstances  int    `json:"total_paused_instances"`
+	TotalFailures         int    `json:"total_failures"`
 }
 
 // TenantCNCI contains information about the CNCI instance for a tenant.
@@ -245,10 +247,15 @@ type BatchFrameSummary struct {
 
 // Node contains information about a physical node in the cluster.
 type Node struct {
-	ID       string     `json:"node_id"`
-	IPAddr   string     `json:"ip_address"`
-	Hostname string     `json:"hostname"`
-	NodeRole ssntp.Role `json:"role"`
+	ID                   string     `json:"node_id"`
+	IPAddr               string     `json:"ip_address"`
+	Hostname             string     `json:"hostname"`
+	TotalFailures        int        `json:"total_failures"`
+	StartFailures        int        `json:"start_failures"`
+	AttachVolumeFailures int        `json:"attach_failures"`
+	DeleteFailures       int        `json:"delete_failures"`
+	DetachVolumeFailures int        `json:"detach_failures"`
+	NodeRole             ssntp.Role `json:"role"`
 }
 
 // BlockState represents the state of the block device in the controller
@@ -312,6 +319,11 @@ type CiaoNode struct {
 	TotalRunningInstances int       `json:"total_running_instances"`
 	TotalPendingInstances int       `json:"total_pending_instances"`
 	TotalPausedInstances  int       `json:"total_paused_instances"`
+	TotalFailures         int       `json:"total_failures"`
+	StartFailures         int       `json:"start_failures"`
+	AttachVolumeFailures  int       `json:"attach_failures"`
+	DeleteFailures        int       `json:"delete_failures"`
+	DetachVolumeFailures  int       `json:"detach_failures"`
 }
 
 // NodeStatusType contains the valid values of a node's status
