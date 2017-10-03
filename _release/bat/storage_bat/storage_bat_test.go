@@ -362,13 +362,16 @@ func TestDeleteInstanceWhileAttaching(t *testing.T) {
 // Check that a deleting a detaching volume fails
 //
 // Create an instance and a volume, attach the volume to the instance and wait
-// for it to transition to available.  Detach and delete the volume before the
-// state of the volume has transitioned back to available.
+// for it to transition to available.  Stop the instance and wait for it to be
+// in exited state.  Detach and delete the volume before the state of the volume
+// has transitioned back to available.
 //
 // Volume and instance should be created correctly and the volume should be
 // attached without issue.  The first attempt to delete the detaching volume
 // may fail, but the subsequent attempt made after the volume has become
-// available again, should succeed.
+// available again, should succeed.  Detaching is only allowed on exited
+// instances so it is necessary to stop the instance first.
+
 func TestDeleteBeforeDetached(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()
@@ -403,6 +406,11 @@ func TestDeleteBeforeDetached(t *testing.T) {
 			volumeID, instanceID, err)
 	}
 
+	err = bat.StopInstanceAndWait(ctx, "", instanceID)
+	if err != nil {
+		t.Fatalf("Unable to stop instance %s : %v", instanceID, err)
+	}
+
 	err = bat.DetachVolume(ctx, "", volumeID)
 	if err != nil {
 		t.Fatalf("Unable to detach volume %s from instance %s : %v",
@@ -427,12 +435,15 @@ func TestDeleteBeforeDetached(t *testing.T) {
 // Check that we can attach and detach volumes
 //
 // Create an instance and a volume.  Attach the volume and wait for its status to
-// change to in-use.  Detach the volume and wait for its status to change back to
-// available.  Delete the instance and volume.
+// change to in-use.  Stop the instance and wait for it to be exited.  Detach the
+// volume and wait for its status to change back to available.  Delete the
+// instance and volume.
 //
 // The instance and volume should be created correctly.  The volume should be attached
 // and detached without issue and its status should transition from available to in-use
 // and back to available.  The instance and the volume should be deleted without issue.
+// Detaching is only allowed on exited instances so it is necessary to stop the instance
+// first.
 func TestAttachDetach(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()
@@ -466,6 +477,11 @@ func TestAttachDetach(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to attach volume %s to instance %s : %v",
 			volumeID, instanceID, err)
+	}
+
+	err = bat.StopInstanceAndWait(ctx, "", instanceID)
+	if err != nil {
+		t.Fatalf("Unable to stop instance %s : %v", instanceID, err)
 	}
 
 	err = bat.DetachVolumeAndWait(ctx, "", volumeID)
@@ -592,11 +608,6 @@ func TestDoubleAttach(t *testing.T) {
 	err = bat.WaitForVolumeStatus(ctx, "", volumeID, "in-use")
 	if err != nil {
 		t.Fatalf("Volume %s did not attach correctly : %v", volumeID, err)
-	}
-
-	err = bat.DetachVolumeAndWait(ctx, "", volumeID)
-	if err != nil {
-		t.Fatalf("Volume %s did not detach correctly : %v", volumeID, err)
 	}
 }
 

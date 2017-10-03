@@ -267,14 +267,6 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 		}
 	}
 
-	// update volume state to detaching
-	info.State = types.Detaching
-
-	err = c.ds.UpdateBlockDevice(info)
-	if err != nil {
-		return err
-	}
-
 	var retval error
 
 	// detach everything for this volume
@@ -288,11 +280,21 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 			continue
 		}
 
-		// send command to attach volume.
-		err = c.client.detachVolume(a.BlockID, a.InstanceID, i.NodeID)
+		i.StateLock.RLock()
+		state := i.State
+		i.StateLock.RUnlock()
+
+		if state != payloads.Exited {
+			retval = errors.New("Can only detach from exited instances")
+			continue
+		}
+
+		// update volume state to detaching
+		info.State = types.Available
+
+		err = c.ds.UpdateBlockDevice(info)
 		if err != nil {
-			retval = err
-			glog.Errorf("Can't detach volume %s from instance %s\n", a.BlockID, a.InstanceID)
+			return err
 		}
 	}
 
