@@ -299,6 +299,7 @@ type StorageAttachment struct {
 // node.
 type CiaoNode struct {
 	ID                    string    `json:"id"`
+	Hostname              string    `json:"hostname"`
 	Timestamp             time.Time `json:"updated"`
 	Status                string    `json:"status"`
 	MemTotal              int       `json:"ram_total"`

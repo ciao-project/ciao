@@ -1292,6 +1292,7 @@ func (ds *Datastore) addNodeStat(stat payloads.Stat) error {
 
 	cnStat := types.CiaoNode{
 		ID:            stat.NodeUUID,
+		Hostname:      n.Hostname,
 		Status:        stat.Status,
 		Load:          stat.Load,
 		MemTotal:      stat.MemTotalMB,
