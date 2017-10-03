@@ -87,6 +87,9 @@ const (
 // ErrorStartFailure represents the unmarshalled version of the contents of a
 // SSNTP ERROR frame whose type is set to ssntp.StartFailure.
 type ErrorStartFailure struct {
+	// NodeUUID is the UUID of the node that generated this error.
+	NodeUUID string `yaml:"node_uuid"`
+
 	// InstanceUUID is the UUID of the instance that could not be started.
 	InstanceUUID string `yaml:"instance_uuid"`
 

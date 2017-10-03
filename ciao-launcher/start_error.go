@@ -33,7 +33,7 @@ func (se *startError) send(conn serverConn, instance string) {
 		return
 	}
 
-	payload, err := generateStartError(instance, se)
+	payload, err := generateStartError(conn.UUID(), instance, se)
 	if err != nil {
 		glog.Errorf("Unable to generate payload for start_failure: %v", err)
 		return

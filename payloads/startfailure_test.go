@@ -21,7 +21,7 @@ import (
 
 	. "github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/testutil"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestStartFailureUnmarshal(t *testing.T) {
@@ -31,8 +31,12 @@ func TestStartFailureUnmarshal(t *testing.T) {
 		t.Error(err)
 	}
 
+	if error.NodeUUID != testutil.AgentUUID {
+		t.Error("Wrong Node UUID field")
+	}
+
 	if error.InstanceUUID != testutil.InstanceUUID {
-		t.Error("Wrong UUID field")
+		t.Error("Wrong Instance UUID field")
 	}
 
 	if error.Reason != FullCloud {
@@ -42,6 +46,7 @@ func TestStartFailureUnmarshal(t *testing.T) {
 
 func TestStartFailureMarshal(t *testing.T) {
 	error := ErrorStartFailure{
+		NodeUUID:     testutil.AgentUUID,
 		InstanceUUID: testutil.InstanceUUID,
 		Reason:       FullCloud,
 	}
