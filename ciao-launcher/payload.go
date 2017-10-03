@@ -27,7 +27,7 @@ import (
 	"github.com/ciao-project/ciao/networking/libsnnet"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/golang/glog"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type payloadError struct {
@@ -195,8 +195,9 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	}, nil
 }
 
-func generateStartError(instance string, startErr *startError) (out []byte, err error) {
+func generateStartError(node, instance string, startErr *startError) (out []byte, err error) {
 	sf := &payloads.ErrorStartFailure{
+		NodeUUID:     node,
 		InstanceUUID: instance,
 		Reason:       startErr.code,
 		Restart:      startErr.restart,
@@ -204,16 +205,18 @@ func generateStartError(instance string, startErr *startError) (out []byte, err 
 	return yaml.Marshal(sf)
 }
 
-func generateDeleteError(instance string, deleteErr *deleteError) (out []byte, err error) {
+func generateDeleteError(node, instance string, deleteErr *deleteError) (out []byte, err error) {
 	df := &payloads.ErrorDeleteFailure{
+		NodeUUID:     node,
 		InstanceUUID: instance,
 		Reason:       deleteErr.code,
 	}
 	return yaml.Marshal(df)
 }
 
-func generateAttachVolumeError(instance, volume string, ave *attachVolumeError) (out []byte, err error) {
+func generateAttachVolumeError(node, instance, volume string, ave *attachVolumeError) (out []byte, err error) {
 	avf := &payloads.ErrorAttachVolumeFailure{
+		NodeUUID:     node,
 		InstanceUUID: instance,
 		VolumeUUID:   volume,
 		Reason:       ave.code,
@@ -221,8 +224,9 @@ func generateAttachVolumeError(instance, volume string, ave *attachVolumeError) 
 	return yaml.Marshal(avf)
 }
 
-func generateDetachVolumeError(instance, volume string, dve *detachVolumeError) (out []byte, err error) {
+func generateDetachVolumeError(node, instance, volume string, dve *detachVolumeError) (out []byte, err error) {
 	dvf := &payloads.ErrorDetachVolumeFailure{
+		NodeUUID:     node,
 		InstanceUUID: instance,
 		VolumeUUID:   volume,
 		Reason:       dve.code,

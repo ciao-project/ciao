@@ -32,7 +32,7 @@ func (dve *detachVolumeError) send(conn serverConn, instance, volume string) {
 		return
 	}
 
-	payload, err := generateDetachVolumeError(instance, volume, dve)
+	payload, err := generateDetachVolumeError(conn.UUID(), instance, volume, dve)
 	if err != nil {
 		glog.Errorf("Unable to generate payload for detach_volume_failure: %v", err)
 		return
