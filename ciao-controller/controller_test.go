@@ -736,88 +736,78 @@ func TestAttachVolumeFailure(t *testing.T) {
 
 func doDetachVolumeCommand(t *testing.T, fail bool) {
 	// attach volume should succeed for this test
-	client, tenantID, volume, _ := doAttachVolumeCommand(t, false)
+	client, tenantID, volume, instanceID := doAttachVolumeCommand(t, false)
 	defer client.Ssntp.Close()
 
 	sendStatsCmd(client, t)
 
-	serverCh := server.AddCmdChan(ssntp.DetachVolume)
-	agentCh := client.AddCmdChan(ssntp.DetachVolume)
-	var serverErrorCh chan testutil.Result
-	var controllerCh chan struct{}
-
-	if fail == true {
-		serverErrorCh = server.AddErrorChan(ssntp.DetachVolumeFailure)
-		controllerCh = wrappedClient.addErrorChan(ssntp.DetachVolumeFailure)
-		client.DetachFail = true
-		client.DetachVolumeFailReason = payloads.DetachVolumeNotAttached
-
-		defer func() {
-			client.DetachFail = false
-			client.DetachVolumeFailReason = ""
-		}()
-	}
-
-	err := ctl.DetachVolume(tenantID, volume, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	result, err := server.GetCmdChanResult(serverCh, ssntp.DetachVolume)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if result.NodeUUID != client.UUID ||
-		result.VolumeUUID != volume {
-		t.Fatalf("expected %s %s , got %s %s ", client.UUID, volume, result.NodeUUID, result.VolumeUUID)
-	}
-
-	// at this point, the state of the volume should be "detaching"
 	data, err := ctl.ds.GetBlockDevice(volume)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if data.State != types.Detaching {
+	if data.State != types.InUse {
 		t.Fatalf("expected state %s, got %s\n", types.Detaching, data.State)
 	}
 
-	if fail == true {
-		_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
+	if fail {
+		err := ctl.DetachVolume(tenantID, volume, "")
 		if err == nil {
-			t.Fatal("Success when Failure expected")
+			t.Fatal("Expected error when detaching volume from active instance")
+
 		}
 
-		_, err = server.GetErrorChanResult(serverErrorCh, ssntp.DetachVolumeFailure)
+		data, err := ctl.ds.GetBlockDevice(volume)
 		if err != nil {
 			t.Fatal(err)
+
 		}
 
-		err = wrappedClient.getErrorChan(controllerCh, ssntp.DetachVolumeFailure)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// at this point, the state of the block device should
-		// be set back to InUse
-
-		data2, err := ctl.ds.GetBlockDevice(volume)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if data2.State != types.InUse {
-			t.Fatalf("expected state %s, got %s\n", types.InUse, data2.State)
+		if data.State != types.InUse {
+			t.Fatalf("expected state %s, got %s\n", types.Detaching, data.State)
 		}
 	} else {
-		_, err = client.GetCmdChanResult(agentCh, ssntp.DetachVolume)
+		serverCh := server.AddCmdChan(ssntp.DELETE)
+		clientCh := client.AddCmdChan(ssntp.DELETE)
+
+		err := ctl.stopInstance(instanceID)
 		if err != nil {
 			t.Fatal(err)
 		}
-	}
 
-	return
+		result, err := server.GetCmdChanResult(serverCh, ssntp.DELETE)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = client.GetCmdChanResult(clientCh, ssntp.DELETE)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if result.InstanceUUID != instanceID {
+			t.Fatal("Did not get correct Instance ID")
+		}
+
+		err = sendStopEvent(client, instanceID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = ctl.DetachVolume(tenantID, volume, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		data, err := ctl.ds.GetBlockDevice(volume)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if data.State != types.Available {
+			t.Fatalf("expected state %s, got %s\n", types.Detaching, data.State)
+		}
+	}
 }
 
 func TestDetachVolumeCommand(t *testing.T) {
