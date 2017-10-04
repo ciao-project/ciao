@@ -22,6 +22,14 @@ type defaultResources struct {
 	MemMB int `yaml:"mem_mb"`
 }
 
+// Workload contains detailed information about a workload
+type Workload struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	CPUs int    `json:"vcpus"`
+	Mem  int    `json:"ram"`
+}
+
 // we currently only use the first disk due to lack of support
 // in types.Workload for multiple storage resources.
 type workloadOptions struct {
@@ -35,12 +43,12 @@ type workloadOptions struct {
 }
 
 type InstanceCmd struct {
-	TenantID string
+	TenantID    string
 	Computenode string
-	Detail bool
-	Limit int
-	Marker string
-	Offset int
-	Tenant string
-	Workload string
+	Detail      bool
+	Limit       int
+	Marker      string
+	Offset      int
+	Tenant      string
+	Workload    string
 }

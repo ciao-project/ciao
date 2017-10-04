@@ -7,14 +7,15 @@ import (
 	"strings"
 	"text/tabwriter"
 
-
-	"github.com/ciao-project/ciao/openstack/compute"
-	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/openstack/compute"
+	"github.com/ciao-project/ciao/payloads"
 
-	"net/http"
 	"github.com/intel/tfortools"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
+	"net/http"
 )
 
 type byCreated []compute.ServerDetails
@@ -26,19 +27,50 @@ func (ss byCreated) Less(i, j int) bool { return ss[i].Created.Before(ss[j].Crea
 func dumpInstance(server *compute.ServerDetails) {
 	fmt.Printf("\tUUID: %s\n", server.ID)
 	fmt.Printf("\tStatus: %s\n", server.Status)
-	fmt.Printf("\tPrivate IP: %s\n", server.Addresses.Private[0].Addr)
-	fmt.Printf("\tMAC Address: %s\n", server.Addresses.Private[0].OSEXTIPSMACMacAddr)
-	fmt.Printf("\tCN UUID: %s\n", server.HostID)
-	fmt.Printf("\tImage UUID: %s\n", server.Image.ID)
+	fmt.Printf("\tPrivate IP: %s\n", server.PrivateAddresses[0].Addr)
+	fmt.Printf("\tMAC Address: %s\n", server.PrivateAddresses[0].MacAddr)
+	fmt.Printf("\tCN UUID: %s\n", server.NodeID)
 	fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
 	if server.SSHIP != "" {
 		fmt.Printf("\tSSH IP: %s\n", server.SSHIP)
 		fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
 	}
 
-	for _, vol := range server.OsExtendedVolumesVolumesAttached {
+	for _, vol := range server.Volumes {
 		fmt.Printf("\tVolume: %s\n", vol)
 	}
+}
+
+func listNodeInstances(node string) error {
+	if node == "" {
+		fatalf("Missing required -cn parameter")
+	}
+
+	var servers types.CiaoServersStats
+	url := buildComputeURL("nodes/%s/servers/detail", node)
+
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	err = unmarshalHTTPResponse(resp, &servers)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	for i, server := range servers.Servers {
+		fmt.Printf("Instance #%d\n", i+1)
+		fmt.Printf("\tUUID: %s\n", server.ID)
+		fmt.Printf("\tStatus: %s\n", server.Status)
+		fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
+		fmt.Printf("\tIPv4: %s\n", server.IPv4)
+		fmt.Printf("\tCPUs used: %d\n", server.VCPUUsage)
+		fmt.Printf("\tMemory used: %d MB\n", server.MemUsage)
+		fmt.Printf("\tDisk used: %d MB\n", server.DiskUsage)
+	}
+
+	return nil
 }
 
 func listInstances(cmd *cobra.Command, args []string) error {
@@ -47,7 +79,7 @@ func listInstances(cmd *cobra.Command, args []string) error {
 	}
 
 	if InstanceFlags.Computenode != "" {
-		//return listNodeInstances(InstanceFlags.computenode)
+		return listNodeInstances(InstanceFlags.Computenode)
 	}
 
 	var servers compute.Servers
@@ -115,7 +147,7 @@ func listInstances(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(w, "%d", i+1)
 			fmt.Fprintf(w, "\t%s", server.ID)
 			fmt.Fprintf(w, "\t%s", server.Status)
-			fmt.Fprintf(w, "\t%s", server.Addresses.Private[0].Addr)
+			fmt.Fprintf(w, "\t%s", server.PrivateAddresses[0].Addr)
 			if server.SSHIP != "" {
 				fmt.Fprintf(w, "\t%s", server.SSHIP)
 				fmt.Fprintf(w, "\t%d\n", server.SSHPort)
@@ -132,47 +164,106 @@ func listInstances(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func showInstance(cmd *cobra.Command, args []string) error {
-
-	return nil
-}
-
 func listWorkloads(cmd *cobra.Command, args []string) error {
 	if *tenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var flavors compute.FlavorsDetails
-	if *tenantID == "" {
-		*tenantID = "faketenant"
+	var wls []types.Workload
+
+	var url string
+	if checkPrivilege() {
+		url = buildCiaoURL("workloads")
+	} else {
+		url = buildCiaoURL("%s/workloads", *tenantID)
 	}
 
-	url := buildComputeURL("%s/flavors/detail", *tenantID)
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.WorkloadsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &flavors)
+	err = unmarshalHTTPResponse(resp, &wls)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	var workloads []Workload
+	for i, wl := range wls {
+		workloads = append(workloads, Workload{
+			Name: wl.Description,
+			ID:   wl.ID,
+		})
+
+		for _, r := range wl.Defaults {
+			if r.Type == payloads.MemMB {
+				workloads[i].Mem = r.Value
+			}
+			if r.Type == payloads.VCPUs {
+				workloads[i].CPUs = r.Value
+			}
+		}
 	}
 
 	if Template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "workload-list", Template,
-			&flavors.Flavors, nil)
+			workloads, nil)
 	}
 
-	for i, flavor := range flavors.Flavors {
+	for i, wl := range workloads {
 		fmt.Printf("Workload %d\n", i+1)
 		fmt.Printf("\tName: %s\n\tUUID:%s\n\tCPUs: %d\n\tMemory: %d MB\n",
-			flavor.Name, flavor.ID, flavor.Vcpus, flavor.RAM)
+			wl.Name, wl.ID, wl.CPUs, wl.Mem)
 	}
+
 	return nil
 }
 
-func showWorkload(cmd *cobra.Command, args[]string) error {
+func outputWorkload(w types.Workload) {
+	var opt workloadOptions
+
+	opt.Description = w.Description
+	opt.VMType = string(w.VMType)
+	opt.FWType = w.FWType
+	opt.ImageName = w.ImageName
+	for _, d := range w.Defaults {
+		if d.Type == payloads.VCPUs {
+			opt.Defaults.VCPUs = d.Value
+		} else if d.Type == payloads.MemMB {
+			opt.Defaults.MemMB = d.Value
+		}
+	}
+
+	for _, s := range w.Storage {
+		d := disk{
+			Size:      s.Size,
+			Bootable:  s.Bootable,
+			Ephemeral: s.Ephemeral,
+		}
+		if s.ID != "" {
+			d.ID = &s.ID
+		}
+
+		src := source{
+			Type: s.SourceType,
+			ID:   s.SourceID,
+		}
+
+		d.Source = src
+
+		opt.Disks = append(opt.Disks, d)
+	}
+
+	b, err := yaml.Marshal(opt)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	fmt.Println(string(b))
+	fmt.Println(w.Config)
+}
+
+func showWorkload(cmd *cobra.Command, args []string) error {
 	var wl types.Workload
 
 	if len(args) < 1 {

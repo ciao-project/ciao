@@ -28,13 +28,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-
-	"gopkg.in/yaml.v2"
 )
 
 var scopedToken string
@@ -484,48 +482,4 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 	req.Defaults = append(req.Defaults, r)
 
 	return nil
-}
-
-func outputWorkload(w types.Workload) {
-	var opt workloadOptions
-
-	opt.Description = w.Description
-	opt.VMType = string(w.VMType)
-	opt.FWType = w.FWType
-	opt.ImageName = w.ImageName
-	for _, d := range w.Defaults {
-		if d.Type == payloads.VCPUs {
-			opt.Defaults.VCPUs = d.Value
-		} else if d.Type == payloads.MemMB {
-			opt.Defaults.MemMB = d.Value
-		}
-	}
-
-	for _, s := range w.Storage {
-		d := disk{
-			Size:      s.Size,
-			Bootable:  s.Bootable,
-			Ephemeral: s.Ephemeral,
-		}
-		if s.ID != "" {
-			d.ID = &s.ID
-		}
-
-		src := source{
-			Type: s.SourceType,
-			ID:   s.SourceID,
-		}
-
-		d.Source = src
-
-		opt.Disks = append(opt.Disks, d)
-	}
-
-	b, err := yaml.Marshal(opt)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	fmt.Println(string(b))
-	fmt.Println(w.Config)
 }
