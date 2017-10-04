@@ -134,7 +134,6 @@ func dumpNode(node *types.CiaoNode) {
 	fmt.Printf("\t\tTotal Start Failures: %d\n", node.StartFailures)
 	fmt.Printf("\t\tTotal Delete Failures: %d\n", node.DeleteFailures)
 	fmt.Printf("\t\tTotal Attach Failures: %d\n", node.AttachVolumeFailures)
-	fmt.Printf("\t\tTotal Detach Failures: %d\n", node.DetachVolumeFailures)
 }
 
 func dumpNodes(headerText string, url string, t *template.Template) {

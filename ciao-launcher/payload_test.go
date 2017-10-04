@@ -181,33 +181,6 @@ func TestParseAttachVolumePayload(t *testing.T) {
 	}
 }
 
-// Verify the parseDetachVolumePayload function.
-//
-// The function is passed one valid payload and two invalid payloads.
-//
-// No error should be returned for the valid payload and the returned instance
-// and volume UUIDs should match what is in the payload.  Errors should be
-// returned for the invalid payloads.
-func TestParseDetachVolumePayload(t *testing.T) {
-	instance, volume, err := parseDetachVolumePayload([]byte(testutil.DetachVolumeYaml))
-	if err != nil {
-		t.Fatalf("parseDetachVolumePayload failed: %v", err)
-	}
-	if instance != testutil.InstanceUUID || volume != testutil.VolumeUUID {
-		t.Fatalf("VolumeUUID or InstanceUUID is invalid")
-	}
-
-	_, _, err = parseDetachVolumePayload([]byte("  -"))
-	if err == nil || err.code != payloads.DetachVolumeInvalidPayload {
-		t.Fatalf("AttachVolumeInvalidPayload error expected")
-	}
-
-	_, _, err = parseDetachVolumePayload([]byte(testutil.BadDetachVolumeYaml))
-	if err == nil || err.code != payloads.DetachVolumeInvalidData {
-		t.Fatalf("DetachVolumeInvalidData error expected")
-	}
-}
-
 // Verify the parseStartPayload function.
 //
 // The function is passed one valid payload and a number of invalid payloads.

@@ -38,10 +38,3 @@ type VolumeCmd struct {
 type AttachVolume struct {
 	Attach VolumeCmd `yaml:"attach_volume"`
 }
-
-// DetachVolume represents the unmarshalled version of the contents of a SSNTP
-// DetachVolume payload.  The structure contains enough information to detach a
-// volume from an existing instance.
-type DetachVolume struct {
-	Detach VolumeCmd `yaml:"detach_volume"`
-}

@@ -59,7 +59,6 @@ type instanceTestState struct {
 	stf             payloads.ErrorStartFailure
 	df              payloads.ErrorDeleteFailure
 	avf             payloads.ErrorAttachVolumeFailure
-	dvf             payloads.ErrorDetachVolumeFailure
 	deMigration     bool
 	de              payloads.EventInstanceDeleted
 	se              payloads.EventInstanceStopped
@@ -142,11 +141,6 @@ func (v *instanceTestState) SendError(error ssntp.Error, payload []byte) (int, e
 		err := yaml.Unmarshal(payload, &v.avf)
 		if err != nil {
 			v.t.Fatalf("Failed to unmarshall attach volume error %v", err)
-		}
-	case ssntp.DetachVolumeFailure:
-		err := yaml.Unmarshal(payload, &v.dvf)
-		if err != nil {
-			v.t.Fatalf("Failed to unmarshall detach volume error %v", err)
 		}
 	}
 
@@ -897,92 +891,6 @@ func TestAttachExistingVolumeToInstance(t *testing.T) {
 		if state.avf.Reason != payloads.AttachVolumeAlreadyAttached {
 			t.Errorf("Unexpected error.  Expected %s got %s",
 				payloads.AttachVolumeAlreadyAttached, state.avf.Reason)
-		}
-	case <-time.After(time.Second):
-		t.Error("Timed out waiting for attach to fail")
-	}
-
-	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
-	}
-
-	wg.Wait()
-}
-
-// Check we can detach a volume from an instance
-//
-// We start the instance loop, add a volume, wait for the instance statistics,
-// detach the volume, wait for more statistics and then delete the instance.
-//
-// The instanceLoop and then instance should start correctly.  The volume should
-// be correctly attached and the stats command should verify this.  The volume
-// should be successfully detached, verified again by stats, and the instance
-// should be correctly deleted.
-func TestDetachVolumeFromInstance(t *testing.T) {
-	var wg sync.WaitGroup
-	cfg := standardCfg
-	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
-
-	select {
-	case cmdCh <- &insAttachVolumeCmd{testutil.VolumeUUID}:
-	case <-time.After(time.Second):
-		t.Error("Timed out sending attach volume command")
-	}
-
-	select {
-	case monCmd := <-state.monitorCh:
-		monCmd.(virtualizerAttachCmd).responseCh <- nil
-	case <-time.After(time.Second):
-		t.Error("Timed out waiting for attach volume command result")
-	}
-
-	_ = state.expectStatsUpdateWithVolumes(t, ovsCh, []string{testutil.VolumeUUID})
-
-	select {
-	case cmdCh <- &insDetachVolumeCmd{testutil.VolumeUUID}:
-	case <-time.After(time.Second):
-		t.Error("Timed out sending attach volume command")
-	}
-
-	select {
-	case monCmd := <-state.monitorCh:
-		monCmd.(virtualizerDetachCmd).responseCh <- nil
-	case <-time.After(time.Second):
-		t.Error("Timed out waiting for attach volume command result")
-	}
-
-	_ = state.expectStatsUpdateWithVolumes(t, ovsCh, []string{})
-
-	if !state.deleteInstance(t, ovsCh, cmdCh) {
-		cleanupShutdownFail(t, cfg.Instance, doneCh, ovsCh, &wg)
-	}
-
-	wg.Wait()
-}
-
-// Check that detaching a nonexistent volume fails
-//
-// We start the instance loop, detach a volume delete the instance.
-//
-// The instanceLoop and then instance should start correctly.  The volume should
-// be fail to be detached as it doesn't exist. The instance should be correctly
-// deleted.
-func TestDetachNonexistingVolumeFromInstance(t *testing.T) {
-	var wg sync.WaitGroup
-	cfg := standardCfg
-	state, ovsCh, cmdCh, doneCh := startVMWithCFG(t, &wg, &cfg, true, false)
-
-	select {
-	case cmdCh <- &insDetachVolumeCmd{testutil.VolumeUUID}:
-	case <-time.After(time.Second):
-		t.Error("Timed out sending attach volume command")
-	}
-
-	select {
-	case <-state.errorCh:
-		if state.dvf.Reason != payloads.DetachVolumeNotAttached {
-			t.Errorf("Unexpected error.  Expected %s got %s",
-				payloads.DetachVolumeNotAttached, state.dvf.Reason)
 		}
 	case <-time.After(time.Second):
 		t.Error("Timed out waiting for attach to fail")

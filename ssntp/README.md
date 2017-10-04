@@ -326,17 +326,6 @@ The AttachVolume command payload includes a volume UUID and an instance UUID.
 +-----------------------------------------------------------------------------+
 ```
 
-#### DetachVolume ####
-DetachVolume is a command sent to ciao-launcher for detaching a storage volume
-from a specific running or paused instance.
-
-The DetachVolume command payload includes a volume UUID and an instance UUID.
-
-```
-+-----------------------------------------------------------------------------+
-| Major | Minor | Type  | Operand |  Payload Length | YAML formatted payload  |
-|       |       | (0x0) |  (0xb)  |                 |                         |
-+-----------------------------------------------------------------------------+
 ```
 
 #### Restore ####

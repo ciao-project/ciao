@@ -83,9 +83,6 @@ type insMonitorCmd struct{}
 type insAttachVolumeCmd struct {
 	volumeUUID string
 }
-type insDetachVolumeCmd struct {
-	volumeUUID string
-}
 
 /*
 This functions asks the server loop to kill the instance.  An instance
@@ -250,26 +247,6 @@ func (id *instanceData) attachVolumeCommand(cmd *insAttachVolumeCmd) {
 	glog.Infof("Volume %s attached to instance %s", cmd.volumeUUID, id.instance)
 }
 
-func (id *instanceData) detachVolumeCommand(cmd *insDetachVolumeCmd) {
-	if id.shuttingDown {
-		detachErr := &detachVolumeError{nil, payloads.DetachVolumeInstanceFailure}
-		glog.Errorf("Unable to detach instance[%s]", string(detachErr.code))
-		detachErr.send(id.ac.conn, id.instance, cmd.volumeUUID)
-		return
-	}
-
-	detachErr := processDetachVolume(id.storageDriver, id.monitorCh, id.cfg, id.instance, id.instanceDir,
-		cmd.volumeUUID, id.ac.conn)
-	if detachErr != nil {
-		detachErr.send(id.ac.conn, cmd.volumeUUID, id.instance)
-		return
-	}
-	d, m, c := id.vm.stats()
-	id.ovsCh <- &ovsStatsUpdateCmd{id.instance, m, d, c, id.getVolumes()}
-
-	glog.Infof("Volume %s detched from instance %s", cmd.volumeUUID, id.instance)
-}
-
 func (id *instanceData) logStartTrace() {
 	if id.st == nil {
 		return
@@ -307,8 +284,6 @@ func (id *instanceData) instanceCommand(cmd interface{}) bool {
 		id.monitorCommand(cmd)
 	case *insAttachVolumeCmd:
 		id.attachVolumeCommand(cmd)
-	case *insDetachVolumeCmd:
-		id.detachVolumeCommand(cmd)
 	case *insDeleteCmd:
 		if id.deleteCommand(cmd) {
 			return false

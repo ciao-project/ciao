@@ -46,8 +46,6 @@ type SsntpTestClient struct {
 	DeleteFailReason       payloads.DeleteFailureReason
 	AttachFail             bool
 	AttachVolumeFailReason payloads.AttachVolumeFailureReason
-	DetachFail             bool
-	DetachVolumeFailReason payloads.DetachVolumeFailureReason
 	traces                 []*ssntp.Frame
 	tracesLock             *sync.Mutex
 
@@ -483,26 +481,6 @@ func (client *SsntpTestClient) handleAttachVolume(payload []byte) Result {
 	return result
 }
 
-func (client *SsntpTestClient) handleDetachVolume(payload []byte) Result {
-	var result Result
-	var cmd payloads.DetachVolume
-
-	err := yaml.Unmarshal(payload, &cmd)
-	if err != nil {
-		result.Err = err
-		return result
-	}
-
-	if client.DetachFail == true {
-		result.Err = errors.New(client.DetachVolumeFailReason.String())
-		client.sendDetachVolumeFailure(cmd.Detach.InstanceUUID, cmd.Detach.VolumeUUID, client.DetachVolumeFailReason)
-		client.SendResultAndDelErrorChan(ssntp.DetachVolumeFailure, result)
-		return result
-	}
-
-	return result
-}
-
 // CommandNotify implements the SSNTP client CommandNotify callback for SsntpTestClient
 func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp.Frame) {
 	payload := frame.Payload
@@ -533,9 +511,6 @@ func (client *SsntpTestClient) CommandNotify(command ssntp.Command, frame *ssntp
 
 	case ssntp.AttachVolume:
 		result = client.handleAttachVolume(payload)
-
-	case ssntp.DetachVolume:
-		result = client.handleDetachVolume(payload)
 
 	default:
 		fmt.Fprintf(os.Stderr, "client %s unhandled command %s\n", client.Role.String(), command.String())
@@ -861,24 +836,6 @@ func (client *SsntpTestClient) sendAttachVolumeFailure(instanceUUID string, volu
 	}
 
 	_, err = client.Ssntp.SendError(ssntp.AttachVolumeFailure, y)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-}
-
-func (client *SsntpTestClient) sendDetachVolumeFailure(instanceUUID string, volumeUUID string, reason payloads.DetachVolumeFailureReason) {
-	e := payloads.ErrorDetachVolumeFailure{
-		InstanceUUID: instanceUUID,
-		VolumeUUID:   volumeUUID,
-		Reason:       reason,
-	}
-
-	y, err := yaml.Marshal(e)
-	if err != nil {
-		return
-	}
-
-	_, err = client.Ssntp.SendError(ssntp.DetachVolumeFailure, y)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
