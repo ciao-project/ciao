@@ -54,18 +54,18 @@ type tenantListCommand struct {
 }
 
 type tenantUpdateCommand struct {
-	Flag       flag.FlagSet
-	name       string
-	subnetBits int
-	tenantID   string
+	Flag           flag.FlagSet
+	name           string
+	cidrPrefixSize int
+	tenantID       string
 }
 
 type tenantCreateCommand struct {
-	Flag       flag.FlagSet
-	name       string
-	subnetBits int
-	tenantID   string
-	template   string
+	Flag           flag.FlagSet
+	name           string
+	cidrPrefixSize int
+	tenantID       string
+	template       string
 }
 
 type tenantDeleteCommand struct {
@@ -87,7 +87,7 @@ The update flags are:
 
 func (cmd *tenantUpdateCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.tenantID, "for-tenant", "", "Tenant to update")
-	cmd.Flag.IntVar(&cmd.subnetBits, "subnet-bits", 0, "Number of bits in subnet mask")
+	cmd.Flag.IntVar(&cmd.cidrPrefixSize, "cidr-prefix-size", 0, "Number of bits in network mask (12-30)")
 	cmd.Flag.StringVar(&cmd.name, "name", "", "Tenant name")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
@@ -100,18 +100,18 @@ func (cmd *tenantUpdateCommand) run(args []string) error {
 	}
 
 	// we should not require individual parameters?
-	if cmd.name == "" && cmd.subnetBits == 0 {
+	if cmd.name == "" && cmd.cidrPrefixSize == 0 {
 		errorf("Missing required parameters")
 		cmd.usage()
 	}
 
-	// subnet bits must be between 4 and 30
-	if cmd.subnetBits != 0 && (cmd.subnetBits > 30 || cmd.subnetBits < 4) {
-		errorf("subnet_bits must be 4-30")
+	// subnet bits must be between 12 and 30
+	if cmd.cidrPrefixSize != 0 && (cmd.cidrPrefixSize > 30 || cmd.cidrPrefixSize < 12) {
+		errorf("cidr-prefix-size must be 12-30")
 		cmd.usage()
 	}
 
-	return c.UpdateTenantConfig(cmd.tenantID, cmd.name, cmd.subnetBits)
+	return c.UpdateTenantConfig(cmd.tenantID, cmd.name, cmd.cidrPrefixSize)
 }
 
 func (cmd *tenantCreateCommand) usage(...string) {
@@ -132,7 +132,7 @@ The template passed to the -f option operates on the following struct:
 
 func (cmd *tenantCreateCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.tenantID, "tenant", "", "ID for new tenant")
-	cmd.Flag.IntVar(&cmd.subnetBits, "subnet-bits", 0, "Number of bits in subnet mask")
+	cmd.Flag.IntVar(&cmd.cidrPrefixSize, "cidr-prefix-size", 0, "Number of bits in network mask (12-30)")
 	cmd.Flag.StringVar(&cmd.name, "name", "", "Tenant name")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
@@ -150,9 +150,9 @@ func (cmd *tenantCreateCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	// subnet bits must be between 4 and 30
-	if cmd.subnetBits != 0 && (cmd.subnetBits > 30 || cmd.subnetBits < 4) {
-		errorf("subnet_bits must be 4-30")
+	// CIDR prefix size must be between 12 and 30 bits
+	if cmd.cidrPrefixSize != 0 && (cmd.cidrPrefixSize > 30 || cmd.cidrPrefixSize < 12) {
+		errorf("cidr-prefix-size must be 12-30")
 		cmd.usage()
 	}
 
@@ -170,7 +170,7 @@ func (cmd *tenantCreateCommand) run(args []string) error {
 		fatalf("Tenant ID must be a UUID4")
 	}
 
-	summary, err := c.CreateTenantConfig(tuuid.String(), cmd.name, cmd.subnetBits)
+	summary, err := c.CreateTenantConfig(tuuid.String(), cmd.name, cmd.cidrPrefixSize)
 	if err != nil {
 		return errors.Wrap(err, "Error creating tenant configuration")
 	}
@@ -405,7 +405,7 @@ func listTenantConfig(t *template.Template, tenantID string) error {
 
 	fmt.Printf("Tenant [%s]\n", tenantID)
 	fmt.Printf("\tName: %s\n", config.Name)
-	fmt.Printf("\tSubnetBits: %d\n", config.SubnetBits)
+	fmt.Printf("\tCIDR Prefix Size: %d\n", config.SubnetBits)
 
 	return nil
 }

@@ -61,7 +61,7 @@ func GetAllTenants(ctx context.Context) (TenantsListResponse, error) {
 func CreateTenant(ctx context.Context, config TenantConfig) (TenantSummary, error) {
 	var summary TenantSummary
 
-	args := []string{"tenant", "create", "-tenant", uuid.Generate().String(), "-name", config.Name, "-subnet-bits", strconv.Itoa(config.SubnetBits), "-f", "{{tojson .}}"}
+	args := []string{"tenant", "create", "-tenant", uuid.Generate().String(), "-name", config.Name, "-cidr-prefix-size", strconv.Itoa(config.SubnetBits), "-f", "{{tojson .}}"}
 	err := RunCIAOCLIAsAdminJS(ctx, "", args, &summary)
 
 	return summary, err
@@ -77,7 +77,7 @@ func UpdateTenant(ctx context.Context, ID string, config TenantConfig) error {
 	}
 
 	if config.SubnetBits != 0 {
-		bits := []string{"-subnet-bits", strconv.Itoa(config.SubnetBits)}
+		bits := []string{"-cidr-prefix-size", strconv.Itoa(config.SubnetBits)}
 		args = append(args, bits...)
 	}
 
