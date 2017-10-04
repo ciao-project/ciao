@@ -364,64 +364,6 @@ func (client *SsntpTestClient) handleStart(payload []byte) Result {
 	return result
 }
 
-func (client *SsntpTestClient) handleStop(payload []byte) Result {
-	var result Result
-	var cmd payloads.Stop
-
-	err := yaml.Unmarshal(payload, &cmd)
-	if err != nil {
-		result.Err = err
-		return result
-	}
-
-	if client.StopFail == true {
-		result.Err = errors.New(client.StopFailReason.String())
-		client.sendStopFailure(cmd.Stop.InstanceUUID, client.StopFailReason)
-		go client.SendResultAndDelErrorChan(ssntp.StopFailure, result)
-		return result
-	}
-
-	client.instancesLock.Lock()
-	defer client.instancesLock.Unlock()
-	for i := range client.instances {
-		istat := client.instances[i]
-		if istat.InstanceUUID == cmd.Stop.InstanceUUID {
-			client.instances[i].State = payloads.Exited
-		}
-	}
-
-	return result
-}
-
-func (client *SsntpTestClient) handleRestart(payload []byte) Result {
-	var result Result
-	var cmd payloads.Restart
-
-	err := yaml.Unmarshal(payload, &cmd)
-	if err != nil {
-		result.Err = err
-		return result
-	}
-
-	if client.RestartFail == true {
-		result.Err = errors.New(client.RestartFailReason.String())
-		client.sendRestartFailure(cmd.Restart.InstanceUUID, client.RestartFailReason)
-		go client.SendResultAndDelErrorChan(ssntp.RestartFailure, result)
-		return result
-	}
-
-	client.instancesLock.Lock()
-	defer client.instancesLock.Unlock()
-	for i := range client.instances {
-		istat := client.instances[i]
-		if istat.InstanceUUID == cmd.Restart.InstanceUUID {
-			client.instances[i].State = payloads.Running
-		}
-	}
-
-	return result
-}
-
 func (client *SsntpTestClient) handleDelete(payload []byte) Result {
 	var result Result
 	var cmd payloads.Delete
@@ -767,40 +709,6 @@ func (client *SsntpTestClient) sendStartFailure(instanceUUID string, reason payl
 	}
 
 	_, err = client.Ssntp.SendError(ssntp.StartFailure, y)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-}
-
-func (client *SsntpTestClient) sendStopFailure(instanceUUID string, reason payloads.StopFailureReason) {
-	e := payloads.ErrorStopFailure{
-		InstanceUUID: instanceUUID,
-		Reason:       reason,
-	}
-
-	y, err := yaml.Marshal(e)
-	if err != nil {
-		return
-	}
-
-	_, err = client.Ssntp.SendError(ssntp.StopFailure, y)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-}
-
-func (client *SsntpTestClient) sendRestartFailure(instanceUUID string, reason payloads.RestartFailureReason) {
-	e := payloads.ErrorRestartFailure{
-		InstanceUUID: instanceUUID,
-		Reason:       reason,
-	}
-
-	y, err := yaml.Marshal(e)
-	if err != nil {
-		return
-	}
-
-	_, err = client.Ssntp.SendError(ssntp.RestartFailure, y)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
