@@ -130,6 +130,11 @@ func dumpNode(node *types.CiaoNode) {
 	fmt.Printf("\t\tRunning Instances: %d\n", node.TotalRunningInstances)
 	fmt.Printf("\t\tPending Instances: %d\n", node.TotalPendingInstances)
 	fmt.Printf("\t\tPaused Instances: %d\n", node.TotalPausedInstances)
+	fmt.Printf("\t\tTotal Failures: %d\n", node.TotalFailures)
+	fmt.Printf("\t\tTotal Start Failures: %d\n", node.StartFailures)
+	fmt.Printf("\t\tTotal Delete Failures: %d\n", node.DeleteFailures)
+	fmt.Printf("\t\tTotal Attach Failures: %d\n", node.AttachVolumeFailures)
+	fmt.Printf("\t\tTotal Detach Failures: %d\n", node.DetachVolumeFailures)
 }
 
 func dumpNodes(headerText string, url string, t *template.Template) {

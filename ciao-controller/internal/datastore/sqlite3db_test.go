@@ -845,7 +845,13 @@ func TestSQLiteDBEventLog(t *testing.T) {
 
 	tn := createTestTenant(db, t)
 
-	err = db.logEvent(tn.ID, string(userError), "test message 1")
+	e := types.LogEntry{
+		TenantID:  tn.ID,
+		EventType: string(userError),
+		Message:   "test message 1",
+		NodeID:    "validNodeID",
+	}
+	err = db.logEvent(e)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -858,7 +864,8 @@ func TestSQLiteDBEventLog(t *testing.T) {
 		t.Fatal("Expected 1 log message")
 	}
 
-	err = db.logEvent(tn.ID, string(userError), "test message 2")
+	e.Message = "test message 2"
+	err = db.logEvent(e)
 	if err != nil {
 		t.Fatal(err)
 	}
