@@ -305,7 +305,9 @@ func SSHRunCommand(ctx context.Context, user string, host string, command string
 	}
 	defer func() { _ = session.Close() }()
 
-	return session.Run(command)
+	output, err := session.CombinedOutput(command)
+	_, _ = GetDebugLogWriter(ctx).Write(output)
+	return err
 }
 
 // SSHCreateFile creates a file on a remote machine
