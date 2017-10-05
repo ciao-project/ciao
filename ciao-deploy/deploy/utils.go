@@ -284,7 +284,11 @@ func SSHRunCommand(ctx context.Context, user string, host string, command string
 	}
 	defer func() { _ = session.Close() }()
 
-	return session.Run(command)
+	output, err := session.CombinedOutput(command)
+	if err != nil {
+		return errors.Wrapf(err, "Error running %s on %s: %s", command, host, output)
+	}
+	return nil
 }
 
 // SSHCreateFile creates a file on a remote machine
