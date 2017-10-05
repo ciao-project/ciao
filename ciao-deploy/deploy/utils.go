@@ -37,6 +37,27 @@ import (
 	"github.com/pkg/errors"
 )
 
+type contextKey int
+
+// Any call in the package that has access to the context can use this to
+// retrieve a debug log io.Writer
+const debugLogWriterKey contextKey = 0
+
+// GetDebugLogWriter returns an io.Writer from a context.Context that debug
+// messages should be written to.
+func GetDebugLogWriter(ctx context.Context) io.Writer {
+	w := ctx.Value(debugLogWriterKey)
+	if w == nil {
+		return ioutil.Discard
+	}
+	return w.(io.Writer)
+}
+
+// WithDebugLogWriter creates a new context with the debug log writer set
+func WithDebugLogWriter(ctx context.Context, w io.Writer) context.Context {
+	return context.WithValue(ctx, debugLogWriterKey, w)
+}
+
 // DefaultImageCacheDir provides the default location for downloaded images
 func DefaultImageCacheDir() string {
 	u, err := user.Current()
@@ -284,7 +305,9 @@ func SSHRunCommand(ctx context.Context, user string, host string, command string
 	}
 	defer func() { _ = session.Close() }()
 
-	return session.Run(command)
+	output, err := session.CombinedOutput(command)
+	_, _ = GetDebugLogWriter(ctx).Write(output)
+	return err
 }
 
 // SSHCreateFile creates a file on a remote machine

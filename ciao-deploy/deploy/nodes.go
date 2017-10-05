@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"sync"
@@ -176,9 +177,13 @@ func SetupNodes(ctx context.Context, sshUser string, networkNode bool, hosts []s
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(hostname string) {
+			var debugBuffer bytes.Buffer
+			ctx = WithDebugLogWriter(ctx, &debugBuffer)
 			err := setupNode(ctx, anchorCertPath, caCertPath, hostname, sshUser, networkNode)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error setting up node: %s: %v\n", hostname, err)
+				fmt.Fprintf(os.Stderr, "Output for %s:\n", hostname)
+				_, _ = io.Copy(os.Stderr, &debugBuffer)
 			}
 			wg.Done()
 		}(host)
@@ -254,9 +259,13 @@ func TeardownNodes(ctx context.Context, sshUser string, hosts []string) error {
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(hostname string) {
+			var debugBuffer bytes.Buffer
+			ctx = WithDebugLogWriter(ctx, &debugBuffer)
 			err := teardownNode(ctx, hostname, sshUser)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error tearing down node: %s: %v\n", hostname, err)
+				fmt.Fprintf(os.Stderr, "Output for %s:\n", hostname)
+				_, _ = io.Copy(os.Stderr, &debugBuffer)
 			}
 			wg.Done()
 		}(host)
