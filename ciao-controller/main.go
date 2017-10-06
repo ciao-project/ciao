@@ -209,14 +209,12 @@ func main() {
 		return
 	}
 
-	host := clusterConfig.Configure.Controller.ControllerFQDN
-	if host == "" {
-		host, err = getNameFromCert(httpsCAcert, httpsKey)
-		if err != nil {
-			glog.Warningf("Unable to get name from certificate: %s", err)
-			host, _ = os.Hostname()
-		}
+	host, err := getNameFromCert(httpsCAcert, httpsKey)
+	if err != nil {
+		glog.Warningf("Unable to get name from certificate: %s", err)
+		host, _ = os.Hostname()
 	}
+
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
 	server, err := ctl.createCiaoServer()

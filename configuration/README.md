@@ -51,7 +51,6 @@ configure:
     compute_port: int
     compute_ca: string [The HTTPS compute endpoint CA]
     compute_cert: string [The HTTPS compute endpoint private key]
-    compute_fqdn: string [The HTTPS server fully qualified domain name, MUST match name for which compute_cert is valid]
     client_auth_ca_cert_path: string [Path to CA to verify client certificates with]
   launcher:
     compute_net: list [The launcher compute network(s)]
@@ -71,7 +70,6 @@ configure:
   controller:
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
-    compute_fqdn: compute.example.com
   launcher:
     compute_net:
     - 192.168.0.0/16
@@ -91,7 +89,6 @@ configure:
     compute_port: 8774
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
-    compute_fqdn: compute.example.com
   launcher:
     compute_net:
     - 192.168.0.0/16

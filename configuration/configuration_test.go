@@ -58,7 +58,6 @@ const fullValidConf = `configure:
     ceph_id: ciao
   controller:
     ciao_port: 8889
-    compute_fqdn: ""
     compute_ca: /etc/pki/ciao/compute_ca.pem
     compute_cert: /etc/pki/ciao/compute_key.pem
     cnci_vcpus: 4
