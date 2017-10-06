@@ -14,6 +14,7 @@ ciao_pki_path=/etc/pki/ciao
 client_auth_ca_path="$ciao_pki_path/auth-CA.pem"
 export no_proxy=$no_proxy,$ciao_vlan_ip,$ciao_host
 
+GOPATH=`go env GOPATH`
 ciao_src="$GOPATH"/src/github.com/ciao-project/ciao
 ciao_gobin="$GOPATH"/bin
 ciao_scripts="$GOPATH"/src/github.com/ciao-project/ciao/testutil/singlevm

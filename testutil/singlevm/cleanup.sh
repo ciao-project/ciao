@@ -2,6 +2,7 @@
 
 . ~/local/demo.sh
 
+GOPATH=`go env GOPATH`
 ciao_gobin="$GOPATH"/bin
 ciao_host=$(hostname)
 ext_int=$(ip -o route get 8.8.8.8 | cut -d ' ' -f 5)
