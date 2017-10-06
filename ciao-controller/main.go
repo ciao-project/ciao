@@ -18,6 +18,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"net/http"
@@ -35,6 +37,7 @@ import (
 	"github.com/ciao-project/ciao/osprepare"
 	"github.com/ciao-project/ciao/ssntp"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 )
 
 type tenantConfirmMemo struct {
@@ -93,6 +96,26 @@ func init() {
 		glog.Errorf("Unable to create log directory (%s) %v", logDir, err)
 		return
 	}
+}
+
+func getNameFromCert(httpsCAcert, httpsKey string) (string, error) {
+	cert, err := tls.LoadX509KeyPair(httpsCAcert, httpsKey)
+	if err != nil {
+		return "", errors.Wrap(err, "Error loading certificate pair")
+	}
+
+	// leaf is first
+	if len(cert.Certificate) == 0 {
+		return "", errors.New("Expected at least one certificate in encoded data")
+	}
+
+	c, err := x509.ParseCertificate(cert.Certificate[0])
+	if err != nil {
+		return "", errors.Wrap(err, "Error parsing certificate")
+	}
+
+	glog.Infof("Got name from certificate: %s", c.Subject.CommonName)
+	return c.Subject.CommonName, nil
 }
 
 func main() {
@@ -188,7 +211,11 @@ func main() {
 
 	host := clusterConfig.Configure.Controller.ControllerFQDN
 	if host == "" {
-		host, _ = os.Hostname()
+		host, err = getNameFromCert(httpsCAcert, httpsKey)
+		if err != nil {
+			glog.Warningf("Unable to get name from certificate: %s", err)
+			host, _ = os.Hostname()
+		}
 	}
 	ctl.apiURL = fmt.Sprintf("https://%s:%d", host, controllerAPIPort)
 
