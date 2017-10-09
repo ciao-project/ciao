@@ -162,3 +162,7 @@ func (c *controller) DeleteWorkload(tenantID string, workloadID string) error {
 func (c *controller) ShowWorkload(tenantID string, workloadID string) (types.Workload, error) {
 	return c.ds.GetWorkload(tenantID, workloadID)
 }
+
+func (c *controller) ListWorkloads(tenantID string) ([]types.Workload, error) {
+	return c.ds.GetWorkloads(tenantID)
+}

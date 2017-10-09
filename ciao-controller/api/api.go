@@ -551,6 +551,22 @@ func showWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusOK, wl}, nil
 }
 
+func listWorkloads(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+
+	// if we have no tenant variable, then we are admin
+	tenant, ok := vars["tenant"]
+	if !ok {
+		tenant = "public"
+	}
+
+	wls, err := c.ListWorkloads(tenant)
+	if err != nil {
+		return errorResponse(err), err
+	}
+	return Response{http.StatusOK, wls}, nil
+}
+
 func listQuotas(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	tenantID, ok := vars["tenant"]
@@ -724,6 +740,7 @@ type Service interface {
 	CreateWorkload(req types.Workload) (types.Workload, error)
 	DeleteWorkload(tenantID string, workloadID string) error
 	ShowWorkload(tenantID string, workloadID string) (types.Workload, error)
+	ListWorkloads(tenantID string) ([]types.Workload, error)
 	ListQuotas(tenantID string) []types.QuotaDetails
 	UpdateQuotas(tenantID string, qds []types.QuotaDetails) error
 	EvacuateNode(nodeID string) error
@@ -835,6 +852,10 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
+	route = r.Handle("/workloads", Handler{context, listWorkloads, true})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
 	route = r.Handle("/workloads/{workload_id:"+uuid.UUIDRegex+"}", Handler{context, deleteWorkload, true})
 	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
@@ -845,6 +866,10 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 
 	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/workloads", Handler{context, addWorkload, false})
 	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/workloads", Handler{context, listWorkloads, false})
+	route.Methods("GET")
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	route = r.Handle("/{tenant:"+uuid.UUIDRegex+"}/workloads/{workload_id:"+uuid.UUIDRegex+"}", Handler{context, deleteWorkload, false})
