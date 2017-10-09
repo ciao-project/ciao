@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}", 
+const instanceTemplateDesc = `{ "node_id" : "{{.NodeID | js }}",
     "tenant_id" : "{{.TenantID | js }}", "flavor_id" : "{{.Flavor.ID | js}}",
     "status" : "{{.Status | js}}",
     "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
@@ -57,7 +57,7 @@ type Workload struct {
 
 // Instance contains detailed information about an instance
 type Instance struct {
-	HostID     string   `json:"host_id"`
+	NodeID     string   `json:"node_id"`
 	TenantID   string   `json:"tenant_id"`
 	FlavorID   string   `json:"flavor_id"`
 	Status     string   `json:"status"`

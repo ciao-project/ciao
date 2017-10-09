@@ -79,7 +79,7 @@ type ServerDetails struct {
 	PrivateAddresses []PrivateAddresses `json:"private_addresses"`
 	Created          time.Time          `json:"created"`
 	Flavor           FlavorLinks        `json:"flavor"`
-	HostID           string             `json:"hostId"`
+	NodeID           string             `json:"node_id"`
 	ID               string             `json:"id"`
 	Name             string             `json:"name"`
 	Volumes          []string           `json:"volumes"`

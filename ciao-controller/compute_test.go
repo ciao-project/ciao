@@ -300,7 +300,7 @@ func testDeleteServer(t *testing.T, httpExpectedStatus int, httpExpectedErrorSta
 
 	for _, s1 := range s.Servers {
 		url := tURL + s1.ID
-		if s1.HostID != "" {
+		if s1.NodeID != "" {
 			_ = testHTTPRequest(t, "DELETE", url, httpExpectedStatus, nil, validToken)
 		} else {
 			_ = testHTTPRequest(t, "DELETE", url, httpExpectedErrorStatus, nil, validToken)

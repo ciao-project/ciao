@@ -905,7 +905,7 @@ func dumpInstance(server *compute.ServerDetails) {
 	fmt.Printf("\tStatus: %s\n", server.Status)
 	fmt.Printf("\tPrivate IP: %s\n", server.PrivateAddresses[0].Addr)
 	fmt.Printf("\tMAC Address: %s\n", server.PrivateAddresses[0].MacAddr)
-	fmt.Printf("\tCN UUID: %s\n", server.HostID)
+	fmt.Printf("\tCN UUID: %s\n", server.NodeID)
 	fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
 	if server.SSHIP != "" {
 		fmt.Printf("\tSSH IP: %s\n", server.SSHIP)

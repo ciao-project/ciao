@@ -82,14 +82,14 @@ func TestListComputeNodes(t *testing.T) {
 			instances[0], err)
 	}
 
-	hostID := instanceDetails.HostID
+	nodeID := instanceDetails.NodeID
 	if instanceDetails.Status == "active" {
-		if beforeStart[hostID].TotalInstances >= afterStart[hostID].TotalInstances {
-			t.Fatalf("Starting an instance should increase instance count on node %v %v", beforeStart[hostID], afterStart[hostID])
+		if beforeStart[nodeID].TotalInstances >= afterStart[nodeID].TotalInstances {
+			t.Fatalf("Starting an instance should increase instance count on node %v %v", beforeStart[nodeID], afterStart[nodeID])
 		}
 
-		if beforeStart[hostID].TotalRunningInstances >= afterStart[hostID].TotalRunningInstances {
-			t.Fatalf("Starting an active instance should increase running instance count on node %v %v", beforeStart[hostID], afterStart[hostID])
+		if beforeStart[nodeID].TotalRunningInstances >= afterStart[nodeID].TotalRunningInstances {
+			t.Fatalf("Starting an active instance should increase running instance count on node %v %v", beforeStart[nodeID], afterStart[nodeID])
 		}
 		err = bat.StopInstanceAndWait(ctx, "", instances[0])
 		if err != nil {
@@ -102,11 +102,11 @@ func TestListComputeNodes(t *testing.T) {
 		}
 	}
 
-	if beforeStart[hostID].TotalInstances != afterStart[hostID].TotalInstances &&
-		beforeStart[hostID].TotalPendingInstances != afterStart[hostID].TotalPendingInstances &&
-		beforeStart[hostID].TotalRunningInstances != afterStart[hostID].TotalRunningInstances {
+	if beforeStart[nodeID].TotalInstances != afterStart[nodeID].TotalInstances &&
+		beforeStart[nodeID].TotalPendingInstances != afterStart[nodeID].TotalPendingInstances &&
+		beforeStart[nodeID].TotalRunningInstances != afterStart[nodeID].TotalRunningInstances {
 		t.Fatalf("Node instance counts mismatched.  Expected %v found %v",
-			beforeStart[hostID], afterStart[hostID])
+			beforeStart[nodeID], afterStart[nodeID])
 	}
 }
 
@@ -272,9 +272,9 @@ func TestStopRestartInstance(t *testing.T) {
 			t.Fatalf("Failed to retrieve instance %s status: %v", instances[0], err)
 		}
 
-		if instanceAfterStop.HostID != "" {
-			t.Fatalf("Expected HostID to be \"\".  It was %s",
-				instanceAfterStop.HostID)
+		if instanceAfterStop.NodeID != "" {
+			t.Fatalf("Expected NodeID to be \"\".  It was %s",
+				instanceAfterStop.NodeID)
 		}
 
 		checkInstances(t, instanceAfterStart, instanceAfterStop)
@@ -307,8 +307,8 @@ func TestStopRestartInstance(t *testing.T) {
 
 	checkInstances(t, instanceAfterStart, instanceAfterRestart)
 
-	if instanceAfterRestart.HostID == "" {
-		t.Fatal("Expected HostID to be defined")
+	if instanceAfterRestart.NodeID == "" {
+		t.Fatal("Expected NodeID to be defined")
 	}
 }
 
@@ -510,7 +510,7 @@ func TestGetAllInstances(t *testing.T) {
 
 		// Check some basic information
 
-		if instanceDetail.FlavorID == "" || instanceDetail.HostID == "" ||
+		if instanceDetail.FlavorID == "" || instanceDetail.NodeID == "" ||
 			instanceDetail.TenantID == "" || instanceDetail.MacAddress == "" ||
 			instanceDetail.PrivateIP == "" {
 			t.Fatalf("Instance missing information: %+v", instanceDetail)
@@ -608,9 +608,9 @@ func TestEvacuateRestore(t *testing.T) {
 		t.Fatalf("Failed to retrieve instance %s: %v", instances[0], err)
 	}
 
-	err = bat.Evacuate(ctx, i.HostID)
+	err = bat.Evacuate(ctx, i.NodeID)
 	if err != nil {
-		t.Fatalf("Unable to evacuate node %s : %v", i.HostID, err)
+		t.Fatalf("Unable to evacuate node %s : %v", i.NodeID, err)
 	}
 
 	err = bat.WaitForInstanceExit(ctx, "", instances[0])
@@ -618,18 +618,18 @@ func TestEvacuateRestore(t *testing.T) {
 		t.Fatalf("instance %s did not exit: %v", instances[0], err)
 	}
 
-	err = bat.WaitForComputeNodeStatus(ctx, i.HostID, "MAINTENANCE")
+	err = bat.WaitForComputeNodeStatus(ctx, i.NodeID, "MAINTENANCE")
 	if err != nil {
 		t.Fatalf("Node %s did not transition to MAINTENANCE mode: %v",
 			instances[0], err)
 	}
 
-	err = bat.Restore(ctx, i.HostID)
+	err = bat.Restore(ctx, i.NodeID)
 	if err != nil {
-		t.Fatalf("Unable to evacuate node %s : %v", i.HostID, err)
+		t.Fatalf("Unable to evacuate node %s : %v", i.NodeID, err)
 	}
 
-	err = bat.WaitForComputeNodeStatus(ctx, i.HostID, "READY")
+	err = bat.WaitForComputeNodeStatus(ctx, i.NodeID, "READY")
 	if err != nil {
 		t.Fatalf("Node %s did not transition back to READY: %v",
 			instances[0], err)

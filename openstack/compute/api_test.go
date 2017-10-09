@@ -53,15 +53,14 @@ var tests = []test{
 		ListServersDetails,
 		"",
 		http.StatusOK,
-		`{"total_servers":1,"servers":[{"addresses":{"private":[{"addr":"192.169.0.1","OS-EXT-IPS-MAC:mac_addr":"00:02:00:01:02:03","OS-EXT-IPS:type":"","version":0}]},"created":"0001-01-01T00:00:00Z","flavor":{"id":"testFlavorUUID","links":null},"hostId":"hostUUID","id":"testUUID","image":{"id":"testImageUUID","links":null},"key_name":"","links":null,"name":"","accessIPv4":"","accessIPv6":"","config_drive":"","OS-DCF:diskConfig":"","OS-EXT-AZ:availability_zone":"","OS-EXT-SRV-ATTR:host":"","OS-EXT-SRV-ATTR:hypervisor_hostname":"","OS-EXT-SRV-ATTR:instance_name":"","OS-EXT-STS:power_state":0,"OS-EXT-STS:task_state":"","OS-EXT-STS:vm_state":"","os-extended-volumes:volumes_attached":null,"OS-SRV-USG:launched_at":"0001-01-01T00:00:00Z","OS-SRV-USG:terminated_at":"0001-01-01T00:00:00Z","progress":0,"security_groups":null,"status":"active","host_status":"","tenant_id":"","updated":"0001-01-01T00:00:00Z","user_id":"","ssh_ip":"","ssh_port":0}]}`,
-	},
+		`{"total_servers":1,"servers":[{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","flavor":{"id":"testFlavorUUID","links":null},"node_id":"nodeUUID","id":"testUUID","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}]}`},
 	{
 		"GET",
 		"/v2.1/{tenant}/servers/{server}",
 		showServerDetails,
 		"",
 		http.StatusOK,
-		`{"server":{"addresses":{"private":[{"addr":"192.169.0.1","OS-EXT-IPS-MAC:mac_addr":"00:02:00:01:02:03","OS-EXT-IPS:type":"","version":0}]},"created":"0001-01-01T00:00:00Z","flavor":{"id":"testFlavorUUID","links":null},"hostId":"hostUUID","id":"","image":{"id":"testImageUUID","links":null},"key_name":"","links":null,"name":"","accessIPv4":"","accessIPv6":"","config_drive":"","OS-DCF:diskConfig":"","OS-EXT-AZ:availability_zone":"","OS-EXT-SRV-ATTR:host":"","OS-EXT-SRV-ATTR:hypervisor_hostname":"","OS-EXT-SRV-ATTR:instance_name":"","OS-EXT-STS:power_state":0,"OS-EXT-STS:task_state":"","OS-EXT-STS:vm_state":"","os-extended-volumes:volumes_attached":null,"OS-SRV-USG:launched_at":"0001-01-01T00:00:00Z","OS-SRV-USG:terminated_at":"0001-01-01T00:00:00Z","progress":0,"security_groups":null,"status":"active","host_status":"","tenant_id":"","updated":"0001-01-01T00:00:00Z","user_id":"","ssh_ip":"","ssh_port":0}}`,
+		`{"server":{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","flavor":{"id":"testFlavorUUID","links":null},"node_id":"nodeUUID","id":"","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}}`,
 	},
 	{
 		"DELETE",
@@ -125,7 +124,7 @@ func (cs testComputeService) ListServersDetail(tenant string) ([]ServerDetails, 
 	var servers []ServerDetails
 
 	server := ServerDetails{
-		HostID:   "hostUUID",
+		NodeID:   "nodeUUID",
 		ID:       "testUUID",
 		TenantID: tenant,
 		Flavor: FlavorLinks{
@@ -147,7 +146,7 @@ func (cs testComputeService) ListServersDetail(tenant string) ([]ServerDetails, 
 
 func (cs testComputeService) ShowServerDetails(tenant string, server string) (Server, error) {
 	s := ServerDetails{
-		HostID:   "hostUUID",
+		NodeID:   "nodeUUID",
 		ID:       server,
 		TenantID: tenant,
 		Flavor: FlavorLinks{

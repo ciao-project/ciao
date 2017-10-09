@@ -38,7 +38,7 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 	}
 
 	server := compute.ServerDetails{
-		HostID:   instance.NodeID,
+		NodeID:   instance.NodeID,
 		ID:       instance.ID,
 		TenantID: instance.TenantID,
 		Flavor: compute.FlavorLinks{
