@@ -28,7 +28,6 @@ import (
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/ciao-project/ciao/openstack/compute"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/intel/tfortools"
 
@@ -49,6 +48,14 @@ type workloadListCommand struct {
 	template string
 }
 
+// Workload contains detailed information about a workload
+type Workload struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	CPUs int    `json:"vcpus"`
+	Mem  int    `json:"ram"`
+}
+
 func (cmd *workloadListCommand) usage(...string) {
 	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] workload list
 
@@ -57,7 +64,7 @@ List all workloads
 `)
 	cmd.Flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n%s",
-		tfortools.GenerateUsageDecorated("f", compute.FlavorsDetails{}.Flavors, nil))
+		tfortools.GenerateUsageDecorated("f", []Workload{}, nil))
 	os.Exit(2)
 }
 
@@ -73,33 +80,53 @@ func (cmd *workloadListCommand) run(args []string) error {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var flavors compute.FlavorsDetails
-	if *tenantID == "" {
-		*tenantID = "faketenant"
+	var wls []types.Workload
+
+	var url string
+	if checkPrivilege() {
+		url = buildCiaoURL("workloads")
+	} else {
+		url = buildCiaoURL("%s/workloads", *tenantID)
 	}
 
-	url := buildComputeURL("%s/flavors/detail", *tenantID)
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.WorkloadsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &flavors)
+	err = unmarshalHTTPResponse(resp, &wls)
 	if err != nil {
 		fatalf(err.Error())
+	}
+
+	var workloads []Workload
+	for i, wl := range wls {
+		workloads = append(workloads, Workload{
+			Name: wl.Description,
+			ID:   wl.ID,
+		})
+
+		for _, r := range wl.Defaults {
+			if r.Type == payloads.MemMB {
+				workloads[i].Mem = r.Value
+			}
+			if r.Type == payloads.VCPUs {
+				workloads[i].CPUs = r.Value
+			}
+		}
 	}
 
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "workload-list", cmd.template,
-			&flavors.Flavors, nil)
+			workloads, nil)
 	}
 
-	for i, flavor := range flavors.Flavors {
+	for i, wl := range workloads {
 		fmt.Printf("Workload %d\n", i+1)
 		fmt.Printf("\tName: %s\n\tUUID:%s\n\tCPUs: %d\n\tMemory: %d MB\n",
-			flavor.Name, flavor.ID, flavor.Vcpus, flavor.RAM)
+			wl.Name, wl.ID, wl.CPUs, wl.Mem)
 	}
+
 	return nil
 }
 
