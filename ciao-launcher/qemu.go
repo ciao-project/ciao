@@ -426,7 +426,16 @@ func (q *qemuV) lostVM() {
 
 func qmpAttach(cmd virtualizerAttachCmd, q *qemu.QMP) {
 	glog.Info("Attach command received")
-	blockdevID := fmt.Sprintf("drive_%s", cmd.volumeUUID)
+
+	// Versions of qemu 2.9 and greater have a 31 byte limit on the size of
+	// IDs used to identify block devices.  We form our ID by appending the
+	// the volumeUUID with the '-'s and the final 3 characters removed, to the
+	// constant string "d_".  Drive names are not allowed to start with numbers.
+
+	blockdevID := fmt.Sprintf("d_%s", strings.Replace(cmd.volumeUUID, "-", "", -1))
+	if len(blockdevID) > 31 {
+		blockdevID = blockdevID[:31]
+	}
 	err := q.ExecuteBlockdevAdd(context.Background(), cmd.device, blockdevID)
 	if err != nil {
 		glog.Errorf("Failed to execute blockdev-add: %v", err)
