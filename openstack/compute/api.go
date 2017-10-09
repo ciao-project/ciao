@@ -227,7 +227,7 @@ type CreateServerRequest struct {
 		ID                  string                 `json:"id"`
 		Name                string                 `json:"name"`
 		Image               string                 `json:"imageRef"`
-		Flavor              string                 `json:"flavorRef"`
+		WorkloadID          string                 `json:"workload_id"`
 		MaxInstances        int                    `json:"max_count"`
 		MinInstances        int                    `json:"min_count"`
 		BlockDeviceMappings []BlockDeviceMappingV2 `json:"block_device_mapping_v2,omitempty"`

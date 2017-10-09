@@ -364,7 +364,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 	label := server.Server.Metadata["label"]
 
 	w := types.WorkloadRequest{
-		WorkloadID: server.Server.Flavor,
+		WorkloadID: server.Server.WorkloadID,
 		TenantID:   tenant,
 		Instances:  nInstances,
 		TraceLabel: label,

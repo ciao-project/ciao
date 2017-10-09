@@ -35,9 +35,9 @@ var tests = []test{
 		"POST",
 		"/v2.1/{tenant}/servers/",
 		createServer,
-		`{"server":{"name":"new-server-test","imageRef": "http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","flavorRef":"http://openstack.example.com/flavors/1","metadata":{"My Server Name":"Apache1"}}}`,
+		`{"server":{"name":"new-server-test","imageRef": "http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","workload_id":"http://openstack.example.com/flavors/1","metadata":{"My Server Name":"Apache1"}}}`,
 		http.StatusAccepted,
-		`{"server":{"id":"validServerID","name":"new-server-test","imageRef":"http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","flavorRef":"http://openstack.example.com/flavors/1","max_count":0,"min_count":0,"metadata":{"My Server Name":"Apache1"}}}`,
+		`{"server":{"id":"validServerID","name":"new-server-test","imageRef":"http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","workload_id":"http://openstack.example.com/flavors/1","max_count":0,"min_count":0,"metadata":{"My Server Name":"Apache1"}}}`,
 	},
 	{
 		"GET",

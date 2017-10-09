@@ -467,7 +467,7 @@ func populateCreateServerRequest(cmd *instanceAddCommand, server *compute.Create
 		server.Server.Metadata["label"] = cmd.label
 	}
 
-	server.Server.Flavor = cmd.workload
+	server.Server.WorkloadID = cmd.workload
 	server.Server.MaxInstances = cmd.instances
 	server.Server.MinInstances = 1
 	server.Server.Name = cmd.name

@@ -122,7 +122,7 @@ func testCreateServer(t *testing.T, n int) compute.Servers {
 
 	var server compute.CreateServerRequest
 	server.Server.MaxInstances = n
-	server.Server.Flavor = wls[0].ID
+	server.Server.WorkloadID = wls[0].ID
 
 	b, err := json.Marshal(server)
 	if err != nil {
