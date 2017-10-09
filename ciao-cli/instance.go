@@ -829,7 +829,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 			fmt.Fprintf(w, "%d", i+1)
 			fmt.Fprintf(w, "\t%s", server.ID)
 			fmt.Fprintf(w, "\t%s", server.Status)
-			fmt.Fprintf(w, "\t%s", server.Addresses.Private[0].Addr)
+			fmt.Fprintf(w, "\t%s", server.PrivateAddresses[0].Addr)
 			if server.SSHIP != "" {
 				fmt.Fprintf(w, "\t%s", server.SSHIP)
 				fmt.Fprintf(w, "\t%d\n", server.SSHPort)
@@ -903,8 +903,8 @@ func (cmd *instanceShowCommand) run(args []string) error {
 func dumpInstance(server *compute.ServerDetails) {
 	fmt.Printf("\tUUID: %s\n", server.ID)
 	fmt.Printf("\tStatus: %s\n", server.Status)
-	fmt.Printf("\tPrivate IP: %s\n", server.Addresses.Private[0].Addr)
-	fmt.Printf("\tMAC Address: %s\n", server.Addresses.Private[0].OSEXTIPSMACMacAddr)
+	fmt.Printf("\tPrivate IP: %s\n", server.PrivateAddresses[0].Addr)
+	fmt.Printf("\tMAC Address: %s\n", server.PrivateAddresses[0].MacAddr)
 	fmt.Printf("\tCN UUID: %s\n", server.HostID)
 	fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
 	if server.SSHIP != "" {

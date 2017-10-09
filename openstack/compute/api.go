@@ -32,13 +32,8 @@ import (
 // PrivateAddresses contains information about a single instance network
 // interface.
 type PrivateAddresses struct {
-	Addr               string `json:"addr"`
-	OSEXTIPSMACMacAddr string `json:"OS-EXT-IPS-MAC:mac_addr"`
-}
-
-// Addresses contains information about an instance's networks.
-type Addresses struct {
-	Private []PrivateAddresses `json:"private"`
+	Addr    string `json:"addr"`
+	MacAddr string `json:"mac_addr"`
 }
 
 // Link contains the address to a compute resource, like e.g. a Flavor or an
@@ -81,17 +76,17 @@ func errorResponse(err error) APIResponse {
 
 // ServerDetails contains information about a specific instance.
 type ServerDetails struct {
-	Addresses                        Addresses   `json:"addresses"`
-	Created                          time.Time   `json:"created"`
-	Flavor                           FlavorLinks `json:"flavor"`
-	HostID                           string      `json:"hostId"`
-	ID                               string      `json:"id"`
-	Name                             string      `json:"name"`
-	OsExtendedVolumesVolumesAttached []string    `json:"os-extended-volumes:volumes_attached"`
-	Status                           string      `json:"status"`
-	TenantID                         string      `json:"tenant_id"`
-	SSHIP                            string      `json:"ssh_ip"`
-	SSHPort                          int         `json:"ssh_port"`
+	PrivateAddresses                 []PrivateAddresses `json:"private_addresses"`
+	Created                          time.Time          `json:"created"`
+	Flavor                           FlavorLinks        `json:"flavor"`
+	HostID                           string             `json:"hostId"`
+	ID                               string             `json:"id"`
+	Name                             string             `json:"name"`
+	OsExtendedVolumesVolumesAttached []string           `json:"os-extended-volumes:volumes_attached"`
+	Status                           string             `json:"status"`
+	TenantID                         string             `json:"tenant_id"`
+	SSHIP                            string             `json:"ssh_ip"`
+	SSHPort                          int                `json:"ssh_port"`
 }
 
 // Servers represents the unmarshalled version of the contents of a

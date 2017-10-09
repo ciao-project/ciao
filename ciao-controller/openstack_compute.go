@@ -45,12 +45,10 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 			ID: instance.WorkloadID,
 		},
 		Status: instance.State,
-		Addresses: compute.Addresses{
-			Private: []compute.PrivateAddresses{
-				{
-					Addr:               instance.IPAddress,
-					OSEXTIPSMACMacAddr: instance.MACAddress,
-				},
+		PrivateAddresses: []compute.PrivateAddresses{
+			{
+				Addr:    instance.IPAddress,
+				MacAddr: instance.MACAddress,
 			},
 		},
 		OsExtendedVolumesVolumesAttached: volumes,

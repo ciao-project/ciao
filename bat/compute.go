@@ -32,10 +32,10 @@ const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}",
     "status" : "{{.Status | js}}",
     "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
     "volumes" : {{tojson .OsExtendedVolumesVolumesAttached}}
-    {{ $addrLen := len .Addresses.Private }}
+    {{ $addrLen := len .PrivateAddresses }}
     {{- if gt $addrLen 0 }}
-      {{- with index .Addresses.Private 0 -}}
-      , "private_ip" : "{{.Addr | js }}", "mac_address" : "{{.OSEXTIPSMACMacAddr | js -}}"
+      {{- with index .PrivateAddresses 0 -}}
+      , "private_ip" : "{{.Addr | js }}", "mac_address" : "{{.MacAddr | js -}}"
       {{end -}}
     {{- end }}
   }

@@ -132,12 +132,10 @@ func (cs testComputeService) ListServersDetail(tenant string) ([]ServerDetails, 
 			ID: "testFlavorUUID",
 		},
 		Status: "active",
-		Addresses: Addresses{
-			Private: []PrivateAddresses{
-				{
-					Addr:               "192.169.0.1",
-					OSEXTIPSMACMacAddr: "00:02:00:01:02:03",
-				},
+		PrivateAddresses: []PrivateAddresses{
+			{
+				Addr:    "192.169.0.1",
+				MacAddr: "00:02:00:01:02:03",
 			},
 		},
 	}
@@ -156,12 +154,10 @@ func (cs testComputeService) ShowServerDetails(tenant string, server string) (Se
 			ID: "testFlavorUUID",
 		},
 		Status: "active",
-		Addresses: Addresses{
-			Private: []PrivateAddresses{
-				{
-					Addr:               "192.169.0.1",
-					OSEXTIPSMACMacAddr: "00:02:00:01:02:03",
-				},
+		PrivateAddresses: []PrivateAddresses{
+			{
+				Addr:    "192.169.0.1",
+				MacAddr: "00:02:00:01:02:03",
 			},
 		},
 	}
