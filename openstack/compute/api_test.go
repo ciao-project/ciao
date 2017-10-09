@@ -86,30 +86,6 @@ var tests = []test{
 		http.StatusAccepted,
 		"null",
 	},
-	{
-		"GET",
-		"/v2.1/{tenant}/flavors/",
-		listFlavors,
-		"",
-		http.StatusOK,
-		`{"flavors":[{"id":"flavorUUID","links":null,"name":"testflavor"}]}`,
-	},
-	{
-		"GET",
-		"/v2.1/{tenant}/flavors/",
-		listFlavorsDetails,
-		"",
-		http.StatusOK,
-		`{"flavors":[{"OS-FLV-DISABLED:disabled":false,"disk":1024,"OS-FLV-EXT-DATA:ephemeral":0,"os-flavor-access:is_public":true,"id":"workloadUUID","links":null,"name":"testflavor","ram":256,"swap":"","vcpus":2}]}`,
-	},
-	{
-		"GET",
-		"/v2.1/{tenant}/flavors/",
-		showFlavorDetails,
-		"",
-		http.StatusOK,
-		`{"flavor":{"OS-FLV-DISABLED:disabled":false,"disk":1024,"OS-FLV-EXT-DATA:ephemeral":0,"os-flavor-access:is_public":true,"id":"workloadUUID","links":null,"name":"testflavor","ram":256,"swap":"","vcpus":2}}`,
-	},
 }
 
 type testComputeService struct{}
@@ -170,56 +146,6 @@ func (cs testComputeService) StartServer(tenant string, server string) error {
 
 func (cs testComputeService) StopServer(tenant string, server string) error {
 	return nil
-}
-
-//flavor interfaces
-func (cs testComputeService) ListFlavors(string) (Flavors, error) {
-	flavors := NewComputeFlavors()
-
-	flavors.Flavors = append(flavors.Flavors,
-		struct {
-			ID    string `json:"id"`
-			Links []Link `json:"links"`
-			Name  string `json:"name"`
-		}{
-			ID:   "flavorUUID",
-			Name: "testflavor",
-		},
-	)
-
-	return flavors, nil
-}
-
-func (cs testComputeService) ListFlavorsDetail(string) (FlavorsDetails, error) {
-	flavors := NewComputeFlavorsDetails()
-	var details FlavorDetails
-
-	details.OsFlavorAccessIsPublic = true
-	details.ID = "workloadUUID"
-	details.Disk = 1024
-	details.Name = "testflavor"
-	details.Vcpus = 2
-	details.RAM = 256
-
-	flavors.Flavors = append(flavors.Flavors, details)
-
-	return flavors, nil
-}
-
-func (cs testComputeService) ShowFlavorDetails(string, string) (Flavor, error) {
-	var details FlavorDetails
-	var flavor Flavor
-
-	details.OsFlavorAccessIsPublic = true
-	details.ID = "workloadUUID"
-	details.Disk = 1024
-	details.Name = "testflavor"
-	details.Vcpus = 2
-	details.RAM = 256
-
-	flavor.Flavor = details
-
-	return flavor, nil
 }
 
 func TestAPIResponse(t *testing.T) {

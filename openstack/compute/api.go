@@ -36,13 +36,6 @@ type PrivateAddresses struct {
 	MacAddr string `json:"mac_addr"`
 }
 
-// Link contains the address to a compute resource, like e.g. a Flavor or an
-// Image.
-type Link struct {
-	Href string `json:"href"`
-	Rel  string `json:"rel"`
-}
-
 // These errors can be returned by the Service interface
 var (
 	ErrQuota                = errors.New("Tenant over quota")
@@ -110,43 +103,6 @@ type Server struct {
 	Server ServerDetails `json:"server"`
 }
 
-// FlavorBase represents a single flavor
-type FlavorBase struct {
-	ID    string `json:"id"`
-	Links []Link `json:"links"`
-	Name  string `json:"name"`
-}
-
-// Flavors represents the unmarshalled version of the contents of a
-// /v2.1/{tenant}/flavors response.  It contains information about all the
-// flavors in a cluster.
-type Flavors struct {
-	Flavors []FlavorBase `json:"flavors"`
-}
-
-// NewComputeFlavors allocates a ComputeFlavors structure.
-// It allocates the Flavors slice as well so that the marshalled
-// JSON is an empty array and not a nil pointer, as specified
-// by the OpenStack APIs.
-func NewComputeFlavors() (flavors Flavors) {
-	flavors.Flavors = []FlavorBase{}
-	return
-}
-
-// FlavorDetails contains information about a specific flavor.
-type FlavorDetails struct {
-	OSFLVDISABLEDDisabled  bool   `json:"OS-FLV-DISABLED:disabled"`
-	Disk                   int    `json:"disk"`
-	OSFLVEXTDATAEphemeral  int    `json:"OS-FLV-EXT-DATA:ephemeral"`
-	OsFlavorAccessIsPublic bool   `json:"os-flavor-access:is_public"`
-	ID                     string `json:"id"`
-	Links                  []Link `json:"links"`
-	Name                   string `json:"name"`
-	RAM                    int    `json:"ram"`
-	Swap                   string `json:"swap"`
-	Vcpus                  int    `json:"vcpus"`
-}
-
 // BlockDeviceMappingV2 represents an optional block_device_mapping_v2
 // object within a /v2.1/{tenant}/servers request POST to "Create Server"
 // array of block_device_mapping_v2 objects.
@@ -190,29 +146,6 @@ type BlockDeviceMappingV2 struct {
 	VolumeSize int `json:"volume_size,omitempty"`
 }
 
-// Flavor represents the unmarshalled version of the contents of a
-// /v2.1/{tenant}/flavors/{flavor} response.  It contains information about a
-// specific flavour.
-type Flavor struct {
-	Flavor FlavorDetails `json:"flavor"`
-}
-
-// FlavorsDetails represents the unmarshalled version of the contents of a
-// /v2.1/{tenant}/flavors/detail response. It contains detailed information about
-// all flavour for a given tenant.
-type FlavorsDetails struct {
-	Flavors []FlavorDetails `json:"flavors"`
-}
-
-// NewComputeFlavorsDetails allocates a ComputeFlavorsDetails structure.
-// It allocates the Flavors slice as well so that the marshalled
-// JSON is an empty array and not a nil pointer, as specified by the
-// OpenStack APIs.
-func NewComputeFlavorsDetails() (flavors FlavorsDetails) {
-	flavors.Flavors = []FlavorDetails{}
-	return
-}
-
 // CreateServerRequest represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/servers request.  It contains the information needed to start
 // one or more instances.
@@ -243,11 +176,6 @@ type Service interface {
 	DeleteServer(tenant string, server string) error
 	StartServer(tenant string, server string) error
 	StopServer(tenant string, server string) error
-
-	//flavor interfaces
-	ListFlavors(string) (Flavors, error)
-	ListFlavorsDetail(string) (FlavorsDetails, error)
-	ShowFlavorDetails(string, string) (Flavor, error)
 }
 
 type pagerFilterType uint8
@@ -321,7 +249,7 @@ func (pager *serverPager) getServers(filterType pagerFilterType, filter string, 
 }
 
 func (pager *serverPager) filter(filterType pagerFilterType, filter string, server ServerDetails) bool {
-	// we only support filtering by flavor right now
+	// we only support filtering by workload right now
 	switch filterType {
 	case workloadFilter:
 		if server.WorkloadID != filter {
@@ -605,49 +533,6 @@ func serverAction(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 	return APIResponse{http.StatusAccepted, nil}, nil
 }
 
-func listFlavors(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
-
-	DumpRequest(r)
-
-	resp, err := c.ListFlavors(tenant)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
-func listFlavorsDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
-
-	DumpRequest(r)
-
-	resp, err := c.ListFlavorsDetail(tenant)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
-func showFlavorDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
-	flavor := vars["flavor"]
-
-	DumpRequest(r)
-
-	resp, err := c.ShowFlavorDetails(tenant, flavor)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
 // Routes returns a gorilla mux router for the compute endpoints.
 func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	context := &Context{config.ComputeService}
@@ -667,14 +552,6 @@ func Routes(config APIConfig, r *mux.Router) *mux.Router {
 		APIHandler{context, deleteServer}).Methods("DELETE")
 	r.Handle("/v2.1/{tenant}/servers/{server}/action",
 		APIHandler{context, serverAction}).Methods("POST")
-
-	// flavor related endpoints
-	r.Handle("/v2.1/{tenant}/flavors",
-		APIHandler{context, listFlavors}).Methods("GET")
-	r.Handle("/v2.1/{tenant}/flavors/detail",
-		APIHandler{context, listFlavorsDetails}).Methods("GET")
-	r.Handle("/v2.1/{tenant}/flavors/{flavor}",
-		APIHandler{context, showFlavorDetails}).Methods("GET")
 
 	return r
 }
