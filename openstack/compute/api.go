@@ -34,8 +34,6 @@ import (
 type PrivateAddresses struct {
 	Addr               string `json:"addr"`
 	OSEXTIPSMACMacAddr string `json:"OS-EXT-IPS-MAC:mac_addr"`
-	OSEXTIPSType       string `json:"OS-EXT-IPS:type"`
-	Version            int    `json:"version"`
 }
 
 // Addresses contains information about an instance's networks.
