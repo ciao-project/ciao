@@ -445,6 +445,9 @@ func qmpAttach(cmd virtualizerAttachCmd, q *qemu.QMP) {
 			devID, "virtio-blk-pci", "")
 		if err != nil {
 			glog.Errorf("Failed to execute device_add: %v", err)
+			if err := q.ExecuteBlockdevDel(context.Background(), blockdevID); err != nil {
+				glog.Warningf("Failed to remove block device : %v", err)
+			}
 		}
 	}
 	cmd.responseCh <- err
