@@ -21,4 +21,5 @@ sudo ip link del ciao_br
 sudo pkill -F /tmp/dnsmasq.ciaovlan.pid
 sudo docker rm -v -f ceph-demo
 sudo rm /etc/ceph/*
+sudo rm -rf /etc/ciao
 sudo rm -rf /var/lib/ciao
