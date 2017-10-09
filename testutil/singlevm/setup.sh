@@ -175,8 +175,12 @@ ciao-deploy setup \
 --local-launcher \
 --mgmt-net="$ciao_vlan_subnet" --compute-net="$ciao_vlan_subnet" \
 --server-ip="$ciao_vlan_ip" \
+--ceph-id="ciao" \
 --image-cache-directory="$ciao_bin"
 ciao-deploy auth create testuser
+
+# Make configuration.yaml world readable otherwise storage tests will be skipped.
+sudo chmod a+r /etc/ciao/configuration.yaml
 
 curl -O https://download.clearlinux.org/image/OVMF.fd
 sudo cp -f OVMF.fd  /usr/share/qemu/OVMF.fd
