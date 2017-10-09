@@ -254,7 +254,7 @@ type pagerFilterType uint8
 
 const (
 	none pagerFilterType = iota
-	flavorFilter
+	workloadFilter
 )
 
 type serverPager struct {
@@ -323,7 +323,7 @@ func (pager *serverPager) getServers(filterType pagerFilterType, filter string, 
 func (pager *serverPager) filter(filterType pagerFilterType, filter string, server ServerDetails) bool {
 	// we only support filtering by flavor right now
 	switch filterType {
-	case flavorFilter:
+	case workloadFilter:
 		if server.WorkloadID != filter {
 			return true
 		}
@@ -488,9 +488,9 @@ func createServer(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 	return APIResponse{http.StatusAccepted, resp}, nil
 }
 
-// ListServersDetails provides server details by tenant or by flavor.
+// ListServersDetails provides server details by tenant or by workload.
 // This function is exported for use by ciao-controller due to legacy
-// endpoint using the "flavor" option. It is simpler to just overload
+// endpoint using the "workload" option. It is simpler to just overload
 // this function than to reimplement the legacy code.
 //
 func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
@@ -499,15 +499,15 @@ func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (API
 
 	values := r.URL.Query()
 
-	var flavor string
+	var workload string
 
 	// if this function is called via an admin context, we might
-	// have {flavor} on the URL. If it's called from a user context,
-	// we might have flavor as a query value.
-	flavor, ok := vars["flavor"]
+	// have {workload} on the URL. If it's called from a user context,
+	// we might have workload as a query value.
+	workload, ok := vars["workload"]
 	if !ok {
-		if values["flavor"] != nil {
-			flavor = values["flavor"][0]
+		if values["workload"] != nil {
+			workload = values["workload"][0]
 		}
 	}
 
@@ -521,9 +521,9 @@ func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (API
 	pager := serverPager{servers: servers}
 	filterType := none
 	filter := ""
-	if flavor != "" {
-		filterType = flavorFilter
-		filter = flavor
+	if workload != "" {
+		filterType = workloadFilter
+		filter = workload
 	}
 
 	resp, err := pager.nextPage(filterType, filter, r)

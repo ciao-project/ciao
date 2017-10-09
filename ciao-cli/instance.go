@@ -792,7 +792,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 
 	if cmd.workload != "" {
 		values = append(values, queryValue{
-			name:  "flavor",
+			name:  "workload",
 			value: cmd.workload,
 		})
 	}
