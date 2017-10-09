@@ -131,9 +131,6 @@ func (cs testComputeService) ListServersDetail(tenant string) ([]ServerDetails, 
 		Flavor: FlavorLinks{
 			ID: "testFlavorUUID",
 		},
-		Image: Image{
-			ID: "testImageUUID",
-		},
 		Status: "active",
 		Addresses: Addresses{
 			Private: []PrivateAddresses{
@@ -157,9 +154,6 @@ func (cs testComputeService) ShowServerDetails(tenant string, server string) (Se
 		TenantID: tenant,
 		Flavor: FlavorLinks{
 			ID: "testFlavorUUID",
-		},
-		Image: Image{
-			ID: "testImageUUID",
 		},
 		Status: "active",
 		Addresses: Addresses{

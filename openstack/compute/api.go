@@ -54,12 +54,6 @@ type FlavorLinks struct {
 	Links []Link `json:"links"`
 }
 
-// Image identifies the base image of the instance.
-type Image struct {
-	ID    string `json:"id"`
-	Links []Link `json:"links"`
-}
-
 // SecurityGroup represents the security group of an instance.
 type SecurityGroup struct {
 	Name string `json:"name"`
@@ -97,7 +91,6 @@ type ServerDetails struct {
 	Flavor                           FlavorLinks     `json:"flavor"`
 	HostID                           string          `json:"hostId"`
 	ID                               string          `json:"id"`
-	Image                            Image           `json:"image"`
 	KeyName                          string          `json:"key_name"`
 	Links                            []Link          `json:"links"`
 	Name                             string          `json:"name"`
