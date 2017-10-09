@@ -44,7 +44,6 @@ type ConfigureScheduler struct {
 // controller service.
 type ConfigureController struct {
 	CiaoPort             int    `yaml:"ciao_port"`
-	ControllerFQDN       string `yaml:"compute_fqdn"`
 	HTTPSCACert          string `yaml:"compute_ca"`
 	HTTPSKey             string `yaml:"compute_cert"`
 	CNCIVcpus            int    `yaml:"cnci_vcpus"`

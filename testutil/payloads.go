@@ -374,7 +374,6 @@ const ConfigureYaml = `configure:
     ceph_id: ` + ManagementID + `
   controller:
     ciao_port: ` + CiaoPort + `
-    compute_fqdn: ""
     compute_ca: ` + HTTPSCACert + `
     compute_cert: ` + HTTPSKey + `
     cnci_vcpus: 0
