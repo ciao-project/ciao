@@ -833,3 +833,53 @@ func TestCreateSizedVolumeFromVolume(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// Check that we can't detach from active instance
+//
+// Create an instance and a volume.  Attach the volume and wait for its status to
+// change to in-use.  Try and detach the volume and observe that it fails.
+//
+// The instance and volume should be created correctly.  The volume should be attached
+// without issue and its status should transition from available to in-use.  When
+// trying to detach the volume there should be an error.
+func TestDetachActive(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	instanceID := createVMInstance(ctx, t, "")
+	var volumeID string
+	defer func() {
+		err := bat.DeleteInstanceAndWait(ctx, "", instanceID)
+		if err != nil {
+			t.Errorf("Failed to delete instance %s : %v",
+				instanceID, err)
+		}
+		if volumeID != "" {
+			err = bat.DeleteVolume(ctx, "", volumeID)
+			if err != nil {
+				t.Errorf("Failed to delete volume %s : %v", volumeID, err)
+			}
+		}
+
+	}()
+
+	volumeID, err := bat.AddVolume(ctx, "", "", "", &bat.VolumeOptions{
+		Size: 1,
+	})
+
+	if err != nil {
+		t.Fatalf("Unable to add volume :%v", err)
+	}
+
+	err = bat.AttachVolumeAndWait(ctx, "", instanceID, volumeID)
+	if err != nil {
+		t.Fatalf("Unable to attach volume %s to instance %s : %v",
+			volumeID, instanceID, err)
+	}
+
+	err = bat.DetachVolumeAndWait(ctx, "", volumeID)
+	if err == nil {
+		t.Fatalf("Expected error when trying to detach volume %s from instance %s : %v",
+			volumeID, instanceID, err)
+	}
+}
