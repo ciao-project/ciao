@@ -51,7 +51,7 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 				MacAddr: instance.MACAddress,
 			},
 		},
-		OsExtendedVolumesVolumesAttached: volumes,
+		Volumes: volumes,
 		SSHIP:   instance.SSHIP,
 		SSHPort: instance.SSHPort,
 		Created: instance.CreateTime,

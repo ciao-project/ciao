@@ -31,7 +31,7 @@ const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}",
     "tenant_id" : "{{.TenantID | js }}", "flavor_id" : "{{.Flavor.ID | js}}",
     "status" : "{{.Status | js}}",
     "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
-    "volumes" : {{tojson .OsExtendedVolumesVolumesAttached}}
+    "volumes" : {{tojson .Volumes}}
     {{ $addrLen := len .PrivateAddresses }}
     {{- if gt $addrLen 0 }}
       {{- with index .PrivateAddresses 0 -}}

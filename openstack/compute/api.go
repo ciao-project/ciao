@@ -76,17 +76,17 @@ func errorResponse(err error) APIResponse {
 
 // ServerDetails contains information about a specific instance.
 type ServerDetails struct {
-	PrivateAddresses                 []PrivateAddresses `json:"private_addresses"`
-	Created                          time.Time          `json:"created"`
-	Flavor                           FlavorLinks        `json:"flavor"`
-	HostID                           string             `json:"hostId"`
-	ID                               string             `json:"id"`
-	Name                             string             `json:"name"`
-	OsExtendedVolumesVolumesAttached []string           `json:"os-extended-volumes:volumes_attached"`
-	Status                           string             `json:"status"`
-	TenantID                         string             `json:"tenant_id"`
-	SSHIP                            string             `json:"ssh_ip"`
-	SSHPort                          int                `json:"ssh_port"`
+	PrivateAddresses []PrivateAddresses `json:"private_addresses"`
+	Created          time.Time          `json:"created"`
+	Flavor           FlavorLinks        `json:"flavor"`
+	HostID           string             `json:"hostId"`
+	ID               string             `json:"id"`
+	Name             string             `json:"name"`
+	Volumes          []string           `json:"volumes"`
+	Status           string             `json:"status"`
+	TenantID         string             `json:"tenant_id"`
+	SSHIP            string             `json:"ssh_ip"`
+	SSHPort          int                `json:"ssh_port"`
 }
 
 // Servers represents the unmarshalled version of the contents of a

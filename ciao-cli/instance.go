@@ -912,7 +912,7 @@ func dumpInstance(server *compute.ServerDetails) {
 		fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
 	}
 
-	for _, vol := range server.OsExtendedVolumesVolumesAttached {
+	for _, vol := range server.Volumes {
 		fmt.Printf("\tVolume: %s\n", vol)
 	}
 }
