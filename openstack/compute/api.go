@@ -43,12 +43,6 @@ type Link struct {
 	Rel  string `json:"rel"`
 }
 
-// FlavorLinks provides links to a specific flavor ID.
-type FlavorLinks struct {
-	ID    string `json:"id"`
-	Links []Link `json:"links"`
-}
-
 // These errors can be returned by the Service interface
 var (
 	ErrQuota                = errors.New("Tenant over quota")
@@ -78,7 +72,7 @@ func errorResponse(err error) APIResponse {
 type ServerDetails struct {
 	PrivateAddresses []PrivateAddresses `json:"private_addresses"`
 	Created          time.Time          `json:"created"`
-	Flavor           FlavorLinks        `json:"flavor"`
+	WorkloadID       string             `json:"workload_id"`
 	NodeID           string             `json:"node_id"`
 	ID               string             `json:"id"`
 	Name             string             `json:"name"`
@@ -330,7 +324,7 @@ func (pager *serverPager) filter(filterType pagerFilterType, filter string, serv
 	// we only support filtering by flavor right now
 	switch filterType {
 	case flavorFilter:
-		if server.Flavor.ID != filter {
+		if server.WorkloadID != filter {
 			return true
 		}
 	}

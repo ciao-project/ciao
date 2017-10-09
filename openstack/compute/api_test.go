@@ -53,14 +53,14 @@ var tests = []test{
 		ListServersDetails,
 		"",
 		http.StatusOK,
-		`{"total_servers":1,"servers":[{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","flavor":{"id":"testFlavorUUID","links":null},"node_id":"nodeUUID","id":"testUUID","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}]}`},
+		`{"total_servers":1,"servers":[{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","workload_id":"testWorkloadUUID","node_id":"nodeUUID","id":"testUUID","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}]}`},
 	{
 		"GET",
 		"/v2.1/{tenant}/servers/{server}",
 		showServerDetails,
 		"",
 		http.StatusOK,
-		`{"server":{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","flavor":{"id":"testFlavorUUID","links":null},"node_id":"nodeUUID","id":"","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}}`,
+		`{"server":{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","workload_id":"testWorkloadUUID","node_id":"nodeUUID","id":"","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}}`,
 	},
 	{
 		"DELETE",
@@ -124,13 +124,11 @@ func (cs testComputeService) ListServersDetail(tenant string) ([]ServerDetails, 
 	var servers []ServerDetails
 
 	server := ServerDetails{
-		NodeID:   "nodeUUID",
-		ID:       "testUUID",
-		TenantID: tenant,
-		Flavor: FlavorLinks{
-			ID: "testFlavorUUID",
-		},
-		Status: "active",
+		NodeID:     "nodeUUID",
+		ID:         "testUUID",
+		TenantID:   tenant,
+		WorkloadID: "testWorkloadUUID",
+		Status:     "active",
 		PrivateAddresses: []PrivateAddresses{
 			{
 				Addr:    "192.169.0.1",
@@ -146,13 +144,11 @@ func (cs testComputeService) ListServersDetail(tenant string) ([]ServerDetails, 
 
 func (cs testComputeService) ShowServerDetails(tenant string, server string) (Server, error) {
 	s := ServerDetails{
-		NodeID:   "nodeUUID",
-		ID:       server,
-		TenantID: tenant,
-		Flavor: FlavorLinks{
-			ID: "testFlavorUUID",
-		},
-		Status: "active",
+		NodeID:     "nodeUUID",
+		ID:         server,
+		TenantID:   tenant,
+		WorkloadID: "testWorkloadUUID",
+		Status:     "active",
 		PrivateAddresses: []PrivateAddresses{
 			{
 				Addr:    "192.169.0.1",

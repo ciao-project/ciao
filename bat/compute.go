@@ -28,7 +28,7 @@ import (
 )
 
 const instanceTemplateDesc = `{ "node_id" : "{{.NodeID | js }}",
-    "tenant_id" : "{{.TenantID | js }}", "workload_id" : "{{.Flavor.ID | js}}",
+    "tenant_id" : "{{.TenantID | js }}", "workload_id" : "{{.WorkloadID | js}}",
     "status" : "{{.Status | js}}",
     "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
     "volumes" : {{tojson .Volumes}}
