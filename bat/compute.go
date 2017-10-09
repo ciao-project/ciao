@@ -28,7 +28,7 @@ import (
 )
 
 const instanceTemplateDesc = `{ "node_id" : "{{.NodeID | js }}",
-    "tenant_id" : "{{.TenantID | js }}", "flavor_id" : "{{.Flavor.ID | js}}",
+    "tenant_id" : "{{.TenantID | js }}", "workload_id" : "{{.Flavor.ID | js}}",
     "status" : "{{.Status | js}}",
     "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
     "volumes" : {{tojson .Volumes}}
@@ -59,7 +59,7 @@ type Workload struct {
 type Instance struct {
 	NodeID     string   `json:"node_id"`
 	TenantID   string   `json:"tenant_id"`
-	FlavorID   string   `json:"flavor_id"`
+	WorkloadID string   `json:"workload_id"`
 	Status     string   `json:"status"`
 	PrivateIP  string   `json:"private_ip"`
 	MacAddress string   `json:"mac_address"`
