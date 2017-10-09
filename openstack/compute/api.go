@@ -54,11 +54,6 @@ type FlavorLinks struct {
 	Links []Link `json:"links"`
 }
 
-// SecurityGroup represents the security group of an instance.
-type SecurityGroup struct {
-	Name string `json:"name"`
-}
-
 // These errors can be returned by the Service interface
 var (
 	ErrQuota                = errors.New("Tenant over quota")
@@ -86,37 +81,17 @@ func errorResponse(err error) APIResponse {
 
 // ServerDetails contains information about a specific instance.
 type ServerDetails struct {
-	Addresses                        Addresses       `json:"addresses"`
-	Created                          time.Time       `json:"created"`
-	Flavor                           FlavorLinks     `json:"flavor"`
-	HostID                           string          `json:"hostId"`
-	ID                               string          `json:"id"`
-	KeyName                          string          `json:"key_name"`
-	Links                            []Link          `json:"links"`
-	Name                             string          `json:"name"`
-	AccessIPv4                       string          `json:"accessIPv4"`
-	AccessIPv6                       string          `json:"accessIPv6"`
-	ConfigDrive                      string          `json:"config_drive"`
-	OSDCFDiskConfig                  string          `json:"OS-DCF:diskConfig"`
-	OSEXTAZAvailabilityZone          string          `json:"OS-EXT-AZ:availability_zone"`
-	OSEXTSRVATTRHost                 string          `json:"OS-EXT-SRV-ATTR:host"`
-	OSEXTSRVATTRHypervisorHostname   string          `json:"OS-EXT-SRV-ATTR:hypervisor_hostname"`
-	OSEXTSRVATTRInstanceName         string          `json:"OS-EXT-SRV-ATTR:instance_name"`
-	OSEXTSTSPowerState               int             `json:"OS-EXT-STS:power_state"`
-	OSEXTSTSTaskState                string          `json:"OS-EXT-STS:task_state"`
-	OSEXTSTSVMState                  string          `json:"OS-EXT-STS:vm_state"`
-	OsExtendedVolumesVolumesAttached []string        `json:"os-extended-volumes:volumes_attached"`
-	OSSRVUSGLaunchedAt               time.Time       `json:"OS-SRV-USG:launched_at"`
-	OSSRVUSGTerminatedAt             time.Time       `json:"OS-SRV-USG:terminated_at"`
-	Progress                         int             `json:"progress"`
-	SecurityGroups                   []SecurityGroup `json:"security_groups"`
-	Status                           string          `json:"status"`
-	HostStatus                       string          `json:"host_status"`
-	TenantID                         string          `json:"tenant_id"`
-	Updated                          time.Time       `json:"updated"`
-	UserID                           string          `json:"user_id"`
-	SSHIP                            string          `json:"ssh_ip"`
-	SSHPort                          int             `json:"ssh_port"`
+	Addresses                        Addresses   `json:"addresses"`
+	Created                          time.Time   `json:"created"`
+	Flavor                           FlavorLinks `json:"flavor"`
+	HostID                           string      `json:"hostId"`
+	ID                               string      `json:"id"`
+	Name                             string      `json:"name"`
+	OsExtendedVolumesVolumesAttached []string    `json:"os-extended-volumes:volumes_attached"`
+	Status                           string      `json:"status"`
+	TenantID                         string      `json:"tenant_id"`
+	SSHIP                            string      `json:"ssh_ip"`
+	SSHPort                          int         `json:"ssh_port"`
 }
 
 // Servers represents the unmarshalled version of the contents of a
