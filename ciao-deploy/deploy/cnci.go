@@ -216,7 +216,7 @@ func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath stri
 	}
 
 	fmt.Printf("Uploading image as %s\n", imageOpts.ID)
-	i, err := bat.AddImage(ctx, "", preparedImage, imageOpts)
+	i, err := bat.AddImage(ctx, true, "", preparedImage, imageOpts)
 	if err != nil {
 		return errors.Wrap(err, "Error uploading image to controller")
 	}

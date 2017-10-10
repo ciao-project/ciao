@@ -101,12 +101,18 @@ func computeImageAddArgs(options *ImageOptions) []string {
 // the entire meta data of the newly updated image that includes the caller
 // supplied meta data and the meta data added by the image service. An error
 // will be returned if the following environment variables are not set;
-// CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
-func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (*Image, error) {
+// CIAO_ADMIN_CLIENT_CERT_FILE (if admin set) otherwise CIAO_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
+func AddImage(ctx context.Context, admin bool, tenant, path string, options *ImageOptions) (*Image, error) {
 	var img *Image
 	args := []string{"image", "add", "-f", "{{tojson .}}", "-file", path}
 	args = append(args, computeImageAddArgs(options)...)
-	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
+	var err error
+	if admin {
+		err = RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
+	} else {
+		err = RunCIAOCLIJS(ctx, tenant, args, &img)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -119,48 +125,56 @@ func AddImage(ctx context.Context, tenant, path string, options *ImageOptions) (
 // options parameter. It is implemented by calling ciao-cli image add. On
 // success the function returns the entire meta data of the newly updated image
 // that includes the caller supplied meta data and the meta data added by the
-// image service. An error will be returned if the following environment
-// variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
-func AddRandomImage(ctx context.Context, tenant string, size int, options *ImageOptions) (*Image, error) {
+// image service. An error  will be returned if the following environment
+// variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set) otherwise
+// CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func AddRandomImage(ctx context.Context, admin bool, tenant string, size int, options *ImageOptions) (*Image, error) {
 	path, err := CreateRandomFile(size)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create random file : %v", err)
 	}
 	defer func() { _ = os.Remove(path) }()
-	return AddImage(ctx, tenant, path, options)
+	return AddImage(ctx, admin, tenant, path, options)
 }
 
 // DeleteImage deletes an image from the image service. It is implemented by
 // calling ciao-cli image delete. An error will be returned if the following
-// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
-// CIAO_CONTROLLER.
-func DeleteImage(ctx context.Context, tenant, ID string) error {
+// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set)
+// otherwise CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func DeleteImage(ctx context.Context, admin bool, tenant, ID string) error {
 	args := []string{"image", "delete", "-image", ID}
-	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
+	var err error
+	if admin {
+		_, err = RunCIAOCLIAsAdmin(ctx, tenant, args)
+	} else {
+		_, err = RunCIAOCLI(ctx, tenant, args)
+	}
 	return err
 }
 
 // GetImage retrieves the meta data for a given image. It is implemented by
 // calling ciao-cli image show. An error will be returned if the following
-// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
-// CIAO_CONTROLLER.
-func GetImage(ctx context.Context, tenant, ID string) (*Image, error) {
+// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set)
+// otherwise CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func GetImage(ctx context.Context, admin bool, tenant, ID string) (*Image, error) {
 	var img *Image
 	args := []string{"image", "show", "-image", ID, "-f", "{{tojson .}}"}
 
-	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
-	if err != nil {
-		return nil, err
+	var err error
+	if admin {
+		err = RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
+	} else {
+		err = RunCIAOCLIJS(ctx, tenant, args, &img)
 	}
 
-	return img, nil
+	return img, err
 }
 
 // GetImages retrieves the meta data for all images. It is implemented by
 // calling ciao-cli image list. An error will be returned if the following
-// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
-// CIAO_CONTROLLER.
-func GetImages(ctx context.Context, tenant string) (map[string]*Image, error) {
+// environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin
+// set) otherwise CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func GetImages(ctx context.Context, admin bool, tenant string) (map[string]*Image, error) {
 	var images map[string]*Image
 	template := `
 {
@@ -171,7 +185,12 @@ func GetImages(ctx context.Context, tenant string) (map[string]*Image, error) {
 }
 `
 	args := []string{"image", "list", "-f", template}
-	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &images)
+	var err error
+	if admin {
+		err = RunCIAOCLIAsAdminJS(ctx, tenant, args, &images)
+	} else {
+		err = RunCIAOCLIJS(ctx, tenant, args, &images)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -180,14 +199,17 @@ func GetImages(ctx context.Context, tenant string) (map[string]*Image, error) {
 }
 
 // GetImageCount returns the number of images currently stored in the image
-// service. An error will be returned if the following environment variables are
-// not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
-func GetImageCount(ctx context.Context, tenant string) (int, error) {
+// service. An error  will be returned if the following environment variables
+// are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set) otherwise
+// CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+func GetImageCount(ctx context.Context, admin bool, tenant string) (int, error) {
 	args := []string{"image", "list", "-f", "{{len .}}"}
 
-	data, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
-	if err != nil {
-		return 0, err
+	var data []byte
+	if admin {
+		data, _ = RunCIAOCLIAsAdmin(ctx, tenant, args)
+	} else {
+		data, _ = RunCIAOCLI(ctx, tenant, args)
 	}
 
 	return strconv.Atoi(string(data))

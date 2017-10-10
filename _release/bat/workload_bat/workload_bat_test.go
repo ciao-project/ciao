@@ -48,7 +48,7 @@ func getWorkloadSource(ctx context.Context, t *testing.T, tenant string) bat.Sou
 
 	// if we pass in "" for tenant, we get whatever the CIAO_USERNAME value
 	// is set to.
-	images, err := bat.GetImages(ctx, tenant)
+	images, err := bat.GetImages(ctx, false, tenant)
 	if err != nil {
 		t.Fatal(err)
 	}

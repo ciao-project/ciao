@@ -45,11 +45,16 @@ func addShowDelete(t *testing.T, visibility string) {
 	// ID, Visibility and  Name. This code needs to be updated when the image service's
 	// support for meta data improves.
 
+	var admin bool
+	if visibility == "public" || visibility == "internal" {
+		admin = true
+	}
+
 	options := bat.ImageOptions{
 		Name:       name,
 		Visibility: visibility,
 	}
-	img, err := bat.AddRandomImage(ctx, "", 10, &options)
+	img, err := bat.AddRandomImage(ctx, admin, "", 10, &options)
 	if err != nil {
 		t.Fatalf("Unable to add image %v", err)
 	}
@@ -60,19 +65,19 @@ func addShowDelete(t *testing.T, visibility string) {
 	}
 
 	if img.ID != "" {
-		gotImg, err := bat.GetImage(ctx, "", img.ID)
+		gotImg, err := bat.GetImage(ctx, admin, "", img.ID)
 		if err != nil {
 			t.Errorf("Unable to retrieve meta data for image %v", err)
 		} else if gotImg.ID != img.ID || gotImg.Name != img.Name {
 			t.Errorf("Unexpected meta data retrieved for image")
 		}
 
-		err = bat.DeleteImage(ctx, "", img.ID)
+		err = bat.DeleteImage(ctx, admin, "", img.ID)
 		if err != nil {
 			t.Fatalf("Unable to delete image %v", err)
 		}
 
-		_, err = bat.GetImage(ctx, "", img.ID)
+		_, err = bat.GetImage(ctx, admin, "", img.ID)
 		if err == nil {
 			t.Fatalf("Call to get non-existing image should fail")
 		}
@@ -101,7 +106,7 @@ func TestInternalAddShowDelete(t *testing.T) {
 // The attempt to delete the non-existing image should fail
 func TestDeleteNonExisting(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
-	err := bat.DeleteImage(ctx, "", uuid.Generate().String())
+	err := bat.DeleteImage(ctx, false, "", uuid.Generate().String())
 	cancelFunc()
 	if err == nil {
 		t.Errorf("Call to delete non-existing image should fail")
@@ -121,7 +126,7 @@ func TestImageList(t *testing.T) {
 	const name = "test-image"
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()
-	count, err := bat.GetImageCount(ctx, "")
+	count, err := bat.GetImageCount(ctx, false, "")
 	if err != nil {
 		t.Fatalf("Unable to count number of images: %v", err)
 	}
@@ -129,12 +134,12 @@ func TestImageList(t *testing.T) {
 	options := bat.ImageOptions{
 		Name: name,
 	}
-	img, err := bat.AddRandomImage(ctx, "", 10, &options)
+	img, err := bat.AddRandomImage(ctx, false, "", 10, &options)
 	if err != nil {
 		t.Fatalf("Unable to add image %v", err)
 	}
 
-	images, err := bat.GetImages(ctx, "")
+	images, err := bat.GetImages(ctx, false, "")
 	if err != nil {
 		t.Errorf("Unable to retrieve image list: %v", err)
 	}
@@ -159,7 +164,7 @@ func TestImageList(t *testing.T) {
 		t.Errorf("New image was not returned by ciao-cli image list")
 	}
 
-	err = bat.DeleteImage(ctx, "", img.ID)
+	err = bat.DeleteImage(ctx, false, "", img.ID)
 	if err != nil {
 		t.Fatalf("Unable to delete image %v", err)
 	}

@@ -673,7 +673,7 @@ func TestCreateVolumeFromImage(t *testing.T) {
 		Name: "test-image",
 	}
 
-	image, err := bat.AddRandomImage(ctx, "", 10, &options)
+	image, err := bat.AddRandomImage(ctx, false, "", 10, &options)
 	if err != nil {
 		t.Fatalf("Unable to add image %v", err)
 	}
@@ -697,7 +697,7 @@ func TestCreateVolumeFromImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = bat.DeleteImage(ctx, "", image.ID)
+	err = bat.DeleteImage(ctx, false, "", image.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -760,7 +760,7 @@ func TestCreateSizedVolumeFromImage(t *testing.T) {
 		Name: "test-image",
 	}
 
-	image, err := bat.AddRandomImage(ctx, "", 10, &options)
+	image, err := bat.AddRandomImage(ctx, false, "", 10, &options)
 	if err != nil {
 		t.Fatalf("Unable to add image %v", err)
 	}
@@ -784,7 +784,7 @@ func TestCreateSizedVolumeFromImage(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = bat.DeleteImage(ctx, "", image.ID)
+	err = bat.DeleteImage(ctx, false, "", image.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
