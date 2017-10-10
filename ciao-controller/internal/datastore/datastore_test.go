@@ -1560,113 +1560,6 @@ func TestCreateStorageAttachment(t *testing.T) {
 	}
 }
 
-func TestUpdateStorageAttachmentExisting(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	blockDevice := storage.BlockDevice{
-		ID: "validID",
-	}
-
-	data := types.BlockData{
-		BlockDevice: blockDevice,
-		State:       types.Available,
-		TenantID:    tenant.ID,
-		CreateTime:  time.Now(),
-	}
-
-	err = ds.AddBlockDevice(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wls, err := ds.GetWorkloads(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("No Workloads Found")
-	}
-
-	instance, err := addTestInstance(tenant, wls[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	volume := payloads.StorageResource{
-		ID:        data.ID,
-		Ephemeral: false,
-		Bootable:  false,
-	}
-	_, err = ds.CreateStorageAttachment(instance.ID, volume)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// get the attachments associated with this instance
-	a1 := ds.GetStorageAttachments(instance.ID)
-
-	if len(a1) != 1 {
-		t.Fatal(err)
-	}
-
-	if a1[0].InstanceID != instance.ID {
-		t.Fatal(err)
-	}
-
-	attachments := []string{data.ID}
-
-	// this doesn't return an error, but we can still exercise
-	// the code to see if anything panics.
-	ds.updateStorageAttachments(instance.ID, attachments)
-}
-
-func TestUpdateStorageAttachmentNotExisting(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	blockDevice := storage.BlockDevice{
-		ID: "validID",
-	}
-
-	data := types.BlockData{
-		BlockDevice: blockDevice,
-		State:       types.Available,
-		TenantID:    tenant.ID,
-		CreateTime:  time.Now(),
-	}
-
-	err = ds.AddBlockDevice(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wls, err := ds.GetWorkloads(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(wls) == 0 {
-		t.Fatal("No Workloads Found")
-	}
-
-	instance, err := addTestInstance(tenant, wls[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	attachments := []string{data.ID}
-
-	// this doesn't return an error, but we can still exercise
-	// the code to see if anything panics.
-	ds.updateStorageAttachments(instance.ID, attachments)
-}
-
 func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {
@@ -1713,12 +1606,7 @@ func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	attachments := []string{}
-
-	// this doesn't return an error, but we can still exercise
-	// the code to see if anything panics.
-	// send in an empty list.
-	ds.updateStorageAttachments(instance.ID, attachments)
+	ds.updateStorageAttachments(instance.ID)
 }
 
 func TestGetStorageAttachment(t *testing.T) {
