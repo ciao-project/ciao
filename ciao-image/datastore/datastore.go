@@ -19,40 +19,8 @@ import (
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 )
-
-// State represents the state of the image.
-type State string
-
-const (
-	// Created means that an empty image has been created
-	Created State = "created"
-
-	// Saving means the image is being saved
-	Saving State = "saving"
-
-	// Active means that the image is created, uploaded and ready to use.
-	Active State = "active"
-
-	// Killed means that an image data upload error occurred.
-	Killed State = "killed"
-)
-
-// Status translate an image state to an openstack image status.
-func (state State) Status() api.Status {
-	switch state {
-	case Created:
-		return api.Queued
-	case Saving:
-		return api.Saving
-	case Active:
-		return api.Active
-	case Killed:
-		return api.Killed
-	}
-
-	return api.Active
-}
 
 // Type represents the valid image types.
 type Type string
@@ -71,7 +39,7 @@ const (
 // Image contains the information that ciao will store about the image
 type Image struct {
 	ID         string
-	State      State
+	State      types.ImageState
 	TenantID   string
 	Name       string
 	CreateTime time.Time

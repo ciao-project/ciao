@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	imageDatastore "github.com/ciao-project/ciao/ciao-image/datastore"
 	"github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/database"
@@ -56,7 +57,7 @@ func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (a
 	i := imageDatastore.Image{
 		ID:         id,
 		TenantID:   tenantID,
-		State:      imageDatastore.Created,
+		State:      types.Created,
 		Name:       req.Name,
 		CreateTime: time.Now(),
 		Tags:       strings.Join(req.Tags, ","),
@@ -83,7 +84,7 @@ func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (a
 		tags = strings.Split(i.Tags, ",")
 	}
 	return api.DefaultResponse{
-		Status:     api.Queued,
+		Status:     types.Created,
 		CreatedAt:  i.CreateTime,
 		Tags:       tags,
 		Locations:  make([]string, 0),
@@ -106,7 +107,7 @@ func createImageResponse(img imageDatastore.Image) (api.DefaultResponse, error) 
 		tags = strings.Split(img.Tags, ",")
 	}
 	return api.DefaultResponse{
-		Status:     img.State.Status(),
+		Status:     img.State,
 		CreatedAt:  img.CreateTime,
 		Tags:       tags,
 		Locations:  make([]string, 0),

@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/clogger/gloginterface"
 	"github.com/ciao-project/ciao/database"
 )
@@ -147,7 +148,7 @@ func (s *ImageStore) DeleteImage(tenant, ID string) error {
 		return api.ErrNoImage
 	}
 
-	if img.State == Active {
+	if img.State == types.Active {
 		err = s.rawDs.Delete(ID)
 		if err != nil {
 			return err
@@ -175,26 +176,26 @@ func (s *ImageStore) UploadImage(tenant, ID string, body io.Reader) error {
 		return api.ErrNoImage
 	}
 
-	if img.State == Saving {
+	if img.State == types.Saving {
 		return api.ErrImageSaving
 	}
 
-	img.State = Saving
+	img.State = types.Saving
 
 	if s.rawDs != nil {
 		err = s.rawDs.Write(ID, body)
 		if err != nil {
-			img.State = Killed
+			img.State = types.Killed
 		}
 
 		img.Size, err = s.rawDs.GetImageSize(ID)
 		if err != nil {
-			img.State = Killed
+			img.State = types.Killed
 		}
 	}
 
 	if err == nil {
-		img.State = Active
+		img.State = types.Active
 	}
 
 	s.ImageMap.Lock()

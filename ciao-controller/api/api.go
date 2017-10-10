@@ -52,34 +52,6 @@ const (
 	ImagesV1 = "x.ciao.images.v1"
 )
 
-// Status defines the possible states for an image
-type Status string
-
-const (
-	// Queued means that the image service reserved an image ID
-	// for the image but did not yet upload any image data.
-	Queued Status = "queued"
-
-	// Saving means that the image service is currently uploading
-	// the raw data for the image.
-	Saving Status = "saving"
-
-	// Active means that the image is active and fully available
-	// in the image service.
-	Active Status = "active"
-
-	// Killed means that an image data upload error occurred.
-	Killed Status = "killed"
-
-	// Deleted means that the image service retains information
-	// about the image but the image is no longer available for use.
-	Deleted Status = "deleted"
-
-	// PendingDelete is similar to the deleted status.
-	// An image in this state is not recoverable.
-	PendingDelete Status = "pending_delete"
-)
-
 // Visibility defines whether an image is per tenant or public.
 type Visibility string
 
@@ -170,7 +142,7 @@ type CreateImageRequest struct {
 // DefaultResponse contains information about an image
 // http://developer.openstack.org/api-ref/image/v2/index.html#create-an-image
 type DefaultResponse struct {
-	Status          Status           `json:"status"`
+	Status          types.ImageState `json:"status"`
 	ContainerFormat *ContainerFormat `json:"container_format"`
 	MinRAM          *int             `json:"min_ram"`
 	UpdatedAt       *time.Time       `json:"updated_at,omitempty"`

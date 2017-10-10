@@ -795,3 +795,20 @@ type CNCIController interface {
 	GetSubnetCNCI(subnet string) (*Instance, error)
 	Shutdown()
 }
+
+// ImageState represents the state of the image.
+type ImageState string
+
+const (
+	// Created means that an empty image has been created
+	Created ImageState = "created"
+
+	// Saving means the image is being saved
+	Saving ImageState = "saving"
+
+	// Active means that the image is created, uploaded and ready to use.
+	Active ImageState = "active"
+
+	// Killed means that an image data upload error occurred.
+	Killed ImageState = "killed"
+)

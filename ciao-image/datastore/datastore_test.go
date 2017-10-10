@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/database"
 )
 
@@ -55,7 +56,7 @@ func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
@@ -82,7 +83,7 @@ func testCreateAndUpdate(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
@@ -116,7 +117,7 @@ func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
@@ -149,7 +150,7 @@ func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
@@ -187,7 +188,7 @@ func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
 	i := Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
