@@ -150,6 +150,14 @@ var tests = []test{
 	},
 	{
 		"GET",
+		"/workloads",
+		"",
+		fmt.Sprintf("application/%s", WorkloadsV1),
+		http.StatusOK,
+		`[{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":null,"storage":null}]`,
+	},
+	{
+		"GET",
 		"/tenants/093ae09b-f653-464e-9ae6-5ae28bd03a22/quotas",
 		"",
 		fmt.Sprintf("application/%s", TenantsV1),
@@ -319,6 +327,19 @@ func (ts testCiaoService) ShowWorkload(tenant string, ID string) (types.Workload
 		FWType:      payloads.Legacy,
 		VMType:      payloads.QEMU,
 		Config:      "this will totally work!",
+	}, nil
+}
+
+func (ts testCiaoService) ListWorkloads(tenant string) ([]types.Workload, error) {
+	return []types.Workload{
+		{
+			ID:          "ba58f471-0735-4773-9550-188e2d012941",
+			TenantID:    tenant,
+			Description: "testWorkload",
+			FWType:      payloads.Legacy,
+			VMType:      payloads.QEMU,
+			Config:      "this will totally work!",
+		},
 	}, nil
 }
 

@@ -467,7 +467,7 @@ func populateCreateServerRequest(cmd *instanceAddCommand, server *compute.Create
 		server.Server.Metadata["label"] = cmd.label
 	}
 
-	server.Server.Flavor = cmd.workload
+	server.Server.WorkloadID = cmd.workload
 	server.Server.MaxInstances = cmd.instances
 	server.Server.MinInstances = 1
 	server.Server.Name = cmd.name
@@ -792,7 +792,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 
 	if cmd.workload != "" {
 		values = append(values, queryValue{
-			name:  "flavor",
+			name:  "workload",
 			value: cmd.workload,
 		})
 	}
@@ -829,7 +829,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 			fmt.Fprintf(w, "%d", i+1)
 			fmt.Fprintf(w, "\t%s", server.ID)
 			fmt.Fprintf(w, "\t%s", server.Status)
-			fmt.Fprintf(w, "\t%s", server.Addresses.Private[0].Addr)
+			fmt.Fprintf(w, "\t%s", server.PrivateAddresses[0].Addr)
 			if server.SSHIP != "" {
 				fmt.Fprintf(w, "\t%s", server.SSHIP)
 				fmt.Fprintf(w, "\t%d\n", server.SSHPort)
@@ -903,17 +903,16 @@ func (cmd *instanceShowCommand) run(args []string) error {
 func dumpInstance(server *compute.ServerDetails) {
 	fmt.Printf("\tUUID: %s\n", server.ID)
 	fmt.Printf("\tStatus: %s\n", server.Status)
-	fmt.Printf("\tPrivate IP: %s\n", server.Addresses.Private[0].Addr)
-	fmt.Printf("\tMAC Address: %s\n", server.Addresses.Private[0].OSEXTIPSMACMacAddr)
-	fmt.Printf("\tCN UUID: %s\n", server.HostID)
-	fmt.Printf("\tImage UUID: %s\n", server.Image.ID)
+	fmt.Printf("\tPrivate IP: %s\n", server.PrivateAddresses[0].Addr)
+	fmt.Printf("\tMAC Address: %s\n", server.PrivateAddresses[0].MacAddr)
+	fmt.Printf("\tCN UUID: %s\n", server.NodeID)
 	fmt.Printf("\tTenant UUID: %s\n", server.TenantID)
 	if server.SSHIP != "" {
 		fmt.Printf("\tSSH IP: %s\n", server.SSHIP)
 		fmt.Printf("\tSSH Port: %d\n", server.SSHPort)
 	}
 
-	for _, vol := range server.OsExtendedVolumesVolumesAttached {
+	for _, vol := range server.Volumes {
 		fmt.Printf("\tVolume: %s\n", vol)
 	}
 }

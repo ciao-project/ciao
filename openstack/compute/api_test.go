@@ -35,9 +35,9 @@ var tests = []test{
 		"POST",
 		"/v2.1/{tenant}/servers/",
 		createServer,
-		`{"server":{"name":"new-server-test","imageRef": "http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","flavorRef":"http://openstack.example.com/flavors/1","metadata":{"My Server Name":"Apache1"}}}`,
+		`{"server":{"name":"new-server-test","imageRef": "http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","workload_id":"http://openstack.example.com/flavors/1","metadata":{"My Server Name":"Apache1"}}}`,
 		http.StatusAccepted,
-		`{"server":{"id":"validServerID","name":"new-server-test","imageRef":"http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","flavorRef":"http://openstack.example.com/flavors/1","max_count":0,"min_count":0,"metadata":{"My Server Name":"Apache1"}}}`,
+		`{"server":{"id":"validServerID","name":"new-server-test","imageRef":"http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","workload_id":"http://openstack.example.com/flavors/1","max_count":0,"min_count":0,"metadata":{"My Server Name":"Apache1"}}}`,
 	},
 	{
 		"GET",
@@ -53,15 +53,14 @@ var tests = []test{
 		ListServersDetails,
 		"",
 		http.StatusOK,
-		`{"total_servers":1,"servers":[{"addresses":{"private":[{"addr":"192.169.0.1","OS-EXT-IPS-MAC:mac_addr":"00:02:00:01:02:03","OS-EXT-IPS:type":"","version":0}]},"created":"0001-01-01T00:00:00Z","flavor":{"id":"testFlavorUUID","links":null},"hostId":"hostUUID","id":"testUUID","image":{"id":"testImageUUID","links":null},"key_name":"","links":null,"name":"","accessIPv4":"","accessIPv6":"","config_drive":"","OS-DCF:diskConfig":"","OS-EXT-AZ:availability_zone":"","OS-EXT-SRV-ATTR:host":"","OS-EXT-SRV-ATTR:hypervisor_hostname":"","OS-EXT-SRV-ATTR:instance_name":"","OS-EXT-STS:power_state":0,"OS-EXT-STS:task_state":"","OS-EXT-STS:vm_state":"","os-extended-volumes:volumes_attached":null,"OS-SRV-USG:launched_at":"0001-01-01T00:00:00Z","OS-SRV-USG:terminated_at":"0001-01-01T00:00:00Z","progress":0,"security_groups":null,"status":"active","host_status":"","tenant_id":"","updated":"0001-01-01T00:00:00Z","user_id":"","ssh_ip":"","ssh_port":0}]}`,
-	},
+		`{"total_servers":1,"servers":[{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","workload_id":"testWorkloadUUID","node_id":"nodeUUID","id":"testUUID","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}]}`},
 	{
 		"GET",
 		"/v2.1/{tenant}/servers/{server}",
 		showServerDetails,
 		"",
 		http.StatusOK,
-		`{"server":{"addresses":{"private":[{"addr":"192.169.0.1","OS-EXT-IPS-MAC:mac_addr":"00:02:00:01:02:03","OS-EXT-IPS:type":"","version":0}]},"created":"0001-01-01T00:00:00Z","flavor":{"id":"testFlavorUUID","links":null},"hostId":"hostUUID","id":"","image":{"id":"testImageUUID","links":null},"key_name":"","links":null,"name":"","accessIPv4":"","accessIPv6":"","config_drive":"","OS-DCF:diskConfig":"","OS-EXT-AZ:availability_zone":"","OS-EXT-SRV-ATTR:host":"","OS-EXT-SRV-ATTR:hypervisor_hostname":"","OS-EXT-SRV-ATTR:instance_name":"","OS-EXT-STS:power_state":0,"OS-EXT-STS:task_state":"","OS-EXT-STS:vm_state":"","os-extended-volumes:volumes_attached":null,"OS-SRV-USG:launched_at":"0001-01-01T00:00:00Z","OS-SRV-USG:terminated_at":"0001-01-01T00:00:00Z","progress":0,"security_groups":null,"status":"active","host_status":"","tenant_id":"","updated":"0001-01-01T00:00:00Z","user_id":"","ssh_ip":"","ssh_port":0}}`,
+		`{"server":{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","workload_id":"testWorkloadUUID","node_id":"nodeUUID","id":"","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}}`,
 	},
 	{
 		"DELETE",
@@ -87,30 +86,6 @@ var tests = []test{
 		http.StatusAccepted,
 		"null",
 	},
-	{
-		"GET",
-		"/v2.1/{tenant}/flavors/",
-		listFlavors,
-		"",
-		http.StatusOK,
-		`{"flavors":[{"id":"flavorUUID","links":null,"name":"testflavor"}]}`,
-	},
-	{
-		"GET",
-		"/v2.1/{tenant}/flavors/",
-		listFlavorsDetails,
-		"",
-		http.StatusOK,
-		`{"flavors":[{"OS-FLV-DISABLED:disabled":false,"disk":1024,"OS-FLV-EXT-DATA:ephemeral":0,"os-flavor-access:is_public":true,"id":"workloadUUID","links":null,"name":"testflavor","ram":256,"swap":"","vcpus":2}]}`,
-	},
-	{
-		"GET",
-		"/v2.1/{tenant}/flavors/",
-		showFlavorDetails,
-		"",
-		http.StatusOK,
-		`{"flavor":{"OS-FLV-DISABLED:disabled":false,"disk":1024,"OS-FLV-EXT-DATA:ephemeral":0,"os-flavor-access:is_public":true,"id":"workloadUUID","links":null,"name":"testflavor","ram":256,"swap":"","vcpus":2}}`,
-	},
 }
 
 type testComputeService struct{}
@@ -125,22 +100,15 @@ func (cs testComputeService) ListServersDetail(tenant string) ([]ServerDetails, 
 	var servers []ServerDetails
 
 	server := ServerDetails{
-		HostID:   "hostUUID",
-		ID:       "testUUID",
-		TenantID: tenant,
-		Flavor: FlavorLinks{
-			ID: "testFlavorUUID",
-		},
-		Image: Image{
-			ID: "testImageUUID",
-		},
-		Status: "active",
-		Addresses: Addresses{
-			Private: []PrivateAddresses{
-				{
-					Addr:               "192.169.0.1",
-					OSEXTIPSMACMacAddr: "00:02:00:01:02:03",
-				},
+		NodeID:     "nodeUUID",
+		ID:         "testUUID",
+		TenantID:   tenant,
+		WorkloadID: "testWorkloadUUID",
+		Status:     "active",
+		PrivateAddresses: []PrivateAddresses{
+			{
+				Addr:    "192.169.0.1",
+				MacAddr: "00:02:00:01:02:03",
 			},
 		},
 	}
@@ -152,22 +120,15 @@ func (cs testComputeService) ListServersDetail(tenant string) ([]ServerDetails, 
 
 func (cs testComputeService) ShowServerDetails(tenant string, server string) (Server, error) {
 	s := ServerDetails{
-		HostID:   "hostUUID",
-		ID:       server,
-		TenantID: tenant,
-		Flavor: FlavorLinks{
-			ID: "testFlavorUUID",
-		},
-		Image: Image{
-			ID: "testImageUUID",
-		},
-		Status: "active",
-		Addresses: Addresses{
-			Private: []PrivateAddresses{
-				{
-					Addr:               "192.169.0.1",
-					OSEXTIPSMACMacAddr: "00:02:00:01:02:03",
-				},
+		NodeID:     "nodeUUID",
+		ID:         server,
+		TenantID:   tenant,
+		WorkloadID: "testWorkloadUUID",
+		Status:     "active",
+		PrivateAddresses: []PrivateAddresses{
+			{
+				Addr:    "192.169.0.1",
+				MacAddr: "00:02:00:01:02:03",
 			},
 		},
 	}
@@ -185,56 +146,6 @@ func (cs testComputeService) StartServer(tenant string, server string) error {
 
 func (cs testComputeService) StopServer(tenant string, server string) error {
 	return nil
-}
-
-//flavor interfaces
-func (cs testComputeService) ListFlavors(string) (Flavors, error) {
-	flavors := NewComputeFlavors()
-
-	flavors.Flavors = append(flavors.Flavors,
-		struct {
-			ID    string `json:"id"`
-			Links []Link `json:"links"`
-			Name  string `json:"name"`
-		}{
-			ID:   "flavorUUID",
-			Name: "testflavor",
-		},
-	)
-
-	return flavors, nil
-}
-
-func (cs testComputeService) ListFlavorsDetail(string) (FlavorsDetails, error) {
-	flavors := NewComputeFlavorsDetails()
-	var details FlavorDetails
-
-	details.OsFlavorAccessIsPublic = true
-	details.ID = "workloadUUID"
-	details.Disk = 1024
-	details.Name = "testflavor"
-	details.Vcpus = 2
-	details.RAM = 256
-
-	flavors.Flavors = append(flavors.Flavors, details)
-
-	return flavors, nil
-}
-
-func (cs testComputeService) ShowFlavorDetails(string, string) (Flavor, error) {
-	var details FlavorDetails
-	var flavor Flavor
-
-	details.OsFlavorAccessIsPublic = true
-	details.ID = "workloadUUID"
-	details.Disk = 1024
-	details.Name = "testflavor"
-	details.Vcpus = 2
-	details.RAM = 256
-
-	flavor.Flavor = details
-
-	return flavor, nil
 }
 
 func TestAPIResponse(t *testing.T) {

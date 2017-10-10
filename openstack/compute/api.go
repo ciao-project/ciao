@@ -32,39 +32,8 @@ import (
 // PrivateAddresses contains information about a single instance network
 // interface.
 type PrivateAddresses struct {
-	Addr               string `json:"addr"`
-	OSEXTIPSMACMacAddr string `json:"OS-EXT-IPS-MAC:mac_addr"`
-	OSEXTIPSType       string `json:"OS-EXT-IPS:type"`
-	Version            int    `json:"version"`
-}
-
-// Addresses contains information about an instance's networks.
-type Addresses struct {
-	Private []PrivateAddresses `json:"private"`
-}
-
-// Link contains the address to a compute resource, like e.g. a Flavor or an
-// Image.
-type Link struct {
-	Href string `json:"href"`
-	Rel  string `json:"rel"`
-}
-
-// FlavorLinks provides links to a specific flavor ID.
-type FlavorLinks struct {
-	ID    string `json:"id"`
-	Links []Link `json:"links"`
-}
-
-// Image identifies the base image of the instance.
-type Image struct {
-	ID    string `json:"id"`
-	Links []Link `json:"links"`
-}
-
-// SecurityGroup represents the security group of an instance.
-type SecurityGroup struct {
-	Name string `json:"name"`
+	Addr    string `json:"addr"`
+	MacAddr string `json:"mac_addr"`
 }
 
 // These errors can be returned by the Service interface
@@ -94,38 +63,17 @@ func errorResponse(err error) APIResponse {
 
 // ServerDetails contains information about a specific instance.
 type ServerDetails struct {
-	Addresses                        Addresses       `json:"addresses"`
-	Created                          time.Time       `json:"created"`
-	Flavor                           FlavorLinks     `json:"flavor"`
-	HostID                           string          `json:"hostId"`
-	ID                               string          `json:"id"`
-	Image                            Image           `json:"image"`
-	KeyName                          string          `json:"key_name"`
-	Links                            []Link          `json:"links"`
-	Name                             string          `json:"name"`
-	AccessIPv4                       string          `json:"accessIPv4"`
-	AccessIPv6                       string          `json:"accessIPv6"`
-	ConfigDrive                      string          `json:"config_drive"`
-	OSDCFDiskConfig                  string          `json:"OS-DCF:diskConfig"`
-	OSEXTAZAvailabilityZone          string          `json:"OS-EXT-AZ:availability_zone"`
-	OSEXTSRVATTRHost                 string          `json:"OS-EXT-SRV-ATTR:host"`
-	OSEXTSRVATTRHypervisorHostname   string          `json:"OS-EXT-SRV-ATTR:hypervisor_hostname"`
-	OSEXTSRVATTRInstanceName         string          `json:"OS-EXT-SRV-ATTR:instance_name"`
-	OSEXTSTSPowerState               int             `json:"OS-EXT-STS:power_state"`
-	OSEXTSTSTaskState                string          `json:"OS-EXT-STS:task_state"`
-	OSEXTSTSVMState                  string          `json:"OS-EXT-STS:vm_state"`
-	OsExtendedVolumesVolumesAttached []string        `json:"os-extended-volumes:volumes_attached"`
-	OSSRVUSGLaunchedAt               time.Time       `json:"OS-SRV-USG:launched_at"`
-	OSSRVUSGTerminatedAt             time.Time       `json:"OS-SRV-USG:terminated_at"`
-	Progress                         int             `json:"progress"`
-	SecurityGroups                   []SecurityGroup `json:"security_groups"`
-	Status                           string          `json:"status"`
-	HostStatus                       string          `json:"host_status"`
-	TenantID                         string          `json:"tenant_id"`
-	Updated                          time.Time       `json:"updated"`
-	UserID                           string          `json:"user_id"`
-	SSHIP                            string          `json:"ssh_ip"`
-	SSHPort                          int             `json:"ssh_port"`
+	PrivateAddresses []PrivateAddresses `json:"private_addresses"`
+	Created          time.Time          `json:"created"`
+	WorkloadID       string             `json:"workload_id"`
+	NodeID           string             `json:"node_id"`
+	ID               string             `json:"id"`
+	Name             string             `json:"name"`
+	Volumes          []string           `json:"volumes"`
+	Status           string             `json:"status"`
+	TenantID         string             `json:"tenant_id"`
+	SSHIP            string             `json:"ssh_ip"`
+	SSHPort          int                `json:"ssh_port"`
 }
 
 // Servers represents the unmarshalled version of the contents of a
@@ -153,43 +101,6 @@ func NewServers() (servers Servers) {
 // specific instance within a ciao cluster.
 type Server struct {
 	Server ServerDetails `json:"server"`
-}
-
-// FlavorBase represents a single flavor
-type FlavorBase struct {
-	ID    string `json:"id"`
-	Links []Link `json:"links"`
-	Name  string `json:"name"`
-}
-
-// Flavors represents the unmarshalled version of the contents of a
-// /v2.1/{tenant}/flavors response.  It contains information about all the
-// flavors in a cluster.
-type Flavors struct {
-	Flavors []FlavorBase `json:"flavors"`
-}
-
-// NewComputeFlavors allocates a ComputeFlavors structure.
-// It allocates the Flavors slice as well so that the marshalled
-// JSON is an empty array and not a nil pointer, as specified
-// by the OpenStack APIs.
-func NewComputeFlavors() (flavors Flavors) {
-	flavors.Flavors = []FlavorBase{}
-	return
-}
-
-// FlavorDetails contains information about a specific flavor.
-type FlavorDetails struct {
-	OSFLVDISABLEDDisabled  bool   `json:"OS-FLV-DISABLED:disabled"`
-	Disk                   int    `json:"disk"`
-	OSFLVEXTDATAEphemeral  int    `json:"OS-FLV-EXT-DATA:ephemeral"`
-	OsFlavorAccessIsPublic bool   `json:"os-flavor-access:is_public"`
-	ID                     string `json:"id"`
-	Links                  []Link `json:"links"`
-	Name                   string `json:"name"`
-	RAM                    int    `json:"ram"`
-	Swap                   string `json:"swap"`
-	Vcpus                  int    `json:"vcpus"`
 }
 
 // BlockDeviceMappingV2 represents an optional block_device_mapping_v2
@@ -235,29 +146,6 @@ type BlockDeviceMappingV2 struct {
 	VolumeSize int `json:"volume_size,omitempty"`
 }
 
-// Flavor represents the unmarshalled version of the contents of a
-// /v2.1/{tenant}/flavors/{flavor} response.  It contains information about a
-// specific flavour.
-type Flavor struct {
-	Flavor FlavorDetails `json:"flavor"`
-}
-
-// FlavorsDetails represents the unmarshalled version of the contents of a
-// /v2.1/{tenant}/flavors/detail response. It contains detailed information about
-// all flavour for a given tenant.
-type FlavorsDetails struct {
-	Flavors []FlavorDetails `json:"flavors"`
-}
-
-// NewComputeFlavorsDetails allocates a ComputeFlavorsDetails structure.
-// It allocates the Flavors slice as well so that the marshalled
-// JSON is an empty array and not a nil pointer, as specified by the
-// OpenStack APIs.
-func NewComputeFlavorsDetails() (flavors FlavorsDetails) {
-	flavors.Flavors = []FlavorDetails{}
-	return
-}
-
 // CreateServerRequest represents the unmarshalled version of the contents of a
 // /v2.1/{tenant}/servers request.  It contains the information needed to start
 // one or more instances.
@@ -266,7 +154,7 @@ type CreateServerRequest struct {
 		ID                  string                 `json:"id"`
 		Name                string                 `json:"name"`
 		Image               string                 `json:"imageRef"`
-		Flavor              string                 `json:"flavorRef"`
+		WorkloadID          string                 `json:"workload_id"`
 		MaxInstances        int                    `json:"max_count"`
 		MinInstances        int                    `json:"min_count"`
 		BlockDeviceMappings []BlockDeviceMappingV2 `json:"block_device_mapping_v2,omitempty"`
@@ -288,18 +176,13 @@ type Service interface {
 	DeleteServer(tenant string, server string) error
 	StartServer(tenant string, server string) error
 	StopServer(tenant string, server string) error
-
-	//flavor interfaces
-	ListFlavors(string) (Flavors, error)
-	ListFlavorsDetail(string) (FlavorsDetails, error)
-	ShowFlavorDetails(string, string) (Flavor, error)
 }
 
 type pagerFilterType uint8
 
 const (
 	none pagerFilterType = iota
-	flavorFilter
+	workloadFilter
 )
 
 type serverPager struct {
@@ -366,10 +249,10 @@ func (pager *serverPager) getServers(filterType pagerFilterType, filter string, 
 }
 
 func (pager *serverPager) filter(filterType pagerFilterType, filter string, server ServerDetails) bool {
-	// we only support filtering by flavor right now
+	// we only support filtering by workload right now
 	switch filterType {
-	case flavorFilter:
-		if server.Flavor.ID != filter {
+	case workloadFilter:
+		if server.WorkloadID != filter {
 			return true
 		}
 	}
@@ -533,9 +416,9 @@ func createServer(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 	return APIResponse{http.StatusAccepted, resp}, nil
 }
 
-// ListServersDetails provides server details by tenant or by flavor.
+// ListServersDetails provides server details by tenant or by workload.
 // This function is exported for use by ciao-controller due to legacy
-// endpoint using the "flavor" option. It is simpler to just overload
+// endpoint using the "workload" option. It is simpler to just overload
 // this function than to reimplement the legacy code.
 //
 func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
@@ -544,15 +427,15 @@ func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (API
 
 	values := r.URL.Query()
 
-	var flavor string
+	var workload string
 
 	// if this function is called via an admin context, we might
-	// have {flavor} on the URL. If it's called from a user context,
-	// we might have flavor as a query value.
-	flavor, ok := vars["flavor"]
+	// have {workload} on the URL. If it's called from a user context,
+	// we might have workload as a query value.
+	workload, ok := vars["workload"]
 	if !ok {
-		if values["flavor"] != nil {
-			flavor = values["flavor"][0]
+		if values["workload"] != nil {
+			workload = values["workload"][0]
 		}
 	}
 
@@ -566,9 +449,9 @@ func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (API
 	pager := serverPager{servers: servers}
 	filterType := none
 	filter := ""
-	if flavor != "" {
-		filterType = flavorFilter
-		filter = flavor
+	if workload != "" {
+		filterType = workloadFilter
+		filter = workload
 	}
 
 	resp, err := pager.nextPage(filterType, filter, r)
@@ -650,49 +533,6 @@ func serverAction(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 	return APIResponse{http.StatusAccepted, nil}, nil
 }
 
-func listFlavors(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
-
-	DumpRequest(r)
-
-	resp, err := c.ListFlavors(tenant)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
-func listFlavorsDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
-
-	DumpRequest(r)
-
-	resp, err := c.ListFlavorsDetail(tenant)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
-func showFlavorDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
-	flavor := vars["flavor"]
-
-	DumpRequest(r)
-
-	resp, err := c.ShowFlavorDetails(tenant, flavor)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	return APIResponse{http.StatusOK, resp}, nil
-}
-
 // Routes returns a gorilla mux router for the compute endpoints.
 func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	context := &Context{config.ComputeService}
@@ -712,14 +552,6 @@ func Routes(config APIConfig, r *mux.Router) *mux.Router {
 		APIHandler{context, deleteServer}).Methods("DELETE")
 	r.Handle("/v2.1/{tenant}/servers/{server}/action",
 		APIHandler{context, serverAction}).Methods("POST")
-
-	// flavor related endpoints
-	r.Handle("/v2.1/{tenant}/flavors",
-		APIHandler{context, listFlavors}).Methods("GET")
-	r.Handle("/v2.1/{tenant}/flavors/detail",
-		APIHandler{context, listFlavorsDetails}).Methods("GET")
-	r.Handle("/v2.1/{tenant}/flavors/{flavor}",
-		APIHandler{context, showFlavorDetails}).Methods("GET")
 
 	return r
 }

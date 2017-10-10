@@ -33,14 +33,6 @@ type test struct {
 
 var tests = []test{
 	{
-		"GET",
-		"/v2/validtenantid/limits",
-		showAbsoluteLimits,
-		"",
-		http.StatusOK,
-		`{"limits":{"rate":[],"absolute":{"totalSnapshotsUsed":0,"maxTotalBackups":-1,"maxTotalVolumeGigabytes":-1,"maxTotalSnapshots":-1,"maxTotalBackupGigabytes":-1,"totalBackupGigabytesUsed":0,"maxTotalVolumes":-1,"totalVolumesUsed":0,"totalBackupsUsed":0,"totalGigabytesUsed":0}}}`,
-	},
-	{
 		"POST",
 		"/v2/validtenantid/volumes",
 		createVolume,
@@ -99,16 +91,6 @@ var tests = []test{
 }
 
 type testVolumeService struct{}
-
-func (vs testVolumeService) GetAbsoluteLimits(tenant string) (AbsoluteLimits, error) {
-	return AbsoluteLimits{
-		MaxTotalBackups:         -1,
-		MaxTotalVolumeGigabytes: -1,
-		MaxTotalSnapshots:       -1,
-		MaxTotalBackupGigabytes: -1,
-		MaxTotalVolumes:         -1,
-	}, nil
-}
 
 func (vs testVolumeService) ShowVolumeDetails(tenant string, volume string) (VolumeDetail, error) {
 	volName := "vol-002"

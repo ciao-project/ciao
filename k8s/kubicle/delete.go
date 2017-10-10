@@ -77,7 +77,7 @@ func (d *destroyer) deleteExternalIPs(ctx context.Context) error {
 
 func (d *destroyer) deleteWorkloadAndInstances(ctx context.Context, workload string) error {
 	for instanceID, instance := range d.instances {
-		if workload == instance.FlavorID {
+		if workload == instance.WorkloadID {
 			err := deleteInstance(ctx, instanceID)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Failed to delete instance %s\n", instanceID)

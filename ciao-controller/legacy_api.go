@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/ciao-project/ciao/openstack/compute"
 	"github.com/ciao-project/ciao/service"
 	"github.com/gorilla/mux"
 )
@@ -141,27 +140,9 @@ func legacyTraceData(c *controller, w http.ResponseWriter, r *http.Request) (API
 	return traceData(c, w, r)
 }
 
-func listServerDetailsFlavors(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	cxt := &compute.Context{
-		Service: c,
-	}
-
-	computeResp, err := compute.ListServersDetails(cxt, w, r)
-
-	resp := APIResponse{
-		status:   computeResp.Status,
-		response: computeResp.Response,
-	}
-
-	return resp, err
-}
-
 func legacyComputeRoutes(ctl *controller, r *mux.Router) *mux.Router {
 	r.Handle("/v2.1/{tenant}/servers/action",
 		legacyAPIHandler{ctl, tenantServersAction, false}).Methods("POST")
-
-	r.Handle("/v2.1/flavors/{flavor}/servers/detail",
-		legacyAPIHandler{ctl, listServerDetailsFlavors, true}).Methods("GET")
 
 	r.Handle("/v2.1/{tenant}/resources",
 		legacyAPIHandler{ctl, listTenantResources, false}).Methods("GET")

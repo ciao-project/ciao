@@ -23,7 +23,6 @@ import (
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/openstack/compute"
-	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp/uuid"
 	"github.com/gorilla/mux"
 )
@@ -38,22 +37,18 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 	}
 
 	server := compute.ServerDetails{
-		HostID:   instance.NodeID,
-		ID:       instance.ID,
-		TenantID: instance.TenantID,
-		Flavor: compute.FlavorLinks{
-			ID: instance.WorkloadID,
-		},
-		Status: instance.State,
-		Addresses: compute.Addresses{
-			Private: []compute.PrivateAddresses{
-				{
-					Addr:               instance.IPAddress,
-					OSEXTIPSMACMacAddr: instance.MACAddress,
-				},
+		NodeID:     instance.NodeID,
+		ID:         instance.ID,
+		TenantID:   instance.TenantID,
+		WorkloadID: instance.WorkloadID,
+		Status:     instance.State,
+		PrivateAddresses: []compute.PrivateAddresses{
+			{
+				Addr:    instance.IPAddress,
+				MacAddr: instance.MACAddress,
 			},
 		},
-		OsExtendedVolumesVolumesAttached: volumes,
+		Volumes: volumes,
 		SSHIP:   instance.SSHIP,
 		SSHPort: instance.SSHPort,
 		Created: instance.CreateTime,
@@ -366,7 +361,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 	label := server.Server.Metadata["label"]
 
 	w := types.WorkloadRequest{
-		WorkloadID: server.Server.Flavor,
+		WorkloadID: server.Server.WorkloadID,
 		TenantID:   tenant,
 		Instances:  nInstances,
 		TraceLabel: label,
@@ -508,85 +503,6 @@ func (c *controller) StopServer(tenant string, ID string) error {
 	return err
 }
 
-func (c *controller) ListFlavors(tenant string) (compute.Flavors, error) {
-	flavors := compute.NewComputeFlavors()
-
-	workloads, err := c.ds.GetWorkloads(tenant)
-	if err != nil {
-		return flavors, err
-	}
-
-	for _, workload := range workloads {
-		flavors.Flavors = append(flavors.Flavors,
-			compute.FlavorBase{
-				ID:   workload.ID,
-				Name: workload.Description,
-			},
-		)
-	}
-
-	return flavors, nil
-}
-
-func buildFlavorDetails(workload types.Workload) (compute.FlavorDetails, error) {
-	var details compute.FlavorDetails
-
-	defaults := workload.Defaults
-	if len(defaults) == 0 {
-		return details, fmt.Errorf("Workload resources not set")
-	}
-
-	details.OsFlavorAccessIsPublic = true
-	details.ID = workload.ID
-	details.Name = workload.Description
-
-	for r := range defaults {
-		switch defaults[r].Type {
-		case payloads.VCPUs:
-			details.Vcpus = defaults[r].Value
-		case payloads.MemMB:
-			details.RAM = defaults[r].Value
-		}
-	}
-
-	return details, nil
-}
-
-func (c *controller) ListFlavorsDetail(tenant string) (compute.FlavorsDetails, error) {
-	flavors := compute.NewComputeFlavorsDetails()
-
-	workloads, err := c.ds.GetWorkloads(tenant)
-	if err != nil {
-		return flavors, err
-	}
-
-	for _, workload := range workloads {
-		details, err := buildFlavorDetails(workload)
-		if err != nil {
-			continue
-		}
-
-		flavors.Flavors = append(flavors.Flavors, details)
-	}
-
-	return flavors, nil
-}
-
-func (c *controller) ShowFlavorDetails(tenant string, flavorID string) (compute.Flavor, error) {
-	var flavor compute.Flavor
-
-	workload, err := c.ds.GetWorkload(tenant, flavorID)
-	if err != nil {
-		return flavor, err
-	}
-
-	flavor.Flavor, err = buildFlavorDetails(workload)
-	if err != nil {
-		return flavor, err
-	}
-
-	return flavor, nil
-}
 func (c *controller) createComputeRoutes(r *mux.Router) error {
 	config := compute.APIConfig{ComputeService: c}
 	compute.Routes(config, r)

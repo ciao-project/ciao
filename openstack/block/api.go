@@ -333,7 +333,6 @@ type APIConfig struct {
 // The caller who is starting the api service needs to provide this
 // interface.
 type Service interface {
-	GetAbsoluteLimits(tenant string) (AbsoluteLimits, error)
 	CreateVolume(tenant string, req RequestedVolume) (Volume, error)
 	DeleteVolume(tenant string, volume string) error
 	AttachVolume(tenant string, volume string, instance string, mountpoint string) error
@@ -380,20 +379,6 @@ func (h APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.status)
 	w.Write(b)
-}
-
-func showAbsoluteLimits(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
-
-	abs, err := bc.GetAbsoluteLimits(tenant)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	resp := Limits{Limit{make([]string, 0), abs}}
-
-	return APIResponse{http.StatusOK, resp}, nil
 }
 
 func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
@@ -578,10 +563,6 @@ func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	if r == nil {
 		r = mux.NewRouter()
 	}
-
-	// Limits
-	r.Handle("/v2/{tenant}/limits",
-		APIHandler{context, showAbsoluteLimits}).Methods("GET")
 
 	// Volumes
 	r.Handle("/v2/{tenant}/volumes",

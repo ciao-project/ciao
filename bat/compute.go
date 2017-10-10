@@ -27,15 +27,15 @@ import (
 	"time"
 )
 
-const instanceTemplateDesc = `{ "host_id" : "{{.HostID | js }}", 
-    "tenant_id" : "{{.TenantID | js }}", "flavor_id" : "{{.Flavor.ID | js}}",
+const instanceTemplateDesc = `{ "node_id" : "{{.NodeID | js }}",
+    "tenant_id" : "{{.TenantID | js }}", "workload_id" : "{{.WorkloadID | js}}",
     "status" : "{{.Status | js}}",
     "ssh_ip" : "{{.SSHIP | js }}", "ssh_port" : {{.SSHPort}},
-    "volumes" : {{tojson .OsExtendedVolumesVolumesAttached}}
-    {{ $addrLen := len .Addresses.Private }}
+    "volumes" : {{tojson .Volumes}}
+    {{ $addrLen := len .PrivateAddresses }}
     {{- if gt $addrLen 0 }}
-      {{- with index .Addresses.Private 0 -}}
-      , "private_ip" : "{{.Addr | js }}", "mac_address" : "{{.OSEXTIPSMACMacAddr | js -}}"
+      {{- with index .PrivateAddresses 0 -}}
+      , "private_ip" : "{{.Addr | js }}", "mac_address" : "{{.MacAddr | js -}}"
       {{end -}}
     {{- end }}
   }
@@ -57,9 +57,9 @@ type Workload struct {
 
 // Instance contains detailed information about an instance
 type Instance struct {
-	HostID     string   `json:"host_id"`
+	NodeID     string   `json:"node_id"`
 	TenantID   string   `json:"tenant_id"`
-	FlavorID   string   `json:"flavor_id"`
+	WorkloadID string   `json:"workload_id"`
 	Status     string   `json:"status"`
 	PrivateIP  string   `json:"private_ip"`
 	MacAddress string   `json:"mac_address"`

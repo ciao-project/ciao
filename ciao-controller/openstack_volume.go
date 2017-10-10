@@ -27,16 +27,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Implement the Block Service interface
-func (c *controller) GetAbsoluteLimits(tenant string) (block.AbsoluteLimits, error) {
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return block.AbsoluteLimits{}, err
-	}
-
-	return block.AbsoluteLimits{}, nil
-}
-
 // CreateVolume will create a new block device and store it in the datastore.
 func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (block.Volume, error) {
 	err := c.confirmTenant(tenant)
