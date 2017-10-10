@@ -2074,7 +2074,6 @@ func TestMain(m *testing.M) {
 	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
 	ctl.qs = new(quotas.Quotas)
-	ctl.is = new(ImageService)
 
 	ctl.BlockDriver = func() storage.BlockDriver {
 		return &storage.NoopDriver{}
@@ -2108,7 +2107,7 @@ func TestMain(m *testing.M) {
 
 	ctl.qs.Init()
 
-	err = ctl.is.Init(ctl.qs)
+	err = ctl.InitImageDatastore()
 	if err != nil {
 		os.Exit(1)
 	}
@@ -2141,6 +2140,7 @@ func TestMain(m *testing.M) {
 	ctl.client.Disconnect()
 	ctl.ds.Exit()
 	ctl.qs.Shutdown()
+	ctl.ids.Shutdown()
 	server.Shutdown()
 	f.Close()
 	os.RemoveAll(dir)

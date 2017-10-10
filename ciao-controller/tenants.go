@@ -225,13 +225,13 @@ func (c *controller) DeleteTenant(tenantID string) error {
 	}
 
 	// remove any images for this tenant.
-	images, err := c.is.ds.GetAllImages(tenantID)
+	images, err := c.ids.GetAllImages(tenantID)
 	if err != nil {
 		return err
 	}
 
 	for _, i := range images {
-		_, err := c.is.DeleteImage(tenantID, i.ID)
+		err := c.ids.DeleteImage(tenantID, i.ID)
 		if err != nil {
 			return errors.Wrap(err, "Unable to remove tenant")
 		}

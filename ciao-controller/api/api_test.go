@@ -17,9 +17,11 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/payloads"
@@ -203,6 +205,37 @@ var tests = []test{
 		fmt.Sprintf("application/%s", TenantsV1),
 		http.StatusNoContent,
 		"null",
+	}, {
+		"POST",
+		"/images",
+		`{"container_format":"bare","disk_format":"raw","name":"Ubuntu","id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","visibility":"private"}`,
+		fmt.Sprintf("application/%s", ImagesV1),
+		http.StatusCreated,
+		`{"status":"queued","container_format":"bare","min_ram":0,"updated_at":"2015-11-29T22:21:42Z","owner":"bab7d5c60cd041a0a36f7c4b6e1dd978","min_disk":0,"tags":[],"locations":[],"visibility":"private","id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","size":null,"virtual_size":null,"name":"Ubuntu","checksum":null,"created_at":"2015-11-29T22:21:42Z","disk_format":"raw","properties":null,"protected":false,"self":"/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb","file":"/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb/file","schema":"/schemas/image"}`,
+	},
+	{
+		"GET",
+		"/images",
+		"",
+		fmt.Sprintf("application/%s", ImagesV1),
+		http.StatusOK,
+		`{"images":[{"status":"queued","container_format":"bare","min_ram":0,"updated_at":"2015-11-29T22:21:42Z","owner":"bab7d5c60cd041a0a36f7c4b6e1dd978","min_disk":0,"tags":[],"locations":[],"visibility":"public","id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","size":null,"virtual_size":null,"name":"Ubuntu","checksum":null,"created_at":"2015-11-29T22:21:42Z","disk_format":"raw","properties":null,"protected":false,"self":"/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb","file":"/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb/file","schema":"/schemas/image"}],"schema":"/v2/schemas/images","first":"/v2/images"}`,
+	},
+	{
+		"GET",
+		"/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		"",
+		fmt.Sprintf("application/%s", ImagesV1),
+		http.StatusOK,
+		`{"status":"active","container_format":"bare","min_ram":0,"updated_at":"2014-05-05T17:15:11Z","owner":"5ef70662f8b34079a6eddb8da9d75fe8","min_disk":0,"tags":[],"locations":[],"visibility":"public","id":"1bea47ed-f6a9-463b-b423-14b9cca9ad27","size":13167616,"virtual_size":null,"name":"cirros-0.3.2-x86_64-disk","checksum":"64d7c1cd2b6f60c92c14662941cb7913","created_at":"2014-05-05T17:15:10Z","disk_format":"qcow2","properties":null,"protected":false,"self":"/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27","file":"/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27/file","schema":"/schemas/image"}`,
+	},
+	{
+		"DELETE",
+		"/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		"",
+		fmt.Sprintf("application/%s", ImagesV1),
+		http.StatusNoContent,
+		`null`,
 	},
 }
 
@@ -412,6 +445,118 @@ func (ts testCiaoService) CreateTenant(ID string, config types.TenantConfig) (ty
 
 func (ts testCiaoService) DeleteTenant(string) error {
 	return nil
+}
+
+func (ts testCiaoService) CreateImage(tenantID string, req CreateImageRequest) (DefaultResponse, error) {
+	format := Bare
+	name := "Ubuntu"
+	createdAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
+	minDisk := 0
+	minRAM := 0
+	owner := "bab7d5c60cd041a0a36f7c4b6e1dd978"
+
+	return DefaultResponse{
+		Status:          Queued,
+		ContainerFormat: &format,
+		CreatedAt:       createdAt,
+		Tags:            make([]string, 0),
+		DiskFormat:      Raw,
+		Visibility:      Private,
+		UpdatedAt:       &updatedAt,
+		Locations:       make([]string, 0),
+		Self:            "/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb",
+		MinDisk:         &minDisk,
+		Protected:       false,
+		ID:              "b2173dd3-7ad6-4362-baa6-a68bce3565cb",
+		File:            "/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb/file",
+		Owner:           &owner,
+		MinRAM:          &minRAM,
+		Schema:          "/schemas/image",
+		Name:            &name,
+	}, nil
+}
+
+func (ts testCiaoService) ListImages(tenantID string) ([]DefaultResponse, error) {
+	format := Bare
+	name := "Ubuntu"
+	createdAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
+	minDisk := 0
+	minRAM := 0
+	owner := "bab7d5c60cd041a0a36f7c4b6e1dd978"
+
+	image := DefaultResponse{
+		Status:          Queued,
+		ContainerFormat: &format,
+		CreatedAt:       createdAt,
+		Tags:            make([]string, 0),
+		DiskFormat:      Raw,
+		Visibility:      Public,
+		UpdatedAt:       &updatedAt,
+		Locations:       make([]string, 0),
+		Self:            "/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb",
+		MinDisk:         &minDisk,
+		Protected:       false,
+		ID:              "b2173dd3-7ad6-4362-baa6-a68bce3565cb",
+		File:            "/images/b2173dd3-7ad6-4362-baa6-a68bce3565cb/file",
+		Owner:           &owner,
+		MinRAM:          &minRAM,
+		Schema:          "/schemas/image",
+		Name:            &name,
+	}
+
+	var images []DefaultResponse
+
+	if tenantID == string(image.Visibility) {
+		images = append(images, image)
+	}
+
+	return images, nil
+}
+
+func (ts testCiaoService) GetImage(tenantID, ID string) (DefaultResponse, error) {
+	imageID := "1bea47ed-f6a9-463b-b423-14b9cca9ad27"
+	format := Bare
+	name := "cirros-0.3.2-x86_64-disk"
+	createdAt, _ := time.Parse(time.RFC3339, "2014-05-05T17:15:10Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2014-05-05T17:15:11Z")
+	minDisk := 0
+	minRAM := 0
+	owner := "5ef70662f8b34079a6eddb8da9d75fe8"
+	checksum := "64d7c1cd2b6f60c92c14662941cb7913"
+	size := 13167616
+
+	return DefaultResponse{
+		Status:          Active,
+		ContainerFormat: &format,
+		CreatedAt:       createdAt,
+		Tags:            make([]string, 0),
+		DiskFormat:      QCow,
+		Visibility:      Public,
+		UpdatedAt:       &updatedAt,
+		Locations:       make([]string, 0),
+		Self:            fmt.Sprintf("/images/%s", imageID),
+		MinDisk:         &minDisk,
+		Protected:       false,
+		CheckSum:        &checksum,
+		ID:              imageID,
+
+		File:   fmt.Sprintf("/images/%s/file", imageID),
+		Owner:  &owner,
+		MinRAM: &minRAM,
+		Schema: "/schemas/image",
+		Name:   &name,
+		Size:   &size,
+	}, nil
+}
+
+func (ts testCiaoService) UploadImage(string, string, io.Reader) (NoContentImageResponse, error) {
+	return NoContentImageResponse{}, nil
+}
+
+func (ts testCiaoService) DeleteImage(string, string) (NoContentImageResponse, error) {
+	return NoContentImageResponse{}, nil
 }
 
 func TestResponse(t *testing.T) {

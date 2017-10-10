@@ -16,9 +16,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/service"
@@ -44,7 +47,166 @@ const (
 
 	// NodeV1 is the content-type string for v1 of our node resource
 	NodeV1 = "x.ciao.node.v1"
+
+	// ImagesV1 is the content-type string for v1 of our images resource
+	ImagesV1 = "x.ciao.images.v1"
 )
+
+// Status defines the possible states for an image
+type Status string
+
+const (
+	// Queued means that the image service reserved an image ID
+	// for the image but did not yet upload any image data.
+	Queued Status = "queued"
+
+	// Saving means that the image service is currently uploading
+	// the raw data for the image.
+	Saving Status = "saving"
+
+	// Active means that the image is active and fully available
+	// in the image service.
+	Active Status = "active"
+
+	// Killed means that an image data upload error occurred.
+	Killed Status = "killed"
+
+	// Deleted means that the image service retains information
+	// about the image but the image is no longer available for use.
+	Deleted Status = "deleted"
+
+	// PendingDelete is similar to the deleted status.
+	// An image in this state is not recoverable.
+	PendingDelete Status = "pending_delete"
+)
+
+// Visibility defines whether an image is per tenant or public.
+type Visibility string
+
+const (
+	// Public indicates that the image can be used by anyone.
+	Public Visibility = "public"
+
+	// Private indicates that the image is only available to a tenant.
+	Private Visibility = "private"
+
+	// Internal indicates that an image is only for Ciao internal usage.
+	Internal Visibility = "internal"
+)
+
+// InternalImage defines the types of CIAO internal images (e.g. cnci)
+type InternalImage string
+
+const (
+	// CNCI is the type of image for CIAO per-tenant networking managenent
+	CNCI InternalImage = "cnci"
+)
+
+// ContainerFormat defines the acceptable container format strings.
+type ContainerFormat string
+
+const (
+	// Bare is the only format we support right now.
+	Bare ContainerFormat = "bare"
+)
+
+// DiskFormat defines the valid values for the disk_format string
+type DiskFormat string
+
+// we support the following disk formats
+const (
+	// Raw
+	Raw DiskFormat = "raw"
+
+	// QCow
+	QCow DiskFormat = "qcow2"
+
+	// ISO
+	ISO DiskFormat = "iso"
+)
+
+// ErrorImage defines all possible image handling errors
+type ErrorImage error
+
+var (
+	// ErrNoImage is returned when an image is not found.
+	ErrNoImage = errors.New("Image not found")
+
+	// ErrImageSaving is returned when an image is being uploaded.
+	ErrImageSaving = errors.New("Image being uploaded")
+
+	// ErrBadUUID is returned when an invalid UUID is specified
+	ErrBadUUID = errors.New("Bad UUID")
+
+	// ErrAlreadyExists is returned when an attempt is made to add
+	// an image with a UUID that already exists.
+	ErrAlreadyExists = errors.New("Already Exists")
+
+	// ErrDecodeImage is returned when there was an error on image decoding
+	ErrDecodeImage = errors.New("Error on Image decode")
+
+	// ErrForbiddenAccess is returned for only-privileged image operations
+	ErrForbiddenAccess = errors.New("Forbidden Access")
+
+	// ErrQuota is returned when the tenant exceeds its quota
+	ErrQuota = errors.New("Tenant over quota")
+)
+
+// CreateImageRequest contains information for a create image request.
+// http://developer.openstack.org/api-ref/image/v2/index.html#create-an-image
+type CreateImageRequest struct {
+	Name            string          `json:"name,omitempty"`
+	ID              string          `json:"id,omitempty"`
+	Visibility      Visibility      `json:"visibility,omitempty"`
+	Tags            []string        `json:"tags,omitempty"`
+	ContainerFormat ContainerFormat `json:"container_format,omitempty"`
+	DiskFormat      DiskFormat      `json:"disk_format,omitempty"`
+	MinDisk         int             `json:"min_disk,omitempty"`
+	MinRAM          int             `json:"min_ram,omitempty"`
+	Protected       bool            `json:"protected,omitempty"`
+	Properties      interface{}     `json:"properties,omitempty"`
+}
+
+// DefaultResponse contains information about an image
+// http://developer.openstack.org/api-ref/image/v2/index.html#create-an-image
+type DefaultResponse struct {
+	Status          Status           `json:"status"`
+	ContainerFormat *ContainerFormat `json:"container_format"`
+	MinRAM          *int             `json:"min_ram"`
+	UpdatedAt       *time.Time       `json:"updated_at,omitempty"`
+	Owner           *string          `json:"owner"`
+	MinDisk         *int             `json:"min_disk"`
+	Tags            []string         `json:"tags"`
+	Locations       []string         `json:"locations"`
+	Visibility      Visibility       `json:"visibility"`
+	ID              string           `json:"id"`
+	Size            *int             `json:"size"`
+	VirtualSize     *int             `json:"virtual_size"`
+	Name            *string          `json:"name"`
+	CheckSum        *string          `json:"checksum"`
+	CreatedAt       time.Time        `json:"created_at"`
+	DiskFormat      DiskFormat       `json:"disk_format"`
+	Properties      interface{}      `json:"properties"`
+	Protected       bool             `json:"protected"`
+	Self            string           `json:"self"`
+	File            string           `json:"file"`
+	Schema          string           `json:"schema"`
+}
+
+// ListImagesResponse contains the list of all images that have been created.
+// http://developer.openstack.org/api-ref/image/v2/index.html#show-images
+type ListImagesResponse struct {
+	Images []DefaultResponse `json:"images"`
+	Schema string            `json:"schema"`
+	First  string            `json:"first"`
+}
+
+// NoContentImageResponse contains the UUID of the image which content
+// got uploaded or deleted
+// http://developer.openstack.org/api-ref/image/v2/index.html#upload-binary-image-data
+type NoContentImageResponse struct {
+	ImageID string `json:"image_id"`
+}
 
 // HTTPErrorData represents the HTTP response body for
 // a compute API request error.
@@ -726,6 +888,193 @@ func deleteTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusNoContent, nil}, nil
 }
 
+func validPrivilege(visibility Visibility, privileged bool) bool {
+	return visibility == Private || (visibility == Public || visibility == Internal) && privileged
+}
+
+// createImage creates information about an image, but doesn't contain
+// any actual image.
+func createImage(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	defer r.Body.Close()
+
+	vars := mux.Vars(r)
+	tenantID, ok := vars["tenant"]
+	if !ok {
+		tenantID = "public"
+	}
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return Response{http.StatusBadRequest, nil}, err
+	}
+
+	var req CreateImageRequest
+
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return Response{http.StatusInternalServerError, nil}, err
+	}
+
+	privileged := service.GetPrivilege(r.Context())
+
+	if !validPrivilege(req.Visibility, privileged) {
+		return Response{http.StatusForbidden, nil}, nil
+	}
+
+	if req.Visibility == Public || req.Visibility == Internal {
+		tenantID = string(req.Visibility)
+	}
+
+	resp, err := context.CreateImage(tenantID, req)
+
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusCreated, resp}, nil
+}
+
+// listImages returns a list of all created images.
+//
+// TBD: support query & sort parameters
+func listImages(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	images := []DefaultResponse{}
+
+	vars := mux.Vars(r)
+	tenantID, ok := vars["tenant"]
+	if !ok {
+		tenantID = "public"
+	}
+
+	imageTables := []string{tenantID, string(Public)}
+
+	privileged := service.GetPrivilege(r.Context())
+	if privileged {
+		imageTables = append(imageTables, string(Internal))
+	}
+
+	for _, table := range imageTables {
+		tableImages, err := context.ListImages(table)
+		if err != nil {
+			return errorResponse(err), err
+		}
+		images = append(images, tableImages...)
+	}
+
+	resp := ListImagesResponse{
+		Images: images,
+		Schema: "/v2/schemas/images",
+		First:  "/v2/images",
+	}
+
+	return Response{http.StatusOK, resp}, nil
+}
+
+// getImage get information about an image by image_id field
+//
+func getImage(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	imageID := vars["image_id"]
+
+	tenantID, ok := vars["tenant"]
+	if !ok {
+		tenantID = "public"
+	}
+
+	imageTables := []string{tenantID, string(Public)}
+
+	privileged := service.GetPrivilege(r.Context())
+	if privileged {
+		imageTables = append(imageTables, string(Internal))
+	}
+
+	for _, table := range imageTables {
+		resp, err := context.GetImage(table, imageID)
+		if err != nil && err != ErrNoImage {
+			return errorResponse(err), err
+		}
+		if resp.ID != "" {
+			return Response{http.StatusOK, resp}, nil
+		}
+	}
+
+	return errorResponse(ErrNoImage), ErrNoImage
+
+}
+
+func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	imageID := vars["image_id"]
+
+	tenantID, ok := vars["tenant"]
+	if !ok {
+		tenantID = "public"
+	}
+
+	imageTables := []string{tenantID, string(Public)}
+
+	privileged := service.GetPrivilege(r.Context())
+	if privileged {
+		imageTables = append(imageTables, string(Internal))
+	}
+
+	for _, table := range imageTables {
+		img, err := context.GetImage(table, imageID)
+		if err != nil && err != ErrNoImage {
+			return errorResponse(err), err
+		}
+		if img.ID != "" {
+			if !validPrivilege(img.Visibility, privileged) {
+				return Response{http.StatusForbidden, nil}, nil
+			}
+			if img.Visibility == Public || img.Visibility == Internal {
+				tenantID = string(img.Visibility)
+			}
+			break
+		}
+	}
+
+	_, err := context.UploadImage(tenantID, imageID, r.Body)
+	if err != nil {
+		return errorResponse(err), err
+	}
+	return Response{http.StatusNoContent, nil}, nil
+}
+
+func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	imageID := vars["image_id"]
+
+	tenantID, ok := vars["tenant"]
+	if !ok {
+		tenantID = "public"
+	}
+
+	imageTables := []string{tenantID, string(Public), string(Internal)}
+	privileged := service.GetPrivilege(r.Context())
+
+	for _, table := range imageTables {
+		img, err := context.GetImage(table, imageID)
+		if err != ErrNoImage {
+			if img.ID != "" {
+				if !validPrivilege(img.Visibility, privileged) {
+					return Response{http.StatusForbidden, nil}, nil
+				}
+				if img.Visibility == Public || img.Visibility == Internal {
+					tenantID = string(img.Visibility)
+				}
+				break
+			}
+		}
+	}
+
+	_, err := context.DeleteImage(tenantID, imageID)
+	if err != nil {
+		return errorResponse(err), err
+	}
+	return Response{http.StatusNoContent, nil}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -750,6 +1099,11 @@ type Service interface {
 	PatchTenant(ID string, patch []byte) error
 	CreateTenant(ID string, config types.TenantConfig) (types.TenantSummary, error)
 	DeleteTenant(ID string) error
+	CreateImage(string, CreateImageRequest) (DefaultResponse, error)
+	UploadImage(string, string, io.Reader) (NoContentImageResponse, error)
+	ListImages(string) ([]DefaultResponse, error)
+	GetImage(string, string) (DefaultResponse, error)
+	DeleteImage(string, string) (NoContentImageResponse, error)
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -925,6 +1279,49 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 
 	route = r.Handle("/node/{node_id:"+uuid.UUIDRegex+"}", Handler{context, changeNodeStatus, true})
 	route.Methods("PUT")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	// images
+	matchContent = fmt.Sprintf("application/(%s|json)", ImagesV1)
+
+	route = r.Handle("/{tenant}/images", Handler{context, createImage, false})
+	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/images/{image_id:"+uuid.UUIDRegex+"}/file", Handler{context, uploadImage, false})
+	route.Methods("PUT")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/images", Handler{context, listImages, false})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/images/{image_id:"+uuid.UUIDRegex+"}", Handler{context, getImage, false})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/images/{image_id:"+uuid.UUIDRegex+"}", Handler{context, deleteImage, false})
+	route.Methods("DELETE")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/images", Handler{context, createImage, true})
+	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/images/{image_id:"+uuid.UUIDRegex+"}/file", Handler{context, uploadImage, true})
+	route.Methods("PUT")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/images", Handler{context, listImages, true})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/images/{image_id:"+uuid.UUIDRegex+"}", Handler{context, getImage, true})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/images/{image_id:"+uuid.UUIDRegex+"}", Handler{context, deleteImage, true})
+	route.Methods("DELETE")
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	return r

@@ -18,7 +18,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/ciao-project/ciao/openstack/image"
+	"github.com/ciao-project/ciao/ciao-controller/api"
 )
 
 // State represents the state of the image.
@@ -39,19 +39,19 @@ const (
 )
 
 // Status translate an image state to an openstack image status.
-func (state State) Status() image.Status {
+func (state State) Status() api.Status {
 	switch state {
 	case Created:
-		return image.Queued
+		return api.Queued
 	case Saving:
-		return image.Saving
+		return api.Saving
 	case Active:
-		return image.Active
+		return api.Active
 	case Killed:
-		return image.Killed
+		return api.Killed
 	}
 
-	return image.Active
+	return api.Active
 }
 
 // Type represents the valid image types.
@@ -77,7 +77,7 @@ type Image struct {
 	CreateTime time.Time
 	Type       Type
 	Size       uint64
-	Visibility image.Visibility
+	Visibility api.Visibility
 	Tags       string
 }
 

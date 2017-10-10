@@ -31,6 +31,7 @@ import (
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/internal/datastore"
 	"github.com/ciao-project/ciao/ciao-controller/internal/quotas"
+	imageDatastore "github.com/ciao-project/ciao/ciao-image/datastore"
 	storage "github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/clogger/gloginterface"
 	"github.com/ciao-project/ciao/database"
@@ -49,7 +50,7 @@ type controller struct {
 	storage.BlockDriver
 	client              controllerClient
 	ds                  *datastore.Datastore
-	is                  *ImageService
+	ids                 imageDatastore.DataStore
 	apiURL              string
 	tenantReadiness     map[string]*tenantConfirmMemo
 	tenantReadinessLock sync.Mutex
@@ -126,7 +127,6 @@ func main() {
 	ctl.tenantReadiness = make(map[string]*tenantConfirmMemo)
 	ctl.ds = new(datastore.Datastore)
 	ctl.qs = new(quotas.Quotas)
-	ctl.is = new(ImageService)
 
 	dsConfig := datastore.Config{
 		PersistentURI:     "file:" + *persistentDatastoreLocation,
@@ -184,7 +184,7 @@ func main() {
 		clientCertCAPath = clusterConfig.Configure.Controller.ClientAuthCACertPath
 	}
 
-	if err := ctl.is.Init(ctl.qs); err != nil {
+	if err := ctl.InitImageDatastore(); err != nil {
 		glog.Fatalf("Error initialising image service: %v", err)
 	}
 
@@ -246,6 +246,6 @@ func main() {
 	glog.Warning("Controller shutdown initiated")
 	ctl.qs.Shutdown()
 	ctl.ds.Exit()
-	ctl.is.ds.Shutdown()
+	ctl.ids.Shutdown()
 	ctl.client.Disconnect()
 }

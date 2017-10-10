@@ -19,9 +19,9 @@ import (
 	"io"
 	"sync"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/clogger/gloginterface"
 	"github.com/ciao-project/ciao/database"
-	"github.com/ciao-project/ciao/openstack/image"
 )
 
 const (
@@ -114,7 +114,7 @@ func (s *ImageStore) GetImage(tenant, ID string) (Image, error) {
 
 	img, err := s.metaDs.Get(tenant, ID)
 	if err != nil {
-		return Image{}, image.ErrNoImage
+		return Image{}, api.ErrNoImage
 	}
 
 	return img, nil
@@ -144,7 +144,7 @@ func (s *ImageStore) DeleteImage(tenant, ID string) error {
 	}
 
 	if img == (Image{}) || img.TenantID != tenant {
-		return image.ErrNoImage
+		return api.ErrNoImage
 	}
 
 	if img.State == Active {
@@ -154,8 +154,8 @@ func (s *ImageStore) DeleteImage(tenant, ID string) error {
 		}
 	}
 
-	if img.Visibility == image.Public {
-		tenant = string(image.Public)
+	if img.Visibility == api.Public {
+		tenant = string(api.Public)
 	}
 	err = s.metaDs.Delete(tenant, ID)
 
@@ -172,11 +172,11 @@ func (s *ImageStore) UploadImage(tenant, ID string, body io.Reader) error {
 	}
 
 	if img == (Image{}) {
-		return image.ErrNoImage
+		return api.ErrNoImage
 	}
 
 	if img.State == Saving {
-		return image.ErrImageSaving
+		return api.ErrImageSaving
 	}
 
 	img.State = Saving
