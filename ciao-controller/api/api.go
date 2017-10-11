@@ -51,37 +51,6 @@ const (
 	ImagesV1 = "x.ciao.images.v1"
 )
 
-// InternalImage defines the types of CIAO internal images (e.g. cnci)
-type InternalImage string
-
-const (
-	// CNCI is the type of image for CIAO per-tenant networking managenent
-	CNCI InternalImage = "cnci"
-)
-
-// ContainerFormat defines the acceptable container format strings.
-type ContainerFormat string
-
-const (
-	// Bare is the only format we support right now.
-	Bare ContainerFormat = "bare"
-)
-
-// DiskFormat defines the valid values for the disk_format string
-type DiskFormat string
-
-// we support the following disk formats
-const (
-	// Raw
-	Raw DiskFormat = "raw"
-
-	// QCow
-	QCow DiskFormat = "qcow2"
-
-	// ISO
-	ISO DiskFormat = "iso"
-)
-
 // ErrorImage defines all possible image handling errors
 type ErrorImage error
 
