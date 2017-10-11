@@ -288,7 +288,7 @@ func (wd *baseWorkload) upload(ctx context.Context, fp, name string) error {
 	}
 
 	fmt.Printf("Uploading image from %s\n", fp)
-	i, err := bat.AddImage(ctx, "", fp, &opts)
+	i, err := bat.AddImage(ctx, true, "", fp, &opts)
 	if err != nil {
 		return errors.Wrap(err, "Error creating image")
 	}
@@ -363,7 +363,7 @@ func (wd *baseWorkload) Cleanup() {
 	}
 
 	if wd.imageID != "" {
-		_ = bat.DeleteImage(context.Background(), "", wd.imageID)
+		_ = bat.DeleteImage(context.Background(), true, "", wd.imageID)
 	}
 }
 
