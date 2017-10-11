@@ -111,7 +111,6 @@ func createImageResponse(img imageDatastore.Image) (api.DefaultResponse, error) 
 		CreatedAt:  img.CreateTime,
 		Tags:       tags,
 		Locations:  make([]string, 0),
-		DiskFormat: api.DiskFormat(img.Type),
 		Visibility: img.Visibility,
 		Self:       fmt.Sprintf("/v2/images/%s", img.ID),
 		Protected:  false,

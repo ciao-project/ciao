@@ -21,20 +21,6 @@ import (
 	"github.com/ciao-project/ciao/ciao-controller/types"
 )
 
-// Type represents the valid image types.
-type Type string
-
-const (
-	// Raw is the raw image format.
-	Raw Type = "raw"
-
-	// QCow is the qcow2 format.
-	QCow Type = "qcow2"
-
-	// ISO is the iso format.
-	ISO Type = "iso"
-)
-
 // Image contains the information that ciao will store about the image
 type Image struct {
 	ID         string
@@ -42,7 +28,6 @@ type Image struct {
 	TenantID   string
 	Name       string
 	CreateTime time.Time
-	Type       Type
 	Size       uint64
 	Visibility types.Visibility
 	Tags       string
