@@ -60,7 +60,7 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", api.DefaultResponse{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", types.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -77,7 +77,7 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-func getImage(imageID string) api.DefaultResponse {
+func getImage(imageID string) types.Image {
 	var url string
 	if checkPrivilege() && *tenantID == "admin" {
 		url = buildCiaoURL("images/%s", imageID)
@@ -95,7 +95,7 @@ func getImage(imageID string) api.DefaultResponse {
 		fatalf("Image show failed: %s", resp.Status)
 	}
 
-	var i api.DefaultResponse
+	var i types.Image
 
 	err = unmarshalHTTPResponse(resp, &i)
 	if err != nil {
@@ -162,7 +162,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Image creation failed: %s", resp.Status)
 	}
 
-	var image api.DefaultResponse
+	var image types.Image
 	err = unmarshalHTTPResponse(resp, &image)
 	if err != nil {
 		fatalf(err.Error())
@@ -196,7 +196,7 @@ func (cmd *imageShowCommand) usage(...string) {
 Show images
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", api.DefaultResponse{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", types.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -243,7 +243,7 @@ The template passed to the -f option operates on a
 As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
-`, tfortools.GenerateUsageUndecorated([]api.DefaultResponse{}))
+`, tfortools.GenerateUsageUndecorated([]types.Image{}))
 	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
@@ -282,23 +282,20 @@ func (cmd *imageListCommand) run(args []string) error {
 		fatalf("Image list failed: %s", resp.Status)
 	}
 
-	var images = struct {
-		Images []api.DefaultResponse
-	}{}
-
+	var images []types.Image
 	err = unmarshalHTTPResponse(resp, &images)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
 	if t != nil {
-		if err = t.Execute(os.Stdout, &images.Images); err != nil {
+		if err = t.Execute(os.Stdout, &images); err != nil {
 			fatalf(err.Error())
 		}
 		return nil
 	}
 
-	for k, i := range images.Images {
+	for k, i := range images {
 		fmt.Printf("Image #%d\n", k+1)
 		dumpImage(&i)
 		fmt.Printf("\n")
@@ -377,12 +374,11 @@ func uploadTenantImage(tenant, image, filename string) error {
 	return err
 }
 
-func dumpImage(i *api.DefaultResponse) {
-	fmt.Printf("\tName             [%s]\n", *i.Name)
-	fmt.Printf("\tSize             [%d bytes]\n", i.Size)
-	fmt.Printf("\tUUID             [%s]\n", i.ID)
-	fmt.Printf("\tStatus           [%s]\n", i.Status)
-	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)
-	fmt.Printf("\tTags             %v\n", i.Tags)
-	fmt.Printf("\tCreatedAt        [%s]\n", i.CreatedAt)
+func dumpImage(i *types.Image) {
+	fmt.Printf("\tName\t\t[%s]\n", i.Name)
+	fmt.Printf("\tSize\t\t[%d bytes]\n", i.Size)
+	fmt.Printf("\tID\t\t[%s]\n", i.ID)
+	fmt.Printf("\tState\t\t[%s]\n", i.State)
+	fmt.Printf("\tVisibility\t[%s]\n", i.Visibility)
+	fmt.Printf("\tCreateTime\t[%s]\n", i.CreateTime)
 }

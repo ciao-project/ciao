@@ -90,26 +90,15 @@ func TestMissingCheckStatuses(t *testing.T) {
 
 func TestImageOptions(t *testing.T) {
 	opts := &ImageOptions{
-		ContainerFormat:  "ovf",
-		DiskFormat:       "qcow2",
-		ID:               "test-id",
-		MinDiskGigabytes: 1,
-		MinRAMMegabytes:  2,
-		Name:             "test-name",
-		Protected:        true,
-		Tags:             []string{"tag1", "tag2"},
-		Visibility:       "private",
+		ID:         "test-id",
+		Name:       "test-name",
+		Visibility: "private",
 	}
 
 	computedArgs := computeImageAddArgs(opts)
 	expectedArgs := []string{
-		"-container-format", "ovf",
-		"-disk-format", "qcow2",
 		"-id", "test-id",
-		"-min-disk-size", "1",
-		"-min-ram-size", "2",
 		"-name", "test-name",
-		"-protected",
 		"-tags", "tag1,tag2",
 		"-visibility", "private",
 	}

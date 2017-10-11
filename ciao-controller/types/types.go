@@ -829,12 +829,11 @@ const (
 
 // Image contains the information that ciao will store about the image
 type Image struct {
-	ID         string
-	State      ImageState
-	TenantID   string
-	Name       string
-	CreateTime time.Time
-	Size       uint64
-	Visibility Visibility
-	Tags       string
+	ID         string     `json:"id"`
+	State      ImageState `json:"state"`
+	TenantID   string     `json:"tenant_id"`
+	Name       string     `json:"name"`
+	CreateTime time.Time  `json:"create_time"`
+	Size       uint64     `json:"size"`
+	Visibility Visibility `json:"visibility"`
 }

@@ -30,64 +30,34 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
-	"strings"
 )
 
 // ImageOptions contains user supplied image meta data
 type ImageOptions struct {
-	Name             string
-	ID               string
-	ContainerFormat  string
-	DiskFormat       string
-	MinDiskGigabytes int
-	MinRAMMegabytes  int
-	Protected        bool
-	Visibility       string
-	Tags             []string
+	Name       string
+	ID         string
+	Visibility string
 }
 
 // Image contains all the meta data for a single image
 type Image struct {
 	ImageOptions
-	SizeBytes   int `json:"size"`
-	Status      string
-	Owner       string
-	Checksum    string
-	CreatedDate string
-	LastUpdate  string
-	File        string
-	Schema      string
+	SizeBytes   int    `json:"size"`
+	Status      string `json:"state"`
+	CreatedDate string `json:"create_time"`
 }
 
 func computeImageAddArgs(options *ImageOptions) []string {
 	args := make([]string, 0, 8)
 
-	if options.ContainerFormat != "" {
-		args = append(args, "-container-format", options.ContainerFormat)
-	}
-	if options.DiskFormat != "" {
-		args = append(args, "-disk-format", options.DiskFormat)
-	}
 	if options.ID != "" {
 		args = append(args, "-id", options.ID)
 	}
-	if options.MinDiskGigabytes != 0 {
-		args = append(args, "-min-disk-size",
-			fmt.Sprintf("%d", options.MinDiskGigabytes))
-	}
-	if options.MinRAMMegabytes != 0 {
-		args = append(args, "-min-ram-size",
-			fmt.Sprintf("%d", options.MinRAMMegabytes))
-	}
+
 	if options.Name != "" {
 		args = append(args, "-name", options.Name)
 	}
-	if options.Protected {
-		args = append(args, "-protected")
-	}
-	if len(options.Tags) > 0 {
-		args = append(args, "-tags", strings.Join(options.Tags, ","))
-	}
+
 	if options.Visibility != "" {
 		args = append(args, "-visibility", options.Visibility)
 	}

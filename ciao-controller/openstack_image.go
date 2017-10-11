@@ -15,10 +15,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
@@ -33,7 +31,7 @@ import (
 )
 
 // CreateImage will create an empty image in the image datastore.
-func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (api.DefaultResponse, error) {
+func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (types.Image, error) {
 	// create an ImageInfo struct and store it in our image
 	// datastore.
 	glog.Infof("Creating Image: %v", req.ID)
@@ -44,13 +42,13 @@ func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (a
 	} else {
 		if _, err := uuid.Parse(id); err != nil {
 			glog.Errorf("Error on parsing UUID: %v", err)
-			return api.DefaultResponse{}, api.ErrBadUUID
+			return types.Image{}, api.ErrBadUUID
 		}
 
 		img, _ := c.ids.GetImage(tenantID, id)
 		if img != (types.Image{}) {
 			glog.Errorf("Image [%v] already exists", id)
-			return api.DefaultResponse{}, api.ErrAlreadyExists
+			return types.Image{}, api.ErrAlreadyExists
 		}
 	}
 
@@ -60,72 +58,30 @@ func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (a
 		State:      types.Created,
 		Name:       req.Name,
 		CreateTime: time.Now(),
-		Tags:       strings.Join(req.Tags, ","),
 		Visibility: req.Visibility,
 	}
 
 	err := c.ids.CreateImage(i)
 	if err != nil {
 		glog.Errorf("Error on creating image: %v", err)
-		return api.DefaultResponse{}, err
+		return types.Image{}, err
 	}
 
 	res := <-c.qs.Consume(tenantID, payloads.RequestedResource{Type: payloads.Image, Value: 1})
 	if !res.Allowed() {
 		c.ids.DeleteImage(tenantID, id)
 		c.qs.Release(tenantID, payloads.RequestedResource{Type: payloads.Image, Value: 1})
-		return api.DefaultResponse{}, api.ErrQuota
+		return types.Image{}, api.ErrQuota
 	}
 
 	glog.Infof("Image %v created", id)
-	size := int(i.Size)
-	tags := []string{}
-	if len(i.Tags) > 0 {
-		tags = strings.Split(i.Tags, ",")
-	}
-	return api.DefaultResponse{
-		Status:     types.Created,
-		CreatedAt:  i.CreateTime,
-		Tags:       tags,
-		Locations:  make([]string, 0),
-		DiskFormat: api.Raw,
-		Visibility: i.Visibility,
-		Self:       fmt.Sprintf("/v2/images/%s", i.ID),
-		Protected:  false,
-		ID:         i.ID,
-		File:       fmt.Sprintf("/v2/images/%s/file", i.ID),
-		Schema:     "/v2/schemas/image",
-		Name:       &i.Name,
-		Size:       &size,
-	}, nil
-}
-
-func createImageResponse(img types.Image) (api.DefaultResponse, error) {
-	size := int(img.Size)
-	tags := []string{}
-	if len(img.Tags) > 0 {
-		tags = strings.Split(img.Tags, ",")
-	}
-	return api.DefaultResponse{
-		Status:     img.State,
-		CreatedAt:  img.CreateTime,
-		Tags:       tags,
-		Locations:  make([]string, 0),
-		Visibility: img.Visibility,
-		Self:       fmt.Sprintf("/v2/images/%s", img.ID),
-		Protected:  false,
-		ID:         img.ID,
-		File:       fmt.Sprintf("/v2/images/%s/file", img.ID),
-		Schema:     "/v2/schemas/image",
-		Name:       &img.Name,
-		Size:       &size,
-	}, nil
+	return i, nil
 }
 
 // ListImages will return a list of all the images in the datastore.
-func (c *controller) ListImages(tenant string) ([]api.DefaultResponse, error) {
+func (c *controller) ListImages(tenant string) ([]types.Image, error) {
 	glog.Infof("Listing images from [%v]", tenant)
-	response := []api.DefaultResponse{}
+	response := []types.Image{}
 
 	images, err := c.ids.GetAllImages(tenant)
 	if err != nil {
@@ -133,12 +89,7 @@ func (c *controller) ListImages(tenant string) ([]api.DefaultResponse, error) {
 		return response, err
 	}
 
-	for _, img := range images {
-		i, _ := createImageResponse(img)
-		response = append(response, i)
-	}
-
-	return response, nil
+	return images, nil
 }
 
 // UploadImage will upload a raw image data and update its status.
@@ -172,9 +123,9 @@ func (c *controller) DeleteImage(tenantID, imageID string) error {
 }
 
 // GetImage will get the raw image data
-func (c *controller) GetImage(tenantID, imageID string) (api.DefaultResponse, error) {
+func (c *controller) GetImage(tenantID, imageID string) (types.Image, error) {
 	glog.Infof("Getting Image [%v] from [%v]", imageID, tenantID)
-	var response api.DefaultResponse
+	var response types.Image
 
 	img, err := c.ids.GetImage(tenantID, imageID)
 	if err != nil {
@@ -187,9 +138,8 @@ func (c *controller) GetImage(tenantID, imageID string) (api.DefaultResponse, er
 		return response, api.ErrNoImage
 	}
 
-	response, _ = createImageResponse(img)
 	glog.Infof("Image %v found", imageID)
-	return response, nil
+	return img, nil
 }
 
 // Init initialises the image service

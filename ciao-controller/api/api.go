@@ -21,7 +21,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/service"
@@ -125,39 +124,6 @@ type CreateImageRequest struct {
 	Properties      interface{}      `json:"properties,omitempty"`
 }
 
-// DefaultResponse contains information about an image
-// http://developer.openstack.org/api-ref/image/v2/index.html#create-an-image
-type DefaultResponse struct {
-	Status          types.ImageState `json:"status"`
-	ContainerFormat *ContainerFormat `json:"container_format"`
-	MinRAM          *int             `json:"min_ram"`
-	UpdatedAt       *time.Time       `json:"updated_at,omitempty"`
-	Owner           *string          `json:"owner"`
-	MinDisk         *int             `json:"min_disk"`
-	Tags            []string         `json:"tags"`
-	Locations       []string         `json:"locations"`
-	Visibility      types.Visibility `json:"visibility"`
-	ID              string           `json:"id"`
-	Size            *int             `json:"size"`
-	VirtualSize     *int             `json:"virtual_size"`
-	Name            *string          `json:"name"`
-	CheckSum        *string          `json:"checksum"`
-	CreatedAt       time.Time        `json:"created_at"`
-	DiskFormat      DiskFormat       `json:"disk_format"`
-	Properties      interface{}      `json:"properties"`
-	Protected       bool             `json:"protected"`
-	Self            string           `json:"self"`
-	File            string           `json:"file"`
-	Schema          string           `json:"schema"`
-}
-
-// ListImagesResponse contains the list of all images that have been created.
-// http://developer.openstack.org/api-ref/image/v2/index.html#show-images
-type ListImagesResponse struct {
-	Images []DefaultResponse `json:"images"`
-	Schema string            `json:"schema"`
-	First  string            `json:"first"`
-}
 // HTTPErrorData represents the HTTP response body for
 // a compute API request error.
 type HTTPErrorData struct {
@@ -888,7 +854,7 @@ func createImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 //
 // TBD: support query & sort parameters
 func listImages(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
-	images := []DefaultResponse{}
+	images := []types.Image{}
 
 	vars := mux.Vars(r)
 	tenantID, ok := vars["tenant"]
@@ -910,14 +876,7 @@ func listImages(context *Context, w http.ResponseWriter, r *http.Request) (Respo
 		}
 		images = append(images, tableImages...)
 	}
-
-	resp := ListImagesResponse{
-		Images: images,
-		Schema: "/v2/schemas/images",
-		First:  "/v2/images",
-	}
-
-	return Response{http.StatusOK, resp}, nil
+	return Response{http.StatusOK, images}, nil
 }
 
 // getImage get information about an image by image_id field
@@ -1049,10 +1008,10 @@ type Service interface {
 	PatchTenant(ID string, patch []byte) error
 	CreateTenant(ID string, config types.TenantConfig) (types.TenantSummary, error)
 	DeleteTenant(ID string) error
-	CreateImage(string, CreateImageRequest) (DefaultResponse, error)
+	CreateImage(string, CreateImageRequest) (types.Image, error)
 	UploadImage(string, string, io.Reader) error
-	ListImages(string) ([]DefaultResponse, error)
-	GetImage(string, string) (DefaultResponse, error)
+	ListImages(string) ([]types.Image, error)
+	GetImage(string, string) (types.Image, error)
 	DeleteImage(string, string) error
 }
 
