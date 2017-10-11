@@ -99,7 +99,6 @@ func TestImageOptions(t *testing.T) {
 	expectedArgs := []string{
 		"-id", "test-id",
 		"-name", "test-name",
-		"-tags", "tag1,tag2",
 		"-visibility", "private",
 	}
 

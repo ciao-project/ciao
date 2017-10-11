@@ -110,18 +110,10 @@ var (
 )
 
 // CreateImageRequest contains information for a create image request.
-// http://developer.openstack.org/api-ref/image/v2/index.html#create-an-image
 type CreateImageRequest struct {
-	Name            string           `json:"name,omitempty"`
-	ID              string           `json:"id,omitempty"`
-	Visibility      types.Visibility `json:"visibility,omitempty"`
-	Tags            []string         `json:"tags,omitempty"`
-	ContainerFormat ContainerFormat  `json:"container_format,omitempty"`
-	DiskFormat      DiskFormat       `json:"disk_format,omitempty"`
-	MinDisk         int              `json:"min_disk,omitempty"`
-	MinRAM          int              `json:"min_ram,omitempty"`
-	Protected       bool             `json:"protected,omitempty"`
-	Properties      interface{}      `json:"properties,omitempty"`
+	Name       string           `json:"name,omitempty"`
+	ID         string           `json:"id,omitempty"`
+	Visibility types.Visibility `json:"visibility,omitempty"`
 }
 
 // HTTPErrorData represents the HTTP response body for

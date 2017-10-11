@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"text/template"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
@@ -47,7 +46,6 @@ type imageAddCommand struct {
 	id         string
 	file       string
 	template   string
-	tags       string
 	visibility string
 }
 
@@ -71,7 +69,6 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.StringVar(&cmd.visibility, "visibility", string(types.Private),
 		"Image visibility (internal,public,private)")
-	cmd.Flag.StringVar(&cmd.tags, "tag", "", "Image tags (comma separated)")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
@@ -129,13 +126,10 @@ func (cmd *imageAddCommand) run(args []string) error {
 		}
 	}
 
-	tags := strings.Split(cmd.tags, ",")
-
 	opts := api.CreateImageRequest{
 		Name:       cmd.name,
 		ID:         cmd.id,
 		Visibility: imageVisibility,
-		Tags:       tags,
 	}
 
 	b, err := json.Marshal(opts)
