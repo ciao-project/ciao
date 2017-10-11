@@ -48,13 +48,13 @@ func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (a
 		}
 
 		img, _ := c.ids.GetImage(tenantID, id)
-		if img != (imageDatastore.Image{}) {
+		if img != (types.Image{}) {
 			glog.Errorf("Image [%v] already exists", id)
 			return api.DefaultResponse{}, api.ErrAlreadyExists
 		}
 	}
 
-	i := imageDatastore.Image{
+	i := types.Image{
 		ID:         id,
 		TenantID:   tenantID,
 		State:      types.Created,
@@ -100,7 +100,7 @@ func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (a
 	}, nil
 }
 
-func createImageResponse(img imageDatastore.Image) (api.DefaultResponse, error) {
+func createImageResponse(img types.Image) (api.DefaultResponse, error) {
 	size := int(img.Size)
 	tags := []string{}
 	if len(img.Tags) > 0 {
@@ -186,7 +186,7 @@ func (c *controller) GetImage(tenantID, imageID string) (api.DefaultResponse, er
 		return response, err
 	}
 
-	if (img == imageDatastore.Image{}) {
+	if (img == types.Image{}) {
 		glog.Infof("Image %v not found", imageID)
 		return response, api.ErrNoImage
 	}

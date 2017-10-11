@@ -32,12 +32,12 @@ const (
 // ImageMap provide Image empty struct generator and mutex control
 type ImageMap struct {
 	sync.RWMutex
-	m map[string]*Image
+	m map[string]*types.Image
 }
 
 //NewTable creates a new map
 func (i *ImageMap) NewTable() {
-	i.m = make(map[string]*Image)
+	i.m = make(map[string]*types.Image)
 }
 
 //Name provides the name of the map
@@ -47,12 +47,12 @@ func (i *ImageMap) Name() string {
 
 // NewElement generates a new Image struct
 func (i *ImageMap) NewElement() interface{} {
-	return &Image{}
+	return &types.Image{}
 }
 
 //Add adds a value to the map with the specified key
 func (i *ImageMap) Add(k string, v interface{}) error {
-	val, ok := v.(*Image)
+	val, ok := v.(*types.Image)
 	if !ok {
 		return fmt.Errorf("Invalid value type %t", v)
 	}
@@ -83,7 +83,7 @@ func (s *ImageStore) Shutdown() error {
 }
 
 // CreateImage will add an image to the datastore.
-func (s *ImageStore) CreateImage(i Image) error {
+func (s *ImageStore) CreateImage(i types.Image) error {
 	s.ImageMap.Lock()
 	defer s.ImageMap.Unlock()
 
@@ -96,8 +96,8 @@ func (s *ImageStore) CreateImage(i Image) error {
 }
 
 // GetAllImages gets returns all the known images.
-func (s *ImageStore) GetAllImages(tenant string) ([]Image, error) {
-	var images []Image
+func (s *ImageStore) GetAllImages(tenant string) ([]types.Image, error) {
+	var images []types.Image
 	s.ImageMap.RLock()
 	defer s.ImageMap.RUnlock()
 	images, err := s.metaDs.GetAll(tenant)
@@ -109,20 +109,20 @@ func (s *ImageStore) GetAllImages(tenant string) ([]Image, error) {
 }
 
 // GetImage returns the image specified by the ID string.
-func (s *ImageStore) GetImage(tenant, ID string) (Image, error) {
+func (s *ImageStore) GetImage(tenant, ID string) (types.Image, error) {
 	s.ImageMap.RLock()
 	defer s.ImageMap.RUnlock()
 
 	img, err := s.metaDs.Get(tenant, ID)
 	if err != nil {
-		return Image{}, api.ErrNoImage
+		return types.Image{}, api.ErrNoImage
 	}
 
 	return img, nil
 }
 
 // UpdateImage will modify an existing image.
-func (s *ImageStore) UpdateImage(i Image) error {
+func (s *ImageStore) UpdateImage(i types.Image) error {
 	s.ImageMap.Lock()
 	defer s.ImageMap.Unlock()
 
@@ -144,7 +144,7 @@ func (s *ImageStore) DeleteImage(tenant, ID string) error {
 		return err
 	}
 
-	if img == (Image{}) || img.TenantID != tenant {
+	if img == (types.Image{}) || img.TenantID != tenant {
 		return api.ErrNoImage
 	}
 
@@ -172,7 +172,7 @@ func (s *ImageStore) UploadImage(tenant, ID string, body io.Reader) error {
 		return err
 	}
 
-	if img == (Image{}) {
+	if img == (types.Image{}) {
 		return api.ErrNoImage
 	}
 

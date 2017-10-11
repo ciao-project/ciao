@@ -16,30 +16,17 @@ package datastore
 
 import (
 	"io"
-	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 )
 
-// Image contains the information that ciao will store about the image
-type Image struct {
-	ID         string
-	State      types.ImageState
-	TenantID   string
-	Name       string
-	CreateTime time.Time
-	Size       uint64
-	Visibility types.Visibility
-	Tags       string
-}
-
 // DataStore is the image data storage interface.
 type DataStore interface {
 	Init(RawDataStore, MetaDataStore) error
-	CreateImage(image Image) error
-	GetAllImages(tenant string) ([]Image, error)
-	GetImage(tenant, id string) (Image, error)
-	UpdateImage(Image) error
+	CreateImage(image types.Image) error
+	GetAllImages(tenant string) ([]types.Image, error)
+	GetImage(tenant, id string) (types.Image, error)
+	UpdateImage(types.Image) error
 	DeleteImage(tenant, id string) error
 	UploadImage(tenant, id string, imageFile io.Reader) error
 	Shutdown() error
@@ -48,10 +35,10 @@ type DataStore interface {
 // MetaDataStore is the metadata storing interface that's used by
 // image cache implementation.
 type MetaDataStore interface {
-	Write(image Image) error
+	Write(image types.Image) error
 	Delete(tenant, ID string) error
-	Get(tenant, ID string) (Image, error)
-	GetAll(tenant string) ([]Image, error)
+	Get(tenant, ID string) (types.Image, error)
+	GetAll(tenant string) ([]types.Image, error)
 	Shutdown() error
 }
 

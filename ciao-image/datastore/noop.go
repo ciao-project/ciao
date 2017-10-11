@@ -14,6 +14,8 @@
 
 package datastore
 
+import "github.com/ciao-project/ciao/ciao-controller/types"
+
 // Noop is a Datastore implementation that does nothing.
 // Use it only for development and testing purposes, data
 // will not be persistent with the Noop Datastore interface.
@@ -22,7 +24,7 @@ type Noop struct {
 
 // Write is the noop image metadata write implementation.
 // It drops data.
-func (n *Noop) Write(i Image) error {
+func (n *Noop) Write(i types.Image) error {
 	return nil
 }
 
@@ -39,14 +41,14 @@ func (n *Noop) GetImageSize(tenant, id string) (uint64, error) {
 
 // Get is the noop image metadata get an image implementation.
 // It drops data.
-func (n *Noop) Get(tenant, id string) (Image, error) {
-	return Image{ID: id, TenantID: tenant}, nil
+func (n *Noop) Get(tenant, id string) (types.Image, error) {
+	return types.Image{ID: id, TenantID: tenant}, nil
 }
 
 // GetAll is the noop image metadata get all images implementation.
 // It drops data.
-func (n *Noop) GetAll(tenant string) ([]Image, error) {
-	return []Image{}, nil
+func (n *Noop) GetAll(tenant string) ([]types.Image, error) {
+	return []types.Image{}, nil
 }
 
 // Shutdown no-op

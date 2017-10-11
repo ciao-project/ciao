@@ -53,7 +53,7 @@ func createTmpFile(t *testing.T) *os.File {
 }
 
 func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
 		State:    types.Created,
@@ -80,7 +80,7 @@ func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 }
 
 func testCreateAndUpdate(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
 		State:    types.Created,
@@ -114,7 +114,7 @@ func testCreateAndUpdate(t *testing.T, d RawDataStore, m MetaDataStore) {
 }
 
 func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
 		State:    types.Created,
@@ -147,7 +147,7 @@ func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 }
 
 func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
 		State:    types.Created,
@@ -185,7 +185,7 @@ func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 }
 
 func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
 		State:    types.Created,

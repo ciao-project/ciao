@@ -826,3 +826,15 @@ const (
 	// Internal indicates that an image is only for Ciao internal usage.
 	Internal Visibility = "internal"
 )
+
+// Image contains the information that ciao will store about the image
+type Image struct {
+	ID         string
+	State      ImageState
+	TenantID   string
+	Name       string
+	CreateTime time.Time
+	Size       uint64
+	Visibility Visibility
+	Tags       string
+}
