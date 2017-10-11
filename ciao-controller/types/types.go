@@ -795,3 +795,45 @@ type CNCIController interface {
 	GetSubnetCNCI(subnet string) (*Instance, error)
 	Shutdown()
 }
+
+// ImageState represents the state of the image.
+type ImageState string
+
+const (
+	// Created means that an empty image has been created
+	Created ImageState = "created"
+
+	// Saving means the image is being saved
+	Saving ImageState = "saving"
+
+	// Active means that the image is created, uploaded and ready to use.
+	Active ImageState = "active"
+
+	// Killed means that an image data upload error occurred.
+	Killed ImageState = "killed"
+)
+
+// Visibility defines whether an image is per tenant or public.
+type Visibility string
+
+const (
+	// Public indicates that the image can be used by anyone.
+	Public Visibility = "public"
+
+	// Private indicates that the image is only available to a tenant.
+	Private Visibility = "private"
+
+	// Internal indicates that an image is only for Ciao internal usage.
+	Internal Visibility = "internal"
+)
+
+// Image contains the information that ciao will store about the image
+type Image struct {
+	ID         string     `json:"id"`
+	State      ImageState `json:"state"`
+	TenantID   string     `json:"tenant_id"`
+	Name       string     `json:"name"`
+	CreateTime time.Time  `json:"create_time"`
+	Size       uint64     `json:"size"`
+	Visibility Visibility `json:"visibility"`
+}

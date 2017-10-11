@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/database"
 )
 
@@ -52,10 +53,10 @@ func createTmpFile(t *testing.T) *os.File {
 }
 
 func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
@@ -79,10 +80,10 @@ func testCreateAndGet(t *testing.T, d RawDataStore, m MetaDataStore) {
 }
 
 func testCreateAndUpdate(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
@@ -113,10 +114,10 @@ func testCreateAndUpdate(t *testing.T, d RawDataStore, m MetaDataStore) {
 }
 
 func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
@@ -146,10 +147,10 @@ func testGetAll(t *testing.T, d RawDataStore, m MetaDataStore) {
 }
 
 func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}
@@ -184,10 +185,10 @@ func testDelete(t *testing.T, d RawDataStore, m MetaDataStore) {
 }
 
 func testUpload(t *testing.T, d RawDataStore, m MetaDataStore) {
-	i := Image{
+	i := types.Image{
 		ID:       testImageID,
 		TenantID: testTenantID,
-		State:    Created,
+		State:    types.Created,
 	}
 
 	imageStore := ImageStore{}

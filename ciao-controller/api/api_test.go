@@ -17,9 +17,11 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/payloads"
@@ -42,7 +44,7 @@ var tests = []test{
 		"",
 		"application/text",
 		http.StatusOK,
-		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"},{"rel":"tenants","href":"/tenants","version":"x.ciao.tenants.v1","minimum_version":"x.ciao.tenants.v1"},{"rel":"node","href":"/node","version":"x.ciao.node.v1","minimum_version":"x.ciao.node.v1"}]`,
+		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"},{"rel":"tenants","href":"/tenants","version":"x.ciao.tenants.v1","minimum_version":"x.ciao.tenants.v1"},{"rel":"node","href":"/node","version":"x.ciao.node.v1","minimum_version":"x.ciao.node.v1"},{"rel":"images","href":"/images","version":"x.ciao.images.v1","minimum_version":"x.ciao.images.v1"}]`,
 	},
 	{
 		"GET",
@@ -203,6 +205,37 @@ var tests = []test{
 		fmt.Sprintf("application/%s", TenantsV1),
 		http.StatusNoContent,
 		"null",
+	}, {
+		"POST",
+		"/images",
+		`{"container_format":"bare","disk_format":"raw","name":"Ubuntu","id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","visibility":"private"}`,
+		fmt.Sprintf("application/%s", ImagesV1),
+		http.StatusCreated,
+		`{"id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","state":"created","tenant_id":"","name":"Ubuntu","create_time":"2015-11-29T22:21:42Z","size":0,"visibility":"private"}`,
+	},
+	{
+		"GET",
+		"/images",
+		"",
+		fmt.Sprintf("application/%s", ImagesV1),
+		http.StatusOK,
+		`[{"id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","state":"created","tenant_id":"","name":"Ubuntu","create_time":"2015-11-29T22:21:42Z","size":0,"visibility":"public"},{"id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","state":"created","tenant_id":"","name":"Ubuntu","create_time":"2015-11-29T22:21:42Z","size":0,"visibility":"public"}]`,
+	},
+	{
+		"GET",
+		"/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		"",
+		fmt.Sprintf("application/%s", ImagesV1),
+		http.StatusOK,
+		`{"id":"1bea47ed-f6a9-463b-b423-14b9cca9ad27","state":"active","tenant_id":"","name":"cirros-0.3.2-x86_64-disk","create_time":"2014-05-05T17:15:10Z","size":13167616,"visibility":"public"}`,
+	},
+	{
+		"DELETE",
+		"/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		"",
+		fmt.Sprintf("application/%s", ImagesV1),
+		http.StatusNoContent,
+		`null`,
 	},
 }
 
@@ -411,6 +444,64 @@ func (ts testCiaoService) CreateTenant(ID string, config types.TenantConfig) (ty
 }
 
 func (ts testCiaoService) DeleteTenant(string) error {
+	return nil
+}
+
+func (ts testCiaoService) CreateImage(tenantID string, req CreateImageRequest) (types.Image, error) {
+	name := "Ubuntu"
+	createdAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
+
+	return types.Image{
+		State:      types.Created,
+		CreateTime: createdAt,
+		Visibility: types.Private,
+		ID:         "b2173dd3-7ad6-4362-baa6-a68bce3565cb",
+		Name:       name,
+	}, nil
+}
+
+func (ts testCiaoService) ListImages(tenantID string) ([]types.Image, error) {
+	name := "Ubuntu"
+	createdAt, _ := time.Parse(time.RFC3339, "2015-11-29T22:21:42Z")
+
+	image := types.Image{
+		State:      types.Created,
+		CreateTime: createdAt,
+		ID:         "b2173dd3-7ad6-4362-baa6-a68bce3565cb",
+		Name:       name,
+		Visibility: types.Public,
+	}
+
+	var images []types.Image
+
+	if tenantID == string(image.Visibility) {
+		images = append(images, image)
+	}
+
+	return images, nil
+}
+
+func (ts testCiaoService) GetImage(tenantID, ID string) (types.Image, error) {
+	imageID := "1bea47ed-f6a9-463b-b423-14b9cca9ad27"
+	name := "cirros-0.3.2-x86_64-disk"
+	createdAt, _ := time.Parse(time.RFC3339, "2014-05-05T17:15:10Z")
+	var size uint64 = 13167616
+
+	return types.Image{
+		State:      types.Active,
+		CreateTime: createdAt,
+		Visibility: types.Public,
+		ID:         imageID,
+		Name:       name,
+		Size:       size,
+	}, nil
+}
+
+func (ts testCiaoService) UploadImage(string, string, io.Reader) error {
+	return nil
+}
+
+func (ts testCiaoService) DeleteImage(string, string) error {
 	return nil
 }
 

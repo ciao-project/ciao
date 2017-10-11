@@ -15,6 +15,7 @@
 package datastore
 
 import (
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/database"
 )
 
@@ -26,7 +27,7 @@ type MetaDs struct {
 }
 
 // Write is the metadata write implementation.
-func (m *MetaDs) Write(i Image) error {
+func (m *MetaDs) Write(i types.Image) error {
 	tenant := i.TenantID
 
 	err := m.DbAdd(tenant, i.ID, &i)
@@ -43,27 +44,27 @@ func (m *MetaDs) Delete(tenant, id string) error {
 }
 
 // Get is the metadata get implementation.
-func (m *MetaDs) Get(tenant, ID string) (Image, error) {
+func (m *MetaDs) Get(tenant, ID string) (types.Image, error) {
 
 	imageTable := &ImageMap{}
 	img, err := m.DbGet(tenant, ID, imageTable)
 	if err != nil {
-		return Image{}, err
+		return types.Image{}, err
 	}
 
-	image := *img.(*Image)
+	image := *img.(*types.Image)
 	return image, err
 }
 
 // GetAll is the metadata get all images implementation.
-func (m *MetaDs) GetAll(tenant string) (images []Image, err error) {
+func (m *MetaDs) GetAll(tenant string) (images []types.Image, err error) {
 	var elements []interface{}
 	imageTable := &ImageMap{}
 	elements, err = m.DbProvider.DbGetAll(tenant, imageTable)
 
-	images = make([]Image, len(elements))
+	images = make([]types.Image, len(elements))
 	for i, img := range elements {
-		image := img.(*Image)
+		image := img.(*types.Image)
 		images[i] = *image
 	}
 

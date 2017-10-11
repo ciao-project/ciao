@@ -24,10 +24,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"text/template"
 
-	"github.com/ciao-project/ciao/openstack/image"
+	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
 )
 
@@ -46,7 +46,6 @@ type imageAddCommand struct {
 	id         string
 	file       string
 	template   string
-	tags       string
 	visibility string
 }
 
@@ -59,7 +58,7 @@ The add flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", image.DefaultResponse{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", types.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -68,17 +67,22 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.id, "id", "", "Image UUID")
 	cmd.Flag.StringVar(&cmd.file, "file", "", "Image file to upload")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
-	cmd.Flag.StringVar(&cmd.visibility, "visibility", string(image.Private),
+	cmd.Flag.StringVar(&cmd.visibility, "visibility", string(types.Private),
 		"Image visibility (internal,public,private)")
-	cmd.Flag.StringVar(&cmd.tags, "tag", "", "Image tags (comma separated)")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
 }
 
-func getImage(imageID string) image.DefaultResponse {
-	url := buildImageURL("images/%s", imageID)
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+func getImage(imageID string) types.Image {
+	var url string
+	if checkPrivilege() && *tenantID == "admin" {
+		url = buildCiaoURL("images/%s", imageID)
+	} else {
+		url = buildCiaoURL("%s/images/%s", *tenantID, imageID)
+	}
+
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -88,7 +92,7 @@ func getImage(imageID string) image.DefaultResponse {
 		fatalf("Image show failed: %s", resp.Status)
 	}
 
-	var i image.DefaultResponse
+	var i types.Image
 
 	err = unmarshalHTTPResponse(resp, &i)
 	if err != nil {
@@ -112,23 +116,20 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Could not open %s [%s]\n", cmd.file, err)
 	}
 
-	imageVisibility := image.Private
+	imageVisibility := types.Private
 	if cmd.visibility != "" {
-		imageVisibility = image.Visibility(cmd.visibility)
+		imageVisibility = types.Visibility(cmd.visibility)
 		switch imageVisibility {
-		case image.Public, image.Private, image.Internal:
+		case types.Public, types.Private, types.Internal:
 		default:
 			fatalf("Invalid image visibility [%v]", imageVisibility)
 		}
 	}
 
-	tags := strings.Split(cmd.tags, ",")
-
-	opts := image.CreateImageRequest{
+	opts := api.CreateImageRequest{
 		Name:       cmd.name,
 		ID:         cmd.id,
 		Visibility: imageVisibility,
-		Tags:       tags,
 	}
 
 	b, err := json.Marshal(opts)
@@ -137,8 +138,15 @@ func (cmd *imageAddCommand) run(args []string) error {
 	}
 
 	body := bytes.NewReader(b)
-	url := buildImageURL("images")
-	resp, err := sendHTTPRequest("POST", url, nil, body)
+
+	var url string
+	if checkPrivilege() && *tenantID == "admin" {
+		url = buildCiaoURL("images")
+	} else {
+		url = buildCiaoURL("%s/images", *tenantID)
+	}
+
+	resp, err := sendCiaoRequest("POST", url, nil, body, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -148,7 +156,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Image creation failed: %s", resp.Status)
 	}
 
-	var image image.DefaultResponse
+	var image types.Image
 	err = unmarshalHTTPResponse(resp, &image)
 	if err != nil {
 		fatalf(err.Error())
@@ -182,7 +190,7 @@ func (cmd *imageShowCommand) usage(...string) {
 Show images
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", image.DefaultResponse{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", types.Image{}, nil))
 	os.Exit(2)
 }
 
@@ -229,7 +237,7 @@ The template passed to the -f option operates on a
 As images are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of images.
-`, tfortools.GenerateUsageUndecorated([]image.DefaultResponse{}))
+`, tfortools.GenerateUsageUndecorated([]types.Image{}))
 	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
@@ -251,8 +259,14 @@ func (cmd *imageListCommand) run(args []string) error {
 		}
 	}
 
-	url := buildImageURL("images")
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	var url string
+	if checkPrivilege() && *tenantID == "admin" {
+		url = buildCiaoURL("images")
+	} else {
+		url = buildCiaoURL("%s/images", *tenantID)
+	}
+
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -262,23 +276,20 @@ func (cmd *imageListCommand) run(args []string) error {
 		fatalf("Image list failed: %s", resp.Status)
 	}
 
-	var images = struct {
-		Images []image.DefaultResponse
-	}{}
-
+	var images []types.Image
 	err = unmarshalHTTPResponse(resp, &images)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
 	if t != nil {
-		if err = t.Execute(os.Stdout, &images.Images); err != nil {
+		if err = t.Execute(os.Stdout, &images); err != nil {
 			fatalf(err.Error())
 		}
 		return nil
 	}
 
-	for k, i := range images.Images {
+	for k, i := range images {
 		fmt.Printf("Image #%d\n", k+1)
 		dumpImage(&i)
 		fmt.Printf("\n")
@@ -312,8 +323,14 @@ func (cmd *imageDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *imageDeleteCommand) run(args []string) error {
-	url := buildImageURL("images/%s", cmd.image)
-	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
+	var url string
+	if checkPrivilege() && *tenantID == "admin" {
+		url = buildCiaoURL("images/%s", cmd.image)
+	} else {
+		url = buildCiaoURL("%s/images/%s", *tenantID, cmd.image)
+	}
+
+	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -334,8 +351,14 @@ func uploadTenantImage(tenant, image, filename string) error {
 	}
 	defer file.Close()
 
-	url := buildImageURL("images/%s/file", image)
-	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, "octet-stream")
+	var url string
+	if checkPrivilege() && *tenantID == "admin" {
+		url = buildCiaoURL("images/%s/file", image)
+	} else {
+		url = buildCiaoURL("%s/images/%s/file", *tenantID, image)
+	}
+
+	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, fmt.Sprintf("%s/octet-stream", api.ImagesV1))
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNoContent {
@@ -345,12 +368,11 @@ func uploadTenantImage(tenant, image, filename string) error {
 	return err
 }
 
-func dumpImage(i *image.DefaultResponse) {
-	fmt.Printf("\tName             [%s]\n", *i.Name)
-	fmt.Printf("\tSize             [%d bytes]\n", i.Size)
-	fmt.Printf("\tUUID             [%s]\n", i.ID)
-	fmt.Printf("\tStatus           [%s]\n", i.Status)
-	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)
-	fmt.Printf("\tTags             %v\n", i.Tags)
-	fmt.Printf("\tCreatedAt        [%s]\n", i.CreatedAt)
+func dumpImage(i *types.Image) {
+	fmt.Printf("\tName\t\t[%s]\n", i.Name)
+	fmt.Printf("\tSize\t\t[%d bytes]\n", i.Size)
+	fmt.Printf("\tID\t\t[%s]\n", i.ID)
+	fmt.Printf("\tState\t\t[%s]\n", i.State)
+	fmt.Printf("\tVisibility\t[%s]\n", i.Visibility)
+	fmt.Printf("\tCreateTime\t[%s]\n", i.CreateTime)
 }
