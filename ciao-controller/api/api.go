@@ -68,12 +68,6 @@ var (
 	// an image with a UUID that already exists.
 	ErrAlreadyExists = errors.New("Already Exists")
 
-	// ErrDecodeImage is returned when there was an error on image decoding
-	ErrDecodeImage = errors.New("Error on Image decode")
-
-	// ErrForbiddenAccess is returned for only-privileged image operations
-	ErrForbiddenAccess = errors.New("Forbidden Access")
-
 	// ErrQuota is returned when the tenant exceeds its quota
 	ErrQuota = errors.New("Tenant over quota")
 )
