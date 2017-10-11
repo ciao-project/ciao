@@ -812,3 +812,17 @@ const (
 	// Killed means that an image data upload error occurred.
 	Killed ImageState = "killed"
 )
+
+// Visibility defines whether an image is per tenant or public.
+type Visibility string
+
+const (
+	// Public indicates that the image can be used by anyone.
+	Public Visibility = "public"
+
+	// Private indicates that the image is only available to a tenant.
+	Private Visibility = "private"
+
+	// Internal indicates that an image is only for Ciao internal usage.
+	Internal Visibility = "internal"
+)

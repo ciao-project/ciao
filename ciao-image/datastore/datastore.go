@@ -18,7 +18,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 )
 
@@ -45,7 +44,7 @@ type Image struct {
 	CreateTime time.Time
 	Type       Type
 	Size       uint64
-	Visibility api.Visibility
+	Visibility types.Visibility
 	Tags       string
 }
 

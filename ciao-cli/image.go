@@ -28,6 +28,7 @@ import (
 	"text/template"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
 )
 
@@ -68,7 +69,7 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.id, "id", "", "Image UUID")
 	cmd.Flag.StringVar(&cmd.file, "file", "", "Image file to upload")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
-	cmd.Flag.StringVar(&cmd.visibility, "visibility", string(api.Private),
+	cmd.Flag.StringVar(&cmd.visibility, "visibility", string(types.Private),
 		"Image visibility (internal,public,private)")
 	cmd.Flag.StringVar(&cmd.tags, "tag", "", "Image tags (comma separated)")
 	cmd.Flag.Usage = func() { cmd.usage() }
@@ -118,11 +119,11 @@ func (cmd *imageAddCommand) run(args []string) error {
 		fatalf("Could not open %s [%s]\n", cmd.file, err)
 	}
 
-	imageVisibility := api.Private
+	imageVisibility := types.Private
 	if cmd.visibility != "" {
-		imageVisibility = api.Visibility(cmd.visibility)
+		imageVisibility = types.Visibility(cmd.visibility)
 		switch imageVisibility {
-		case api.Public, api.Private, api.Internal:
+		case types.Public, types.Private, types.Internal:
 		default:
 			fatalf("Invalid image visibility [%v]", imageVisibility)
 		}

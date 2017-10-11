@@ -52,20 +52,6 @@ const (
 	ImagesV1 = "x.ciao.images.v1"
 )
 
-// Visibility defines whether an image is per tenant or public.
-type Visibility string
-
-const (
-	// Public indicates that the image can be used by anyone.
-	Public Visibility = "public"
-
-	// Private indicates that the image is only available to a tenant.
-	Private Visibility = "private"
-
-	// Internal indicates that an image is only for Ciao internal usage.
-	Internal Visibility = "internal"
-)
-
 // InternalImage defines the types of CIAO internal images (e.g. cnci)
 type InternalImage string
 
@@ -127,16 +113,16 @@ var (
 // CreateImageRequest contains information for a create image request.
 // http://developer.openstack.org/api-ref/image/v2/index.html#create-an-image
 type CreateImageRequest struct {
-	Name            string          `json:"name,omitempty"`
-	ID              string          `json:"id,omitempty"`
-	Visibility      Visibility      `json:"visibility,omitempty"`
-	Tags            []string        `json:"tags,omitempty"`
-	ContainerFormat ContainerFormat `json:"container_format,omitempty"`
-	DiskFormat      DiskFormat      `json:"disk_format,omitempty"`
-	MinDisk         int             `json:"min_disk,omitempty"`
-	MinRAM          int             `json:"min_ram,omitempty"`
-	Protected       bool            `json:"protected,omitempty"`
-	Properties      interface{}     `json:"properties,omitempty"`
+	Name            string           `json:"name,omitempty"`
+	ID              string           `json:"id,omitempty"`
+	Visibility      types.Visibility `json:"visibility,omitempty"`
+	Tags            []string         `json:"tags,omitempty"`
+	ContainerFormat ContainerFormat  `json:"container_format,omitempty"`
+	DiskFormat      DiskFormat       `json:"disk_format,omitempty"`
+	MinDisk         int              `json:"min_disk,omitempty"`
+	MinRAM          int              `json:"min_ram,omitempty"`
+	Protected       bool             `json:"protected,omitempty"`
+	Properties      interface{}      `json:"properties,omitempty"`
 }
 
 // DefaultResponse contains information about an image
@@ -150,7 +136,7 @@ type DefaultResponse struct {
 	MinDisk         *int             `json:"min_disk"`
 	Tags            []string         `json:"tags"`
 	Locations       []string         `json:"locations"`
-	Visibility      Visibility       `json:"visibility"`
+	Visibility      types.Visibility `json:"visibility"`
 	ID              string           `json:"id"`
 	Size            *int             `json:"size"`
 	VirtualSize     *int             `json:"virtual_size"`
@@ -860,8 +846,8 @@ func deleteTenant(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	return Response{http.StatusNoContent, nil}, nil
 }
 
-func validPrivilege(visibility Visibility, privileged bool) bool {
-	return visibility == Private || (visibility == Public || visibility == Internal) && privileged
+func validPrivilege(visibility types.Visibility, privileged bool) bool {
+	return visibility == types.Private || (visibility == types.Public || visibility == types.Internal) && privileged
 }
 
 // createImage creates information about an image, but doesn't contain
@@ -893,7 +879,7 @@ func createImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 		return Response{http.StatusForbidden, nil}, nil
 	}
 
-	if req.Visibility == Public || req.Visibility == Internal {
+	if req.Visibility == types.Public || req.Visibility == types.Internal {
 		tenantID = string(req.Visibility)
 	}
 
@@ -918,11 +904,11 @@ func listImages(context *Context, w http.ResponseWriter, r *http.Request) (Respo
 		tenantID = "public"
 	}
 
-	imageTables := []string{tenantID, string(Public)}
+	imageTables := []string{tenantID, string(types.Public)}
 
 	privileged := service.GetPrivilege(r.Context())
 	if privileged {
-		imageTables = append(imageTables, string(Internal))
+		imageTables = append(imageTables, string(types.Internal))
 	}
 
 	for _, table := range imageTables {
@@ -953,11 +939,11 @@ func getImage(context *Context, w http.ResponseWriter, r *http.Request) (Respons
 		tenantID = "public"
 	}
 
-	imageTables := []string{tenantID, string(Public)}
+	imageTables := []string{tenantID, string(types.Public)}
 
 	privileged := service.GetPrivilege(r.Context())
 	if privileged {
-		imageTables = append(imageTables, string(Internal))
+		imageTables = append(imageTables, string(types.Internal))
 	}
 
 	for _, table := range imageTables {
@@ -983,11 +969,11 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 		tenantID = "public"
 	}
 
-	imageTables := []string{tenantID, string(Public)}
+	imageTables := []string{tenantID, string(types.Public)}
 
 	privileged := service.GetPrivilege(r.Context())
 	if privileged {
-		imageTables = append(imageTables, string(Internal))
+		imageTables = append(imageTables, string(types.Internal))
 	}
 
 	for _, table := range imageTables {
@@ -999,7 +985,7 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 			if !validPrivilege(img.Visibility, privileged) {
 				return Response{http.StatusForbidden, nil}, nil
 			}
-			if img.Visibility == Public || img.Visibility == Internal {
+			if img.Visibility == types.Public || img.Visibility == types.Internal {
 				tenantID = string(img.Visibility)
 			}
 			break
@@ -1022,7 +1008,7 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 		tenantID = "public"
 	}
 
-	imageTables := []string{tenantID, string(Public), string(Internal)}
+	imageTables := []string{tenantID, string(types.Public), string(types.Internal)}
 	privileged := service.GetPrivilege(r.Context())
 
 	for _, table := range imageTables {
@@ -1032,7 +1018,7 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 				if !validPrivilege(img.Visibility, privileged) {
 					return Response{http.StatusForbidden, nil}, nil
 				}
-				if img.Visibility == Public || img.Visibility == Internal {
+				if img.Visibility == types.Public || img.Visibility == types.Internal {
 					tenantID = string(img.Visibility)
 				}
 				break

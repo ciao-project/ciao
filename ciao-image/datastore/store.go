@@ -155,8 +155,8 @@ func (s *ImageStore) DeleteImage(tenant, ID string) error {
 		}
 	}
 
-	if img.Visibility == api.Public {
-		tenant = string(api.Public)
+	if img.Visibility == types.Public {
+		tenant = string(types.Public)
 	}
 	err = s.metaDs.Delete(tenant, ID)
 
