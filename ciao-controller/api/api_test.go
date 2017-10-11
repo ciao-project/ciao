@@ -44,7 +44,7 @@ var tests = []test{
 		"",
 		"application/text",
 		http.StatusOK,
-		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"},{"rel":"tenants","href":"/tenants","version":"x.ciao.tenants.v1","minimum_version":"x.ciao.tenants.v1"},{"rel":"node","href":"/node","version":"x.ciao.node.v1","minimum_version":"x.ciao.node.v1"}]`,
+		`[{"rel":"pools","href":"/pools","version":"x.ciao.pools.v1","minimum_version":"x.ciao.pools.v1"},{"rel":"external-ips","href":"/external-ips","version":"x.ciao.external-ips.v1","minimum_version":"x.ciao.external-ips.v1"},{"rel":"workloads","href":"/workloads","version":"x.ciao.workloads.v1","minimum_version":"x.ciao.workloads.v1"},{"rel":"tenants","href":"/tenants","version":"x.ciao.tenants.v1","minimum_version":"x.ciao.tenants.v1"},{"rel":"node","href":"/node","version":"x.ciao.node.v1","minimum_version":"x.ciao.node.v1"},{"rel":"images","href":"/images","version":"x.ciao.images.v1","minimum_version":"x.ciao.images.v1"}]`,
 	},
 	{
 		"GET",

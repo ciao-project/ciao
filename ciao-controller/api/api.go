@@ -250,7 +250,6 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 	links = append(links, link)
 
 	// for the "node" resource
-
 	if !ok {
 		link = types.APILink{
 			Rel:        "node",
@@ -261,6 +260,21 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 		link.Href = fmt.Sprintf("%s/node", c.URL)
 		links = append(links, link)
 	}
+
+	// for the "images" resource
+	link = types.APILink{
+		Rel:        "images",
+		Version:    ImagesV1,
+		MinVersion: ImagesV1,
+	}
+
+	if !ok {
+		link.Href = fmt.Sprintf("%s/images", c.URL)
+	} else {
+		link.Href = fmt.Sprintf("%s/%s/images", c.URL, tenantID)
+	}
+
+	links = append(links, link)
 
 	return Response{http.StatusOK, links}, nil
 }
