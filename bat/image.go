@@ -193,16 +193,6 @@ func GetImageCount(ctx context.Context, tenant string) (int, error) {
 	return strconv.Atoi(string(data))
 }
 
-// UploadImage overrides the contents of an existing image with a new file. It
-// is implemented by calling ciao-cli image upload. An error will be returned if
-// the following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
-// CIAO_CONTROLLER.
-func UploadImage(ctx context.Context, tenant, ID, path string) error {
-	args := []string{"image", "upload", "-image", ID, "-file", path}
-	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
-	return err
-}
-
 // CreateRandomFile creates a file of the desired size with random data
 // returning the path.
 func CreateRandomFile(sizeMiB int) (path string, err error) {
