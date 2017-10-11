@@ -1081,7 +1081,7 @@ func (ds *Datastore) deleteInstance(instanceID string) (string, error) {
 		}
 	}
 
-	ds.updateStorageAttachments(instanceID, nil)
+	ds.updateStorageAttachments(instanceID)
 
 	return i.TenantID, err
 }
@@ -1473,8 +1473,6 @@ func (ds *Datastore) addInstanceStats(stats []payloads.InstanceStat, nodeID stri
 			ds.nodesLock.Unlock()
 		}
 		ds.instancesLock.Unlock()
-
-		ds.updateStorageAttachments(stat.InstanceUUID, stat.Volumes)
 	}
 
 	return errors.Wrapf(ds.db.addInstanceStats(stats, nodeID), "error adding instance stats to database")
@@ -1779,64 +1777,15 @@ func (ds *Datastore) GetStorageAttachments(instanceID string) []types.StorageAtt
 	return links
 }
 
-func (ds *Datastore) updateStorageAttachments(instanceID string, volumes []string) {
-	m := make(map[string]bool)
-
-	// this for handy searching.
-	for _, v := range volumes {
-		m[v] = true
-	}
-
-	// see if we already know about each attachment.
+func (ds *Datastore) updateStorageAttachments(instanceID string) {
 	ds.attachLock.Lock()
 
-	for _, v := range volumes {
-		key := attachment{
-			instanceID: instanceID,
-			volumeID:   v,
-		}
-
-		_, ok := ds.instanceVolumes[key]
-		if !ok {
-			// add the attachment
-			a := types.StorageAttachment{
-				InstanceID: instanceID,
-				ID:         uuid.Generate().String(),
-				BlockID:    v,
-			}
-			ds.attachments[a.ID] = a
-			ds.instanceVolumes[key] = a.ID
-
-			// not sure what to do with an error here.
-			err := ds.db.addStorageAttachment(a)
-			if err != nil {
-				glog.Warningf("error adding storage attachment to database: %v", err)
-				continue
-			}
-
-			// update the state of the volume.
-			bd, err := ds.GetBlockDevice(v)
-			if err != nil {
-				glog.Warningf("error fetching block device (%v): %v", v, err)
-				// well, maybe we should add it, it obviously
-				// exists.
-				continue
-			}
-
-			bd.State = types.InUse
-			err = ds.UpdateBlockDevice(bd)
-			if err != nil {
-				glog.Warningf("error updating block device (%v): %v", v, err)
-			}
-		}
-	}
-
-	// finally, check to see if all the attachments we already
+	// check to see if all the attachments we already
 	// know about are in the list.
 	for _, ID := range ds.instanceVolumes {
 		a := ds.attachments[ID]
 
-		if a.InstanceID == instanceID && !m[a.BlockID] {
+		if a.InstanceID == instanceID {
 			bd, err := ds.GetBlockDevice(a.BlockID)
 			if err != nil {
 				glog.Warningf("error fetching block device (%v): %v", a.BlockID, err)
