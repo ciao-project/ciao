@@ -142,37 +142,33 @@ func (c *controller) ListImages(tenant string) ([]api.DefaultResponse, error) {
 }
 
 // UploadImage will upload a raw image data and update its status.
-func (c *controller) UploadImage(tenantID, imageID string, body io.Reader) (api.NoContentImageResponse, error) {
+func (c *controller) UploadImage(tenantID, imageID string, body io.Reader) error {
 	glog.Infof("Uploading image: %v", imageID)
-	var response api.NoContentImageResponse
 
 	err := c.ids.UploadImage(tenantID, imageID, body)
 	if err != nil {
 		glog.Errorf("Error on uploading image: %v", err)
-		return response, err
+		return err
 	}
 
-	response.ImageID = imageID
 	glog.Infof("Image %v uploaded", imageID)
-	return response, nil
+	return nil
 }
 
 // DeleteImage will delete a raw image and its metadata
-func (c *controller) DeleteImage(tenantID, imageID string) (api.NoContentImageResponse, error) {
+func (c *controller) DeleteImage(tenantID, imageID string) error {
 	glog.Infof("Deleting image: %v", imageID)
-	var response api.NoContentImageResponse
 
 	err := c.ids.DeleteImage(tenantID, imageID)
 	if err != nil {
 		glog.Errorf("Error on deleting image: %v", err)
-		return response, err
+		return err
 	}
 
 	c.qs.Release(tenantID, payloads.RequestedResource{Type: payloads.Image, Value: 1})
 
-	response.ImageID = imageID
 	glog.Infof("Image %v deleted", imageID)
-	return response, nil
+	return nil
 }
 
 // GetImage will get the raw image data

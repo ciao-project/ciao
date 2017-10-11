@@ -551,12 +551,12 @@ func (ts testCiaoService) GetImage(tenantID, ID string) (DefaultResponse, error)
 	}, nil
 }
 
-func (ts testCiaoService) UploadImage(string, string, io.Reader) (NoContentImageResponse, error) {
-	return NoContentImageResponse{}, nil
+func (ts testCiaoService) UploadImage(string, string, io.Reader) error {
+	return nil
 }
 
-func (ts testCiaoService) DeleteImage(string, string) (NoContentImageResponse, error) {
-	return NoContentImageResponse{}, nil
+func (ts testCiaoService) DeleteImage(string, string) error {
+	return nil
 }
 
 func TestResponse(t *testing.T) {

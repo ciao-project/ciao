@@ -158,14 +158,6 @@ type ListImagesResponse struct {
 	Schema string            `json:"schema"`
 	First  string            `json:"first"`
 }
-
-// NoContentImageResponse contains the UUID of the image which content
-// got uploaded or deleted
-// http://developer.openstack.org/api-ref/image/v2/index.html#upload-binary-image-data
-type NoContentImageResponse struct {
-	ImageID string `json:"image_id"`
-}
-
 // HTTPErrorData represents the HTTP response body for
 // a compute API request error.
 type HTTPErrorData struct {
@@ -992,7 +984,7 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 		}
 	}
 
-	_, err := context.UploadImage(tenantID, imageID, r.Body)
+	err := context.UploadImage(tenantID, imageID, r.Body)
 	if err != nil {
 		return errorResponse(err), err
 	}
@@ -1026,7 +1018,7 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 		}
 	}
 
-	_, err := context.DeleteImage(tenantID, imageID)
+	err := context.DeleteImage(tenantID, imageID)
 	if err != nil {
 		return errorResponse(err), err
 	}
@@ -1058,10 +1050,10 @@ type Service interface {
 	CreateTenant(ID string, config types.TenantConfig) (types.TenantSummary, error)
 	DeleteTenant(ID string) error
 	CreateImage(string, CreateImageRequest) (DefaultResponse, error)
-	UploadImage(string, string, io.Reader) (NoContentImageResponse, error)
+	UploadImage(string, string, io.Reader) error
 	ListImages(string) ([]DefaultResponse, error)
 	GetImage(string, string) (DefaultResponse, error)
-	DeleteImage(string, string) (NoContentImageResponse, error)
+	DeleteImage(string, string) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
