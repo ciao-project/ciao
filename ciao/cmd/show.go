@@ -22,64 +22,64 @@ import (
 var showCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show information about various ciao objects",
-	Long: `Show outputs a list and/or details for available commands`,
+	Long:  `Show outputs a list and/or details for available commands`,
 }
 
 var eventShowCmd = &cobra.Command{
-	Use:   "event [TENANT ID]",
+	Use:  "event [TENANT ID]",
 	Long: `When called with no args, it will print all events.`,
 }
 
 var externalipShowCmd = &cobra.Command{
-	Use:   "externalip",
+	Use:  "externalip",
 	Long: `When called with no args, it will print all externalips.`,
 }
 
 var imageShowCmd = &cobra.Command{
-	Use:   "image <UUID>",
+	Use:  "image <UUID>",
 	Long: `When called with no args, it will print all images.`,
 }
 
 var instanceShowCmd = &cobra.Command{
-	Use:   "instance <UUID>",
+	Use:  "instance <UUID>",
 	Long: `When called with no args, it will print all instances.`,
 }
 
 var nodeShowCmd = &cobra.Command{
-	Use:   "node",
+	Use:  "node",
 	Long: `When called with no args, it will print all nodes.`,
 }
 
 var poolShowCmd = &cobra.Command{
-	Use:   "pool [NAME]",
+	Use:  "pool [NAME]",
 	Long: `When called with no args, it will print all pools.`,
 }
 
 var quotasShowCmd = &cobra.Command{
-	Use:   "quotas",
+	Use:  "quotas",
 	Long: `When called with no args, it will print all quotass.`,
 }
 
 var tenantShowCmd = &cobra.Command{
-	Use:   "tenant",
+	Use:  "tenant",
 	Long: `When called with no args, it will print all tenants.`,
 }
 
 var traceShowCmd = &cobra.Command{
-	Use:   "trace",
+	Use:  "trace",
 	Long: `When called with no args, it will print all traces.`,
 }
 
 var volumeShowCmd = &cobra.Command{
-	Use:   "volume",
+	Use:  "volume",
 	Long: `When called with no args, it will print all volumes.`,
 }
 
 var workloadShowCmd = &cobra.Command{
-	Use:   "workload [UUID]",
+	Use:  "workload [UUID]",
 	Long: `When called with no args, it will print all workloads.`,
 }
-	
+
 var showcmds = []*cobra.Command{eventShowCmd, externalipShowCmd, imageShowCmd, instanceShowCmd, nodeShowCmd, poolShowCmd, quotasShowCmd, tenantShowCmd, traceShowCmd, volumeShowCmd, workloadShowCmd}
 
 func init() {

@@ -26,11 +26,11 @@ var subnet string
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete various ciao objects",
-	Long: `Delete the objects below from the ciao cluster`,
+	Long:  `Delete the objects below from the ciao cluster`,
 }
 
 var eventDelCmd = &cobra.Command{
-	Use:   "event",
+	Use:  "event",
 	Long: `Delete all events.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Deleting all events...")
@@ -38,7 +38,7 @@ var eventDelCmd = &cobra.Command{
 }
 
 var externalipDelCmd = &cobra.Command{
-	Use:   "external-ip [POOL NAME]",
+	Use:  "external-ip [POOL NAME]",
 	Long: `Delete unmapped external IPs from a pool.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -47,7 +47,7 @@ var externalipDelCmd = &cobra.Command{
 }
 
 var imageDelCmd = &cobra.Command{
-	Use:   "image [UUID]",
+	Use:  "image [UUID]",
 	Long: `Delete an image.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -56,7 +56,7 @@ var imageDelCmd = &cobra.Command{
 }
 
 var instanceDelCmd = &cobra.Command{
-	Use:   "instance [UUID]",
+	Use:  "instance [UUID]",
 	Long: `Delete a specific instance to the ciao cluster.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -65,7 +65,7 @@ var instanceDelCmd = &cobra.Command{
 }
 
 var poolDelCmd = &cobra.Command{
-	Use:   "pool [NAME]",
+	Use:  "pool [NAME]",
 	Long: `Delete an external IP pool.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -74,7 +74,7 @@ var poolDelCmd = &cobra.Command{
 }
 
 var volumeDelCmd = &cobra.Command{
-	Use:   "volume [UUID]",
+	Use:  "volume [UUID]",
 	Long: `Delete a volume.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -83,7 +83,7 @@ var volumeDelCmd = &cobra.Command{
 }
 
 var workloadDelCmd = &cobra.Command{
-	Use:   "workload [UUID]",
+	Use:  "workload [UUID]",
 	Long: `Delete a workload.`,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -100,5 +100,5 @@ func init() {
 	RootCmd.AddCommand(deleteCmd)
 
 	externalipDelCmd.Flags().StringVar(&ip, "ip", "", "IPv4 Address")
-	externalipDelCmd.Flags(). StringVar(&subnet, "subnet", "", "Subnet in CIDR format")
+	externalipDelCmd.Flags().StringVar(&subnet, "subnet", "", "Subnet in CIDR format")
 }

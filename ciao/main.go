@@ -15,8 +15,8 @@
 package main
 
 import (
-	"github.com/ciao-project/ciao/ciao/cmd"
 	"github.com/ciao-project/ciao/ciao-sdk"
+	"github.com/ciao-project/ciao/ciao/cmd"
 )
 
 func main() {

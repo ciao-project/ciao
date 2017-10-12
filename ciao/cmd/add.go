@@ -25,12 +25,12 @@ var config string
 var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add various ciao objects",
-	Long: `Add the objects below to the ciao cluster`,
-	Args: cobra.MinimumNArgs(2),
+	Long:  `Add the objects below to the ciao cluster`,
+	Args:  cobra.MinimumNArgs(2),
 }
 
 var imageAddCmd = &cobra.Command{
-	Use:   "image [UUID]",
+	Use:  "image [UUID]",
 	Long: `Add a specific image to the ciao cluster.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -39,7 +39,7 @@ var imageAddCmd = &cobra.Command{
 }
 
 var instanceAddCmd = &cobra.Command{
-	Use:   "instance [UUID]",
+	Use:  "instance [UUID]",
 	Long: `Add a specific instance to the ciao cluster.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -48,7 +48,7 @@ var instanceAddCmd = &cobra.Command{
 }
 
 var poolAddCmd = &cobra.Command{
-	Use:   "pool",
+	Use:  "pool",
 	Long: `Add a pool to the cluster.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -57,7 +57,7 @@ var poolAddCmd = &cobra.Command{
 }
 
 var volumeAddCmd = &cobra.Command{
-	Use:   "volume",
+	Use:  "volume",
 	Long: `Add a volume to a given instance.`,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -66,7 +66,7 @@ var volumeAddCmd = &cobra.Command{
 }
 
 var workloadAddCmd = &cobra.Command{
-	Use:   "workload",
+	Use:  "workload",
 	Long: `Add a new workload.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if config == "" {

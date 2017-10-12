@@ -23,12 +23,12 @@ import (
 var attachCmd = &cobra.Command{
 	Use:   "attach",
 	Short: "Attach various ciao objects",
-	Long: `Attach the objects below to the ciao cluster.`,
-	Args: cobra.MinimumNArgs(2),
+	Long:  `Attach the objects below to the ciao cluster.`,
+	Args:  cobra.MinimumNArgs(2),
 }
 
 var attachIpCmd = &cobra.Command{
-	Use:   "external-ip [POOL] [INSTANCE UUID]",
+	Use:  "external-ip [POOL] [INSTANCE UUID]",
 	Long: `Attach an external IP from a given pool to an instance.`,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -37,7 +37,7 @@ var attachIpCmd = &cobra.Command{
 }
 
 var attachVolCmd = &cobra.Command{
-	Use:   "volume [UUID] [INSTANCE UUID]",
+	Use:  "volume [UUID] [INSTANCE UUID]",
 	Long: `Attach a volume to an instance.`,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {

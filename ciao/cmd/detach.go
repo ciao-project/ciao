@@ -23,12 +23,12 @@ import (
 var detachCmd = &cobra.Command{
 	Use:   "detach",
 	Short: "Detach various ciao objects",
-	Long: `Detach the objects below from their given connections`,
-	Args: cobra.MinimumNArgs(2),
+	Long:  `Detach the objects below from their given connections`,
+	Args:  cobra.MinimumNArgs(2),
 }
 
 var detachIpCmd = &cobra.Command{
-	Use:   "external-ip [IP]",
+	Use:  "external-ip [IP]",
 	Long: `Detach an external IP`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -37,7 +37,7 @@ var detachIpCmd = &cobra.Command{
 }
 
 var detachVolCmd = &cobra.Command{
-	Use:   "volume [UUID]",
+	Use:  "volume [UUID]",
 	Long: `Detach a volume from an instance`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {

@@ -23,8 +23,8 @@ import (
 var restartCmd = &cobra.Command{
 	Use:   "restart [UUID]",
 	Short: "Restart a Ciao instance",
-	Long: `Restart a Ciao instance.`,
-	Args: cobra.MinimumNArgs(1),
+	Long:  `Restart a Ciao instance.`,
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Restarting instance " + args[0])
 	},

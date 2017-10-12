@@ -23,8 +23,8 @@ import (
 var stopCmd = &cobra.Command{
 	Use:   "stop [UUID]",
 	Short: "Stop a Ciao instance",
-	Long: `Stop a Ciao instance.`,
-	Args: cobra.MinimumNArgs(1),
+	Long:  `Stop a Ciao instance.`,
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Stopping instance " + args[0])
 	},
