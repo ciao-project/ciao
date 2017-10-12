@@ -31,7 +31,7 @@ import (
 
 	"github.com/ciao-project/ciao/osprepare"
 	"github.com/ciao-project/ciao/qemu"
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 )
 
 const metaDataTemplate = `

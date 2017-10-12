@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 )
 
 // CephDriver maintains context for the ceph driver interface.

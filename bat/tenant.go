@@ -20,7 +20,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 )
 
 // TenantSummary is a short form of Tenant

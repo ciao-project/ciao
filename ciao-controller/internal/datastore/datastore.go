@@ -31,7 +31,7 @@ import (
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"

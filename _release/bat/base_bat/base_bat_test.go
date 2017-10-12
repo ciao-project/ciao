@@ -25,7 +25,7 @@ import (
 
 	"github.com/ciao-project/ciao/bat"
 	"github.com/ciao-project/ciao/payloads"
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 )
 
 const standardTimeout = time.Second * 300

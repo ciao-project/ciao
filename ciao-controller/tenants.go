@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 )

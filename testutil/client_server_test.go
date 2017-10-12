@@ -26,8 +26,8 @@ import (
 
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
-	"github.com/ciao-project/ciao/ssntp/uuid"
 	. "github.com/ciao-project/ciao/testutil"
+	"github.com/ciao-project/ciao/uuid"
 )
 
 var server *SsntpTestServer

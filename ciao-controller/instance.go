@@ -27,7 +27,7 @@ import (
 	"github.com/ciao-project/ciao/ciao-controller/utils"
 	"github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/payloads"
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
