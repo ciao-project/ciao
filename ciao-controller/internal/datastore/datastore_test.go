@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ciao-controller/utils"
 	"github.com/ciao-project/ciao/ciao-storage"
@@ -2555,6 +2556,187 @@ func TestAddNamedInstance(t *testing.T) {
 
 	if id != instances[0].ID {
 		t.Fatalf("Failed to resolve instance name to ID")
+	}
+}
+
+func TestAddRemoveImage(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i := types.Image{
+		ID:         uuid.Generate().String(),
+		Name:       "test-image-1",
+		Visibility: types.Private,
+		TenantID:   tenant.ID,
+	}
+
+	err = ds.AddImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	image, err := ds.GetImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(image, i) {
+		t.Fatal("Image retrieval by ID expected to match")
+	}
+
+	err = ds.DeleteImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ds.GetImage(i.ID)
+	if err != api.ErrNoImage {
+		t.Fatal("Expected error on retrieval of deleted image")
+	}
+}
+
+func TestAddRemovePublicImage(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i := types.Image{
+		ID:         uuid.Generate().String(),
+		Name:       "test-image-1",
+		Visibility: types.Public,
+	}
+
+	err = ds.AddImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	image, err := ds.GetImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(image, i) {
+		t.Fatal("Image retrieval by ID expected to match")
+	}
+
+	images, err := ds.GetImages("", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(images) != 1 || !reflect.DeepEqual(images[0], i) {
+		t.Fatal("Retrieval failed")
+	}
+
+	images, err = ds.GetImages(tenant.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(images) != 1 || !reflect.DeepEqual(images[0], i) {
+		t.Fatal("Retrieval failed")
+	}
+
+	err = ds.DeleteImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAddRemoveInternalImage(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i := types.Image{
+		ID:         uuid.Generate().String(),
+		Name:       "test-image-1",
+		Visibility: types.Internal,
+	}
+
+	err = ds.AddImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	image, err := ds.GetImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(image, i) {
+		t.Fatal("Image retrieval by ID expected to match")
+	}
+
+	images, err := ds.GetImages("", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(images) != 0 {
+		t.Fatal("Retrieval failed")
+	}
+
+	images, err = ds.GetImages(tenant.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(images) != 0 {
+		t.Fatal("Retrieval failed")
+	}
+
+	images, err = ds.GetImages("", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(images) != 1 || !reflect.DeepEqual(images[0], i) {
+		t.Fatal("Retrieval failed")
+	}
+
+	err = ds.DeleteImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAddRemoveDuplicateImage(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i := types.Image{
+		ID:         uuid.Generate().String(),
+		Name:       "test-image-1",
+		Visibility: types.Private,
+		TenantID:   tenant.ID,
+	}
+
+	err = ds.AddImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.AddImage(i)
+	if err != api.ErrAlreadyExists {
+		t.Fatal("Expected error when adding duplicate")
+	}
+
+	err = ds.DeleteImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.DeleteImage(i.ID)
+	if err != api.ErrNoImage {
+		t.Fatal("Expected error when trying to delete again")
+	}
+
+	_, err = ds.GetImage(i.ID)
+	if err != api.ErrNoImage {
+		t.Fatal("Expected error on retrieval of deleted image")
 	}
 }
 

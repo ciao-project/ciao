@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
@@ -211,6 +212,7 @@ func (ds *Datastore) initExternalIPs() {
 
 func (ds *Datastore) initImages() error {
 	ds.imageLock = &sync.RWMutex{}
+	ds.images = make(map[string]types.Image)
 	images, err := ds.db.getImages()
 	if err != nil {
 		return errors.Wrap(err, "error getting images from database")
@@ -2543,4 +2545,165 @@ func (ds *Datastore) ResolveInstance(tenantID string, name string) (string, erro
 	}
 
 	return "", nil
+}
+
+// AddImage adds an image to the datastore and database
+func (ds *Datastore) AddImage(i types.Image) error {
+	ds.imageLock.Lock()
+	defer ds.imageLock.Unlock()
+	if _, ok := ds.images[i.ID]; ok {
+		return api.ErrAlreadyExists
+	}
+
+	err := ds.db.updateImage(i)
+	if err != nil {
+		return errors.Wrap(err, "Unable to add image to database")
+	}
+
+	if i.TenantID != "" {
+		ds.tenantsLock.Lock()
+		if _, ok := ds.tenants[i.TenantID]; !ok {
+			ds.tenantsLock.Unlock()
+			_ = ds.db.deleteImage(i.ID)
+			return types.ErrTenantNotFound
+		}
+
+		ds.tenants[i.TenantID].images = append(ds.tenants[i.TenantID].images, i.ID)
+		ds.tenantsLock.Unlock()
+	}
+
+	ds.images[i.ID] = i
+
+	if i.Visibility == types.Public {
+		ds.publicImages = append(ds.publicImages, i.ID)
+	}
+
+	if i.Visibility == types.Internal {
+		ds.internalImages = append(ds.internalImages, i.ID)
+	}
+
+	return nil
+}
+
+// UpdateImage updates the image metadate in the datastore and database
+func (ds *Datastore) UpdateImage(i types.Image) error {
+	ds.imageLock.Lock()
+	defer ds.imageLock.Unlock()
+
+	oldImage, ok := ds.images[i.ID]
+	if !ok {
+		return api.ErrNoImage
+	}
+
+	if oldImage.TenantID != i.TenantID ||
+		oldImage.Visibility != i.Visibility {
+		return errors.New("Changing visibility or tenant for image not permitted")
+	}
+
+	if err := ds.db.updateImage(i); err != nil {
+		return errors.Wrap(err, "Error updating image in database")
+	}
+
+	ds.images[i.ID] = i
+
+	return nil
+}
+
+// GetImage retrieves an image by ID
+func (ds *Datastore) GetImage(ID string) (types.Image, error) {
+	ds.imageLock.RLock()
+	defer ds.imageLock.RUnlock()
+
+	image, ok := ds.images[ID]
+	if !ok {
+		return types.Image{}, api.ErrNoImage
+	}
+
+	return image, nil
+}
+
+// GetImages obtains the images available for the optional tenantID/admin combo
+func (ds *Datastore) GetImages(tenantID string, admin bool) ([]types.Image, error) {
+	ds.imageLock.RLock()
+	defer ds.imageLock.RUnlock()
+
+	images := []types.Image{}
+
+	if tenantID != "" {
+		ds.tenantsLock.RLock()
+		if _, ok := ds.tenants[tenantID]; !ok {
+			ds.tenantsLock.RUnlock()
+			return images, types.ErrTenantNotFound
+		}
+
+		for _, id := range ds.tenants[tenantID].images {
+			images = append(images, ds.images[id])
+		}
+
+		ds.tenantsLock.RUnlock()
+	}
+
+	if admin {
+		for _, id := range ds.internalImages {
+			images = append(images, ds.images[id])
+		}
+	}
+
+	for _, id := range ds.publicImages {
+		images = append(images, ds.images[id])
+	}
+
+	return images, nil
+}
+
+// DeleteImage deleted the image from the datastore and the database
+func (ds *Datastore) DeleteImage(ID string) error {
+	ds.imageLock.Lock()
+	defer ds.imageLock.Unlock()
+
+	image, ok := ds.images[ID]
+	if !ok {
+		return api.ErrNoImage
+	}
+
+	if image.TenantID != "" {
+		ds.tenantsLock.Lock()
+
+		tenant, ok := ds.tenants[image.TenantID]
+		if !ok {
+			ds.tenantsLock.Unlock()
+			return types.ErrTenantNotFound
+		}
+
+		for i, id := range tenant.images {
+			if id == ID {
+				tenant.images = append(tenant.images[:i], tenant.images[i+1:]...)
+				break
+			}
+		}
+
+		ds.tenantsLock.Unlock()
+	}
+
+	if image.Visibility == types.Internal {
+		for i, id := range ds.internalImages {
+			if id == ID {
+				ds.internalImages = append(ds.internalImages[:i], ds.internalImages[i+1:]...)
+				break
+			}
+		}
+	}
+
+	if image.Visibility == types.Public {
+		for i, id := range ds.publicImages {
+			if id == ID {
+				ds.publicImages = append(ds.publicImages[:i], ds.publicImages[i+1:]...)
+				break
+			}
+		}
+	}
+
+	delete(ds.images, ID)
+
+	return nil
 }
