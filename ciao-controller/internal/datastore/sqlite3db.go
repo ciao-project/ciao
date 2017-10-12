@@ -412,6 +412,25 @@ func (d quotaData) Init() error {
 	return d.ds.exec(d.db, cmd)
 }
 
+type imageData struct {
+	namedData
+}
+
+func (d imageData) Init() error {
+	cmd := `CREATE TABLE IF NOT EXISTS images
+		(
+			id varchar(32) primary key,
+			state string,		
+			tenant_id string,
+			name string,
+			createtime DATETIME,
+			size int,
+			visibility string
+		);`
+
+	return d.ds.exec(d.db, cmd)
+}
+
 func (ds *sqliteDB) exec(db *sql.DB, cmd string) error {
 	glog.V(2).Info("exec: ", cmd)
 
@@ -510,6 +529,7 @@ func (ds *sqliteDB) init(config Config) error {
 		addressData{namedData{ds: ds, name: "address_pool", db: ds.db}},
 		mappedIPData{namedData{ds: ds, name: "mapped_ips", db: ds.db}},
 		quotaData{namedData{ds: ds, name: "quotas", db: ds.db}},
+		imageData{namedData{ds: ds, name: "images", db: ds.db}},
 	}
 
 	ds.workloadsPath = config.InitWorkloadsPath
@@ -2186,4 +2206,56 @@ func (ds *sqliteDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
 	}
 
 	return results, nil
+}
+
+func (ds *sqliteDB) getImages() ([]types.Image, error) {
+	images := []types.Image{}
+
+	query := `SELECT id, state, tenant_id, name, createtime, size, visibility FROM images`
+
+	db := ds.getTableDB("images")
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return images, errors.Wrap(err, "error getting images from database")
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		i := types.Image{}
+		err = rows.Scan(&i.ID, &i.State, &i.TenantID, &i.Name, &i.CreateTime, &i.Size, &i.Visibility)
+		if err != nil {
+			return []types.Image{}, errors.Wrap(err, "error reading image row from database")
+		}
+
+		images = append(images, i)
+
+	}
+	return images, nil
+}
+
+func (ds *sqliteDB) updateImage(i types.Image) error {
+	query := `REPLACE INTO images (id, state, tenant_id, name, createtime, size, visibility) VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+	db := ds.getTableDB("images")
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	_, err := db.Exec(query, i.ID, i.State, i.TenantID, i.Name, i.CreateTime, i.Size, i.Visibility)
+
+	return errors.Wrap(err, "Error updatiing image into database")
+}
+
+func (ds *sqliteDB) deleteImage(ID string) error {
+	query := `DELETE FROM images WHERE id = ?`
+
+	db := ds.getTableDB("images")
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	_, err := db.Exec(query, ID)
+
+	return errors.Wrap(err, "Error deleting image from database")
 }

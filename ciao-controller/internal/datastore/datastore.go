@@ -136,6 +136,11 @@ type persistentStore interface {
 	// quotas
 	updateQuotas(tenantID string, qds []types.QuotaDetails) error
 	getQuotas(tenantID string) ([]types.QuotaDetails, error)
+
+	// images
+	updateImage(i types.Image) error
+	deleteImage(ID string) error
+	getImages() ([]types.Image, error)
 }
 
 // Datastore provides context for the datastore package.

@@ -245,3 +245,15 @@ func (db *MemoryDB) deleteTenant(tenantID string) error {
 	delete(db.tenants, tenantID)
 	return nil
 }
+
+func (db *MemoryDB) getImages() ([]types.Image, error) {
+	return []types.Image{}, nil
+}
+
+func (db *MemoryDB) updateImage(i types.Image) error {
+	return nil
+}
+
+func (db *MemoryDB) deleteImage(ID string) error {
+	return nil
+}
