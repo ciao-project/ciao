@@ -39,7 +39,7 @@ var scopedToken string
 
 var Template string
 
-var InstanceFlags = new(InstanceCmd)
+var CommandFlags = new(CommandOpts)
 
 func infof(format string, args ...interface{}) {
 	if glog.V(1) {

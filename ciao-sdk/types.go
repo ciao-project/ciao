@@ -42,7 +42,8 @@ type workloadOptions struct {
 	Disks           []disk           `yaml:"disks,omitempty"`
 }
 
-type InstanceCmd struct {
+type CommandOpts struct {
+	All			bool
 	TenantID    string
 	Computenode string
 	Detail      bool

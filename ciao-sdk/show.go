@@ -25,14 +25,26 @@ func (ss byCreated) Swap(i, j int)      { ss[i], ss[j] = ss[j], ss[i] }
 func (ss byCreated) Less(i, j int) bool { return ss[i].Created.Before(ss[j].Created) }
 
 func listEvent(cmd *cobra.Command, args []string) error {
+	tenant := *tenantID
+
+	if len(args) != 0 {
+		tenant = args[0]
+	}
+
+	if CommandFlags.All == false && tenant == "" {
+		errorf("Missing required tenant-id parameter")
+		return nil
+	}
+
 	var events types.CiaoEvents
 	var url string
 
-	if len(args) == 0 {
+	if CommandFlags.All == true {
 		url = buildComputeURL("events")
 	} else {
-		url = buildComputeURL("%s/events", args[0])
+		url = buildComputeURL("%s/events", tenant)
 	}
+
 
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
@@ -106,44 +118,44 @@ func listNodeInstances(node string) error {
 }
 
 func listInstances(cmd *cobra.Command, args []string) error {
-	if InstanceFlags.Tenant == "" {
-		InstanceFlags.Tenant = *tenantID
+	if CommandFlags.Tenant == "" {
+		CommandFlags.Tenant = *tenantID
 	}
 
-	if InstanceFlags.Computenode != "" {
-		return listNodeInstances(InstanceFlags.Computenode)
+	if CommandFlags.Computenode != "" {
+		return listNodeInstances(CommandFlags.Computenode)
 	}
 
 	var servers compute.Servers
 
-	url := buildComputeURL("%s/servers/detail", InstanceFlags.Tenant)
+	url := buildComputeURL("%s/servers/detail", CommandFlags.Tenant)
 
 	var values []queryValue
-	if InstanceFlags.Limit > 0 {
+	if CommandFlags.Limit > 0 {
 		values = append(values, queryValue{
 			name:  "limit",
-			value: fmt.Sprintf("%d", InstanceFlags.Limit),
+			value: fmt.Sprintf("%d", CommandFlags.Limit),
 		})
 	}
 
-	if InstanceFlags.Offset > 0 {
+	if CommandFlags.Offset > 0 {
 		values = append(values, queryValue{
 			name:  "offset",
-			value: fmt.Sprintf("%d", InstanceFlags.Offset),
+			value: fmt.Sprintf("%d", CommandFlags.Offset),
 		})
 	}
 
-	if InstanceFlags.Marker != "" {
+	if CommandFlags.Marker != "" {
 		values = append(values, queryValue{
 			name:  "marker",
-			value: InstanceFlags.Marker,
+			value: CommandFlags.Marker,
 		})
 	}
 
-	if InstanceFlags.Workload != "" {
+	if CommandFlags.Workload != "" {
 		values = append(values, queryValue{
 			name:  "flavor",
-			value: InstanceFlags.Workload,
+			value: CommandFlags.Workload,
 		})
 	}
 
@@ -169,13 +181,13 @@ func listInstances(cmd *cobra.Command, args []string) error {
 	}
 
 	w := new(tabwriter.Writer)
-	if !InstanceFlags.Detail {
+	if !CommandFlags.Detail {
 		w.Init(os.Stdout, 0, 1, 1, ' ', 0)
 		fmt.Fprintln(w, "#\tUUID\tStatus\tPrivate IP\tSSH IP\tSSH PORT")
 	}
 
 	for i, server := range sortedServers {
-		if !InstanceFlags.Detail {
+		if !CommandFlags.Detail {
 			fmt.Fprintf(w, "%d", i+1)
 			fmt.Fprintf(w, "\t%s", server.ID)
 			fmt.Fprintf(w, "\t%s", server.Status)
