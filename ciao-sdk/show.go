@@ -6,10 +6,12 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"text/template"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/openstack/compute"
+	"github.com/ciao-project/ciao/openstack/image"
 	"github.com/ciao-project/ciao/payloads"
 
 	"github.com/intel/tfortools"
@@ -45,7 +47,6 @@ func listEvent(cmd *cobra.Command, args []string) error {
 		url = buildComputeURL("%s/events", tenant)
 	}
 
-
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
@@ -66,6 +67,62 @@ func listEvent(cmd *cobra.Command, args []string) error {
 		fmt.Printf("\t[%d] %v: %s:%s (Tenant %s)\n", i+1, event.Timestamp, event.EventType, event.Message, event.TenantID)
 	}
 	return nil
+}
+
+func dumpImage(i *image.DefaultResponse) {
+	fmt.Printf("\tName             [%s]\n", *i.Name)
+	fmt.Printf("\tSize             [%d bytes]\n", i.Size)
+	fmt.Printf("\tUUID             [%s]\n", i.ID)
+	fmt.Printf("\tStatus           [%s]\n", i.Status)
+	fmt.Printf("\tVisibility       [%s]\n", i.Visibility)
+	fmt.Printf("\tTags             %v\n", i.Tags)
+	fmt.Printf("\tCreatedAt        [%s]\n", i.CreatedAt)
+}
+
+func listImage(cmd *cobra.Command, args []string) error {
+	var t *template.Template
+	var err error
+	if Template != "" {
+		t, err = tfortools.CreateTemplate("image-list", Template, nil)
+		if err != nil {
+			fatalf(err.Error())
+		}
+	}
+
+	url := buildImageURL("images")
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		fatalf("Image list failed: %s", resp.Status)
+	}
+
+	var images = struct {
+		Images []image.DefaultResponse
+	}{}
+
+	err = unmarshalHTTPResponse(resp, &images)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if t != nil {
+		if err = t.Execute(os.Stdout, &images.Images); err != nil {
+			fatalf(err.Error())
+		}
+		return nil
+	}
+
+	for k, i := range images.Images {
+		fmt.Printf("Image #%d\n", k+1)
+		dumpImage(&i)
+		fmt.Printf("\n")
+	}
+
+	return err
 }
 
 func dumpInstance(server *compute.ServerDetails) {
@@ -393,6 +450,8 @@ func Show(cmd *cobra.Command, args []string) {
 		}
 	case "event":
 		listEvent(cmd, args)
+	case "image":
+		listImage(cmd, args)
 	}
 	if ret != nil {
 		errorf("ERROR:%s\n", ret)

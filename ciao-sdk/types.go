@@ -43,7 +43,7 @@ type workloadOptions struct {
 }
 
 type CommandOpts struct {
-	All			bool
+	All         bool
 	TenantID    string
 	Computenode string
 	Detail      bool
