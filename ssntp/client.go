@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/ciao-project/ciao/payloads"
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 	"gopkg.in/yaml.v2"
 )
 

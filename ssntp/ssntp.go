@@ -32,7 +32,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 	"github.com/golang/glog"
 )
 

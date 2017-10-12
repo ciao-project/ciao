@@ -36,8 +36,8 @@ import (
 	"github.com/ciao-project/ciao/openstack/block"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
-	"github.com/ciao-project/ciao/ssntp/uuid"
 	"github.com/ciao-project/ciao/testutil"
+	"github.com/ciao-project/ciao/uuid"
 	jsonpatch "github.com/evanphx/json-patch"
 )
 

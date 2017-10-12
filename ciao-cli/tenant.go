@@ -28,7 +28,7 @@ import (
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/intel/tfortools"
 )

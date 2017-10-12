@@ -32,7 +32,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/ciao-project/ciao/clogger/gloginterface"
 	"github.com/ciao-project/ciao/networking/libsnnet"
-	"github.com/ciao-project/ciao/ssntp/uuid"
+	"github.com/ciao-project/ciao/uuid"
 	"github.com/docker/libnetwork/drivers/remote/api"
 	ipamapi "github.com/docker/libnetwork/ipams/remote/api"
 	"github.com/gorilla/mux"
