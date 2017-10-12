@@ -164,6 +164,30 @@ func listInstances(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func showInstance(cmd *cobra.Command, args []string) error {
+	instance := args[0]
+
+	var server compute.Server
+	url := buildComputeURL("%s/servers/%s", *tenantID, instance)
+
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+	err = unmarshalHTTPResponse(resp, &server)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if Template != "" {
+		return tfortools.OutputToTemplate(os.Stdout, "instance-show", Template,
+			&server.Server, nil)
+	}
+
+	dumpInstance(&server.Server)
+	return nil
+}
+
 func listWorkloads(cmd *cobra.Command, args []string) error {
 	if *tenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
@@ -312,7 +336,11 @@ func Show(cmd *cobra.Command, args []string) {
 
 	switch command[0] {
 	case "instance":
-		ret = listInstances(cmd, args)
+		if len(args) == 0 {
+			ret = listInstances(cmd, args)
+		} else {
+			showInstance(cmd, args)
+		}
 	case "workload":
 		if len(args) == 0 {
 			ret = listWorkloads(cmd, args)
