@@ -65,6 +65,7 @@ type tenant struct {
 	instances map[string]*types.Instance
 	devices   map[string]types.BlockData
 	workloads []types.Workload
+	images    []string
 }
 
 type node struct {
@@ -181,6 +182,11 @@ type Datastore struct {
 	externalIPs     map[string]bool
 	mappedIPs       map[string]types.MappedIP
 	poolsLock       *sync.RWMutex
+
+	imageLock      *sync.RWMutex
+	images         map[string]types.Image
+	publicImages   []string
+	internalImages []string
 }
 
 func (ds *Datastore) initExternalIPs() {
@@ -201,6 +207,35 @@ func (ds *Datastore) initExternalIPs() {
 	}
 
 	ds.mappedIPs = ds.db.getMappedIPs()
+}
+
+func (ds *Datastore) initImages() error {
+	ds.imageLock = &sync.RWMutex{}
+	images, err := ds.db.getImages()
+	if err != nil {
+		return errors.Wrap(err, "error getting images from database")
+	}
+	for _, i := range images {
+		ds.images[i.ID] = i
+
+		if i.Visibility == types.Public {
+			ds.publicImages = append(ds.publicImages, i.ID)
+		}
+
+		if i.Visibility == types.Internal {
+			ds.internalImages = append(ds.internalImages, i.ID)
+		}
+
+		if i.TenantID != "" {
+			_, ok := ds.tenants[i.TenantID]
+			if !ok {
+				return errors.Wrapf(err, "Database inconsistent: tenant in images not in database: %s", i.TenantID)
+			}
+
+			ds.tenants[i.TenantID].images = append(ds.tenants[i.TenantID].images, i.ID)
+		}
+	}
+	return nil
 }
 
 // Init initializes the private data for the Datastore object.
@@ -254,6 +289,11 @@ func (ds *Datastore) Init(config Config) error {
 	}
 	for i := range tenants {
 		ds.tenants[tenants[i].ID] = tenants[i]
+	}
+
+	err = ds.initImages()
+	if err != nil {
+		return errors.Wrap(err, "error initialising images")
 	}
 
 	ds.nodesLock = &sync.RWMutex{}
