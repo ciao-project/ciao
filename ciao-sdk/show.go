@@ -24,6 +24,38 @@ func (ss byCreated) Len() int           { return len(ss) }
 func (ss byCreated) Swap(i, j int)      { ss[i], ss[j] = ss[j], ss[i] }
 func (ss byCreated) Less(i, j int) bool { return ss[i].Created.Before(ss[j].Created) }
 
+func listEvent(cmd *cobra.Command, args []string) error {
+	var events types.CiaoEvents
+	var url string
+
+	if len(args) == 0 {
+		url = buildComputeURL("events")
+	} else {
+		url = buildComputeURL("%s/events", args[0])
+	}
+
+	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	err = unmarshalHTTPResponse(resp, &events)
+	if err != nil {
+		fatalf(err.Error())
+	}
+
+	if Template != "" {
+		return tfortools.OutputToTemplate(os.Stdout, "event-list", Template,
+			&events.Events, nil)
+	}
+
+	fmt.Printf("%d Ciao event(s):\n", len(events.Events))
+	for i, event := range events.Events {
+		fmt.Printf("\t[%d] %v: %s:%s (Tenant %s)\n", i+1, event.Timestamp, event.EventType, event.Message, event.TenantID)
+	}
+	return nil
+}
+
 func dumpInstance(server *compute.ServerDetails) {
 	fmt.Printf("\tUUID: %s\n", server.ID)
 	fmt.Printf("\tStatus: %s\n", server.Status)
@@ -348,9 +380,7 @@ func Show(cmd *cobra.Command, args []string) {
 			ret = showWorkload(cmd, args)
 		}
 	case "event":
-		if len(args) > 0 {
-			fmt.Println("Event called with " + args[0])
-		}
+		listEvent(cmd, args)
 	}
 	if ret != nil {
 		errorf("ERROR:%s\n", ret)

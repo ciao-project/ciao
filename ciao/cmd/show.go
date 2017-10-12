@@ -26,7 +26,7 @@ var showCmd = &cobra.Command{
 }
 
 var eventShowCmd = &cobra.Command{
-	Use:   "event",
+	Use:   "event [TENANT ID]",
 	Long: `When called with no args, it will print all events.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(sdk.InstanceFlags.TenantID) != 0 {
