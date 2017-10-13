@@ -1270,3 +1270,166 @@ func TestSQLiteDBDeleteTenant(t *testing.T) {
 		t.Fatal("Tenant Delete not successful")
 	}
 }
+
+func TestSQLiteDBAddRemoveImages(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	config := types.TenantConfig{
+		Name: "name1",
+	}
+
+	err = db.addTenant(tenantID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	images, err := db.getImages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(images) != 0 {
+		t.Fatalf("Unexpected image count: %d vs 0", len(images))
+	}
+
+	i := types.Image{
+		ID:         uuid.Generate().String(),
+		State:      types.Created,
+		TenantID:   tenantID,
+		Name:       "test-image",
+		Size:       1234567,
+		Visibility: types.Public,
+	}
+
+	err = db.updateImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	images, err = db.getImages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(images) != 1 {
+		t.Fatalf("Unexpected image count: %d vs 1", len(images))
+	}
+
+	if !reflect.DeepEqual(images[0], i) {
+		t.Fatalf("Returned image not as expected %v vs %v", images[0], i)
+	}
+
+	i2 := types.Image{
+		ID:         uuid.Generate().String(),
+		State:      types.Saving,
+		TenantID:   tenantID,
+		Name:       "test-image2",
+		Size:       1234567,
+		Visibility: types.Private,
+	}
+
+	err = db.updateImage(i2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	images, err = db.getImages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(images) != 2 {
+		t.Fatalf("Unexpected image count: %d vs 2", len(images))
+	}
+
+	err = db.deleteImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	images, err = db.getImages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(images) != 1 {
+		t.Fatalf("Unexpected image count: %d vs 1", len(images))
+	}
+}
+
+func TestSQLiteDBUpdateImage(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	config := types.TenantConfig{
+		Name: "name1",
+	}
+
+	err = db.addTenant(tenantID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	images, err := db.getImages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(images) != 0 {
+		t.Fatalf("Unexpected image count: %d vs 0", len(images))
+	}
+
+	i := types.Image{
+		ID:         uuid.Generate().String(),
+		State:      types.Created,
+		TenantID:   tenantID,
+		Name:       "test-image",
+		Size:       1234567,
+		Visibility: types.Public,
+	}
+
+	err = db.updateImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	images, err = db.getImages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(images) != 1 {
+		t.Fatalf("Unexpected image count: %d vs 1", len(images))
+	}
+
+	if !reflect.DeepEqual(images[0], i) {
+		t.Fatalf("Returned image not as expected %v vs %v", images[0], i)
+	}
+
+	i.State = types.Killed
+
+	err = db.updateImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	images, err = db.getImages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(images) != 1 {
+		t.Fatalf("Unexpected image count: %d vs 1", len(images))
+	}
+
+	if !reflect.DeepEqual(images[0], i) {
+		t.Fatalf("Returned image not as expected %v vs %v", images[0], i)
+	}
+}

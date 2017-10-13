@@ -2107,11 +2107,6 @@ func TestMain(m *testing.M) {
 
 	ctl.qs.Init()
 
-	err = ctl.InitImageDatastore()
-	if err != nil {
-		os.Exit(1)
-	}
-
 	config := &ssntp.Config{
 		URI:    "localhost",
 		CAcert: ssntp.DefaultCACert,
@@ -2140,7 +2135,6 @@ func TestMain(m *testing.M) {
 	ctl.client.Disconnect()
 	ctl.ds.Exit()
 	ctl.qs.Shutdown()
-	ctl.ids.Shutdown()
 	server.Shutdown()
 	f.Close()
 	os.RemoveAll(dir)

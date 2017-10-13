@@ -31,7 +31,6 @@ import (
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/internal/datastore"
 	"github.com/ciao-project/ciao/ciao-controller/internal/quotas"
-	imageDatastore "github.com/ciao-project/ciao/ciao-image/datastore"
 	storage "github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/clogger/gloginterface"
 	"github.com/ciao-project/ciao/database"
@@ -50,7 +49,6 @@ type controller struct {
 	storage.BlockDriver
 	client              controllerClient
 	ds                  *datastore.Datastore
-	ids                 imageDatastore.DataStore
 	apiURL              string
 	tenantReadiness     map[string]*tenantConfirmMemo
 	tenantReadinessLock sync.Mutex
@@ -66,12 +64,9 @@ var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
 var workloadsPath = flag.String("workloads_path", "/var/lib/ciao/data/controller/workloads", "path to yaml files")
 var persistentDatastoreLocation = flag.String("database_path", "/var/lib/ciao/data/controller/ciao-controller.db", "path to persistent database")
-var imageDatastoreLocation = flag.String("image_database_path", "/var/lib/ciao/data/image/ciao-image.db", "path to image persistent database")
 var logDir = "/var/lib/ciao/logs/controller"
 
 var clientCertCAPath = "/etc/pki/ciao/auth-CA.pem"
-
-var imagesPath = flag.String("images_path", "/var/lib/ciao/images", "path to ciao images")
 
 var cephID = flag.String("ceph_id", "", "ceph client id")
 
@@ -184,10 +179,6 @@ func main() {
 		clientCertCAPath = clusterConfig.Configure.Controller.ClientAuthCACertPath
 	}
 
-	if err := ctl.InitImageDatastore(); err != nil {
-		glog.Fatalf("Error initialising image service: %v", err)
-	}
-
 	ctl.ds.GenerateCNCIWorkload(cnciVCPUs, cnciMem, cnciDisk, adminSSHKey, adminPassword)
 
 	database.Logger = gloginterface.CiaoGlogLogger{}
@@ -246,6 +237,5 @@ func main() {
 	glog.Warning("Controller shutdown initiated")
 	ctl.qs.Shutdown()
 	ctl.ds.Exit()
-	ctl.ids.Shutdown()
 	ctl.client.Disconnect()
 }

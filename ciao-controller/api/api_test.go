@@ -219,7 +219,7 @@ var tests = []test{
 		"",
 		fmt.Sprintf("application/%s", ImagesV1),
 		http.StatusOK,
-		`[{"id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","state":"created","tenant_id":"","name":"Ubuntu","create_time":"2015-11-29T22:21:42Z","size":0,"visibility":"public"},{"id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","state":"created","tenant_id":"","name":"Ubuntu","create_time":"2015-11-29T22:21:42Z","size":0,"visibility":"public"}]`,
+		`[{"id":"b2173dd3-7ad6-4362-baa6-a68bce3565cb","state":"created","tenant_id":"","name":"Ubuntu","create_time":"2015-11-29T22:21:42Z","size":0,"visibility":"public"}]`,
 	},
 	{
 		"GET",
@@ -473,10 +473,7 @@ func (ts testCiaoService) ListImages(tenantID string) ([]types.Image, error) {
 	}
 
 	var images []types.Image
-
-	if tenantID == string(image.Visibility) {
-		images = append(images, image)
-	}
+	images = append(images, image)
 
 	return images, nil
 }
