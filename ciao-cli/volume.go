@@ -26,8 +26,8 @@ import (
 	"sort"
 	"text/template"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/ciao-project/ciao/openstack/block"
 
 	"github.com/intel/tfortools"
 )
@@ -76,7 +76,7 @@ func (cmd *volumeAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *volumeAddCommand) run(args []string) error {
-	createReq := block.RequestedVolume{
+	createReq := api.RequestedVolume{
 		Description: cmd.description,
 		Name:        cmd.name,
 		Size:        cmd.size,
@@ -96,8 +96,8 @@ func (cmd *volumeAddCommand) run(args []string) error {
 	}
 
 	body := bytes.NewReader(b)
-	url := buildBlockURL("%s/volumes", *tenantID)
-	resp, err := sendHTTPRequest("POST", url, nil, body)
+	url := buildCiaoURL("%s/volumes", *tenantID)
+	resp, err := sendCiaoRequest("POST", url, nil, body, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -165,8 +165,8 @@ func (cmd *volumeListCommand) run(args []string) error {
 		}
 	}
 
-	url := buildBlockURL("%s/volumes", *tenantID)
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	url := buildCiaoURL("%s/volumes", *tenantID)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -233,8 +233,8 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	url := buildCiaoURL("%s/volumes/%s", *tenantID, cmd.volume)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -289,8 +289,8 @@ func (cmd *volumeDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
+	url := buildCiaoURL("%s/volumes/%s", *tenantID, cmd.volume)
+	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -366,8 +366,8 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 	}
 
 	body := bytes.NewReader(b)
-	url := buildBlockURL("%s/volumes/%s/action", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("POST", url, nil, body)
+	url := buildCiaoURL("%s/volumes/%s/action", *tenantID, cmd.volume)
+	resp, err := sendCiaoRequest("POST", url, nil, body, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -427,7 +427,7 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 	}
 
 	body := bytes.NewReader(b)
-	url := buildBlockURL("%s/volumes/%s/action", *tenantID, cmd.volume)
+	url := buildCiaoURL("%s/volumes/%s/action", *tenantID, cmd.volume)
 	resp, err := sendHTTPRequest("POST", url, nil, body)
 	if err != nil {
 		fatalf(err.Error())

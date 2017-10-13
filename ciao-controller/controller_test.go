@@ -28,12 +28,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/internal/datastore"
 	"github.com/ciao-project/ciao/ciao-controller/internal/quotas"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ciao-controller/utils"
 	"github.com/ciao-project/ciao/ciao-storage"
-	"github.com/ciao-project/ciao/openstack/block"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
 	"github.com/ciao-project/ciao/testutil"
@@ -1345,7 +1345,7 @@ func TestStorageConfig(t *testing.T) {
 }
 
 func createTestVolume(tenantID string, size int, t *testing.T) string {
-	req := block.RequestedVolume{
+	req := api.RequestedVolume{
 		Size: size,
 	}
 
@@ -1389,7 +1389,7 @@ func TestCreateImageVolume(t *testing.T) {
 	}
 
 	imageRef := "test-image-id"
-	req := block.RequestedVolume{
+	req := api.RequestedVolume{
 		ImageRef: imageRef,
 	}
 
@@ -1439,7 +1439,7 @@ func TestDeleteVolume(t *testing.T) {
 
 	// attempt to delete with bad tenant ID
 	err = ctl.DeleteVolume(tenant2.ID, volID)
-	if err != block.ErrVolumeOwner {
+	if err != api.ErrVolumeOwner {
 		t.Fatal("Incorrect error")
 	}
 

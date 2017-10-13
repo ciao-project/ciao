@@ -18,16 +18,15 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ciao-storage"
-	"github.com/ciao-project/ciao/openstack/block"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/golang/glog"
-	"github.com/gorilla/mux"
 )
 
 // CreateVolume will create a new block device and store it in the datastore.
-func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (types.BlockData, error) {
+func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types.BlockData, error) {
 	err := c.confirmTenant(tenant)
 	if err != nil {
 		return types.BlockData{}, err
@@ -79,7 +78,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (typ
 	if !res.Allowed() {
 		c.DeleteBlockDevice(bd.ID)
 		c.qs.Release(tenant, res.Resources()...)
-		return types.BlockData{}, block.ErrQuota
+		return types.BlockData{}, api.ErrQuota
 	}
 
 	err = c.ds.AddBlockDevice(data)
@@ -106,12 +105,12 @@ func (c *controller) DeleteVolume(tenant string, volume string) error {
 
 	// check that the block device is owned by the tenant.
 	if info.TenantID != tenant {
-		return block.ErrVolumeOwner
+		return api.ErrVolumeOwner
 	}
 
 	// check that the block device is available.
 	if info.State != types.Available {
-		return block.ErrVolumeNotAvailable
+		return api.ErrVolumeNotAvailable
 	}
 
 	// remove the block data from our datastore.
@@ -148,18 +147,18 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 
 	// check that the block device is available.
 	if info.State != types.Available {
-		return block.ErrVolumeNotAvailable
+		return api.ErrVolumeNotAvailable
 	}
 
 	// check that the block device is owned by the tenant.
 	if info.TenantID != tenant {
-		return block.ErrVolumeOwner
+		return api.ErrVolumeOwner
 	}
 
 	// check that the instance is owned by the tenant.
 	i, err := c.ds.GetTenantInstance(tenant, instance)
 	if err != nil {
-		return block.ErrInstanceNotFound
+		return api.ErrInstanceNotFound
 	}
 
 	// update volume state to attaching
@@ -218,7 +217,7 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 	}
 
 	if len(attachments) == 0 {
-		return block.ErrVolumeNotAttached
+		return api.ErrVolumeNotAttached
 	}
 
 	// get the block device information
@@ -229,12 +228,12 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 
 	// check that the block device is owned by the tenant.
 	if info.TenantID != tenant {
-		return block.ErrVolumeOwner
+		return api.ErrVolumeOwner
 	}
 
 	// check that the block device is in use
 	if info.State != types.InUse {
-		return block.ErrVolumeNotAttached
+		return api.ErrVolumeNotAttached
 	}
 
 	// we cannot detach a boot device - these aren't
@@ -242,7 +241,7 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 	// as such.
 	for _, a := range attachments {
 		if a.Boot == true {
-			return block.ErrVolumeNotAttached
+			return api.ErrVolumeNotAttached
 		}
 	}
 
@@ -253,7 +252,7 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 		// get instance info
 		i, err := c.ds.GetTenantInstance(tenant, a.InstanceID)
 		if err != nil {
-			glog.Error(block.ErrInstanceNotFound)
+			glog.Error(api.ErrInstanceNotFound)
 			// keep going
 			retval = err
 			continue
@@ -316,16 +315,8 @@ func (c *controller) ShowVolumeDetails(tenant string, volume string) (types.Bloc
 	}
 
 	if vol.TenantID != tenant {
-		return types.BlockData{}, block.ErrVolumeOwner
+		return types.BlockData{}, api.ErrVolumeOwner
 	}
 
 	return vol, nil
-}
-
-func (c *controller) createVolumeRoutes(r *mux.Router) error {
-	config := block.APIConfig{VolService: c}
-
-	block.Routes(config, r)
-
-	return nil
 }

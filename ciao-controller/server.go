@@ -118,10 +118,6 @@ func (c *controller) createCiaoServer() (*http.Server, error) {
 		return nil, errors.Wrap(err, "Error adding compute routes")
 	}
 
-	if err := c.createVolumeRoutes(r); err != nil {
-		return nil, errors.Wrap(err, "Error adding volume routes")
-	}
-
 	err = c.createCiaoRoutes(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error adding ciao routes")
