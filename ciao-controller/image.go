@@ -19,18 +19,13 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	imageDatastore "github.com/ciao-project/ciao/ciao-image/datastore"
-	"github.com/ciao-project/ciao/ciao-storage"
-	"github.com/ciao-project/ciao/database"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/uuid"
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 )
 
 // CreateImage will create an empty image in the image datastore.
@@ -213,82 +208,4 @@ func (c *controller) GetImage(tenantID, imageID string) (types.Image, error) {
 
 	glog.Infof("Image %v found", imageID)
 	return image, nil
-}
-
-// Init initialises the image service
-func (c *controller) InitImageDatastore() error {
-	dbDir := filepath.Dir(*imageDatastoreLocation)
-	dbFile := filepath.Base(*imageDatastoreLocation)
-
-	metaDs := &imageDatastore.MetaDs{
-		DbProvider: database.NewBoltDBProvider(),
-		DbDir:      dbDir,
-		DbFile:     dbFile,
-	}
-
-	glog.Info("ciao-image - MetaDatastore Initialization")
-	glog.Infof("DBProvider : %T", metaDs.DbProvider)
-	glog.Infof("DbDir      : %v", metaDs.DbDir)
-	glog.Infof("DbFile     : %v", metaDs.DbFile)
-
-	metaDsTables := []string{"public", "internal"}
-
-	err := metaDs.DbInit(metaDs.DbDir, metaDs.DbFile)
-
-	if err != nil {
-		return errors.Wrap(err, "Error on DB Initialization")
-	}
-
-	err = metaDs.DbTablesInit(metaDsTables)
-	if err != nil {
-		return errors.Wrap(err, "Error on DB Tables Initialization")
-	}
-
-	rawDs := &imageDatastore.Ceph{
-		ImageTempDir: *imagesPath,
-		BlockDriver: storage.CephDriver{
-			ID: *cephID,
-		},
-	}
-
-	glog.Info("ciao-image - Initialize raw datastore")
-	glog.Infof("rawDs        : %T", rawDs)
-	glog.Infof("ImageTempDir : %v", rawDs.ImageTempDir)
-	glog.Infof("ID           : %v", rawDs.BlockDriver.ID)
-
-	config := ImageConfig{
-		HTTPSCACert:   httpsCAcert,
-		HTTPSKey:      httpsKey,
-		RawDataStore:  rawDs,
-		MetaDataStore: metaDs,
-	}
-
-	glog.Info("ciao-image - Configuration")
-	glog.Infof("HTTPSCACert   : %v", config.HTTPSCACert)
-	glog.Infof("HTTPSKey      : %v", config.HTTPSKey)
-	glog.Infof("RawDataStore  : %T", config.RawDataStore)
-	glog.Infof("MetaDataStore : %T", config.MetaDataStore)
-
-	c.ids = &imageDatastore.ImageStore{}
-	err = c.ids.Init(config.RawDataStore, config.MetaDataStore)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ImageConfig is required to setup the API context for the image service.
-type ImageConfig struct {
-	// HTTPSCACert is the path to the http ca cert to use.
-	HTTPSCACert string
-
-	// HTTPSKey is the path to the https cert key.
-	HTTPSKey string
-
-	// DataStore is an interface to a persistent datastore for the image raw data.
-	RawDataStore imageDatastore.RawDataStore
-
-	// MetaDataStore is an interface to a persistent datastore for the image meta data.
-	MetaDataStore imageDatastore.MetaDataStore
 }
