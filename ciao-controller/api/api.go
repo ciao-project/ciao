@@ -783,10 +783,7 @@ func createImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 	defer r.Body.Close()
 
 	vars := mux.Vars(r)
-	tenantID, ok := vars["tenant"]
-	if !ok {
-		tenantID = "public"
-	}
+	tenantID := vars["tenant"]
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -806,10 +803,6 @@ func createImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 		return Response{http.StatusForbidden, nil}, nil
 	}
 
-	if req.Visibility == types.Public || req.Visibility == types.Internal {
-		tenantID = string(req.Visibility)
-	}
-
 	resp, err := context.CreateImage(tenantID, req)
 
 	if err != nil {
@@ -823,28 +816,17 @@ func createImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 //
 // TBD: support query & sort parameters
 func listImages(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
-	images := []types.Image{}
-
 	vars := mux.Vars(r)
 	tenantID, ok := vars["tenant"]
 	if !ok {
-		tenantID = "public"
+		tenantID = "admin"
 	}
 
-	imageTables := []string{tenantID, string(types.Public)}
-
-	privileged := service.GetPrivilege(r.Context())
-	if privileged {
-		imageTables = append(imageTables, string(types.Internal))
+	images, err := context.ListImages(tenantID)
+	if err != nil {
+		return errorResponse(err), err
 	}
 
-	for _, table := range imageTables {
-		tableImages, err := context.ListImages(table)
-		if err != nil {
-			return errorResponse(err), err
-		}
-		images = append(images, tableImages...)
-	}
 	return Response{http.StatusOK, images}, nil
 }
 
@@ -856,28 +838,15 @@ func getImage(context *Context, w http.ResponseWriter, r *http.Request) (Respons
 
 	tenantID, ok := vars["tenant"]
 	if !ok {
-		tenantID = "public"
+		tenantID = "admin"
 	}
 
-	imageTables := []string{tenantID, string(types.Public)}
-
-	privileged := service.GetPrivilege(r.Context())
-	if privileged {
-		imageTables = append(imageTables, string(types.Internal))
+	image, err := context.GetImage(tenantID, imageID)
+	if err != nil {
+		return errorResponse(err), err
 	}
 
-	for _, table := range imageTables {
-		resp, err := context.GetImage(table, imageID)
-		if err != nil && err != ErrNoImage {
-			return errorResponse(err), err
-		}
-		if resp.ID != "" {
-			return Response{http.StatusOK, resp}, nil
-		}
-	}
-
-	return errorResponse(ErrNoImage), ErrNoImage
-
+	return Response{http.StatusOK, image}, nil
 }
 
 func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
@@ -886,30 +855,7 @@ func uploadImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 
 	tenantID, ok := vars["tenant"]
 	if !ok {
-		tenantID = "public"
-	}
-
-	imageTables := []string{tenantID, string(types.Public)}
-
-	privileged := service.GetPrivilege(r.Context())
-	if privileged {
-		imageTables = append(imageTables, string(types.Internal))
-	}
-
-	for _, table := range imageTables {
-		img, err := context.GetImage(table, imageID)
-		if err != nil && err != ErrNoImage {
-			return errorResponse(err), err
-		}
-		if img.ID != "" {
-			if !validPrivilege(img.Visibility, privileged) {
-				return Response{http.StatusForbidden, nil}, nil
-			}
-			if img.Visibility == types.Public || img.Visibility == types.Internal {
-				tenantID = string(img.Visibility)
-			}
-			break
-		}
+		tenantID = "admin"
 	}
 
 	err := context.UploadImage(tenantID, imageID, r.Body)
@@ -925,31 +871,14 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 
 	tenantID, ok := vars["tenant"]
 	if !ok {
-		tenantID = "public"
-	}
-
-	imageTables := []string{tenantID, string(types.Public), string(types.Internal)}
-	privileged := service.GetPrivilege(r.Context())
-
-	for _, table := range imageTables {
-		img, err := context.GetImage(table, imageID)
-		if err != ErrNoImage {
-			if img.ID != "" {
-				if !validPrivilege(img.Visibility, privileged) {
-					return Response{http.StatusForbidden, nil}, nil
-				}
-				if img.Visibility == types.Public || img.Visibility == types.Internal {
-					tenantID = string(img.Visibility)
-				}
-				break
-			}
-		}
+		tenantID = "admin"
 	}
 
 	err := context.DeleteImage(tenantID, imageID)
 	if err != nil {
 		return errorResponse(err), err
 	}
+
 	return Response{http.StatusNoContent, nil}, nil
 }
 
