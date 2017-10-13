@@ -24,30 +24,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// MetaData is defined as a set of arbitrary key value structs.
-type MetaData interface{}
-
 // RequestedVolume contains information about a volume to be created.
-// http://developer.openstack.org/api-ref-blockstorage-v2.html#createVolume
 type RequestedVolume struct {
-	Size               int      `json:"size"`
-	AvailabilityZone   string   `json:"availability_zone,omitempty"`
-	SourceVolID        string   `json:"source_volid,omitempty"`
-	Description        string   `json:"description,omitempty"`
-	MultiAttach        bool     `json:"multiattach"`
-	SnapshotID         string   `json:"snapshot_id,omitempty"`
-	Name               string   `json:"name,omitempty"`
-	ImageRef           string   `json:"imageRef,omitempty"`
-	VolumeType         string   `json:"volume_type,omitempty"`
-	MetaData           MetaData `json:"metadata"`
-	SourceReplica      string   `json:"source_replica,omitempty"`
-	ConsistencyGroupID string   `json:"consistencygroup_id,omitempty"`
-}
-
-// VolumeCreateRequest is the json request for the createVolume endpoint.
-// http://developer.openstack.org/api-ref-blockstorage-v2.html#createVolume
-type VolumeCreateRequest struct {
-	Volume RequestedVolume `json:"volume"`
+	Size        int    `json:"size"`
+	SourceVolID string `json:"source_volid,omitempty"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name,omitempty"`
+	ImageRef    string `json:"imageRef,omitempty"`
 }
 
 // These errors can be returned by the Service interface
@@ -155,13 +138,13 @@ func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 		return APIResponse{http.StatusBadRequest, nil}, err
 	}
 
-	var req VolumeCreateRequest
+	var req RequestedVolume
 	err = json.Unmarshal(body, &req)
 	if err != nil {
 		return APIResponse{http.StatusInternalServerError, nil}, err
 	}
 
-	vol, err := bc.CreateVolume(tenant, req.Volume)
+	vol, err := bc.CreateVolume(tenant, req)
 	if err != nil {
 		return errorResponse(err), err
 	}

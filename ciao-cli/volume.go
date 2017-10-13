@@ -76,21 +76,19 @@ func (cmd *volumeAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *volumeAddCommand) run(args []string) error {
-	opts := block.RequestedVolume{
+	createReq := block.RequestedVolume{
 		Description: cmd.description,
 		Name:        cmd.name,
 		Size:        cmd.size,
 	}
 
 	if cmd.sourceType == "image" {
-		opts.ImageRef = cmd.source
+		createReq.ImageRef = cmd.source
 	} else if cmd.sourceType == "volume" {
-		opts.SourceVolID = cmd.source
+		createReq.SourceVolID = cmd.source
 	} else {
 		fatalf("Unknown source type [%s]\n", cmd.sourceType)
 	}
-
-	var createReq = block.VolumeCreateRequest{Volume: opts}
 
 	b, err := json.Marshal(createReq)
 	if err != nil {
