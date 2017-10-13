@@ -1354,8 +1354,8 @@ func createTestVolume(tenantID string, size int, t *testing.T) string {
 		t.Fatal(err)
 	}
 
-	if vol.UserID != tenantID || vol.Status != block.Available ||
-		vol.Size != size || vol.Bootable != "false" {
+	if vol.TenantID != tenantID || vol.State != types.Available ||
+		vol.Size != size || vol.Bootable != false {
 		t.Fatalf("incorrect volume returned\n")
 	}
 

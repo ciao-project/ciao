@@ -26,6 +26,7 @@ import (
 	"sort"
 	"text/template"
 
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/openstack/block"
 
 	"github.com/intel/tfortools"
@@ -108,13 +109,12 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		fatalf("Volume creation failed: %s", resp.Status)
 	}
 
-	var vol block.VolumeResponse
-
+	var vol types.BlockData
 	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
 		fatalf(err.Error())
 	}
-	fmt.Printf("Created new volume: %s\n", vol.Volume.ID)
+	fmt.Printf("Created new volume: %s\n", vol.ID)
 
 	return err
 }
@@ -137,7 +137,7 @@ The template passed to the -f option operates on a
 As volumes are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of volumes.
-`, tfortools.GenerateUsageUndecorated([]block.Volume{}))
+`, tfortools.GenerateUsageUndecorated([]types.BlockData{}))
 	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
@@ -149,7 +149,7 @@ func (cmd *volumeListCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-type byName []block.VolumeDetail
+type byName []types.BlockData
 
 func (ss byName) Len() int      { return len(ss) }
 func (ss byName) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
@@ -178,24 +178,23 @@ func (cmd *volumeListCommand) run(args []string) error {
 		fatalf("Volume list failed: %s", resp.Status)
 	}
 
-	var vols block.ListVolumesDetail
+	var vols []types.BlockData
 
 	err = unmarshalHTTPResponse(resp, &vols)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	sortedVolumes := vols.Volumes
-	sort.Sort(byName(sortedVolumes))
+	sort.Sort(byName(vols))
 
 	if t != nil {
-		if err = t.Execute(os.Stdout, &sortedVolumes); err != nil {
+		if err = t.Execute(os.Stdout, &vols); err != nil {
 			fatalf(err.Error())
 		}
 		return nil
 	}
 
-	for i, v := range sortedVolumes {
+	for i, v := range vols {
 		fmt.Printf("Volume #%d\n", i+1)
 		dumpVolume(&v)
 		fmt.Printf("\n")
@@ -218,7 +217,7 @@ Show information about a volume
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", block.Volume{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", types.BlockData{}, nil))
 	os.Exit(2)
 }
 
@@ -247,20 +246,19 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		fatalf("Volume show failed: %s", resp.Status)
 	}
 
-	var vol block.ShowVolumeDetails
+	var vol types.BlockData
 
 	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	volume := vol.Volume
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "volume-show", cmd.template,
-			&volume, nil)
+			&vol, nil)
 	}
 
-	dumpVolume(&volume)
+	dumpVolume(&vol)
 	return nil
 }
 
@@ -448,12 +446,12 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 	return err
 }
 
-func dumpVolume(v *block.VolumeDetail) {
+func dumpVolume(v *types.BlockData) {
 	fmt.Printf("\tName             [%s]\n", v.Name)
 	fmt.Printf("\tSize             [%d GB]\n", v.Size)
 	fmt.Printf("\tUUID             [%s]\n", v.ID)
 	// Print out TenantID to ensure extendedVolume.customVolumeExt is not unused.
-	fmt.Printf("\tTenantID         [%s]\n", v.OSVolTenantAttr)
-	fmt.Printf("\tStatus           [%s]\n", v.Status)
+	fmt.Printf("\tTenantID         [%s]\n", v.TenantID)
+	fmt.Printf("\tState            [%s]\n", v.State)
 	fmt.Printf("\tDescription      [%s]\n", v.Description)
 }

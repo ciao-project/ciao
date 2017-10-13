@@ -16,7 +16,6 @@ package main
 
 import (
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
@@ -28,10 +27,10 @@ import (
 )
 
 // CreateVolume will create a new block device and store it in the datastore.
-func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (block.Volume, error) {
+func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (types.BlockData, error) {
 	err := c.confirmTenant(tenant)
 	if err != nil {
-		return block.Volume{}, err
+		return types.BlockData{}, err
 	}
 
 	var bd storage.BlockDevice
@@ -54,7 +53,7 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	}
 
 	if err != nil {
-		return block.Volume{}, err
+		return types.BlockData{}, err
 	}
 
 	// store block device data in datastore
@@ -80,27 +79,17 @@ func (c *controller) CreateVolume(tenant string, req block.RequestedVolume) (blo
 	if !res.Allowed() {
 		c.DeleteBlockDevice(bd.ID)
 		c.qs.Release(tenant, res.Resources()...)
-		return block.Volume{}, block.ErrQuota
+		return types.BlockData{}, block.ErrQuota
 	}
 
 	err = c.ds.AddBlockDevice(data)
 	if err != nil {
 		c.DeleteBlockDevice(bd.ID)
 		c.qs.Release(tenant, res.Resources()...)
-		return block.Volume{}, err
+		return types.BlockData{}, err
 	}
 
-	// convert our volume info into the openstack desired format.
-	return block.Volume{
-		Status:      block.Available,
-		UserID:      tenant,
-		Attachments: make([]block.Attachment, 0),
-		Links:       make([]block.Link, 0),
-		CreatedAt:   &data.CreateTime,
-		ID:          bd.ID,
-		Size:        data.Size,
-		Bootable:    strconv.FormatBool(data.Bootable),
-	}, nil
+	return data, nil
 }
 
 func (c *controller) DeleteVolume(tenant string, volume string) error {
@@ -291,8 +280,8 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 	return retval
 }
 
-func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, error) {
-	vols := []block.VolumeDetail{}
+func (c *controller) ListVolumesDetail(tenant string) ([]types.BlockData, error) {
+	vols := []types.BlockData{}
 
 	err := c.confirmTenant(tenant)
 	if err != nil {
@@ -304,31 +293,9 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 		return vols, err
 	}
 
-	for i := range devs {
-		data := &devs[i]
-
-		if data.Internal {
+	for _, vol := range devs {
+		if vol.Internal {
 			continue
-		}
-
-		var vol block.VolumeDetail
-
-		vol.ID = data.ID
-		vol.Size = data.Size
-		vol.OSVolTenantAttr = data.TenantID
-		vol.Bootable = strconv.FormatBool(data.Bootable)
-		vol.Name = data.Name
-		vol.Description = data.Description
-
-		switch data.State {
-		case types.Attaching:
-			vol.Status = block.Attaching
-		case types.InUse:
-			vol.Status = block.InUse
-		case types.Available:
-			vol.Status = block.Available
-		default:
-			vol.Status = block.VolumeStatus(data.State)
 		}
 
 		vols = append(vols, vol)
@@ -337,40 +304,19 @@ func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, err
 	return vols, nil
 }
 
-func (c *controller) ShowVolumeDetails(tenant string, volume string) (block.VolumeDetail, error) {
-	var vol block.VolumeDetail
-
+func (c *controller) ShowVolumeDetails(tenant string, volume string) (types.BlockData, error) {
 	err := c.confirmTenant(tenant)
 	if err != nil {
-		return vol, err
+		return types.BlockData{}, err
 	}
 
-	data, err := c.ds.GetBlockDevice(volume)
+	vol, err := c.ds.GetBlockDevice(volume)
 	if err != nil {
-		return vol, err
+		return types.BlockData{}, err
 	}
 
-	if data.TenantID != tenant {
-		return vol, block.ErrVolumeOwner
-	}
-
-	vol.ID = data.ID
-	vol.Size = data.Size
-	vol.OSVolTenantAttr = data.TenantID
-	vol.CreatedAt = &data.CreateTime
-	vol.Bootable = strconv.FormatBool(data.Bootable)
-	vol.Name = data.Name
-	vol.Description = data.Description
-
-	switch data.State {
-	case types.Attaching:
-		vol.Status = block.Attaching
-	case types.InUse:
-		vol.Status = block.InUse
-	case types.Available:
-		vol.Status = block.Available
-	default:
-		vol.Status = block.VolumeStatus(data.State)
+	if vol.TenantID != tenant {
+		return types.BlockData{}, block.ErrVolumeOwner
 	}
 
 	return vol, nil

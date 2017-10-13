@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/gorilla/mux"
 )
 
@@ -319,12 +320,12 @@ type APIConfig struct {
 // The caller who is starting the api service needs to provide this
 // interface.
 type Service interface {
-	CreateVolume(tenant string, req RequestedVolume) (Volume, error)
+	CreateVolume(tenant string, req RequestedVolume) (types.BlockData, error)
 	DeleteVolume(tenant string, volume string) error
 	AttachVolume(tenant string, volume string, instance string, mountpoint string) error
 	DetachVolume(tenant string, volume string, attachment string) error
-	ListVolumesDetail(tenant string) ([]VolumeDetail, error)
-	ShowVolumeDetails(tenant string, volume string) (VolumeDetail, error)
+	ListVolumesDetail(tenant string) ([]types.BlockData, error)
+	ShowVolumeDetails(tenant string, volume string) (types.BlockData, error)
 }
 
 // Context contains data and interfaces that the block api will need.
@@ -383,16 +384,12 @@ func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 		return APIResponse{http.StatusInternalServerError, nil}, err
 	}
 
-	var resp VolumeResponse
-
 	vol, err := bc.CreateVolume(tenant, req.Volume)
 	if err != nil {
 		return errorResponse(err), err
 	}
 
-	resp.Volume = vol
-
-	return APIResponse{http.StatusAccepted, resp}, nil
+	return APIResponse{http.StatusAccepted, vol}, nil
 }
 
 func listVolumesDetail(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
@@ -406,9 +403,7 @@ func listVolumesDetail(bc *Context, w http.ResponseWriter, r *http.Request) (API
 		return errorResponse(err), err
 	}
 
-	resp := ListVolumesDetail{Volumes: vols}
-
-	return APIResponse{http.StatusOK, resp}, nil
+	return APIResponse{http.StatusOK, vols}, nil
 }
 
 func showVolumeDetails(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
@@ -420,13 +415,8 @@ func showVolumeDetails(bc *Context, w http.ResponseWriter, r *http.Request) (API
 	if err != nil {
 		return errorResponse(err), err
 	}
-	vol.MetaData = map[string]string{}
-	s := "None"
-	vol.VolumeType = s
 
-	resp := ShowVolumeDetails{Volume: vol}
-
-	return APIResponse{http.StatusOK, resp}, nil
+	return APIResponse{http.StatusOK, vol}, nil
 }
 
 func deleteVolume(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {

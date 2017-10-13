@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-storage"
-	"github.com/ciao-project/ciao/openstack/block"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
 )
@@ -263,15 +262,15 @@ type BlockState string
 
 const (
 	// Available means that the volume is ok for attaching.
-	Available BlockState = BlockState(block.Available)
+	Available BlockState = "available"
 
 	// Attaching means that the volume is in the process
 	// of attaching to an instance.
-	Attaching BlockState = BlockState(block.Attaching)
+	Attaching BlockState = "attaching"
 
 	// InUse means that the volume has been successfully
 	// attached to an instance.
-	InUse BlockState = BlockState(block.InUse)
+	InUse BlockState = "in-use"
 
 	// Detaching means that the volume is in process
 	// of detaching.
@@ -283,12 +282,12 @@ const (
 // or can we use a set of interfaces to get the info?
 type BlockData struct {
 	storage.BlockDevice
-	TenantID    string     // the tenant who owns this volume
-	State       BlockState // status of
-	CreateTime  time.Time  // when we created the volume
-	Name        string     // a human readable name for this volume
-	Description string     // some text to describe this volume.
-	Internal    bool       // whether this storage should be shown to the user
+	TenantID    string     `json:"tenant_id"`   // the tenant who owns this volume
+	State       BlockState `json:"state"`       // status of
+	CreateTime  time.Time  `json:"created"`     // when we created the volume
+	Name        string     `json:"name"`        // a human readable name for this volume
+	Description string     `json:"description"` // some text to describe this volume.
+	Internal    bool       `json:"internal"`    // whether this storage should be shown to the user
 }
 
 // StorageAttachment represents a link between a block device and

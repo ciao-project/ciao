@@ -18,8 +18,10 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
+
+	"github.com/ciao-project/ciao/ciao-controller/types"
+	storage "github.com/ciao-project/ciao/ciao-storage"
 )
 
 type test struct {
@@ -36,9 +38,9 @@ var tests = []test{
 		"POST",
 		"/v2/validtenantid/volumes",
 		createVolume,
-		`{"volume":{"size": 10,"availability_zone": null,"source_volid": null,"description":null,"multiattach ":false,"snapshot_id":null,"name":null,"imageRef":null,"volume_type":null,"metadata":{},"source_replica":null,"consistencygroup_id":null}}`,
+		`{"size": 10,"source_volid": null,"description":null,"name":null,"imageRef":null}`,
 		http.StatusAccepted,
-		`{"volume":{"status":"creating","user_id":"validuserid","attachments":[],"links":[],"bootable":"false","encrypted":false,"created_at":null,"updated_at":null,"replication_status":"disabled","multiattach":false,"metadata":{},"id":"validvolumeid","size":10}}`,
+		`{"id":"new-test-id","bootable":false,"boot_index":0,"ephemeral":false,"local":false,"swap":false,"size":123456,"tenant_id":"test-tenant-id","state":"available","created":"0001-01-01T00:00:00Z","name":"new volume","description":"newly created volume","internal":false}`,
 	},
 	{
 		"GET",
@@ -46,7 +48,7 @@ var tests = []test{
 		listVolumesDetail,
 		"",
 		http.StatusOK,
-		`{"volumes":[{"attachments":[{"server_id":"f4fda93b-06e0-4743-8117-bc8bcecd651b","attachment_id":"3b4db356-253d-4fab-bfa0-e3626c0b8405","host_name":"","volume_id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38","device":"/dev/vdb","id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38"}],"links":[{"href":"http://23.253.248.171:8776/v2/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38","rel":"self"},{"href":"http://23.253.248.171:8776/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38","rel":"bookmark"}],"availability_zone":"nova","os-vol-host-attr:host":"cephcluster","encrypted":false,"replication_status":"disabled","id":"6edbc2f4-1507-44f8-ac0d-eed1d2608d38","size":2,"user_id":"32779452fcd34ae1a53a797ac8a1e064","os-vol-tenant-attr:tenant_id":"bab7d5c60cd041a0a36f7c4b6e1dd978","metadata":{"attached_mode":"rw","readonly":false},"status":"in-use","multiattach":true,"name":"vol-001","bootable":"false","created_at":null}]}`,
+		`[{"id":"new-test-id","bootable":false,"boot_index":0,"ephemeral":false,"local":false,"swap":false,"size":123456,"tenant_id":"test-tenant-id","state":"available","created":"0001-01-01T00:00:00Z","name":"my volume","description":"my volume for stuff","internal":false},{"id":"new-test-id2","bootable":false,"boot_index":0,"ephemeral":false,"local":false,"swap":false,"size":123456,"tenant_id":"test-tenant-id","state":"available","created":"0001-01-01T00:00:00Z","name":"volume 2","description":"my other volume","internal":false}]`,
 	},
 	{
 		"GET",
@@ -54,7 +56,7 @@ var tests = []test{
 		showVolumeDetails,
 		"",
 		http.StatusOK,
-		`{"volume":{"links":[{"href":"http://localhost:8776/v2/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635","rel":"self"},{"href":"http://localhost:8776/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635","rel":"bookmark"}],"availability_zone":"nova","os-vol-host-attr:host":"ip-10-168-107-25","encrypted":false,"replication_status":"disabled","id":"5aa119a8-d25b-45a7-8d1b-88e127885635","size":1,"user_id":"32779452fcd34ae1a53a797ac8a1e064","os-vol-tenant-attr:tenant_id":"0c2eba2c5af04d3f9e9d0d410b371fde","metadata":{},"status":"available","description":"Super volume.","multiattach":false,"name":"vol-002","bootable":"false","created_at":null,"volume_type":"None"}}`,
+		`{"id":"new-test-id","bootable":false,"boot_index":0,"ephemeral":false,"local":false,"swap":false,"size":123456,"tenant_id":"test-tenant-id","state":"available","created":"0001-01-01T00:00:00Z","name":"my volume","description":"my volume for stuff","internal":false}`,
 	},
 	{
 		"DELETE",
@@ -84,64 +86,29 @@ var tests = []test{
 
 type testVolumeService struct{}
 
-func (vs testVolumeService) ShowVolumeDetails(tenant string, volume string) (VolumeDetail, error) {
-	volName := "vol-002"
-
-	selfLink := Link{
-		Href: "http://localhost:8776/v2/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635",
-		Rel:  "self",
-	}
-
-	bookLink := Link{
-		Href: "http://localhost:8776/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635",
-		Rel:  "bookmark",
-	}
-
-	zone := "nova"
-	description := "Super volume."
-	volType := "None"
-
-	meta := map[string]interface{}{
-		"contents": "not junk",
-	}
-
-	return VolumeDetail{
-		Attachments:       make([]Attachment, 0),
-		Links:             []Link{selfLink, bookLink},
-		ReplicationStatus: ReplicationDisabled,
-		ID:                "5aa119a8-d25b-45a7-8d1b-88e127885635",
-		Status:            Available,
-		Name:              volName,
-		AvailabilityZone:  zone,
-		OSVolHostAttr:     "ip-10-168-107-25",
-		Size:              1,
-		UserID:            "32779452fcd34ae1a53a797ac8a1e064",
-		OSVolTenantAttr:   "0c2eba2c5af04d3f9e9d0d410b371fde",
-		MetaData:          meta,
-		MultiAttach:       false,
-		VolumeType:        volType,
-		Description:       description,
-		Bootable:          strconv.FormatBool(false),
+func (vs testVolumeService) ShowVolumeDetails(tenant string, volume string) (types.BlockData, error) {
+	return types.BlockData{
+		BlockDevice: storage.BlockDevice{
+			ID:   "new-test-id",
+			Size: 123456,
+		},
+		State:       types.Available,
+		Name:        "my volume",
+		Description: "my volume for stuff",
+		TenantID:    "test-tenant-id",
 	}, nil
 }
 
-func (vs testVolumeService) CreateVolume(tenant string, req RequestedVolume) (Volume, error) {
-	return Volume{
-		Status:            Creating,
-		UserID:            "validuserid",
-		Attachments:       make([]Attachment, 0),
-		Links:             make([]Link, 0),
-		Bootable:          strconv.FormatBool(req.ImageRef != ""),
-		Description:       req.Description,
-		VolumeType:        req.VolumeType,
-		Name:              req.Name,
-		ReplicationStatus: ReplicationDisabled,
-		SourceVolID:       req.SourceVolID,
-		SnapshotID:        req.SnapshotID,
-		MultiAttach:       req.MultiAttach,
-		MetaData:          req.MetaData,
-		ID:                "validvolumeid",
-		Size:              req.Size,
+func (vs testVolumeService) CreateVolume(tenant string, req RequestedVolume) (types.BlockData, error) {
+	return types.BlockData{
+		BlockDevice: storage.BlockDevice{
+			ID:   "new-test-id",
+			Size: 123456,
+		},
+		State:       types.Available,
+		Name:        "new volume",
+		Description: "newly created volume",
+		TenantID:    "test-tenant-id",
 	}, nil
 }
 
@@ -157,50 +124,27 @@ func (vs testVolumeService) DetachVolume(tenant string, volume string, attachmen
 	return nil
 }
 
-func (vs testVolumeService) ListVolumesDetail(tenant string) ([]VolumeDetail, error) {
-	volName := "vol-001"
-
-	attachment := Attachment{
-		ServerUUID:     "f4fda93b-06e0-4743-8117-bc8bcecd651b",
-		AttachmentUUID: "3b4db356-253d-4fab-bfa0-e3626c0b8405",
-		VolumeUUID:     "6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
-		Device:         "/dev/vdb",
-		DeviceUUID:     "6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
-	}
-
-	selfLink := Link{
-		Href: "http://23.253.248.171:8776/v2/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
-		Rel:  "self",
-	}
-
-	bookLink := Link{
-		Href: "http://23.253.248.171:8776/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
-		Rel:  "bookmark",
-	}
-
-	zone := "nova"
-
-	meta := map[string]interface{}{
-		"attached_mode": "rw",
-		"readonly":      false,
-	}
-
-	return []VolumeDetail{
+func (vs testVolumeService) ListVolumesDetail(tenant string) ([]types.BlockData, error) {
+	return []types.BlockData{
 		{
-			Attachments:       []Attachment{attachment},
-			Links:             []Link{selfLink, bookLink},
-			ReplicationStatus: ReplicationDisabled,
-			ID:                "6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
-			Status:            InUse,
-			Name:              volName,
-			AvailabilityZone:  zone,
-			OSVolHostAttr:     "cephcluster",
-			Size:              2,
-			UserID:            "32779452fcd34ae1a53a797ac8a1e064",
-			OSVolTenantAttr:   "bab7d5c60cd041a0a36f7c4b6e1dd978",
-			MetaData:          meta,
-			MultiAttach:       true,
-			Bootable:          strconv.FormatBool(false),
+			BlockDevice: storage.BlockDevice{
+				ID:   "new-test-id",
+				Size: 123456,
+			},
+			State:       types.Available,
+			Name:        "my volume",
+			Description: "my volume for stuff",
+			TenantID:    "test-tenant-id",
+		},
+		{
+			BlockDevice: storage.BlockDevice{
+				ID:   "new-test-id2",
+				Size: 123456,
+			},
+			State:       types.Available,
+			Name:        "volume 2",
+			Description: "my other volume",
+			TenantID:    "test-tenant-id",
 		},
 	}, nil
 }

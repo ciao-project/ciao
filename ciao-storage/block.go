@@ -41,12 +41,12 @@ type BlockDriver interface {
 
 // BlockDevice contains information about a block device
 type BlockDevice struct {
-	ID        string // device UUID
-	Bootable  bool   // hypervisor hint, Cinder relic
-	BootIndex int    // boot order 0..N
-	Ephemeral bool   // delete on termination
-	Local     bool   // local (ephemeral) or volume service backed
-	Swap      bool   // linux swap device (attempt swapon via cloudinit)
-	Tag       string // arbitrary text identifier
-	Size      int    // size in GiB
+	ID        string `json:"id"`         // device UUID
+	Bootable  bool   `json:"bootable"`   // hypervisor hint, Cinder relic
+	BootIndex int    `json:"boot_index"` // boot order 0..N
+	Ephemeral bool   `json:"ephemeral"`  // delete on termination
+	Local     bool   `json:"local"`      // local (ephemeral) or volume service backed
+	Swap      bool   `json:"swap"`       // linux swap device (attempt swapon via cloudinit)
+	Tag       string `json:"-"`          // arbitrary text identifier
+	Size      int    `json:"size"`       // size in GiB
 }
