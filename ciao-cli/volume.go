@@ -167,7 +167,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 		}
 	}
 
-	url := buildBlockURL("%s/volumes/detail", *tenantID)
+	url := buildBlockURL("%s/volumes", *tenantID)
 	resp, err := sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())

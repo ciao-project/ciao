@@ -1457,24 +1457,6 @@ func TestDeleteVolume(t *testing.T) {
 	}
 }
 
-func TestListVolumes(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_ = createTestVolume(tenant.ID, 20, t)
-
-	vols, err := ctl.ListVolumes(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(vols) != 1 {
-		t.Fatal("Incorrect number of volumes returned")
-	}
-}
-
 func TestShowVolumeDetails(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {

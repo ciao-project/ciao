@@ -291,34 +291,6 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 	return retval
 }
 
-func (c *controller) ListVolumes(tenant string) ([]block.ListVolume, error) {
-	var vols []block.ListVolume
-
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return vols, err
-	}
-
-	data, err := c.ds.GetBlockDevices(tenant)
-	if err != nil {
-		return vols, err
-	}
-
-	for _, bd := range data {
-		if bd.Internal {
-			continue
-		}
-
-		// TBD create links
-		vol := block.ListVolume{
-			ID: bd.ID,
-		}
-		vols = append(vols, vol)
-	}
-
-	return vols, nil
-}
-
 func (c *controller) ListVolumesDetail(tenant string) ([]block.VolumeDetail, error) {
 	vols := []block.VolumeDetail{}
 

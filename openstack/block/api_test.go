@@ -43,14 +43,6 @@ var tests = []test{
 	{
 		"GET",
 		"/v2/validtenantid/volumes",
-		listVolumes,
-		"",
-		http.StatusOK,
-		`{"volumes":[{"id":"validvolumeid1","links":[],"name":"vol-001"},{"id":"validvolumeid2","links":[],"name":"vol-002"},{"id":"validvolumeid3","links":[],"name":"vol-003"}]}`,
-	},
-	{
-		"GET",
-		"/v2/validtenantid/volumes/detail",
 		listVolumesDetail,
 		"",
 		http.StatusOK,
@@ -163,14 +155,6 @@ func (vs testVolumeService) AttachVolume(tenant string, volume string, instance 
 
 func (vs testVolumeService) DetachVolume(tenant string, volume string, attachment string) error {
 	return nil
-}
-
-func (vs testVolumeService) ListVolumes(tenant string) ([]ListVolume, error) {
-	return []ListVolume{
-		{"validvolumeid1", make([]Link, 0), "vol-001"},
-		{"validvolumeid2", make([]Link, 0), "vol-002"},
-		{"validvolumeid3", make([]Link, 0), "vol-003"},
-	}, nil
 }
 
 func (vs testVolumeService) ListVolumesDetail(tenant string) ([]VolumeDetail, error) {

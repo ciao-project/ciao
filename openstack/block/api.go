@@ -228,20 +228,6 @@ type VolumeResponse struct {
 	Volume Volume `json:"volume"`
 }
 
-// ListVolume is the contains volume information for the listVolume endpoint.
-// http://developer.openstack.org/api-ref-blockstorage-v2.html#listVolumes
-type ListVolume struct {
-	ID    string `json:"id"`
-	Links []Link `json:"links"`
-	Name  string `json:"name"`
-}
-
-// ListVolumes is the json response for the listVolume endpoint.
-// http://developer.openstack.org/api-ref-blockstorage-v2.html#listVolumes
-type ListVolumes struct {
-	Volumes []ListVolume `json:"volumes"`
-}
-
 // VolumeDetail contains volume information for the listVolumeDetails endpoint.
 // http://developer.openstack.org/api-ref-blockstorage-v2.html#listVolumesDetail
 type VolumeDetail struct {
@@ -337,7 +323,6 @@ type Service interface {
 	DeleteVolume(tenant string, volume string) error
 	AttachVolume(tenant string, volume string, instance string, mountpoint string) error
 	DetachVolume(tenant string, volume string, attachment string) error
-	ListVolumes(tenant string) ([]ListVolume, error)
 	ListVolumesDetail(tenant string) ([]VolumeDetail, error)
 	ShowVolumeDetails(tenant string, volume string) (VolumeDetail, error)
 }
@@ -408,22 +393,6 @@ func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (APIRespo
 	resp.Volume = vol
 
 	return APIResponse{http.StatusAccepted, resp}, nil
-}
-
-func listVolumes(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	vars := mux.Vars(r)
-	tenant := vars["tenant"]
-
-	// TBD: support sorting and paging
-
-	vols, err := bc.ListVolumes(tenant)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
-	resp := ListVolumes{Volumes: vols}
-
-	return APIResponse{http.StatusOK, resp}, nil
 }
 
 func listVolumesDetail(bc *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
@@ -568,8 +537,6 @@ func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	r.Handle("/v2/{tenant}/volumes",
 		APIHandler{context, createVolume}).Methods("POST")
 	r.Handle("/v2/{tenant}/volumes",
-		APIHandler{context, listVolumes}).Methods("GET")
-	r.Handle("/v2/{tenant}/volumes/detail",
 		APIHandler{context, listVolumesDetail}).Methods("GET")
 	r.Handle("/v2/{tenant}/volumes/{volume_id}",
 		APIHandler{context, showVolumeDetails}).Methods("GET")
