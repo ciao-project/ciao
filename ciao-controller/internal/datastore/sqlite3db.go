@@ -2225,14 +2225,19 @@ func (ds *sqliteDB) getImages() ([]types.Image, error) {
 
 	for rows.Next() {
 		i := types.Image{}
-		err = rows.Scan(&i.ID, &i.State, &i.TenantID, &i.Name, &i.CreateTime, &i.Size, &i.Visibility)
+		var state, visibility string
+
+		err = rows.Scan(&i.ID, &state, &i.TenantID, &i.Name, &i.CreateTime, &i.Size, &visibility)
 		if err != nil {
 			return []types.Image{}, errors.Wrap(err, "error reading image row from database")
 		}
 
-		images = append(images, i)
+		i.State = types.ImageState(state)
+		i.Visibility = types.Visibility(visibility)
 
+		images = append(images, i)
 	}
+
 	return images, nil
 }
 
