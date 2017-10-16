@@ -1094,12 +1094,12 @@ type Service interface {
 	ListImages(string) ([]types.Image, error)
 	GetImage(string, string) (types.Image, error)
 	DeleteImage(string, string) error
-	CreateVolume(tenant string, req RequestedVolume) (types.BlockData, error)
+	CreateVolume(tenant string, req RequestedVolume) (types.Volume, error)
 	DeleteVolume(tenant string, volume string) error
 	AttachVolume(tenant string, volume string, instance string, mountpoint string) error
 	DetachVolume(tenant string, volume string, attachment string) error
-	ListVolumesDetail(tenant string) ([]types.BlockData, error)
-	ShowVolumeDetails(tenant string, volume string) (types.BlockData, error)
+	ListVolumesDetail(tenant string) ([]types.Volume, error)
+	ShowVolumeDetails(tenant string, volume string) (types.Volume, error)
 }
 
 // Context is used to provide the services and current URL to the handlers.

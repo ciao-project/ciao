@@ -64,7 +64,7 @@ func TestSQLiteDBGetTenantDevices(t *testing.T) {
 		ID: uuid.Generate().String(),
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    uuid.Generate().String(),
@@ -112,7 +112,7 @@ func TestSQLiteDBGetTenantWithStorage(t *testing.T) {
 		ID: uuid.Generate().String(),
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    tenantID,
@@ -152,7 +152,7 @@ func TestSQLiteDBGetAllBlockData(t *testing.T) {
 		ID: uuid.Generate().String(),
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    uuid.Generate().String(),
@@ -192,7 +192,7 @@ func TestSQLiteDBDeleteBlockData(t *testing.T) {
 		ID: uuid.Generate().String(),
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    uuid.Generate().String(),

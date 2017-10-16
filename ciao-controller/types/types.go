@@ -277,10 +277,10 @@ const (
 	Detaching BlockState = "detaching"
 )
 
-// BlockData respresents the attributes of this block device.
+// Volume respresents the attributes of this block device.
 // TBD - do we really need to store this as actual data,
 // or can we use a set of interfaces to get the info?
-type BlockData struct {
+type Volume struct {
 	storage.BlockDevice
 	TenantID    string     `json:"tenant_id"`   // the tenant who owns this volume
 	State       BlockState `json:"state"`       // status of

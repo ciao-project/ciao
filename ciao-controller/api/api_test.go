@@ -551,8 +551,8 @@ func (ts testCiaoService) DeleteImage(string, string) error {
 	return nil
 }
 
-func (ts testCiaoService) ShowVolumeDetails(tenant string, volume string) (types.BlockData, error) {
-	return types.BlockData{
+func (ts testCiaoService) ShowVolumeDetails(tenant string, volume string) (types.Volume, error) {
+	return types.Volume{
 		BlockDevice: storage.BlockDevice{
 			ID:   "new-test-id",
 			Size: 123456,
@@ -564,8 +564,8 @@ func (ts testCiaoService) ShowVolumeDetails(tenant string, volume string) (types
 	}, nil
 }
 
-func (ts testCiaoService) CreateVolume(tenant string, req RequestedVolume) (types.BlockData, error) {
-	return types.BlockData{
+func (ts testCiaoService) CreateVolume(tenant string, req RequestedVolume) (types.Volume, error) {
+	return types.Volume{
 		BlockDevice: storage.BlockDevice{
 			ID:   "new-test-id",
 			Size: 123456,
@@ -589,8 +589,8 @@ func (ts testCiaoService) DetachVolume(tenant string, volume string, attachment 
 	return nil
 }
 
-func (ts testCiaoService) ListVolumesDetail(tenant string) ([]types.BlockData, error) {
-	return []types.BlockData{
+func (ts testCiaoService) ListVolumesDetail(tenant string) ([]types.Volume, error) {
+	return []types.Volume{
 		{
 			BlockDevice: storage.BlockDevice{
 				ID:   "new-test-id",

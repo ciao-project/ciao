@@ -587,13 +587,13 @@ func TestAttachVolume(t *testing.T) {
 	}
 }
 
-func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
+func addTestBlockDevice(t *testing.T, tenantID string) types.Volume {
 	bd, err := ctl.CreateBlockDevice("", "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: bd,
 		CreateTime:  time.Now(),
 		TenantID:    tenantID,

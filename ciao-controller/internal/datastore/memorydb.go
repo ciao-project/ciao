@@ -28,7 +28,7 @@ type MemoryDB struct {
 	nodes           map[string]*node
 	instances       map[string]*types.Instance
 	tenantUsage     map[string][]types.CiaoUsage
-	blockDevices    map[string]types.BlockData
+	blockDevices    map[string]types.Volume
 	attachments     map[string]types.StorageAttachment
 	instanceVolumes map[attachment]string
 	logEntries      []*types.LogEntry
@@ -51,7 +51,7 @@ func (db *MemoryDB) init(config Config) error {
 	db.nodes = make(map[string]*node)
 	db.instances = make(map[string]*types.Instance)
 	db.tenantUsage = make(map[string][]types.CiaoUsage)
-	db.blockDevices = make(map[string]types.BlockData)
+	db.blockDevices = make(map[string]types.Volume)
 	db.attachments = make(map[string]types.StorageAttachment)
 	db.instanceVolumes = make(map[attachment]string)
 
@@ -87,7 +87,7 @@ func (db *MemoryDB) addTenant(id string, config types.TenantConfig) error {
 		},
 		network:   make(map[int]map[int]bool),
 		instances: make(map[string]*types.Instance),
-		devices:   make(map[string]types.BlockData),
+		devices:   make(map[string]types.Volume),
 	}
 	db.tenants[id] = t
 	return nil
@@ -157,15 +157,15 @@ func (db *MemoryDB) getWorkloadStorage(ID string) ([]types.StorageResource, erro
 	return []types.StorageResource{}, nil
 }
 
-func (db *MemoryDB) getAllBlockData() (map[string]types.BlockData, error) {
+func (db *MemoryDB) getAllBlockData() (map[string]types.Volume, error) {
 	return db.blockDevices, nil
 }
 
-func (db *MemoryDB) addBlockData(data types.BlockData) error {
+func (db *MemoryDB) addBlockData(data types.Volume) error {
 	return nil
 }
 
-func (db *MemoryDB) updateBlockData(types.BlockData) error {
+func (db *MemoryDB) updateBlockData(types.Volume) error {
 	return nil
 }
 
@@ -173,7 +173,7 @@ func (db *MemoryDB) deleteBlockData(string) error {
 	return nil
 }
 
-func (db *MemoryDB) getTenantDevices(tenantID string) (map[string]types.BlockData, error) {
+func (db *MemoryDB) getTenantDevices(tenantID string) (map[string]types.Volume, error) {
 	return nil, nil
 }
 

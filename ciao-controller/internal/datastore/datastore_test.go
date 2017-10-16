@@ -1225,7 +1225,7 @@ func TestAttachVolumeFailure(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    newTenant.ID,
@@ -1338,7 +1338,7 @@ func TestAddBlockDevice(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    newTenant.ID,
@@ -1379,7 +1379,7 @@ func TestDeleteBlockDevice(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    newTenant.ID,
@@ -1426,7 +1426,7 @@ func TestUpdateBlockDevice(t *testing.T) {
 		ID: uuid.Generate().String(),
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    newTenant.ID,
@@ -1489,7 +1489,7 @@ func TestUpdateBlockDeviceErr(t *testing.T) {
 		ID: uuid.Generate().String(),
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    newTenant.ID,
@@ -1513,7 +1513,7 @@ func TestCreateStorageAttachment(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    tenant.ID,
@@ -1571,7 +1571,7 @@ func TestUpdateStorageAttachmentDeleted(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    tenant.ID,
@@ -1620,7 +1620,7 @@ func TestGetStorageAttachment(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    tenant.ID,
@@ -1676,7 +1676,7 @@ func TestGetStorageAttachmentError(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    tenant.ID,
@@ -1718,7 +1718,7 @@ func TestDeleteStorageAttachment(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    tenant.ID,
@@ -1784,7 +1784,7 @@ func TestDeleteStorageAttachmentError(t *testing.T) {
 		ID: "validID",
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    tenant.ID,
@@ -1855,7 +1855,7 @@ func TestGetVolumeAttachments(t *testing.T) {
 		ID: uuid.Generate().String(),
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: blockDevice,
 		State:       types.Available,
 		TenantID:    tenant.ID,

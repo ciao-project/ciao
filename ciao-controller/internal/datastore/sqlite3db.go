@@ -1619,8 +1619,8 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 	return stats, err
 }
 
-func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockData, error) {
-	devices := make(map[string]types.BlockData)
+func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.Volume, error) {
+	devices := make(map[string]types.Volume)
 
 	db := ds.getTableDB("block_data")
 
@@ -1646,7 +1646,7 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 
 	for rows.Next() {
 		var state string
-		var data types.BlockData
+		var data types.Volume
 
 		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime, &data.Name, &data.Description, &data.Internal)
 		if err != nil {
@@ -1664,8 +1664,8 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.BlockDat
 	return devices, nil
 }
 
-func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
-	devices := make(map[string]types.BlockData)
+func (ds *sqliteDB) getAllBlockData() (map[string]types.Volume, error) {
+	devices := make(map[string]types.Volume)
 
 	db := ds.getTableDB("block_data")
 
@@ -1686,7 +1686,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var data types.BlockData
+		var data types.Volume
 		var state string
 
 		err = rows.Scan(&data.ID, &data.TenantID, &data.Size, &state, &data.CreateTime, &data.Name, &data.Description, &data.Internal)
@@ -1704,7 +1704,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.BlockData, error) {
 	return devices, nil
 }
 
-func (ds *sqliteDB) addBlockData(data types.BlockData) error {
+func (ds *sqliteDB) addBlockData(data types.Volume) error {
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
@@ -1714,7 +1714,7 @@ func (ds *sqliteDB) addBlockData(data types.BlockData) error {
 }
 
 // For now we only support updating the state.
-func (ds *sqliteDB) updateBlockData(data types.BlockData) error {
+func (ds *sqliteDB) updateBlockData(data types.Volume) error {
 	db := ds.getTableDB("block_data")
 
 	ds.dbLock.Lock()

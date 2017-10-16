@@ -107,7 +107,7 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		fatalf("Volume creation failed: %s", resp.Status)
 	}
 
-	var vol types.BlockData
+	var vol types.Volume
 	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
 		fatalf(err.Error())
@@ -135,7 +135,7 @@ The template passed to the -f option operates on a
 As volumes are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of volumes.
-`, tfortools.GenerateUsageUndecorated([]types.BlockData{}))
+`, tfortools.GenerateUsageUndecorated([]types.Volume{}))
 	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
@@ -147,7 +147,7 @@ func (cmd *volumeListCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-type byName []types.BlockData
+type byName []types.Volume
 
 func (ss byName) Len() int      { return len(ss) }
 func (ss byName) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
@@ -176,7 +176,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 		fatalf("Volume list failed: %s", resp.Status)
 	}
 
-	var vols []types.BlockData
+	var vols []types.Volume
 
 	err = unmarshalHTTPResponse(resp, &vols)
 	if err != nil {
@@ -215,7 +215,7 @@ Show information about a volume
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", types.BlockData{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", types.Volume{}, nil))
 	os.Exit(2)
 }
 
@@ -244,7 +244,7 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		fatalf("Volume show failed: %s", resp.Status)
 	}
 
-	var vol types.BlockData
+	var vol types.Volume
 
 	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
@@ -444,7 +444,7 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 	return err
 }
 
-func dumpVolume(v *types.BlockData) {
+func dumpVolume(v *types.Volume) {
 	fmt.Printf("\tName             [%s]\n", v.Name)
 	fmt.Printf("\tSize             [%d GB]\n", v.Size)
 	fmt.Printf("\tUUID             [%s]\n", v.ID)

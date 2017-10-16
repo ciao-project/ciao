@@ -26,10 +26,10 @@ import (
 )
 
 // CreateVolume will create a new block device and store it in the datastore.
-func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types.BlockData, error) {
+func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types.Volume, error) {
 	err := c.confirmTenant(tenant)
 	if err != nil {
-		return types.BlockData{}, err
+		return types.Volume{}, err
 	}
 
 	var bd storage.BlockDevice
@@ -52,14 +52,14 @@ func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types
 	}
 
 	if err != nil {
-		return types.BlockData{}, err
+		return types.Volume{}, err
 	}
 
 	// store block device data in datastore
 	// TBD - do we really need to do this, or can we associate
 	// the block device data with the device itself?
 	// you should modify BlockData to include a "bootable" flag.
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: bd,
 		CreateTime:  time.Now(),
 		TenantID:    tenant,
@@ -78,14 +78,14 @@ func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types
 	if !res.Allowed() {
 		c.DeleteBlockDevice(bd.ID)
 		c.qs.Release(tenant, res.Resources()...)
-		return types.BlockData{}, api.ErrQuota
+		return types.Volume{}, api.ErrQuota
 	}
 
 	err = c.ds.AddBlockDevice(data)
 	if err != nil {
 		c.DeleteBlockDevice(bd.ID)
 		c.qs.Release(tenant, res.Resources()...)
-		return types.BlockData{}, err
+		return types.Volume{}, err
 	}
 
 	return data, nil
@@ -279,8 +279,8 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 	return retval
 }
 
-func (c *controller) ListVolumesDetail(tenant string) ([]types.BlockData, error) {
-	vols := []types.BlockData{}
+func (c *controller) ListVolumesDetail(tenant string) ([]types.Volume, error) {
+	vols := []types.Volume{}
 
 	err := c.confirmTenant(tenant)
 	if err != nil {
@@ -303,19 +303,19 @@ func (c *controller) ListVolumesDetail(tenant string) ([]types.BlockData, error)
 	return vols, nil
 }
 
-func (c *controller) ShowVolumeDetails(tenant string, volume string) (types.BlockData, error) {
+func (c *controller) ShowVolumeDetails(tenant string, volume string) (types.Volume, error) {
 	err := c.confirmTenant(tenant)
 	if err != nil {
-		return types.BlockData{}, err
+		return types.Volume{}, err
 	}
 
 	vol, err := c.ds.GetBlockDevice(volume)
 	if err != nil {
-		return types.BlockData{}, err
+		return types.Volume{}, err
 	}
 
 	if vol.TenantID != tenant {
-		return types.BlockData{}, api.ErrVolumeOwner
+		return types.Volume{}, api.ErrVolumeOwner
 	}
 
 	return vol, nil
