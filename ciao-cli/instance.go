@@ -30,8 +30,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/ciao-project/ciao/openstack/compute"
 	"github.com/intel/tfortools"
 )
 
@@ -396,7 +396,7 @@ The add flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	printVolumeFlagUsage()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", []api.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -447,7 +447,7 @@ func (cmd *instanceAddCommand) validateAddCommandArgs() {
 		}
 	}
 }
-func validateCreateServerRequest(server compute.CreateServerRequest) error {
+func validateCreateServerRequest(server api.CreateServerRequest) error {
 	for _, bd := range server.Server.BlockDeviceMappings {
 		if bd.DestinationType == "local" && bd.UUID != "" {
 			return fmt.Errorf("Only one of \"uuid={UUID}\" or \"local\" sub-arguments may be specified")
@@ -461,7 +461,7 @@ func validateCreateServerRequest(server compute.CreateServerRequest) error {
 	return nil
 }
 
-func populateCreateServerRequest(cmd *instanceAddCommand, server *compute.CreateServerRequest) {
+func populateCreateServerRequest(cmd *instanceAddCommand, server *api.CreateServerRequest) {
 	if cmd.label != "" {
 		server.Server.Metadata = make(map[string]string)
 		server.Server.Metadata["label"] = cmd.label
@@ -473,7 +473,7 @@ func populateCreateServerRequest(cmd *instanceAddCommand, server *compute.Create
 	server.Server.Name = cmd.name
 
 	for _, volume := range cmd.volumes {
-		bd := compute.BlockDeviceMappingV2{
+		bd := api.BlockDeviceMappingV2{
 			DeviceName:          "", //unsupported
 			DeleteOnTermination: volume.ephemeral,
 			BootIndex:           volume.bootIndex,
@@ -510,8 +510,8 @@ func populateCreateServerRequest(cmd *instanceAddCommand, server *compute.Create
 func (cmd *instanceAddCommand) run(args []string) error {
 	cmd.validateAddCommandArgs()
 
-	var server compute.CreateServerRequest
-	var servers compute.Servers
+	var server api.CreateServerRequest
+	var servers api.Servers
 
 	populateCreateServerRequest(cmd, &server)
 
@@ -526,9 +526,9 @@ func (cmd *instanceAddCommand) run(args []string) error {
 	}
 	body := bytes.NewReader(serverBytes)
 
-	url := buildComputeURL("%s/servers", *tenantID)
+	url := buildCiaoURL("%s/instances", *tenantID)
 
-	resp, err := sendHTTPRequest("POST", url, nil, body)
+	resp, err := sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -594,9 +594,9 @@ func (cmd *instanceDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildComputeURL("%s/servers/%s", *tenantID, cmd.instance)
+	url := buildCiaoURL("%s/instances/%s", *tenantID, cmd.instance)
 
-	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
+	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -691,9 +691,9 @@ func startStopInstance(instance string, stop bool) error {
 
 	body := bytes.NewReader(actionBytes)
 
-	url := buildComputeURL("%s/servers/%s/action", *tenantID, instance)
+	url := buildCiaoURL("%s/instances/%s/action", *tenantID, instance)
 
-	resp, err := sendHTTPRequest("POST", url, nil, body)
+	resp, err := sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -713,9 +713,6 @@ func startStopInstance(instance string, stop bool) error {
 type instanceListCommand struct {
 	Flag     flag.FlagSet
 	workload string
-	marker   string
-	offset   int
-	limit    int
 	cn       string
 	tenant   string
 	detail   bool
@@ -731,7 +728,7 @@ The list flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", []compute.ServerDetails{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", []api.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -739,17 +736,14 @@ func (cmd *instanceListCommand) parseArgs(args []string) []string {
 	cmd.Flag.BoolVar(&cmd.detail, "detail", false, "Print detailed information about each instance")
 	cmd.Flag.StringVar(&cmd.workload, "workload", "", "Workload UUID")
 	cmd.Flag.StringVar(&cmd.cn, "cn", "", "Computer node to list instances from (default to all nodes when empty)")
-	cmd.Flag.StringVar(&cmd.marker, "marker", "", "Show instance list starting from the next instance after marker")
 	cmd.Flag.StringVar(&cmd.tenant, "tenant", "", "Specify to list instances from a tenant other than -tenant-id")
-	cmd.Flag.IntVar(&cmd.offset, "offset", 0, "Show instance list starting from instance <offset>")
-	cmd.Flag.IntVar(&cmd.limit, "limit", 0, "Limit list to <limit> results")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
 	return cmd.Flag.Args()
 }
 
-type byCreated []compute.ServerDetails
+type byCreated []api.ServerDetails
 
 func (ss byCreated) Len() int           { return len(ss) }
 func (ss byCreated) Swap(i, j int)      { ss[i], ss[j] = ss[j], ss[i] }
@@ -764,32 +758,11 @@ func (cmd *instanceListCommand) run(args []string) error {
 		return listNodeInstances(cmd.cn)
 	}
 
-	var servers compute.Servers
+	var servers api.Servers
 
-	url := buildComputeURL("%s/servers/detail", cmd.tenant)
+	url := buildCiaoURL("%s/instances/detail", cmd.tenant)
 
-	var values []queryValue
-	if cmd.limit > 0 {
-		values = append(values, queryValue{
-			name:  "limit",
-			value: fmt.Sprintf("%d", cmd.limit),
-		})
-	}
-
-	if cmd.offset > 0 {
-		values = append(values, queryValue{
-			name:  "offset",
-			value: fmt.Sprintf("%d", cmd.offset),
-		})
-	}
-
-	if cmd.marker != "" {
-		values = append(values, queryValue{
-			name:  "marker",
-			value: cmd.marker,
-		})
-	}
-
+	values := []queryValue{}
 	if cmd.workload != "" {
 		values = append(values, queryValue{
 			name:  "workload",
@@ -797,7 +770,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 		})
 	}
 
-	resp, err := sendHTTPRequest("GET", url, values, nil)
+	resp, err := sendCiaoRequest("GET", url, values, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -807,7 +780,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	sortedServers := []compute.ServerDetails{}
+	sortedServers := []api.ServerDetails{}
 	for _, v := range servers.Servers {
 		sortedServers = append(sortedServers, v)
 	}
@@ -861,7 +834,7 @@ The show flags are:
 
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", compute.ServerDetails{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", api.ServerDetails{}, nil))
 	os.Exit(2)
 }
 
@@ -879,10 +852,10 @@ func (cmd *instanceShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	var server compute.Server
-	url := buildComputeURL("%s/servers/%s", *tenantID, cmd.instance)
+	var server api.Server
+	url := buildCiaoURL("%s/instances/%s", *tenantID, cmd.instance)
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -900,7 +873,7 @@ func (cmd *instanceShowCommand) run(args []string) error {
 	return nil
 }
 
-func dumpInstance(server *compute.ServerDetails) {
+func dumpInstance(server *api.ServerDetails) {
 	fmt.Printf("\tUUID: %s\n", server.ID)
 	fmt.Printf("\tStatus: %s\n", server.Status)
 	fmt.Printf("\tPrivate IP: %s\n", server.PrivateAddresses[0].Addr)
