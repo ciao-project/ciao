@@ -985,7 +985,7 @@ func deleteVolume(bc *Context, w http.ResponseWriter, r *http.Request) (Response
 }
 
 func volumeActionAttach(bc *Context, m map[string]interface{}, tenant string, volume string) (Response, error) {
-	val := m["os-attach"]
+	val := m["attach"]
 
 	m = val.(map[string]interface{})
 
@@ -1012,7 +1012,7 @@ func volumeActionAttach(bc *Context, m map[string]interface{}, tenant string, vo
 }
 
 func volumeActionDetach(bc *Context, m map[string]interface{}, tenant string, volume string) (Response, error) {
-	val := m["os-detach"]
+	val := m["detach"]
 
 	m = val.(map[string]interface{})
 
@@ -1054,11 +1054,11 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (Response
 
 	// for now, we will support only attach and detach
 
-	if m["os-attach"] != nil {
+	if m["attach"] != nil {
 		return volumeActionAttach(bc, m, tenant, volume)
 	}
 
-	if m["os-detach"] != nil {
+	if m["detach"] != nil {
 		return volumeActionDetach(bc, m, tenant, volume)
 	}
 

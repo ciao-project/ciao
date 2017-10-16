@@ -351,7 +351,7 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 
 	// mountpoint or mode isn't required
 	var attachReq = struct {
-		Attach AttachRequest `json:"os-attach"`
+		Attach AttachRequest `json:"attach"`
 	}{
 		Attach: AttachRequest{
 			MountPoint:   cmd.mountpoint,
@@ -416,7 +416,7 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 		AttachmentID string `json:"attachment_id,omitempty"`
 	}
 	var detachReq = struct {
-		Detach DetachRequest `json:"os-detach"`
+		Detach DetachRequest `json:"detach"`
 	}{
 		Detach: DetachRequest{},
 	}

@@ -273,7 +273,7 @@ var tests = []test{
 	{
 		"POST",
 		"/validtenantid/volumes/validvolumeid/action",
-		`{"os-attach":{"instance_uuid":"validinstanceid","mountpoint":"/dev/vdc"}}`,
+		`{"attach":{"instance_uuid":"validinstanceid","mountpoint":"/dev/vdc"}}`,
 		fmt.Sprintf("application/%s", VolumesV1),
 		http.StatusAccepted,
 		"null",
@@ -281,7 +281,7 @@ var tests = []test{
 	{
 		"POST",
 		"/validtenantid/volumes/validvolumeid/action",
-		`{"os-detach":{}}`,
+		`{"detach":{}}`,
 		fmt.Sprintf("application/%s", VolumesV1),
 		http.StatusAccepted,
 		"null",
