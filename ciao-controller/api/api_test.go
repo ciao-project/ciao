@@ -286,6 +286,53 @@ var tests = []test{
 		http.StatusAccepted,
 		"null",
 	},
+	{
+		"POST",
+		"/validtenantid/instances",
+		`{"server":{"name":"new-server-test","imageRef": "http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","workload_id":"http://openstack.example.com/flavors/1","metadata":{"My Server Name":"Apache1"}}}`,
+		fmt.Sprintf("application/%s", InstancesV1),
+		http.StatusAccepted,
+		`{"server":{"id":"validServerID","name":"new-server-test","imageRef":"http://glance.openstack.example.com/images/70a599e0-31e7-49b7-b260-868f441e862b","workload_id":"http://openstack.example.com/flavors/1","max_count":0,"min_count":0,"metadata":{"My Server Name":"Apache1"}}}`,
+	},
+	{
+		"GET",
+		"/validtenantid/instances/detail",
+		"",
+		fmt.Sprintf("application/%s", InstancesV1),
+		http.StatusOK,
+		`{"total_servers":1,"servers":[{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","workload_id":"testWorkloadUUID","node_id":"nodeUUID","id":"testUUID","name":"","volumes":null,"status":"active","tenant_id":"validtenantid","ssh_ip":"","ssh_port":0}]}`},
+	{
+		"GET",
+		"/validtenantid/instances/instanceid",
+		"",
+		fmt.Sprintf("application/%s", InstancesV1),
+		http.StatusOK,
+		`{"server":{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","workload_id":"testWorkloadUUID","node_id":"nodeUUID","id":"instanceid","name":"","volumes":null,"status":"active","tenant_id":"validtenantid","ssh_ip":"","ssh_port":0}}`,
+	},
+	{
+		"DELETE",
+		"/validtenantid/instances/instanceid",
+		"",
+		fmt.Sprintf("application/%s", InstancesV1),
+		http.StatusNoContent,
+		"null",
+	},
+	{
+		"POST",
+		"/validtenantid/instances/instanceid/action",
+		`{"os-start":null}`,
+		fmt.Sprintf("application/%s", InstancesV1),
+		http.StatusAccepted,
+		"null",
+	},
+	{
+		"POST",
+		"/validtenantid/instances/instanceid/action",
+		`{"os-stop":null}`,
+		fmt.Sprintf("application/%s", InstancesV1),
+		http.StatusAccepted,
+		"null",
+	},
 }
 
 type testCiaoService struct{}
@@ -612,6 +659,63 @@ func (ts testCiaoService) ListVolumesDetail(tenant string) ([]types.Volume, erro
 			TenantID:    "test-tenant-id",
 		},
 	}, nil
+}
+
+func (ts testCiaoService) CreateServer(tenant string, req CreateServerRequest) (interface{}, error) {
+	req.Server.ID = "validServerID"
+	return req, nil
+}
+
+func (ts testCiaoService) ListServersDetail(tenant string) ([]ServerDetails, error) {
+	var servers []ServerDetails
+
+	server := ServerDetails{
+		NodeID:     "nodeUUID",
+		ID:         "testUUID",
+		TenantID:   tenant,
+		WorkloadID: "testWorkloadUUID",
+		Status:     "active",
+		PrivateAddresses: []PrivateAddresses{
+			{
+				Addr:    "192.169.0.1",
+				MacAddr: "00:02:00:01:02:03",
+			},
+		},
+	}
+
+	servers = append(servers, server)
+
+	return servers, nil
+}
+
+func (ts testCiaoService) ShowServerDetails(tenant string, server string) (Server, error) {
+	s := ServerDetails{
+		NodeID:     "nodeUUID",
+		ID:         server,
+		TenantID:   tenant,
+		WorkloadID: "testWorkloadUUID",
+		Status:     "active",
+		PrivateAddresses: []PrivateAddresses{
+			{
+				Addr:    "192.169.0.1",
+				MacAddr: "00:02:00:01:02:03",
+			},
+		},
+	}
+
+	return Server{Server: s}, nil
+}
+
+func (ts testCiaoService) DeleteServer(tenant string, server string) error {
+	return nil
+}
+
+func (ts testCiaoService) StartServer(tenant string, server string) error {
+	return nil
+}
+
+func (ts testCiaoService) StopServer(tenant string, server string) error {
+	return nil
 }
 
 func TestResponse(t *testing.T) {

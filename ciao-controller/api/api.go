@@ -21,6 +21,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/service"
@@ -92,6 +94,90 @@ type RequestedVolume struct {
 	Description string `json:"description,omitempty"`
 	Name        string `json:"name,omitempty"`
 	ImageRef    string `json:"imageRef,omitempty"`
+}
+
+// BlockDeviceMapping represents extra block devices that can be added to an instance
+type BlockDeviceMapping struct {
+	// DeviceName: the name the hypervisor should assign to the block
+	// device, eg: "vda"
+	DeviceName string `json:"device_name,omitempty"`
+
+	// SourceType: blank, snapshot, volume, or image
+	SourceType string `json:"source_type"`
+
+	// DestinationType: optional flag to indicate whether the block
+	// device is backed locally or from the volume service
+	DestinationType string `json:"destination_type,omitempty"`
+
+	// DeleteOnTermination: optional flag to indicate the volume should
+	// autodelete upon termination of the instance
+	DeleteOnTermination bool `json:"delete_on_termination,omitempty"`
+
+	// GuestFormat: optionally format a created volume as "swap" or
+	// leave "ephemeral" (unformatted) for any use by the instance
+	GuestFormat string `json:"guest_format,omitempty"`
+
+	// BootIndex: hint to hypervisor for boot order among multiple
+	// bootable devices, eg: floppy, cdrom, disk.  Default "none".
+	// Disable booting via negative number or "none"
+	BootIndex string `json:"boot_index"`
+
+	// Tag: optional arbitrary text identifier for the block device, useful
+	// for human identification or programmatic searching/sorting
+	Tag string `json:"tag,omitempty"`
+
+	// UUID: the volume/image/snapshot to attach
+	UUID string `json:"uuid,omitempty"`
+
+	// VolumeSize: integer number of gigabytes for ephemeral or swap
+	VolumeSize int `json:"volume_size,omitempty"`
+}
+
+// CreateServerRequest contains the details needed to start new instance(s)
+type CreateServerRequest struct {
+	Server struct {
+		ID                  string               `json:"id"`
+		Name                string               `json:"name"`
+		Image               string               `json:"imageRef"`
+		WorkloadID          string               `json:"workload_id"`
+		MaxInstances        int                  `json:"max_count"`
+		MinInstances        int                  `json:"min_count"`
+		BlockDeviceMappings []BlockDeviceMapping `json:"block_device_mapping,omitempty"`
+		Metadata            map[string]string    `json:"metadata,omitempty"`
+	} `json:"server"`
+}
+
+// PrivateAddresses contains information about a single instance network
+// interface.
+type PrivateAddresses struct {
+	Addr    string `json:"addr"`
+	MacAddr string `json:"mac_addr"`
+}
+
+// ServerDetails contains information about a specific instance.
+type ServerDetails struct {
+	PrivateAddresses []PrivateAddresses `json:"private_addresses"`
+	Created          time.Time          `json:"created"`
+	WorkloadID       string             `json:"workload_id"`
+	NodeID           string             `json:"node_id"`
+	ID               string             `json:"id"`
+	Name             string             `json:"name"`
+	Volumes          []string           `json:"volumes"`
+	Status           string             `json:"status"`
+	TenantID         string             `json:"tenant_id"`
+	SSHIP            string             `json:"ssh_ip"`
+	SSHPort          int                `json:"ssh_port"`
+}
+
+// Servers holds multiple servers including a count
+type Servers struct {
+	TotalServers int             `json:"total_servers"`
+	Servers      []ServerDetails `json:"servers"`
+}
+
+// Server holds a single server's worth of details.
+type Server struct {
+	Server ServerDetails `json:"server"`
 }
 
 var (
@@ -318,13 +404,13 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 	}
 
 	// for the "instances" resource
-	link = types.APILink{
-		Rel:        "instances",
-		Version:    InstancesV1,
-		MinVersion: InstancesV1,
-	}
-
 	if ok {
+		link = types.APILink{
+			Rel:        "instances",
+			Version:    InstancesV1,
+			MinVersion: InstancesV1,
+		}
+
 		link.Href = fmt.Sprintf("%s/%s/instances", c.URL, tenantID)
 		links = append(links, link)
 	}
@@ -1080,6 +1166,127 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (Response
 	return Response{http.StatusBadRequest, nil}, err
 }
 
+func createInstance(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+
+	defer r.Body.Close()
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return Response{http.StatusBadRequest, nil}, err
+	}
+
+	var req CreateServerRequest
+
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return Response{http.StatusBadRequest, nil}, err
+	}
+
+	resp, err := c.CreateServer(tenant, req)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusAccepted, resp}, nil
+}
+func listInstanceDetails(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+
+	values := r.URL.Query()
+
+	var workload string
+
+	// if this function is called via an admin context, we might
+	// have {workload} on the URL. If it's called from a user context,
+	// we might have workload as a query value.
+	workload, ok := vars["workload"]
+	if !ok {
+		if len(values["workload"]) > 0 {
+			workload = values["workload"][0]
+		}
+	}
+
+	servers, err := c.ListServersDetail(tenant)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	resp := Servers{}
+
+	if workload != "" {
+		for _, s := range servers {
+			if s.WorkloadID == workload {
+				resp.Servers = append(resp.Servers, s)
+			}
+		}
+	} else {
+		resp.Servers = servers
+	}
+
+	resp.TotalServers = len(resp.Servers)
+
+	return Response{http.StatusOK, resp}, nil
+}
+
+func showInstanceDetails(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+	server := vars["instance_id"]
+
+	resp, err := c.ShowServerDetails(tenant, server)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusOK, resp}, nil
+}
+
+func deleteInstance(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+	server := vars["instance_id"]
+
+	err := c.DeleteServer(tenant, server)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusNoContent, nil}, nil
+}
+
+func instanceAction(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+	server := vars["instance_id"]
+
+	defer r.Body.Close()
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return Response{http.StatusBadRequest, nil}, err
+	}
+
+	bodyString := string(body)
+
+	if strings.Contains(bodyString, "os-start") {
+		err = c.StartServer(tenant, server)
+	} else if strings.Contains(bodyString, "os-stop") {
+		err = c.StopServer(tenant, server)
+	} else {
+		return Response{http.StatusServiceUnavailable, nil},
+			errors.New("Unsupported Action")
+	}
+
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusAccepted, nil}, nil
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -1115,6 +1322,12 @@ type Service interface {
 	DetachVolume(tenant string, volume string, attachment string) error
 	ListVolumesDetail(tenant string) ([]types.Volume, error)
 	ShowVolumeDetails(tenant string, volume string) (types.Volume, error)
+	CreateServer(string, CreateServerRequest) (interface{}, error)
+	ListServersDetail(tenant string) ([]ServerDetails, error)
+	ShowServerDetails(tenant string, server string) (Server, error)
+	DeleteServer(tenant string, server string) error
+	StartServer(tenant string, server string) error
+	StopServer(tenant string, server string) error
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -1355,6 +1568,29 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 
 	// Volume actions
 	route = r.Handle("/{tenant}/volumes/{volume_id}/action", Handler{context, volumeAction, false})
+	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	// Instances
+	matchContent = fmt.Sprintf("application/(%s|json)", InstancesV1)
+
+	route = r.Handle("/{tenant}/instances", Handler{context, createInstance, false})
+	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/instances/detail", Handler{context, listInstanceDetails, false})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/instances/{instance_id}", Handler{context, showInstanceDetails, false})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/instances/{instance_id}", Handler{context, deleteInstance, false})
+	route.Methods("DELETE")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/instances/{instance_id}/action", Handler{context, instanceAction, false})
 	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
