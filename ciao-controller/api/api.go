@@ -52,6 +52,9 @@ const (
 
 	// VolumesV1 is the content-type string for v1 of our volumes resource
 	VolumesV1 = "x.ciao.volumes.v1"
+
+	// InstancesV1 is the content-type string for v1 of our intances resource
+	InstancesV1 = "x.ciao.instances.v1"
 )
 
 // ErrorImage defines all possible image handling errors
@@ -311,6 +314,18 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 		}
 
 		link.Href = fmt.Sprintf("%s/%s/volumes", c.URL, tenantID)
+		links = append(links, link)
+	}
+
+	// for the "instances" resource
+	link = types.APILink{
+		Rel:        "instances",
+		Version:    InstancesV1,
+		MinVersion: InstancesV1,
+	}
+
+	if ok {
+		link.Href = fmt.Sprintf("%s/%s/instances", c.URL, tenantID)
 		links = append(links, link)
 	}
 
