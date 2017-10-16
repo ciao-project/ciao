@@ -26,7 +26,8 @@ import (
 	"sort"
 	"text/template"
 
-	"github.com/ciao-project/ciao/openstack/block"
+	"github.com/ciao-project/ciao/ciao-controller/api"
+	"github.com/ciao-project/ciao/ciao-controller/types"
 
 	"github.com/intel/tfortools"
 )
@@ -75,21 +76,19 @@ func (cmd *volumeAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *volumeAddCommand) run(args []string) error {
-	opts := block.RequestedVolume{
+	createReq := api.RequestedVolume{
 		Description: cmd.description,
 		Name:        cmd.name,
 		Size:        cmd.size,
 	}
 
 	if cmd.sourceType == "image" {
-		opts.ImageRef = cmd.source
+		createReq.ImageRef = cmd.source
 	} else if cmd.sourceType == "volume" {
-		opts.SourceVolID = cmd.source
+		createReq.SourceVolID = cmd.source
 	} else {
 		fatalf("Unknown source type [%s]\n", cmd.sourceType)
 	}
-
-	var createReq = block.VolumeCreateRequest{Volume: opts}
 
 	b, err := json.Marshal(createReq)
 	if err != nil {
@@ -97,8 +96,8 @@ func (cmd *volumeAddCommand) run(args []string) error {
 	}
 
 	body := bytes.NewReader(b)
-	url := buildBlockURL("%s/volumes", *tenantID)
-	resp, err := sendHTTPRequest("POST", url, nil, body)
+	url := buildCiaoURL("%s/volumes", *tenantID)
+	resp, err := sendCiaoRequest("POST", url, nil, body, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -108,13 +107,12 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		fatalf("Volume creation failed: %s", resp.Status)
 	}
 
-	var vol block.VolumeResponse
-
+	var vol types.Volume
 	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
 		fatalf(err.Error())
 	}
-	fmt.Printf("Created new volume: %s\n", vol.Volume.ID)
+	fmt.Printf("Created new volume: %s\n", vol.ID)
 
 	return err
 }
@@ -137,7 +135,7 @@ The template passed to the -f option operates on a
 As volumes are retrieved in pages, the template may be applied multiple
 times.  You can not therefore rely on the length of the slice passed
 to the template to determine the total number of volumes.
-`, tfortools.GenerateUsageUndecorated([]block.Volume{}))
+`, tfortools.GenerateUsageUndecorated([]types.Volume{}))
 	fmt.Fprintln(os.Stderr, tfortools.TemplateFunctionHelp(nil))
 	os.Exit(2)
 }
@@ -149,7 +147,7 @@ func (cmd *volumeListCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-type byName []block.VolumeDetail
+type byName []types.Volume
 
 func (ss byName) Len() int      { return len(ss) }
 func (ss byName) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
@@ -167,8 +165,8 @@ func (cmd *volumeListCommand) run(args []string) error {
 		}
 	}
 
-	url := buildBlockURL("%s/volumes/detail", *tenantID)
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	url := buildCiaoURL("%s/volumes", *tenantID)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -178,24 +176,23 @@ func (cmd *volumeListCommand) run(args []string) error {
 		fatalf("Volume list failed: %s", resp.Status)
 	}
 
-	var vols block.ListVolumesDetail
+	var vols []types.Volume
 
 	err = unmarshalHTTPResponse(resp, &vols)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	sortedVolumes := vols.Volumes
-	sort.Sort(byName(sortedVolumes))
+	sort.Sort(byName(vols))
 
 	if t != nil {
-		if err = t.Execute(os.Stdout, &sortedVolumes); err != nil {
+		if err = t.Execute(os.Stdout, &vols); err != nil {
 			fatalf(err.Error())
 		}
 		return nil
 	}
 
-	for i, v := range sortedVolumes {
+	for i, v := range vols {
 		fmt.Printf("Volume #%d\n", i+1)
 		dumpVolume(&v)
 		fmt.Printf("\n")
@@ -218,7 +215,7 @@ Show information about a volume
 The show flags are:
 `)
 	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", block.Volume{}, nil))
+	fmt.Fprintf(os.Stderr, "\n%s", tfortools.GenerateUsageDecorated("f", types.Volume{}, nil))
 	os.Exit(2)
 }
 
@@ -236,8 +233,8 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	url := buildCiaoURL("%s/volumes/%s", *tenantID, cmd.volume)
+	resp, err := sendCiaoRequest("GET", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -247,20 +244,19 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		fatalf("Volume show failed: %s", resp.Status)
 	}
 
-	var vol block.ShowVolumeDetails
+	var vol types.Volume
 
 	err = unmarshalHTTPResponse(resp, &vol)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	volume := vol.Volume
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "volume-show", cmd.template,
-			&volume, nil)
+			&vol, nil)
 	}
 
-	dumpVolume(&volume)
+	dumpVolume(&vol)
 	return nil
 }
 
@@ -293,8 +289,8 @@ func (cmd *volumeDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildBlockURL("%s/volumes/%s", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
+	url := buildCiaoURL("%s/volumes/%s", *tenantID, cmd.volume)
+	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -355,7 +351,7 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 
 	// mountpoint or mode isn't required
 	var attachReq = struct {
-		Attach AttachRequest `json:"os-attach"`
+		Attach AttachRequest `json:"attach"`
 	}{
 		Attach: AttachRequest{
 			MountPoint:   cmd.mountpoint,
@@ -370,8 +366,8 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 	}
 
 	body := bytes.NewReader(b)
-	url := buildBlockURL("%s/volumes/%s/action", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("POST", url, nil, body)
+	url := buildCiaoURL("%s/volumes/%s/action", *tenantID, cmd.volume)
+	resp, err := sendCiaoRequest("POST", url, nil, body, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -420,7 +416,7 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 		AttachmentID string `json:"attachment_id,omitempty"`
 	}
 	var detachReq = struct {
-		Detach DetachRequest `json:"os-detach"`
+		Detach DetachRequest `json:"detach"`
 	}{
 		Detach: DetachRequest{},
 	}
@@ -431,7 +427,7 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 	}
 
 	body := bytes.NewReader(b)
-	url := buildBlockURL("%s/volumes/%s/action", *tenantID, cmd.volume)
+	url := buildCiaoURL("%s/volumes/%s/action", *tenantID, cmd.volume)
 	resp, err := sendHTTPRequest("POST", url, nil, body)
 	if err != nil {
 		fatalf(err.Error())
@@ -448,12 +444,12 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 	return err
 }
 
-func dumpVolume(v *block.VolumeDetail) {
+func dumpVolume(v *types.Volume) {
 	fmt.Printf("\tName             [%s]\n", v.Name)
 	fmt.Printf("\tSize             [%d GB]\n", v.Size)
 	fmt.Printf("\tUUID             [%s]\n", v.ID)
 	// Print out TenantID to ensure extendedVolume.customVolumeExt is not unused.
-	fmt.Printf("\tTenantID         [%s]\n", v.OSVolTenantAttr)
-	fmt.Printf("\tStatus           [%s]\n", v.Status)
+	fmt.Printf("\tTenantID         [%s]\n", v.TenantID)
+	fmt.Printf("\tState            [%s]\n", v.State)
 	fmt.Printf("\tDescription      [%s]\n", v.Description)
 }

@@ -217,7 +217,7 @@ func instanceActive(i *types.Instance) bool {
 func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s types.StorageResource) (payloads.StorageResource, error) {
 	// don't you need to add support for indicating whether
 	// a block device is bootable.
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: device,
 		CreateTime:  time.Now(),
 		TenantID:    tenant,

@@ -64,7 +64,7 @@ type tenant struct {
 	network   map[int]map[int]bool
 	subnets   []int
 	instances map[string]*types.Instance
-	devices   map[string]types.BlockData
+	devices   map[string]types.Volume
 	workloads []types.Workload
 	images    []string
 }
@@ -116,11 +116,11 @@ type persistentStore interface {
 
 	// storage interfaces
 	getWorkloadStorage(ID string) ([]types.StorageResource, error)
-	getAllBlockData() (map[string]types.BlockData, error)
-	addBlockData(data types.BlockData) error
-	updateBlockData(data types.BlockData) error
+	getAllBlockData() (map[string]types.Volume, error)
+	addBlockData(data types.Volume) error
+	updateBlockData(data types.Volume) error
 	deleteBlockData(string) error
-	getTenantDevices(tenantID string) (map[string]types.BlockData, error)
+	getTenantDevices(tenantID string) (map[string]types.Volume, error)
 	addStorageAttachment(a types.StorageAttachment) error
 	getAllStorageAttachments() (map[string]types.StorageAttachment, error)
 	deleteStorageAttachment(ID string) error
@@ -169,7 +169,7 @@ type Datastore struct {
 	tenantUsage     map[string][]types.CiaoUsage
 	tenantUsageLock *sync.RWMutex
 
-	blockDevices map[string]types.BlockData
+	blockDevices map[string]types.Volume
 	bdLock       *sync.RWMutex
 
 	attachments     map[string]types.StorageAttachment
@@ -1658,7 +1658,7 @@ func (ds *Datastore) LogError(tenant string, msg string) error {
 
 // AddBlockDevice will store information about new BlockData into
 // the datastore.
-func (ds *Datastore) AddBlockDevice(device types.BlockData) error {
+func (ds *Datastore) AddBlockDevice(device types.Volume) error {
 	ds.bdLock.Lock()
 	_, update := ds.blockDevices[device.ID]
 	ds.bdLock.Unlock()
@@ -1717,8 +1717,8 @@ func (ds *Datastore) DeleteBlockDevice(ID string) error {
 }
 
 // GetBlockDevices will return all the BlockDevices associated with a tenant.
-func (ds *Datastore) GetBlockDevices(tenant string) ([]types.BlockData, error) {
-	var devices []types.BlockData
+func (ds *Datastore) GetBlockDevices(tenant string) ([]types.Volume, error) {
+	var devices []types.Volume
 
 	ds.tenantsLock.RLock()
 
@@ -1740,20 +1740,20 @@ func (ds *Datastore) GetBlockDevices(tenant string) ([]types.BlockData, error) {
 
 // GetBlockDevice will return information about a block device from the
 // datastore.
-func (ds *Datastore) GetBlockDevice(ID string) (types.BlockData, error) {
+func (ds *Datastore) GetBlockDevice(ID string) (types.Volume, error) {
 	ds.bdLock.RLock()
 	data, ok := ds.blockDevices[ID]
 	ds.bdLock.RUnlock()
 
 	if !ok {
-		return types.BlockData{}, ErrNoBlockData
+		return types.Volume{}, ErrNoBlockData
 	}
 	return data, nil
 }
 
 // UpdateBlockDevice will replace existing information about a block device
 // in the datastore.
-func (ds *Datastore) UpdateBlockDevice(data types.BlockData) error {
+func (ds *Datastore) UpdateBlockDevice(data types.Volume) error {
 	ds.bdLock.RLock()
 	_, ok := ds.blockDevices[data.ID]
 	ds.bdLock.RUnlock()

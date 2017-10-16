@@ -162,11 +162,6 @@ func buildCiaoURL(format string, args ...interface{}) string {
 	return fmt.Sprintf(prefix+format, args...)
 }
 
-func buildBlockURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("https://%s:%d/v2/", *controllerURL, *ciaoPort)
-	return fmt.Sprintf(prefix+format, args...)
-}
-
 func sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader, content string) (*http.Response, error) {
 	req, err := http.NewRequest(method, os.ExpandEnv(url), body)
 	if err != nil {

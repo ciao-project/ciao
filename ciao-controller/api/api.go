@@ -49,6 +49,9 @@ const (
 
 	// ImagesV1 is the content-type string for v1 of our images resource
 	ImagesV1 = "x.ciao.images.v1"
+
+	// VolumesV1 is the content-type string for v1 of our volumes resource
+	VolumesV1 = "x.ciao.volumes.v1"
 )
 
 // ErrorImage defines all possible image handling errors
@@ -78,6 +81,29 @@ type CreateImageRequest struct {
 	ID         string           `json:"id,omitempty"`
 	Visibility types.Visibility `json:"visibility,omitempty"`
 }
+
+// RequestedVolume contains information about a volume to be created.
+type RequestedVolume struct {
+	Size        int    `json:"size"`
+	SourceVolID string `json:"source_volid,omitempty"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name,omitempty"`
+	ImageRef    string `json:"imageRef,omitempty"`
+}
+
+var (
+	//ErrInstanceNotFound is used if instance not found
+	ErrInstanceNotFound = errors.New("Instance not found")
+
+	// ErrVolumeNotAvailable returned if volume not available
+	ErrVolumeNotAvailable = errors.New("Volume not available")
+
+	// ErrVolumeOwner returned if permission denied
+	ErrVolumeOwner = errors.New("You are not volume owner")
+
+	// ErrVolumeNotAttached returned if volume not attached
+	ErrVolumeNotAttached = errors.New("Volume not attached")
+)
 
 // HTTPErrorData represents the HTTP response body for
 // a compute API request error.
@@ -275,6 +301,18 @@ func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response
 	}
 
 	links = append(links, link)
+
+	// for the "volumes" resource
+	if ok {
+		link = types.APILink{
+			Rel:        "volumes",
+			Version:    VolumesV1,
+			MinVersion: VolumesV1,
+		}
+
+		link.Href = fmt.Sprintf("%s/%s/volumes", c.URL, tenantID)
+		links = append(links, link)
+	}
 
 	return Response{http.StatusOK, links}, nil
 }
@@ -882,6 +920,151 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 	return Response{http.StatusNoContent, nil}, nil
 }
 
+func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+
+	defer r.Body.Close()
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return Response{http.StatusBadRequest, nil}, err
+	}
+
+	var req RequestedVolume
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return Response{http.StatusInternalServerError, nil}, err
+	}
+
+	vol, err := bc.CreateVolume(tenant, req)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusAccepted, vol}, nil
+}
+
+func listVolumesDetail(bc *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+
+	vols, err := bc.ListVolumesDetail(tenant)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusOK, vols}, nil
+}
+
+func showVolumeDetails(bc *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+	volume := vars["volume_id"]
+
+	vol, err := bc.ShowVolumeDetails(tenant, volume)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusOK, vol}, nil
+}
+
+func deleteVolume(bc *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+	volume := vars["volume_id"]
+
+	// TBD - satisfy preconditions here, or in interface?
+	err := bc.DeleteVolume(tenant, volume)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusAccepted, nil}, nil
+}
+
+func volumeActionAttach(bc *Context, m map[string]interface{}, tenant string, volume string) (Response, error) {
+	val := m["attach"]
+
+	m = val.(map[string]interface{})
+
+	val, ok := m["instance_uuid"]
+	if !ok {
+		// we have to have the instance uuid
+		return Response{http.StatusBadRequest, nil}, nil
+	}
+	instance := val.(string)
+
+	val, ok = m["mountpoint"]
+	if !ok {
+		// we have to have the mountpoint ?
+		return Response{http.StatusBadRequest, nil}, nil
+	}
+	mountPoint := val.(string)
+
+	err := bc.AttachVolume(tenant, volume, instance, mountPoint)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusAccepted, nil}, nil
+}
+
+func volumeActionDetach(bc *Context, m map[string]interface{}, tenant string, volume string) (Response, error) {
+	val := m["detach"]
+
+	m = val.(map[string]interface{})
+
+	// attachment-id is optional
+	var attachment string
+	val = m["attachment-id"]
+	if val != nil {
+		attachment = val.(string)
+	}
+
+	err := bc.DetachVolume(tenant, volume, attachment)
+	if err != nil {
+		return errorResponse(err), err
+	}
+
+	return Response{http.StatusAccepted, nil}, nil
+}
+
+func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
+	vars := mux.Vars(r)
+	tenant := vars["tenant"]
+	volume := vars["volume_id"]
+
+	var req interface{}
+
+	defer r.Body.Close()
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return Response{http.StatusBadRequest, nil}, err
+	}
+
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		return Response{http.StatusInternalServerError, nil}, err
+	}
+
+	m := req.(map[string]interface{})
+
+	// for now, we will support only attach and detach
+
+	if m["attach"] != nil {
+		return volumeActionAttach(bc, m, tenant, volume)
+	}
+
+	if m["detach"] != nil {
+		return volumeActionDetach(bc, m, tenant, volume)
+	}
+
+	return Response{http.StatusBadRequest, nil}, err
+}
+
 // Service is an interface which must be implemented by the ciao API context.
 type Service interface {
 	AddPool(name string, subnet *string, ips []string) (types.Pool, error)
@@ -911,6 +1094,12 @@ type Service interface {
 	ListImages(string) ([]types.Image, error)
 	GetImage(string, string) (types.Image, error)
 	DeleteImage(string, string) error
+	CreateVolume(tenant string, req RequestedVolume) (types.Volume, error)
+	DeleteVolume(tenant string, volume string) error
+	AttachVolume(tenant string, volume string, instance string, mountpoint string) error
+	DetachVolume(tenant string, volume string, attachment string) error
+	ListVolumesDetail(tenant string) ([]types.Volume, error)
+	ShowVolumeDetails(tenant string, volume string) (types.Volume, error)
 }
 
 // Context is used to provide the services and current URL to the handlers.
@@ -1129,6 +1318,29 @@ func Routes(config Config, r *mux.Router) *mux.Router {
 
 	route = r.Handle("/images/{image_id:"+uuid.UUIDRegex+"}", Handler{context, deleteImage, true})
 	route.Methods("DELETE")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	// Volumes
+	matchContent = fmt.Sprintf("application/(%s|json)", VolumesV1)
+	route = r.Handle("/{tenant}/volumes", Handler{context, createVolume, false})
+	route.Methods("POST")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/volumes", Handler{context, listVolumesDetail, false})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/volumes/{volume_id}", Handler{context, showVolumeDetails, false})
+	route.Methods("GET")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	route = r.Handle("/{tenant}/volumes/{volume_id}", Handler{context, deleteVolume, false})
+	route.Methods("DELETE")
+	route.HeadersRegexp("Content-Type", matchContent)
+
+	// Volume actions
+	route = r.Handle("/{tenant}/volumes/{volume_id}/action", Handler{context, volumeAction, false})
+	route.Methods("POST")
 	route.HeadersRegexp("Content-Type", matchContent)
 
 	return r

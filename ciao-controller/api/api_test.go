@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	storage "github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/service"
 )
@@ -236,6 +237,54 @@ var tests = []test{
 		fmt.Sprintf("application/%s", ImagesV1),
 		http.StatusNoContent,
 		`null`,
+	},
+	{
+		"POST",
+		"/validtenantid/volumes",
+		`{"size": 10,"source_volid": null,"description":null,"name":null,"imageRef":null}`,
+		fmt.Sprintf("application/%s", VolumesV1),
+		http.StatusAccepted,
+		`{"id":"new-test-id","bootable":false,"boot_index":0,"ephemeral":false,"local":false,"swap":false,"size":123456,"tenant_id":"test-tenant-id","state":"available","created":"0001-01-01T00:00:00Z","name":"new volume","description":"newly created volume","internal":false}`,
+	},
+	{
+		"GET",
+		"/validtenantid/volumes",
+		"",
+		fmt.Sprintf("application/%s", VolumesV1),
+		http.StatusOK,
+		`[{"id":"new-test-id","bootable":false,"boot_index":0,"ephemeral":false,"local":false,"swap":false,"size":123456,"tenant_id":"test-tenant-id","state":"available","created":"0001-01-01T00:00:00Z","name":"my volume","description":"my volume for stuff","internal":false},{"id":"new-test-id2","bootable":false,"boot_index":0,"ephemeral":false,"local":false,"swap":false,"size":123456,"tenant_id":"test-tenant-id","state":"available","created":"0001-01-01T00:00:00Z","name":"volume 2","description":"my other volume","internal":false}]`,
+	},
+	{
+		"GET",
+		"/validtenantid/volumes/validvolumeid",
+		"",
+		fmt.Sprintf("application/%s", VolumesV1),
+		http.StatusOK,
+		`{"id":"new-test-id","bootable":false,"boot_index":0,"ephemeral":false,"local":false,"swap":false,"size":123456,"tenant_id":"test-tenant-id","state":"available","created":"0001-01-01T00:00:00Z","name":"my volume","description":"my volume for stuff","internal":false}`,
+	},
+	{
+		"DELETE",
+		"/validtenantid/volumes/validvolumeid",
+		"",
+		fmt.Sprintf("application/%s", VolumesV1),
+		http.StatusAccepted,
+		"null",
+	},
+	{
+		"POST",
+		"/validtenantid/volumes/validvolumeid/action",
+		`{"attach":{"instance_uuid":"validinstanceid","mountpoint":"/dev/vdc"}}`,
+		fmt.Sprintf("application/%s", VolumesV1),
+		http.StatusAccepted,
+		"null",
+	},
+	{
+		"POST",
+		"/validtenantid/volumes/validvolumeid/action",
+		`{"detach":{}}`,
+		fmt.Sprintf("application/%s", VolumesV1),
+		http.StatusAccepted,
+		"null",
 	},
 }
 
@@ -500,6 +549,69 @@ func (ts testCiaoService) UploadImage(string, string, io.Reader) error {
 
 func (ts testCiaoService) DeleteImage(string, string) error {
 	return nil
+}
+
+func (ts testCiaoService) ShowVolumeDetails(tenant string, volume string) (types.Volume, error) {
+	return types.Volume{
+		BlockDevice: storage.BlockDevice{
+			ID:   "new-test-id",
+			Size: 123456,
+		},
+		State:       types.Available,
+		Name:        "my volume",
+		Description: "my volume for stuff",
+		TenantID:    "test-tenant-id",
+	}, nil
+}
+
+func (ts testCiaoService) CreateVolume(tenant string, req RequestedVolume) (types.Volume, error) {
+	return types.Volume{
+		BlockDevice: storage.BlockDevice{
+			ID:   "new-test-id",
+			Size: 123456,
+		},
+		State:       types.Available,
+		Name:        "new volume",
+		Description: "newly created volume",
+		TenantID:    "test-tenant-id",
+	}, nil
+}
+
+func (ts testCiaoService) DeleteVolume(tenant string, volume string) error {
+	return nil
+}
+
+func (ts testCiaoService) AttachVolume(tenant string, volume string, instance string, mountpoint string) error {
+	return nil
+}
+
+func (ts testCiaoService) DetachVolume(tenant string, volume string, attachment string) error {
+	return nil
+}
+
+func (ts testCiaoService) ListVolumesDetail(tenant string) ([]types.Volume, error) {
+	return []types.Volume{
+		{
+			BlockDevice: storage.BlockDevice{
+				ID:   "new-test-id",
+				Size: 123456,
+			},
+			State:       types.Available,
+			Name:        "my volume",
+			Description: "my volume for stuff",
+			TenantID:    "test-tenant-id",
+		},
+		{
+			BlockDevice: storage.BlockDevice{
+				ID:   "new-test-id2",
+				Size: 123456,
+			},
+			State:       types.Available,
+			Name:        "volume 2",
+			Description: "my other volume",
+			TenantID:    "test-tenant-id",
+		},
+	}, nil
 }
 
 func TestResponse(t *testing.T) {

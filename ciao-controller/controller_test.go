@@ -28,12 +28,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/internal/datastore"
 	"github.com/ciao-project/ciao/ciao-controller/internal/quotas"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ciao-controller/utils"
 	"github.com/ciao-project/ciao/ciao-storage"
-	"github.com/ciao-project/ciao/openstack/block"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
 	"github.com/ciao-project/ciao/testutil"
@@ -587,13 +587,13 @@ func TestAttachVolume(t *testing.T) {
 	}
 }
 
-func addTestBlockDevice(t *testing.T, tenantID string) types.BlockData {
+func addTestBlockDevice(t *testing.T, tenantID string) types.Volume {
 	bd, err := ctl.CreateBlockDevice("", "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	data := types.BlockData{
+	data := types.Volume{
 		BlockDevice: bd,
 		CreateTime:  time.Now(),
 		TenantID:    tenantID,
@@ -1345,7 +1345,7 @@ func TestStorageConfig(t *testing.T) {
 }
 
 func createTestVolume(tenantID string, size int, t *testing.T) string {
-	req := block.RequestedVolume{
+	req := api.RequestedVolume{
 		Size: size,
 	}
 
@@ -1354,8 +1354,8 @@ func createTestVolume(tenantID string, size int, t *testing.T) string {
 		t.Fatal(err)
 	}
 
-	if vol.UserID != tenantID || vol.Status != block.Available ||
-		vol.Size != size || vol.Bootable != "false" {
+	if vol.TenantID != tenantID || vol.State != types.Available ||
+		vol.Size != size || vol.Bootable != false {
 		t.Fatalf("incorrect volume returned\n")
 	}
 
@@ -1389,7 +1389,7 @@ func TestCreateImageVolume(t *testing.T) {
 	}
 
 	imageRef := "test-image-id"
-	req := block.RequestedVolume{
+	req := api.RequestedVolume{
 		ImageRef: imageRef,
 	}
 
@@ -1439,7 +1439,7 @@ func TestDeleteVolume(t *testing.T) {
 
 	// attempt to delete with bad tenant ID
 	err = ctl.DeleteVolume(tenant2.ID, volID)
-	if err != block.ErrVolumeOwner {
+	if err != api.ErrVolumeOwner {
 		t.Fatal("Incorrect error")
 	}
 
@@ -1454,24 +1454,6 @@ func TestDeleteVolume(t *testing.T) {
 	_, err = ctl.ds.GetBlockDevice(volID)
 	if err != datastore.ErrNoBlockData {
 		t.Fatal(err)
-	}
-}
-
-func TestListVolumes(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_ = createTestVolume(tenant.ID, 20, t)
-
-	vols, err := ctl.ListVolumes(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(vols) != 1 {
-		t.Fatal("Incorrect number of volumes returned")
 	}
 }
 
