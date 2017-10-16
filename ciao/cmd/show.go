@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/ciao-project/ciao/ciao-sdk"
 	"github.com/spf13/cobra"
 )
@@ -28,66 +30,110 @@ var showCmd = &cobra.Command{
 var eventShowCmd = &cobra.Command{
 	Use:  "event [TENANT ID]",
 	Long: `When called with no args, it will print all events.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var externalipShowCmd = &cobra.Command{
 	Use:  "externalip",
 	Long: `When called with no args, it will print all externalips.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var imageShowCmd = &cobra.Command{
 	Use:  "image <UUID>",
 	Long: `When called with no args, it will print all images.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var instanceShowCmd = &cobra.Command{
 	Use:  "instance <UUID>",
 	Long: `When called with no args, it will print all instances.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var nodeShowCmd = &cobra.Command{
-	Use:  "node",
-	Long: `When called with no args, it will print all nodes.`,
+	Use:  "node [NODE-ID]",
+	Long: `Show information about a node.`,
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var poolShowCmd = &cobra.Command{
 	Use:  "pool [NAME]",
-	Long: `When called with no args, it will print all pools.`,
+	Long: `Show ciao external IP pool details.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var quotasShowCmd = &cobra.Command{
-	Use:  "quotas",
-	Long: `When called with no args, it will print all quotass.`,
+	Use:  "quotas [TENANT STRING]",
+	Long: `When called with no args, it will print all quotas for current tenant.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var tenantShowCmd = &cobra.Command{
-	Use:  "tenant",
+	Use:  "tenant [NAME]",
 	Long: `When called with no args, it will print all tenants.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var traceShowCmd = &cobra.Command{
-	Use:  "trace",
+	Use:  "trace [LABEL]",
 	Long: `When called with no args, it will print all traces.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var volumeShowCmd = &cobra.Command{
-	Use:  "volume",
+	Use:  "volume [UUID]",
 	Long: `When called with no args, it will print all volumes.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var workloadShowCmd = &cobra.Command{
 	Use:  "workload [UUID]",
 	Long: `When called with no args, it will print all workloads.`,
+	Run: func(cmd *cobra.Command, args []string) {
+			command := strings.Fields(cmd.Use)
+			sdk.Show(command[0], args)
+	},
 }
 
 var showcmds = []*cobra.Command{eventShowCmd, externalipShowCmd, imageShowCmd, instanceShowCmd, nodeShowCmd, poolShowCmd, quotasShowCmd, tenantShowCmd, traceShowCmd, volumeShowCmd, workloadShowCmd}
 
 func init() {
 	for _, cmd := range showcmds {
-		// Use the Show API to handle the commands given
-		cmd.Run = sdk.Show
 		showCmd.AddCommand(cmd)
 	}
+
 	RootCmd.AddCommand(showCmd)
 
 	showCmd.PersistentFlags().StringVarP(&sdk.Template, "template", "t", "", "Template used to format output")
