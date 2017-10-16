@@ -42,7 +42,7 @@ var tests = []test{
 	{
 		"GET",
 		"/v2.1/{tenant}/servers/detail?limit=1&offset=1",
-		ListServersDetails,
+		listServerDetails,
 		"",
 		http.StatusOK,
 		`{"total_servers":1,"servers":[]}`,
@@ -50,7 +50,7 @@ var tests = []test{
 	{
 		"GET",
 		"/v2.1/{tenant}/servers/detail",
-		ListServersDetails,
+		listServerDetails,
 		"",
 		http.StatusOK,
 		`{"total_servers":1,"servers":[{"private_addresses":[{"addr":"192.169.0.1","mac_addr":"00:02:00:01:02:03"}],"created":"0001-01-01T00:00:00Z","workload_id":"testWorkloadUUID","node_id":"nodeUUID","id":"testUUID","name":"","volumes":null,"status":"active","tenant_id":"","ssh_ip":"","ssh_port":0}]}`},

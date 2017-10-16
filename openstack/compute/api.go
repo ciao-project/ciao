@@ -416,12 +416,7 @@ func createServer(c *Context, w http.ResponseWriter, r *http.Request) (APIRespon
 	return APIResponse{http.StatusAccepted, resp}, nil
 }
 
-// ListServersDetails provides server details by tenant or by workload.
-// This function is exported for use by ciao-controller due to legacy
-// endpoint using the "workload" option. It is simpler to just overload
-// this function than to reimplement the legacy code.
-//
-func ListServersDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
+func listServerDetails(c *Context, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
 
@@ -545,7 +540,7 @@ func Routes(config APIConfig, r *mux.Router) *mux.Router {
 	r.Handle("/v2.1/{tenant}/servers",
 		APIHandler{context, createServer}).Methods("POST")
 	r.Handle("/v2.1/{tenant}/servers/detail",
-		APIHandler{context, ListServersDetails}).Methods("GET")
+		APIHandler{context, listServerDetails}).Methods("GET")
 	r.Handle("/v2.1/{tenant}/servers/{server}",
 		APIHandler{context, showServerDetails}).Methods("GET")
 	r.Handle("/v2.1/{tenant}/servers/{server}",
