@@ -66,6 +66,11 @@ type dumpOp struct {
 	ch       chan []types.QuotaDetails
 }
 
+type deleteTenantOp struct {
+	tenantID string
+	doneCh   chan struct{}
+}
+
 type result struct {
 	allowed   bool
 	reason    string
@@ -237,6 +242,10 @@ func update(tenantDetails map[string]*tenantData, op *updateOp) {
 	}
 }
 
+func deleteTenant(tenantDetails map[string]*tenantData, op *deleteTenantOp) {
+	delete(tenantDetails, op.tenantID)
+}
+
 func dump(tenantDetails map[string]*tenantData, op *dumpOp) []types.QuotaDetails {
 	td := getTenantData(tenantDetails, op.tenantID)
 
@@ -313,6 +322,11 @@ func (qs *Quotas) Init() {
 				dumpData := data.(*dumpOp)
 				dumpData.ch <- dump(tenantDetails, dumpData)
 				close(dumpData.ch)
+
+			case *deleteTenantOp:
+				deleteTenantData := data.(*deleteTenantOp)
+				deleteTenant(tenantDetails, deleteTenantData)
+				close(deleteTenantData.doneCh)
 			}
 		}
 
@@ -367,6 +381,14 @@ func (qs *Quotas) Shutdown() {
 func (qs *Quotas) Update(tenantID string, quotas []types.QuotaDetails) {
 	ch := make(chan struct{})
 	op := &updateOp{tenantID, quotas, ch}
+	qs.ch <- op
+	<-ch
+}
+
+// DeleteTenant will delete the givent tenant from the quota service
+func (qs *Quotas) DeleteTenant(tenantID string) {
+	ch := make(chan struct{})
+	op := &deleteTenantOp{tenantID, ch}
 	qs.ch <- op
 	<-ch
 }
