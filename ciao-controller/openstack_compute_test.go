@@ -19,8 +19,8 @@ package main
 import (
 	"testing"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-storage"
-	"github.com/ciao-project/ciao/openstack/compute"
 )
 
 func compareStorageBlockDevices(t *testing.T, a storage.BlockDevice, b storage.BlockDevice) {
@@ -51,15 +51,15 @@ func compareStorageBlockDevices(t *testing.T, a storage.BlockDevice, b storage.B
 }
 
 // valid volume lists
-var computeNoVolumes = []compute.BlockDeviceMappingV2{}
+var computeNoVolumes = []api.BlockDeviceMappingV2{}
 var storageNoVolumes = []storage.BlockDevice{}
-var computeOneGoodVolume = []compute.BlockDeviceMappingV2{
+var computeOneGoodVolume = []api.BlockDeviceMappingV2{
 	computeLocalSwapVolume,
 }
 var storageOneGoodVolume = []storage.BlockDevice{
 	storageLocalSwapVolume,
 }
-var computeMultipleGoodVolumes = []compute.BlockDeviceMappingV2{
+var computeMultipleGoodVolumes = []api.BlockDeviceMappingV2{
 	computeVolume,
 	computeBootVolume,
 	computeVolumeSnapshot,
@@ -73,7 +73,7 @@ var storageMultipleGoodVolumes = []storage.BlockDevice{
 }
 
 // valid volumes
-var computeLocalSwapVolume = compute.BlockDeviceMappingV2{
+var computeLocalSwapVolume = api.BlockDeviceMappingV2{
 	DeviceName:          "",
 	SourceType:          "blank",
 	DestinationType:     "local",
@@ -92,7 +92,7 @@ var storageLocalSwapVolume = storage.BlockDevice{
 	Tag:       "A string.",
 	Size:      4,
 }
-var computeAutoVolume = compute.BlockDeviceMappingV2{
+var computeAutoVolume = api.BlockDeviceMappingV2{
 	DeviceName:      "",
 	SourceType:      "blank",
 	DestinationType: "volume",
@@ -101,7 +101,7 @@ var computeAutoVolume = compute.BlockDeviceMappingV2{
 var storageAutoVolume = storage.BlockDevice{
 	Size: 4,
 }
-var computeVolume = compute.BlockDeviceMappingV2{
+var computeVolume = api.BlockDeviceMappingV2{
 	SourceType:      "volume",
 	DestinationType: "volume",
 	BootIndex:       "-1",
@@ -111,7 +111,7 @@ var storageVolume = storage.BlockDevice{
 	BootIndex: 0,
 	ID:        "e0217fee-694e-43e6-9149-1da16f3847dc",
 }
-var computeVolumeSnapshot = compute.BlockDeviceMappingV2{
+var computeVolumeSnapshot = api.BlockDeviceMappingV2{
 	SourceType:      "snapshot",
 	DestinationType: "volume",
 	UUID:            "e0217fee-694e-43e6-9149-1da16f3847dc@725dccf6-e651-436a-ae6a-140d8d794aa3",
@@ -119,7 +119,7 @@ var computeVolumeSnapshot = compute.BlockDeviceMappingV2{
 var storageVolumeSnapshot = storage.BlockDevice{
 	ID: "e0217fee-694e-43e6-9149-1da16f3847dc@725dccf6-e651-436a-ae6a-140d8d794aa3",
 }
-var computeBootVolume = compute.BlockDeviceMappingV2{
+var computeBootVolume = api.BlockDeviceMappingV2{
 	DeviceName:      "",
 	SourceType:      "volume",
 	DestinationType: "volume",
@@ -133,187 +133,187 @@ var storageBootVolume = storage.BlockDevice{
 }
 
 // invalid volume lists
-var computeBadVolumes1 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes1 = []api.BlockDeviceMappingV2{
 	computeBadVolume1,
 }
-var computeBadVolumes2 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes2 = []api.BlockDeviceMappingV2{
 	computeVolume,
 	computeBadVolume2,
 	computeBootVolume,
 }
-var computeBadVolumes3 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes3 = []api.BlockDeviceMappingV2{
 	computeBadVolume3,
 }
-var computeBadVolumes4 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes4 = []api.BlockDeviceMappingV2{
 	computeBadVolume4,
 }
-var computeBadVolumes5 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes5 = []api.BlockDeviceMappingV2{
 	computeBadVolume5,
 }
-var computeBadVolumes6 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes6 = []api.BlockDeviceMappingV2{
 	computeBadVolume6,
 }
-var computeBadVolumes7 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes7 = []api.BlockDeviceMappingV2{
 	computeBadVolume7,
 }
-var computeBadVolumes8 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes8 = []api.BlockDeviceMappingV2{
 	computeBadVolume8,
 }
-var computeBadVolumes9 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes9 = []api.BlockDeviceMappingV2{
 	computeBadVolume9,
 }
-var computeBadVolumes10 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes10 = []api.BlockDeviceMappingV2{
 	computeBadVolume10,
 }
-var computeBadVolumes11 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes11 = []api.BlockDeviceMappingV2{
 	computeBadVolume11,
 }
-var computeBadVolumes12 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes12 = []api.BlockDeviceMappingV2{
 	computeBadVolume12,
 }
-var computeBadVolumes13 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes13 = []api.BlockDeviceMappingV2{
 	computeBadVolume13,
 }
-var computeBadVolumes14 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes14 = []api.BlockDeviceMappingV2{
 	computeBadVolume14,
 }
-var computeBadVolumes15 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes15 = []api.BlockDeviceMappingV2{
 	computeBadVolume15,
 }
-var computeBadVolumes16 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes16 = []api.BlockDeviceMappingV2{
 	computeBadVolume16,
 }
-var computeBadVolumes17 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes17 = []api.BlockDeviceMappingV2{
 	computeBadVolume17,
 }
-var computeBadVolumes18 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes18 = []api.BlockDeviceMappingV2{
 	computeBadVolume18,
 }
-var computeBadVolumes19 = []compute.BlockDeviceMappingV2{
+var computeBadVolumes19 = []api.BlockDeviceMappingV2{
 	computeBadVolume19,
 }
 
 // invalid volumes
-var computeBadVolume1 = compute.BlockDeviceMappingV2{
+var computeBadVolume1 = api.BlockDeviceMappingV2{
 	// invalid source type
 	SourceType: "foo",
 }
-var computeBadVolume2 = compute.BlockDeviceMappingV2{
+var computeBadVolume2 = api.BlockDeviceMappingV2{
 	// invalid GuestFormat
 	SourceType:      "volume",
 	DestinationType: "volume",
 	GuestFormat:     "yabbalabba",
 }
-var computeBadVolume3 = compute.BlockDeviceMappingV2{
+var computeBadVolume3 = api.BlockDeviceMappingV2{
 	// snapshot with incorrect format uuid
 	SourceType:      "snapshot",
 	DestinationType: "volume",
 	UUID:            "ba5e36b0-a386-477c-9fb5-2564aa2d47d7",
 }
-var computeBadVolume4 = compute.BlockDeviceMappingV2{
+var computeBadVolume4 = api.BlockDeviceMappingV2{
 	// auto-created ambiguous, invalid destination type
 	SourceType:      "blank",
 	DestinationType: "bar",
 }
-var computeBadVolume5 = compute.BlockDeviceMappingV2{
+var computeBadVolume5 = api.BlockDeviceMappingV2{
 	// auto-created volume, invalid SourceType
 	SourceType:      "volume",
 	DestinationType: "volume",
 }
-var computeBadVolume6 = compute.BlockDeviceMappingV2{
+var computeBadVolume6 = api.BlockDeviceMappingV2{
 	// auto-created volume, invalid BootIndex
 	SourceType:      "blank",
 	DestinationType: "volume",
 	BootIndex:       "1",
 }
-var computeBadVolume7 = compute.BlockDeviceMappingV2{
+var computeBadVolume7 = api.BlockDeviceMappingV2{
 	// auto-created volume, can't pre-set uuid
 	SourceType:      "blank",
 	DestinationType: "volume",
 	UUID:            "6d2bd9b6-d2e3-4b0e-a619-4bea1d1cfc38",
 }
-var computeBadVolume8 = compute.BlockDeviceMappingV2{
+var computeBadVolume8 = api.BlockDeviceMappingV2{
 	// auto-created volume, invalid negative size
 	SourceType:      "blank",
 	DestinationType: "volume",
 	VolumeSize:      -4,
 }
-var computeBadVolume9 = compute.BlockDeviceMappingV2{
+var computeBadVolume9 = api.BlockDeviceMappingV2{
 	// auto-created local, invalid source type
 	SourceType:          "volume",
 	DestinationType:     "local",
 	DeleteOnTermination: false,
 }
-var computeBadVolume10 = compute.BlockDeviceMappingV2{
+var computeBadVolume10 = api.BlockDeviceMappingV2{
 	// auto-created local, invalid BootIndex
 	SourceType:          "blank",
 	DestinationType:     "local",
 	DeleteOnTermination: false,
 	BootIndex:           "1",
 }
-var computeBadVolume11 = compute.BlockDeviceMappingV2{
+var computeBadVolume11 = api.BlockDeviceMappingV2{
 	// auto-created local, extraneous uuid
 	SourceType:      "blank",
 	DestinationType: "local",
 	UUID:            "14a3c05b-f2ea-424e-850a-fb5289b32ec6",
 }
-var computeBadVolume12 = compute.BlockDeviceMappingV2{
+var computeBadVolume12 = api.BlockDeviceMappingV2{
 	// auto-created local, invalid VolumeSize
 	SourceType:          "blank",
 	DestinationType:     "local",
 	DeleteOnTermination: false,
 	VolumeSize:          -1,
 }
-var computeBadVolume13 = compute.BlockDeviceMappingV2{
+var computeBadVolume13 = api.BlockDeviceMappingV2{
 	// auto-created local must be ephemeral
 	SourceType:          "blank",
 	DestinationType:     "local",
 	VolumeSize:          1,
 	DeleteOnTermination: false,
 }
-var computeBadVolume14 = compute.BlockDeviceMappingV2{
+var computeBadVolume14 = api.BlockDeviceMappingV2{
 	// pre-created volume, can't set size
 	SourceType:      "volume",
 	DestinationType: "volume",
 	UUID:            "6d2bd9b6-d2e3-4b0e-a619-4bea1d1cfc38",
 	VolumeSize:      42,
 }
-var computeBadVolume15 = compute.BlockDeviceMappingV2{
+var computeBadVolume15 = api.BlockDeviceMappingV2{
 	// pre-created volume, missing uuid
 	SourceType: "volume",
 	UUID:       "",
 }
-var computeBadVolume16 = compute.BlockDeviceMappingV2{
+var computeBadVolume16 = api.BlockDeviceMappingV2{
 	// pre-created volume, invalid BootIndex
 	SourceType:      "volume",
 	DestinationType: "volume",
 	UUID:            "b576afd0-200e-4ae5-afb2-30f06a0d1a7c",
 	BootIndex:       "first",
 }
-var computeBadVolume17 = compute.BlockDeviceMappingV2{
+var computeBadVolume17 = api.BlockDeviceMappingV2{
 	// pre-created volume, invalid uuid
 	SourceType:      "volume",
 	DestinationType: "volume",
 	UUID:            "foobarbaz",
 }
-var computeBadVolume18 = compute.BlockDeviceMappingV2{
+var computeBadVolume18 = api.BlockDeviceMappingV2{
 	// pre-created volume, invalid GuestFormat
 	SourceType:      "volume",
 	DestinationType: "volume",
 	UUID:            "14a3c05b-f2ea-424e-850a-fb5289b32ec6",
 	GuestFormat:     "swap",
 }
-var computeBadVolume19 = compute.BlockDeviceMappingV2{
+var computeBadVolume19 = api.BlockDeviceMappingV2{
 	// pre-created volume, invalid DestinationType
 	SourceType:      "volume",
 	DestinationType: "local",
 	UUID:            "14a3c05b-f2ea-424e-850a-fb5289b32ec6",
 }
 
-//[]compute.BlockDeviceMappingV2 to []storage.BlockDevice
+//[]api.BlockDeviceMappingV2 to []storage.BlockDevice
 func TestAbstractBlockDevices(t *testing.T) {
 	var blockDeviceTests = []struct {
-		computeBDs []compute.BlockDeviceMappingV2
+		computeBDs []api.BlockDeviceMappingV2
 		storageBDs []storage.BlockDevice
 	}{
 		{
@@ -339,7 +339,7 @@ func TestAbstractBlockDevices(t *testing.T) {
 
 func TestValidateBlockDeviceMappings(t *testing.T) {
 	var blockDeviceTests = []struct {
-		volumes []compute.BlockDeviceMappingV2
+		volumes []api.BlockDeviceMappingV2
 		ok      bool
 	}{
 		{computeNoVolumes, true},
