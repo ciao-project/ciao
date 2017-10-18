@@ -295,38 +295,33 @@ func (qs *Quotas) Init() {
 				return
 			}
 
-			switch data.(type) {
+			switch op := data.(type) {
 
 			case *consumeOp:
-				consumeData := data.(*consumeOp)
-				res := consumeQuota(tenantDetails, consumeData)
+				res := consumeQuota(tenantDetails, op)
 				if !res.Allowed() {
-					consumeData.ch <- res
-					close(consumeData.ch)
+					op.ch <- res
+					close(op.ch)
 					continue
 				}
-				res = checkLimit(tenantDetails, consumeData)
-				consumeData.ch <- res
-				close(consumeData.ch)
+				res = checkLimit(tenantDetails, op)
+				op.ch <- res
+				close(op.ch)
 
 			case *releaseOp:
-				releaseData := data.(*releaseOp)
-				release(tenantDetails, releaseData)
+				release(tenantDetails, op)
 
 			case *updateOp:
-				updateData := data.(*updateOp)
-				update(tenantDetails, updateData)
-				close(updateData.doneCh)
+				update(tenantDetails, op)
+				close(op.doneCh)
 
 			case *dumpOp:
-				dumpData := data.(*dumpOp)
-				dumpData.ch <- dump(tenantDetails, dumpData)
-				close(dumpData.ch)
+				op.ch <- dump(tenantDetails, op)
+				close(op.ch)
 
 			case *deleteTenantOp:
-				deleteTenantData := data.(*deleteTenantOp)
-				deleteTenant(tenantDetails, deleteTenantData)
-				close(deleteTenantData.doneCh)
+				deleteTenant(tenantDetails, op)
+				close(op.doneCh)
 			}
 		}
 
