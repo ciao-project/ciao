@@ -61,8 +61,7 @@ const (
 
 type tenant struct {
 	types.Tenant
-	network   map[int]map[int]bool
-	subnets   []int
+	network   map[uint32]map[uint32]bool
 	instances map[string]*types.Instance
 	devices   map[string]types.Volume
 	workloads []types.Workload
@@ -77,6 +76,11 @@ type node struct {
 type attachment struct {
 	instanceID string
 	volumeID   string
+}
+
+type tenantIP struct {
+	subnet uint32
+	host   uint32
 }
 
 type persistentStore interface {
@@ -96,8 +100,9 @@ type persistentStore interface {
 	addTenant(id string, config types.TenantConfig) (err error)
 	getTenant(id string) (t *tenant, err error)
 	getTenants() ([]*tenant, error)
-	releaseTenantIP(tenantID string, subnetInt int, rest int) (err error)
-	claimTenantIP(tenantID string, subnetInt int, rest int) (err error)
+	releaseTenantIP(tenantID string, subnetInt uint32, rest uint32) (err error)
+	claimTenantIP(tenantID string, subnetInt uint32, rest uint32) (err error)
+	claimTenantIPs(tenantID string, IPs []tenantIP) (err error)
 	updateTenant(tenant *types.Tenant) error
 	deleteTenant(tenantID string) error
 
@@ -638,45 +643,45 @@ func (ds *Datastore) GetAllTenants() ([]*types.Tenant, error) {
 // instance.
 func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) error {
 	removeSubnet := false
-	var i int
+	var i uint32
 
 	ipAddr := net.ParseIP(ip)
 	if ipAddr == nil {
 		return errors.New("Invalid IPv4 Address")
 	}
 
-	ipBytes := ipAddr.To4()
-	if ipBytes == nil {
-		return errors.New("Unable to convert ip to bytes")
+	tenant, err := ds.GetTenant(tenantID)
+	if err != nil {
+		return err
 	}
 
-	subnetInt := binary.BigEndian.Uint16(ipBytes[1:3])
+	mask := net.CIDRMask(tenant.SubnetBits, 32)
+	ipNet := net.IPNet{
+		IP:   ipAddr.Mask(mask),
+		Mask: mask,
+	}
+	subMask := binary.BigEndian.Uint32(ipNet.Mask)
+	hostInt := binary.BigEndian.Uint32(ipAddr.To4())
+	subnetInt := hostInt & subMask
 
 	// clear from cache
 	ds.tenantsLock.Lock()
 
 	if ds.tenants[tenantID] != nil {
-		delete(ds.tenants[tenantID].network[int(subnetInt)], int(ipBytes[3]))
-		subnets := ds.tenants[tenantID].subnets
+		delete(ds.tenants[tenantID].network[subnetInt], hostInt)
 		network := ds.tenants[tenantID].network
-		i = int(subnetInt)
+		i = subnetInt
 
 		if len(network[i]) == 0 {
 			// delete the network map and the subnet
 			delete(ds.tenants[tenantID].network, i)
-
-			if len(subnets) > 1 {
-				ds.tenants[tenantID].subnets = append(subnets[:i], subnets[i+1:]...)
-			} else {
-				ds.tenants[tenantID].subnets = nil
-			}
 
 			removeSubnet = true
 		}
 	}
 
 	if removeSubnet && ds.tenants[tenantID].CNCIctrl != nil {
-		err := ds.tenants[tenantID].CNCIctrl.ScheduleRemoveSubnet(i)
+		err := ds.tenants[tenantID].CNCIctrl.ScheduleRemoveSubnet(ipNet.String())
 		if err != nil {
 			glog.Warningf("Unable to remove subnet (%v)", err)
 		}
@@ -684,134 +689,148 @@ func (ds *Datastore) ReleaseTenantIP(tenantID string, ip string) error {
 
 	ds.tenantsLock.Unlock()
 
-	return ds.db.releaseTenantIP(tenantID, int(subnetInt), int(ipBytes[3]))
+	return ds.db.releaseTenantIP(tenantID, subnetInt, hostInt)
 }
 
-func getMaxHost(bits int) (int, error) {
-	_, ipNet, err := net.ParseCIDR(fmt.Sprintf("172.16.0.0/%d", bits))
+// lock for tenant must be held.
+func (ds *Datastore) cleanTenantIPs(tenantID string, IPs []tenantIP) {
+	for _, IP := range IPs {
+		delete(ds.tenants[tenantID].network[IP.subnet], IP.host)
+
+		network := ds.tenants[tenantID].network
+		if len(network[IP.subnet]) == 0 {
+			delete(ds.tenants[tenantID].network, IP.subnet)
+		}
+	}
+}
+
+// lock for tenant must not be held here.
+func (ds *Datastore) activateSubnets(tenantID string, IPs []net.IP) error {
+	mgr := ds.tenants[tenantID].CNCIctrl
+	if mgr == nil {
+		return nil
+	}
+
+	tenant := ds.tenants[tenantID]
+	mask := net.CIDRMask(tenant.SubnetBits, 32)
+
+	for _, ip := range IPs {
+		ipnet := net.IPNet{
+			IP:   ip.Mask(mask),
+			Mask: mask,
+		}
+
+		err := mgr.WaitForActive(ipnet.String())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AllocateTenantIPPool will reserve a pool of IP addresses for the caller.
+func (ds *Datastore) AllocateTenantIPPool(tenantID string, num int) ([]net.IP, error) {
+	var addrs []net.IP
+	var tenantAddrs []tenantIP
+	var retval error
+	tenant, err := ds.GetTenant(tenantID)
 	if err != nil {
-		return -1, errors.Wrapf(err, "Invalid tenant config")
+		return nil, err
 	}
+
+	// hardcode start address and max address for tenant network.
+	cidr := fmt.Sprintf("%s/%d", "172.16.0.0", tenant.SubnetBits)
+	IP, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, err
+	}
+
+	start := binary.BigEndian.Uint32(IP.Mask(ipNet.Mask))
+	end := start >> 20
+	end = end + uint32(1)
+	end = end << 20
 	ones, bits := ipNet.Mask.Size()
+	hostBits := uint32(bits - ones)
+	maxHosts := (1 << hostBits)
+	mask := binary.BigEndian.Uint32(ipNet.Mask)
 
-	// deduct .0 and .1, and .255
-	maxHosts := (1 << uint32(bits-ones)) - 3
-	if maxHosts <= 0 {
-		return -1, errors.Wrapf(err, "Invalid tenant config")
-	}
-
-	return maxHosts, nil
-}
-
-// AllocateTenantIP will find a free IP address within a tenant network.
-// For now we make each tenant have unique subnets even though it
-// isn't actually needed because of a docker issue.
-func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
-	var subnetInt uint16
-	subnetInt = 0
+	var hostCount int
 
 	ds.tenantsLock.Lock()
+	defer func() {
+		ds.tenantsLock.Unlock()
 
-	network := ds.tenants[tenantID].network
-	subnets := ds.tenants[tenantID].subnets
-
-	maxHosts, err := getMaxHost(ds.tenants[tenantID].SubnetBits)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Invalid tenant config")
-	}
-
-	// find any subnet assigned to this tenant with available addresses
-	sort.Ints(subnets)
-
-	for _, k := range subnets {
-		if len(network[k]) < maxHosts {
-			subnetInt = uint16(k)
+		// try to start any subnets that need it.
+		// This will modify retval if there was an
+		// error.
+		if addrs != nil {
+			retval = ds.activateSubnets(tenantID, addrs)
 		}
-	}
+	}()
 
-	var subnetBytes = []byte{16, 0}
+	subnets := ds.tenants[tenantID].network
 
-	if subnetInt == 0 {
-		i := binary.BigEndian.Uint16(subnetBytes)
-
-		for {
-			// check for new subnet.
-			_, ok := network[int(i)]
-			if !ok {
-				sub := make(map[int]bool)
-				network[int(i)] = sub
-
-				break
-			}
-
-			if subnetBytes[1] == 255 {
-				if subnetBytes[0] == 31 {
-					// out of possible subnets
-					glog.Warning("Out of Subnets")
-					ds.tenantsLock.Unlock()
-					return nil, errors.New("Out of subnets")
-				}
-				subnetBytes[0]++
-				subnetBytes[1] = 0
-			} else {
-				subnetBytes[1]++
-			}
-
-			i = binary.BigEndian.Uint16(subnetBytes)
-		}
-
-		subnetInt = i
-
-		ds.tenants[tenantID].subnets = append(subnets, int(subnetInt))
-	} else {
-		binary.BigEndian.PutUint16(subnetBytes, subnetInt)
-	}
-
-	hosts := network[int(subnetInt)]
-
-	rest := 2
-
-	for {
-		if hosts[rest] == false {
-			hosts[rest] = true
+	// look for any subnets that have available host nums
+	for k, v := range subnets {
+		if len(v) < maxHosts {
+			start = k
 			break
 		}
-
-		if rest == 255 {
-			// this should never happen
-			glog.Warning("ran out of host numbers")
-
-			ds.tenantsLock.Unlock()
-
-			return nil, errors.New("rand out of host numbers")
-		}
-
-		rest++
 	}
 
-	ds.tenantsLock.Unlock()
+	for {
+		if start >= end {
+			ds.cleanTenantIPs(tenantID, tenantAddrs)
+			addrs = nil
+			return nil, errors.New("out of addrs")
+		}
 
-	err = ds.db.claimTenantIP(tenantID, int(subnetInt), rest)
+		// if we have not yet allocated out of this subnet,
+		// we need to make a new map to hold the host addrs.
+		subnetNum := start & mask
+		if subnets[subnetNum] == nil {
+			subnets[subnetNum] = make(map[uint32]bool)
+		}
+		netmap := subnets[subnetNum]
+
+		// skip network, gateway, and broadcast addrs.
+		for host := 2; host < maxHosts-1; host++ {
+			if netmap[start+uint32(host)] == false {
+				addr := start + uint32(host)
+				netmap[addr] = true
+				newIP := make(net.IP, net.IPv4len)
+				binary.BigEndian.PutUint32(newIP, addr)
+				addrs = append(addrs, newIP)
+				tenantAddrs = append(tenantAddrs, tenantIP{subnetNum, addr})
+				hostCount++
+				if hostCount == num {
+					// attempt bulk db insert here.
+					err := ds.db.claimTenantIPs(tenantID, tenantAddrs)
+					if err != nil {
+						ds.cleanTenantIPs(tenantID, tenantAddrs)
+						addrs = nil
+						return nil, err
+					}
+
+					// go ahead and return the IPs to the
+					// user but possibly with error.
+					return addrs, retval
+				}
+			}
+		}
+
+		// skip to the start of the next subnet
+		start += uint32(maxHosts)
+	}
+}
+
+// AllocateTenantIP will allocate a single IP address for a tenant.
+func (ds *Datastore) AllocateTenantIP(tenantID string) (net.IP, error) {
+	ips, err := ds.AllocateTenantIPPool(tenantID, 1)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error claiming tenant IP in database")
+		return nil, err
 	}
-
-	mgr := ds.tenants[tenantID].CNCIctrl
-
-	// if the subnet has already been added, this function
-	// will just confirm the subnet is active. If a new one
-	// is needed, it will wait for the new cnci to become active.
-	if mgr != nil {
-		err = mgr.WaitForActive(int(subnetInt))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// convert to IP type.
-	next := net.IPv4(172, subnetBytes[0], subnetBytes[1], byte(rest))
-
-	return next, nil
+	return ips[0], nil
 }
 
 func (ds *Datastore) getInstances(cncis bool) ([]*types.Instance, error) {

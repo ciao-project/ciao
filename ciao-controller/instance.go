@@ -359,7 +359,7 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 
 	// send in CIDR notation?
 	networking.PrivateIP = ipAddress.String()
-	mask := net.IPv4Mask(255, 255, 255, 0)
+	mask := net.CIDRMask(tenant.SubnetBits, 32)
 	ipnet := net.IPNet{
 		IP:   ipAddress.Mask(mask),
 		Mask: mask,

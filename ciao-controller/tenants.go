@@ -135,14 +135,7 @@ func (c *controller) deleteCNCIInstances(tenantID string) error {
 		go func(ID string, CIDR string) {
 			defer wg.Done()
 
-			subnet, err := subnetStringToInt(CIDR)
-			if err != nil {
-				c.client.RemoveInstance(ID)
-				glog.Warningf("Unable to remove tenant cnci: %v", err)
-				return
-			}
-
-			err = tenant.CNCIctrl.RemoveSubnet(subnet)
+			err = tenant.CNCIctrl.RemoveSubnet(CIDR)
 			if err != nil {
 				// remove directly.
 				c.client.RemoveInstance(ID)

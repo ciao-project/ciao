@@ -95,8 +95,8 @@ func (d subnetData) Init() error {
 	cmd := `CREATE TABLE IF NOT EXISTS tenant_network
 		(
 		tenant_id varchar(32),
-		subnet int,
-		rest int,
+		subnet unsigned int,
+		rest unsigned int,
 		foreign key(tenant_id) references tenants(id)
 		);`
 
@@ -1016,7 +1016,7 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	return tenants, nil
 }
 
-func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt int, rest int) error {
+func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt uint32, rest uint32) error {
 	db := ds.getTableDB("tenant_network")
 
 	ds.dbLock.Lock()
@@ -1027,7 +1027,39 @@ func (ds *sqliteDB) claimTenantIP(tenantID string, subnetInt int, rest int) erro
 	return err
 }
 
-func (ds *sqliteDB) releaseTenantIP(tenantID string, subnetInt int, rest int) error {
+func (ds *sqliteDB) claimTenantIPs(tenantID string, IPs []tenantIP) error {
+	db := ds.getTableDB("tenant_network")
+
+	ds.dbLock.Lock()
+	defer ds.dbLock.Unlock()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	cmd := `INSERT INTO tenant_network VALUES(?, ?, ?)`
+
+	stmt, err := tx.Prepare(cmd)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	defer stmt.Close()
+
+	for _, ip := range IPs {
+		_, err = stmt.Exec(tenantID, ip.subnet, ip.host)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (ds *sqliteDB) releaseTenantIP(tenantID string, subnetInt uint32, rest uint32) error {
 	db := ds.getTableDB("tenant_network")
 
 	ds.dbLock.Lock()
@@ -1039,7 +1071,7 @@ func (ds *sqliteDB) releaseTenantIP(tenantID string, subnetInt int, rest int) er
 }
 
 func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
-	tenant.network = make(map[int]map[int]bool)
+	tenant.network = make(map[uint32]map[uint32]bool)
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
@@ -1058,26 +1090,21 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
 	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
-		var subnetInt uint16
-		var rest uint8
+		var subnetInt uint32
+		var rest uint32
 
 		err = rows.Scan(&subnetInt, &rest)
 		if err != nil {
 			return err
 		}
 
-		_, ok := tenant.network[int(subnetInt)]
+		_, ok := tenant.network[subnetInt]
 		if !ok {
-			sub := make(map[int]bool)
-			tenant.network[int(subnetInt)] = sub
+			sub := make(map[uint32]bool)
+			tenant.network[subnetInt] = sub
 		}
 
-		/* Only add to the subnet list for the first host */
-		if len(tenant.network[int(subnetInt)]) == 0 {
-			tenant.subnets = append(tenant.subnets, int(subnetInt))
-		}
-
-		tenant.network[int(subnetInt)][int(rest)] = true
+		tenant.network[subnetInt][rest] = true
 	}
 
 	return err

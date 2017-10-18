@@ -85,7 +85,7 @@ func (db *MemoryDB) addTenant(id string, config types.TenantConfig) error {
 			Name:       config.Name,
 			SubnetBits: config.SubnetBits,
 		},
-		network:   make(map[int]map[int]bool),
+		network:   make(map[uint32]map[uint32]bool),
 		instances: make(map[string]*types.Instance),
 		devices:   make(map[string]types.Volume),
 	}
@@ -109,11 +109,15 @@ func (db *MemoryDB) getTenants() ([]*tenant, error) {
 	return tenants, nil
 }
 
-func (db *MemoryDB) releaseTenantIP(tenantID string, subnetInt int, rest int) error {
+func (db *MemoryDB) releaseTenantIP(tenantID string, subnetInt uint32, rest uint32) error {
 	return nil
 }
 
-func (db *MemoryDB) claimTenantIP(tenantID string, subnetInt int, rest int) error {
+func (db *MemoryDB) claimTenantIP(tenantID string, subnetInt uint32, rest uint32) error {
+	return nil
+}
+
+func (db *MemoryDB) claimTenantIPs(tenantID string, IPs []tenantIP) error {
 	return nil
 }
 

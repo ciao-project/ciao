@@ -48,7 +48,7 @@ func (c *controller) restartInstance(instanceID string) error {
 	}
 
 	if !i.CNCI {
-		err = t.CNCIctrl.WaitForActiveSubnetString(i.Subnet)
+		err = t.CNCIctrl.WaitForActive(i.Subnet)
 		if err != nil {
 			return errors.Wrap(err, "Error waiting for active subnet")
 		}

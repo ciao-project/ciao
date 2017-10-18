@@ -16,10 +16,8 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"net"
 	"sync"
 	"time"
 
@@ -53,7 +51,7 @@ type CNCI struct {
 	instance *types.Instance
 	ctrl     *controller
 	eventCh  *chan event
-	subnet   int
+	subnet   string
 	timer    *time.Timer
 }
 
@@ -69,8 +67,8 @@ type CNCIManager struct {
 	// this is a map of CNCI instance IDs to CNCI structs
 	cncis map[string]*CNCI
 
-	// this is a map of subnet (integer) to CNCI structs
-	subnets map[int]*CNCI
+	// this is a map of subnet strings to CNCI structs
+	subnets map[string]*CNCI
 }
 
 func (c *CNCI) stop() error {
@@ -169,20 +167,9 @@ func (c *CNCIManager) launch(subnet string) (*types.Instance, error) {
 	return instances[0], nil
 }
 
-// WaitForActiveSubnetString will, given a subnet string, launch a cnci if
-// needed and wait for it to be active, or wait for an existing cnci to become
-// active.
-func (c *CNCIManager) WaitForActiveSubnetString(subnet string) error {
-	subnetInt, err := subnetStringToInt(subnet)
-	if err != nil {
-		return err
-	}
-	return c.WaitForActive(subnetInt)
-}
-
 // WaitForActive will launch a cnci if needed and wait for it to be active,
 // or wait for an existing cnci to become active.
-func (c *CNCIManager) WaitForActive(subnet int) error {
+func (c *CNCIManager) WaitForActive(subnet string) error {
 	c.cnciLock.Lock()
 
 	cnci, ok := c.subnets[subnet]
@@ -218,17 +205,8 @@ func (c *CNCIManager) WaitForActive(subnet int) error {
 
 	c.subnets[subnet] = cnci
 
-	subnetBytes := make([]byte, 2)
-	binary.BigEndian.PutUint16(subnetBytes, uint16(subnet))
-	ip := net.IPv4(172, subnetBytes[0], subnetBytes[1], 0)
-	ipNet := net.IPNet{
-		IP:   ip,
-		Mask: net.IPv4Mask(255, 255, 255, 0),
-	}
-	subnetStr := ipNet.String()
-
 	// send a launch command
-	instance, err := c.launch(subnetStr)
+	instance, err := c.launch(subnet)
 	if err != nil {
 		c.cnciLock.Unlock()
 		return err
@@ -251,7 +229,7 @@ func (c *CNCIManager) WaitForActive(subnet int) error {
 // ScheduleRemoveSubnet will kick off a timer to remove a subnet after 5 min.
 // If a subnet is requested to be used again before the timer expires, the
 // timer will get cancelled and the subnet will not be removed.
-func (c *CNCIManager) ScheduleRemoveSubnet(subnet int) error {
+func (c *CNCIManager) ScheduleRemoveSubnet(subnet string) error {
 	c.cnciLock.Lock()
 
 	cnci, ok := c.subnets[subnet]
@@ -285,8 +263,8 @@ func (c *CNCIManager) ScheduleRemoveSubnet(subnet int) error {
 
 // RemoveSubnet is called when a subnet no longer is needed.
 // a cnci can be stopped.
-func (c *CNCIManager) RemoveSubnet(subnet int) error {
-	glog.V(2).Infof("RemoveSubnet %d", subnet)
+func (c *CNCIManager) RemoveSubnet(subnet string) error {
+	glog.V(2).Infof("RemoveSubnet %s", subnet)
 
 	c.cnciLock.Lock()
 
@@ -389,7 +367,7 @@ func (c *CNCIManager) StartFailure(id string) error {
 	return nil
 }
 
-func (c *CNCIManager) waitForActive(subnet int) error {
+func (c *CNCIManager) waitForActive(subnet string) error {
 	c.cnciLock.RLock()
 
 	cnci, ok := c.subnets[subnet]
@@ -431,16 +409,10 @@ func (c *CNCIManager) GetInstanceCNCI(ID string) (*types.Instance, error) {
 		return nil, err
 	}
 
-	// convert subnet string to int
-	subnetInt, err := subnetStringToInt(instance.Subnet)
-	if err != nil {
-		return nil, err
-	}
-
 	c.cnciLock.Lock()
 	defer c.cnciLock.Unlock()
 
-	cnci, ok := c.subnets[int(subnetInt)]
+	cnci, ok := c.subnets[instance.Subnet]
 	if !ok {
 		// there is no cnci for this subnet
 		return nil, errors.New("Subnet doesn't exist")
@@ -449,31 +421,12 @@ func (c *CNCIManager) GetInstanceCNCI(ID string) (*types.Instance, error) {
 	return cnci.instance, nil
 }
 
-func subnetStringToInt(cidr string) (int, error) {
-	ipAddr, _, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return 0, err
-	}
-
-	ipBytes := ipAddr.To4()
-	if ipBytes == nil {
-		return 0, errors.New("Unable to convert ip to bytes")
-	}
-
-	return int(binary.BigEndian.Uint16(ipBytes[1:3])), nil
-}
-
 // GetSubnetCNCI will return the CNCI Instance for a specific subnet string
 func (c *CNCIManager) GetSubnetCNCI(subnet string) (*types.Instance, error) {
-	subnetInt, err := subnetStringToInt(subnet)
-	if err != nil {
-		return nil, err
-	}
-
 	c.cnciLock.Lock()
 	defer c.cnciLock.Unlock()
 
-	cnci, ok := c.subnets[subnetInt]
+	cnci, ok := c.subnets[subnet]
 	if !ok {
 		// there is no cnci for this subnet
 		return nil, errors.New("Subnet doesn't exist")
@@ -520,7 +473,7 @@ func newCNCIManager(ctrl *controller, tenant string) (*CNCIManager, error) {
 		ctrl:   ctrl,
 
 		cncis:   make(map[string]*CNCI),
-		subnets: make(map[int]*CNCI),
+		subnets: make(map[string]*CNCI),
 	}
 
 	instances, err := ctrl.ds.GetTenantCNCIs(tenant)
@@ -538,15 +491,9 @@ func newCNCIManager(ctrl *controller, tenant string) (*CNCIManager, error) {
 
 		cnci.instance = i
 
-		// convert cnci instance string to int for map
-		subnetInt, err := subnetStringToInt(i.Subnet)
-		if err != nil {
-			return nil, err
-		}
-
-		cnci.subnet = subnetInt
+		cnci.subnet = i.Subnet
 		mgr.cncis[i.ID] = &cnci
-		mgr.subnets[subnetInt] = &cnci
+		mgr.subnets[i.Subnet] = &cnci
 
 		// if we got shutdown prior to being able to remove
 		// an unused subnet, we might be left with CNCIs that
@@ -559,7 +506,7 @@ func newCNCIManager(ctrl *controller, tenant string) (*CNCIManager, error) {
 		}
 
 		if count == 0 {
-			err = mgr.ScheduleRemoveSubnet(subnetInt)
+			err = mgr.ScheduleRemoveSubnet(i.Subnet)
 			if err != nil {
 				// keep going, but log error.
 				glog.Warningf("Unable to remove subnet (%v)", err)
