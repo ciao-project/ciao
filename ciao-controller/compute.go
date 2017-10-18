@@ -20,14 +20,14 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ciao-storage"
-	"github.com/ciao-project/ciao/openstack/compute"
 	"github.com/ciao-project/ciao/uuid"
 	"github.com/gorilla/mux"
 )
 
-func instanceToServer(ctl *controller, instance *types.Instance) (compute.ServerDetails, error) {
+func instanceToServer(ctl *controller, instance *types.Instance) (api.ServerDetails, error) {
 	var volumes []string
 
 	attachments := ctl.ds.GetStorageAttachments(instance.ID)
@@ -36,13 +36,13 @@ func instanceToServer(ctl *controller, instance *types.Instance) (compute.Server
 		volumes = append(volumes, vol.BlockID)
 	}
 
-	server := compute.ServerDetails{
+	server := api.ServerDetails{
 		NodeID:     instance.NodeID,
 		ID:         instance.ID,
 		TenantID:   instance.TenantID,
 		WorkloadID: instance.WorkloadID,
 		Status:     instance.State,
-		PrivateAddresses: []compute.PrivateAddresses{
+		PrivateAddresses: []api.PrivateAddresses{
 			{
 				Addr:    instance.IPAddress,
 				MacAddr: instance.MACAddress,
@@ -136,7 +136,7 @@ func (c *controller) validateBlockDeviceMappingBootIndex(index string) error {
 	return nil
 }
 
-func (c *controller) validateBlockDeviceAutoEphemeral(bd compute.BlockDeviceMappingV2) (bool, error) {
+func (c *controller) validateBlockDeviceAutoEphemeral(bd api.BlockDeviceMapping) (bool, error) {
 	// local dest with blank source is always an auto-created, non-bootable, non-persistent,
 	// data or swap disk.  This implies UUID must be "" and size must be specified.
 	if bd.DestinationType != "local" {
@@ -162,7 +162,7 @@ func (c *controller) validateBlockDeviceAutoEphemeral(bd compute.BlockDeviceMapp
 	return true, nil
 }
 
-func (c *controller) validateBlockDeviceAuto(bd compute.BlockDeviceMappingV2) (bool, error) {
+func (c *controller) validateBlockDeviceAuto(bd api.BlockDeviceMapping) (bool, error) {
 	// volume dest with blank source is always an auto-created, non-bootable,
 	// data or swap disk.  This implies UUID must be "" and size must be specified.
 	if bd.DestinationType != "volume" {
@@ -201,7 +201,7 @@ func (c *controller) validateUUIDForPreCreatedVolume(sourceType string, UUID str
 	return nil
 }
 
-func (c *controller) validateBlockDevicePreCreated(bd compute.BlockDeviceMappingV2, nInstances int) (bool, error) {
+func (c *controller) validateBlockDevicePreCreated(bd api.BlockDeviceMapping, nInstances int) (bool, error) {
 	// pre-created snapshot/volume/image sources map to a volume destination by UUID
 	if bd.UUID == "" ||
 		(bd.SourceType != "snapshot" && bd.SourceType != "volume" && bd.SourceType != "image") {
@@ -231,7 +231,7 @@ func (c *controller) validateBlockDevicePreCreated(bd compute.BlockDeviceMapping
 	return true, nil
 }
 
-func (c *controller) validateBlockDeviceMappings(blockDeviceMappings []compute.BlockDeviceMappingV2, nInstances int) error {
+func (c *controller) validateBlockDeviceMappings(blockDeviceMappings []api.BlockDeviceMapping, nInstances int) error {
 	for _, bd := range blockDeviceMappings {
 		// Check individual fields conform to spec
 		err := c.validateBlockDeviceMappingSourceType(bd.SourceType)
@@ -285,8 +285,8 @@ func (c *controller) validateBlockDeviceMappings(blockDeviceMappings []compute.B
 // is going to be populated with requested storage resources and that yaml
 // includes a bootable flag as a hint to hypervisor when the storage is
 // coming from a legacy Cinder data flow.  We must infer for the
-// compute.BlockDeviceMappingV2 if the device may be bootable.
-func isBootable(volume compute.BlockDeviceMappingV2) bool {
+// api.BlockDeviceMappingV2 if the device may be bootable.
+func isBootable(volume api.BlockDeviceMapping) bool {
 	if !(volume.SourceType == "snapshot" || volume.SourceType == "volume" || volume.SourceType == "image") ||
 		volume.DestinationType != "volume" ||
 		volume.GuestFormat == "swap" ||
@@ -302,7 +302,7 @@ func isBootable(volume compute.BlockDeviceMappingV2) bool {
 
 // abstractBlockDevices assumes its input blockDeviceMappings data contents
 // have been validated to not contain illegal values
-func abstractBlockDevices(blockDeviceMappings []compute.BlockDeviceMappingV2) (volumes []storage.BlockDevice) {
+func abstractBlockDevices(blockDeviceMappings []api.BlockDeviceMapping) (volumes []storage.BlockDevice) {
 	for _, bd := range blockDeviceMappings {
 		var volume storage.BlockDevice
 
@@ -334,7 +334,7 @@ func abstractBlockDevices(blockDeviceMappings []compute.BlockDeviceMappingV2) (v
 	return
 }
 
-func (c *controller) CreateServer(tenant string, server compute.CreateServerRequest) (resp interface{}, err error) {
+func (c *controller) CreateServer(tenant string, server api.CreateServerRequest) (resp interface{}, err error) {
 	nInstances := 1
 
 	if server.Server.MaxInstances > 0 {
@@ -374,7 +374,7 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 		e = err
 	}
 
-	var servers compute.Servers
+	var servers api.Servers
 
 	for _, instance := range instances {
 		server, err := instanceToServer(c, instance)
@@ -397,13 +397,13 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 	// builtServers is define to meet OpenStack compatibility on result
 	// format and keep CIAOs legacy behavior.
 	builtServers := struct {
-		compute.CreateServerRequest
-		compute.Servers
+		api.CreateServerRequest
+		api.Servers
 	}{
-		compute.CreateServerRequest{
+		api.CreateServerRequest{
 			Server: server.Server,
 		},
-		compute.Servers{
+		api.Servers{
 			TotalServers: servers.TotalServers,
 			Servers:      servers.Servers,
 		},
@@ -415,8 +415,8 @@ func (c *controller) CreateServer(tenant string, server compute.CreateServerRequ
 	return builtServers, nil
 }
 
-func (c *controller) ListServersDetail(tenant string) ([]compute.ServerDetails, error) {
-	var servers []compute.ServerDetails
+func (c *controller) ListServersDetail(tenant string) ([]api.ServerDetails, error) {
+	var servers []api.ServerDetails
 	var err error
 	var instances []*types.Instance
 
@@ -444,8 +444,8 @@ func (c *controller) ListServersDetail(tenant string) ([]compute.ServerDetails, 
 	return servers, nil
 }
 
-func (c *controller) ShowServerDetails(tenant string, server string) (compute.Server, error) {
-	var s compute.Server
+func (c *controller) ShowServerDetails(tenant string, server string) (api.Server, error) {
+	var s api.Server
 
 	instance, err := c.ds.GetTenantInstance(tenant, server)
 	if err != nil {
@@ -464,13 +464,10 @@ func (c *controller) DeleteServer(tenant string, server string) error {
 	/* First check that the instance belongs to this tenant */
 	_, err := c.ds.GetTenantInstance(tenant, server)
 	if err != nil {
-		return compute.ErrServerNotFound
+		return api.ErrInstanceNotFound
 	}
 
 	err = c.deleteInstance(server)
-	if err == types.ErrInstanceNotAssigned {
-		return compute.ErrInstanceNotAvailable
-	}
 
 	return err
 }
@@ -482,9 +479,6 @@ func (c *controller) StartServer(tenant string, ID string) error {
 	}
 
 	err = c.restartInstance(ID)
-	if err == types.ErrInstanceNotAssigned {
-		return compute.ErrInstanceNotAvailable
-	}
 
 	return err
 }
@@ -496,19 +490,11 @@ func (c *controller) StopServer(tenant string, ID string) error {
 	}
 
 	err = c.stopInstance(ID)
-	if err == types.ErrInstanceNotAssigned {
-		return compute.ErrInstanceNotAvailable
-	}
 
 	return err
 }
 
 func (c *controller) createComputeRoutes(r *mux.Router) error {
-	config := compute.APIConfig{ComputeService: c}
-	compute.Routes(config, r)
-
-	// we add on some ciao specific routes for legacy purposes
-	// using the openstack compute port.
 	legacyComputeRoutes(c, r)
 
 	return nil

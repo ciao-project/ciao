@@ -29,8 +29,8 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/ciao-project/ciao/openstack/compute"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
 	"github.com/ciao-project/ciao/testutil"
@@ -57,9 +57,7 @@ func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse i
 		t.Fatal(err)
 	}
 
-	if data != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
+	req.Header.Set("Content-Type", "application/json")
 
 	tlsConfig := &tls.Config{}
 
@@ -102,7 +100,7 @@ func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse i
 	return body
 }
 
-func testCreateServer(t *testing.T, n int) compute.Servers {
+func testCreateServer(t *testing.T, n int) api.Servers {
 	tenant, err := ctl.ds.GetTenant(testutil.ComputeUser)
 	if err != nil {
 		t.Fatal(err)
@@ -118,9 +116,9 @@ func testCreateServer(t *testing.T, n int) compute.Servers {
 		t.Fatalf("No valid workloads for tenant: %s\n", tenant.ID)
 	}
 
-	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers"
+	url := testutil.ComputeURL + "/" + tenant.ID + "/instances"
 
-	var server compute.CreateServerRequest
+	var server api.CreateServerRequest
 	server.Server.MaxInstances = n
 	server.Server.WorkloadID = wls[0].ID
 
@@ -131,7 +129,7 @@ func testCreateServer(t *testing.T, n int) compute.Servers {
 
 	body := testHTTPRequest(t, "POST", url, http.StatusAccepted, b, true)
 
-	servers := compute.NewServers()
+	servers := api.Servers{}
 
 	err = json.Unmarshal(body, &servers)
 	if err != nil {
@@ -145,12 +143,12 @@ func testCreateServer(t *testing.T, n int) compute.Servers {
 	return servers
 }
 
-func testListServerDetailsTenant(t *testing.T, tenantID string) compute.Servers {
-	url := testutil.ComputeURL + "/v2.1/" + tenantID + "/servers/detail"
+func testListServerDetailsTenant(t *testing.T, tenantID string) api.Servers {
+	url := testutil.ComputeURL + "/" + tenantID + "/instances/detail"
 
 	body := testHTTPRequest(t, "GET", url, http.StatusOK, nil, true)
 
-	s := compute.NewServers()
+	s := api.Servers{}
 	err := json.Unmarshal(body, &s)
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +185,7 @@ func testShowServerDetails(t *testing.T, httpExpectedStatus int, validToken bool
 		t.Fatal(err)
 	}
 
-	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/"
+	tURL := testutil.ComputeURL + "/" + tenant.ID + "/instances/"
 
 	servers := testCreateServer(t, 1)
 	if servers.TotalServers != 1 {
@@ -209,7 +207,7 @@ func testShowServerDetails(t *testing.T, httpExpectedStatus int, validToken bool
 			return
 		}
 
-		var s2 compute.Server
+		var s2 api.Server
 		err = json.Unmarshal(body, &s2)
 		if err != nil {
 			t.Fatal(err)
@@ -239,7 +237,7 @@ func testDeleteServer(t *testing.T, httpExpectedStatus int, httpExpectedErrorSta
 	}
 	defer client.Shutdown()
 
-	tURL := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/"
+	tURL := testutil.ComputeURL + "/" + tenant.ID + "/instances/"
 
 	servers := testCreateServer(t, 10)
 	if servers.TotalServers != 10 {
@@ -402,7 +400,7 @@ func testServerActionStop(t *testing.T, httpExpectedStatus int, validToken bool)
 
 	time.Sleep(1 * time.Second)
 
-	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
+	url := testutil.ComputeURL + "/" + tenant.ID + "/instances/" + servers.Servers[0].ID + "/action"
 	_ = testHTTPRequest(t, "POST", url, httpExpectedStatus, []byte(action), validToken)
 }
 
@@ -452,7 +450,7 @@ func TestServerActionStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	url := testutil.ComputeURL + "/v2.1/" + tenant.ID + "/servers/" + servers.Servers[0].ID + "/action"
+	url := testutil.ComputeURL + "/" + tenant.ID + "/instances/" + servers.Servers[0].ID + "/action"
 	_ = testHTTPRequest(t, "POST", url, http.StatusAccepted, []byte(action), true)
 }
 
