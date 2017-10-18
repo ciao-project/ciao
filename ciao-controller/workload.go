@@ -46,7 +46,31 @@ func validateContainerWorkload(req types.Workload) error {
 	return nil
 }
 
-func validateWorkloadStorage(req types.Workload) error {
+func (c *controller) validateWorkloadStorageSourceID(storage *types.StorageResource, tenantID string) error {
+	if storage.SourceID == "" {
+		// you may only use no source id with empty type
+		if storage.SourceType != types.Empty {
+			return types.ErrBadRequest
+		}
+	}
+
+	if storage.SourceType == types.ImageService {
+		_, err := c.GetImage(tenantID, storage.SourceID)
+		if err != nil {
+			return types.ErrBadRequest
+		}
+	}
+
+	if storage.SourceType == types.VolumeService {
+		_, err := c.ShowVolumeDetails(tenantID, storage.SourceID)
+		if err != nil {
+			return types.ErrBadRequest
+		}
+	}
+	return nil
+}
+
+func (c *controller) validateWorkloadStorage(req types.Workload) error {
 	bootableCount := 0
 	for i := range req.Storage {
 		// check that a workload type is specified
@@ -73,11 +97,9 @@ func validateWorkloadStorage(req types.Workload) error {
 			}
 		}
 
-		if req.Storage[i].SourceID == "" {
-			// you may only use no source id with empty type
-			if req.Storage[i].SourceType != types.Empty {
-				return types.ErrBadRequest
-			}
+		err := c.validateWorkloadStorageSourceID(&req.Storage[i], req.TenantID)
+		if err != nil {
+			return err
 		}
 
 		if req.Storage[i].Bootable {
@@ -94,7 +116,7 @@ func validateWorkloadStorage(req types.Workload) error {
 }
 
 // this is probably an insufficient amount of checking.
-func validateWorkloadRequest(req types.Workload) error {
+func (c *controller) validateWorkloadRequest(req types.Workload) error {
 	// ID must be blank.
 	if req.ID != "" {
 		glog.V(2).Info("Invalid workload request: ID is not blank")
@@ -128,7 +150,7 @@ func validateWorkloadRequest(req types.Workload) error {
 	}
 
 	if len(req.Storage) > 0 {
-		err := validateWorkloadStorage(req)
+		err := c.validateWorkloadStorage(req)
 		if err != nil {
 			glog.V(2).Info("Invalid workload request: invalid storage")
 			return err
@@ -139,7 +161,7 @@ func validateWorkloadRequest(req types.Workload) error {
 }
 
 func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) {
-	err := validateWorkloadRequest(req)
+	err := c.validateWorkloadRequest(req)
 	if err != nil {
 		return req, err
 	}
