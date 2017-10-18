@@ -413,7 +413,7 @@ func (cmd *instanceAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *instanceAddCommand) validateAddCommandArgs() {
-	if *tenantID == "" {
+	if client.tenantID == "" {
 		errorf("Missing required -tenant-id parameter")
 		cmd.usage()
 	}
@@ -526,9 +526,9 @@ func (cmd *instanceAddCommand) run(args []string) error {
 	}
 	body := bytes.NewReader(serverBytes)
 
-	url := buildCiaoURL("%s/instances", *tenantID)
+	url := client.buildCiaoURL("%s/instances", client.tenantID)
 
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
+	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -537,7 +537,7 @@ func (cmd *instanceAddCommand) run(args []string) error {
 		fatalf("Instance creation failed: %s", resp.Status)
 	}
 
-	err = unmarshalHTTPResponse(resp, &servers)
+	err = client.unmarshalHTTPResponse(resp, &servers)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -586,7 +586,7 @@ func (cmd *instanceDeleteCommand) parseArgs(args []string) []string {
 
 func (cmd *instanceDeleteCommand) run(args []string) error {
 	if cmd.all {
-		return actionAllTenantInstance(*tenantID, osDelete)
+		return actionAllTenantInstance(client.tenantID, osDelete)
 	}
 
 	if cmd.instance == "" {
@@ -594,9 +594,9 @@ func (cmd *instanceDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildCiaoURL("%s/instances/%s", *tenantID, cmd.instance)
+	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, cmd.instance)
 
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.InstancesV1)
+	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -676,7 +676,7 @@ func (cmd *instanceStopCommand) run([]string) error {
 }
 
 func startStopInstance(instance string, stop bool) error {
-	if *tenantID == "" {
+	if client.tenantID == "" {
 		return errors.New("Missing required -tenant-id parameter")
 	}
 
@@ -691,9 +691,9 @@ func startStopInstance(instance string, stop bool) error {
 
 	body := bytes.NewReader(actionBytes)
 
-	url := buildCiaoURL("%s/instances/%s/action", *tenantID, instance)
+	url := client.buildCiaoURL("%s/instances/%s/action", client.tenantID, instance)
 
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
+	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -751,7 +751,7 @@ func (ss byCreated) Less(i, j int) bool { return ss[i].Created.Before(ss[j].Crea
 
 func (cmd *instanceListCommand) run(args []string) error {
 	if cmd.tenant == "" {
-		cmd.tenant = *tenantID
+		cmd.tenant = client.tenantID
 	}
 
 	if cmd.cn != "" {
@@ -760,7 +760,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 
 	var servers api.Servers
 
-	url := buildCiaoURL("%s/instances/detail", cmd.tenant)
+	url := client.buildCiaoURL("%s/instances/detail", cmd.tenant)
 
 	values := []queryValue{}
 	if cmd.workload != "" {
@@ -770,12 +770,12 @@ func (cmd *instanceListCommand) run(args []string) error {
 		})
 	}
 
-	resp, err := sendCiaoRequest("GET", url, values, nil, api.InstancesV1)
+	resp, err := client.sendCiaoRequest("GET", url, values, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &servers)
+	err = client.unmarshalHTTPResponse(resp, &servers)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -853,13 +853,13 @@ func (cmd *instanceShowCommand) run(args []string) error {
 	}
 
 	var server api.Server
-	url := buildCiaoURL("%s/instances/%s", *tenantID, cmd.instance)
+	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, cmd.instance)
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.InstancesV1)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
-	err = unmarshalHTTPResponse(resp, &server)
+	err = client.unmarshalHTTPResponse(resp, &server)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -896,14 +896,14 @@ func listNodeInstances(node string) error {
 	}
 
 	var servers types.CiaoServersStats
-	url := buildComputeURL("nodes/%s/servers/detail", node)
+	url := client.buildComputeURL("nodes/%s/servers/detail", node)
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &servers)
+	err = client.unmarshalHTTPResponse(resp, &servers)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -925,7 +925,7 @@ func listNodeInstances(node string) error {
 func actionAllTenantInstance(tenant string, osAction string) error {
 	var action types.CiaoServersAction
 
-	url := buildComputeURL("%s/servers/action", tenant)
+	url := client.buildComputeURL("%s/servers/action", tenant)
 
 	action.Action = osAction
 
@@ -936,7 +936,7 @@ func actionAllTenantInstance(tenant string, osAction string) error {
 
 	body := bytes.NewReader(actionBytes)
 
-	resp, err := sendHTTPRequest("POST", url, nil, body)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body)
 	if err != nil {
 		fatalf(err.Error())
 	}

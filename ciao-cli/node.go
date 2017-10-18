@@ -139,12 +139,12 @@ func dumpNode(node *types.CiaoNode) {
 func dumpNodes(headerText string, url string, t *template.Template) {
 	var nodes types.CiaoNodes
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &nodes)
+	err = client.unmarshalHTTPResponse(resp, &nodes)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -163,31 +163,31 @@ func dumpNodes(headerText string, url string, t *template.Template) {
 }
 
 func listComputeNodes(t *template.Template) {
-	url := buildComputeURL("nodes/compute")
+	url := client.buildComputeURL("nodes/compute")
 	dumpNodes("Compute Node", url, t)
 }
 
 func listNetworkNodes(t *template.Template) {
-	url := buildComputeURL("nodes/network")
+	url := client.buildComputeURL("nodes/network")
 	dumpNodes("Network Node", url, t)
 }
 
 func listNodes(t *template.Template) {
-	url := buildComputeURL("nodes")
+	url := client.buildComputeURL("nodes")
 	dumpNodes("Node", url, t)
 }
 
 func listCNCINodes(t *template.Template) error {
 	var cncis types.CiaoCNCIs
 
-	url := buildComputeURL("cncis")
+	url := client.buildComputeURL("cncis")
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &cncis)
+	err = client.unmarshalHTTPResponse(resp, &cncis)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -237,14 +237,14 @@ func (cmd *nodeStatusCommand) parseArgs(args []string) []string {
 
 func (cmd *nodeStatusCommand) run(args []string) error {
 	var status types.CiaoClusterStatus
-	url := buildComputeURL("nodes/summary")
+	url := client.buildComputeURL("nodes/summary")
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &status)
+	err = client.unmarshalHTTPResponse(resp, &status)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -309,15 +309,15 @@ func showNode(cmd *nodeShowCommand) error {
 		fatalf("Missing required -node-id parameter")
 	}
 
-	url := buildComputeURL("nodes")
+	url := client.buildComputeURL("nodes")
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
 	var nodes types.CiaoNodes
-	err = unmarshalHTTPResponse(resp, &nodes)
+	err = client.unmarshalHTTPResponse(resp, &nodes)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -351,14 +351,14 @@ func showCNCINode(cmd *nodeShowCommand) error {
 
 	var cnci types.CiaoCNCI
 
-	url := buildComputeURL("cncis/%s/detail", cmd.nodeID)
+	url := client.buildComputeURL("cncis/%s/detail", cmd.nodeID)
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &cnci)
+	err = client.unmarshalHTTPResponse(resp, &cnci)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -379,7 +379,7 @@ func showCNCINode(cmd *nodeShowCommand) error {
 }
 
 func nodeChangeStatus(nodeID string, status types.NodeStatusType) error {
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("The evacuation of nodes is restricted to admin users")
 	}
 
@@ -389,7 +389,7 @@ func nodeChangeStatus(nodeID string, status types.NodeStatusType) error {
 		fatalf(err.Error())
 	}
 
-	url, err := getCiaoResource("node", api.NodeV1)
+	url, err := client.getCiaoResource("node", api.NodeV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -397,7 +397,7 @@ func nodeChangeStatus(nodeID string, status types.NodeStatusType) error {
 	url = fmt.Sprintf("%s/%s", url, nodeID)
 
 	ver := api.NodeV1
-	resp, err := sendCiaoRequest("PUT", url, nil, bytes.NewReader(b), ver)
+	resp, err := client.sendCiaoRequest("PUT", url, nil, bytes.NewReader(b), ver)
 	if err != nil {
 		fatalf(err.Error())
 	}

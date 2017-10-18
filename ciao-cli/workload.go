@@ -76,25 +76,25 @@ func (cmd *workloadListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *workloadListCommand) run(args []string) error {
-	if *tenantID == "" {
+	if client.tenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
 	var wls []types.Workload
 
 	var url string
-	if checkPrivilege() {
-		url = buildCiaoURL("workloads")
+	if client.checkPrivilege() {
+		url = client.buildCiaoURL("workloads")
 	} else {
-		url = buildCiaoURL("%s/workloads", *tenantID)
+		url = client.buildCiaoURL("%s/workloads", client.tenantID)
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.WorkloadsV1)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.WorkloadsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &wls)
+	err = client.unmarshalHTTPResponse(resp, &wls)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -155,7 +155,7 @@ The create flags are:
 }
 
 func getCiaoWorkloadsResource() (string, error) {
-	return getCiaoResource("workloads", api.WorkloadsV1)
+	return client.getCiaoResource("workloads", api.WorkloadsV1)
 }
 
 type source struct {
@@ -361,7 +361,7 @@ func (cmd *workloadCreateCommand) run(args []string) error {
 
 	ver := api.WorkloadsV1
 
-	resp, err := sendCiaoRequest("POST", url, nil, body, ver)
+	resp, err := client.sendCiaoRequest("POST", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -372,7 +372,7 @@ func (cmd *workloadCreateCommand) run(args []string) error {
 
 	var workload types.WorkloadResponse
 
-	err = unmarshalHTTPResponse(resp, &workload)
+	err = client.unmarshalHTTPResponse(resp, &workload)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -424,7 +424,7 @@ func (cmd *workloadDeleteCommand) run(args []string) error {
 	// just hard code the path.
 	url = fmt.Sprintf("%s/%s", url, cmd.workload)
 
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -482,7 +482,7 @@ func (cmd *workloadShowCommand) run(args []string) error {
 	// just hard code the path.
 	url = fmt.Sprintf("%s/%s", url, cmd.workload)
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -491,7 +491,7 @@ func (cmd *workloadShowCommand) run(args []string) error {
 		fatalf("Workload show failed: %s", resp.Status)
 	}
 
-	err = unmarshalHTTPResponse(resp, &wl)
+	err = client.unmarshalHTTPResponse(resp, &wl)
 	if err != nil {
 		fatalf(err.Error())
 	}

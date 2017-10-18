@@ -33,7 +33,7 @@ import (
 )
 
 func getCiaoExternalIPsResource() (string, string, error) {
-	url, err := getCiaoResource("external-ips", api.ExternalIPsV1)
+	url, err := client.getCiaoResource("external-ips", api.ExternalIPsV1)
 	return url, api.ExternalIPsV1, err
 }
 
@@ -46,7 +46,7 @@ func getExternalIPRef(address string) (string, error) {
 		return "", err
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		return "", err
 	}
@@ -55,14 +55,14 @@ func getExternalIPRef(address string) (string, error) {
 		return "", fmt.Errorf("External IP list failed: %s", resp.Status)
 	}
 
-	err = unmarshalHTTPResponse(resp, &IPs)
+	err = client.unmarshalHTTPResponse(resp, &IPs)
 	if err != nil {
 		return "", err
 	}
 
 	for _, IP := range IPs {
 		if IP.ExternalIP == address {
-			url := getRef("self", IP.Links)
+			url := client.getRef("self", IP.Links)
 			if url != "" {
 				return url, nil
 			}
@@ -132,7 +132,7 @@ func (cmd *externalIPMapCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	resp, err := sendCiaoRequest("POST", url, nil, body, ver)
+	resp, err := client.sendCiaoRequest("POST", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -179,7 +179,7 @@ func (cmd *externalIPListCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -188,7 +188,7 @@ func (cmd *externalIPListCommand) run(args []string) error {
 		fatalf("External IP list failed: %s", resp.Status)
 	}
 
-	err = unmarshalHTTPResponse(resp, &IPs)
+	err = client.unmarshalHTTPResponse(resp, &IPs)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -201,7 +201,7 @@ func (cmd *externalIPListCommand) run(args []string) error {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 1, 1, ' ', 0)
 	fmt.Fprintf(w, "#\tExternalIP\tInternalIP\tInstanceID")
-	if checkPrivilege() {
+	if client.checkPrivilege() {
 		fmt.Fprintf(w, "\tTenantID\tPoolName\n")
 	} else {
 		fmt.Fprintf(w, "\n")
@@ -268,7 +268,7 @@ func (cmd *externalIPUnMapCommand) run(args []string) error {
 
 	ver := api.ExternalIPsV1
 
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -301,7 +301,7 @@ type poolCreateCommand struct {
 }
 
 func getCiaoPoolsResource() (string, error) {
-	return getCiaoResource("pools", api.PoolsV1)
+	return client.getCiaoResource("pools", api.PoolsV1)
 }
 
 func getCiaoPoolRef(name string) (string, error) {
@@ -319,12 +319,12 @@ func getCiaoPoolRef(name string) (string, error) {
 
 	ver := api.PoolsV1
 
-	resp, err := sendCiaoRequest("GET", url, []queryValue{query}, nil, ver)
+	resp, err := client.sendCiaoRequest("GET", url, []queryValue{query}, nil, ver)
 	if err != nil {
 		return "", err
 	}
 
-	err = unmarshalHTTPResponse(resp, &pools)
+	err = client.unmarshalHTTPResponse(resp, &pools)
 	if err != nil {
 		return "", err
 	}
@@ -335,7 +335,7 @@ func getCiaoPoolRef(name string) (string, error) {
 	}
 
 	links := pools.Pools[0].Links
-	url = getRef("self", links)
+	url = client.getRef("self", links)
 	if url == "" {
 		return url, errors.New("Invalid Link returned from controller")
 	}
@@ -353,12 +353,12 @@ func getCiaoPool(name string) (types.Pool, error) {
 
 	ver := api.PoolsV1
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		return pool, err
 	}
 
-	err = unmarshalHTTPResponse(resp, &pool)
+	err = client.unmarshalHTTPResponse(resp, &pool)
 	if err != nil {
 		return pool, err
 	}
@@ -387,7 +387,7 @@ func (cmd *poolCreateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *poolCreateCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("The creation of pools is restricted to admin users")
 	}
 
@@ -414,7 +414,7 @@ func (cmd *poolCreateCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := sendCiaoRequest("POST", url, nil, body, ver)
+	resp, err := client.sendCiaoRequest("POST", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -467,12 +467,12 @@ func (cmd *poolListCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &pools)
+	err = client.unmarshalHTTPResponse(resp, &pools)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -485,7 +485,7 @@ func (cmd *poolListCommand) run(args []string) error {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 1, 1, ' ', 0)
 	fmt.Fprintf(w, "#\tName")
-	if checkPrivilege() {
+	if client.checkPrivilege() {
 		fmt.Fprintf(w, "\tTotalIPs\tFreeIPs\n")
 	} else {
 		fmt.Fprintf(w, "\n")
@@ -561,7 +561,7 @@ func (cmd *poolShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("This command is only available to admins")
 	}
 
@@ -605,7 +605,7 @@ func (cmd *poolDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *poolDeleteCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("The deletion of pools is restricted to admin users")
 	}
 
@@ -621,7 +621,7 @@ func (cmd *poolDeleteCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -666,7 +666,7 @@ func (cmd *poolAddCommand) parseArgs(args []string) []string {
 func (cmd *poolAddCommand) run(args []string) error {
 	var req types.NewAddressRequest
 
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("Adding IP addresses to pools is restricted to admin users")
 	}
 
@@ -720,7 +720,7 @@ func (cmd *poolAddCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := sendCiaoRequest("POST", url, nil, body, ver)
+	resp, err := client.sendCiaoRequest("POST", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -765,7 +765,7 @@ func (cmd *poolRemoveCommand) parseArgs(args []string) []string {
 func getSubnetRef(pool types.Pool, cidr string) string {
 	for _, sub := range pool.Subnets {
 		if sub.CIDR == cidr {
-			return getRef("self", sub.Links)
+			return client.getRef("self", sub.Links)
 		}
 	}
 
@@ -775,7 +775,7 @@ func getSubnetRef(pool types.Pool, cidr string) string {
 func getIPRef(pool types.Pool, address string) string {
 	for _, ip := range pool.IPs {
 		if ip.Address == address {
-			return getRef("self", ip.Links)
+			return client.getRef("self", ip.Links)
 		}
 	}
 
@@ -783,7 +783,7 @@ func getIPRef(pool types.Pool, address string) string {
 }
 
 func (cmd *poolRemoveCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("Removing IP addresses from pools is restricted to admin users")
 	}
 
@@ -823,7 +823,7 @@ func (cmd *poolRemoveCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}

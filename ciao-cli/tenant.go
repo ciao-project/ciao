@@ -34,7 +34,7 @@ import (
 )
 
 func getCiaoTenantsResource() (string, error) {
-	url, err := getCiaoResource("tenants", api.TenantsV1)
+	url, err := client.getCiaoResource("tenants", api.TenantsV1)
 	return url, err
 }
 
@@ -51,16 +51,16 @@ func getCiaoTenantRef(ID string) (string, error) {
 		return "", err
 	}
 
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		return url, err
 	}
 
-	resp, err := sendCiaoRequest("GET", url, []queryValue{query}, nil, api.TenantsV1)
+	resp, err := client.sendCiaoRequest("GET", url, []queryValue{query}, nil, api.TenantsV1)
 	if err != nil {
 		return "", err
 	}
 
-	err = unmarshalHTTPResponse(resp, &tenants)
+	err = client.unmarshalHTTPResponse(resp, &tenants)
 	if err != nil {
 		return "", err
 	}
@@ -70,7 +70,7 @@ func getCiaoTenantRef(ID string) (string, error) {
 	}
 
 	links := tenants.Tenants[0].Links
-	url = getRef("self", links)
+	url = client.getRef("self", links)
 	if url == "" {
 		return url, errors.New("invalid link returned from controller")
 	}
@@ -86,12 +86,12 @@ func getCiaoTenantConfig(ID string) (types.TenantConfig, error) {
 		return config, err
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
 	if err != nil {
 		return config, err
 	}
 
-	err = unmarshalHTTPResponse(resp, &config)
+	err = client.unmarshalHTTPResponse(resp, &config)
 
 	return config, err
 }
@@ -104,12 +104,12 @@ func putCiaoTenantConfig(ID string, name string, bits int) error {
 		return err
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
 	if err != nil {
 		return err
 	}
 
-	err = unmarshalHTTPResponse(resp, &config)
+	err = client.unmarshalHTTPResponse(resp, &config)
 
 	oldconfig := config
 
@@ -138,7 +138,7 @@ func putCiaoTenantConfig(ID string, name string, bits int) error {
 
 	body := bytes.NewReader(merge)
 
-	_, err = sendCiaoRequest("PATCH", url, nil, body, "merge-patch+json")
+	_, err = client.sendCiaoRequest("PATCH", url, nil, body, "merge-patch+json")
 
 	return err
 }
@@ -210,7 +210,7 @@ func (cmd *tenantUpdateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantUpdateCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("Updating tenants is only available for privileged users")
 	}
 
@@ -256,7 +256,7 @@ func (cmd *tenantCreateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantCreateCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("Creating tenants is only available for privileged users")
 	}
 
@@ -304,13 +304,13 @@ func (cmd *tenantCreateCommand) run(args []string) error {
 
 	body := bytes.NewReader(b)
 
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.TenantsV1)
+	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.TenantsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
 	var summary types.TenantSummary
-	err = unmarshalHTTPResponse(resp, &summary)
+	err = client.unmarshalHTTPResponse(resp, &summary)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -348,7 +348,7 @@ func (cmd *tenantDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantDeleteCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("Creating tenants is only available for privileged users")
 	}
 
@@ -362,7 +362,7 @@ func (cmd *tenantDeleteCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	_, err = sendCiaoRequest("DELETE", url, nil, nil, api.TenantsV1)
+	_, err = client.sendCiaoRequest("DELETE", url, nil, nil, api.TenantsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -436,11 +436,11 @@ func (cmd *tenantListCommand) run(args []string) error {
 		return listTenantResources(t)
 	}
 	if cmd.config {
-		if checkPrivilege() == false {
-			if *tenantID == "" {
+		if client.checkPrivilege() == false {
+			if client.tenantID == "" {
 				fatalf("Missing required -tenant-id")
 			}
-			return listTenantConfig(t, *tenantID)
+			return listTenantConfig(t, client.tenantID)
 		}
 
 		if cmd.tenantID == "" {
@@ -450,7 +450,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 		return listTenantConfig(t, cmd.tenantID)
 	}
 	if cmd.all {
-		if checkPrivilege() == false {
+		if client.checkPrivilege() == false {
 			fatalf("The all command is for privileged users only")
 		}
 		return listAllTenants(t)
@@ -461,7 +461,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 
 func listUserTenants(t *template.Template) error {
 	var projects []Project
-	for _, t := range tenants {
+	for _, t := range client.tenants {
 		projects = append(projects, Project{ID: t})
 	}
 
@@ -482,19 +482,19 @@ func listUserTenants(t *template.Template) error {
 }
 
 func listTenantQuotas(t *template.Template) error {
-	if *tenantID == "" {
+	if client.tenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
 	var resources types.CiaoTenantResources
-	url := buildComputeURL("%s/quotas", *tenantID)
+	url := client.buildComputeURL("%s/quotas", client.tenantID)
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &resources)
+	err = client.unmarshalHTTPResponse(resp, &resources)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -517,12 +517,12 @@ func listTenantQuotas(t *template.Template) error {
 }
 
 func listTenantResources(t *template.Template) error {
-	if *tenantID == "" {
+	if client.tenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
 	var usage types.CiaoUsageHistory
-	url := buildComputeURL("%s/resources", *tenantID)
+	url := client.buildComputeURL("%s/resources", client.tenantID)
 
 	now := time.Now()
 	values := []queryValue{
@@ -536,12 +536,12 @@ func listTenantResources(t *template.Template) error {
 		},
 	}
 
-	resp, err := sendHTTPRequest("GET", url, values, nil)
+	resp, err := client.sendHTTPRequest("GET", url, values, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &usage)
+	err = client.unmarshalHTTPResponse(resp, &usage)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -554,11 +554,11 @@ func listTenantResources(t *template.Template) error {
 	}
 
 	if len(usage.Usages) == 0 {
-		fmt.Printf("No usage history for %s\n", *tenantID)
+		fmt.Printf("No usage history for %s\n", client.tenantID)
 		return nil
 	}
 
-	fmt.Printf("Usage for tenant %s:\n", *tenantID)
+	fmt.Printf("Usage for tenant %s:\n", client.tenantID)
 	for _, u := range usage.Usages {
 		fmt.Printf("\t%v: [%d CPUs] [%d MB memory] [%d MB disk]\n", u.Timestamp, u.VCPU, u.Memory, u.Disk)
 	}
@@ -594,12 +594,12 @@ func listAllTenants(t *template.Template) error {
 		fatalf(err.Error())
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &tenants)
+	err = client.unmarshalHTTPResponse(resp, &tenants)
 	if err != nil {
 		fatalf(err.Error())
 	}

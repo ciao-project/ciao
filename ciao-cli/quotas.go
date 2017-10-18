@@ -47,7 +47,7 @@ type quotasUpdateCommand struct {
 }
 
 func getCiaoQuotasResource() (string, error) {
-	return getCiaoResource("tenants", api.TenantsV1)
+	return client.getCiaoResource("tenants", api.TenantsV1)
 }
 
 func (cmd *quotasUpdateCommand) usage(...string) {
@@ -72,7 +72,7 @@ func (cmd *quotasUpdateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *quotasUpdateCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !client.checkPrivilege() {
 		fatalf("Updating quotas is only available for privileged users")
 	}
 
@@ -123,7 +123,7 @@ func (cmd *quotasUpdateCommand) run(args []string) error {
 	ver := api.TenantsV1
 
 	url = fmt.Sprintf("%s/%s/quotas", url, cmd.tenantID)
-	resp, err := sendCiaoRequest("PUT", url, nil, body, ver)
+	resp, err := client.sendCiaoRequest("PUT", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -180,13 +180,13 @@ func (cmd *quotasListCommand) run(args []string) error {
 	}
 
 	if cmd.tenantID != "" {
-		if !checkPrivilege() {
+		if !client.checkPrivilege() {
 			fatalf("Listing quotas for other tenants is for privileged users only")
 		}
 
 		url = fmt.Sprintf("%s/%s/quotas", url, cmd.tenantID)
 	} else {
-		if checkPrivilege() {
+		if client.checkPrivilege() {
 			fatalf("Admin user must specify the tenant with -for-tenant")
 		}
 
@@ -194,7 +194,7 @@ func (cmd *quotasListCommand) run(args []string) error {
 	}
 	ver := api.TenantsV1
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -204,7 +204,7 @@ func (cmd *quotasListCommand) run(args []string) error {
 	}
 
 	var results types.QuotaListResponse
-	err = unmarshalHTTPResponse(resp, &results)
+	err = client.unmarshalHTTPResponse(resp, &results)
 	if err != nil {
 		fatalf(err.Error())
 	}

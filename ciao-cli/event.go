@@ -65,7 +65,7 @@ func (cmd *eventListCommand) parseArgs(args []string) []string {
 
 func (cmd *eventListCommand) run(args []string) error {
 	if cmd.tenant == "" {
-		cmd.tenant = *tenantID
+		cmd.tenant = client.tenantID
 	}
 
 	if cmd.all == false && cmd.tenant == "" {
@@ -77,17 +77,17 @@ func (cmd *eventListCommand) run(args []string) error {
 	var url string
 
 	if cmd.all == true {
-		url = buildComputeURL("events")
+		url = client.buildComputeURL("events")
 	} else {
-		url = buildComputeURL("%s/events", cmd.tenant)
+		url = client.buildComputeURL("%s/events", cmd.tenant)
 	}
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &events)
+	err = client.unmarshalHTTPResponse(resp, &events)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -123,9 +123,9 @@ func (cmd *eventDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *eventDeleteCommand) run(args []string) error {
-	url := buildComputeURL("events")
+	url := client.buildComputeURL("events")
 
-	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}

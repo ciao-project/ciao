@@ -59,14 +59,14 @@ func (cmd *traceListCommand) parseArgs(args []string) []string {
 func (cmd *traceListCommand) run(args []string) error {
 	var traces types.CiaoTracesSummary
 
-	url := buildComputeURL("traces")
+	url := client.buildComputeURL("traces")
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &traces)
+	err = client.unmarshalHTTPResponse(resp, &traces)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -119,14 +119,14 @@ func (cmd *traceShowCommand) run(args []string) error {
 
 	var traceData types.CiaoTraceData
 
-	url := buildComputeURL("traces/%s", cmd.label)
+	url := client.buildComputeURL("traces/%s", cmd.label)
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = unmarshalHTTPResponse(resp, &traceData)
+	err = client.unmarshalHTTPResponse(resp, &traceData)
 	if err != nil {
 		fatalf(err.Error())
 	}

@@ -76,13 +76,13 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 
 func getImage(imageID string) types.Image {
 	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images/%s", imageID)
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images/%s", imageID)
 	} else {
-		url = buildCiaoURL("%s/images/%s", *tenantID, imageID)
+		url = client.buildCiaoURL("%s/images/%s", client.tenantID, imageID)
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -94,7 +94,7 @@ func getImage(imageID string) types.Image {
 
 	var i types.Image
 
-	err = unmarshalHTTPResponse(resp, &i)
+	err = client.unmarshalHTTPResponse(resp, &i)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -140,13 +140,13 @@ func (cmd *imageAddCommand) run(args []string) error {
 	body := bytes.NewReader(b)
 
 	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images")
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images")
 	} else {
-		url = buildCiaoURL("%s/images", *tenantID)
+		url = client.buildCiaoURL("%s/images", client.tenantID)
 	}
 
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.ImagesV1)
+	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -157,12 +157,12 @@ func (cmd *imageAddCommand) run(args []string) error {
 	}
 
 	var image types.Image
-	err = unmarshalHTTPResponse(resp, &image)
+	err = client.unmarshalHTTPResponse(resp, &image)
 	if err != nil {
 		fatalf(err.Error())
 	}
 
-	err = uploadTenantImage(*tenantID, image.ID, cmd.file)
+	err = uploadTenantImage(client.tenantID, image.ID, cmd.file)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -260,13 +260,13 @@ func (cmd *imageListCommand) run(args []string) error {
 	}
 
 	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images")
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images")
 	} else {
-		url = buildCiaoURL("%s/images", *tenantID)
+		url = client.buildCiaoURL("%s/images", client.tenantID)
 	}
 
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
+	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -277,7 +277,7 @@ func (cmd *imageListCommand) run(args []string) error {
 	}
 
 	var images []types.Image
-	err = unmarshalHTTPResponse(resp, &images)
+	err = client.unmarshalHTTPResponse(resp, &images)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -324,13 +324,13 @@ func (cmd *imageDeleteCommand) parseArgs(args []string) []string {
 
 func (cmd *imageDeleteCommand) run(args []string) error {
 	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images/%s", cmd.image)
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images/%s", cmd.image)
 	} else {
-		url = buildCiaoURL("%s/images/%s", *tenantID, cmd.image)
+		url = client.buildCiaoURL("%s/images/%s", client.tenantID, cmd.image)
 	}
 
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.ImagesV1)
+	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -352,13 +352,13 @@ func uploadTenantImage(tenant, image, filename string) error {
 	defer file.Close()
 
 	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images/%s/file", image)
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images/%s/file", image)
 	} else {
-		url = buildCiaoURL("%s/images/%s/file", *tenantID, image)
+		url = client.buildCiaoURL("%s/images/%s/file", client.tenantID, image)
 	}
 
-	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, fmt.Sprintf("%s/octet-stream", api.ImagesV1))
+	resp, err := client.sendHTTPRequestToken("PUT", url, nil, scopedToken, file, fmt.Sprintf("%s/octet-stream", api.ImagesV1))
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNoContent {
