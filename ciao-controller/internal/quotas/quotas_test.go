@@ -120,6 +120,42 @@ func TestTenantSeparation(t *testing.T) {
 	qs.Shutdown()
 }
 
+func TestTenantDeletion(t *testing.T) {
+	qs := &Quotas{}
+	qs.Init()
+
+	t1OrigQuotas := qs.DumpQuotas("test-tenant-1")
+
+	t1Quotas := []types.QuotaDetails{
+		{Name: "tenant-vcpu-quota", Value: 10},
+		{Name: "tenant-mem-quota", Value: 100},
+	}
+
+	qs.Update("test-tenant-1", t1Quotas)
+
+	t2Quotas := []types.QuotaDetails{
+		{Name: "tenant-vcpu-quota", Value: 20},
+		{Name: "tenant-mem-quota", Value: 40},
+	}
+
+	qs.Update("test-tenant-2", t2Quotas)
+
+	dumpedQuotas := qs.DumpQuotas("test-tenant-1")
+	testHasQuota(t, dumpedQuotas, t1Quotas[0])
+	testHasQuota(t, dumpedQuotas, t1Quotas[1])
+
+	qs.DeleteTenant("test-tenant-1")
+	dumpedQuotas = qs.DumpQuotas("test-tenant-1")
+	testHasQuota(t, dumpedQuotas, t1OrigQuotas[0])
+	testHasQuota(t, dumpedQuotas, t1OrigQuotas[1])
+
+	dumpedQuotas = qs.DumpQuotas("test-tenant-2")
+	testHasQuota(t, dumpedQuotas, t2Quotas[0])
+	testHasQuota(t, dumpedQuotas, t2Quotas[1])
+
+	qs.Shutdown()
+}
+
 func TestResourceQuotaMapping(t *testing.T) {
 	resources := []payloads.Resource{
 		payloads.VCPUs,

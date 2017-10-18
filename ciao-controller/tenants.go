@@ -253,6 +253,8 @@ func (c *controller) DeleteTenant(tenantID string) error {
 		}
 	}
 
-	// quotas get deleted as side effect to deleting tenant
+	c.qs.DeleteTenant(tenantID)
+
+	// quotas get deleted from database as side effect to deleting tenant
 	return c.ds.DeleteTenant(tenantID)
 }
