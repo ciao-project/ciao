@@ -27,7 +27,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -137,6 +139,10 @@ func (client *Client) Init() error {
 		return errors.New("Client certificate file must be specified")
 	}
 
+	if !strings.HasPrefix(client.controllerURL, "https://") {
+		client.controllerURL = fmt.Sprintf("https://%s:%d", client.controllerURL, api.Port)
+	}
+
 	if err := client.prepareCAcert(); err != nil {
 		return err
 	}
@@ -166,12 +172,12 @@ func dumpJSON(body interface{}) {
 }
 
 func (client *Client) buildComputeURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("https://%s/v2.1/", client.controllerURL)
+	prefix := fmt.Sprintf("%s/v2.1/", client.controllerURL)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
 func (client *Client) buildCiaoURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("https://%s/", client.controllerURL)
+	prefix := fmt.Sprintf("%s/", client.controllerURL)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
