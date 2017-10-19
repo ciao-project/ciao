@@ -284,3 +284,44 @@ func (client *Client) checkPrivilege() bool {
 
 	return false
 }
+
+// ListEvents retrieves the events for either all or the desired tenant
+func (client *Client) ListEvents(tenantID string) (types.CiaoEvents, error) {
+	var events types.CiaoEvents
+	var url string
+
+	if tenantID == "" {
+		url = client.buildComputeURL("events")
+	} else {
+		url = client.buildComputeURL("%s/events", tenantID)
+	}
+
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
+	if err != nil {
+		return events, errors.Wrap(err, "Error making HTTP request")
+	}
+
+	err = client.unmarshalHTTPResponse(resp, &events)
+	if err != nil {
+		return events, errors.Wrap(err, "Error parsing HTTP response")
+	}
+
+	return events, nil
+}
+
+// DeleteEvents deletes all events from
+func (client *Client) DeleteEvents() error {
+	url := client.buildComputeURL("events")
+
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, "")
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("Events log deletion failed: %s", resp.Status)
+	}
+
+	return nil
+}
