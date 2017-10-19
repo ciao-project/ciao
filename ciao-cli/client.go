@@ -129,6 +129,14 @@ func (client *Client) prepareClientCert() error {
 
 // Init initialises a client for making requests
 func (client *Client) Init() error {
+	if client.controllerURL == "" {
+		return errors.New("Controller URL must be specified")
+	}
+
+	if client.clientCertFile == "" {
+		return errors.New("Client certificate file must be specified")
+	}
+
 	if err := client.prepareCAcert(); err != nil {
 		return err
 	}
