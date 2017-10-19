@@ -82,7 +82,7 @@ func (cmd *eventListCommand) run(args []string) error {
 		url = client.buildComputeURL("%s/events", cmd.tenant)
 	}
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -125,7 +125,7 @@ func (cmd *eventDeleteCommand) parseArgs(args []string) []string {
 func (cmd *eventDeleteCommand) run(args []string) error {
 	url := client.buildComputeURL("events")
 
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}

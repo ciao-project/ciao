@@ -428,7 +428,7 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 
 	body := bytes.NewReader(b)
 	url := client.buildCiaoURL("%s/volumes/%s/action", client.tenantID, cmd.volume)
-	resp, err := client.sendHTTPRequest("POST", url, nil, body)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, "")
 	if err != nil {
 		fatalf(err.Error())
 	}

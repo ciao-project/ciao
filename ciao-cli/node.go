@@ -139,7 +139,7 @@ func dumpNode(node *types.CiaoNode) {
 func dumpNodes(headerText string, url string, t *template.Template) {
 	var nodes types.CiaoNodes
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -182,7 +182,7 @@ func listCNCINodes(t *template.Template) error {
 
 	url := client.buildComputeURL("cncis")
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -239,7 +239,7 @@ func (cmd *nodeStatusCommand) run(args []string) error {
 	var status types.CiaoClusterStatus
 	url := client.buildComputeURL("nodes/summary")
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -311,7 +311,7 @@ func showNode(cmd *nodeShowCommand) error {
 
 	url := client.buildComputeURL("nodes")
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -353,7 +353,7 @@ func showCNCINode(cmd *nodeShowCommand) error {
 
 	url := client.buildComputeURL("cncis/%s/detail", cmd.nodeID)
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}

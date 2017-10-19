@@ -898,7 +898,7 @@ func listNodeInstances(node string) error {
 	var servers types.CiaoServersStats
 	url := client.buildComputeURL("nodes/%s/servers/detail", node)
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -936,7 +936,7 @@ func actionAllTenantInstance(tenant string, osAction string) error {
 
 	body := bytes.NewReader(actionBytes)
 
-	resp, err := client.sendHTTPRequest("POST", url, nil, body)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, "")
 	if err != nil {
 		fatalf(err.Error())
 	}

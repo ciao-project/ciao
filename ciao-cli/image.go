@@ -358,7 +358,7 @@ func uploadTenantImage(tenant, image, filename string) error {
 		url = client.buildCiaoURL("%s/images/%s/file", client.tenantID, image)
 	}
 
-	resp, err := client.sendHTTPRequestToken("PUT", url, nil, scopedToken, file, fmt.Sprintf("%s/octet-stream", api.ImagesV1))
+	resp, err := client.sendHTTPRequest("PUT", url, nil, file, fmt.Sprintf("%s/octet-stream", api.ImagesV1))
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNoContent {

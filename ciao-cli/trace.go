@@ -61,7 +61,7 @@ func (cmd *traceListCommand) run(args []string) error {
 
 	url := client.buildComputeURL("traces")
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -121,7 +121,7 @@ func (cmd *traceShowCommand) run(args []string) error {
 
 	url := client.buildComputeURL("traces/%s", cmd.label)
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}

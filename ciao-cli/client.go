@@ -181,7 +181,7 @@ func (client *Client) buildCiaoURL(format string, args ...interface{}) string {
 	return fmt.Sprintf(prefix+format, args...)
 }
 
-func (client *Client) sendHTTPRequestToken(method string, url string, values []queryValue, token string, body io.Reader, content string) (*http.Response, error) {
+func (client *Client) sendHTTPRequest(method string, url string, values []queryValue, body io.Reader, content string) (*http.Response, error) {
 	req, err := http.NewRequest(method, os.ExpandEnv(url), body)
 	if err != nil {
 		return nil, err
@@ -247,10 +247,6 @@ func (client *Client) sendHTTPRequestToken(method string, url string, values []q
 	return resp, err
 }
 
-func (client *Client) sendHTTPRequest(method string, url string, values []queryValue, body io.Reader) (*http.Response, error) {
-	return client.sendHTTPRequestToken(method, url, values, scopedToken, body, "")
-}
-
 func (client *Client) unmarshalHTTPResponse(resp *http.Response, v interface{}) error {
 	defer resp.Body.Close()
 
@@ -274,7 +270,7 @@ func (client *Client) unmarshalHTTPResponse(resp *http.Response, v interface{}) 
 }
 
 func (client *Client) sendCiaoRequest(method string, url string, values []queryValue, body io.Reader, content string) (*http.Response, error) {
-	return client.sendHTTPRequestToken(method, url, values, scopedToken, body, content)
+	return client.sendHTTPRequest(method, url, values, body, content)
 }
 
 func (client *Client) getRef(rel string, links []types.Link) string {

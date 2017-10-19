@@ -86,8 +86,6 @@ var commands = map[string]subCommand{
 	"quotas":      quotasCommand,
 }
 
-var scopedToken string
-
 func infof(format string, args ...interface{}) {
 	if glog.V(1) {
 		glog.InfoDepth(1, fmt.Sprintf("ciao-cli INFO: "+format, args...))

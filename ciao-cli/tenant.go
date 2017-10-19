@@ -489,7 +489,7 @@ func listTenantQuotas(t *template.Template) error {
 	var resources types.CiaoTenantResources
 	url := client.buildComputeURL("%s/quotas", client.tenantID)
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -536,7 +536,7 @@ func listTenantResources(t *template.Template) error {
 		},
 	}
 
-	resp, err := client.sendHTTPRequest("GET", url, values, nil)
+	resp, err := client.sendHTTPRequest("GET", url, values, nil, "")
 	if err != nil {
 		fatalf(err.Error())
 	}
