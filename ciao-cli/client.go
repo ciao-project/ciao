@@ -237,10 +237,6 @@ func (client *Client) unmarshalHTTPResponse(resp *http.Response, v interface{}) 
 	return nil
 }
 
-func (client *Client) sendCiaoRequest(method string, url string, values []queryValue, body io.Reader, content string) (*http.Response, error) {
-	return client.sendHTTPRequest(method, url, values, body, content)
-}
-
 func (client *Client) getRef(rel string, links []types.Link) string {
 	for _, link := range links {
 		if link.Rel == rel {
@@ -260,7 +256,7 @@ func (client *Client) getCiaoResource(name string, minVersion string) (string, e
 		url = client.buildCiaoURL(fmt.Sprintf("%s", client.tenantID))
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, "")
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
 	if err != nil {
 		return "", err
 	}

@@ -82,7 +82,7 @@ func getImage(imageID string) types.Image {
 		url = client.buildCiaoURL("%s/images/%s", client.tenantID, imageID)
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -146,7 +146,7 @@ func (cmd *imageAddCommand) run(args []string) error {
 		url = client.buildCiaoURL("%s/images", client.tenantID)
 	}
 
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.ImagesV1)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -266,7 +266,7 @@ func (cmd *imageListCommand) run(args []string) error {
 		url = client.buildCiaoURL("%s/images", client.tenantID)
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -330,7 +330,7 @@ func (cmd *imageDeleteCommand) run(args []string) error {
 		url = client.buildCiaoURL("%s/images/%s", client.tenantID, cmd.image)
 	}
 
-	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, api.ImagesV1)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, api.ImagesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}

@@ -528,7 +528,7 @@ func (cmd *instanceAddCommand) run(args []string) error {
 
 	url := client.buildCiaoURL("%s/instances", client.tenantID)
 
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -596,7 +596,7 @@ func (cmd *instanceDeleteCommand) run(args []string) error {
 
 	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, cmd.instance)
 
-	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, api.InstancesV1)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -693,7 +693,7 @@ func startStopInstance(instance string, stop bool) error {
 
 	url := client.buildCiaoURL("%s/instances/%s/action", client.tenantID, instance)
 
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -770,7 +770,7 @@ func (cmd *instanceListCommand) run(args []string) error {
 		})
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, values, nil, api.InstancesV1)
+	resp, err := client.sendHTTPRequest("GET", url, values, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -855,7 +855,7 @@ func (cmd *instanceShowCommand) run(args []string) error {
 	var server api.Server
 	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, cmd.instance)
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.InstancesV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.InstancesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}

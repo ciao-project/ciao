@@ -123,7 +123,7 @@ func (cmd *quotasUpdateCommand) run(args []string) error {
 	ver := api.TenantsV1
 
 	url = fmt.Sprintf("%s/%s/quotas", url, cmd.tenantID)
-	resp, err := client.sendCiaoRequest("PUT", url, nil, body, ver)
+	resp, err := client.sendHTTPRequest("PUT", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -194,7 +194,7 @@ func (cmd *quotasListCommand) run(args []string) error {
 	}
 	ver := api.TenantsV1
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}

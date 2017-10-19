@@ -397,7 +397,7 @@ func nodeChangeStatus(nodeID string, status types.NodeStatusType) error {
 	url = fmt.Sprintf("%s/%s", url, nodeID)
 
 	ver := api.NodeV1
-	resp, err := client.sendCiaoRequest("PUT", url, nil, bytes.NewReader(b), ver)
+	resp, err := client.sendHTTPRequest("PUT", url, nil, bytes.NewReader(b), ver)
 	if err != nil {
 		fatalf(err.Error())
 	}

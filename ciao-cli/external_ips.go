@@ -46,7 +46,7 @@ func getExternalIPRef(address string) (string, error) {
 		return "", err
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		return "", err
 	}
@@ -132,7 +132,7 @@ func (cmd *externalIPMapCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, ver)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -179,7 +179,7 @@ func (cmd *externalIPListCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -268,7 +268,7 @@ func (cmd *externalIPUnMapCommand) run(args []string) error {
 
 	ver := api.ExternalIPsV1
 
-	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -319,7 +319,7 @@ func getCiaoPoolRef(name string) (string, error) {
 
 	ver := api.PoolsV1
 
-	resp, err := client.sendCiaoRequest("GET", url, []queryValue{query}, nil, ver)
+	resp, err := client.sendHTTPRequest("GET", url, []queryValue{query}, nil, ver)
 	if err != nil {
 		return "", err
 	}
@@ -353,7 +353,7 @@ func getCiaoPool(name string) (types.Pool, error) {
 
 	ver := api.PoolsV1
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		return pool, err
 	}
@@ -414,7 +414,7 @@ func (cmd *poolCreateCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, ver)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -467,7 +467,7 @@ func (cmd *poolListCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -621,7 +621,7 @@ func (cmd *poolDeleteCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -720,7 +720,7 @@ func (cmd *poolAddCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, ver)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -823,7 +823,7 @@ func (cmd *poolRemoveCommand) run(args []string) error {
 
 	ver := api.PoolsV1
 
-	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}

@@ -97,7 +97,7 @@ func (cmd *volumeAddCommand) run(args []string) error {
 
 	body := bytes.NewReader(b)
 	url := client.buildCiaoURL("%s/volumes", client.tenantID)
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.VolumesV1)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -166,7 +166,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 	}
 
 	url := client.buildCiaoURL("%s/volumes", client.tenantID)
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.VolumesV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -234,7 +234,7 @@ func (cmd *volumeShowCommand) run(args []string) error {
 	}
 
 	url := client.buildCiaoURL("%s/volumes/%s", client.tenantID, cmd.volume)
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.VolumesV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -290,7 +290,7 @@ func (cmd *volumeDeleteCommand) run(args []string) error {
 	}
 
 	url := client.buildCiaoURL("%s/volumes/%s", client.tenantID, cmd.volume)
-	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, api.VolumesV1)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -367,7 +367,7 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 
 	body := bytes.NewReader(b)
 	url := client.buildCiaoURL("%s/volumes/%s/action", client.tenantID, cmd.volume)
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.VolumesV1)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.VolumesV1)
 	if err != nil {
 		fatalf(err.Error())
 	}

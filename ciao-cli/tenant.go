@@ -55,7 +55,7 @@ func getCiaoTenantRef(ID string) (string, error) {
 		return url, err
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, []queryValue{query}, nil, api.TenantsV1)
+	resp, err := client.sendHTTPRequest("GET", url, []queryValue{query}, nil, api.TenantsV1)
 	if err != nil {
 		return "", err
 	}
@@ -86,7 +86,7 @@ func getCiaoTenantConfig(ID string) (types.TenantConfig, error) {
 		return config, err
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.TenantsV1)
 	if err != nil {
 		return config, err
 	}
@@ -104,7 +104,7 @@ func putCiaoTenantConfig(ID string, name string, bits int) error {
 		return err
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.TenantsV1)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func putCiaoTenantConfig(ID string, name string, bits int) error {
 
 	body := bytes.NewReader(merge)
 
-	_, err = client.sendCiaoRequest("PATCH", url, nil, body, "merge-patch+json")
+	_, err = client.sendHTTPRequest("PATCH", url, nil, body, "merge-patch+json")
 
 	return err
 }
@@ -304,7 +304,7 @@ func (cmd *tenantCreateCommand) run(args []string) error {
 
 	body := bytes.NewReader(b)
 
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, api.TenantsV1)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.TenantsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -362,7 +362,7 @@ func (cmd *tenantDeleteCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	_, err = client.sendCiaoRequest("DELETE", url, nil, nil, api.TenantsV1)
+	_, err = client.sendHTTPRequest("DELETE", url, nil, nil, api.TenantsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -594,7 +594,7 @@ func listAllTenants(t *template.Template) error {
 		fatalf(err.Error())
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.TenantsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}

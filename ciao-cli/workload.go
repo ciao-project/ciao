@@ -89,7 +89,7 @@ func (cmd *workloadListCommand) run(args []string) error {
 		url = client.buildCiaoURL("%s/workloads", client.tenantID)
 	}
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, api.WorkloadsV1)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.WorkloadsV1)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -361,7 +361,7 @@ func (cmd *workloadCreateCommand) run(args []string) error {
 
 	ver := api.WorkloadsV1
 
-	resp, err := client.sendCiaoRequest("POST", url, nil, body, ver)
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -424,7 +424,7 @@ func (cmd *workloadDeleteCommand) run(args []string) error {
 	// just hard code the path.
 	url = fmt.Sprintf("%s/%s", url, cmd.workload)
 
-	resp, err := client.sendCiaoRequest("DELETE", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -482,7 +482,7 @@ func (cmd *workloadShowCommand) run(args []string) error {
 	// just hard code the path.
 	url = fmt.Sprintf("%s/%s", url, cmd.workload)
 
-	resp, err := client.sendCiaoRequest("GET", url, nil, nil, ver)
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
 	if err != nil {
 		fatalf(err.Error())
 	}
