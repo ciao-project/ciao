@@ -31,7 +31,6 @@ import (
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 )
 
@@ -154,23 +153,6 @@ func (client *Client) Init() error {
 	return nil
 }
 
-func dumpJSON(body interface{}) {
-	switch b := body.(type) {
-	case []byte:
-		var dump bytes.Buffer
-
-		json.Indent(&dump, b, "", "\t")
-		dump.WriteTo(os.Stdout)
-	case map[string]interface{}:
-		new, err := json.MarshalIndent(b, "", "\t")
-		if err == nil {
-			os.Stdout.Write(new)
-		}
-	}
-
-	fmt.Printf("\n")
-}
-
 func (client *Client) buildComputeURL(format string, args ...interface{}) string {
 	prefix := fmt.Sprintf("%s/v2.1/", client.controllerURL)
 	return fmt.Sprintf(prefix+format, args...)
@@ -187,13 +169,10 @@ func (client *Client) sendHTTPRequest(method string, url string, values []queryV
 		return nil, err
 	}
 
-	infof("Sending %s %s\n", method, url)
-
 	if values != nil {
 		v := req.URL.Query()
 
 		for _, value := range values {
-			infof("Adding URL query %s=%s\n", value.name, value.value)
 			v.Add(value.name, value.value)
 		}
 
@@ -227,18 +206,13 @@ func (client *Client) sendHTTPRequest(method string, url string, values []queryV
 	c := &http.Client{Transport: transport}
 	resp, err := c.Do(req)
 	if err != nil {
-		errorf("Could not send HTTP request %s\n", err)
-		return nil, err
+		return nil, errors.Wrap(err, "Could not send HTTP request")
 	}
-
-	infof("Got HTTP response (status %s)\n", resp.Status)
 
 	if resp.StatusCode >= http.StatusBadRequest {
 		respBody, errBody := ioutil.ReadAll(resp.Body)
 		if errBody != nil {
-			errorf("Could not read the HTTP response %s\n", errBody)
-			dumpJSON(respBody)
-			return resp, errBody
+			return resp, fmt.Errorf("HTTP Error: %s", resp.Status)
 		}
 
 		return resp, fmt.Errorf("HTTP Error [%d] for [%s %s]: %s", resp.StatusCode, method, url, respBody)
@@ -252,18 +226,12 @@ func (client *Client) unmarshalHTTPResponse(resp *http.Response, v interface{}) 
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		errorf("Could not read the HTTP response %s\n", err)
-		return err
+		return errors.Wrap(err, "Could not read HTTP response body")
 	}
 
 	err = json.Unmarshal(body, v)
 	if err != nil {
-		errorf("Could not unmarshal the HTTP response %s\n", err)
-		return err
-	}
-
-	if glog.V(2) {
-		dumpJSON(body)
+		return errors.Wrap(err, "Could not unmarshal HTTP response body")
 	}
 
 	return nil
