@@ -17,60 +17,16 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"text/tabwriter"
 
-	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
+	"github.com/pkg/errors"
 )
-
-func getCiaoExternalIPsResource() (string, string, error) {
-	url, err := client.getCiaoResource("external-ips", api.ExternalIPsV1)
-	return url, api.ExternalIPsV1, err
-}
-
-// TBD: in an ideal world, we'd modify the GET to take a query.
-func getExternalIPRef(address string) (string, error) {
-	var IPs []types.MappedIP
-
-	url, ver, err := getCiaoExternalIPsResource()
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("External IP list failed: %s", resp.Status)
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &IPs)
-	if err != nil {
-		return "", err
-	}
-
-	for _, IP := range IPs {
-		if IP.ExternalIP == address {
-			url := client.getRef("self", IP.Links)
-			if url != "" {
-				return url, nil
-			}
-		}
-	}
-
-	return "", types.ErrAddressNotFound
-}
 
 var externalIPCommand = &command{
 	SubCommands: map[string]subCommand{
@@ -112,33 +68,9 @@ func (cmd *externalIPMapCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	req := types.MapIPRequest{
-		InstanceID: cmd.instanceID,
-	}
-
-	if cmd.poolName != "" {
-		req.PoolName = &cmd.poolName
-	}
-
-	b, err := json.Marshal(req)
+	err := client.MapExternalIP(cmd.poolName, cmd.instanceID)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-
-	url, ver, err := getCiaoExternalIPsResource()
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("External IP map failed: %s", resp.Status)
+		return errors.Wrap(err, "Error mapping external IP")
 	}
 
 	fmt.Printf("Requested external IP for: %s\n", cmd.instanceID)
@@ -172,25 +104,9 @@ func (cmd *externalIPListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *externalIPListCommand) run(args []string) error {
-	var IPs []types.MappedIP
-
-	url, ver, err := getCiaoExternalIPsResource()
+	IPs, err := client.ListExternalIPs()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("External IP list failed: %s", resp.Status)
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &IPs)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing external IPs")
 	}
 
 	if cmd.template != "" {
@@ -257,26 +173,13 @@ func (cmd *externalIPUnMapCommand) parseArgs(args []string) []string {
 
 func (cmd *externalIPUnMapCommand) run(args []string) error {
 	if cmd.address == "" {
-		errorf("Missing required -instance parameter")
+		errorf("Missing required -address parameter")
 		cmd.usage()
 	}
 
-	url, err := getExternalIPRef(cmd.address)
+	err := client.UnmapExternalIP(cmd.address)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	ver := api.ExternalIPsV1
-
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Unmap of address failed: %s", resp.Status)
+		return errors.Wrap(err, "Error unmapping external IP")
 	}
 
 	fmt.Printf("Requested unmap of: %s\n", cmd.address)
@@ -300,72 +203,6 @@ type poolCreateCommand struct {
 	name string
 }
 
-func getCiaoPoolsResource() (string, error) {
-	return client.getCiaoResource("pools", api.PoolsV1)
-}
-
-func getCiaoPoolRef(name string) (string, error) {
-	var pools types.ListPoolsResponse
-
-	query := queryValue{
-		name:  "name",
-		value: name,
-	}
-
-	url, err := getCiaoPoolsResource()
-	if err != nil {
-		return "", err
-	}
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("GET", url, []queryValue{query}, nil, ver)
-	if err != nil {
-		return "", err
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &pools)
-	if err != nil {
-		return "", err
-	}
-
-	// we have now the pool ID
-	if len(pools.Pools) != 1 {
-		return "", errors.New("No pool by that name found")
-	}
-
-	links := pools.Pools[0].Links
-	url = client.getRef("self", links)
-	if url == "" {
-		return url, errors.New("Invalid Link returned from controller")
-	}
-
-	return url, nil
-}
-
-func getCiaoPool(name string) (types.Pool, error) {
-	var pool types.Pool
-
-	url, err := getCiaoPoolRef(name)
-	if err != nil {
-		return pool, err
-	}
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		return pool, err
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &pool)
-	if err != nil {
-		return pool, err
-	}
-
-	return pool, nil
-}
-
 func (cmd *poolCreateCommand) usage(...string) {
 	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] pool create [flags]
 
@@ -387,40 +224,14 @@ func (cmd *poolCreateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *poolCreateCommand) run(args []string) error {
-	if !client.checkPrivilege() {
-		fatalf("The creation of pools is restricted to admin users")
-	}
-
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
 	}
 
-	req := types.NewPoolRequest{
-		Name: cmd.name,
-	}
-
-	b, err := json.Marshal(req)
+	err := client.CreateExternalIPPool(cmd.name)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-
-	url, err := getCiaoPoolsResource()
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Pool creation failed: %s", resp.Status)
+		return errors.Wrap(err, "Error creating pool")
 	}
 
 	fmt.Printf("Created new pool: %s\n", cmd.name)
@@ -458,23 +269,9 @@ func (cmd *poolListCommand) parseArgs(args []string) []string {
 // on the privilege level of user. Check privilege, then
 // if not privileged, build non-privileged URL.
 func (cmd *poolListCommand) run(args []string) error {
-	var pools types.ListPoolsResponse
-
-	url, err := getCiaoPoolsResource()
+	pools, err := client.ListExternalIPPools()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &pools)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing external IP pools")
 	}
 
 	if cmd.template != "" {
@@ -561,13 +358,9 @@ func (cmd *poolShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	if !client.checkPrivilege() {
-		fatalf("This command is only available to admins")
-	}
-
-	pool, err := getCiaoPool(cmd.name)
+	pool, err := client.GetExternalIPPool(cmd.name)
 	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting external IP pool")
 	}
 
 	if cmd.template != "" {
@@ -605,31 +398,14 @@ func (cmd *poolDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *poolDeleteCommand) run(args []string) error {
-	if !client.checkPrivilege() {
-		fatalf("The deletion of pools is restricted to admin users")
-	}
-
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
 	}
 
-	url, err := getCiaoPoolRef(cmd.name)
+	err := client.DeleteExternalIPPool(cmd.name)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Pool deletion failed: %s", resp.Status)
+		return errors.Wrap(err, "Error deleting external IP pool")
 	}
 
 	fmt.Printf("Deleted pool: %s\n", cmd.name)
@@ -664,20 +440,9 @@ func (cmd *poolAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *poolAddCommand) run(args []string) error {
-	var req types.NewAddressRequest
-
-	if !client.checkPrivilege() {
-		fatalf("Adding IP addresses to pools is restricted to admin users")
-	}
-
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
-	}
-
-	url, err := getCiaoPoolRef(cmd.name)
-	if err != nil {
-		fatalf(err.Error())
 	}
 
 	if cmd.subnet != "" {
@@ -691,7 +456,10 @@ func (cmd *poolAddCommand) run(args []string) error {
 			fatalf("Use address mode to add a single IP address")
 		}
 
-		req.Subnet = &cmd.subnet
+		err = client.AddExternalIPSubnet(cmd.name, network)
+		if err != nil {
+			return errors.Wrap(err, "Error adding external IP subnet")
+		}
 	} else if len(args) < 1 {
 		errorf("Missing any addresses to add")
 		cmd.usage()
@@ -702,31 +470,11 @@ func (cmd *poolAddCommand) run(args []string) error {
 			if IP == nil {
 				fatalf("Invalid IP address")
 			}
-
-			newAddr := types.NewIPAddressRequest{
-				IP: addr,
-			}
-
-			req.IPs = append(req.IPs, newAddr)
 		}
-	}
-
-	b, err := json.Marshal(req)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Adding address failed: %s", resp.Status)
+		err := client.AddExternalIPAddresses(cmd.name, args)
+		if err != nil {
+			return errors.Wrap(err, "Error adding external IP addresses")
+		}
 	}
 
 	fmt.Printf("Added new address to: %s\n", cmd.name)
@@ -762,31 +510,7 @@ func (cmd *poolRemoveCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-func getSubnetRef(pool types.Pool, cidr string) string {
-	for _, sub := range pool.Subnets {
-		if sub.CIDR == cidr {
-			return client.getRef("self", sub.Links)
-		}
-	}
-
-	return ""
-}
-
-func getIPRef(pool types.Pool, address string) string {
-	for _, ip := range pool.IPs {
-		if ip.Address == address {
-			return client.getRef("self", ip.Links)
-		}
-	}
-
-	return ""
-}
-
 func (cmd *poolRemoveCommand) run(args []string) error {
-	if !client.checkPrivilege() {
-		fatalf("Removing IP addresses from pools is restricted to admin users")
-	}
-
 	if cmd.name == "" {
 		errorf("Missing required -name parameter")
 		cmd.usage()
@@ -802,36 +526,23 @@ func (cmd *poolRemoveCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	pool, err := getCiaoPool(cmd.name)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	var url string
-
 	if cmd.subnet != "" {
-		url = getSubnetRef(pool, cmd.subnet)
+		_, network, err := net.ParseCIDR(cmd.subnet)
+		if err != nil {
+			fatalf(err.Error())
+		}
+
+		err = client.RemoveExternalIPSubnet(cmd.name, network)
+		if err != nil {
+			return errors.Wrap(err, "Error removing external IP subnet")
+		}
 	}
 
 	if cmd.ip != "" {
-		url = getIPRef(pool, cmd.ip)
-	}
-
-	if url == "" {
-		fatalf("Address not present")
-	}
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Address removal failed: %s", resp.Status)
+		err := client.RemoveExternalIPAddress(cmd.name, cmd.ip)
+		if err != nil {
+			return errors.Wrap(err, "Error removing external IP address")
+		}
 	}
 
 	fmt.Printf("Removed address from pool: %s\n", cmd.name)

@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -321,6 +322,449 @@ func (client *Client) DeleteEvents() error {
 
 	if resp.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("Events log deletion failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+func (client *Client) getCiaoExternalIPsResource() (string, string, error) {
+	url, err := client.getCiaoResource("external-ips", api.ExternalIPsV1)
+	return url, api.ExternalIPsV1, err
+}
+
+// TBD: in an ideal world, we'd modify the GET to take a query.
+func (client *Client) getExternalIPRef(address string) (string, error) {
+	var IPs []types.MappedIP
+
+	url, ver, err := client.getCiaoExternalIPsResource()
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("External IP list failed: %s", resp.Status)
+	}
+
+	err = client.unmarshalHTTPResponse(resp, &IPs)
+	if err != nil {
+		return "", err
+	}
+
+	for _, IP := range IPs {
+		if IP.ExternalIP == address {
+			url := client.getRef("self", IP.Links)
+			if url != "" {
+				return url, nil
+			}
+		}
+	}
+
+	return "", types.ErrAddressNotFound
+}
+
+// MapExternalIP maps an IP from the pool to the given instance
+func (client *Client) MapExternalIP(pool string, instanceID string) error {
+	req := types.MapIPRequest{
+		InstanceID: instanceID,
+	}
+
+	if pool != "" {
+		req.PoolName = &pool
+	}
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling JSON")
+	}
+
+	body := bytes.NewReader(b)
+
+	url, ver, err := client.getCiaoExternalIPsResource()
+	if err != nil {
+		return errors.Wrap(err, "Error getting external IP resource")
+	}
+
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("External IP map failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+// ListExternalIPs returns the mapped IPs
+func (client *Client) ListExternalIPs() ([]types.MappedIP, error) {
+	var IPs []types.MappedIP
+
+	url, ver, err := client.getCiaoExternalIPsResource()
+	if err != nil {
+		return IPs, errors.Wrap(err, "Error getting external IP resource")
+	}
+
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
+	if err != nil {
+		return IPs, errors.Wrap(err, "Error making HTTP request")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return IPs, fmt.Errorf("External IP list failed: %s", resp.Status)
+	}
+
+	err = client.unmarshalHTTPResponse(resp, &IPs)
+	if err != nil {
+		return IPs, errors.Wrap(err, "Error parsing HTTP response")
+	}
+
+	return IPs, err
+}
+
+// UnmapExternalIP unmaps the given address from the instance
+func (client *Client) UnmapExternalIP(address string) error {
+	url, err := client.getExternalIPRef(address)
+	if err != nil {
+		return errors.Wrap(err, "Error getting external IP reference")
+	}
+
+	ver := api.ExternalIPsV1
+
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("Unmap of address failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+func (client *Client) getCiaoPoolsResource() (string, error) {
+	return client.getCiaoResource("pools", api.PoolsV1)
+}
+
+func (client *Client) getCiaoPoolRef(name string) (string, error) {
+	var pools types.ListPoolsResponse
+
+	query := queryValue{
+		name:  "name",
+		value: name,
+	}
+
+	url, err := client.getCiaoPoolsResource()
+	if err != nil {
+		return "", err
+	}
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("GET", url, []queryValue{query}, nil, ver)
+	if err != nil {
+		return "", err
+	}
+
+	err = client.unmarshalHTTPResponse(resp, &pools)
+	if err != nil {
+		return "", err
+	}
+
+	// we have now the pool ID
+	if len(pools.Pools) != 1 {
+		return "", errors.New("No pool by that name found")
+	}
+
+	links := pools.Pools[0].Links
+	url = client.getRef("self", links)
+	if url == "" {
+		return url, errors.New("Invalid Link returned from controller")
+	}
+
+	return url, nil
+}
+
+// GetExternalIPPool gets the details of a single external IP pool
+func (client *Client) GetExternalIPPool(name string) (types.Pool, error) {
+	var pool types.Pool
+
+	if !client.checkPrivilege() {
+		return pool, errors.New("This command is only available to admins")
+	}
+
+	url, err := client.getCiaoPoolRef(name)
+	if err != nil {
+		return pool, err
+	}
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
+	if err != nil {
+		return pool, err
+	}
+
+	err = client.unmarshalHTTPResponse(resp, &pool)
+	if err != nil {
+		return pool, err
+	}
+
+	return pool, nil
+}
+
+// CreateExternalIPPool creates a pool of IPs
+func (client *Client) CreateExternalIPPool(name string) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	req := types.NewPoolRequest{
+		Name: name,
+	}
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling JSON")
+	}
+
+	body := bytes.NewReader(b)
+
+	url, err := client.getCiaoPoolsResource()
+	if err != nil {
+		return errors.Wrap(err, "Error getting pool resource")
+	}
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Pool creation failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+// ListExternalIPPools lists the pools in which IPs are available
+func (client *Client) ListExternalIPPools() (types.ListPoolsResponse, error) {
+	var pools types.ListPoolsResponse
+
+	url, err := client.getCiaoPoolsResource()
+	if err != nil {
+		return pools, errors.Wrap(err, "Error getting pool resource")
+	}
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
+	if err != nil {
+		return pools, errors.Wrap(err, "Error making HTTP request")
+	}
+
+	err = client.unmarshalHTTPResponse(resp, &pools)
+	if err != nil {
+		return pools, errors.Wrap(err, "Error parsing HTTP response")
+	}
+
+	return pools, nil
+}
+
+// DeleteExternalIPPool deletes the pool of the given name
+func (client *Client) DeleteExternalIPPool(pool string) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	url, err := client.getCiaoPoolRef(pool)
+	if err != nil {
+		return errors.Wrap(err, "Error getting pool reference")
+	}
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Pool deletion failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+// AddExternalIPSubnet adds a subnet to the external IP pool
+func (client *Client) AddExternalIPSubnet(pool string, subnet *net.IPNet) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	var req types.NewAddressRequest
+
+	url, err := client.getCiaoPoolRef(pool)
+	if err != nil {
+		return errors.Wrap(err, "Error getting pool reference")
+	}
+
+	s := subnet.String()
+	req.Subnet = &s
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling JSON")
+	}
+
+	body := bytes.NewReader(b)
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Adding subnet failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+// AddExternalIPAddresses adds a set of IP addresses to the external IP pool
+func (client *Client) AddExternalIPAddresses(pool string, IPs []string) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	var req types.NewAddressRequest
+
+	url, err := client.getCiaoPoolRef(pool)
+	if err != nil {
+		return errors.Wrap(err, "Error getting pool reference")
+	}
+
+	for _, IP := range IPs {
+		addr := types.NewIPAddressRequest{
+			IP: IP,
+		}
+
+		req.IPs = append(req.IPs, addr)
+	}
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling JSON")
+	}
+
+	body := bytes.NewReader(b)
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Adding address failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+func (client *Client) getSubnetRef(pool types.Pool, cidr string) string {
+	for _, sub := range pool.Subnets {
+		if sub.CIDR == cidr {
+			return client.getRef("self", sub.Links)
+		}
+	}
+
+	return ""
+}
+
+func (client *Client) getIPRef(pool types.Pool, address string) string {
+	for _, ip := range pool.IPs {
+		if ip.Address == address {
+			return client.getRef("self", ip.Links)
+		}
+	}
+
+	return ""
+}
+
+// RemoveExternalIPSubnet removes a subnet from the pool
+func (client *Client) RemoveExternalIPSubnet(pool string, subnet *net.IPNet) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	p, err := client.GetExternalIPPool(pool)
+	if err != nil {
+		return errors.Wrap(err, "Error getting external IP pool")
+	}
+
+	url := client.getSubnetRef(p, subnet.String())
+	if url == "" {
+		return fmt.Errorf("Subnet not present in pool")
+	}
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Subnet removal failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+// RemoveExternalIPAddress removes a single IP address from the pool
+func (client *Client) RemoveExternalIPAddress(pool string, IP string) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	p, err := client.GetExternalIPPool(pool)
+	if err != nil {
+		return errors.Wrap(err, "Error getting external IP pool")
+	}
+
+	url := client.getIPRef(p, IP)
+	if url == "" {
+		return fmt.Errorf("IP not present in pool")
+	}
+
+	ver := api.PoolsV1
+
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("IP removal failed: %s", resp.Status)
 	}
 
 	return nil
