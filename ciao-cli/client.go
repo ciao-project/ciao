@@ -769,3 +769,146 @@ func (client *Client) RemoveExternalIPAddress(pool string, IP string) error {
 
 	return nil
 }
+
+// GetImage retrieves the details for an image
+func (client *Client) GetImage(imageID string) (types.Image, error) {
+	var i types.Image
+
+	var url string
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images/%s", imageID)
+	} else {
+		url = client.buildCiaoURL("%s/images/%s", client.tenantID, imageID)
+	}
+
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.ImagesV1)
+	if err != nil {
+		return i, errors.Wrap(err, "Error making HTTP request")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return i, fmt.Errorf("Image get failed: %s", resp.Status)
+	}
+
+	err = client.unmarshalHTTPResponse(resp, &i)
+	if err != nil {
+		return i, errors.Wrap(err, "Error parsing HTTP response")
+	}
+
+	return i, nil
+}
+
+func (client *Client) uploadTenantImage(tenant, image string, data io.Reader) error {
+	var url string
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images/%s/file", image)
+	} else {
+		url = client.buildCiaoURL("%s/images/%s/file", client.tenantID, image)
+	}
+
+	resp, err := client.sendHTTPRequest("PUT", url, nil, data, fmt.Sprintf("%s/octet-stream", api.ImagesV1))
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Unexpected HTTP response code (%d): %s", resp.StatusCode, resp.Status)
+	}
+
+	return err
+}
+
+// CreateImage creates and uploads a new image
+func (client *Client) CreateImage(name string, visibility types.Visibility, ID string, data io.Reader) (string, error) {
+	opts := api.CreateImageRequest{
+		Name:       name,
+		ID:         ID,
+		Visibility: visibility,
+	}
+
+	b, err := json.Marshal(opts)
+	if err != nil {
+		return "", errors.Wrap(err, "Error marshalling JSON")
+	}
+
+	body := bytes.NewReader(b)
+
+	var url string
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images")
+	} else {
+		url = client.buildCiaoURL("%s/images", client.tenantID)
+	}
+
+	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.ImagesV1)
+	if err != nil {
+		return "", errors.Wrap(err, "Error making HTTP request")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("Image creation failed: %s", resp.Status)
+	}
+
+	var image types.Image
+	err = client.unmarshalHTTPResponse(resp, &image)
+	if err != nil {
+		return "", errors.Wrap(err, "Error parsing HTTP response")
+	}
+
+	err = client.uploadTenantImage(client.tenantID, image.ID, data)
+	if err != nil {
+		return "", errors.Wrap(err, "Error uploading image data")
+	}
+
+	return image.ID, nil
+}
+
+// ListImages retrieves the set of available images
+func (client *Client) ListImages() ([]types.Image, error) {
+	var images []types.Image
+
+	var url string
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images")
+	} else {
+		url = client.buildCiaoURL("%s/images", client.tenantID)
+	}
+
+	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.ImagesV1)
+	if err != nil {
+		return images, errors.Wrap(err, "Error making HTTP request")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return images, fmt.Errorf("Image list failed: %s", resp.Status)
+	}
+
+	err = client.unmarshalHTTPResponse(resp, &images)
+	if err != nil {
+		return images, errors.Wrap(err, "Error parsing HTTP response")
+	}
+
+	return images, nil
+}
+
+// DeleteImage deletes the given image
+func (client *Client) DeleteImage(imageID string) error {
+	var url string
+	if client.checkPrivilege() && client.tenantID == "admin" {
+		url = client.buildCiaoURL("images/%s", imageID)
+	} else {
+		url = client.buildCiaoURL("%s/images/%s", client.tenantID, imageID)
+	}
+
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, api.ImagesV1)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Image delete failed: %s", resp.Status)
+	}
+
+	return nil
+}
