@@ -87,7 +87,6 @@ func init() {
 	workloadTmpl = template.Must(template.New("workloadTmpl").Parse(workloadTemplate))
 }
 
-// TODO: Code copied from ciao-down needs to be refactored
 func getProxy(upper, lower string) (string, error) {
 	proxy := os.Getenv(upper)
 	if proxy == "" {
