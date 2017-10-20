@@ -15,12 +15,14 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
+	"text/template"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -48,8 +50,20 @@ type ClusterConfiguration struct {
 	DisableLimits     bool
 }
 
+type unitFileConf struct {
+	Tool       string
+	User       string
+	CACertPath string
+	CertPath   string
+	Caps       []string
+}
+
+var ciaoLockDir = "/tmp/lock/ciao"
+var ciaoDataDir = "/var/lib/ciao"
 var ciaoConfigDir = "/etc/ciao"
 var ciaoPKIDir = "/etc/pki/ciao"
+var ciaoUser = "ciao"
+var ciaoUserAndGroup = ciaoUser + ":" + ciaoUser
 
 func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfiguration) (string, error) {
 	var adminSSHKeyData string
@@ -113,6 +127,12 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 	if err != nil {
 		_ = SudoRemoveDirectory(context.Background(), ciaoConfigDir)
 		return "", errors.Wrap(err, "Error copying configuration file to destination")
+	}
+
+	cmd := exec.Command("sudo", "chown", ciaoUserAndGroup, ciaoConfigPath)
+	if err := cmd.Run(); err != nil {
+		_ = SudoRemoveDirectory(context.Background(), ciaoConfigDir)
+		return "", errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
 
 	return ciaoConfigPath, nil
@@ -190,35 +210,43 @@ func createSchedulerCerts(ctx context.Context, force bool, serverIP string) (str
 
 }
 
-var systemdServiceData = `
-[Unit]
-Description=%s service
+var systemdServiceData = `[Unit]
+Description={{.Tool}} service
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/%s --cacert=%s --cert=%s --v 3
+ExecStart=/usr/local/bin/{{.Tool}} --cacert={{.CACertPath}} --cert={{.CertPath}} --v 3
 Restart=no
 KillMode=process
 TasksMax=infinity
+AmbientCapabilities={{range $i, $v := .Caps}}{{if (gt $i 0)}} {{end}}{{$v}}{{- end}}
+User={{.User}}
+Group={{.User}}
 
 [Install]
 WantedBy=multi-user.target
 `
 
 // InstallTool installs a tool to its final destination and manages it via systemd
-func InstallTool(ctx context.Context, tool string, certPath string, caCertPath string) (errOut error) {
-	fmt.Printf("Installing %s\n", tool)
+func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
+	var systemdData bytes.Buffer
+	err := template.Must(template.New("unit").Parse(systemdServiceData)).Execute(&systemdData, config)
+	if err != nil {
+		return errors.Wrapf(err, "Error generating systemd file for %s", config.Tool)
+	}
 
-	fmt.Printf("Stopping %s\n", tool)
-	cmd := exec.Command("sudo", "systemctl", "stop", tool)
+	fmt.Printf("Installing %s\n", config.Tool)
 
-	toolPath := InGoPath(path.Join("/bin", tool))
+	fmt.Printf("Stopping %s\n", config.Tool)
+	cmd := exec.Command("sudo", "systemctl", "stop", config.Tool)
+
+	toolPath := InGoPath(path.Join("/bin", config.Tool))
 	// Actively ignore this error as systemctl will fail if the service file is not
 	// yet installed. This is fine as that will be the case for new installs.
 	_ = cmd.Run()
 
-	systemToolPath := path.Join("/usr/local/bin/", tool)
+	systemToolPath := path.Join("/usr/local/bin/", config.Tool)
 	if err := SudoCopyFile(ctx, systemToolPath, toolPath); err != nil {
 		return errors.Wrap(err, "Error copying tool to destination")
 	}
@@ -229,17 +257,16 @@ func InstallTool(ctx context.Context, tool string, certPath string, caCertPath s
 	}()
 
 	fmt.Println("Installing systemd unit file")
-	systemdData := fmt.Sprintf(systemdServiceData, tool, tool, caCertPath, certPath)
-	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", tool))
+	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", config.Tool))
 
-	f, err := ioutil.TempFile("", fmt.Sprintf("%s.service", tool))
+	f, err := ioutil.TempFile("", fmt.Sprintf("%s.service", config.Tool))
 	if err != nil {
 		return errors.Wrap(err, "Error creating temporary file for service unit")
 	}
 	defer func() { _ = f.Close() }()
 	defer func() { _ = os.Remove(f.Name()) }()
 
-	if _, err := f.Write([]byte(systemdData)); err != nil {
+	if _, err := f.Write(systemdData.Bytes()); err != nil {
 		return errors.Wrap(err, "Error writing service file data")
 	}
 
@@ -258,8 +285,8 @@ func InstallTool(ctx context.Context, tool string, certPath string, caCertPath s
 		return errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
 
-	fmt.Printf("Starting %s\n", tool)
-	cmd = exec.Command("sudo", "systemctl", "start", tool)
+	fmt.Printf("Starting %s\n", config.Tool)
+	cmd = exec.Command("sudo", "systemctl", "start", config.Tool)
 	if err := cmd.Run(); err != nil {
 		return errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
@@ -268,7 +295,12 @@ func InstallTool(ctx context.Context, tool string, certPath string, caCertPath s
 }
 
 func installScheduler(ctx context.Context, anchorCertPath string, caCertPath string) error {
-	err := InstallTool(ctx, "ciao-scheduler", anchorCertPath, caCertPath)
+	err := InstallTool(ctx, unitFileConf{
+		Tool:       "ciao-scheduler",
+		User:       ciaoUser,
+		CertPath:   anchorCertPath,
+		CACertPath: caCertPath,
+	})
 	return errors.Wrap(err, "Error installing scheduler")
 }
 
@@ -307,7 +339,12 @@ func createControllerCert(ctx context.Context, anchorCertPath string) (string, e
 }
 
 func installController(ctx context.Context, controllerCertPath string, caCertPath string) error {
-	err := InstallTool(ctx, "ciao-controller", controllerCertPath, caCertPath)
+	err := InstallTool(ctx, unitFileConf{
+		Tool:       "ciao-controller",
+		User:       ciaoUser,
+		CertPath:   controllerCertPath,
+		CACertPath: caCertPath,
+	})
 	return errors.Wrap(err, "Error installing controller")
 }
 
@@ -324,8 +361,41 @@ func OutputEnvironment(conf *ClusterConfiguration) {
 	fmt.Printf("export CIAO_ADMIN_CLIENT_CERT_FILE=\"%s\"\n", conf.AuthAdminCertPath)
 }
 
-// SetupMaster configures this machine to be a master node of the cluster
-func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration) (errOut error) {
+func createCiaoDirectory(ctx context.Context, path string) error {
+	cmd := exec.CommandContext(ctx, "sudo", "mkdir", "-p", path)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error creating %s", path)
+	}
+	cmd = exec.CommandContext(ctx, "sudo", "chown", ciaoUserAndGroup, path)
+	if err := cmd.Run(); err != nil {
+		_ = SudoRemoveDirectory(context.Background(), path)
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+	return nil
+}
+
+func createUserAndDirs(ctx context.Context) (func(), error) {
+	cmd := exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser)
+	if err := cmd.Run(); err != nil {
+		return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+
+	if err := createCiaoDirectory(ctx, ciaoDataDir); err != nil {
+		return nil, err
+	}
+
+	if err := createCiaoDirectory(ctx, ciaoLockDir); err != nil {
+		_ = SudoRemoveDirectory(context.Background(), ciaoDataDir)
+		return nil, err
+	}
+
+	return func() {
+		_ = SudoRemoveDirectory(context.Background(), ciaoLockDir)
+		_ = SudoRemoveDirectory(context.Background(), ciaoDataDir)
+	}, nil
+}
+
+func installCertsAndTools(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration) (errOut error) {
 	authCaCertPath, authCertPath, err := CreateAdminCert(ctx, force)
 	if err != nil {
 		return errors.Wrap(err, "Error creating authentication certs")
@@ -402,6 +472,20 @@ func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterC
 	return nil
 }
 
+// SetupMaster configures this machine to be a master node of the cluster
+func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration) (errOut error) {
+	cleanup, err := createUserAndDirs(ctx)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if errOut != nil {
+			cleanup()
+		}
+	}()
+	return installCertsAndTools(ctx, force, imageCacheDir, clusterConf)
+}
+
 func createLocalLauncherCert(ctx context.Context, anchorCertPath string) (string, error) {
 	launcherCertPath := path.Join(ciaoPKIDir, CertName(ssntp.AGENT|ssntp.NETAGENT))
 
@@ -423,7 +507,13 @@ func createLocalLauncherCert(ctx context.Context, anchorCertPath string) (string
 }
 
 func installLocalLauncher(ctx context.Context, launcherCertPath string, caCertPath string) error {
-	err := InstallTool(ctx, "ciao-launcher", launcherCertPath, caCertPath)
+	err := InstallTool(ctx, unitFileConf{
+		Tool:       "ciao-launcher",
+		User:       ciaoUser,
+		CertPath:   launcherCertPath,
+		CACertPath: caCertPath,
+		Caps:       []string{"CAP_NET_ADMIN", "CAP_NET_RAW", "CAP_DAC_OVERRIDE", "CAP_SYS_MODULE"},
+	})
 	return errors.Wrap(err, "Error installing launcher")
 }
 
