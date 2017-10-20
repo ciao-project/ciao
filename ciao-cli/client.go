@@ -725,3 +725,101 @@ func (client *Client) DeleteImage(imageID string) error {
 
 	return client.deleteResource(url, api.ImagesV1)
 }
+
+// CreateInstances creates instances by the given request
+func (client *Client) CreateInstances(request api.CreateServerRequest) (api.Servers, error) {
+	var servers api.Servers
+
+	url := client.buildCiaoURL("%s/instances", client.tenantID)
+	err := client.postResource(url, api.InstancesV1, &request, &servers)
+
+	return servers, err
+}
+
+// DeleteInstance deletes the given instance
+func (client *Client) DeleteInstance(instanceID string) error {
+	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, instanceID)
+	return client.deleteResource(url, api.InstancesV1)
+}
+
+func (client *Client) instanceAction(instanceID string, action string) error {
+	actionBytes := []byte(action)
+
+	url := client.buildCiaoURL("%s/instances/%s/action", client.tenantID, instanceID)
+
+	resp, err := client.sendHTTPRequest("POST", url, nil, bytes.NewReader(actionBytes), api.InstancesV1)
+	if err != nil {
+		return errors.Wrap(err, "Error making HTTP request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("HTTP response code from %s not as expected: %d", url, resp.StatusCode)
+	}
+	return nil
+}
+
+// StopInstance stops the given instance
+func (client *Client) StopInstance(instanceID string) error {
+	return client.instanceAction(instanceID, "os-stop")
+}
+
+// StartInstance stops the given instance
+func (client *Client) StartInstance(instanceID string) error {
+	return client.instanceAction(instanceID, "os-start")
+}
+
+// ListInstancesByWorkload provides the list of instances for a given tenant and workloadID.
+func (client *Client) ListInstancesByWorkload(tenantID string, workloadID string) (api.Servers, error) {
+	var servers api.Servers
+
+	url := client.buildCiaoURL("%s/instances/detail", tenantID)
+
+	values := []queryValue{}
+	if workloadID != "" {
+		values = append(values, queryValue{
+			name:  "workload",
+			value: workloadID,
+		})
+	}
+
+	err := client.getResource(url, api.InstancesV1, values, &servers)
+
+	return servers, err
+
+}
+
+// ListInstances gets the set of instances
+func (client *Client) ListInstances() (api.Servers, error) {
+	return client.ListInstancesByWorkload(client.tenantID, "")
+}
+
+// GetInstance gets the details of a single instances
+func (client *Client) GetInstance(instanceID string) (api.Server, error) {
+	var server api.Server
+
+	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, instanceID)
+	err := client.getResource(url, api.InstancesV1, nil, &server)
+
+	return server, err
+}
+
+// ListInstancesByNode gets the instances on a given node
+func (client *Client) ListInstancesByNode(nodeID string) (types.CiaoServersStats, error) {
+	var servers types.CiaoServersStats
+
+	url := client.buildComputeURL("nodes/%s/servers/detail", nodeID)
+	err := client.getResource(url, "", nil, &servers)
+
+	return servers, err
+}
+
+// DeleteAllInstances deletes all the instances
+func (client *Client) DeleteAllInstances() error {
+	var action types.CiaoServersAction
+
+	url := client.buildComputeURL("%s/servers/action", client.tenantID)
+	action.Action = "os-delete"
+
+	return client.postResource(url, "", &action, nil)
+}

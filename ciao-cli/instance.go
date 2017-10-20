@@ -17,12 +17,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"sort"
@@ -31,14 +27,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
-	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
-)
-
-const (
-	osStart  = "os-start"
-	osStop   = "os-stop"
-	osDelete = "os-delete"
+	"github.com/pkg/errors"
 )
 
 var instanceCommand = &command{
@@ -520,26 +510,9 @@ func (cmd *instanceAddCommand) run(args []string) error {
 		return err
 	}
 
-	serverBytes, err := json.Marshal(server)
+	servers, err = client.CreateInstances(server)
 	if err != nil {
-		fatalf(err.Error())
-	}
-	body := bytes.NewReader(serverBytes)
-
-	url := client.buildCiaoURL("%s/instances", client.tenantID)
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.InstancesV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Instance creation failed: %s", resp.Status)
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &servers)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error creating instances")
 	}
 
 	if cmd.template != "" {
@@ -586,7 +559,12 @@ func (cmd *instanceDeleteCommand) parseArgs(args []string) []string {
 
 func (cmd *instanceDeleteCommand) run(args []string) error {
 	if cmd.all {
-		return actionAllTenantInstance(client.tenantID, osDelete)
+		err := client.DeleteAllInstances()
+		if err != nil {
+			return errors.Wrap(err, "Error deleting all instances")
+		}
+		fmt.Printf("Deleted all instances\n")
+		return nil
 	}
 
 	if cmd.instance == "" {
@@ -594,17 +572,9 @@ func (cmd *instanceDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, cmd.instance)
-
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, api.InstancesV1)
+	err := client.DeleteInstance(cmd.instance)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Instance deletion failed: %s", resp.Status)
+		return errors.Wrap(err, "Error deleting instance")
 	}
 
 	fmt.Printf("Deleted instance: %s\n", cmd.instance)
@@ -684,27 +654,17 @@ func startStopInstance(instance string, stop bool) error {
 		return errors.New("Missing required -instance parameter")
 	}
 
-	actionBytes := []byte(osStart)
 	if stop == true {
-		actionBytes = []byte(osStop)
-	}
-
-	body := bytes.NewReader(actionBytes)
-
-	url := client.buildCiaoURL("%s/instances/%s/action", client.tenantID, instance)
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.InstancesV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Instance action failed: %s", resp.Status)
-	}
-
-	if stop == true {
+		err := client.StopInstance(instance)
+		if err != nil {
+			return errors.Wrap(err, "Error stopping instance")
+		}
 		fmt.Printf("Instance %s stopped\n", instance)
 	} else {
+		err := client.StartInstance(instance)
+		if err != nil {
+			return errors.Wrap(err, "Error starting instance")
+		}
 		fmt.Printf("Instance %s restarted\n", instance)
 	}
 	return nil
@@ -758,26 +718,9 @@ func (cmd *instanceListCommand) run(args []string) error {
 		return listNodeInstances(cmd.cn)
 	}
 
-	var servers api.Servers
-
-	url := client.buildCiaoURL("%s/instances/detail", cmd.tenant)
-
-	values := []queryValue{}
-	if cmd.workload != "" {
-		values = append(values, queryValue{
-			name:  "workload",
-			value: cmd.workload,
-		})
-	}
-
-	resp, err := client.sendHTTPRequest("GET", url, values, nil, api.InstancesV1)
+	servers, err := client.ListInstancesByWorkload(cmd.tenant, cmd.workload)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &servers)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing instances")
 	}
 
 	sortedServers := []api.ServerDetails{}
@@ -852,16 +795,9 @@ func (cmd *instanceShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	var server api.Server
-	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, cmd.instance)
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.InstancesV1)
+	server, err := client.GetInstance(cmd.instance)
 	if err != nil {
-		fatalf(err.Error())
-	}
-	err = client.unmarshalHTTPResponse(resp, &server)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting instance")
 	}
 
 	if cmd.template != "" {
@@ -895,17 +831,9 @@ func listNodeInstances(node string) error {
 		fatalf("Missing required -cn parameter")
 	}
 
-	var servers types.CiaoServersStats
-	url := client.buildComputeURL("nodes/%s/servers/detail", node)
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
+	servers, err := client.ListInstancesByNode(node)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &servers)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting instances for node")
 	}
 
 	for i, server := range servers.Servers {
@@ -919,34 +847,5 @@ func listNodeInstances(node string) error {
 		fmt.Printf("\tDisk used: %d MB\n", server.DiskUsage)
 	}
 
-	return nil
-}
-
-func actionAllTenantInstance(tenant string, osAction string) error {
-	var action types.CiaoServersAction
-
-	url := client.buildComputeURL("%s/servers/action", tenant)
-
-	action.Action = osAction
-
-	actionBytes, err := json.Marshal(action)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(actionBytes)
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, "")
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Action %s on all instances failed: %s", osAction, resp.Status)
-	}
-
-	fmt.Printf("%s all instances for tenant %s\n", osAction, tenant)
 	return nil
 }
