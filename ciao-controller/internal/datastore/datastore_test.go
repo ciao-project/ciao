@@ -956,7 +956,15 @@ func TestGetAllTenants(t *testing.T) {
 }
 
 func TestUpdateTenant(t *testing.T) {
-	tenant, err := addTestTenant()
+	/* add a new tenant without CNCI*/
+	tuuid := uuid.Generate()
+
+	initConfig := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	tenant, err := ds.AddTenant(tuuid.String(), initConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
