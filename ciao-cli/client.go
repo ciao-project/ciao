@@ -257,12 +257,7 @@ func (client *Client) getCiaoResource(name string, minVersion string) (string, e
 		url = client.buildCiaoURL(fmt.Sprintf("%s", client.tenantID))
 	}
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
-	if err != nil {
-		return "", err
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &resources)
+	err := client.getResource(url, "", nil, &resources)
 	if err != nil {
 		return "", err
 	}
@@ -286,6 +281,63 @@ func (client *Client) checkPrivilege() bool {
 	return false
 }
 
+func (client *Client) getResource(url string, content string, query []queryValue, result interface{}) error {
+	resp, err := client.sendHTTPRequest("GET", url, query, nil, content)
+	if err != nil {
+		return errors.Wrapf(err, "Error making HTTP request to %s", url)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP response code from %s not as expected: %d", url, resp.StatusCode)
+	}
+
+	err = client.unmarshalHTTPResponse(resp, result)
+	if err != nil {
+		data, _ := ioutil.ReadAll(resp.Body)
+		return errors.Wrapf(err, "Error parsing HTTP response: %s", data)
+	}
+
+	return nil
+}
+
+func (client *Client) deleteResource(url string, content string) error {
+	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, content)
+	if err != nil {
+		return errors.Wrapf(err, "Error making HTTP request to %s", url)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("HTTP response code from %s not as expected: %s", url, resp.Status)
+	}
+
+	return nil
+}
+
+func (client *Client) postResource(url string, content string, request interface{}, result interface{}) error {
+	b, err := json.Marshal(request)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling JSON")
+	}
+
+	resp, err := client.sendHTTPRequest("POST", url, nil, bytes.NewReader(b), content)
+	if err != nil {
+		return errors.Wrapf(err, "Error making HTTP request to %s", url)
+	}
+	defer resp.Body.Close()
+
+	if result != nil && resp.StatusCode != http.StatusNoContent {
+		err = client.unmarshalHTTPResponse(resp, result)
+		if err != nil {
+			data, _ := ioutil.ReadAll(resp.Body)
+			return errors.Wrapf(err, "Error parsing HTTP response: %s", data)
+		}
+	}
+
+	return nil
+}
+
 // ListEvents retrieves the events for either all or the desired tenant
 func (client *Client) ListEvents(tenantID string) (types.CiaoEvents, error) {
 	var events types.CiaoEvents
@@ -297,34 +349,16 @@ func (client *Client) ListEvents(tenantID string) (types.CiaoEvents, error) {
 		url = client.buildComputeURL("%s/events", tenantID)
 	}
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, "")
-	if err != nil {
-		return events, errors.Wrap(err, "Error making HTTP request")
-	}
+	err := client.getResource(url, "", nil, &events)
 
-	err = client.unmarshalHTTPResponse(resp, &events)
-	if err != nil {
-		return events, errors.Wrap(err, "Error parsing HTTP response")
-	}
-
-	return events, nil
+	return events, err
 }
 
 // DeleteEvents deletes all events from
 func (client *Client) DeleteEvents() error {
 	url := client.buildComputeURL("events")
 
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, "")
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusAccepted {
-		return fmt.Errorf("Events log deletion failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.deleteResource(url, "")
 }
 
 func (client *Client) getCiaoExternalIPsResource() (string, string, error) {
@@ -341,16 +375,7 @@ func (client *Client) getExternalIPRef(address string) (string, error) {
 		return "", err
 	}
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("External IP list failed: %s", resp.Status)
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &IPs)
+	err = client.getResource(url, ver, nil, &IPs)
 	if err != nil {
 		return "", err
 	}
@@ -377,28 +402,12 @@ func (client *Client) MapExternalIP(pool string, instanceID string) error {
 		req.PoolName = &pool
 	}
 
-	b, err := json.Marshal(req)
-	if err != nil {
-		return errors.Wrap(err, "Error marshalling JSON")
-	}
-
-	body := bytes.NewReader(b)
-
 	url, ver, err := client.getCiaoExternalIPsResource()
 	if err != nil {
 		return errors.Wrap(err, "Error getting external IP resource")
 	}
 
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("External IP map failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.postResource(url, ver, &req, nil)
 }
 
 // ListExternalIPs returns the mapped IPs
@@ -410,19 +419,7 @@ func (client *Client) ListExternalIPs() ([]types.MappedIP, error) {
 		return IPs, errors.Wrap(err, "Error getting external IP resource")
 	}
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		return IPs, errors.Wrap(err, "Error making HTTP request")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return IPs, fmt.Errorf("External IP list failed: %s", resp.Status)
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &IPs)
-	if err != nil {
-		return IPs, errors.Wrap(err, "Error parsing HTTP response")
-	}
+	err = client.getResource(url, ver, nil, &IPs)
 
 	return IPs, err
 }
@@ -434,19 +431,7 @@ func (client *Client) UnmapExternalIP(address string) error {
 		return errors.Wrap(err, "Error getting external IP reference")
 	}
 
-	ver := api.ExternalIPsV1
-
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusAccepted {
-		return fmt.Errorf("Unmap of address failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.deleteResource(url, api.ExternalIPsV1)
 }
 
 func (client *Client) getCiaoPoolsResource() (string, error) {
@@ -466,14 +451,7 @@ func (client *Client) getCiaoPoolRef(name string) (string, error) {
 		return "", err
 	}
 
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("GET", url, []queryValue{query}, nil, ver)
-	if err != nil {
-		return "", err
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &pools)
+	err = client.getResource(url, api.PoolsV1, []queryValue{query}, &pools)
 	if err != nil {
 		return "", err
 	}
@@ -505,19 +483,8 @@ func (client *Client) GetExternalIPPool(name string) (types.Pool, error) {
 		return pool, err
 	}
 
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		return pool, err
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &pool)
-	if err != nil {
-		return pool, err
-	}
-
-	return pool, nil
+	err = client.getResource(url, api.PoolsV1, nil, &pool)
+	return pool, err
 }
 
 // CreateExternalIPPool creates a pool of IPs
@@ -530,30 +497,12 @@ func (client *Client) CreateExternalIPPool(name string) error {
 		Name: name,
 	}
 
-	b, err := json.Marshal(req)
-	if err != nil {
-		return errors.Wrap(err, "Error marshalling JSON")
-	}
-
-	body := bytes.NewReader(b)
-
 	url, err := client.getCiaoPoolsResource()
 	if err != nil {
 		return errors.Wrap(err, "Error getting pool resource")
 	}
 
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Pool creation failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.postResource(url, api.PoolsV1, &req, nil)
 }
 
 // ListExternalIPPools lists the pools in which IPs are available
@@ -565,19 +514,9 @@ func (client *Client) ListExternalIPPools() (types.ListPoolsResponse, error) {
 		return pools, errors.Wrap(err, "Error getting pool resource")
 	}
 
-	ver := api.PoolsV1
+	err = client.getResource(url, api.PoolsV1, nil, &pools)
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		return pools, errors.Wrap(err, "Error making HTTP request")
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &pools)
-	if err != nil {
-		return pools, errors.Wrap(err, "Error parsing HTTP response")
-	}
-
-	return pools, nil
+	return pools, err
 }
 
 // DeleteExternalIPPool deletes the pool of the given name
@@ -591,20 +530,8 @@ func (client *Client) DeleteExternalIPPool(pool string) error {
 		return errors.Wrap(err, "Error getting pool reference")
 	}
 
-	ver := api.PoolsV1
+	return client.deleteResource(url, api.PoolsV1)
 
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Pool deletion failed: %s", resp.Status)
-	}
-
-	return nil
 }
 
 // AddExternalIPSubnet adds a subnet to the external IP pool
@@ -623,25 +550,7 @@ func (client *Client) AddExternalIPSubnet(pool string, subnet *net.IPNet) error 
 	s := subnet.String()
 	req.Subnet = &s
 
-	b, err := json.Marshal(req)
-	if err != nil {
-		return errors.Wrap(err, "Error marshalling JSON")
-	}
-
-	body := bytes.NewReader(b)
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Adding subnet failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.postResource(url, api.PoolsV1, &req, nil)
 }
 
 // AddExternalIPAddresses adds a set of IP addresses to the external IP pool
@@ -665,25 +574,7 @@ func (client *Client) AddExternalIPAddresses(pool string, IPs []string) error {
 		req.IPs = append(req.IPs, addr)
 	}
 
-	b, err := json.Marshal(req)
-	if err != nil {
-		return errors.Wrap(err, "Error marshalling JSON")
-	}
-
-	body := bytes.NewReader(b)
-
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Adding address failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.postResource(url, api.PoolsV1, &req, nil)
 }
 
 func (client *Client) getSubnetRef(pool types.Pool, cidr string) string {
@@ -722,20 +613,7 @@ func (client *Client) RemoveExternalIPSubnet(pool string, subnet *net.IPNet) err
 		return fmt.Errorf("Subnet not present in pool")
 	}
 
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Subnet removal failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.deleteResource(url, api.PoolsV1)
 }
 
 // RemoveExternalIPAddress removes a single IP address from the pool
@@ -754,20 +632,7 @@ func (client *Client) RemoveExternalIPAddress(pool string, IP string) error {
 		return fmt.Errorf("IP not present in pool")
 	}
 
-	ver := api.PoolsV1
-
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("IP removal failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.deleteResource(url, api.PoolsV1)
 }
 
 // GetImage retrieves the details for an image
@@ -781,22 +646,9 @@ func (client *Client) GetImage(imageID string) (types.Image, error) {
 		url = client.buildCiaoURL("%s/images/%s", client.tenantID, imageID)
 	}
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.ImagesV1)
-	if err != nil {
-		return i, errors.Wrap(err, "Error making HTTP request")
-	}
-	defer func() { _ = resp.Body.Close() }()
+	err := client.getResource(url, api.ImagesV1, nil, &i)
 
-	if resp.StatusCode != http.StatusOK {
-		return i, fmt.Errorf("Image get failed: %s", resp.Status)
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &i)
-	if err != nil {
-		return i, errors.Wrap(err, "Error parsing HTTP response")
-	}
-
-	return i, nil
+	return i, err
 }
 
 func (client *Client) uploadTenantImage(tenant, image string, data io.Reader) error {
@@ -825,13 +677,6 @@ func (client *Client) CreateImage(name string, visibility types.Visibility, ID s
 		Visibility: visibility,
 	}
 
-	b, err := json.Marshal(opts)
-	if err != nil {
-		return "", errors.Wrap(err, "Error marshalling JSON")
-	}
-
-	body := bytes.NewReader(b)
-
 	var url string
 	if client.checkPrivilege() && client.tenantID == "admin" {
 		url = client.buildCiaoURL("images")
@@ -839,20 +684,10 @@ func (client *Client) CreateImage(name string, visibility types.Visibility, ID s
 		url = client.buildCiaoURL("%s/images", client.tenantID)
 	}
 
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, api.ImagesV1)
-	if err != nil {
-		return "", errors.Wrap(err, "Error making HTTP request")
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("Image creation failed: %s", resp.Status)
-	}
-
 	var image types.Image
-	err = client.unmarshalHTTPResponse(resp, &image)
+	err := client.postResource(url, api.ImagesV1, &opts, &image)
 	if err != nil {
-		return "", errors.Wrap(err, "Error parsing HTTP response")
+		return "", errors.Wrap(err, "Error creating image resource")
 	}
 
 	err = client.uploadTenantImage(client.tenantID, image.ID, data)
@@ -874,22 +709,9 @@ func (client *Client) ListImages() ([]types.Image, error) {
 		url = client.buildCiaoURL("%s/images", client.tenantID)
 	}
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.ImagesV1)
-	if err != nil {
-		return images, errors.Wrap(err, "Error making HTTP request")
-	}
-	defer func() { _ = resp.Body.Close() }()
+	err := client.getResource(url, api.ImagesV1, nil, &images)
 
-	if resp.StatusCode != http.StatusOK {
-		return images, fmt.Errorf("Image list failed: %s", resp.Status)
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &images)
-	if err != nil {
-		return images, errors.Wrap(err, "Error parsing HTTP response")
-	}
-
-	return images, nil
+	return images, err
 }
 
 // DeleteImage deletes the given image
@@ -901,14 +723,5 @@ func (client *Client) DeleteImage(imageID string) error {
 		url = client.buildCiaoURL("%s/images/%s", client.tenantID, imageID)
 	}
 
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, api.ImagesV1)
-	if err != nil {
-		return errors.Wrap(err, "Error making HTTP request")
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Image delete failed: %s", resp.Status)
-	}
-
-	return nil
+	return client.deleteResource(url, api.ImagesV1)
 }
