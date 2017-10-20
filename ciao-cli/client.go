@@ -823,3 +823,63 @@ func (client *Client) DeleteAllInstances() error {
 
 	return client.postResource(url, "", &action, nil)
 }
+
+func (client *Client) getCiaoWorkloadsResource() (string, error) {
+	return client.getCiaoResource("workloads", api.WorkloadsV1)
+}
+
+// ListWorkloads gets the workloads available
+func (client *Client) ListWorkloads() ([]types.Workload, error) {
+	var wls []types.Workload
+
+	var url string
+	if client.checkPrivilege() {
+		url = client.buildCiaoURL("workloads")
+	} else {
+		url = client.buildCiaoURL("%s/workloads", client.tenantID)
+	}
+
+	err := client.getResource(url, api.WorkloadsV1, nil, &wls)
+	return wls, err
+}
+
+// CreateWorkload creates a worklaod
+func (client *Client) CreateWorkload(request types.Workload) (string, error) {
+	url, err := client.getCiaoWorkloadsResource()
+	if err != nil {
+		return "", errors.Wrap(err, "Error getting workloads resource")
+	}
+
+	var response types.WorkloadResponse
+
+	err = client.postResource(url, api.WorkloadsV1, &request, &response)
+
+	return response.Workload.ID, err
+}
+
+// DeleteWorkload deletes the given workload
+func (client *Client) DeleteWorkload(workloadID string) error {
+	url, err := client.getCiaoWorkloadsResource()
+	if err != nil {
+		return errors.Wrap(err, "Error getting workloads resource")
+	}
+
+	url = fmt.Sprintf("%s/%s", url, workloadID)
+
+	return client.deleteResource(url, api.WorkloadsV1)
+}
+
+// GetWorkload gets the given workload
+func (client *Client) GetWorkload(workloadID string) (types.Workload, error) {
+	var wl types.Workload
+
+	url, err := client.getCiaoWorkloadsResource()
+	if err != nil {
+		return wl, errors.Wrap(err, "Error getting workloads resource")
+	}
+
+	url = fmt.Sprintf("%s/%s", url, workloadID)
+	err = client.getResource(url, api.WorkloadsV1, nil, &wl)
+
+	return wl, err
+}

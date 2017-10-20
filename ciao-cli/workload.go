@@ -17,19 +17,15 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 
-	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/intel/tfortools"
+	"github.com/pkg/errors"
 
 	"gopkg.in/yaml.v2"
 )
@@ -80,23 +76,9 @@ func (cmd *workloadListCommand) run(args []string) error {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var wls []types.Workload
-
-	var url string
-	if client.checkPrivilege() {
-		url = client.buildCiaoURL("workloads")
-	} else {
-		url = client.buildCiaoURL("%s/workloads", client.tenantID)
-	}
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, api.WorkloadsV1)
+	wls, err := client.ListWorkloads()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &wls)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing workloads")
 	}
 
 	var workloads []Workload
@@ -152,10 +134,6 @@ The create flags are:
 `)
 	cmd.Flag.PrintDefaults()
 	os.Exit(2)
-}
-
-func getCiaoWorkloadsResource() (string, error) {
-	return client.getCiaoResource("workloads", api.WorkloadsV1)
 }
 
 type source struct {
@@ -347,37 +325,12 @@ func (cmd *workloadCreateCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	b, err := json.Marshal(req)
+	workloadID, err := client.CreateWorkload(req)
 	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error creating workload")
 	}
 
-	body := bytes.NewReader(b)
-
-	url, err := getCiaoWorkloadsResource()
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	ver := api.WorkloadsV1
-
-	resp, err := client.sendHTTPRequest("POST", url, nil, body, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusCreated {
-		fatalf("Workload creation failed: %s", resp.Status)
-	}
-
-	var workload types.WorkloadResponse
-
-	err = client.unmarshalHTTPResponse(resp, &workload)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	fmt.Printf("Created new workload: %s\n", workload.Workload.ID)
+	fmt.Printf("Created new workload: %s\n", workloadID)
 
 	return nil
 }
@@ -411,26 +364,9 @@ func (cmd *workloadDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url, err := getCiaoWorkloadsResource()
+	err := client.DeleteWorkload(cmd.workload)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	ver := api.WorkloadsV1
-
-	// you should do a get first and search for the workload,
-	// then use the href - but not with the currently used
-	// OpenStack API. Until we support GET with a ciao API,
-	// just hard code the path.
-	url = fmt.Sprintf("%s/%s", url, cmd.workload)
-
-	resp, err := client.sendHTTPRequest("DELETE", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Workload deletion failed: %s", resp.Status)
+		return errors.Wrap(err, "Error deleting workload")
 	}
 
 	return nil
@@ -469,31 +405,9 @@ func (cmd *workloadShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url, err := getCiaoWorkloadsResource()
+	wl, err := client.GetWorkload(cmd.workload)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	ver := api.WorkloadsV1
-
-	// you should do a get first and search for the workload,
-	// then use the href - but not with the currently used
-	// OpenStack API. Until we support GET with a ciao API,
-	// just hard code the path.
-	url = fmt.Sprintf("%s/%s", url, cmd.workload)
-
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Workload show failed: %s", resp.Status)
-	}
-
-	err = client.unmarshalHTTPResponse(resp, &wl)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting workload")
 	}
 
 	if cmd.template != "" {
