@@ -140,12 +140,12 @@ if [ -x "$(command -v ip)" ]; then
     sudo ip link set dev "$ciao_bridge" up
     sudo ip -d link show "$ciao_bridge"
     sudo iptables -A FORWARD -p all -i ciaovlan -j ACCEPT
-    #Do this only in the case of ciao-down as it can potentially
+    #Do this only in the case of ccloudvm as it can potentially
     #open up the machine. On bare metal the user will need to explicitly
     #add this rule
     if [ "$ciao_host" == "singlevm" ]; then
 	sudo iptables -A FORWARD -p all -i "$ext_int" -j ACCEPT
-	#NAT out all the traffic departing ciao-down
+	#NAT out all the traffic departing ccloudvm
 	sudo iptables -t nat -A POSTROUTING -o "$ext_int" -j MASQUERADE
     fi
 
