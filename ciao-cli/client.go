@@ -29,9 +29,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 )
 
@@ -1023,4 +1025,189 @@ func (client *Client) ListQuotas(tenantID string) (types.QuotaListResponse, erro
 	err = client.getResource(url, api.TenantsV1, nil, &result)
 
 	return result, err
+}
+
+func (client *Client) getCiaoTenantsResource() (string, error) {
+	url, err := client.getCiaoResource("tenants", api.TenantsV1)
+	return url, err
+}
+
+func (client *Client) getCiaoTenantRef(ID string) (string, error) {
+	var tenants types.TenantsListResponse
+
+	query := queryValue{
+		name:  "id",
+		value: ID,
+	}
+
+	url, err := client.getCiaoTenantsResource()
+	if err != nil {
+		return "", err
+	}
+
+	if !client.checkPrivilege() {
+		return url, errors.New("This command is only available to admins")
+	}
+
+	err = client.getResource(url, api.TenantsV1, []queryValue{query}, &tenants)
+	if err != nil {
+		return "", err
+	}
+
+	if len(tenants.Tenants) != 1 {
+		return "", errors.New("No tenant by that ID found")
+	}
+
+	links := tenants.Tenants[0].Links
+	url = client.getRef("self", links)
+	if url == "" {
+		return url, errors.New("invalid link returned from controller")
+	}
+
+	return url, nil
+}
+
+// GetTenantConfig gets the tenant configuration
+func (client *Client) GetTenantConfig(ID string) (types.TenantConfig, error) {
+	var config types.TenantConfig
+
+	url, err := client.getCiaoTenantRef(ID)
+	if err != nil {
+		return config, err
+	}
+
+	err = client.getResource(url, api.TenantsV1, nil, &config)
+
+	return config, err
+}
+
+// UpdateTenantConfig updates the tenant configuration
+func (client *Client) UpdateTenantConfig(ID string, name string, bits int) error {
+	var config types.TenantConfig
+
+	url, err := client.getCiaoTenantRef(ID)
+	if err != nil {
+		return err
+	}
+
+	err = client.getResource(url, api.TenantsV1, nil, &config)
+	if err != nil {
+		return err
+	}
+
+	oldconfig := config
+
+	if name != "" {
+		config.Name = name
+	}
+
+	if bits != 0 {
+		config.SubnetBits = bits
+	}
+
+	a, err := json.Marshal(oldconfig)
+	if err != nil {
+		return err
+	}
+
+	b, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+
+	merge, err := jsonpatch.CreateMergePatch(a, b)
+	if err != nil {
+		return err
+	}
+
+	body := bytes.NewReader(merge)
+
+	_, err = client.sendHTTPRequest("PATCH", url, nil, body, "merge-patch+json")
+
+	return err
+}
+
+// CreateTenantConfig creates a new tenant configuration
+func (client *Client) CreateTenantConfig(tenantID string, name string, bits int) (types.TenantSummary, error) {
+	var req types.TenantRequest
+	var summary types.TenantSummary
+
+	if !client.checkPrivilege() {
+		return summary, errors.New("This command is only available to admins")
+	}
+
+	url, err := client.getCiaoTenantsResource()
+	if err != nil {
+		return summary, err
+	}
+
+	req.ID = tenantID
+	req.Config = types.TenantConfig{
+		Name:       name,
+		SubnetBits: bits,
+	}
+
+	err = client.postResource(url, api.TenantsV1, &req, &summary)
+
+	return summary, err
+}
+
+// DeleteTenant deletes the given tenant
+func (client *Client) DeleteTenant(tenantID string) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	url, err := client.getCiaoTenantRef(tenantID)
+	if err != nil {
+		return err
+	}
+
+	return client.deleteResource(url, api.TenantsV1)
+}
+
+// ListTenantQuotas gets legacy tenant quota information
+func (client *Client) ListTenantQuotas() (types.CiaoTenantResources, error) {
+	var resources types.CiaoTenantResources
+
+	url := client.buildComputeURL("%s/quotas", client.tenantID)
+	err := client.getResource(url, "", nil, &resources)
+
+	return resources, err
+}
+
+// ListTenantResources gets tenant usage information
+func (client *Client) ListTenantResources() (types.CiaoUsageHistory, error) {
+	var usage types.CiaoUsageHistory
+	url := client.buildComputeURL("%s/resources", client.tenantID)
+
+	now := time.Now()
+	values := []queryValue{
+		{
+			name:  "start_date",
+			value: now.Add(-15 * time.Minute).Format(time.RFC3339),
+		},
+		{
+			name:  "end_date",
+			value: now.Format(time.RFC3339),
+		},
+	}
+
+	err := client.getResource(url, "", values, &usage)
+
+	return usage, err
+}
+
+// ListTenants returns a list of the tenants
+func (client *Client) ListTenants() (types.TenantsListResponse, error) {
+	var tenants types.TenantsListResponse
+
+	url, err := client.getCiaoTenantsResource()
+	if err != nil {
+		return tenants, err
+	}
+
+	err = client.getResource(url, api.TenantsV1, nil, &tenants)
+
+	return tenants, err
 }
