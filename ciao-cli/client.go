@@ -1211,3 +1211,23 @@ func (client *Client) ListTenants() (types.TenantsListResponse, error) {
 
 	return tenants, err
 }
+
+// ListTraceLabels returns a list of trace labels
+func (client *Client) ListTraceLabels() (types.CiaoTracesSummary, error) {
+	var traces types.CiaoTracesSummary
+
+	url := client.buildComputeURL("traces")
+	err := client.getResource(url, "", nil, &traces)
+
+	return traces, err
+}
+
+// GetTraceData returns trace details
+func (client *Client) GetTraceData(label string) (types.CiaoTraceData, error) {
+	var data types.CiaoTraceData
+
+	url := client.buildComputeURL("traces/%s", label)
+	err := client.getResource(url, "", nil, &data)
+
+	return data, err
+}
