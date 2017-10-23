@@ -1231,3 +1231,84 @@ func (client *Client) GetTraceData(label string) (types.CiaoTraceData, error) {
 
 	return data, err
 }
+
+// CreateVolume creates a volume from a request
+func (client *Client) CreateVolume(req api.RequestedVolume) (types.Volume, error) {
+	var vol types.Volume
+
+	url := client.buildCiaoURL("%s/volumes", client.tenantID)
+	err := client.postResource(url, api.VolumesV1, &req, &vol)
+
+	return vol, err
+}
+
+// ListVolumes lists the volumes
+func (client *Client) ListVolumes() ([]types.Volume, error) {
+	var volumes []types.Volume
+
+	url := client.buildCiaoURL("%s/volumes", client.tenantID)
+	err := client.getResource(url, api.VolumesV1, nil, &volumes)
+
+	return volumes, err
+}
+
+// GetVolume gets the details of a single volume
+func (client *Client) GetVolume(volumeID string) (types.Volume, error) {
+	var volume types.Volume
+
+	url := client.buildCiaoURL("%s/volumes/%s", client.tenantID, volumeID)
+	err := client.getResource(url, api.VolumesV1, nil, &volume)
+
+	return volume, err
+}
+
+// DeleteVolume deletes the volume
+func (client *Client) DeleteVolume(volumeID string) error {
+	url := client.buildCiaoURL("%s/volumes/%s", client.tenantID, volumeID)
+	return client.deleteResource(url, api.VolumesV1)
+}
+
+// AttachVolume attaches a volume to an instance
+func (client *Client) AttachVolume(volumeID string, instanceID, mountPoint string, mode string) error {
+	url := client.buildCiaoURL("%s/volumes/%s/action", client.tenantID, volumeID)
+
+	type AttachRequest struct {
+		MountPoint   string `json:"mountpoint"`
+		Mode         string `json:"mode"`
+		InstanceUUID string `json:"instance_uuid"`
+	}
+
+	// mountpoint or mode isn't required
+	var attachReq = struct {
+		Attach AttachRequest `json:"attach"`
+	}{
+		Attach: AttachRequest{
+			MountPoint:   mountPoint,
+			Mode:         mode,
+			InstanceUUID: instanceID,
+		},
+	}
+
+	err := client.postResource(url, api.VolumesV1, &attachReq, nil)
+
+	return err
+}
+
+// DetachVolume detaches a volume from an instances
+func (client *Client) DetachVolume(volumeID string) error {
+	url := client.buildCiaoURL("%s/volumes/%s/action", client.tenantID, volumeID)
+
+	type DetachRequest struct {
+		AttachmentID string `json:"attachment_id,omitempty"`
+	}
+	var detachReq = struct {
+		Detach DetachRequest `json:"detach"`
+	}{
+		Detach: DetachRequest{},
+	}
+
+	err := client.postResource(url, api.VolumesV1, &detachReq, nil)
+
+	return err
+
+}
