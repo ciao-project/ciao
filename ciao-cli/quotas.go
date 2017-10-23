@@ -17,19 +17,16 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 
-	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
+	"github.com/pkg/errors"
 )
 
 var quotasCommand = &command{
@@ -44,10 +41,6 @@ type quotasUpdateCommand struct {
 	name     string
 	value    string
 	tenantID string
-}
-
-func getCiaoQuotasResource() (string, error) {
-	return client.getCiaoResource("tenants", api.TenantsV1)
 }
 
 func (cmd *quotasUpdateCommand) usage(...string) {
@@ -101,35 +94,14 @@ func (cmd *quotasUpdateCommand) run(args []string) error {
 		}
 	}
 
-	req := types.QuotaUpdateRequest{
-		Quotas: []types.QuotaDetails{{
-			Name:  cmd.name,
-			Value: v,
-		}},
-	}
+	quotas := []types.QuotaDetails{{
+		Name:  cmd.name,
+		Value: v,
+	}}
 
-	b, err := json.Marshal(req)
+	err := client.UpdateQuotas(cmd.tenantID, quotas)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-
-	url, err := getCiaoQuotasResource()
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	ver := api.TenantsV1
-
-	url = fmt.Sprintf("%s/%s/quotas", url, cmd.tenantID)
-	resp, err := client.sendHTTPRequest("PUT", url, nil, body, ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusCreated {
-		fatalf("Update quotas failed: %s", resp.Status)
+		return errors.Wrap(err, "Error updating quotas")
 	}
 
 	fmt.Printf("Update quotas succeeded\n")
@@ -174,39 +146,20 @@ func (cmd *quotasListCommand) parseArgs(args []string) []string {
 // on the privilege level of user. Check privilege, then
 // if not privileged, build non-privileged URL.
 func (cmd *quotasListCommand) run(args []string) error {
-	url, err := getCiaoQuotasResource()
-	if err != nil {
-		fatalf(err.Error())
-	}
-
 	if cmd.tenantID != "" {
 		if !client.checkPrivilege() {
 			fatalf("Listing quotas for other tenants is for privileged users only")
 		}
 
-		url = fmt.Sprintf("%s/%s/quotas", url, cmd.tenantID)
 	} else {
 		if client.checkPrivilege() {
 			fatalf("Admin user must specify the tenant with -for-tenant")
 		}
-
-		url = fmt.Sprintf("%s/quotas", url)
 	}
-	ver := api.TenantsV1
 
-	resp, err := client.sendHTTPRequest("GET", url, nil, nil, ver)
+	results, err := client.ListQuotas(cmd.tenantID)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Getting quotas failed: %s", resp.Status)
-	}
-
-	var results types.QuotaListResponse
-	err = client.unmarshalHTTPResponse(resp, &results)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing quotas")
 	}
 
 	if cmd.template != "" {

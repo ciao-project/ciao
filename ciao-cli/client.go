@@ -982,3 +982,45 @@ func (client *Client) ChangeNodeStatus(nodeID string, status types.NodeStatusTyp
 
 	return err
 }
+
+func (client *Client) getCiaoQuotasResource() (string, error) {
+	return client.getCiaoResource("tenants", api.TenantsV1)
+}
+
+// UpdateQuotas updates the quotas for a given tenant
+func (client *Client) UpdateQuotas(tenantID string, quotas []types.QuotaDetails) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	url, err := client.getCiaoQuotasResource()
+	if err != nil {
+		return errors.Wrap(err, "Error getting quotas resource")
+	}
+
+	url = fmt.Sprintf("%s/%s/quotas", url, tenantID)
+	req := types.QuotaUpdateRequest{Quotas: quotas}
+	err = client.putResource(url, api.TenantsV1, &req)
+
+	return err
+}
+
+// ListQuotas lists the quotas for the specified tenant
+func (client *Client) ListQuotas(tenantID string) (types.QuotaListResponse, error) {
+	var result types.QuotaListResponse
+
+	url, err := client.getCiaoQuotasResource()
+	if err != nil {
+		return result, errors.Wrap(err, "Error getting quotas resource")
+	}
+
+	if tenantID != "" {
+		url = fmt.Sprintf("%s/%s/quotas", url, tenantID)
+	} else {
+		url = fmt.Sprintf("%s/quotas", url)
+	}
+
+	err = client.getResource(url, api.TenantsV1, nil, &result)
+
+	return result, err
+}
