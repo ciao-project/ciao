@@ -315,6 +315,25 @@ func (client *Client) deleteResource(url string, content string) error {
 	return nil
 }
 
+func (client *Client) putResource(url string, content string, request interface{}) error {
+	b, err := json.Marshal(request)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling JSON")
+	}
+
+	resp, err := client.sendHTTPRequest("PUT", url, nil, bytes.NewReader(b), content)
+	if err != nil {
+		return errors.Wrapf(err, "Error making HTTP request to %s", url)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("HTTP response code from %s not as expected: %s", url, resp.Status)
+	}
+
+	return nil
+}
+
 func (client *Client) postResource(url string, content string, request interface{}, result interface{}) error {
 	b, err := json.Marshal(request)
 	if err != nil {
@@ -882,4 +901,84 @@ func (client *Client) GetWorkload(workloadID string) (types.Workload, error) {
 	err = client.getResource(url, api.WorkloadsV1, nil, &wl)
 
 	return wl, err
+}
+
+// ListComputeNodes returns the set of compute nodes
+func (client *Client) ListComputeNodes() (types.CiaoNodes, error) {
+	var nodes types.CiaoNodes
+
+	url := client.buildComputeURL("nodes/compute")
+	err := client.getResource(url, "", nil, &nodes)
+
+	return nodes, err
+}
+
+// ListNetworkNodes returns the set of network nodes
+func (client *Client) ListNetworkNodes() (types.CiaoNodes, error) {
+	var nodes types.CiaoNodes
+
+	url := client.buildComputeURL("nodes/network")
+	err := client.getResource(url, "", nil, &nodes)
+
+	return nodes, err
+}
+
+// ListNodes returns the set of network nodes
+func (client *Client) ListNodes() (types.CiaoNodes, error) {
+	var nodes types.CiaoNodes
+
+	url := client.buildComputeURL("nodes")
+	err := client.getResource(url, "", nil, &nodes)
+
+	return nodes, err
+}
+
+// ListCNCIs returns the set of CNCIs
+func (client *Client) ListCNCIs() (types.CiaoCNCIs, error) {
+	var nodes types.CiaoCNCIs
+
+	url := client.buildComputeURL("cncis")
+	err := client.getResource(url, "", nil, &nodes)
+
+	return nodes, err
+}
+
+// GetNodeSummary returns summary information about the cluster
+func (client *Client) GetNodeSummary() (types.CiaoClusterStatus, error) {
+	var status types.CiaoClusterStatus
+
+	url := client.buildComputeURL("nodes/summary")
+	err := client.getResource(url, "", nil, &status)
+
+	return status, err
+}
+
+// GetCNCI returns information about a CNCI
+func (client *Client) GetCNCI(cnciID string) (types.CiaoCNCI, error) {
+	var cnci types.CiaoCNCI
+
+	url := client.buildComputeURL("cncis/%s/detail", cnciID)
+	err := client.getResource(url, "", nil, &cnci)
+
+	return cnci, err
+}
+
+// ChangeNodeStatus modifies the status of a node
+func (client *Client) ChangeNodeStatus(nodeID string, status types.NodeStatusType) error {
+	if !client.checkPrivilege() {
+		return errors.New("This command is only available to admins")
+	}
+
+	nodeStatus := types.CiaoNodeStatus{Status: status}
+
+	url, err := client.getCiaoResource("node", api.NodeV1)
+	if err != nil {
+		return errors.Wrap(err, "Error getting node resource")
+	}
+
+	url = fmt.Sprintf("%s/%s", url, nodeID)
+
+	err = client.putResource(url, api.NodeV1, &nodeStatus)
+
+	return err
 }
