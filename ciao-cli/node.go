@@ -18,17 +18,14 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"text/template"
 
-	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
+	"github.com/pkg/errors"
 )
 
 var nodeCommand = &command{
@@ -136,19 +133,7 @@ func dumpNode(node *types.CiaoNode) {
 	fmt.Printf("\t\tTotal Attach Failures: %d\n", node.AttachVolumeFailures)
 }
 
-func dumpNodes(headerText string, url string, t *template.Template) {
-	var nodes types.CiaoNodes
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &nodes)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
+func dumpNodes(headerText string, nodes types.CiaoNodes, t *template.Template) {
 	if t != nil {
 		if err := t.Execute(os.Stdout, &nodes.Nodes); err != nil {
 			fatalf(err.Error())
@@ -162,34 +147,37 @@ func dumpNodes(headerText string, url string, t *template.Template) {
 	}
 }
 
-func listComputeNodes(t *template.Template) {
-	url := buildComputeURL("nodes/compute")
-	dumpNodes("Compute Node", url, t)
+func listComputeNodes(t *template.Template) error {
+	nodes, err := c.ListComputeNodes()
+	if err != nil {
+		return errors.Wrap(err, "Error listing compute nodes")
+	}
+	dumpNodes("Compute Node", nodes, t)
+	return nil
 }
 
-func listNetworkNodes(t *template.Template) {
-	url := buildComputeURL("nodes/network")
-	dumpNodes("Network Node", url, t)
+func listNetworkNodes(t *template.Template) error {
+	nodes, err := c.ListNetworkNodes()
+	if err != nil {
+		return errors.Wrap(err, "Error listing network nodes")
+	}
+	dumpNodes("Network Node", nodes, t)
+	return nil
 }
 
-func listNodes(t *template.Template) {
-	url := buildComputeURL("nodes")
-	dumpNodes("Node", url, t)
+func listNodes(t *template.Template) error {
+	nodes, err := c.ListNodes()
+	if err != nil {
+		return errors.Wrap(err, "Error listing nodes")
+	}
+	dumpNodes("Node", nodes, t)
+	return nil
 }
 
 func listCNCINodes(t *template.Template) error {
-	var cncis types.CiaoCNCIs
-
-	url := buildComputeURL("cncis")
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	cncis, err := c.ListCNCIs()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &cncis)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing CNCIs")
 	}
 
 	if t != nil {
@@ -236,17 +224,9 @@ func (cmd *nodeStatusCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeStatusCommand) run(args []string) error {
-	var status types.CiaoClusterStatus
-	url := buildComputeURL("nodes/summary")
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	status, err := c.GetNodeSummary()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &status)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting node summary")
 	}
 
 	if cmd.template != "" {
@@ -309,19 +289,10 @@ func showNode(cmd *nodeShowCommand) error {
 		fatalf("Missing required -node-id parameter")
 	}
 
-	url := buildComputeURL("nodes")
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	nodes, err := c.ListNodes()
 	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing nodes")
 	}
-
-	var nodes types.CiaoNodes
-	err = unmarshalHTTPResponse(resp, &nodes)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
 	var node *types.CiaoNode
 	for i := range nodes.Nodes {
 		if nodes.Nodes[i].ID == cmd.nodeID {
@@ -351,18 +322,6 @@ func showCNCINode(cmd *nodeShowCommand) error {
 
 	var cnci types.CiaoCNCI
 
-	url := buildComputeURL("cncis/%s/detail", cmd.nodeID)
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &cnci)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "node-show", cmd.template,
 			&cnci, nil)
@@ -376,38 +335,6 @@ func showCNCINode(cmd *nodeShowCommand) error {
 		fmt.Printf("\t\t%s\n", subnet.Subnet)
 	}
 	return nil
-}
-
-func nodeChangeStatus(nodeID string, status types.NodeStatusType) error {
-	if !checkPrivilege() {
-		fatalf("The evacuation of nodes is restricted to admin users")
-	}
-
-	nodeStatus := types.CiaoNodeStatus{Status: status}
-	b, err := json.Marshal(&nodeStatus)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	url, err := getCiaoResource("node", api.NodeV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	url = fmt.Sprintf("%s/%s", url, nodeID)
-
-	ver := api.NodeV1
-	resp, err := sendCiaoRequest("PUT", url, nil, bytes.NewReader(b), ver)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Node evacuation failed: %s", resp.Status)
-	}
-
-	return nil
-
 }
 
 type nodeEvacuateCommand struct {
@@ -434,7 +361,7 @@ func (cmd *nodeEvacuateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeEvacuateCommand) run(args []string) error {
-	return nodeChangeStatus(cmd.nodeID, types.NodeStatusMaintenance)
+	return c.ChangeNodeStatus(cmd.nodeID, types.NodeStatusMaintenance)
 }
 
 type nodeRestoreCommand struct {
@@ -461,5 +388,5 @@ func (cmd *nodeRestoreCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeRestoreCommand) run(args []string) error {
-	return nodeChangeStatus(cmd.nodeID, types.NodeStatusReady)
+	return c.ChangeNodeStatus(cmd.nodeID, types.NodeStatusReady)
 }

@@ -17,12 +17,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"regexp"
 	"sort"
@@ -31,14 +27,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
-	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
-)
-
-const (
-	osStart  = "os-start"
-	osStop   = "os-stop"
-	osDelete = "os-delete"
+	"github.com/pkg/errors"
 )
 
 var instanceCommand = &command{
@@ -413,7 +403,7 @@ func (cmd *instanceAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *instanceAddCommand) validateAddCommandArgs() {
-	if *tenantID == "" {
+	if c.TenantID == "" {
 		errorf("Missing required -tenant-id parameter")
 		cmd.usage()
 	}
@@ -520,26 +510,9 @@ func (cmd *instanceAddCommand) run(args []string) error {
 		return err
 	}
 
-	serverBytes, err := json.Marshal(server)
+	servers, err = c.CreateInstances(server)
 	if err != nil {
-		fatalf(err.Error())
-	}
-	body := bytes.NewReader(serverBytes)
-
-	url := buildCiaoURL("%s/instances", *tenantID)
-
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Instance creation failed: %s", resp.Status)
-	}
-
-	err = unmarshalHTTPResponse(resp, &servers)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error creating instances")
 	}
 
 	if cmd.template != "" {
@@ -586,7 +559,12 @@ func (cmd *instanceDeleteCommand) parseArgs(args []string) []string {
 
 func (cmd *instanceDeleteCommand) run(args []string) error {
 	if cmd.all {
-		return actionAllTenantInstance(*tenantID, osDelete)
+		err := c.DeleteAllInstances()
+		if err != nil {
+			return errors.Wrap(err, "Error deleting all instances")
+		}
+		fmt.Printf("Deleted all instances\n")
+		return nil
 	}
 
 	if cmd.instance == "" {
@@ -594,17 +572,9 @@ func (cmd *instanceDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildCiaoURL("%s/instances/%s", *tenantID, cmd.instance)
-
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.InstancesV1)
+	err := c.DeleteInstance(cmd.instance)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Instance deletion failed: %s", resp.Status)
+		return errors.Wrap(err, "Error deleting instance")
 	}
 
 	fmt.Printf("Deleted instance: %s\n", cmd.instance)
@@ -676,7 +646,7 @@ func (cmd *instanceStopCommand) run([]string) error {
 }
 
 func startStopInstance(instance string, stop bool) error {
-	if *tenantID == "" {
+	if c.TenantID == "" {
 		return errors.New("Missing required -tenant-id parameter")
 	}
 
@@ -684,27 +654,17 @@ func startStopInstance(instance string, stop bool) error {
 		return errors.New("Missing required -instance parameter")
 	}
 
-	actionBytes := []byte(osStart)
 	if stop == true {
-		actionBytes = []byte(osStop)
-	}
-
-	body := bytes.NewReader(actionBytes)
-
-	url := buildCiaoURL("%s/instances/%s/action", *tenantID, instance)
-
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.InstancesV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Instance action failed: %s", resp.Status)
-	}
-
-	if stop == true {
+		err := c.StopInstance(instance)
+		if err != nil {
+			return errors.Wrap(err, "Error stopping instance")
+		}
 		fmt.Printf("Instance %s stopped\n", instance)
 	} else {
+		err := c.StartInstance(instance)
+		if err != nil {
+			return errors.Wrap(err, "Error starting instance")
+		}
 		fmt.Printf("Instance %s restarted\n", instance)
 	}
 	return nil
@@ -751,33 +711,16 @@ func (ss byCreated) Less(i, j int) bool { return ss[i].Created.Before(ss[j].Crea
 
 func (cmd *instanceListCommand) run(args []string) error {
 	if cmd.tenant == "" {
-		cmd.tenant = *tenantID
+		cmd.tenant = c.TenantID
 	}
 
 	if cmd.cn != "" {
 		return listNodeInstances(cmd.cn)
 	}
 
-	var servers api.Servers
-
-	url := buildCiaoURL("%s/instances/detail", cmd.tenant)
-
-	values := []queryValue{}
-	if cmd.workload != "" {
-		values = append(values, queryValue{
-			name:  "workload",
-			value: cmd.workload,
-		})
-	}
-
-	resp, err := sendCiaoRequest("GET", url, values, nil, api.InstancesV1)
+	servers, err := c.ListInstancesByWorkload(cmd.tenant, cmd.workload)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &servers)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing instances")
 	}
 
 	sortedServers := []api.ServerDetails{}
@@ -852,16 +795,9 @@ func (cmd *instanceShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	var server api.Server
-	url := buildCiaoURL("%s/instances/%s", *tenantID, cmd.instance)
-
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.InstancesV1)
+	server, err := c.GetInstance(cmd.instance)
 	if err != nil {
-		fatalf(err.Error())
-	}
-	err = unmarshalHTTPResponse(resp, &server)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting instance")
 	}
 
 	if cmd.template != "" {
@@ -895,17 +831,9 @@ func listNodeInstances(node string) error {
 		fatalf("Missing required -cn parameter")
 	}
 
-	var servers types.CiaoServersStats
-	url := buildComputeURL("nodes/%s/servers/detail", node)
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	servers, err := c.ListInstancesByNode(node)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &servers)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting instances for node")
 	}
 
 	for i, server := range servers.Servers {
@@ -919,34 +847,5 @@ func listNodeInstances(node string) error {
 		fmt.Printf("\tDisk used: %d MB\n", server.DiskUsage)
 	}
 
-	return nil
-}
-
-func actionAllTenantInstance(tenant string, osAction string) error {
-	var action types.CiaoServersAction
-
-	url := buildComputeURL("%s/servers/action", tenant)
-
-	action.Action = osAction
-
-	actionBytes, err := json.Marshal(action)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(actionBytes)
-
-	resp, err := sendHTTPRequest("POST", url, nil, body)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Action %s on all instances failed: %s", osAction, resp.Status)
-	}
-
-	fmt.Printf("%s all instances for tenant %s\n", osAction, tenant)
 	return nil
 }

@@ -17,131 +17,16 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"text/template"
-	"time"
 
-	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/uuid"
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/intel/tfortools"
+	"github.com/pkg/errors"
 )
-
-func getCiaoTenantsResource() (string, error) {
-	url, err := getCiaoResource("tenants", api.TenantsV1)
-	return url, err
-}
-
-func getCiaoTenantRef(ID string) (string, error) {
-	var tenants types.TenantsListResponse
-
-	query := queryValue{
-		name:  "id",
-		value: ID,
-	}
-
-	url, err := getCiaoTenantsResource()
-	if err != nil {
-		return "", err
-	}
-
-	if !checkPrivilege() {
-		return url, err
-	}
-
-	resp, err := sendCiaoRequest("GET", url, []queryValue{query}, nil, api.TenantsV1)
-	if err != nil {
-		return "", err
-	}
-
-	err = unmarshalHTTPResponse(resp, &tenants)
-	if err != nil {
-		return "", err
-	}
-
-	if len(tenants.Tenants) != 1 {
-		return "", errors.New("No tenant by that ID found")
-	}
-
-	links := tenants.Tenants[0].Links
-	url = getRef("self", links)
-	if url == "" {
-		return url, errors.New("invalid link returned from controller")
-	}
-
-	return url, nil
-}
-
-func getCiaoTenantConfig(ID string) (types.TenantConfig, error) {
-	var config types.TenantConfig
-
-	url, err := getCiaoTenantRef(ID)
-	if err != nil {
-		return config, err
-	}
-
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
-	if err != nil {
-		return config, err
-	}
-
-	err = unmarshalHTTPResponse(resp, &config)
-
-	return config, err
-}
-
-func putCiaoTenantConfig(ID string, name string, bits int) error {
-	var config types.TenantConfig
-
-	url, err := getCiaoTenantRef(ID)
-	if err != nil {
-		return err
-	}
-
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
-	if err != nil {
-		return err
-	}
-
-	err = unmarshalHTTPResponse(resp, &config)
-
-	oldconfig := config
-
-	if name != "" {
-		config.Name = name
-	}
-
-	if bits != 0 {
-		config.SubnetBits = bits
-	}
-
-	a, err := json.Marshal(oldconfig)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	b, err := json.Marshal(config)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	merge, err := jsonpatch.CreateMergePatch(a, b)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(merge)
-
-	_, err = sendCiaoRequest("PATCH", url, nil, body, "merge-patch+json")
-
-	return err
-}
 
 // Project represents a tenant UUID and friendly name.
 type Project struct {
@@ -210,7 +95,7 @@ func (cmd *tenantUpdateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantUpdateCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !c.IsPrivileged() {
 		fatalf("Updating tenants is only available for privileged users")
 	}
 
@@ -226,7 +111,7 @@ func (cmd *tenantUpdateCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	return putCiaoTenantConfig(cmd.tenantID, cmd.name, cmd.subnetBits)
+	return c.UpdateTenantConfig(cmd.tenantID, cmd.name, cmd.subnetBits)
 }
 
 func (cmd *tenantCreateCommand) usage(...string) {
@@ -256,7 +141,7 @@ func (cmd *tenantCreateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantCreateCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !c.IsPrivileged() {
 		fatalf("Creating tenants is only available for privileged users")
 	}
 
@@ -280,39 +165,14 @@ func (cmd *tenantCreateCommand) run(args []string) error {
 		}
 	}
 
-	var req types.TenantRequest
-
-	url, err := getCiaoTenantsResource()
-	if err != nil {
-		return err
-	}
-
 	tuuid, err := uuid.Parse(cmd.tenantID)
 	if err != nil {
 		fatalf("Tenant ID must be a UUID4")
 	}
 
-	req.ID = tuuid.String()
-	req.Config = types.TenantConfig{
-		Name:       cmd.name,
-		SubnetBits: cmd.subnetBits,
-	}
-	b, err := json.Marshal(req)
+	summary, err := c.CreateTenantConfig(tuuid.String(), cmd.name, cmd.subnetBits)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.TenantsV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	var summary types.TenantSummary
-	err = unmarshalHTTPResponse(resp, &summary)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error creating tenant configuration")
 	}
 
 	if t != nil {
@@ -348,7 +208,7 @@ func (cmd *tenantDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantDeleteCommand) run(args []string) error {
-	if !checkPrivilege() {
+	if !c.IsPrivileged() {
 		fatalf("Creating tenants is only available for privileged users")
 	}
 
@@ -357,17 +217,9 @@ func (cmd *tenantDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url, err := getCiaoTenantRef(cmd.tenantID)
-	if err != nil {
-		fatalf(err.Error())
-	}
+	err := c.DeleteTenant(cmd.tenantID)
 
-	_, err = sendCiaoRequest("DELETE", url, nil, nil, api.TenantsV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	return nil
+	return errors.Wrap(err, "Error deleting tenant")
 }
 
 func (cmd *tenantListCommand) usage(...string) {
@@ -436,11 +288,11 @@ func (cmd *tenantListCommand) run(args []string) error {
 		return listTenantResources(t)
 	}
 	if cmd.config {
-		if checkPrivilege() == false {
-			if *tenantID == "" {
+		if c.IsPrivileged() == false {
+			if c.TenantID == "" {
 				fatalf("Missing required -tenant-id")
 			}
-			return listTenantConfig(t, *tenantID)
+			return listTenantConfig(t, c.TenantID)
 		}
 
 		if cmd.tenantID == "" {
@@ -450,7 +302,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 		return listTenantConfig(t, cmd.tenantID)
 	}
 	if cmd.all {
-		if checkPrivilege() == false {
+		if c.IsPrivileged() == false {
 			fatalf("The all command is for privileged users only")
 		}
 		return listAllTenants(t)
@@ -461,7 +313,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 
 func listUserTenants(t *template.Template) error {
 	var projects []Project
-	for _, t := range tenants {
+	for _, t := range c.Tenants {
 		projects = append(projects, Project{ID: t})
 	}
 
@@ -482,21 +334,13 @@ func listUserTenants(t *template.Template) error {
 }
 
 func listTenantQuotas(t *template.Template) error {
-	if *tenantID == "" {
+	if c.TenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var resources types.CiaoTenantResources
-	url := buildComputeURL("%s/quotas", *tenantID)
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	resources, err := c.ListTenantQuotas()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &resources)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing tenant quotas")
 	}
 
 	if t != nil {
@@ -517,33 +361,13 @@ func listTenantQuotas(t *template.Template) error {
 }
 
 func listTenantResources(t *template.Template) error {
-	if *tenantID == "" {
+	if c.TenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	var usage types.CiaoUsageHistory
-	url := buildComputeURL("%s/resources", *tenantID)
-
-	now := time.Now()
-	values := []queryValue{
-		{
-			name:  "start_date",
-			value: now.Add(-15 * time.Minute).Format(time.RFC3339),
-		},
-		{
-			name:  "end_date",
-			value: now.Format(time.RFC3339),
-		},
-	}
-
-	resp, err := sendHTTPRequest("GET", url, values, nil)
+	usage, err := c.ListTenantResources()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &usage)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing tenant resources")
 	}
 
 	if t != nil {
@@ -554,11 +378,11 @@ func listTenantResources(t *template.Template) error {
 	}
 
 	if len(usage.Usages) == 0 {
-		fmt.Printf("No usage history for %s\n", *tenantID)
+		fmt.Printf("No usage history for %s\n", c.TenantID)
 		return nil
 	}
 
-	fmt.Printf("Usage for tenant %s:\n", *tenantID)
+	fmt.Printf("Usage for tenant %s:\n", c.TenantID)
 	for _, u := range usage.Usages {
 		fmt.Printf("\t%v: [%d CPUs] [%d MB memory] [%d MB disk]\n", u.Timestamp, u.VCPU, u.Memory, u.Disk)
 	}
@@ -567,7 +391,7 @@ func listTenantResources(t *template.Template) error {
 }
 
 func listTenantConfig(t *template.Template, tenantID string) error {
-	config, err := getCiaoTenantConfig(tenantID)
+	config, err := c.GetTenantConfig(tenantID)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -587,21 +411,9 @@ func listTenantConfig(t *template.Template, tenantID string) error {
 }
 
 func listAllTenants(t *template.Template) error {
-	var tenants types.TenantsListResponse
-
-	url, err := getCiaoTenantsResource()
+	tenants, err := c.ListTenants()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.TenantsV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &tenants)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing tenants")
 	}
 
 	if t != nil {

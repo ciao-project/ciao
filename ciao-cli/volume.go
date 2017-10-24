@@ -17,17 +17,15 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"sort"
 	"text/template"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/pkg/errors"
 
 	"github.com/intel/tfortools"
 )
@@ -90,28 +88,11 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		fatalf("Unknown source type [%s]\n", cmd.sourceType)
 	}
 
-	b, err := json.Marshal(createReq)
+	vol, err := c.CreateVolume(createReq)
 	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error creating volume")
 	}
 
-	body := bytes.NewReader(b)
-	url := buildCiaoURL("%s/volumes", *tenantID)
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.VolumesV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Volume creation failed: %s", resp.Status)
-	}
-
-	var vol types.Volume
-	err = unmarshalHTTPResponse(resp, &vol)
-	if err != nil {
-		fatalf(err.Error())
-	}
 	fmt.Printf("Created new volume: %s\n", vol.ID)
 
 	return err
@@ -165,22 +146,11 @@ func (cmd *volumeListCommand) run(args []string) error {
 		}
 	}
 
-	url := buildCiaoURL("%s/volumes", *tenantID)
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.VolumesV1)
+	vols, err := c.ListVolumes()
 	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Volume list failed: %s", resp.Status)
-	}
-
-	var vols []types.Volume
-
-	err = unmarshalHTTPResponse(resp, &vols)
-	if err != nil {
-		fatalf(err.Error())
+		if err != nil {
+			return errors.Wrap(err, "Error listing volumes")
+		}
 	}
 
 	sort.Sort(byName(vols))
@@ -233,22 +203,9 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildCiaoURL("%s/volumes/%s", *tenantID, cmd.volume)
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.VolumesV1)
+	vol, err := c.GetVolume(cmd.volume)
 	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Volume show failed: %s", resp.Status)
-	}
-
-	var vol types.Volume
-
-	err = unmarshalHTTPResponse(resp, &vol)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting volume")
 	}
 
 	if cmd.template != "" {
@@ -289,18 +246,12 @@ func (cmd *volumeDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	url := buildCiaoURL("%s/volumes/%s", *tenantID, cmd.volume)
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.VolumesV1)
+	err := c.DeleteVolume(cmd.volume)
 	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Volume delete failed: %s", resp.Status)
+		return errors.Wrap(err, "Error deleting volume")
 	}
 
-	return err
+	return nil
 }
 
 type volumeAttachCommand struct {
@@ -339,42 +290,13 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 	}
 
 	if cmd.instance == "" {
-		errorf("missing required -volume parameter")
+		errorf("missing required -instance parameter")
 		cmd.usage()
 	}
 
-	type AttachRequest struct {
-		MountPoint   string `json:"mountpoint"`
-		Mode         string `json:"mode"`
-		InstanceUUID string `json:"instance_uuid"`
-	}
-
-	// mountpoint or mode isn't required
-	var attachReq = struct {
-		Attach AttachRequest `json:"attach"`
-	}{
-		Attach: AttachRequest{
-			MountPoint:   cmd.mountpoint,
-			Mode:         cmd.mode,
-			InstanceUUID: cmd.instance,
-		},
-	}
-
-	b, err := json.Marshal(attachReq)
+	err := c.AttachVolume(cmd.volume, cmd.instance, cmd.mountpoint, cmd.mode)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-	url := buildCiaoURL("%s/volumes/%s/action", *tenantID, cmd.volume)
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.VolumesV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Volume attach failed: %s", resp.Status)
+		return errors.Wrap(err, "Error attaching volume")
 	}
 
 	if err == nil {
@@ -412,30 +334,9 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	type DetachRequest struct {
-		AttachmentID string `json:"attachment_id,omitempty"`
-	}
-	var detachReq = struct {
-		Detach DetachRequest `json:"detach"`
-	}{
-		Detach: DetachRequest{},
-	}
-
-	b, err := json.Marshal(detachReq)
+	err := c.DetachVolume(cmd.volume)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	body := bytes.NewReader(b)
-	url := buildCiaoURL("%s/volumes/%s/action", *tenantID, cmd.volume)
-	resp, err := sendHTTPRequest("POST", url, nil, body)
-	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Volume detach failed: %s", resp.Status)
+		return errors.Wrap(err, "Error detaching volume")
 	}
 
 	if err == nil {

@@ -19,11 +19,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
+	"github.com/pkg/errors"
 )
 
 var eventCommand = &command{
@@ -65,7 +65,7 @@ func (cmd *eventListCommand) parseArgs(args []string) []string {
 
 func (cmd *eventListCommand) run(args []string) error {
 	if cmd.tenant == "" {
-		cmd.tenant = *tenantID
+		cmd.tenant = c.TenantID
 	}
 
 	if cmd.all == false && cmd.tenant == "" {
@@ -73,23 +73,14 @@ func (cmd *eventListCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	var events types.CiaoEvents
-	var url string
-
-	if cmd.all == true {
-		url = buildComputeURL("events")
-	} else {
-		url = buildComputeURL("%s/events", cmd.tenant)
+	tenantID := cmd.tenant
+	if cmd.all {
+		tenantID = ""
 	}
 
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	events, err := c.ListEvents(tenantID)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &events)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing events")
 	}
 
 	if cmd.template != "" {
@@ -123,19 +114,10 @@ func (cmd *eventDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *eventDeleteCommand) run(args []string) error {
-	url := buildComputeURL("events")
-
-	resp, err := sendHTTPRequest("DELETE", url, nil, nil)
+	err := c.DeleteEvents()
 	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error deleting events")
 	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusAccepted {
-		fatalf("Events log deletion failed: %s", resp.Status)
-	}
-
 	fmt.Printf("Deleted all event logs\n")
 	return nil
 }

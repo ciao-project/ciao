@@ -17,13 +17,13 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
+	"github.com/pkg/errors"
 )
 
 var traceCommand = &command{
@@ -57,18 +57,9 @@ func (cmd *traceListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *traceListCommand) run(args []string) error {
-	var traces types.CiaoTracesSummary
-
-	url := buildComputeURL("traces")
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	traces, err := c.ListTraceLabels()
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &traces)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing trace labels")
 	}
 
 	if cmd.template != "" {
@@ -117,18 +108,9 @@ func (cmd *traceShowCommand) run(args []string) error {
 		return errors.New("Missing required -label parameter")
 	}
 
-	var traceData types.CiaoTraceData
-
-	url := buildComputeURL("traces/%s", cmd.label)
-
-	resp, err := sendHTTPRequest("GET", url, nil, nil)
+	traceData, err := c.GetTraceData(cmd.label)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = unmarshalHTTPResponse(resp, &traceData)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting trace data")
 	}
 
 	if cmd.template != "" {

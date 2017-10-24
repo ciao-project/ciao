@@ -17,18 +17,14 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"text/template"
 
-	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/intel/tfortools"
+	"github.com/pkg/errors"
 )
 
 var imageCommand = &command{
@@ -74,34 +70,6 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 	return cmd.Flag.Args()
 }
 
-func getImage(imageID string) types.Image {
-	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images/%s", imageID)
-	} else {
-		url = buildCiaoURL("%s/images/%s", *tenantID, imageID)
-	}
-
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
-	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Image show failed: %s", resp.Status)
-	}
-
-	var i types.Image
-
-	err = unmarshalHTTPResponse(resp, &i)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	return i
-}
-
 func (cmd *imageAddCommand) run(args []string) error {
 	if cmd.name == "" {
 		return errors.New("Missing required -name parameter")
@@ -111,10 +79,11 @@ func (cmd *imageAddCommand) run(args []string) error {
 		return errors.New("Missing required -file parameter")
 	}
 
-	_, err := os.Stat(cmd.file)
+	f, err := os.Open(cmd.file)
 	if err != nil {
 		fatalf("Could not open %s [%s]\n", cmd.file, err)
 	}
+	defer func() { _ = f.Close() }()
 
 	imageVisibility := types.Private
 	if cmd.visibility != "" {
@@ -126,48 +95,15 @@ func (cmd *imageAddCommand) run(args []string) error {
 		}
 	}
 
-	opts := api.CreateImageRequest{
-		Name:       cmd.name,
-		ID:         cmd.id,
-		Visibility: imageVisibility,
-	}
-
-	b, err := json.Marshal(opts)
+	id, err := c.CreateImage(cmd.name, imageVisibility, cmd.id, f)
 	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error creating image")
 	}
 
-	body := bytes.NewReader(b)
-
-	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images")
-	} else {
-		url = buildCiaoURL("%s/images", *tenantID)
-	}
-
-	resp, err := sendCiaoRequest("POST", url, nil, body, api.ImagesV1)
+	image, err := c.GetImage(id)
 	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error getting image")
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusCreated {
-		fatalf("Image creation failed: %s", resp.Status)
-	}
-
-	var image types.Image
-	err = unmarshalHTTPResponse(resp, &image)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	err = uploadTenantImage(*tenantID, image.ID, cmd.file)
-	if err != nil {
-		fatalf(err.Error())
-	}
-
-	image = getImage(image.ID)
 
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "image-add", cmd.template, image, nil)
@@ -207,7 +143,10 @@ func (cmd *imageShowCommand) run(args []string) error {
 		return errors.New("Missing required -image parameter")
 	}
 
-	i := getImage(cmd.image)
+	i, err := c.GetImage(cmd.image)
+	if err != nil {
+		return errors.Wrap(err, "Error getting image")
+	}
 
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "image-show", cmd.template, i, nil)
@@ -259,27 +198,9 @@ func (cmd *imageListCommand) run(args []string) error {
 		}
 	}
 
-	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images")
-	} else {
-		url = buildCiaoURL("%s/images", *tenantID)
-	}
-
-	resp, err := sendCiaoRequest("GET", url, nil, nil, api.ImagesV1)
+	images, err := c.ListImages()
 	if err != nil {
-		fatalf(err.Error())
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		fatalf("Image list failed: %s", resp.Status)
-	}
-
-	var images []types.Image
-	err = unmarshalHTTPResponse(resp, &images)
-	if err != nil {
-		fatalf(err.Error())
+		return errors.Wrap(err, "Error listing images")
 	}
 
 	if t != nil {
@@ -323,49 +244,14 @@ func (cmd *imageDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *imageDeleteCommand) run(args []string) error {
-	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images/%s", cmd.image)
-	} else {
-		url = buildCiaoURL("%s/images/%s", *tenantID, cmd.image)
-	}
-
-	resp, err := sendCiaoRequest("DELETE", url, nil, nil, api.ImagesV1)
+	err := c.DeleteImage(cmd.image)
 	if err != nil {
-		fatalf(err.Error())
-	}
-
-	if resp.StatusCode != http.StatusNoContent {
-		fatalf("Image delete failed: %s", resp.Status)
+		return errors.Wrap(err, "Error deleting image")
 	}
 
 	fmt.Printf("Deleted image %s\n", cmd.image)
 
 	return nil
-}
-
-func uploadTenantImage(tenant, image, filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		fatalf("Could not open %s [%s]", filename, err)
-	}
-	defer file.Close()
-
-	var url string
-	if checkPrivilege() && *tenantID == "admin" {
-		url = buildCiaoURL("images/%s/file", image)
-	} else {
-		url = buildCiaoURL("%s/images/%s/file", *tenantID, image)
-	}
-
-	resp, err := sendHTTPRequestToken("PUT", url, nil, scopedToken, file, fmt.Sprintf("%s/octet-stream", api.ImagesV1))
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Unexpected HTTP response code (%d): %s", resp.StatusCode, resp.Status)
-	}
-
-	return err
 }
 
 func dumpImage(i *types.Image) {
