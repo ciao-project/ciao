@@ -403,7 +403,7 @@ func (cmd *instanceAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *instanceAddCommand) validateAddCommandArgs() {
-	if client.tenantID == "" {
+	if client.TenantID == "" {
 		errorf("Missing required -tenant-id parameter")
 		cmd.usage()
 	}
@@ -646,7 +646,7 @@ func (cmd *instanceStopCommand) run([]string) error {
 }
 
 func startStopInstance(instance string, stop bool) error {
-	if client.tenantID == "" {
+	if client.TenantID == "" {
 		return errors.New("Missing required -tenant-id parameter")
 	}
 
@@ -711,7 +711,7 @@ func (ss byCreated) Less(i, j int) bool { return ss[i].Created.Before(ss[j].Crea
 
 func (cmd *instanceListCommand) run(args []string) error {
 	if cmd.tenant == "" {
-		cmd.tenant = client.tenantID
+		cmd.tenant = client.TenantID
 	}
 
 	if cmd.cn != "" {

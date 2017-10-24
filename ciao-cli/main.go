@@ -133,24 +133,24 @@ func getCiaoEnvVariables() {
 	infof("\t%s:%s\n", ciaoCACertFileEnv, ca)
 	infof("\t%s:%s\n", ciaoClientCertFileEnv, clientCert)
 
-	client.controllerURL = controller
-	client.caCertFile = ca
-	client.clientCertFile = clientCert
+	client.ControllerURL = controller
+	client.CACertFile = ca
+	client.ClientCertFile = clientCert
 
 	if *controllerURLFlag != "" {
-		client.controllerURL = *controllerURLFlag
+		client.ControllerURL = *controllerURLFlag
 	}
 
 	if *caCertFileFlag != "" {
-		client.caCertFile = *caCertFileFlag
+		client.CACertFile = *caCertFileFlag
 	}
 
 	if *clientCertFileFlag != "" {
-		client.clientCertFile = *clientCertFileFlag
+		client.ClientCertFile = *clientCertFileFlag
 	}
 
 	if *tenantIDFlag != "" {
-		client.tenantID = *tenantIDFlag
+		client.TenantID = *tenantIDFlag
 	}
 }
 

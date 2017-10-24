@@ -39,15 +39,15 @@ import (
 
 // Client represents a client for accessing ciao controller
 type Client struct {
-	controllerURL  string
-	tenantID       string
-	caCertFile     string
-	clientCertFile string
+	ControllerURL  string
+	TenantID       string
+	CACertFile     string
+	ClientCertFile string
 
 	caCertPool *x509.CertPool
 	clientCert *tls.Certificate
 
-	tenants []string
+	Tenants []string
 }
 
 type queryValue struct {
@@ -55,8 +55,8 @@ type queryValue struct {
 }
 
 func (client *Client) prepareCAcert() error {
-	if client.caCertFile != "" {
-		caCert, err := ioutil.ReadFile(client.caCertFile)
+	if client.CACertFile != "" {
+		caCert, err := ioutil.ReadFile(client.CACertFile)
 		if err != nil {
 			return errors.Wrap(err, "Unable to load requested CA certificate")
 		}
@@ -105,27 +105,27 @@ func getTenantsFromCertFile(clientCertFile string) ([]string, error) {
 }
 
 func (client *Client) prepareClientCert() error {
-	cert, err := tls.LoadX509KeyPair(client.clientCertFile, client.clientCertFile)
+	cert, err := tls.LoadX509KeyPair(client.ClientCertFile, client.ClientCertFile)
 	if err != nil {
 		return errors.Wrap(err, "Unable to load client certiticate")
 	}
 	client.clientCert = &cert
 
-	client.tenants, err = getTenantsFromCertFile(client.clientCertFile)
+	client.Tenants, err = getTenantsFromCertFile(client.ClientCertFile)
 	if err != nil {
 		return errors.New("No tenant specified and unable to parse from certificate file")
 	}
 
-	if client.tenantID == "" {
-		if len(client.tenants) == 0 {
+	if client.TenantID == "" {
+		if len(client.Tenants) == 0 {
 			return errors.New("No tenants specified in certificate")
 		}
 
-		if len(client.tenants) > 1 {
+		if len(client.Tenants) > 1 {
 			return errors.New("Multiple tenants available. Please specify one with -tenant-id")
 		}
 
-		client.tenantID = client.tenants[0]
+		client.TenantID = client.Tenants[0]
 	}
 
 	return nil
@@ -133,16 +133,16 @@ func (client *Client) prepareClientCert() error {
 
 // Init initialises a client for making requests
 func (client *Client) Init() error {
-	if client.controllerURL == "" {
+	if client.ControllerURL == "" {
 		return errors.New("Controller URL must be specified")
 	}
 
-	if client.clientCertFile == "" {
+	if client.ClientCertFile == "" {
 		return errors.New("Client certificate file must be specified")
 	}
 
-	if !strings.HasPrefix(client.controllerURL, "https://") {
-		client.controllerURL = fmt.Sprintf("https://%s:%d", client.controllerURL, api.Port)
+	if !strings.HasPrefix(client.ControllerURL, "https://") {
+		client.ControllerURL = fmt.Sprintf("https://%s:%d", client.ControllerURL, api.Port)
 	}
 
 	if err := client.prepareCAcert(); err != nil {
@@ -157,12 +157,12 @@ func (client *Client) Init() error {
 }
 
 func (client *Client) buildComputeURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("%s/v2.1/", client.controllerURL)
+	prefix := fmt.Sprintf("%s/v2.1/", client.ControllerURL)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
 func (client *Client) buildCiaoURL(format string, args ...interface{}) string {
-	prefix := fmt.Sprintf("%s/", client.controllerURL)
+	prefix := fmt.Sprintf("%s/", client.ControllerURL)
 	return fmt.Sprintf(prefix+format, args...)
 }
 
@@ -253,10 +253,10 @@ func (client *Client) getCiaoResource(name string, minVersion string) (string, e
 	var resources []types.APILink
 	var url string
 
-	if client.checkPrivilege() {
+	if client.IsPrivileged() {
 		url = client.buildCiaoURL("")
 	} else {
-		url = client.buildCiaoURL(fmt.Sprintf("%s", client.tenantID))
+		url = client.buildCiaoURL(fmt.Sprintf("%s", client.TenantID))
 	}
 
 	err := client.getResource(url, "", nil, &resources)
@@ -273,9 +273,10 @@ func (client *Client) getCiaoResource(name string, minVersion string) (string, e
 	return "", errors.New("Supported version of resource not found")
 }
 
-func (client *Client) checkPrivilege() bool {
-	for i := range client.tenants {
-		if client.tenants[i] == "admin" {
+// IsPrivileged returns true if the user has admin privileges
+func (client *Client) IsPrivileged() bool {
+	for i := range client.Tenants {
+		if client.Tenants[i] == "admin" {
 			return true
 		}
 	}
@@ -495,7 +496,7 @@ func (client *Client) getCiaoPoolRef(name string) (string, error) {
 func (client *Client) GetExternalIPPool(name string) (types.Pool, error) {
 	var pool types.Pool
 
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return pool, errors.New("This command is only available to admins")
 	}
 
@@ -510,7 +511,7 @@ func (client *Client) GetExternalIPPool(name string) (types.Pool, error) {
 
 // CreateExternalIPPool creates a pool of IPs
 func (client *Client) CreateExternalIPPool(name string) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -542,7 +543,7 @@ func (client *Client) ListExternalIPPools() (types.ListPoolsResponse, error) {
 
 // DeleteExternalIPPool deletes the pool of the given name
 func (client *Client) DeleteExternalIPPool(pool string) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -557,7 +558,7 @@ func (client *Client) DeleteExternalIPPool(pool string) error {
 
 // AddExternalIPSubnet adds a subnet to the external IP pool
 func (client *Client) AddExternalIPSubnet(pool string, subnet *net.IPNet) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -576,7 +577,7 @@ func (client *Client) AddExternalIPSubnet(pool string, subnet *net.IPNet) error 
 
 // AddExternalIPAddresses adds a set of IP addresses to the external IP pool
 func (client *Client) AddExternalIPAddresses(pool string, IPs []string) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -620,7 +621,7 @@ func (client *Client) getIPRef(pool types.Pool, address string) string {
 
 // RemoveExternalIPSubnet removes a subnet from the pool
 func (client *Client) RemoveExternalIPSubnet(pool string, subnet *net.IPNet) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -639,7 +640,7 @@ func (client *Client) RemoveExternalIPSubnet(pool string, subnet *net.IPNet) err
 
 // RemoveExternalIPAddress removes a single IP address from the pool
 func (client *Client) RemoveExternalIPAddress(pool string, IP string) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -661,10 +662,10 @@ func (client *Client) GetImage(imageID string) (types.Image, error) {
 	var i types.Image
 
 	var url string
-	if client.checkPrivilege() && client.tenantID == "admin" {
+	if client.IsPrivileged() && client.TenantID == "admin" {
 		url = client.buildCiaoURL("images/%s", imageID)
 	} else {
-		url = client.buildCiaoURL("%s/images/%s", client.tenantID, imageID)
+		url = client.buildCiaoURL("%s/images/%s", client.TenantID, imageID)
 	}
 
 	err := client.getResource(url, api.ImagesV1, nil, &i)
@@ -674,10 +675,10 @@ func (client *Client) GetImage(imageID string) (types.Image, error) {
 
 func (client *Client) uploadTenantImage(tenant, image string, data io.Reader) error {
 	var url string
-	if client.checkPrivilege() && client.tenantID == "admin" {
+	if client.IsPrivileged() && client.TenantID == "admin" {
 		url = client.buildCiaoURL("images/%s/file", image)
 	} else {
-		url = client.buildCiaoURL("%s/images/%s/file", client.tenantID, image)
+		url = client.buildCiaoURL("%s/images/%s/file", client.TenantID, image)
 	}
 
 	resp, err := client.sendHTTPRequest("PUT", url, nil, data, fmt.Sprintf("%s/octet-stream", api.ImagesV1))
@@ -699,10 +700,10 @@ func (client *Client) CreateImage(name string, visibility types.Visibility, ID s
 	}
 
 	var url string
-	if client.checkPrivilege() && client.tenantID == "admin" {
+	if client.IsPrivileged() && client.TenantID == "admin" {
 		url = client.buildCiaoURL("images")
 	} else {
-		url = client.buildCiaoURL("%s/images", client.tenantID)
+		url = client.buildCiaoURL("%s/images", client.TenantID)
 	}
 
 	var image types.Image
@@ -711,7 +712,7 @@ func (client *Client) CreateImage(name string, visibility types.Visibility, ID s
 		return "", errors.Wrap(err, "Error creating image resource")
 	}
 
-	err = client.uploadTenantImage(client.tenantID, image.ID, data)
+	err = client.uploadTenantImage(client.TenantID, image.ID, data)
 	if err != nil {
 		return "", errors.Wrap(err, "Error uploading image data")
 	}
@@ -724,10 +725,10 @@ func (client *Client) ListImages() ([]types.Image, error) {
 	var images []types.Image
 
 	var url string
-	if client.checkPrivilege() && client.tenantID == "admin" {
+	if client.IsPrivileged() && client.TenantID == "admin" {
 		url = client.buildCiaoURL("images")
 	} else {
-		url = client.buildCiaoURL("%s/images", client.tenantID)
+		url = client.buildCiaoURL("%s/images", client.TenantID)
 	}
 
 	err := client.getResource(url, api.ImagesV1, nil, &images)
@@ -738,10 +739,10 @@ func (client *Client) ListImages() ([]types.Image, error) {
 // DeleteImage deletes the given image
 func (client *Client) DeleteImage(imageID string) error {
 	var url string
-	if client.checkPrivilege() && client.tenantID == "admin" {
+	if client.IsPrivileged() && client.TenantID == "admin" {
 		url = client.buildCiaoURL("images/%s", imageID)
 	} else {
-		url = client.buildCiaoURL("%s/images/%s", client.tenantID, imageID)
+		url = client.buildCiaoURL("%s/images/%s", client.TenantID, imageID)
 	}
 
 	return client.deleteResource(url, api.ImagesV1)
@@ -751,7 +752,7 @@ func (client *Client) DeleteImage(imageID string) error {
 func (client *Client) CreateInstances(request api.CreateServerRequest) (api.Servers, error) {
 	var servers api.Servers
 
-	url := client.buildCiaoURL("%s/instances", client.tenantID)
+	url := client.buildCiaoURL("%s/instances", client.TenantID)
 	err := client.postResource(url, api.InstancesV1, &request, &servers)
 
 	return servers, err
@@ -759,14 +760,14 @@ func (client *Client) CreateInstances(request api.CreateServerRequest) (api.Serv
 
 // DeleteInstance deletes the given instance
 func (client *Client) DeleteInstance(instanceID string) error {
-	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, instanceID)
+	url := client.buildCiaoURL("%s/instances/%s", client.TenantID, instanceID)
 	return client.deleteResource(url, api.InstancesV1)
 }
 
 func (client *Client) instanceAction(instanceID string, action string) error {
 	actionBytes := []byte(action)
 
-	url := client.buildCiaoURL("%s/instances/%s/action", client.tenantID, instanceID)
+	url := client.buildCiaoURL("%s/instances/%s/action", client.TenantID, instanceID)
 
 	resp, err := client.sendHTTPRequest("POST", url, nil, bytes.NewReader(actionBytes), api.InstancesV1)
 	if err != nil {
@@ -812,14 +813,14 @@ func (client *Client) ListInstancesByWorkload(tenantID string, workloadID string
 
 // ListInstances gets the set of instances
 func (client *Client) ListInstances() (api.Servers, error) {
-	return client.ListInstancesByWorkload(client.tenantID, "")
+	return client.ListInstancesByWorkload(client.TenantID, "")
 }
 
 // GetInstance gets the details of a single instances
 func (client *Client) GetInstance(instanceID string) (api.Server, error) {
 	var server api.Server
 
-	url := client.buildCiaoURL("%s/instances/%s", client.tenantID, instanceID)
+	url := client.buildCiaoURL("%s/instances/%s", client.TenantID, instanceID)
 	err := client.getResource(url, api.InstancesV1, nil, &server)
 
 	return server, err
@@ -839,7 +840,7 @@ func (client *Client) ListInstancesByNode(nodeID string) (types.CiaoServersStats
 func (client *Client) DeleteAllInstances() error {
 	var action types.CiaoServersAction
 
-	url := client.buildComputeURL("%s/servers/action", client.tenantID)
+	url := client.buildComputeURL("%s/servers/action", client.TenantID)
 	action.Action = "os-delete"
 
 	return client.postResource(url, "", &action, nil)
@@ -854,10 +855,10 @@ func (client *Client) ListWorkloads() ([]types.Workload, error) {
 	var wls []types.Workload
 
 	var url string
-	if client.checkPrivilege() {
+	if client.IsPrivileged() {
 		url = client.buildCiaoURL("workloads")
 	} else {
-		url = client.buildCiaoURL("%s/workloads", client.tenantID)
+		url = client.buildCiaoURL("%s/workloads", client.TenantID)
 	}
 
 	err := client.getResource(url, api.WorkloadsV1, nil, &wls)
@@ -967,7 +968,7 @@ func (client *Client) GetCNCI(cnciID string) (types.CiaoCNCI, error) {
 
 // ChangeNodeStatus modifies the status of a node
 func (client *Client) ChangeNodeStatus(nodeID string, status types.NodeStatusType) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -991,7 +992,7 @@ func (client *Client) getCiaoQuotasResource() (string, error) {
 
 // UpdateQuotas updates the quotas for a given tenant
 func (client *Client) UpdateQuotas(tenantID string, quotas []types.QuotaDetails) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -1045,7 +1046,7 @@ func (client *Client) getCiaoTenantRef(ID string) (string, error) {
 		return "", err
 	}
 
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return url, errors.New("This command is only available to admins")
 	}
 
@@ -1132,7 +1133,7 @@ func (client *Client) CreateTenantConfig(tenantID string, name string, bits int)
 	var req types.TenantRequest
 	var summary types.TenantSummary
 
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return summary, errors.New("This command is only available to admins")
 	}
 
@@ -1154,7 +1155,7 @@ func (client *Client) CreateTenantConfig(tenantID string, name string, bits int)
 
 // DeleteTenant deletes the given tenant
 func (client *Client) DeleteTenant(tenantID string) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		return errors.New("This command is only available to admins")
 	}
 
@@ -1170,7 +1171,7 @@ func (client *Client) DeleteTenant(tenantID string) error {
 func (client *Client) ListTenantQuotas() (types.CiaoTenantResources, error) {
 	var resources types.CiaoTenantResources
 
-	url := client.buildComputeURL("%s/quotas", client.tenantID)
+	url := client.buildComputeURL("%s/quotas", client.TenantID)
 	err := client.getResource(url, "", nil, &resources)
 
 	return resources, err
@@ -1179,7 +1180,7 @@ func (client *Client) ListTenantQuotas() (types.CiaoTenantResources, error) {
 // ListTenantResources gets tenant usage information
 func (client *Client) ListTenantResources() (types.CiaoUsageHistory, error) {
 	var usage types.CiaoUsageHistory
-	url := client.buildComputeURL("%s/resources", client.tenantID)
+	url := client.buildComputeURL("%s/resources", client.TenantID)
 
 	now := time.Now()
 	values := []queryValue{
@@ -1236,7 +1237,7 @@ func (client *Client) GetTraceData(label string) (types.CiaoTraceData, error) {
 func (client *Client) CreateVolume(req api.RequestedVolume) (types.Volume, error) {
 	var vol types.Volume
 
-	url := client.buildCiaoURL("%s/volumes", client.tenantID)
+	url := client.buildCiaoURL("%s/volumes", client.TenantID)
 	err := client.postResource(url, api.VolumesV1, &req, &vol)
 
 	return vol, err
@@ -1246,7 +1247,7 @@ func (client *Client) CreateVolume(req api.RequestedVolume) (types.Volume, error
 func (client *Client) ListVolumes() ([]types.Volume, error) {
 	var volumes []types.Volume
 
-	url := client.buildCiaoURL("%s/volumes", client.tenantID)
+	url := client.buildCiaoURL("%s/volumes", client.TenantID)
 	err := client.getResource(url, api.VolumesV1, nil, &volumes)
 
 	return volumes, err
@@ -1256,7 +1257,7 @@ func (client *Client) ListVolumes() ([]types.Volume, error) {
 func (client *Client) GetVolume(volumeID string) (types.Volume, error) {
 	var volume types.Volume
 
-	url := client.buildCiaoURL("%s/volumes/%s", client.tenantID, volumeID)
+	url := client.buildCiaoURL("%s/volumes/%s", client.TenantID, volumeID)
 	err := client.getResource(url, api.VolumesV1, nil, &volume)
 
 	return volume, err
@@ -1264,13 +1265,13 @@ func (client *Client) GetVolume(volumeID string) (types.Volume, error) {
 
 // DeleteVolume deletes the volume
 func (client *Client) DeleteVolume(volumeID string) error {
-	url := client.buildCiaoURL("%s/volumes/%s", client.tenantID, volumeID)
+	url := client.buildCiaoURL("%s/volumes/%s", client.TenantID, volumeID)
 	return client.deleteResource(url, api.VolumesV1)
 }
 
 // AttachVolume attaches a volume to an instance
 func (client *Client) AttachVolume(volumeID string, instanceID, mountPoint string, mode string) error {
-	url := client.buildCiaoURL("%s/volumes/%s/action", client.tenantID, volumeID)
+	url := client.buildCiaoURL("%s/volumes/%s/action", client.TenantID, volumeID)
 
 	type AttachRequest struct {
 		MountPoint   string `json:"mountpoint"`
@@ -1296,7 +1297,7 @@ func (client *Client) AttachVolume(volumeID string, instanceID, mountPoint strin
 
 // DetachVolume detaches a volume from an instances
 func (client *Client) DetachVolume(volumeID string) error {
-	url := client.buildCiaoURL("%s/volumes/%s/action", client.tenantID, volumeID)
+	url := client.buildCiaoURL("%s/volumes/%s/action", client.TenantID, volumeID)
 
 	type DetachRequest struct {
 		AttachmentID string `json:"attachment_id,omitempty"`

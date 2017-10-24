@@ -95,7 +95,7 @@ func (cmd *tenantUpdateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantUpdateCommand) run(args []string) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		fatalf("Updating tenants is only available for privileged users")
 	}
 
@@ -141,7 +141,7 @@ func (cmd *tenantCreateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantCreateCommand) run(args []string) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		fatalf("Creating tenants is only available for privileged users")
 	}
 
@@ -208,7 +208,7 @@ func (cmd *tenantDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantDeleteCommand) run(args []string) error {
-	if !client.checkPrivilege() {
+	if !client.IsPrivileged() {
 		fatalf("Creating tenants is only available for privileged users")
 	}
 
@@ -288,11 +288,11 @@ func (cmd *tenantListCommand) run(args []string) error {
 		return listTenantResources(t)
 	}
 	if cmd.config {
-		if client.checkPrivilege() == false {
-			if client.tenantID == "" {
+		if client.IsPrivileged() == false {
+			if client.TenantID == "" {
 				fatalf("Missing required -tenant-id")
 			}
-			return listTenantConfig(t, client.tenantID)
+			return listTenantConfig(t, client.TenantID)
 		}
 
 		if cmd.tenantID == "" {
@@ -302,7 +302,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 		return listTenantConfig(t, cmd.tenantID)
 	}
 	if cmd.all {
-		if client.checkPrivilege() == false {
+		if client.IsPrivileged() == false {
 			fatalf("The all command is for privileged users only")
 		}
 		return listAllTenants(t)
@@ -313,7 +313,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 
 func listUserTenants(t *template.Template) error {
 	var projects []Project
-	for _, t := range client.tenants {
+	for _, t := range client.Tenants {
 		projects = append(projects, Project{ID: t})
 	}
 
@@ -334,7 +334,7 @@ func listUserTenants(t *template.Template) error {
 }
 
 func listTenantQuotas(t *template.Template) error {
-	if client.tenantID == "" {
+	if client.TenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
@@ -361,7 +361,7 @@ func listTenantQuotas(t *template.Template) error {
 }
 
 func listTenantResources(t *template.Template) error {
-	if client.tenantID == "" {
+	if client.TenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
@@ -378,11 +378,11 @@ func listTenantResources(t *template.Template) error {
 	}
 
 	if len(usage.Usages) == 0 {
-		fmt.Printf("No usage history for %s\n", client.tenantID)
+		fmt.Printf("No usage history for %s\n", client.TenantID)
 		return nil
 	}
 
-	fmt.Printf("Usage for tenant %s:\n", client.tenantID)
+	fmt.Printf("Usage for tenant %s:\n", client.TenantID)
 	for _, u := range usage.Usages {
 		fmt.Printf("\t%v: [%d CPUs] [%d MB memory] [%d MB disk]\n", u.Timestamp, u.VCPU, u.Memory, u.Disk)
 	}

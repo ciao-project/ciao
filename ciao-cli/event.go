@@ -65,7 +65,7 @@ func (cmd *eventListCommand) parseArgs(args []string) []string {
 
 func (cmd *eventListCommand) run(args []string) error {
 	if cmd.tenant == "" {
-		cmd.tenant = client.tenantID
+		cmd.tenant = client.TenantID
 	}
 
 	if cmd.all == false && cmd.tenant == "" {

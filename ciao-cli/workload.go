@@ -72,7 +72,7 @@ func (cmd *workloadListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *workloadListCommand) run(args []string) error {
-	if client.tenantID == "" {
+	if client.TenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 

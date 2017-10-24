@@ -117,7 +117,7 @@ func (cmd *externalIPListCommand) run(args []string) error {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 1, 1, ' ', 0)
 	fmt.Fprintf(w, "#\tExternalIP\tInternalIP\tInstanceID")
-	if client.checkPrivilege() {
+	if client.IsPrivileged() {
 		fmt.Fprintf(w, "\tTenantID\tPoolName\n")
 	} else {
 		fmt.Fprintf(w, "\n")
@@ -282,7 +282,7 @@ func (cmd *poolListCommand) run(args []string) error {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 1, 1, ' ', 0)
 	fmt.Fprintf(w, "#\tName")
-	if client.checkPrivilege() {
+	if client.IsPrivileged() {
 		fmt.Fprintf(w, "\tTotalIPs\tFreeIPs\n")
 	} else {
 		fmt.Fprintf(w, "\n")
