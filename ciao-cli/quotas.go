@@ -157,19 +157,19 @@ func (cmd *quotasListCommand) run(args []string) error {
 		}
 	}
 
-	results, err := c.ListQuotas(cmd.tenantID)
+	qds, err := c.ListQuotas(cmd.tenantID)
 	if err != nil {
 		return errors.Wrap(err, "Error listing quotas")
 	}
 
 	if cmd.template != "" {
 		return tfortools.OutputToTemplate(os.Stdout, "quotas-list", cmd.template,
-			results.Quotas, nil)
+			qds, nil)
 	}
 
 	fmt.Printf("Quotas for tenant: %s\n", cmd.tenantID)
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	for _, qd := range results.Quotas {
+	for _, qd := range qds {
 		fmt.Fprintf(w, "%s:\t", qd.Name)
 		if strings.Contains(qd.Name, "quota") {
 			fmt.Fprintf(w, "%d of ", qd.Usage)

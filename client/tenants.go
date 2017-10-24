@@ -50,12 +50,12 @@ func (client *Client) UpdateQuotas(tenantID string, quotas []types.QuotaDetails)
 }
 
 // ListQuotas lists the quotas for the specified tenant
-func (client *Client) ListQuotas(tenantID string) (types.QuotaListResponse, error) {
+func (client *Client) ListQuotas(tenantID string) ([]types.QuotaDetails, error) {
 	var result types.QuotaListResponse
 
 	url, err := client.getCiaoQuotasResource()
 	if err != nil {
-		return result, errors.Wrap(err, "Error getting quotas resource")
+		return result.Quotas, errors.Wrap(err, "Error getting quotas resource")
 	}
 
 	if tenantID != "" {
@@ -66,7 +66,7 @@ func (client *Client) ListQuotas(tenantID string) (types.QuotaListResponse, erro
 
 	err = client.getResource(url, api.TenantsV1, nil, &result)
 
-	return result, err
+	return result.Quotas, err
 }
 
 func (client *Client) getCiaoTenantsResource() (string, error) {
