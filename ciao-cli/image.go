@@ -95,12 +95,12 @@ func (cmd *imageAddCommand) run(args []string) error {
 		}
 	}
 
-	id, err := client.CreateImage(cmd.name, imageVisibility, cmd.id, f)
+	id, err := c.CreateImage(cmd.name, imageVisibility, cmd.id, f)
 	if err != nil {
 		return errors.Wrap(err, "Error creating image")
 	}
 
-	image, err := client.GetImage(id)
+	image, err := c.GetImage(id)
 	if err != nil {
 		return errors.Wrap(err, "Error getting image")
 	}
@@ -143,7 +143,7 @@ func (cmd *imageShowCommand) run(args []string) error {
 		return errors.New("Missing required -image parameter")
 	}
 
-	i, err := client.GetImage(cmd.image)
+	i, err := c.GetImage(cmd.image)
 	if err != nil {
 		return errors.Wrap(err, "Error getting image")
 	}
@@ -198,7 +198,7 @@ func (cmd *imageListCommand) run(args []string) error {
 		}
 	}
 
-	images, err := client.ListImages()
+	images, err := c.ListImages()
 	if err != nil {
 		return errors.Wrap(err, "Error listing images")
 	}
@@ -244,7 +244,7 @@ func (cmd *imageDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *imageDeleteCommand) run(args []string) error {
-	err := client.DeleteImage(cmd.image)
+	err := c.DeleteImage(cmd.image)
 	if err != nil {
 		return errors.Wrap(err, "Error deleting image")
 	}

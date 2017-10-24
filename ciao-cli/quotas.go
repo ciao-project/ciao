@@ -65,7 +65,7 @@ func (cmd *quotasUpdateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *quotasUpdateCommand) run(args []string) error {
-	if !client.IsPrivileged() {
+	if !c.IsPrivileged() {
 		fatalf("Updating quotas is only available for privileged users")
 	}
 
@@ -99,7 +99,7 @@ func (cmd *quotasUpdateCommand) run(args []string) error {
 		Value: v,
 	}}
 
-	err := client.UpdateQuotas(cmd.tenantID, quotas)
+	err := c.UpdateQuotas(cmd.tenantID, quotas)
 	if err != nil {
 		return errors.Wrap(err, "Error updating quotas")
 	}
@@ -147,17 +147,17 @@ func (cmd *quotasListCommand) parseArgs(args []string) []string {
 // if not privileged, build non-privileged URL.
 func (cmd *quotasListCommand) run(args []string) error {
 	if cmd.tenantID != "" {
-		if !client.IsPrivileged() {
+		if !c.IsPrivileged() {
 			fatalf("Listing quotas for other tenants is for privileged users only")
 		}
 
 	} else {
-		if client.IsPrivileged() {
+		if c.IsPrivileged() {
 			fatalf("Admin user must specify the tenant with -for-tenant")
 		}
 	}
 
-	results, err := client.ListQuotas(cmd.tenantID)
+	results, err := c.ListQuotas(cmd.tenantID)
 	if err != nil {
 		return errors.Wrap(err, "Error listing quotas")
 	}

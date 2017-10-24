@@ -148,7 +148,7 @@ func dumpNodes(headerText string, nodes types.CiaoNodes, t *template.Template) {
 }
 
 func listComputeNodes(t *template.Template) error {
-	nodes, err := client.ListComputeNodes()
+	nodes, err := c.ListComputeNodes()
 	if err != nil {
 		return errors.Wrap(err, "Error listing compute nodes")
 	}
@@ -157,7 +157,7 @@ func listComputeNodes(t *template.Template) error {
 }
 
 func listNetworkNodes(t *template.Template) error {
-	nodes, err := client.ListNetworkNodes()
+	nodes, err := c.ListNetworkNodes()
 	if err != nil {
 		return errors.Wrap(err, "Error listing network nodes")
 	}
@@ -166,7 +166,7 @@ func listNetworkNodes(t *template.Template) error {
 }
 
 func listNodes(t *template.Template) error {
-	nodes, err := client.ListNodes()
+	nodes, err := c.ListNodes()
 	if err != nil {
 		return errors.Wrap(err, "Error listing nodes")
 	}
@@ -175,7 +175,7 @@ func listNodes(t *template.Template) error {
 }
 
 func listCNCINodes(t *template.Template) error {
-	cncis, err := client.ListCNCIs()
+	cncis, err := c.ListCNCIs()
 	if err != nil {
 		return errors.Wrap(err, "Error listing CNCIs")
 	}
@@ -224,7 +224,7 @@ func (cmd *nodeStatusCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeStatusCommand) run(args []string) error {
-	status, err := client.GetNodeSummary()
+	status, err := c.GetNodeSummary()
 	if err != nil {
 		return errors.Wrap(err, "Error getting node summary")
 	}
@@ -289,7 +289,7 @@ func showNode(cmd *nodeShowCommand) error {
 		fatalf("Missing required -node-id parameter")
 	}
 
-	nodes, err := client.ListNodes()
+	nodes, err := c.ListNodes()
 	if err != nil {
 		return errors.Wrap(err, "Error listing nodes")
 	}
@@ -361,7 +361,7 @@ func (cmd *nodeEvacuateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeEvacuateCommand) run(args []string) error {
-	return client.ChangeNodeStatus(cmd.nodeID, types.NodeStatusMaintenance)
+	return c.ChangeNodeStatus(cmd.nodeID, types.NodeStatusMaintenance)
 }
 
 type nodeRestoreCommand struct {
@@ -388,5 +388,5 @@ func (cmd *nodeRestoreCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *nodeRestoreCommand) run(args []string) error {
-	return client.ChangeNodeStatus(cmd.nodeID, types.NodeStatusReady)
+	return c.ChangeNodeStatus(cmd.nodeID, types.NodeStatusReady)
 }

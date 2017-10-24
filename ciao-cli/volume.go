@@ -88,7 +88,7 @@ func (cmd *volumeAddCommand) run(args []string) error {
 		fatalf("Unknown source type [%s]\n", cmd.sourceType)
 	}
 
-	vol, err := client.CreateVolume(createReq)
+	vol, err := c.CreateVolume(createReq)
 	if err != nil {
 		return errors.Wrap(err, "Error creating volume")
 	}
@@ -146,7 +146,7 @@ func (cmd *volumeListCommand) run(args []string) error {
 		}
 	}
 
-	vols, err := client.ListVolumes()
+	vols, err := c.ListVolumes()
 	if err != nil {
 		if err != nil {
 			return errors.Wrap(err, "Error listing volumes")
@@ -203,7 +203,7 @@ func (cmd *volumeShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	vol, err := client.GetVolume(cmd.volume)
+	vol, err := c.GetVolume(cmd.volume)
 	if err != nil {
 		return errors.Wrap(err, "Error getting volume")
 	}
@@ -246,7 +246,7 @@ func (cmd *volumeDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.DeleteVolume(cmd.volume)
+	err := c.DeleteVolume(cmd.volume)
 	if err != nil {
 		return errors.Wrap(err, "Error deleting volume")
 	}
@@ -294,7 +294,7 @@ func (cmd *volumeAttachCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.AttachVolume(cmd.volume, cmd.instance, cmd.mountpoint, cmd.mode)
+	err := c.AttachVolume(cmd.volume, cmd.instance, cmd.mountpoint, cmd.mode)
 	if err != nil {
 		return errors.Wrap(err, "Error attaching volume")
 	}
@@ -334,7 +334,7 @@ func (cmd *volumeDetachCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.DetachVolume(cmd.volume)
+	err := c.DetachVolume(cmd.volume)
 	if err != nil {
 		return errors.Wrap(err, "Error detaching volume")
 	}

@@ -65,7 +65,7 @@ func (cmd *eventListCommand) parseArgs(args []string) []string {
 
 func (cmd *eventListCommand) run(args []string) error {
 	if cmd.tenant == "" {
-		cmd.tenant = client.TenantID
+		cmd.tenant = c.TenantID
 	}
 
 	if cmd.all == false && cmd.tenant == "" {
@@ -78,7 +78,7 @@ func (cmd *eventListCommand) run(args []string) error {
 		tenantID = ""
 	}
 
-	events, err := client.ListEvents(tenantID)
+	events, err := c.ListEvents(tenantID)
 	if err != nil {
 		return errors.Wrap(err, "Error listing events")
 	}
@@ -114,7 +114,7 @@ func (cmd *eventDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *eventDeleteCommand) run(args []string) error {
-	err := client.DeleteEvents()
+	err := c.DeleteEvents()
 	if err != nil {
 		return errors.Wrap(err, "Error deleting events")
 	}

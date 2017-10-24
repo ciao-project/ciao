@@ -22,6 +22,7 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/ciao-project/ciao/client"
 	"github.com/golang/glog"
 )
 
@@ -113,7 +114,7 @@ const (
 	ciaoClientCertFileEnv = "CIAO_CLIENT_CERT_FILE"
 )
 
-var client Client
+var c client.Client
 
 func limitToString(limit int) string {
 	if limit == -1 {
@@ -133,29 +134,29 @@ func getCiaoEnvVariables() {
 	infof("\t%s:%s\n", ciaoCACertFileEnv, ca)
 	infof("\t%s:%s\n", ciaoClientCertFileEnv, clientCert)
 
-	client.ControllerURL = controller
-	client.CACertFile = ca
-	client.ClientCertFile = clientCert
+	c.ControllerURL = controller
+	c.CACertFile = ca
+	c.ClientCertFile = clientCert
 
 	if *controllerURLFlag != "" {
-		client.ControllerURL = *controllerURLFlag
+		c.ControllerURL = *controllerURLFlag
 	}
 
 	if *caCertFileFlag != "" {
-		client.CACertFile = *caCertFileFlag
+		c.CACertFile = *caCertFileFlag
 	}
 
 	if *clientCertFileFlag != "" {
-		client.ClientCertFile = *clientCertFileFlag
+		c.ClientCertFile = *clientCertFileFlag
 	}
 
 	if *tenantIDFlag != "" {
-		client.TenantID = *tenantIDFlag
+		c.TenantID = *tenantIDFlag
 	}
 }
 
 func prepareForCommand() {
-	err := client.Init()
+	err := c.Init()
 	if err != nil {
 		fatalf(err.Error())
 	}

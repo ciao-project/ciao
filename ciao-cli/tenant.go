@@ -95,7 +95,7 @@ func (cmd *tenantUpdateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantUpdateCommand) run(args []string) error {
-	if !client.IsPrivileged() {
+	if !c.IsPrivileged() {
 		fatalf("Updating tenants is only available for privileged users")
 	}
 
@@ -111,7 +111,7 @@ func (cmd *tenantUpdateCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	return client.UpdateTenantConfig(cmd.tenantID, cmd.name, cmd.subnetBits)
+	return c.UpdateTenantConfig(cmd.tenantID, cmd.name, cmd.subnetBits)
 }
 
 func (cmd *tenantCreateCommand) usage(...string) {
@@ -141,7 +141,7 @@ func (cmd *tenantCreateCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantCreateCommand) run(args []string) error {
-	if !client.IsPrivileged() {
+	if !c.IsPrivileged() {
 		fatalf("Creating tenants is only available for privileged users")
 	}
 
@@ -170,7 +170,7 @@ func (cmd *tenantCreateCommand) run(args []string) error {
 		fatalf("Tenant ID must be a UUID4")
 	}
 
-	summary, err := client.CreateTenantConfig(tuuid.String(), cmd.name, cmd.subnetBits)
+	summary, err := c.CreateTenantConfig(tuuid.String(), cmd.name, cmd.subnetBits)
 	if err != nil {
 		return errors.Wrap(err, "Error creating tenant configuration")
 	}
@@ -208,7 +208,7 @@ func (cmd *tenantDeleteCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *tenantDeleteCommand) run(args []string) error {
-	if !client.IsPrivileged() {
+	if !c.IsPrivileged() {
 		fatalf("Creating tenants is only available for privileged users")
 	}
 
@@ -217,7 +217,7 @@ func (cmd *tenantDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.DeleteTenant(cmd.tenantID)
+	err := c.DeleteTenant(cmd.tenantID)
 
 	return errors.Wrap(err, "Error deleting tenant")
 }
@@ -288,11 +288,11 @@ func (cmd *tenantListCommand) run(args []string) error {
 		return listTenantResources(t)
 	}
 	if cmd.config {
-		if client.IsPrivileged() == false {
-			if client.TenantID == "" {
+		if c.IsPrivileged() == false {
+			if c.TenantID == "" {
 				fatalf("Missing required -tenant-id")
 			}
-			return listTenantConfig(t, client.TenantID)
+			return listTenantConfig(t, c.TenantID)
 		}
 
 		if cmd.tenantID == "" {
@@ -302,7 +302,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 		return listTenantConfig(t, cmd.tenantID)
 	}
 	if cmd.all {
-		if client.IsPrivileged() == false {
+		if c.IsPrivileged() == false {
 			fatalf("The all command is for privileged users only")
 		}
 		return listAllTenants(t)
@@ -313,7 +313,7 @@ func (cmd *tenantListCommand) run(args []string) error {
 
 func listUserTenants(t *template.Template) error {
 	var projects []Project
-	for _, t := range client.Tenants {
+	for _, t := range c.Tenants {
 		projects = append(projects, Project{ID: t})
 	}
 
@@ -334,11 +334,11 @@ func listUserTenants(t *template.Template) error {
 }
 
 func listTenantQuotas(t *template.Template) error {
-	if client.TenantID == "" {
+	if c.TenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	resources, err := client.ListTenantQuotas()
+	resources, err := c.ListTenantQuotas()
 	if err != nil {
 		return errors.Wrap(err, "Error listing tenant quotas")
 	}
@@ -361,11 +361,11 @@ func listTenantQuotas(t *template.Template) error {
 }
 
 func listTenantResources(t *template.Template) error {
-	if client.TenantID == "" {
+	if c.TenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	usage, err := client.ListTenantResources()
+	usage, err := c.ListTenantResources()
 	if err != nil {
 		return errors.Wrap(err, "Error listing tenant resources")
 	}
@@ -378,11 +378,11 @@ func listTenantResources(t *template.Template) error {
 	}
 
 	if len(usage.Usages) == 0 {
-		fmt.Printf("No usage history for %s\n", client.TenantID)
+		fmt.Printf("No usage history for %s\n", c.TenantID)
 		return nil
 	}
 
-	fmt.Printf("Usage for tenant %s:\n", client.TenantID)
+	fmt.Printf("Usage for tenant %s:\n", c.TenantID)
 	for _, u := range usage.Usages {
 		fmt.Printf("\t%v: [%d CPUs] [%d MB memory] [%d MB disk]\n", u.Timestamp, u.VCPU, u.Memory, u.Disk)
 	}
@@ -391,7 +391,7 @@ func listTenantResources(t *template.Template) error {
 }
 
 func listTenantConfig(t *template.Template, tenantID string) error {
-	config, err := client.GetTenantConfig(tenantID)
+	config, err := c.GetTenantConfig(tenantID)
 	if err != nil {
 		fatalf(err.Error())
 	}
@@ -411,7 +411,7 @@ func listTenantConfig(t *template.Template, tenantID string) error {
 }
 
 func listAllTenants(t *template.Template) error {
-	tenants, err := client.ListTenants()
+	tenants, err := c.ListTenants()
 	if err != nil {
 		return errors.Wrap(err, "Error listing tenants")
 	}

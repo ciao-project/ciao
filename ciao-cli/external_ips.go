@@ -68,7 +68,7 @@ func (cmd *externalIPMapCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.MapExternalIP(cmd.poolName, cmd.instanceID)
+	err := c.MapExternalIP(cmd.poolName, cmd.instanceID)
 	if err != nil {
 		return errors.Wrap(err, "Error mapping external IP")
 	}
@@ -104,7 +104,7 @@ func (cmd *externalIPListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *externalIPListCommand) run(args []string) error {
-	IPs, err := client.ListExternalIPs()
+	IPs, err := c.ListExternalIPs()
 	if err != nil {
 		return errors.Wrap(err, "Error listing external IPs")
 	}
@@ -117,7 +117,7 @@ func (cmd *externalIPListCommand) run(args []string) error {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 1, 1, ' ', 0)
 	fmt.Fprintf(w, "#\tExternalIP\tInternalIP\tInstanceID")
-	if client.IsPrivileged() {
+	if c.IsPrivileged() {
 		fmt.Fprintf(w, "\tTenantID\tPoolName\n")
 	} else {
 		fmt.Fprintf(w, "\n")
@@ -177,7 +177,7 @@ func (cmd *externalIPUnMapCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.UnmapExternalIP(cmd.address)
+	err := c.UnmapExternalIP(cmd.address)
 	if err != nil {
 		return errors.Wrap(err, "Error unmapping external IP")
 	}
@@ -229,7 +229,7 @@ func (cmd *poolCreateCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.CreateExternalIPPool(cmd.name)
+	err := c.CreateExternalIPPool(cmd.name)
 	if err != nil {
 		return errors.Wrap(err, "Error creating pool")
 	}
@@ -269,7 +269,7 @@ func (cmd *poolListCommand) parseArgs(args []string) []string {
 // on the privilege level of user. Check privilege, then
 // if not privileged, build non-privileged URL.
 func (cmd *poolListCommand) run(args []string) error {
-	pools, err := client.ListExternalIPPools()
+	pools, err := c.ListExternalIPPools()
 	if err != nil {
 		return errors.Wrap(err, "Error listing external IP pools")
 	}
@@ -282,7 +282,7 @@ func (cmd *poolListCommand) run(args []string) error {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 1, 1, ' ', 0)
 	fmt.Fprintf(w, "#\tName")
-	if client.IsPrivileged() {
+	if c.IsPrivileged() {
 		fmt.Fprintf(w, "\tTotalIPs\tFreeIPs\n")
 	} else {
 		fmt.Fprintf(w, "\n")
@@ -358,7 +358,7 @@ func (cmd *poolShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	pool, err := client.GetExternalIPPool(cmd.name)
+	pool, err := c.GetExternalIPPool(cmd.name)
 	if err != nil {
 		return errors.Wrap(err, "Error getting external IP pool")
 	}
@@ -403,7 +403,7 @@ func (cmd *poolDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.DeleteExternalIPPool(cmd.name)
+	err := c.DeleteExternalIPPool(cmd.name)
 	if err != nil {
 		return errors.Wrap(err, "Error deleting external IP pool")
 	}
@@ -456,7 +456,7 @@ func (cmd *poolAddCommand) run(args []string) error {
 			fatalf("Use address mode to add a single IP address")
 		}
 
-		err = client.AddExternalIPSubnet(cmd.name, network)
+		err = c.AddExternalIPSubnet(cmd.name, network)
 		if err != nil {
 			return errors.Wrap(err, "Error adding external IP subnet")
 		}
@@ -471,7 +471,7 @@ func (cmd *poolAddCommand) run(args []string) error {
 				fatalf("Invalid IP address")
 			}
 		}
-		err := client.AddExternalIPAddresses(cmd.name, args)
+		err := c.AddExternalIPAddresses(cmd.name, args)
 		if err != nil {
 			return errors.Wrap(err, "Error adding external IP addresses")
 		}
@@ -532,14 +532,14 @@ func (cmd *poolRemoveCommand) run(args []string) error {
 			fatalf(err.Error())
 		}
 
-		err = client.RemoveExternalIPSubnet(cmd.name, network)
+		err = c.RemoveExternalIPSubnet(cmd.name, network)
 		if err != nil {
 			return errors.Wrap(err, "Error removing external IP subnet")
 		}
 	}
 
 	if cmd.ip != "" {
-		err := client.RemoveExternalIPAddress(cmd.name, cmd.ip)
+		err := c.RemoveExternalIPAddress(cmd.name, cmd.ip)
 		if err != nil {
 			return errors.Wrap(err, "Error removing external IP address")
 		}

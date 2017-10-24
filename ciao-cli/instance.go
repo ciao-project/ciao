@@ -403,7 +403,7 @@ func (cmd *instanceAddCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *instanceAddCommand) validateAddCommandArgs() {
-	if client.TenantID == "" {
+	if c.TenantID == "" {
 		errorf("Missing required -tenant-id parameter")
 		cmd.usage()
 	}
@@ -510,7 +510,7 @@ func (cmd *instanceAddCommand) run(args []string) error {
 		return err
 	}
 
-	servers, err = client.CreateInstances(server)
+	servers, err = c.CreateInstances(server)
 	if err != nil {
 		return errors.Wrap(err, "Error creating instances")
 	}
@@ -559,7 +559,7 @@ func (cmd *instanceDeleteCommand) parseArgs(args []string) []string {
 
 func (cmd *instanceDeleteCommand) run(args []string) error {
 	if cmd.all {
-		err := client.DeleteAllInstances()
+		err := c.DeleteAllInstances()
 		if err != nil {
 			return errors.Wrap(err, "Error deleting all instances")
 		}
@@ -572,7 +572,7 @@ func (cmd *instanceDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.DeleteInstance(cmd.instance)
+	err := c.DeleteInstance(cmd.instance)
 	if err != nil {
 		return errors.Wrap(err, "Error deleting instance")
 	}
@@ -646,7 +646,7 @@ func (cmd *instanceStopCommand) run([]string) error {
 }
 
 func startStopInstance(instance string, stop bool) error {
-	if client.TenantID == "" {
+	if c.TenantID == "" {
 		return errors.New("Missing required -tenant-id parameter")
 	}
 
@@ -655,13 +655,13 @@ func startStopInstance(instance string, stop bool) error {
 	}
 
 	if stop == true {
-		err := client.StopInstance(instance)
+		err := c.StopInstance(instance)
 		if err != nil {
 			return errors.Wrap(err, "Error stopping instance")
 		}
 		fmt.Printf("Instance %s stopped\n", instance)
 	} else {
-		err := client.StartInstance(instance)
+		err := c.StartInstance(instance)
 		if err != nil {
 			return errors.Wrap(err, "Error starting instance")
 		}
@@ -711,14 +711,14 @@ func (ss byCreated) Less(i, j int) bool { return ss[i].Created.Before(ss[j].Crea
 
 func (cmd *instanceListCommand) run(args []string) error {
 	if cmd.tenant == "" {
-		cmd.tenant = client.TenantID
+		cmd.tenant = c.TenantID
 	}
 
 	if cmd.cn != "" {
 		return listNodeInstances(cmd.cn)
 	}
 
-	servers, err := client.ListInstancesByWorkload(cmd.tenant, cmd.workload)
+	servers, err := c.ListInstancesByWorkload(cmd.tenant, cmd.workload)
 	if err != nil {
 		return errors.Wrap(err, "Error listing instances")
 	}
@@ -795,7 +795,7 @@ func (cmd *instanceShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	server, err := client.GetInstance(cmd.instance)
+	server, err := c.GetInstance(cmd.instance)
 	if err != nil {
 		return errors.Wrap(err, "Error getting instance")
 	}
@@ -831,7 +831,7 @@ func listNodeInstances(node string) error {
 		fatalf("Missing required -cn parameter")
 	}
 
-	servers, err := client.ListInstancesByNode(node)
+	servers, err := c.ListInstancesByNode(node)
 	if err != nil {
 		return errors.Wrap(err, "Error getting instances for node")
 	}

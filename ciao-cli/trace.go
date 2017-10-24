@@ -57,7 +57,7 @@ func (cmd *traceListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *traceListCommand) run(args []string) error {
-	traces, err := client.ListTraceLabels()
+	traces, err := c.ListTraceLabels()
 	if err != nil {
 		return errors.Wrap(err, "Error listing trace labels")
 	}
@@ -108,7 +108,7 @@ func (cmd *traceShowCommand) run(args []string) error {
 		return errors.New("Missing required -label parameter")
 	}
 
-	traceData, err := client.GetTraceData(cmd.label)
+	traceData, err := c.GetTraceData(cmd.label)
 	if err != nil {
 		return errors.Wrap(err, "Error getting trace data")
 	}

@@ -72,11 +72,11 @@ func (cmd *workloadListCommand) parseArgs(args []string) []string {
 }
 
 func (cmd *workloadListCommand) run(args []string) error {
-	if client.TenantID == "" {
+	if c.TenantID == "" {
 		fatalf("Missing required -tenant-id parameter")
 	}
 
-	wls, err := client.ListWorkloads()
+	wls, err := c.ListWorkloads()
 	if err != nil {
 		return errors.Wrap(err, "Error listing workloads")
 	}
@@ -325,7 +325,7 @@ func (cmd *workloadCreateCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	workloadID, err := client.CreateWorkload(req)
+	workloadID, err := c.CreateWorkload(req)
 	if err != nil {
 		return errors.Wrap(err, "Error creating workload")
 	}
@@ -364,7 +364,7 @@ func (cmd *workloadDeleteCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	err := client.DeleteWorkload(cmd.workload)
+	err := c.DeleteWorkload(cmd.workload)
 	if err != nil {
 		return errors.Wrap(err, "Error deleting workload")
 	}
@@ -405,7 +405,7 @@ func (cmd *workloadShowCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	wl, err := client.GetWorkload(cmd.workload)
+	wl, err := c.GetWorkload(cmd.workload)
 	if err != nil {
 		return errors.Wrap(err, "Error getting workload")
 	}
