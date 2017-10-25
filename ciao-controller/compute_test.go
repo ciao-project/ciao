@@ -34,6 +34,7 @@ import (
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
 	"github.com/ciao-project/ciao/testutil"
+	"github.com/pkg/errors"
 )
 
 // ByTenantID is used to sort CNCI instances by Tenant ID.
@@ -79,7 +80,7 @@ func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse i
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != expectedResponse {
 		var msg string
@@ -465,7 +466,10 @@ func sendStopEvent(client *testutil.SsntpTestClient, instanceUUID string) error 
 		return fmt.Errorf("Unable to create InstanceStopped payload : %v", err)
 	}
 	clientEvtCh := wrappedClient.addEventChan(ssntp.InstanceStopped)
-	client.Ssntp.SendEvent(ssntp.InstanceStopped, y)
+	_, err = client.Ssntp.SendEvent(ssntp.InstanceStopped, y)
+	if err != nil {
+		return errors.Wrap(err, "Error sending instance stopped")
+	}
 	err = wrappedClient.getEventChan(clientEvtCh, ssntp.InstanceStopped)
 	if err != nil {
 		return fmt.Errorf("InstanceStopped event not received: %v", err)
