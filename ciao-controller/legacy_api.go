@@ -74,7 +74,7 @@ func (h legacyAPIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.status)
-	w.Write(b)
+	_, _ = w.Write(b)
 }
 
 func listTenantQuotas(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {

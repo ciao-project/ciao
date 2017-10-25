@@ -14,13 +14,23 @@
 
 package main
 
+import "github.com/golang/glog"
+
 func (c *controller) EvacuateNode(nodeID string) error {
 	// should I bother to see if nodeID is valid?
-	go c.client.EvacuateNode(nodeID)
+	go func() {
+		if err := c.client.EvacuateNode(nodeID); err != nil {
+			glog.Warningf("Error evacuating node")
+		}
+	}()
 	return nil
 }
 
 func (c *controller) RestoreNode(nodeID string) error {
-	go c.client.RestoreNode(nodeID)
+	go func() {
+		if err := c.client.RestoreNode(nodeID); err != nil {
+			glog.Warning("Error restoring node")
+		}
+	}()
 	return nil
 }

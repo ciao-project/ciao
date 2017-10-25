@@ -296,7 +296,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(resp.status)
-	w.Write(b)
+	_, _ = w.Write(b)
 }
 
 func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {

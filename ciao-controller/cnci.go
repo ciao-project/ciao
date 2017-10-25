@@ -102,7 +102,10 @@ func waitForEventTimeout(ch chan event, e event, timeout time.Duration) error {
 func (c *CNCI) transitionState(to CNCIState) {
 	glog.Infof("State transition to %s received for %s", to, c.instance.ID)
 
-	transitionInstanceState(c.instance, (string(to)))
+	err := transitionInstanceState(c.instance, (string(to)))
+	if err != nil {
+		glog.Warningf("Error transitioning instance %s to %s state", c.instance.ID, string(to))
+	}
 
 	// some state changes cause events
 	ch := c.eventCh
@@ -346,9 +349,9 @@ func (c *CNCIManager) CNCIStopped(id string) error {
 	}
 
 	cnci.transitionState(exited)
-	c.ctrl.restartInstance(cnci.instance.ID)
+	err := c.ctrl.restartInstance(cnci.instance.ID)
 
-	return nil
+	return errors.Wrap(err, "Error restarting instance")
 }
 
 // CNCIAdded will move the CNCI into the active state

@@ -352,7 +352,10 @@ func serversAction(c *controller, w http.ResponseWriter, r *http.Request) (APIRe
 				return errorResponse(err), err
 			}
 
-			actionFunc(instanceID)
+			err = actionFunc(instanceID)
+			if err != nil {
+				return errorResponse(err), err
+			}
 		}
 	} else {
 		/* We want to act on all relevant instances */
@@ -367,7 +370,10 @@ func serversAction(c *controller, w http.ResponseWriter, r *http.Request) (APIRe
 				continue
 			}
 
-			actionFunc(instance.ID)
+			err = actionFunc(instance.ID)
+			if err != nil {
+				return errorResponse(err), err
+			}
 		}
 	}
 
