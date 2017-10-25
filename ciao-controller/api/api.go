@@ -27,6 +27,7 @@ import (
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/service"
 	"github.com/ciao-project/ciao/uuid"
+	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -276,6 +277,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		code := HTTPReturnErrorCode{
 			Error: data,
 		}
+
+		glog.Warningf("Returning error response to request: %s: %v", r.URL.String(), err)
 
 		b, err := json.Marshal(code)
 		if err != nil {
