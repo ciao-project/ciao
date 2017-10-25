@@ -593,7 +593,7 @@ func (ds *sqliteDB) Connect(persistentURI string) error {
 
 // Disconnect is used to close the connection to the sql database
 func (ds *sqliteDB) disconnect() {
-	ds.db.Close()
+	_ = ds.db.Close()
 }
 
 func (ds *sqliteDB) logEvent(event types.LogEntry) error {
@@ -651,7 +651,7 @@ func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var defaults []payloads.RequestedResource
 
@@ -713,7 +713,7 @@ func (ds *sqliteDB) getWorkloadStorage(ID string) ([]types.StorageResource, erro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	res := []types.StorageResource{}
 	var sourceType string
@@ -807,7 +807,7 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var wl types.Workload
@@ -872,7 +872,7 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 		for _, d := range w.Defaults {
 			err := ds.createWorkloadDefault(tx, w.ID, d)
 			if err != nil {
-				tx.Rollback()
+				_ = tx.Rollback()
 				return err
 			}
 		}
@@ -882,7 +882,7 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 			for i := range w.Storage {
 				err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
 				if err != nil {
-					tx.Rollback()
+					_ = tx.Rollback()
 					return err
 				}
 			}
@@ -893,18 +893,18 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 		path := fmt.Sprintf("%s/%s", ds.workloadsPath, filename)
 		err := ioutil.WriteFile(path, []byte(w.Config), 0644)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 
 		_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, internal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, false)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	} else {
 		// update not supported yet.
-		tx.Rollback()
+		_ = tx.Rollback()
 		return errors.New("Workload Update not supported yet")
 	}
 
@@ -925,19 +925,19 @@ func (ds *sqliteDB) deleteWorkload(ID string) error {
 
 	err = ds.deleteWorkloadDefault(tx, ID)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
 	err = ds.deleteWorkloadStorage(tx, ID)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
 	_, err = tx.Exec("DELETE FROM workload_template WHERE id = ?", ID)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -945,7 +945,7 @@ func (ds *sqliteDB) deleteWorkload(ID string) error {
 	path := filepath.Join(ds.workloadsPath, filename)
 	err = os.Remove(path)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -967,7 +967,7 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var id sql.NullString
@@ -1055,7 +1055,7 @@ func (ds *sqliteDB) getTenantNetwork(tenant *tenant) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var subnetInt uint16
@@ -1108,13 +1108,13 @@ func (ds *sqliteDB) deleteTenant(tenantID string) error {
 	// first delete any quotas associated with this tenant
 	_, err = tx.Exec("DELETE FROM quotas WHERE tenant_id = ?", tenantID)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
 	_, err = tx.Exec("DELETE FROM tenants WHERE id = ?", tenantID)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -1165,7 +1165,7 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var i types.Instance
@@ -1232,7 +1232,7 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	instances := make(map[string]*types.Instance)
 	for rows.Next() {
@@ -1329,11 +1329,11 @@ func (ds *sqliteDB) addInstanceStats(stats []payloads.InstanceStat, nodeID strin
 
 	stmt, err := tx.Prepare(cmd)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for index := range stats {
 		stat := stats[index]
@@ -1366,7 +1366,7 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 
 	_, err = tx.Exec(query, stat.Label, stat.Type, stat.Operand, stat.StartTimestamp, stat.EndTimestamp)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -1374,7 +1374,7 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 
 	err = tx.QueryRow("SELECT last_insert_rowid();").Scan(&id)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -1386,7 +1386,7 @@ func (ds *sqliteDB) addFrameStat(stat payloads.FrameTrace) error {
 
 		_, err = tx.Exec(cmd, id, t.SSNTPUUID, t.TxTimestamp, t.RxTimestamp)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	}
@@ -1409,7 +1409,7 @@ func (ds *sqliteDB) getEventLog() ([]*types.LogEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	logEntries = make([]*types.LogEntry, 0)
 	for rows.Next() {
@@ -1441,7 +1441,7 @@ func (ds *sqliteDB) getBatchFrameSummary() ([]types.BatchFrameSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	stats = make([]types.BatchFrameSummary, 0)
 
@@ -1556,7 +1556,7 @@ func (ds *sqliteDB) getBatchFrameStatistics(label string) ([]types.BatchFrameSta
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	stats = make([]types.BatchFrameStat, 0)
 
@@ -1642,7 +1642,7 @@ func (ds *sqliteDB) getTenantDevices(tenantID string) (map[string]types.Volume, 
 	if err != nil {
 		return devices, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var state string
@@ -1683,7 +1683,7 @@ func (ds *sqliteDB) getAllBlockData() (map[string]types.Volume, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var data types.Volume
@@ -1763,7 +1763,7 @@ func (ds *sqliteDB) getAllStorageAttachments() (map[string]types.StorageAttachme
 	if err != nil {
 		return attachments, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var a types.StorageAttachment
@@ -1859,7 +1859,7 @@ func (ds *sqliteDB) updateAddresses(tx *sql.Tx, pool types.Pool) error {
 		if !ok {
 			_, err = tx.Exec("DELETE FROM address_pool WHERE id = ?", addr.ID)
 			if err != nil {
-				tx.Rollback()
+				_ = tx.Rollback()
 				return err
 			}
 		}
@@ -1870,7 +1870,7 @@ func (ds *sqliteDB) updateAddresses(tx *sql.Tx, pool types.Pool) error {
 	for _, IP := range pool.IPs {
 		_, err = tx.Exec("INSERT OR IGNORE INTO address_pool (id, pool_id, address) VALUES (?, ?, ?)", IP.ID, pool.ID, IP.Address)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	}
@@ -1896,13 +1896,13 @@ func (ds *sqliteDB) updatePool(pool types.Pool) error {
 
 	err = ds.updateSubnets(tx, pool)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
 	err = ds.updateAddresses(tx, pool)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -1911,14 +1911,14 @@ func (ds *sqliteDB) updatePool(pool types.Pool) error {
 	if !ok {
 		_, err = tx.Exec("INSERT INTO pools (id, name, free, total) VALUES (?, ?, ?, ?)", pool.ID, pool.Name, pool.Free, pool.TotalIPs)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	} else {
 		// update free and total counts.
 		_, err = tx.Exec("UPDATE pools SET free = ?, total = ? WHERE id = ?", pool.Free, pool.TotalIPs, pool.ID)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	}
@@ -1943,7 +1943,7 @@ func (ds *sqliteDB) getAllPools() map[string]types.Pool {
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var pool types.Pool
@@ -1999,7 +1999,7 @@ func (ds *sqliteDB) deletePool(ID string) error {
 	for _, subnet := range subnets {
 		_, err = tx.Exec("DELETE FROM subnet_pool WHERE id = ?", subnet.ID)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	}
@@ -2007,14 +2007,14 @@ func (ds *sqliteDB) deletePool(ID string) error {
 	for _, addr := range IPs {
 		_, err = tx.Exec("DELETE FROM address_pool WHERE id = ?", addr.ID)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	}
 
 	_, err = tx.Exec("DELETE FROM pools WHERE id = ?", ID)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -2037,7 +2037,7 @@ func (ds *sqliteDB) getPoolSubnets(poolID string) ([]types.ExternalSubnet, error
 	if err != nil {
 		return subnets, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var subnet types.ExternalSubnet
@@ -2071,7 +2071,7 @@ func (ds *sqliteDB) getPoolAddresses(poolID string) ([]types.ExternalIP, error) 
 	if err != nil {
 		return IPs, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var IP types.ExternalIP
@@ -2136,7 +2136,7 @@ func (ds *sqliteDB) getMappedIPs() map[string]types.MappedIP {
 		fmt.Println(err)
 		return IPs
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var IP types.MappedIP
@@ -2170,7 +2170,7 @@ func (ds *sqliteDB) updateQuotas(tenantID string, qds []types.QuotaDetails) erro
 	for i := range qds {
 		_, err = tx.Exec("REPLACE INTO quotas (tenant_id, name, value) VALUES (?, ?, ?)", tenantID, qds[i].Name, qds[i].Value)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return errors.Wrap(err, "error executing query for quota update")
 		}
 	}
@@ -2189,7 +2189,7 @@ func (ds *sqliteDB) getQuotas(tenantID string) ([]types.QuotaDetails, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting quotas from database")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	results := []types.QuotaDetails{}
 	for rows.Next() {
@@ -2221,7 +2221,7 @@ func (ds *sqliteDB) getImages() ([]types.Image, error) {
 	if err != nil {
 		return images, errors.Wrap(err, "error getting images from database")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		i := types.Image{}
