@@ -64,7 +64,7 @@ func isCNCIWorkload(workload *types.Workload) bool {
 }
 
 func newInstance(ctl *controller, tenantID string, workload *types.Workload,
-	volumes []storage.BlockDevice, name string, subnet string) (*instance, error) {
+	volumes []storage.BlockDevice, name string, subnet string, IPAddr net.IP) (*instance, error) {
 	id := uuid.Generate()
 
 	if name != "" {
@@ -78,7 +78,7 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		}
 	}
 
-	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes, name)
+	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes, name, IPAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +336,7 @@ func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s ty
 	return
 }
 
-func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.NetworkResources, cnci bool) error {
+func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.NetworkResources, cnci bool, ipAddress net.IP) error {
 	networking.VnicUUID = uuid.Generate().String()
 
 	if cnci {
@@ -347,12 +347,6 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 
 		networking.VnicMAC = hwaddr.String()
 		return nil
-	}
-
-	ipAddress, err := ctl.ds.AllocateTenantIP(tenant.ID)
-	if err != nil {
-		fmt.Println("Unable to allocate IP address: ", err)
-		return err
 	}
 
 	networking.VnicMAC = utils.NewTenantHardwareAddr(ipAddress).String()
@@ -422,7 +416,7 @@ func storageConfig(ctl *controller, tenant *types.Tenant, instanceID string, vol
 }
 
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
-	volumes []storage.BlockDevice, name string) (config, error) {
+	volumes []storage.BlockDevice, name string, IPaddr net.IP) (config, error) {
 	var metaData userData
 	var config config
 	var networking payloads.NetworkResources
@@ -439,7 +433,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		fmt.Println("unable to get tenant")
 	}
 
-	err = networkConfig(ctl, tenant, &networking, config.cnci)
+	err = networkConfig(ctl, tenant, &networking, config.cnci, IPaddr)
 	if err != nil {
 		return config, err
 	}

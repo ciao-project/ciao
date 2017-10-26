@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
@@ -243,6 +244,16 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		return nil, err
 	}
 
+	var IPPool []net.IP
+
+	// if this is for a CNCI, we don't want to allocate any IPs.
+	if w.Subnet == "" {
+		IPPool, err = c.ds.AllocateTenantIPPool(w.TenantID, w.Instances)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var newInstances []*types.Instance
 
 	for i := 0; i < w.Instances && e == nil; i++ {
@@ -255,7 +266,13 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 			}
 		}
 
-		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name, w.Subnet)
+		var newIP net.IP
+
+		if w.Subnet == "" {
+			newIP = IPPool[i]
+		}
+
+		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name, w.Subnet, newIP)
 		if err != nil {
 			e = errors.Wrap(err, "Error creating instance")
 			continue
