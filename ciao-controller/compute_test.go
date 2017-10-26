@@ -296,16 +296,22 @@ func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken boo
 
 	time.Sleep(1 * time.Second)
 
+	serverCh := server.AddCmdChan(ssntp.DELETE)
+
 	err = ctl.stopInstance(servers.Servers[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
+	err = sendStopEvent(client, servers.Servers[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	sendStatsCmd(client, t)
-
-	time.Sleep(1 * time.Second)
+	_, err = server.GetCmdChanResult(serverCh, ssntp.DELETE)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var ids []string
 	ids = append(ids, servers.Servers[0].ID)
