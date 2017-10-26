@@ -922,8 +922,6 @@ func validPrivilege(visibility types.Visibility, privileged bool) bool {
 // createImage creates information about an image, but doesn't contain
 // any actual image.
 func createImage(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
-	defer r.Body.Close()
-
 	vars := mux.Vars(r)
 	tenantID := vars["tenant"]
 
@@ -1027,8 +1025,6 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
-
-	defer r.Body.Close()
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -1142,8 +1138,6 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (Response
 
 	var req interface{}
 
-	defer r.Body.Close()
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return Response{http.StatusBadRequest, nil}, err
@@ -1172,8 +1166,6 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (Response
 func createInstance(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
-
-	defer r.Body.Close()
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -1264,8 +1256,6 @@ func instanceAction(c *Context, w http.ResponseWriter, r *http.Request) (Respons
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
 	server := vars["instance_id"]
-
-	defer r.Body.Close()
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
