@@ -462,6 +462,15 @@ func (ds *Datastore) JSONPatchTenant(ID string, patch []byte) error {
 		return errors.Wrap(err, "error updating tenant")
 	}
 
+	// SubnetBits must not modified if there are active instances.
+	// for now, the cncis must also be removed. In the future we might
+	// be able to just update the cnci with the new subnet info.
+	if len(tenant.instances) > 0 {
+		if oldconfig.SubnetBits != config.SubnetBits {
+			return errors.New("Unable to update with active instances")
+		}
+	}
+
 	tenant.Name = config.Name
 	tenant.SubnetBits = config.SubnetBits
 

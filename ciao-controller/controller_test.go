@@ -1956,7 +1956,7 @@ func TestShowTenant(t *testing.T) {
 }
 
 func TestUpdateTenant(t *testing.T) {
-	tenant, err := addTestTenant()
+	tenant, err := addTestTenantNoCNCI()
 	if err != nil {
 		t.Fatal(err)
 	}
