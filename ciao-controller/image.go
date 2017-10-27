@@ -86,12 +86,12 @@ func (c *controller) uploadImage(imageID string, body io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("Error creating temporary image file: %v", err)
 	}
-	defer os.Remove(f.Name())
+	defer func() { _ = os.Remove(f.Name()) }()
 
 	buf := make([]byte, 1<<16)
 	_, err = io.CopyBuffer(f, body, buf)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return fmt.Errorf("Error writing to temporary image file: %v", err)
 	}
 
@@ -107,7 +107,7 @@ func (c *controller) uploadImage(imageID string, body io.Reader) error {
 
 	err = c.CreateBlockDeviceSnapshot(imageID, "ciao-image")
 	if err != nil {
-		c.DeleteBlockDevice(imageID)
+		_ = c.DeleteBlockDevice(imageID)
 		return fmt.Errorf("Unable to create snapshot: %v", err)
 	}
 

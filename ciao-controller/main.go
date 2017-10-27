@@ -85,7 +85,8 @@ func init() {
 	}
 
 	if logDirFlag.Value.String() == "" {
-		logDirFlag.Value.Set(logDir)
+		err := logDirFlag.Value.Set(logDir)
+		glog.Errorf("Error setting log directory: %v", err)
 	}
 
 	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
@@ -135,7 +136,11 @@ func main() {
 	}
 
 	ctl.qs.Init()
-	populateQuotasFromDatastore(ctl.qs, ctl.ds)
+	err = populateQuotasFromDatastore(ctl.qs, ctl.ds)
+	if err != nil {
+		glog.Fatalf("Error populating quotas from datastore: %v", err)
+		return
+	}
 
 	config := &ssntp.Config{
 		URI:    *serverURL,

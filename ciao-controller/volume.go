@@ -76,14 +76,14 @@ func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types
 		payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: bd.Size})
 
 	if !res.Allowed() {
-		c.DeleteBlockDevice(bd.ID)
+		_ = c.DeleteBlockDevice(bd.ID)
 		c.qs.Release(tenant, res.Resources()...)
 		return types.Volume{}, api.ErrQuota
 	}
 
 	err = c.ds.AddBlockDevice(data)
 	if err != nil {
-		c.DeleteBlockDevice(bd.ID)
+		_ = c.DeleteBlockDevice(bd.ID)
 		c.qs.Release(tenant, res.Resources()...)
 		return types.Volume{}, err
 	}

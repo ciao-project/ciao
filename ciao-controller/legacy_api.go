@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/ciao-project/ciao/service"
+	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -55,6 +56,8 @@ func (h legacyAPIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Error: data,
 		}
 
+		glog.Warningf("Returning error response to request: %s: %v", r.URL.String(), err)
+
 		b, err := json.Marshal(code)
 		if err != nil {
 			http.Error(w, http.StatusText(resp.status), resp.status)
@@ -74,7 +77,7 @@ func (h legacyAPIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.status)
-	w.Write(b)
+	_, _ = w.Write(b)
 }
 
 func listTenantQuotas(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {

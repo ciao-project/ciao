@@ -144,7 +144,10 @@ func (i *instance) Clean() error {
 		return nil
 	}
 
-	i.ctl.ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
+	err := i.ctl.ds.ReleaseTenantIP(i.TenantID, i.IPAddress)
+	if err != nil {
+		return errors.Wrap(err, "error releasing tenant IP")
+	}
 
 	wl, err := i.ctl.ds.GetWorkload(i.TenantID, i.WorkloadID)
 	if err != nil {
@@ -153,7 +156,12 @@ func (i *instance) Clean() error {
 	resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
 	resources = append(resources, wl.Defaults...)
 	i.ctl.qs.Release(i.TenantID, resources...)
-	i.ctl.deleteEphemeralStorage(i.ID)
+
+	err = i.ctl.deleteEphemeralStorage(i.ID)
+	if err != nil {
+		return errors.Wrap(err, "error deleting ephemeral strorage")
+	}
+
 	return nil
 }
 
@@ -232,7 +240,7 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 			payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: device.Size})
 
 		if !res.Allowed() {
-			c.DeleteBlockDevice(device.ID)
+			_ = c.DeleteBlockDevice(device.ID)
 			c.qs.Release(tenant, res.Resources()...)
 			return payloads.StorageResource{}, fmt.Errorf("Error creating volume: %s", res.Reason())
 		}
@@ -240,7 +248,7 @@ func addBlockDevice(c *controller, tenant string, instanceID string, device stor
 
 	err := c.ds.AddBlockDevice(data)
 	if err != nil {
-		c.DeleteBlockDevice(device.ID)
+		_ = c.DeleteBlockDevice(device.ID)
 		return payloads.StorageResource{}, err
 	}
 
@@ -309,7 +317,7 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 	}
 
 	if err != nil {
-		c.DeleteBlockDevice(device.ID)
+		_ = c.DeleteBlockDevice(device.ID)
 		return payloads.StorageResource{}, errors.Wrap(err, "error resizing volume")
 	}
 

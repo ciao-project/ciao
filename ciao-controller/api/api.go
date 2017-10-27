@@ -27,6 +27,7 @@ import (
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/service"
 	"github.com/ciao-project/ciao/uuid"
+	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
@@ -277,6 +278,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Error: data,
 		}
 
+		glog.Warningf("Returning error response to request: %s: %v", r.URL.String(), err)
+
 		b, err := json.Marshal(code)
 		if err != nil {
 			http.Error(w, http.StatusText(resp.status), resp.status)
@@ -296,7 +299,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(resp.status)
-	w.Write(b)
+	_, _ = w.Write(b)
 }
 
 func listResources(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
@@ -919,8 +922,6 @@ func validPrivilege(visibility types.Visibility, privileged bool) bool {
 // createImage creates information about an image, but doesn't contain
 // any actual image.
 func createImage(context *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
-	defer r.Body.Close()
-
 	vars := mux.Vars(r)
 	tenantID := vars["tenant"]
 
@@ -1024,8 +1025,6 @@ func deleteImage(context *Context, w http.ResponseWriter, r *http.Request) (Resp
 func createVolume(bc *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
-
-	defer r.Body.Close()
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -1139,8 +1138,6 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (Response
 
 	var req interface{}
 
-	defer r.Body.Close()
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return Response{http.StatusBadRequest, nil}, err
@@ -1169,8 +1166,6 @@ func volumeAction(bc *Context, w http.ResponseWriter, r *http.Request) (Response
 func createInstance(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
-
-	defer r.Body.Close()
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -1261,8 +1256,6 @@ func instanceAction(c *Context, w http.ResponseWriter, r *http.Request) (Respons
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
 	server := vars["instance_id"]
-
-	defer r.Body.Close()
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {

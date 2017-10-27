@@ -147,7 +147,10 @@ func (client *ssntpClient) RemoveInstance(instanceID string) {
 	}
 
 	// notify anyone is listening for a state change
-	transitionInstanceState(i, payloads.Deleted)
+	err = transitionInstanceState(i, payloads.Deleted)
+	if err != nil {
+		glog.Warningf("Error transitioning CNCI to deleted: %v", err)
+	}
 }
 
 func (client *ssntpClient) instanceDeleted(payload []byte) {
@@ -222,7 +225,10 @@ func (client *ssntpClient) concentratorInstanceAdded(payload []byte) {
 		return
 	}
 
-	tenant.CNCIctrl.CNCIAdded(newCNCI.InstanceUUID)
+	err = tenant.CNCIctrl.CNCIAdded(newCNCI.InstanceUUID)
+	if err != nil {
+		glog.Warningf("Error adding CNCI: %v", err)
+	}
 }
 
 func (client *ssntpClient) traceReport(payload []byte) {
@@ -259,7 +265,10 @@ func (client *ssntpClient) nodeDisconnected(payload []byte) {
 	}
 
 	glog.Infof("Node %s disconnected", nodeDisconnected.Disconnected.NodeUUID)
-	client.ctl.ds.DeleteNode(nodeDisconnected.Disconnected.NodeUUID)
+	err = client.ctl.ds.DeleteNode(nodeDisconnected.Disconnected.NodeUUID)
+	if err != nil {
+		glog.Warningf("Error marking node as deleted in datastore: %v", err)
+	}
 }
 
 func (client *ssntpClient) unassignEvent(payload []byte) {
@@ -285,7 +294,10 @@ func (client *ssntpClient) unassignEvent(payload []byte) {
 	client.ctl.qs.Release(i.TenantID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
 
 	msg := fmt.Sprintf("Unmapped %s from %s", event.UnassignedIP.PublicIP, event.UnassignedIP.PrivateIP)
-	client.ctl.ds.LogEvent(i.TenantID, msg)
+	err = client.ctl.ds.LogEvent(i.TenantID, msg)
+	if err != nil {
+		glog.Warningf("Error logging event: %v", err)
+	}
 }
 
 func (client *ssntpClient) assignEvent(payload []byte) {
@@ -303,7 +315,10 @@ func (client *ssntpClient) assignEvent(payload []byte) {
 	}
 
 	msg := fmt.Sprintf("Mapped %s to %s", event.AssignedIP.PublicIP, event.AssignedIP.PrivateIP)
-	client.ctl.ds.LogEvent(i.TenantID, msg)
+	err = client.ctl.ds.LogEvent(i.TenantID, msg)
+	if err != nil {
+		glog.Warningf("Error logging event: %v", err)
+	}
 }
 
 func (client *ssntpClient) EventNotify(event ssntp.Event, frame *ssntp.Frame) {
@@ -377,7 +392,10 @@ func (client *ssntpClient) startFailure(payload []byte) {
 			return
 		}
 
-		tenant.CNCIctrl.StartFailure(failure.InstanceUUID)
+		err = tenant.CNCIctrl.StartFailure(failure.InstanceUUID)
+		if err != nil {
+			glog.Warningf("Error adding StartFailure to datastore: %v", err)
+		}
 	}
 }
 
@@ -388,7 +406,7 @@ func (client *ssntpClient) stopFailure(payload []byte) {
 		glog.Warningf("Error unmarshalling StopFailure: %v", err)
 		return
 	}
-	client.ctl.ds.StopFailure(failure.InstanceUUID, failure.Reason)
+	err = client.ctl.ds.StopFailure(failure.InstanceUUID, failure.Reason)
 	if err != nil {
 		glog.Warningf("Error adding StopFailure to datastore: %v", err)
 	}
@@ -436,7 +454,10 @@ func (client *ssntpClient) assignError(payload []byte) {
 	client.ctl.qs.Release(failure.TenantUUID, payloads.RequestedResource{Type: payloads.ExternalIP, Value: 1})
 
 	msg := fmt.Sprintf("Failed to map %s to %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
-	client.ctl.ds.LogError(failure.TenantUUID, msg)
+	err = client.ctl.ds.LogError(failure.TenantUUID, msg)
+	if err != nil {
+		glog.Warningf("Error logging error: %v", err)
+	}
 }
 
 func (client *ssntpClient) unassignError(payload []byte) {
@@ -449,7 +470,10 @@ func (client *ssntpClient) unassignError(payload []byte) {
 
 	// we can't unmap the IP - all we can do is log.
 	msg := fmt.Sprintf("Failed to unmap %s from %s: %s", failure.PublicIP, failure.InstanceUUID, failure.Reason.String())
-	client.ctl.ds.LogError(failure.TenantUUID, msg)
+	err = client.ctl.ds.LogError(failure.TenantUUID, msg)
+	if err != nil {
+		glog.Warningf("Error logging error: %v", err)
+	}
 }
 
 func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {

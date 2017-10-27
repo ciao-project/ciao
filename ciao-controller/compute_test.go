@@ -34,6 +34,7 @@ import (
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
 	"github.com/ciao-project/ciao/testutil"
+	"github.com/pkg/errors"
 )
 
 // ByTenantID is used to sort CNCI instances by Tenant ID.
@@ -79,7 +80,7 @@ func testHTTPRequest(t *testing.T, method string, URL string, expectedResponse i
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != expectedResponse {
 		var msg string
@@ -295,16 +296,22 @@ func testServersActionStart(t *testing.T, httpExpectedStatus int, validToken boo
 
 	time.Sleep(1 * time.Second)
 
+	serverCh := server.AddCmdChan(ssntp.DELETE)
+
 	err = ctl.stopInstance(servers.Servers[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(1 * time.Second)
+	err = sendStopEvent(client, servers.Servers[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	sendStatsCmd(client, t)
-
-	time.Sleep(1 * time.Second)
+	_, err = server.GetCmdChanResult(serverCh, ssntp.DELETE)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var ids []string
 	ids = append(ids, servers.Servers[0].ID)
@@ -465,7 +472,10 @@ func sendStopEvent(client *testutil.SsntpTestClient, instanceUUID string) error 
 		return fmt.Errorf("Unable to create InstanceStopped payload : %v", err)
 	}
 	clientEvtCh := wrappedClient.addEventChan(ssntp.InstanceStopped)
-	client.Ssntp.SendEvent(ssntp.InstanceStopped, y)
+	_, err = client.Ssntp.SendEvent(ssntp.InstanceStopped, y)
+	if err != nil {
+		return errors.Wrap(err, "Error sending instance stopped")
+	}
 	err = wrappedClient.getEventChan(clientEvtCh, ssntp.InstanceStopped)
 	if err != nil {
 		return fmt.Errorf("InstanceStopped event not received: %v", err)

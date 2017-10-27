@@ -48,10 +48,18 @@ func (c *controller) restartInstance(instanceID string) error {
 	}
 
 	if !i.CNCI {
-		t.CNCIctrl.WaitForActiveSubnetString(i.Subnet)
+		err = t.CNCIctrl.WaitForActiveSubnetString(i.Subnet)
+		if err != nil {
+			return errors.Wrap(err, "Error waiting for active subnet")
+		}
 	}
 
-	go c.client.RestartInstance(i, &w, t)
+	go func() {
+		if err := c.client.RestartInstance(i, &w, t); err != nil {
+			glog.Warningf("Error restarting instance: %v", err)
+		}
+	}()
+
 	return nil
 }
 
@@ -70,7 +78,12 @@ func (c *controller) stopInstance(instanceID string) error {
 		return errors.New("You may not stop a pending instance")
 	}
 
-	go c.client.StopInstance(instanceID, i.NodeID)
+	go func() {
+		if err := c.client.StopInstance(instanceID, i.NodeID); err != nil {
+			glog.Warningf("Error stopping instance: %v", err)
+		}
+	}()
+
 	return nil
 }
 
@@ -111,7 +124,10 @@ func (c *controller) deleteInstanceSync(instanceID string) error {
 	case <-wait:
 		return nil
 	case <-time.After(2 * time.Minute):
-		transitionInstanceState(i, payloads.Hung)
+		err = transitionInstanceState(i, payloads.Hung)
+		if err != nil {
+			glog.Warningf("Error transitioning instance to hung state: %v", err)
+		}
 		return fmt.Errorf("timeout waiting for delete")
 	}
 }
@@ -136,7 +152,12 @@ func (c *controller) deleteInstance(instanceID string) error {
 		}
 	}
 
-	go c.client.DeleteInstance(instanceID, i.NodeID)
+	go func() {
+		if err := c.client.DeleteInstance(instanceID, i.NodeID); err != nil {
+			glog.Warningf("Error deleting instance: %v", err)
+		}
+	}()
+
 	return nil
 }
 
@@ -243,7 +264,7 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 
 		ok, err := instance.Allowed()
 		if err != nil {
-			instance.Clean()
+			_ = instance.Clean()
 			e = errors.Wrap(err, "Error checking if instance allowed")
 			continue
 		}
@@ -251,19 +272,26 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		if ok {
 			err = instance.Add()
 			if err != nil {
-				instance.Clean()
+				_ = instance.Clean()
 				e = errors.Wrap(err, "Error adding instance")
 				continue
 			}
 
 			newInstances = append(newInstances, instance.Instance)
-			if w.TraceLabel == "" {
-				go c.client.StartWorkload(instance.newConfig.config)
-			} else {
-				go c.client.StartTracedWorkload(instance.newConfig.config, instance.startTime, w.TraceLabel)
-			}
+			go func(label string) {
+				var err error
+				if label == "" {
+					err = c.client.StartWorkload(instance.newConfig.config)
+				} else {
+					err = c.client.StartTracedWorkload(instance.newConfig.config, instance.startTime, w.TraceLabel)
+				}
+
+				if err != nil {
+					glog.Warningf("Error starting workload: %v", err)
+				}
+			}(w.TraceLabel)
 		} else {
-			instance.Clean()
+			_ = instance.Clean()
 			// stop if we are over limits
 			e = errors.New("Over quota")
 			continue

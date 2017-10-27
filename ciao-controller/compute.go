@@ -384,6 +384,10 @@ func (c *controller) CreateServer(tenant string, server api.CreateServerRequest)
 		servers.Servers = append(servers.Servers, server)
 	}
 
+	if e != nil {
+		_ = c.ds.LogError(tenant, fmt.Sprintf("Error launching instance(s): %v", e))
+	}
+
 	// If no instances launcher or if none converted bail early
 	if e != nil && len(servers.Servers) == 0 {
 		return server, e
@@ -409,9 +413,6 @@ func (c *controller) CreateServer(tenant string, server api.CreateServerRequest)
 		},
 	}
 
-	if e != nil {
-		c.ds.LogError(tenant, fmt.Sprintf("Error launching instance(s): %v", e))
-	}
 	return builtServers, nil
 }
 

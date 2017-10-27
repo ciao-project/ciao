@@ -602,7 +602,7 @@ func addTestBlockDevice(t *testing.T, tenantID string) types.Volume {
 
 	err = ctl.ds.AddBlockDevice(data)
 	if err != nil {
-		ctl.DeleteBlockDevice(bd.ID)
+		_ = ctl.DeleteBlockDevice(bd.ID)
 		t.Fatal(err)
 	}
 
@@ -851,7 +851,10 @@ func TestStartFailure(t *testing.T) {
 }
 
 func TestStopFailure(t *testing.T) {
-	ctl.ds.ClearLog()
+	err := ctl.ds.ClearLog()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var reason payloads.StartFailureReason
 
@@ -866,7 +869,7 @@ func TestStopFailure(t *testing.T) {
 	serverCh := server.AddCmdChan(ssntp.DELETE)
 	controllerCh := wrappedClient.addErrorChan(ssntp.DeleteFailure)
 
-	err := ctl.stopInstance(instances[0].ID)
+	err = ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -885,7 +888,10 @@ func TestStopFailure(t *testing.T) {
 }
 
 func TestRestartFailure(t *testing.T) {
-	ctl.ds.ClearLog()
+	err := ctl.ds.ClearLog()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var reason payloads.StartFailureReason
 
@@ -900,7 +906,7 @@ func TestRestartFailure(t *testing.T) {
 	serverCh := server.AddCmdChan(ssntp.DELETE)
 	clientCh := client.AddCmdChan(ssntp.DELETE)
 
-	err := ctl.stopInstance(instances[0].ID)
+	err = ctl.stopInstance(instances[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1207,7 +1213,7 @@ func TestGetStorageForVolume(t *testing.T) {
 	}
 
 	sourceVolume := addTestBlockDevice(t, tenant.ID)
-	defer ctl.DeleteBlockDevice(sourceVolume.ID)
+	defer func() { _ = ctl.DeleteBlockDevice(sourceVolume.ID) }()
 
 	// a temporary in memory filesystem?
 	s := types.StorageResource{
@@ -1258,7 +1264,7 @@ func TestGetStorageForImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	// a temporary in memory filesystem?
 	s := types.StorageResource{
@@ -1315,7 +1321,7 @@ func TestStorageConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	info, err := tmpfile.Stat()
 	if err != nil {
@@ -1566,18 +1572,27 @@ func deletePool(name string) error {
 func TestAddPoolWithSubnet(t *testing.T) {
 	subnet := "192.168.0.0/16"
 	testAddPool(t, "test1", &subnet, []string{})
-	deletePool("test1")
+	err := deletePool("test1")
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestAddPoolWithIPs(t *testing.T) {
 	ips := []string{"10.10.0.1", "10.10.0.2"}
 	testAddPool(t, "test2", nil, ips)
-	deletePool("test2")
+	err := deletePool("test2")
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestAddPool(t *testing.T) {
 	testAddPool(t, "test3", nil, []string{})
-	deletePool("test3")
+	err := deletePool("test3")
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestListPools(t *testing.T) {
@@ -2069,7 +2084,7 @@ func TestMain(m *testing.M) {
 
 	f, err := os.Create(fakeImage)
 	if err != nil {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 		os.Exit(1)
 	}
 
@@ -2080,8 +2095,8 @@ func TestMain(m *testing.M) {
 
 	err = ctl.ds.Init(dsConfig)
 	if err != nil {
-		f.Close()
-		os.RemoveAll(dir)
+		_ = f.Close()
+		_ = os.RemoveAll(dir)
 		os.Exit(1)
 	}
 
@@ -2109,7 +2124,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	go s.ListenAndServeTLS(httpsCAcert, httpsKey)
+	go func() { _ = s.ListenAndServeTLS(httpsCAcert, httpsKey) }()
 	time.Sleep(1 * time.Second)
 
 	code := m.Run()
@@ -2118,8 +2133,8 @@ func TestMain(m *testing.M) {
 	ctl.ds.Exit()
 	ctl.qs.Shutdown()
 	server.Shutdown()
-	f.Close()
-	os.RemoveAll(dir)
+	_ = f.Close()
+	_ = os.RemoveAll(dir)
 
 	os.Exit(code)
 }

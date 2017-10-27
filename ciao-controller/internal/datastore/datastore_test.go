@@ -1254,7 +1254,10 @@ func TestAttachVolumeFailure(t *testing.T) {
 	}
 
 	// pretend we got a failure to attach.
-	ds.AttachVolumeFailure(instance.ID, data.ID, payloads.AttachVolumeAlreadyAttached)
+	err = ds.AttachVolumeFailure(instance.ID, data.ID, payloads.AttachVolumeAlreadyAttached)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// make sure state has been switched to Available again.
 	bd, err := ds.GetBlockDevice(data.ID)
