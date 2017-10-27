@@ -1181,6 +1181,8 @@ func (ds *sqliteDB) getInstances() ([]*types.Instance, error) {
 			i.SSHPort = int(sshPort.Int64)
 		}
 
+		i.StateChange = sync.NewCond(&sync.Mutex{})
+
 		instances = append(instances, &i)
 	}
 
@@ -1258,6 +1260,8 @@ func (ds *sqliteDB) getTenantInstances(tenantID string) (map[string]*types.Insta
 		if sshPort.Valid {
 			i.SSHPort = int(sshPort.Int64)
 		}
+
+		i.StateChange = sync.NewCond(&sync.Mutex{})
 
 		instances[i.ID] = i
 	}
