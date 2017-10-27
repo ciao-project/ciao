@@ -45,6 +45,7 @@ type instanceData struct {
 	vm             virtualizer
 	instanceDir    string
 	shuttingDown   bool
+	creating       bool
 	rcvStamp       time.Time
 	st             *startTimes
 	storageDriver  storage.BlockDriver
@@ -68,10 +69,6 @@ type insDeleteCmd struct {
 	// instance that has failed to start.  We're sending StartFailure
 	// so InstanceDeleted is not needed.
 	skipDeleteEvent bool
-
-	// The running state of the instance as provided by the overseer.
-	// Used to determine whether we need to delete networking artifacts.
-	running ovsRunningState
 
 	// Indicates whether we are deleting or stopping an instance.  The
 	// two operations are almost identical for launcher.  The only difference
@@ -134,6 +131,7 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 		startErr.send(id.ac.conn, id.instance)
 		return
 	}
+	id.creating = true
 	st, startErr := processStart(cmd, id.instanceDir, id.vm, id.ac.conn)
 	if startErr != nil {
 		glog.Errorf("Unable to start instance[%s]: %v", string(startErr.code), startErr.err)
@@ -146,6 +144,7 @@ func (id *instanceData) startCommand(cmd *insStartCmd) {
 		}
 		return
 	}
+	id.creating = false
 	id.st = st
 
 	id.connectedCh = make(chan struct{})
@@ -212,7 +211,7 @@ func (id *instanceData) deleteCommand(cmd *insDeleteCmd) bool {
 		id.vm.lostVM()
 	}
 
-	_ = processDelete(id.vm, id.instanceDir, id.ac.conn, cmd.running)
+	_ = processDelete(id.vm, id.instanceDir, id.ac.conn, id.creating)
 
 	id.unmapVolumes()
 
