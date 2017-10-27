@@ -135,6 +135,7 @@ func (c *controller) UploadImage(tenantID, imageID string, body io.Reader) error
 
 	err = c.uploadImage(imageID, body)
 	if err != nil {
+		glog.Errorf("Error uploading image: %v", err)
 		image.State = types.Killed
 		_ = c.ds.UpdateImage(image)
 		return api.ErrImageSaving
@@ -142,6 +143,7 @@ func (c *controller) UploadImage(tenantID, imageID string, body io.Reader) error
 
 	imageSize, err := c.GetBlockDeviceSize(imageID)
 	if err != nil {
+		glog.Errorf("Error getting block device size: %v", err)
 		image.State = types.Killed
 		_ = c.ds.UpdateImage(image)
 		return api.ErrImageSaving
