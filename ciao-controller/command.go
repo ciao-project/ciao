@@ -19,6 +19,8 @@ package main
 import (
 	"fmt"
 	"net"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
@@ -229,6 +231,7 @@ func (c *controller) confirmTenant(tenantID string) error {
 
 func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, error) {
 	var e error
+	var sem = make(chan int, runtime.NumCPU())
 
 	if w.Instances <= 0 {
 		return nil, errors.New("Missing number of instances to start")
@@ -255,65 +258,76 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 	}
 
 	var newInstances []*types.Instance
+	var wg sync.WaitGroup
 
 	for i := 0; i < w.Instances && e == nil; i++ {
-		startTime := time.Now()
-
-		name := w.Name
-		if name != "" {
-			if w.Instances > 1 {
-				name = fmt.Sprintf("%s-%d", name, i)
-			}
-		}
-
 		var newIP net.IP
 
 		if w.Subnet == "" {
 			newIP = IPPool[i]
 		}
+		wg.Add(1)
+		go func(newIP net.IP) {
+			sem <- 1
+			defer func() {
+				<-sem
+				wg.Done()
+			}()
 
-		instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name, w.Subnet, newIP)
-		if err != nil {
-			e = errors.Wrap(err, "Error creating instance")
-			continue
-		}
-		instance.startTime = startTime
+			startTime := time.Now()
 
-		ok, err := instance.Allowed()
-		if err != nil {
-			_ = instance.Clean()
-			e = errors.Wrap(err, "Error checking if instance allowed")
-			continue
-		}
-
-		if ok {
-			err = instance.Add()
-			if err != nil {
-				_ = instance.Clean()
-				e = errors.Wrap(err, "Error adding instance")
-				continue
+			name := w.Name
+			if name != "" {
+				if w.Instances > 1 {
+					name = fmt.Sprintf("%s-%d", name, i)
+				}
 			}
 
-			newInstances = append(newInstances, instance.Instance)
-			go func(label string) {
-				var err error
-				if label == "" {
-					err = c.client.StartWorkload(instance.newConfig.config)
-				} else {
-					err = c.client.StartTracedWorkload(instance.newConfig.config, instance.startTime, w.TraceLabel)
+			instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name, w.Subnet, newIP)
+			if err != nil {
+				e = errors.Wrap(err, "Error creating instance")
+				return
+			}
+			instance.startTime = startTime
+
+			ok, err := instance.Allowed()
+			if err != nil {
+				_ = instance.Clean()
+				e = errors.Wrap(err, "Error checking if instance allowed")
+				return
+			}
+
+			if ok {
+				err = instance.Add()
+				if err != nil {
+					_ = instance.Clean()
+					e = errors.Wrap(err, "Error adding instance")
+					return
 				}
 
-				if err != nil {
-					glog.Warningf("Error starting workload: %v", err)
-				}
-			}(w.TraceLabel)
-		} else {
-			_ = instance.Clean()
-			// stop if we are over limits
-			e = errors.New("Over quota")
-			continue
-		}
+				newInstances = append(newInstances, instance.Instance)
+				go func(label string) {
+					var err error
+					if label == "" {
+						err = c.client.StartWorkload(instance.newConfig.config)
+					} else {
+						err = c.client.StartTracedWorkload(instance.newConfig.config, instance.startTime, w.TraceLabel)
+					}
+
+					if err != nil {
+						glog.Warningf("Error starting workload: %v", err)
+					}
+				}(w.TraceLabel)
+			} else {
+				_ = instance.Clean()
+				// stop if we are over limits
+				e = errors.New("Over quota")
+				return
+			}
+		}(newIP)
 	}
+
+	wg.Wait()
 
 	return newInstances, e
 }
