@@ -54,7 +54,7 @@ func TestCreateTenant(t *testing.T) {
 
 	config := bat.TenantConfig{
 		Name:       "CreateTenantTest",
-		SubnetBits: 4,
+		SubnetBits: 20,
 	}
 
 	tenant, err := bat.CreateTenant(ctx, config)

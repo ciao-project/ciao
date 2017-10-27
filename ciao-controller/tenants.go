@@ -81,12 +81,12 @@ func (c *controller) CreateTenant(tenantID string, config types.TenantConfig) (t
 		return types.TenantSummary{}, err
 	}
 
-	// SubnetBits must be between 4 and 30
+	// SubnetBits must be between 12 and 30
 	if config.SubnetBits == 0 {
 		config.SubnetBits = 24
 	} else {
-		if config.SubnetBits < 4 || config.SubnetBits > 30 {
-			return types.TenantSummary{}, errors.New("subnet bits must be between 4 and 30")
+		if config.SubnetBits < 12 || config.SubnetBits > 30 {
+			return types.TenantSummary{}, errors.New("subnet bits must be between 12 and 30")
 		}
 	}
 
