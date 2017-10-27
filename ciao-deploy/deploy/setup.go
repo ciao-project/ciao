@@ -45,6 +45,7 @@ type ClusterConfiguration struct {
 	AuthCACertPath    string
 	AuthAdminCertPath string
 	ServerHostname    string
+	DisableLimits     bool
 }
 
 var ciaoConfigDir = "/etc/ciao"
@@ -78,8 +79,11 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 
 	config.Configure.Launcher.ComputeNetwork = []string{clusterConf.ComputeNet}
 	config.Configure.Launcher.ManagementNetwork = []string{clusterConf.MgmtNet}
+
+	// Disk limit checking is broken and should always be disabled.
+	// See issue #1541
 	config.Configure.Launcher.DiskLimit = false
-	config.Configure.Launcher.MemoryLimit = false
+	config.Configure.Launcher.MemoryLimit = !clusterConf.DisableLimits
 
 	data, err := yaml.Marshal(config)
 	if err != nil {

@@ -124,4 +124,5 @@ func init() {
 	setupCmd.Flags().StringVar(&imageCacheDirectory, "image-cache-directory", deploy.DefaultImageCacheDir(), "Directory to use for caching of downloaded images")
 	setupCmd.Flags().BoolVar(&force, "force", false, "Overwrite existing files which might break the cluster")
 	setupCmd.Flags().BoolVar(&localLauncher, "local-launcher", false, "Enable a local launcher on this node (for testing)")
+	setupCmd.Flags().BoolVar(&clusterConf.DisableLimits, "disable-limits", false, "Disable memory limit checking for cluster nodes")
 }
