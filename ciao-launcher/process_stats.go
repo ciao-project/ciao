@@ -35,7 +35,7 @@ func parseProcSmaps(smapsPath string) int {
 	smaps, err := os.Open(smapsPath)
 	if err != nil {
 		if glog.V(1) {
-			glog.Warning("Unable to open %s: %v", smapsPath, err)
+			glog.Warningf("Unable to open %s: %v", smapsPath, err)
 		}
 		return -1
 	}
@@ -68,7 +68,7 @@ func parseProcStat(statPath string) int64 {
 	stat, err := os.Open(statPath)
 	if err != nil {
 		if glog.V(1) {
-			glog.Warning("Unable to open %s: %v", statPath, err)
+			glog.Warningf("Unable to open %s: %v", statPath, err)
 		}
 		return -1
 	}
