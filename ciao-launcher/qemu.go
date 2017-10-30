@@ -219,7 +219,7 @@ func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, e
 		params[len(params)-1] = fmt.Sprintf(ncString, port, ipAddress)
 		var errStr string
 
-		errStr, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, qmpGlogLogger{})
+		errStr, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, nil, qmpGlogLogger{})
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with netcat %s %d", ipAddress, port)
@@ -236,7 +236,7 @@ func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, e
 
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to chardev error.  Relaunching without virtual console")
-		_, err = qemu.LaunchCustomQemu(context.Background(), "", params[:len(params)-4], fds, qmpGlogLogger{})
+		_, err = qemu.LaunchCustomQemu(context.Background(), "", params[:len(params)-4], fds, nil, qmpGlogLogger{})
 	}
 
 	return port, err
@@ -255,7 +255,7 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 		}
 		params[len(params)-1] = fmt.Sprintf("port=%d,addr=%s,disable-ticketing", port, ipAddress)
 		var errStr string
-		errStr, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, qmpGlogLogger{})
+		errStr, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, nil, qmpGlogLogger{})
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with spicec -h %s -p %d", ipAddress, port)
@@ -274,7 +274,7 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to spice error.  Relaunching without virtual console")
 		params = append(params[:len(params)-2], "-display", "none", "-vga", "none")
-		_, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, qmpGlogLogger{})
+		_, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, nil, qmpGlogLogger{})
 	}
 
 	return port, err
@@ -390,7 +390,7 @@ func (q *qemuV) startVM(vnicName, ipAddress, cephID string) error {
 
 	if !launchWithUI.Enabled() {
 		params = append(params, "-display", "none", "-vga", "none")
-		_, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, qmpGlogLogger{})
+		_, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, nil, qmpGlogLogger{})
 	} else if launchWithUI.String() == "spice" {
 		var port int
 		port, err = launchQemuWithSpice(params, fds, ipAddress)
