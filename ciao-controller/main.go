@@ -245,4 +245,5 @@ func main() {
 	ctl.qs.Shutdown()
 	ctl.ds.Exit()
 	ctl.client.Disconnect()
+	glog.Flush()
 }
