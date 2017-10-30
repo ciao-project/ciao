@@ -85,8 +85,10 @@ func init() {
 	}
 
 	if logDirFlag.Value.String() == "" {
-		err := logDirFlag.Value.Set(logDir)
-		glog.Errorf("Error setting log directory: %v", err)
+		if err := logDirFlag.Value.Set(logDir); err != nil {
+			glog.Errorf("Error setting log directory: %v", err)
+			return
+		}
 	}
 
 	if err := os.MkdirAll(logDirFlag.Value.String(), 0755); err != nil {
