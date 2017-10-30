@@ -54,6 +54,7 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Launcher.ManagementNetwork = []string{testutil.MgmtNet}
 	cfg.Configure.Launcher.DiskLimit = false
 	cfg.Configure.Launcher.MemoryLimit = false
+	cfg.Configure.Launcher.ChildUser = testutil.User
 
 	p, _ := strconv.Atoi(testutil.CiaoPort)
 	cfg.Configure.Controller.CiaoPort = p

@@ -99,6 +99,9 @@ const AgentUUID = "4cb19522-1e18-439a-883a-f9b2a3a95f5e"
 // VolumeUUID is a node UUID for storage tests
 const VolumeUUID = "67d86208-b46c-4465-9018-e14187d4010"
 
+// User is a user under which non-privileged ciao processes should run.
+const User = "ciao"
+
 var computeNetwork001 = payloads.NetworkStat{
 	NodeIP:  "198.51.100.1",
 	NodeMAC: "02:00:aa:cb:84:41",
@@ -317,6 +320,7 @@ const ConfigureYaml = `configure:
     - ` + MgmtNet + `
     disk_limit: false
     mem_limit: false
+    child_user: ` + User + `
 `
 
 // DeleteFailureYaml is a sample workload DeleteFailure ssntp.Error payload for test cases

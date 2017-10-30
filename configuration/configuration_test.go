@@ -73,6 +73,7 @@ const fullValidConf = `configure:
     - 192.168.1.0/24
     disk_limit: true
     mem_limit: true
+    child_user: ciao
 `
 
 func testBlob(t *testing.T, conf *payloads.Configure, expectedBlob []byte, positive bool) {
@@ -121,6 +122,7 @@ func fillPayload(conf *payloads.Configure) {
 	conf.Configure.Controller.ClientAuthCACertPath = clientAuthCACert
 	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
 	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
+	conf.Configure.Launcher.ChildUser = "ciao"
 	conf.Configure.Storage.CephID = cephID
 }
 

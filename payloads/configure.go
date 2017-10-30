@@ -61,6 +61,7 @@ type ConfigureLauncher struct {
 	ManagementNetwork []string `yaml:"mgmt_net"`
 	DiskLimit         bool     `yaml:"disk_limit"`
 	MemoryLimit       bool     `yaml:"mem_limit"`
+	ChildUser         string   `yaml:"child_user"`
 }
 
 // ConfigureStorage contains the unmarshalled configurations for the
