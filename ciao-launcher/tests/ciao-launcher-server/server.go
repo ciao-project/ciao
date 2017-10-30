@@ -44,6 +44,7 @@ var mgmtNet string
 var diskLimit bool
 var memLimit bool
 var cephID string
+var user string
 
 var ssntpServer = &ssntp.Server{}
 
@@ -57,6 +58,7 @@ func init() {
 	flag.BoolVar(&diskLimit, "disk-limit", true, "Use disk usage limits")
 	flag.BoolVar(&memLimit, "mem-limit", true, "Use memory usage limits")
 	flag.StringVar(&cephID, "ceph-id", "ciao", "ceph client id")
+	flag.StringVar(&user, "user", "ciao", "user and group for child processes")
 }
 
 type client struct {
@@ -491,6 +493,7 @@ func createConfigFile(confPath string) error {
 		conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
 	}
 	conf.Configure.Storage.CephID = cephID
+	conf.Configure.Launcher.ChildUser = user
 
 	d, err := yaml.Marshal(&conf)
 	if err != nil {

@@ -24,8 +24,10 @@ import (
 	"math"
 	"os"
 	"os/signal"
+	"os/user"
 	"path"
 	"runtime/debug"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -84,6 +86,7 @@ var diskLimit bool
 var memLimit bool
 var cephID string
 var simulate bool
+var childProcessCreds *syscall.SysProcAttr
 var maxInstances = int(math.MaxInt32)
 
 func init() {
@@ -288,6 +291,32 @@ func loadClusterConfig(conn serverConn) error {
 		cephID = clusterConfig.Configure.Storage.CephID
 	}
 
+	childUser := clusterConfig.Configure.Launcher.ChildUser
+	if childUser != "" {
+		usr, err := user.Lookup(childUser)
+		if err != nil {
+			return err
+		}
+		uid, err := strconv.Atoi(usr.Uid)
+		if err != nil {
+			return err
+		}
+		grp, err := user.LookupGroup(childUser)
+		if err != nil {
+			return err
+		}
+		gid, err := strconv.Atoi(grp.Gid)
+		if err != nil {
+			return err
+		}
+		childProcessCreds = &syscall.SysProcAttr{
+			Credential: &syscall.Credential{
+				Uid: uint32(uid),
+				Gid: uint32(gid),
+			},
+		}
+	}
+
 	if err := netConfig.Save(); err != nil {
 		glog.Warningf("Unable to save networking config: %v", err)
 	}
@@ -303,6 +332,11 @@ func printClusterConfig() {
 	glog.Infof("Disk Limit:           %v", diskLimit)
 	glog.Infof("Memory Limit:         %v", memLimit)
 	glog.Infof("Ceph ID:              %v", cephID)
+	if childProcessCreds != nil {
+		glog.Infof("Credentials:          %d:%d",
+			childProcessCreds.Credential.Uid,
+			childProcessCreds.Credential.Gid)
+	}
 }
 
 func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
