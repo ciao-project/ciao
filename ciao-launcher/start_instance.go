@@ -36,9 +36,14 @@ type startTimes struct {
 
 func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig,
 	bridge, gatewayIP string, userData, metaData []byte) (err error) {
-	err = os.MkdirAll(instanceDir, 0755)
+	err = os.MkdirAll(instanceDir, 0775)
 	if err != nil {
-		glog.Errorf("Cannot create instance directory for VM: %v", err)
+		glog.Errorf("Cannot create instance directory: %v", err)
+		return
+	}
+	err = os.Chmod(instanceDir, 0775)
+	if err != nil {
+		glog.Errorf("Unable to set permissions for instance directory: %v", err)
 		return
 	}
 

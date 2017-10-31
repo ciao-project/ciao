@@ -90,7 +90,7 @@ func createCloudInitISO(instanceDir, isoPath string, cfg *vmConfig, userData, me
 	}
 
 	if err := qemu.CreateCloudInitISO(context.TODO(), instanceDir, isoPath,
-		userData, metaData, nil); err != nil {
+		userData, metaData, childProcessCreds); err != nil {
 		glog.Errorf("Unable to create cloudinit iso image %v", err)
 		return err
 	}
