@@ -221,8 +221,11 @@ ExecStart=/usr/local/bin/{{.Tool}} --cacert={{.CACertPath}} --cert={{.CertPath}}
 Restart=no
 KillMode=process
 TasksMax=infinity
-AmbientCapabilities={{range $i, $v := .Caps}}{{if (gt $i 0)}} {{end}}{{$v}}{{- end}}
+{{with .Caps}}
+CapabilityBoundingSet={{range $i, $v := .}}{{if (gt $i 0)}} {{end}}{{$v}}{{- end}}
+{{else}}
 User={{.User}}
+{{end}}
 Group={{.User}}
 
 [Install]
@@ -376,7 +379,7 @@ func createCiaoDirectory(ctx context.Context, path string) error {
 }
 
 func createUserAndDirs(ctx context.Context) (func(), error) {
-	cmd := exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser)
+	cmd := exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser, "-G", "docker,kvm")
 	if err := cmd.Run(); err != nil {
 		return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
@@ -513,7 +516,11 @@ func installLocalLauncher(ctx context.Context, launcherCertPath string, caCertPa
 		User:       ciaoUser,
 		CertPath:   launcherCertPath,
 		CACertPath: caCertPath,
-		Caps:       []string{"CAP_NET_ADMIN", "CAP_NET_RAW", "CAP_DAC_OVERRIDE", "CAP_SYS_MODULE"},
+		Caps: []string{
+			"CAP_NET_ADMIN", "CAP_NET_RAW", "CAP_DAC_OVERRIDE",
+			"CAP_DAC_OVERRIDE", "CAP_SETGID", "CAP_SETUID", "CAP_SYS_PTRACE",
+			"CAP_SYS_MODULE",
+		},
 	})
 	return errors.Wrap(err, "Error installing launcher")
 }

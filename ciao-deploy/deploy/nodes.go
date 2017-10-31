@@ -209,7 +209,8 @@ func setupNode(ctx context.Context, anchorCertPath string, caCertPath string, ho
 		User:       ciaoUser,
 		CertPath:   remoteCertPath,
 		CACertPath: caCertPath,
-		Caps:       []string{"CAP_NET_ADMIN", "CAP_NET_RAW", "CAP_DAC_OVERRIDE", "CAP_SYS_MODULE"},
+		Caps: []string{"CAP_NET_ADMIN", "CAP_NET_RAW", "CAP_DAC_OVERRIDE",
+			"CAP_SETGID", "CAP_SETUID", "CAP_SYS_PTRACE", "CAP_SYS_MODULE"},
 	})
 	if err != nil {
 		return errors.Wrap(err, "Error installing tool on node")
