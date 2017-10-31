@@ -98,6 +98,7 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 	// See issue #1541
 	config.Configure.Launcher.DiskLimit = false
 	config.Configure.Launcher.MemoryLimit = !clusterConf.DisableLimits
+	config.Configure.Launcher.ChildUser = ciaoUser
 
 	data, err := yaml.Marshal(config)
 	if err != nil {
