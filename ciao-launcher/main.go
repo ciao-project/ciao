@@ -87,6 +87,7 @@ var memLimit bool
 var cephID string
 var simulate bool
 var childProcessCreds *syscall.SysProcAttr
+var childProcessKVMCreds *syscall.SysProcAttr
 var maxInstances = int(math.MaxInt32)
 
 func init() {
@@ -313,6 +314,30 @@ func loadClusterConfig(conn serverConn) error {
 			Credential: &syscall.Credential{
 				Uid: uint32(uid),
 				Gid: uint32(gid),
+			},
+		}
+		grp, err = user.LookupGroup("kvm")
+		if err != nil {
+			return err
+		}
+		kgid, err := strconv.Atoi(grp.Gid)
+		if err != nil {
+			return err
+		}
+		grp, err = user.LookupGroup("disk")
+		if err != nil {
+			return err
+		}
+		dgid, err := strconv.Atoi(grp.Gid)
+		if err != nil {
+			return err
+		}
+
+		childProcessKVMCreds = &syscall.SysProcAttr{
+			Credential: &syscall.Credential{
+				Uid:    uint32(uid),
+				Gid:    uint32(gid),
+				Groups: []uint32{uint32(kgid), uint32(dgid)},
 			},
 		}
 	}

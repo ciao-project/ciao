@@ -76,6 +76,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	var gatewayIP string
 	var vnicCfg *libsnnet.VnicConfig
 	var st startTimes
+	var fds []*os.File
 
 	st.startStamp = time.Now()
 
@@ -109,10 +110,15 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	}
 
 	if vnicCfg != nil {
-		vnicName, bridge, gatewayIP, err = createVnic(conn, vnicCfg)
+		vnicName, bridge, gatewayIP, fds, err = createVnic(conn, vnicCfg)
 		if err != nil {
 			return nil, &startError{err, payloads.NetworkFailure, cmd.cfg.Restart}
 		}
+		defer func() {
+			for _, f := range fds {
+				_ = f.Close()
+			}
+		}()
 	}
 
 	st.networkStamp = time.Now()
@@ -128,7 +134,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 
 	st.creationStamp = time.Now()
 
-	err = vm.startVM(vnicName, getNodeIPAddress(), cephID)
+	err = vm.startVM(vnicName, getNodeIPAddress(), cephID, fds)
 	if err != nil {
 		if vnicCfg != nil {
 			destroyVnic(conn, vnicCfg)

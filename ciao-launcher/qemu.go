@@ -135,45 +135,61 @@ func cleanupFds(fds []*os.File, numFds int) {
 	}
 }
 
-func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*os.File, error) {
-
-	fds := make([]*os.File, queues)
-	params := make([]string, 0, 8)
-
+func locateTapDevice(vnicName string) (string, error) {
 	ifIndexPath := path.Join("/sys/class/net", vnicName, "ifindex")
 	fip, err := os.Open(ifIndexPath)
 	if err != nil {
 		glog.Errorf("Failed to determine tap ifname: %s", err)
-		return nil, nil, err
+		return "", err
 	}
 	defer func() { _ = fip.Close() }()
 
 	scan := bufio.NewScanner(fip)
 	if !scan.Scan() {
 		glog.Error("Unable to read tap index")
-		return nil, nil, fmt.Errorf("Unable to read tap index")
+		return "", fmt.Errorf("Unable to read tap index")
 	}
 
 	i, err := strconv.Atoi(scan.Text())
 	if err != nil {
 		glog.Errorf("Failed to determine tap ifname: %s", err)
+		return "", err
+	}
+
+	return fmt.Sprintf("/dev/tap%d", i), nil
+}
+
+func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*os.File, error) {
+	var fdParam bytes.Buffer
+	var vhostFdParam bytes.Buffer
+
+	fds := make([]*os.File, queues*2)
+	params := make([]string, 0, 8)
+
+	fdSeperator := ""
+	tapDev, err := locateTapDevice(vnicName)
+	if err != nil {
 		return nil, nil, err
 	}
 
-	//mq support
-	var fdParam bytes.Buffer
-	fdSeperator := ""
 	for q := 0; q < queues; q++ {
-
-		tapDev := fmt.Sprintf("/dev/tap%d", i)
-
 		f, err := os.OpenFile(tapDev, os.O_RDWR, 0666)
 		if err != nil {
 			glog.Errorf("Failed to open tap device %s: %s", tapDev, err)
-			cleanupFds(fds, q)
+			cleanupFds(fds, q*2)
 			return nil, nil, err
 		}
-		fds[q] = f
+		fds[q*2] = f
+
+		f, err = os.OpenFile("/dev/vhost-net", os.O_RDWR, 0666)
+		if err != nil {
+			glog.Errorf("Failed to open /dev/vhost-net : %v", err)
+			cleanupFds(fds, (q*2)+1)
+			return nil, nil, err
+		}
+
+		fds[(q*2)+1] = f
+
 		/*
 		   3, what do you mean 3.  Well, it turns out that files passed to child
 		   processes via cmd.ExtraFiles have different fds in the child and the
@@ -182,25 +198,53 @@ func computeMacvtapParam(vnicName string, mac string, queues int) ([]string, []*
 		*/
 
 		// bytes.WriteString does not return an error
-		_, _ = fdParam.WriteString(fmt.Sprintf("%s%d", fdSeperator, q+3))
+		_, _ = fdParam.WriteString(fmt.Sprintf("%s%d", fdSeperator, (q*2)+3))
+		_, _ = vhostFdParam.WriteString(fmt.Sprintf("%s%d", fdSeperator, (q*2)+3+1))
 		fdSeperator = ":"
 	}
 
-	netdev := fmt.Sprintf("type=tap,fds=%s,id=%s,vhost=on", fdParam.String(), vnicName)
+	netdev := fmt.Sprintf("type=tap,fds=%s,vhostfds=%s,id=%s,vhost=on", fdParam.String(), vhostFdParam.String(), vnicName)
 	device := fmt.Sprintf("virtio-net-pci,netdev=%s,mq=on,vectors=%d,mac=%s", vnicName, 32, mac)
 	params = append(params, "-netdev", netdev)
 	params = append(params, "-device", device)
 	return params, fds, nil
 }
 
-func computeTapParam(vnicName string, mac string) ([]string, error) {
+func computeTapParam(infds []*os.File, vnicName, mac string) ([]string, []*os.File, []*os.File, error) {
+	var fdParam bytes.Buffer
+	var vhostFdParam bytes.Buffer
+
+	fds := make([]*os.File, len(infds)*2)
+	toClose := make([]*os.File, len(infds))
+
+	fdSeperator := ""
+	for i := range infds {
+		fds[i*2] = infds[i]
+
+		f, err := os.OpenFile("/dev/vhost-net", os.O_RDWR, 0666)
+		if err != nil {
+			glog.Errorf("Failed to open /dev/vhost-net : %v", err)
+			cleanupFds(toClose, i)
+			return nil, nil, nil, err
+		}
+
+		toClose[i] = f
+		fds[(i*2)+1] = f
+
+		_, _ = fdParam.WriteString(fmt.Sprintf("%s%d", fdSeperator, (i*2)+3))
+		_, _ = vhostFdParam.WriteString(fmt.Sprintf("%s%d", fdSeperator, (i*2)+3+1))
+		fdSeperator = ":"
+
+	}
 	params := make([]string, 0, 8)
-	netdev := fmt.Sprintf("type=tap,ifname=%s,script=no,downscript=no,id=%s,vhost=on", vnicName, vnicName)
-	device := fmt.Sprintf("driver=virtio-net-pci,netdev=%s,mac=%s", vnicName, mac)
+	netdev := fmt.Sprintf("type=tap,fds=%s,vhostfds=%s,id=%s,vhost=on",
+		fdParam.String(), vhostFdParam.String(), vnicName)
+	device := fmt.Sprintf("driver=virtio-net-pci,netdev=%s,mq=on,vectors=%d,mac=%s",
+		vnicName, (len(infds)*2)+2, mac)
 
 	params = append(params, "-netdev", netdev)
 	params = append(params, "-device", device)
-	return params, nil
+	return params, fds, toClose, nil
 }
 
 func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, error) {
@@ -219,7 +263,8 @@ func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, e
 		params[len(params)-1] = fmt.Sprintf(ncString, port, ipAddress)
 		var errStr string
 
-		errStr, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, nil, qmpGlogLogger{})
+		errStr, err = qemu.LaunchCustomQemu(context.Background(), "", params,
+			fds, childProcessKVMCreds, qmpGlogLogger{})
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with netcat %s %d", ipAddress, port)
@@ -236,7 +281,7 @@ func launchQemuWithNC(params []string, fds []*os.File, ipAddress string) (int, e
 
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to chardev error.  Relaunching without virtual console")
-		_, err = qemu.LaunchCustomQemu(context.Background(), "", params[:len(params)-4], fds, nil, qmpGlogLogger{})
+		_, err = qemu.LaunchCustomQemu(context.Background(), "", params[:len(params)-4], fds, childProcessKVMCreds, qmpGlogLogger{})
 	}
 
 	return port, err
@@ -255,7 +300,8 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 		}
 		params[len(params)-1] = fmt.Sprintf("port=%d,addr=%s,disable-ticketing", port, ipAddress)
 		var errStr string
-		errStr, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, nil, qmpGlogLogger{})
+		errStr, err = qemu.LaunchCustomQemu(context.Background(), "", params,
+			fds, childProcessKVMCreds, qmpGlogLogger{})
 		if err == nil {
 			glog.Info("============================================")
 			glog.Infof("Connect to vm with spicec -h %s -p %d", ipAddress, port)
@@ -274,7 +320,7 @@ func launchQemuWithSpice(params []string, fds []*os.File, ipAddress string) (int
 	if port == 0 || (err != nil && tries == vcTries) {
 		glog.Warning("Failed to launch qemu due to spice error.  Relaunching without virtual console")
 		params = append(params[:len(params)-2], "-display", "none", "-vga", "none")
-		_, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, nil, qmpGlogLogger{})
+		_, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, childProcessKVMCreds, qmpGlogLogger{})
 	}
 
 	return port, err
@@ -352,9 +398,7 @@ func generateQEMULaunchParams(cfg *vmConfig, isoPath, instanceDir string,
 	return params
 }
 
-func (q *qemuV) startVM(vnicName, ipAddress, cephID string) error {
-
-	var fds []*os.File
+func (q *qemuV) startVM(vnicName, ipAddress, cephID string, fds []*os.File) error {
 
 	glog.Info("Launching qemu")
 
@@ -370,14 +414,18 @@ func (q *qemuV) startVM(vnicName, ipAddress, cephID string) error {
 			if err != nil {
 				return err
 			}
-			defer cleanupFds(fds, len(fds))
 			networkParams = append(networkParams, macvtapParam...)
+			defer cleanupFds(fds, len(fds))
 		} else {
-			tapParam, err := computeTapParam(vnicName, q.cfg.VnicMAC)
+			var err error
+			var tapParam []string
+			var toClose []*os.File
+			tapParam, fds, toClose, err = computeTapParam(fds, vnicName, q.cfg.VnicMAC)
 			if err != nil {
 				return err
 			}
 			networkParams = append(networkParams, tapParam...)
+			defer cleanupFds(toClose, len(toClose))
 		}
 	} else {
 		networkParams = append(networkParams, "-net", "nic,model=virtio")
@@ -390,7 +438,7 @@ func (q *qemuV) startVM(vnicName, ipAddress, cephID string) error {
 
 	if !launchWithUI.Enabled() {
 		params = append(params, "-display", "none", "-vga", "none")
-		_, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, nil, qmpGlogLogger{})
+		_, err = qemu.LaunchCustomQemu(context.Background(), "", params, fds, childProcessKVMCreds, qmpGlogLogger{})
 	} else if launchWithUI.String() == "spice" {
 		var port int
 		port, err = launchQemuWithSpice(params, fds, ipAddress)
