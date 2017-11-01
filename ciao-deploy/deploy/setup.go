@@ -200,6 +200,7 @@ Type=simple
 ExecStart=/usr/local/bin/%s --cacert=%s --cert=%s --v 3
 Restart=no
 KillMode=process
+TasksMax=infinity
 
 [Install]
 WantedBy=multi-user.target
