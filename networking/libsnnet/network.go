@@ -19,6 +19,7 @@ package libsnnet
 import (
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/vishvananda/netlink"
@@ -163,7 +164,9 @@ type VnicAttrs struct {
 // Vnic represents a ciao VNIC (typically a tap or veth interface)
 type Vnic struct {
 	VnicAttrs
-	Link netlink.Link // TODO: Enhance netlink library to add specific tap type to libnetlink
+	Link   netlink.Link // TODO: Enhance netlink library to add specific tap type to libnetlink
+	FDs    []*os.File   // Need to be closed by caller
+	queues int          // Number of queues to create
 }
 
 // CnciVnic represents a ciao CNCI VNIC
