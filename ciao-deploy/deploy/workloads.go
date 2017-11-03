@@ -283,12 +283,11 @@ func (cwd *clearWorkload) Extra() bool {
 
 func (wd *baseWorkload) upload(ctx context.Context, fp, name string) error {
 	opts := bat.ImageOptions{
-		Name:       name,
-		Visibility: "public",
+		Name: name,
 	}
 
 	fmt.Printf("Uploading image from %s\n", fp)
-	i, err := bat.AddImage(ctx, true, "", fp, &opts)
+	i, err := bat.AddImage(ctx, false, "", fp, &opts)
 	if err != nil {
 		return errors.Wrap(err, "Error creating image")
 	}
