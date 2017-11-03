@@ -238,11 +238,6 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		return nil, err
 	}
 
-	err = c.confirmTenant(w.TenantID)
-	if err != nil {
-		return nil, err
-	}
-
 	var newInstances []*types.Instance
 
 	for i := 0; i < w.Instances && e == nil; i++ {
