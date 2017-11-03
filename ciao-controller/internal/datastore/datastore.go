@@ -1233,6 +1233,10 @@ func (ds *Datastore) InstanceStopped(instanceID string) error {
 // DeleteNode removes a node from the node cache.
 func (ds *Datastore) DeleteNode(nodeID string) error {
 	ds.nodesLock.Lock()
+	for _, i := range ds.nodes[nodeID].instances {
+		_ = i.TransitionInstanceState(payloads.Missing)
+		i.NodeID = ""
+	}
 	delete(ds.nodes, nodeID)
 	ds.nodesLock.Unlock()
 
