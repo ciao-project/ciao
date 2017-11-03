@@ -113,7 +113,7 @@ func CreateAdminCert(ctx context.Context, force bool) (_ string, _ string, errOu
 	if !force {
 		if _, err := os.Stat(caCertPath); err == nil {
 			if _, err := os.Stat(certPath); err == nil {
-				fmt.Printf("Authentication certificates already installed. Skipping creation.")
+				fmt.Println("Authentication certificates already installed. Skipping creation.")
 				return caCertPath, certPath, nil
 			} else if !os.IsNotExist(err) {
 				return "", "", errors.Wrap(err, "Error stat()ing cert file")
