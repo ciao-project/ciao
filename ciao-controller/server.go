@@ -32,7 +32,8 @@ import (
 )
 
 type clientCertAuthHandler struct {
-	Next http.Handler
+	Controller *controller
+	Next       http.Handler
 }
 
 func (h *clientCertAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +70,13 @@ func (h *clientCertAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 
 	r = r.WithContext(service.SetTenantID(r.Context(), tenantFromVars))
+	if tenantFromVars != "" {
+		err := h.Controller.confirmTenant(tenantFromVars)
+		if err != nil {
+			http.Error(w, "Error confirming tenant", http.StatusInternalServerError)
+		}
+	}
+
 	h.Next.ServeHTTP(w, r)
 }
 
@@ -79,7 +87,8 @@ func (c *controller) createCiaoRoutes(r *mux.Router) error {
 
 	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		h := &clientCertAuthHandler{
-			Next: route.GetHandler(),
+			Next:       route.GetHandler(),
+			Controller: c,
 		}
 		route.Handler(h)
 

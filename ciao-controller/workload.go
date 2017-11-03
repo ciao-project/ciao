@@ -166,13 +166,6 @@ func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) 
 		return req, err
 	}
 
-	if req.TenantID != "" {
-		err = c.confirmTenant(req.TenantID)
-		if err != nil {
-			return req, err
-		}
-	}
-
 	req.ID = uuid.Generate().String()
 
 	err = c.ds.AddWorkload(req)
