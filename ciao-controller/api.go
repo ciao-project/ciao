@@ -231,11 +231,6 @@ func getResources(c *controller, w http.ResponseWriter, r *http.Request) (APIRes
 	vars := mux.Vars(r)
 	tenant := vars["tenant"]
 
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return errorResponse(err), err
-	}
-
 	t, err := c.ds.GetTenant(tenant)
 	if err != nil || t == nil {
 		return errorResponse(types.ErrTenantNotFound), types.ErrTenantNotFound

@@ -124,7 +124,7 @@ func (c *controller) deleteInstanceSync(instanceID string) error {
 	case <-wait:
 		return nil
 	case <-time.After(2 * time.Minute):
-		err = transitionInstanceState(i, payloads.Hung)
+		err = i.TransitionInstanceState(payloads.Hung)
 		if err != nil {
 			glog.Warningf("Error transitioning instance to hung state: %v", err)
 		}
@@ -234,11 +234,6 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 	}
 
 	wl, err := c.ds.GetWorkload(w.TenantID, w.WorkloadID)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.confirmTenant(w.TenantID)
 	if err != nil {
 		return nil, err
 	}

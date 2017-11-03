@@ -147,7 +147,7 @@ func (client *ssntpClient) RemoveInstance(instanceID string) {
 	}
 
 	// notify anyone is listening for a state change
-	err = transitionInstanceState(i, payloads.Deleted)
+	err = i.TransitionInstanceState(payloads.Deleted)
 	if err != nil {
 		glog.Warningf("Error transitioning CNCI to deleted: %v", err)
 	}

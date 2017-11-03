@@ -186,31 +186,6 @@ func (i *instance) Allowed() (bool, error) {
 	return res.Allowed(), nil
 }
 
-func transitionInstanceState(i *types.Instance, to string) error {
-	i.StateLock.Lock()
-	defer i.StateLock.Unlock()
-
-	glog.V(2).Infof("Instance %s: %s -> %s", i.ID, i.State, to)
-
-	switch to {
-	case payloads.Stopping:
-		if i.State != payloads.Running {
-			return errors.New("Stop operation not allowed")
-		}
-	case payloads.Running:
-		if i.State != payloads.Pending {
-			return errors.New("Set active without pending")
-		}
-	}
-
-	i.StateChange.L.Lock()
-	i.State = to
-	i.StateChange.L.Unlock()
-	i.StateChange.Signal()
-
-	return nil
-}
-
 func instanceActive(i *types.Instance) bool {
 	i.StateLock.RLock()
 	defer i.StateLock.RUnlock()

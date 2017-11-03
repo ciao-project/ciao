@@ -74,7 +74,7 @@ type CNCIManager struct {
 }
 
 func (c *CNCI) stop() error {
-	err := transitionInstanceState(c.instance, payloads.Stopping)
+	err := c.instance.TransitionInstanceState(payloads.Stopping)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func waitForEventTimeout(ch chan event, e event, timeout time.Duration) error {
 func (c *CNCI) transitionState(to CNCIState) {
 	glog.Infof("State transition to %s received for %s", to, c.instance.ID)
 
-	err := transitionInstanceState(c.instance, (string(to)))
+	err := c.instance.TransitionInstanceState(string(to))
 	if err != nil {
 		glog.Warningf("Error transitioning instance %s to %s state", c.instance.ID, string(to))
 	}
