@@ -234,7 +234,7 @@ func (c *controller) DeleteTenant(tenantID string) error {
 		if i.Visibility == types.Public {
 			continue
 		}
-		err := c.ds.DeleteImage(i.ID)
+		err := c.DeleteImage(tenantID, i.ID)
 		if err != nil {
 			return errors.Wrap(err, "Unable to remove tenant")
 		}
