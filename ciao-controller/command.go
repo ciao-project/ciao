@@ -126,7 +126,7 @@ func (c *controller) deleteInstanceSync(instanceID string) error {
 	case <-wait:
 		return nil
 	case <-time.After(2 * time.Minute):
-		err = transitionInstanceState(i, payloads.Hung)
+		err = i.TransitionInstanceState(payloads.Hung)
 		if err != nil {
 			glog.Warningf("Error transitioning instance to hung state: %v", err)
 		}
