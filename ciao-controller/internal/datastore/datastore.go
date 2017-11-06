@@ -64,7 +64,7 @@ type tenant struct {
 	network   map[uint32]map[uint32]bool
 	instances map[string]*types.Instance
 	devices   map[string]types.Volume
-	workloads []types.Workload
+	workloads []string
 	images    []string
 }
 
@@ -95,6 +95,7 @@ type persistentStore interface {
 	// interfaces related to workloads
 	addWorkload(wl types.Workload) error
 	deleteWorkload(ID string) error
+	getWorkloads() ([]types.Workload, error)
 
 	// interfaces related to tenants
 	addTenant(id string, config types.TenantConfig) (err error)
@@ -193,6 +194,10 @@ type Datastore struct {
 	images         map[string]types.Image
 	publicImages   []string
 	internalImages []string
+
+	workloadsLock   *sync.RWMutex
+	workloads       map[string]types.Workload
+	publicWorkloads []string
 }
 
 func (ds *Datastore) initExternalIPs() {
@@ -242,6 +247,34 @@ func (ds *Datastore) initImages() error {
 			ds.tenants[i.TenantID].images = append(ds.tenants[i.TenantID].images, i.ID)
 		}
 	}
+	return nil
+}
+
+func (ds *Datastore) initWorkloads() error {
+	ds.workloadsLock = &sync.RWMutex{}
+	ds.workloads = make(map[string]types.Workload)
+	workloads, err := ds.db.getWorkloads()
+	if err != nil {
+		return errors.Wrap(err, "error getting workloads from database")
+	}
+
+	for _, wl := range workloads {
+		ds.workloads[wl.ID] = wl
+
+		if wl.Visibility == types.Public {
+			ds.publicWorkloads = append(ds.publicWorkloads, wl.ID)
+		}
+
+		if wl.TenantID != "" {
+			_, ok := ds.tenants[wl.TenantID]
+			if !ok {
+				return errors.Wrapf(err, "Database inconsistent: tenant in workload not in database: %s", wl.TenantID)
+			}
+
+			ds.tenants[wl.TenantID].images = append(ds.tenants[wl.TenantID].images, wl.ID)
+		}
+	}
+
 	return nil
 }
 
@@ -301,6 +334,11 @@ func (ds *Datastore) Init(config Config) error {
 	err = ds.initImages()
 	if err != nil {
 		return errors.Wrap(err, "error initialising images")
+	}
+
+	err = ds.initWorkloads()
+	if err != nil {
+		return errors.Wrap(err, "error initialising workloads")
 	}
 
 	ds.nodesLock = &sync.RWMutex{}
@@ -485,97 +523,99 @@ func (ds *Datastore) JSONPatchTenant(ID string, patch []byte) error {
 // AddWorkload is used to add a new workload to the datastore.
 // Both cache and persistent store are updated.
 func (ds *Datastore) AddWorkload(w types.Workload) error {
-	ds.tenantsLock.Lock()
-	defer ds.tenantsLock.Unlock()
-
-	tenant, ok := ds.tenants[w.TenantID]
-	if !ok {
-		return ErrNoTenant
-	}
+	ds.workloadsLock.Lock()
+	defer ds.workloadsLock.Unlock()
 
 	err := ds.db.addWorkload(w)
 	if err != nil {
 		return errors.Wrapf(err, "error updating workload (%v) in database", w.ID)
 	}
 
-	// cache it.
-	ds.tenants[w.TenantID].workloads = append(tenant.workloads, w)
+	ds.workloads[w.ID] = w
+	if w.Visibility == types.Public {
+		ds.publicWorkloads = append(ds.publicWorkloads, w.ID)
+	} else {
+		ds.tenantsLock.Lock()
+		defer ds.tenantsLock.Unlock()
+		tenant, ok := ds.tenants[w.TenantID]
+		if !ok {
+			return ErrNoTenant
+		}
 
+		tenant.workloads = append(tenant.workloads, w.ID)
+	}
 	return nil
 }
 
 // DeleteWorkload will delete an unused workload from the datastore.
 // workload ID out of the datastore.
-func (ds *Datastore) DeleteWorkload(tenantID string, workloadID string) error {
+func (ds *Datastore) DeleteWorkload(workloadID string) error {
+	ds.workloadsLock.Lock()
+	defer ds.workloadsLock.Unlock()
+
 	// make sure that this workload is not in use.
 	// always get from cache
 	ds.instancesLock.RLock()
 	defer ds.instancesLock.RUnlock()
 
-	if len(ds.instances) > 0 {
-		for _, val := range ds.instances {
-			if val.WorkloadID == workloadID {
-				// we can't go on.
-				return types.ErrWorkloadInUse
-			}
+	for _, val := range ds.instances {
+		if val.WorkloadID == workloadID {
+			// we can't go on.
+			return types.ErrWorkloadInUse
 		}
 	}
 
-	// workload is not being used, find it so we can delete it.
-	ds.tenantsLock.Lock()
-	defer ds.tenantsLock.Unlock()
-
-	t, ok := ds.tenants[tenantID]
+	wl, ok := ds.workloads[workloadID]
 	if !ok {
-		return types.ErrTenantNotFound
+		return types.ErrWorkloadNotFound
 	}
 
-	for i, wl := range t.workloads {
-		if wl.ID == workloadID {
-			// delete from persistent datastore.
-			err := ds.db.deleteWorkload(workloadID)
-			if err != nil {
-				return errors.Wrapf(err, "error deleting workload %v from database", wl.ID)
-			}
+	err := ds.db.deleteWorkload(workloadID)
+	if err != nil {
+		return errors.Wrapf(err, "error deleting workload %v from database", workloadID)
+	}
 
-			// delete from cache.
-			ds.tenants[tenantID].workloads = append(ds.tenants[tenantID].workloads[:i], ds.tenants[tenantID].workloads[i+1:]...)
-			return nil
+	if wl.Visibility == types.Public {
+		for i, id := range ds.publicWorkloads {
+			if id == workloadID {
+				ds.publicWorkloads = append(ds.publicWorkloads[:i], ds.publicWorkloads[i+1:]...)
+				break
+			}
+		}
+	} else {
+		ds.tenantsLock.Lock()
+		defer ds.tenantsLock.Unlock()
+
+		t, ok := ds.tenants[wl.TenantID]
+		if !ok {
+			return types.ErrTenantNotFound
+		}
+
+		for i, id := range t.workloads {
+			if id == workloadID {
+				ds.tenants[wl.TenantID].workloads = append(ds.tenants[wl.TenantID].workloads[:i], ds.tenants[wl.TenantID].workloads[i+1:]...)
+				break
+			}
 		}
 	}
 
-	return types.ErrWorkloadNotFound
+	delete(ds.workloads, workloadID)
+
+	return nil
 }
 
 // GetWorkload returns details about a specific workload referenced by id
-func (ds *Datastore) GetWorkload(tenantID string, ID string) (types.Workload, error) {
+func (ds *Datastore) GetWorkload(ID string) (types.Workload, error) {
 	if ID == ds.cnciWorkload.ID {
 		return ds.cnciWorkload, nil
 	}
 
-	ds.tenantsLock.RLock()
-	defer ds.tenantsLock.RUnlock()
+	ds.workloadsLock.RLock()
+	defer ds.workloadsLock.RUnlock()
 
-	// get any public workloads. These are part of our
-	// dummy tenant "public".
-	public, ok := ds.tenants["public"]
+	workload, ok := ds.workloads[ID]
 	if ok {
-		for _, wl := range public.workloads {
-			if wl.ID == ID {
-				return wl, nil
-			}
-		}
-	}
-
-	tenant, ok := ds.tenants[tenantID]
-	if !ok {
-		return types.Workload{}, ErrNoTenant
-	}
-
-	for _, wl := range tenant.workloads {
-		if wl.ID == ID {
-			return wl, nil
-		}
+		return workload, nil
 	}
 
 	return types.Workload{}, types.ErrWorkloadNotFound
@@ -595,18 +635,15 @@ func (ds *Datastore) GetTenantWorkloads(tenantID string) ([]types.Workload, erro
 func (ds *Datastore) getWorkloads(tenantID string, includePublic bool) ([]types.Workload, error) {
 	var workloads []types.Workload
 
-	// check the cache first
+	ds.workloadsLock.RLock()
+	defer ds.workloadsLock.RUnlock()
+
 	ds.tenantsLock.RLock()
 	defer ds.tenantsLock.RUnlock()
 
-	// get any public workloads. These are part of our
-	// dummy tenant "public".
 	if includePublic {
-		public, ok := ds.tenants["public"]
-		if ok {
-			for _, wl := range public.workloads {
-				workloads = append(workloads, wl)
-			}
+		for _, id := range ds.publicWorkloads {
+			workloads = append(workloads, ds.workloads[id])
 		}
 	}
 
@@ -617,7 +654,9 @@ func (ds *Datastore) getWorkloads(tenantID string, includePublic bool) ([]types.
 		return workloads, nil
 	}
 
-	workloads = append(workloads, tenant.workloads...)
+	for _, id := range tenant.workloads {
+		workloads = append(workloads, ds.workloads[id])
+	}
 
 	return workloads, nil
 }

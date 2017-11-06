@@ -166,9 +166,11 @@ func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) 
 		return req, err
 	}
 
-	err = c.confirmTenant(req.TenantID)
-	if err != nil {
-		return req, err
+	if req.TenantID != "" {
+		err = c.confirmTenant(req.TenantID)
+		if err != nil {
+			return req, err
+		}
 	}
 
 	req.ID = uuid.Generate().String()
@@ -178,11 +180,29 @@ func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) 
 }
 
 func (c *controller) DeleteWorkload(tenantID string, workloadID string) error {
-	return c.ds.DeleteWorkload(tenantID, workloadID)
+	wl, err := c.ds.GetWorkload(workloadID)
+	if err != nil {
+		return err
+	}
+
+	if tenantID == "admin" || tenantID == wl.TenantID {
+		return c.ds.DeleteWorkload(workloadID)
+	}
+
+	return types.ErrWorkloadNotFound
 }
 
 func (c *controller) ShowWorkload(tenantID string, workloadID string) (types.Workload, error) {
-	return c.ds.GetWorkload(tenantID, workloadID)
+	wl, err := c.ds.GetWorkload(workloadID)
+	if err != nil {
+		return wl, err
+	}
+
+	if wl.Visibility == types.Public || tenantID == "admin" || tenantID == wl.TenantID {
+		return wl, err
+	}
+
+	return types.Workload{}, types.ErrWorkloadNotFound
 }
 
 func (c *controller) ListWorkloads(tenantID string) ([]types.Workload, error) {

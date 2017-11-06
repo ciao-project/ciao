@@ -2556,7 +2556,7 @@ func TestDeleteWorkload(t *testing.T) {
 	}
 
 	// attempt to delete this workload, should fail.
-	err = ds.DeleteWorkload(tenant.ID, wls[0].ID)
+	err = ds.DeleteWorkload(wls[0].ID)
 	if err != types.ErrWorkloadInUse {
 		t.Fatal("Deleting an in use workload did not fail")
 	}
@@ -2567,7 +2567,7 @@ func TestDeleteWorkload(t *testing.T) {
 	}
 
 	// attempt to delete this workload, should pass
-	err = ds.DeleteWorkload(tenant.ID, wls[0].ID)
+	err = ds.DeleteWorkload(wls[0].ID)
 	if err != nil {
 		t.Fatal(err)
 	}

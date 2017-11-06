@@ -104,7 +104,7 @@ func (client *ssntpClient) releaseResources(instanceID string) error {
 		return nil
 	}
 
-	wl, err := client.ctl.ds.GetWorkload(i.TenantID, i.WorkloadID)
+	wl, err := client.ctl.ds.GetWorkload(i.WorkloadID)
 	if err != nil {
 		return errors.Wrapf(err, "error getting workload for instance from datastore")
 	}

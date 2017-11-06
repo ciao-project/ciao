@@ -229,6 +229,10 @@ func (db *MemoryDB) deleteWorkload(ID string) error {
 	return nil
 }
 
+func (db *MemoryDB) getWorkloads() ([]types.Workload, error) {
+	return []types.Workload{}, nil
+}
+
 func (db *MemoryDB) updateQuotas(tenantID string, qds []types.QuotaDetails) error {
 	return nil
 }

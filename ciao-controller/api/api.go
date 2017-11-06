@@ -672,11 +672,10 @@ func addWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, 
 	// for their own tenant.
 	vars := mux.Vars(r)
 	tenantID, ok := vars["tenant"]
+	req.TenantID = tenantID
 	if ok {
-		req.TenantID = tenantID
 		req.Visibility = types.Private
 	} else {
-		req.TenantID = "public"
 		req.Visibility = types.Public
 	}
 
@@ -710,10 +709,9 @@ func deleteWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Respons
 	vars := mux.Vars(r)
 	ID := vars["workload_id"]
 
-	// if we have no tenant variable, then we are admin
 	tenantID, ok := vars["tenant"]
 	if !ok {
-		tenantID = "public"
+		tenantID = "admin"
 	}
 
 	err := c.DeleteWorkload(tenantID, ID)
@@ -728,10 +726,9 @@ func showWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 	vars := mux.Vars(r)
 	ID := vars["workload_id"]
 
-	// if we have no tenant variable, then we are admin
 	tenant, ok := vars["tenant"]
 	if !ok {
-		tenant = "public"
+		tenant = "admin"
 	}
 
 	wl, err := c.ShowWorkload(tenant, ID)
@@ -745,11 +742,7 @@ func showWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response,
 func listWorkloads(c *Context, w http.ResponseWriter, r *http.Request) (Response, error) {
 	vars := mux.Vars(r)
 
-	// if we have no tenant variable, then we are admin
-	tenant, ok := vars["tenant"]
-	if !ok {
-		tenant = "public"
-	}
+	tenant := vars["tenant"]
 
 	wls, err := c.ListWorkloads(tenant)
 	if err != nil {

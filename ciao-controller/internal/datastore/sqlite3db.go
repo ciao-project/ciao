@@ -782,12 +782,10 @@ func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 		glog.V(2).Info(err)
 	}
 
-	t.workloads, err = ds.getTenantWorkloads(t.ID)
-
 	return t, err
 }
 
-func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error) {
+func (ds *sqliteDB) getWorkloads() ([]types.Workload, error) {
 	var workloads []types.Workload
 
 	db := ds.db
@@ -799,11 +797,9 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 			 vm_type,
 			 image_name,
 			 visibility
-		  FROM workload_template
-		  WHERE tenant_id = ?`
+		  FROM workload_template`
 
-	// handle case where tenant simply doesn't have any workloads.
-	rows, err := db.Query(query, tenantID)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -845,9 +841,11 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 
 		workloads = append(workloads, wl)
 	}
+
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+
 	return workloads, nil
 }
 
@@ -987,11 +985,6 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 		}
 
 		t.devices, err = ds.getTenantDevices(t.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		t.workloads, err = ds.getTenantWorkloads(t.ID)
 		if err != nil {
 			return nil, err
 		}
