@@ -79,6 +79,7 @@ func TestCNCIRemoved(t *testing.T) {
 
 	instanceID := instances[0].ID
 	tenantID := instances[0].TenantID
+	instance := instances[0]
 
 	// get the tenant
 	tenant, err := ctl.ds.GetTenant(tenantID)
@@ -141,7 +142,7 @@ func TestCNCIRemoved(t *testing.T) {
 
 	// call remove subnet directly to remove the cnci.
 	go func() {
-		err = tenant.CNCIctrl.RemoveSubnet(4096)
+		err = tenant.CNCIctrl.RemoveSubnet(instance.Subnet)
 		if err != nil {
 			t.Fatal(err)
 		}

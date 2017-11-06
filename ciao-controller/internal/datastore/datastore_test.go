@@ -25,6 +25,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -47,6 +48,12 @@ func addInstance(tenant *types.Tenant, workload types.Workload, name string) (in
 
 	mac := utils.NewTenantHardwareAddr(ip)
 
+	mask := net.CIDRMask(tenant.SubnetBits, 32)
+	ipnet := net.IPNet{
+		IP:   ip.Mask(mask),
+		Mask: mask,
+	}
+
 	resources := make(map[string]int)
 	rr := workload.Defaults
 
@@ -61,6 +68,7 @@ func addInstance(tenant *types.Tenant, workload types.Workload, name string) (in
 		ID:         id.String(),
 		CNCI:       false,
 		IPAddress:  ip.String(),
+		Subnet:     ipnet.String(),
 		MACAddress: mac.String(),
 		Name:       name,
 	}
@@ -78,7 +86,7 @@ func addTestInstance(tenant *types.Tenant, workload types.Workload) (*types.Inst
 }
 
 func addTestInstances(tenant *types.Tenant, workload types.Workload, count int) ([]*types.Instance, error) {
-	instances := make([]*types.Instance, 0)
+	var instances []*types.Instance
 	for i := 0; i < count; i++ {
 		instance, err := addInstance(tenant, workload, fmt.Sprintf("test-%d", i))
 		if err != nil {
@@ -278,6 +286,36 @@ func BenchmarkAllocateTenantIP(b *testing.B) {
 	}
 }
 
+func BenchmarkAllocate1000TenantIP(b *testing.B) {
+	/* add a new tenant */
+	tuuid := uuid.Generate().String()
+	config := types.TenantConfig{
+		Name:       "",
+		SubnetBits: 24,
+	}
+
+	_, err := ds.AddTenant(tuuid, config)
+	if err != nil {
+		b.Error(err)
+	}
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		addrs, err := ds.AllocateTenantIPPool(tuuid, 1000)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.StopTimer()
+		for _, ip := range addrs {
+			err = ds.ReleaseTenantIP(tuuid, ip.String())
+			if err != nil {
+				b.Error(err)
+			}
+		}
+		b.StartTimer()
+	}
+}
+
 func BenchmarkGetAllInstances(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		_, err := ds.GetAllInstances()
@@ -359,17 +397,16 @@ func TestDeleteInstanceNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ip := net.ParseIP(instance.IPAddress)
-
-	ipBytes := ip.To4()
-	if ipBytes == nil {
-		t.Fatal("Unable to convert ip to bytes")
+	IP, ipNet, err := net.ParseCIDR(instance.Subnet)
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	subnetInt := binary.BigEndian.Uint16(ipBytes[1:3])
+	mask := binary.BigEndian.Uint32(ipNet.Mask)
+	hostInt := binary.BigEndian.Uint32(IP.To4())
+	subnetInt := hostInt & mask
 
 	// confirm that tenant map shows it not used.
-	if tenantAfter.network[int(subnetInt)][int(ipBytes[3])] != false {
+	if tenantAfter.network[subnetInt][hostInt] != false {
 		t.Fatal("IP Address not released from cache")
 	}
 
@@ -385,7 +422,7 @@ func TestDeleteInstanceNetwork(t *testing.T) {
 	}
 
 	// confirm that tenant map shows it not used.
-	if newTenant.network[int(subnetInt)][int(ipBytes[3])] != false {
+	if newTenant.network[subnetInt][hostInt] != false {
 		t.Fatal("IP Address not released from database")
 	}
 }
@@ -896,15 +933,17 @@ func TestAllocateTenantIP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ipBytes := ip.To4()
-	if ipBytes == nil {
-		t.Fatal("Unable to convert ip to bytes")
+	mask := net.CIDRMask(newTenant.SubnetBits, 32)
+	ipNet := net.IPNet{
+		IP:   ip.Mask(mask),
+		Mask: mask,
 	}
 
-	subnetInt := int(binary.BigEndian.Uint16(ipBytes[1:3]))
-	host := int(ipBytes[3])
+	subMask := binary.BigEndian.Uint32(ipNet.Mask)
+	hostInt := binary.BigEndian.Uint32(ip.To4())
+	subnetInt := hostInt & subMask
 
-	if newTenant.network[subnetInt][host] != true {
+	if newTenant.network[subnetInt][hostInt] != true {
 		t.Fatal("IP Address not claimed in cache")
 	}
 
@@ -919,7 +958,7 @@ func TestAllocateTenantIP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if newTenant.network[subnetInt][host] != true {
+	if newTenant.network[subnetInt][hostInt] != true {
 		t.Fatal("IP Address not claimed in database")
 	}
 }
@@ -1075,11 +1114,15 @@ func TestReleaseTenantIP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ipBytes := ip.To4()
-	if ipBytes == nil {
-		t.Fatal("Unable to convert ip to bytes")
+	mask := net.CIDRMask(tenant.SubnetBits, 32)
+	ipNet := net.IPNet{
+		IP:   ip.Mask(mask),
+		Mask: mask,
 	}
-	subnetInt := binary.BigEndian.Uint16(ipBytes[1:3])
+
+	subMask := binary.BigEndian.Uint32(ipNet.Mask)
+	hostInt := binary.BigEndian.Uint32(ip.To4())
+	subnetInt := hostInt & subMask
 
 	// get updated tenant info
 	newTenant, err := ds.getTenant(tenant.ID)
@@ -1088,13 +1131,8 @@ func TestReleaseTenantIP(t *testing.T) {
 	}
 
 	// confirm that tenant map shows it used.
-	if newTenant.network[int(subnetInt)][int(ipBytes[3])] != true {
+	if newTenant.network[subnetInt][hostInt] != true {
 		t.Fatal("IP Address not marked Used")
-	}
-
-	// confirm that subnets has been incremented
-	if len(newTenant.subnets) != 1 {
-		t.Fatal("subnet not allocated in cache")
 	}
 
 	err = ds.ReleaseTenantIP(tenant.ID, ip.String())
@@ -1109,12 +1147,8 @@ func TestReleaseTenantIP(t *testing.T) {
 	}
 
 	// confirm that tenant map shows it not used.
-	if newTenant.network[int(subnetInt)][int(ipBytes[3])] != false {
+	if newTenant.network[subnetInt][hostInt] != false {
 		t.Fatal("IP Address not released from cache")
-	}
-
-	if len(newTenant.subnets) != 0 {
-		t.Fatal("subnet not released from cache")
 	}
 
 	// clear tenant from cache
@@ -1129,7 +1163,7 @@ func TestReleaseTenantIP(t *testing.T) {
 	}
 
 	// confirm that tenant map shows it not used.
-	if newTenant.network[int(subnetInt)][int(ipBytes[3])] != false {
+	if newTenant.network[subnetInt][hostInt] != false {
 		t.Fatal("IP Address not released from database")
 	}
 }
@@ -1289,11 +1323,14 @@ func testAllocateTenantIPs(t *testing.T, nIPs int) {
 	}
 
 	// make this tenant have some network hosts assigned to them.
-	for n := 0; n < nIPs; n++ {
-		_, err = ds.AllocateTenantIP(newTenant.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
+	// switch this to use pool
+	IPs, err := ds.AllocateTenantIPPool(newTenant.ID, nIPs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(IPs) != nIPs {
+		t.Fatalf("expected %d IPs allocated, got %d\n", nIPs, len(IPs))
 	}
 
 	// get private tenant type
@@ -1301,6 +1338,8 @@ func testAllocateTenantIPs(t *testing.T, nIPs int) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	ds.tenantsLock.Lock()
+	defer ds.tenantsLock.Unlock()
 
 	var expSubnets int
 	expSubnets = (nIPs / nIPsPerSubnet)
@@ -1309,14 +1348,21 @@ func testAllocateTenantIPs(t *testing.T, nIPs int) {
 		expSubnets++
 	}
 
-	if len(tenant.subnets) != expSubnets {
-		t.Fatalf("expected %d subnets, got %d", expSubnets, len(tenant.subnets))
+	if len(tenant.network) != expSubnets {
+		t.Fatalf("expected %d subnets, got %d", expSubnets, len(tenant.network))
 	}
 
-	for i, subnet := range tenant.subnets {
+	var subnets []uint32
+	for k := range tenant.network {
+		subnets = append(subnets, k)
+	}
+
+	sort.Slice(subnets, func(i, j int) bool { return subnets[i] < subnets[j] })
+
+	for i, subnet := range subnets {
 		var expHosts int
 
-		if ((i + 1) * nIPsPerSubnet) < nIPs {
+		if ((int(i) + 1) * nIPsPerSubnet) < nIPs {
 			expHosts = nIPsPerSubnet
 		} else {
 			expHosts = nIPs % nIPsPerSubnet
