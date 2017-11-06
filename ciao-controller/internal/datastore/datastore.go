@@ -1178,7 +1178,7 @@ func (ds *Datastore) DeleteInstance(instanceID string) error {
 	msg := fmt.Sprintf("Deleted Instance %s", instanceID)
 	e := types.LogEntry{
 		TenantID:  tenantID,
-		EventType: string(userError),
+		EventType: string(userInfo),
 		Message:   msg,
 		NodeID:    nodeID,
 	}
