@@ -2539,6 +2539,7 @@ users:
 		Config:      config,
 		Defaults:    []payloads.RequestedResource{cpus, mem, network},
 		Storage:     []types.StorageResource{storage},
+		Visibility:  types.Internal,
 	}
 
 	// for now we have a single global cnci workload.

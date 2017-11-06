@@ -88,6 +88,7 @@ type Workload struct {
 	Config      string                       `json:"config"`
 	Defaults    []payloads.RequestedResource `json:"defaults"`
 	Storage     []StorageResource            `json:"storage"`
+	Visibility  Visibility                   `json:"visibility"`
 }
 
 // WorkloadResponse will be returned from /workloads apis

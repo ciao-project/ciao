@@ -246,7 +246,7 @@ func (d workloadTemplateData) Init() error {
 		fw_type text,
 		vm_type text,
 		image_name text,
-		internal integer
+		visibility text
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -797,9 +797,10 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 			 description,
 			 fw_type,
 			 vm_type,
-			 image_name
+			 image_name,
+			 visibility
 		  FROM workload_template
-		  WHERE internal = 0 AND tenant_id = ?`
+		  WHERE tenant_id = ?`
 
 	// handle case where tenant simply doesn't have any workloads.
 	rows, err := db.Query(query, tenantID)
@@ -812,10 +813,17 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 		var wl types.Workload
 
 		var VMType string
+		var visibility string
 
-		err = rows.Scan(&wl.ID, &wl.TenantID, &wl.Description, &wl.FWType, &VMType, &wl.ImageName)
+		err = rows.Scan(&wl.ID, &wl.TenantID, &wl.Description, &wl.FWType, &VMType, &wl.ImageName, &visibility)
 		if err != nil {
 			return nil, err
+		}
+
+		wl.Visibility = types.Visibility(visibility)
+
+		if wl.Visibility == types.Internal {
+			continue
 		}
 
 		wl.Config, err = ds.getConfig(wl.ID)
@@ -896,7 +904,7 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 			return err
 		}
 
-		_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, internal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, false)
+		_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, w.Visibility)
 		if err != nil {
 			_ = tx.Rollback()
 			return err

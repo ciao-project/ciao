@@ -133,7 +133,7 @@ var tests = []test{
 		`{"id":"","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":[]}`,
 		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusCreated,
-		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":[],"storage":null},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
+		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":[],"storage":null,"visibility":"public"},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
 	},
 	{
 		"DELETE",
@@ -149,7 +149,7 @@ var tests = []test{
 		"",
 		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusOK,
-		`{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":null,"storage":null}`,
+		`{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":null,"storage":null,"visibility":"private"}`,
 	},
 	{
 		"GET",
@@ -157,7 +157,7 @@ var tests = []test{
 		"",
 		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusOK,
-		`[{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":null,"storage":null}]`,
+		`[{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","defaults":null,"storage":null,"visibility":"private"}]`,
 	},
 	{
 		"GET",
@@ -456,6 +456,7 @@ func (ts testCiaoService) ShowWorkload(tenant string, ID string) (types.Workload
 		FWType:      payloads.Legacy,
 		VMType:      payloads.QEMU,
 		Config:      "this will totally work!",
+		Visibility:  types.Private,
 	}, nil
 }
 
@@ -468,6 +469,7 @@ func (ts testCiaoService) ListWorkloads(tenant string) ([]types.Workload, error)
 			FWType:      payloads.Legacy,
 			VMType:      payloads.QEMU,
 			Config:      "this will totally work!",
+			Visibility:  types.Private,
 		},
 	}, nil
 }

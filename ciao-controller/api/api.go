@@ -674,8 +674,10 @@ func addWorkload(c *Context, w http.ResponseWriter, r *http.Request) (Response, 
 	tenantID, ok := vars["tenant"]
 	if ok {
 		req.TenantID = tenantID
+		req.Visibility = types.Private
 	} else {
 		req.TenantID = "public"
+		req.Visibility = types.Public
 	}
 
 	wl, err := c.CreateWorkload(req)
