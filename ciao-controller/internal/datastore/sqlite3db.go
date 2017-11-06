@@ -246,8 +246,7 @@ func (d workloadTemplateData) Init() error {
 		fw_type text,
 		vm_type text,
 		image_name text,
-		internal integer,
-		foreign key(tenant_id) references tenants(id)
+		internal integer
 		);`
 
 	return d.ds.exec(d.db, cmd)
