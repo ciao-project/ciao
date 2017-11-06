@@ -221,7 +221,7 @@ func (db *MemoryDB) getMappedIPs() map[string]types.MappedIP {
 	return make(map[string]types.MappedIP)
 }
 
-func (db *MemoryDB) updateWorkload(wl types.Workload) error {
+func (db *MemoryDB) addWorkload(wl types.Workload) error {
 	return nil
 }
 

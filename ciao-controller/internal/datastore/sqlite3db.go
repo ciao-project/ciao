@@ -851,18 +851,8 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 	return workloads, nil
 }
 
-func (ds *sqliteDB) updateWorkload(w types.Workload) error {
+func (ds *sqliteDB) addWorkload(w types.Workload) error {
 	db := ds.getTableDB("workload_template")
-
-	workloads, err := ds.getTenantWorkloads(w.TenantID)
-	if err != nil {
-		return err
-	}
-
-	m := make(map[string]bool)
-	for _, work := range workloads {
-		m[work.ID] = true
-	}
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
@@ -872,47 +862,39 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 		return err
 	}
 
-	// if this is a new workload, put it in, otherwise just update.
-	_, ok := m[w.ID]
-	if !ok {
-		// add in workload resources
-		for _, d := range w.Defaults {
-			err := ds.createWorkloadDefault(tx, w.ID, d)
+	// add in workload resources
+	for _, d := range w.Defaults {
+		err := ds.createWorkloadDefault(tx, w.ID, d)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+
+	// add in any workload storage resources
+	if len(w.Storage) > 0 {
+		for i := range w.Storage {
+			err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
 			if err != nil {
 				_ = tx.Rollback()
 				return err
 			}
 		}
+	}
 
-		// add in any workload storage resources
-		if len(w.Storage) > 0 {
-			for i := range w.Storage {
-				err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
-				if err != nil {
-					_ = tx.Rollback()
-					return err
-				}
-			}
-		}
-
-		// write config to file.
-		filename := fmt.Sprintf("%s_config.yaml", w.ID)
-		path := fmt.Sprintf("%s/%s", ds.workloadsPath, filename)
-		err := ioutil.WriteFile(path, []byte(w.Config), 0644)
-		if err != nil {
-			_ = tx.Rollback()
-			return err
-		}
-
-		_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, w.Visibility)
-		if err != nil {
-			_ = tx.Rollback()
-			return err
-		}
-	} else {
-		// update not supported yet.
+	// write config to file.
+	filename := fmt.Sprintf("%s_config.yaml", w.ID)
+	path := fmt.Sprintf("%s/%s", ds.workloadsPath, filename)
+	err = ioutil.WriteFile(path, []byte(w.Config), 0644)
+	if err != nil {
 		_ = tx.Rollback()
-		return errors.New("Workload Update not supported yet")
+		return err
+	}
+
+	_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, w.Visibility)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
 	}
 
 	err = tx.Commit()

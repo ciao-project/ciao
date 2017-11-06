@@ -93,7 +93,7 @@ type persistentStore interface {
 	getEventLog() (logEntries []*types.LogEntry, err error)
 
 	// interfaces related to workloads
-	updateWorkload(wl types.Workload) error
+	addWorkload(wl types.Workload) error
 	deleteWorkload(ID string) error
 
 	// interfaces related to tenants
@@ -493,7 +493,7 @@ func (ds *Datastore) AddWorkload(w types.Workload) error {
 		return ErrNoTenant
 	}
 
-	err := ds.db.updateWorkload(w)
+	err := ds.db.addWorkload(w)
 	if err != nil {
 		return errors.Wrapf(err, "error updating workload (%v) in database", w.ID)
 	}

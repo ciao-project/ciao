@@ -976,7 +976,7 @@ users:
 	filename := fmt.Sprintf("%s/%s_config.yaml", *workloadsPath, wl.ID)
 	defer func() { _ = os.Remove(filename) }()
 
-	err = db.updateWorkload(wl)
+	err = db.addWorkload(wl)
 	if err != nil {
 		t.Fatal(err)
 	}
