@@ -153,6 +153,15 @@ func SudoRemoveFile(ctx context.Context, dest string) error {
 	return nil
 }
 
+// SudoChownFiles changes the user and group one or more files to ciaoUserAndGroup
+func SudoChownFiles(ctx context.Context, dest ...string) error {
+	cmd := SudoCommandContext(ctx, "chown", append([]string{ciaoUserAndGroup}, dest...)...)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+	return nil
+}
+
 // InGoPath returns the desired path relative to $GOPATH
 func InGoPath(path string) string {
 	data, err := exec.Command("go", "env", "GOPATH").Output()

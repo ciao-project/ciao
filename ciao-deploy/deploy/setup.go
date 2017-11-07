@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"text/template"
 
 	yaml "gopkg.in/yaml.v2"
@@ -60,6 +61,7 @@ type unitFileConf struct {
 
 var ciaoLockDir = "/tmp/lock/ciao"
 var ciaoDataDir = "/var/lib/ciao"
+var ciaoLocalCertsDir = ciaoDataDir + "/local/certs"
 var ciaoConfigDir = "/etc/ciao"
 var ciaoPKIDir = "/etc/pki/ciao"
 var ciaoUser = "ciao"
@@ -399,6 +401,37 @@ func createUserAndDirs(ctx context.Context) (func(), error) {
 	}, nil
 }
 
+func copyHTTPCreds(ctx context.Context, clusterConf *ClusterConfiguration) (cert string, key string, err error) {
+	if err = createCiaoDirectory(ctx, ciaoLocalCertsDir); err != nil {
+		return "", "", err
+	}
+	defer func() {
+		if err != nil {
+			_ = SudoRemoveDirectory(context.Background(), ciaoLocalCertsDir)
+		}
+	}()
+
+	cert = filepath.Join(ciaoLocalCertsDir, filepath.Base(clusterConf.HTTPSCaCertPath))
+	key = filepath.Join(ciaoLocalCertsDir, filepath.Base(clusterConf.HTTPSCertPath))
+
+	err = SudoCopyFile(ctx, cert, clusterConf.HTTPSCaCertPath)
+	if err != nil {
+		return "", "", err
+	}
+
+	err = SudoCopyFile(ctx, key, clusterConf.HTTPSCertPath)
+	if err != nil {
+		return "", "", err
+	}
+
+	err = SudoChownFiles(ctx, cert, key)
+	if err != nil {
+		return "", "", err
+	}
+
+	return cert, key, nil
+}
+
 type certPaths struct {
 	anchorCertPath     string
 	caCertPath         string
@@ -419,6 +452,19 @@ func installControlPlaneCerts(ctx context.Context, force bool, clusterConf *Clus
 
 	clusterConf.AuthCACertPath = authCaCertPath
 	clusterConf.AuthAdminCertPath = authCertPath
+
+	HTTPcert, HTTPkey, err := copyHTTPCreds(ctx, clusterConf)
+	if err != nil {
+		return certPaths{}, nil, errors.Wrap(err, "Error copy HTTP certificates")
+	}
+	defer func() {
+		if errOut != nil {
+			_ = SudoRemoveDirectory(context.Background(), ciaoLocalCertsDir)
+		}
+	}()
+
+	clusterConf.HTTPSCaCertPath = HTTPcert
+	clusterConf.HTTPSCertPath = HTTPkey
 
 	ciaoConfigPath, err := createConfigurationFile(ctx, clusterConf)
 	if err != nil {
@@ -459,6 +505,7 @@ func installControlPlaneCerts(ctx context.Context, force bool, clusterConf *Clus
 		_ = SudoRemoveDirectory(context.Background(), ciaoConfigDir)
 		_ = SudoRemoveFile(context.Background(), anchorCertPath)
 		_ = SudoRemoveFile(context.Background(), caCertPath)
+		_ = SudoRemoveDirectory(context.Background(), ciaoLocalCertsDir)
 		_ = SudoRemoveFile(context.Background(), authCaCertPath)
 		_ = SudoRemoveFile(context.Background(), authCertPath)
 	}, nil
