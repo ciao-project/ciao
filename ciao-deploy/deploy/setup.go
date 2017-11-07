@@ -399,10 +399,16 @@ func createUserAndDirs(ctx context.Context) (func(), error) {
 	}, nil
 }
 
-func installCertsAndTools(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration) (errOut error) {
+type certPaths struct {
+	anchorCertPath     string
+	caCertPath         string
+	controllerCertPath string
+}
+
+func installControlPlaneCerts(ctx context.Context, force bool, clusterConf *ClusterConfiguration) (certs certPaths, cleanup func(), errOut error) {
 	authCaCertPath, authCertPath, err := CreateAdminCert(ctx, force)
 	if err != nil {
-		return errors.Wrap(err, "Error creating authentication certs")
+		return certPaths{}, nil, errors.Wrap(err, "Error creating authentication certs")
 	}
 	defer func() {
 		if errOut != nil {
@@ -416,7 +422,7 @@ func installCertsAndTools(ctx context.Context, force bool, imageCacheDir string,
 
 	ciaoConfigPath, err := createConfigurationFile(ctx, clusterConf)
 	if err != nil {
-		return errors.Wrap(err, "Error creating cluster configuration file")
+		return certPaths{}, nil, errors.Wrap(err, "Error creating cluster configuration file")
 	}
 	defer func() {
 		if errOut != nil {
@@ -429,7 +435,7 @@ func installCertsAndTools(ctx context.Context, force bool, imageCacheDir string,
 
 	anchorCertPath, caCertPath, err := createSchedulerCerts(ctx, force, clusterConf.ServerIP)
 	if err != nil {
-		return errors.Wrap(err, "Error creating scheduler certificates")
+		return certPaths{}, nil, errors.Wrap(err, "Error creating scheduler certificates")
 	}
 	defer func() {
 		if errOut != nil {
@@ -438,7 +444,28 @@ func installCertsAndTools(ctx context.Context, force bool, imageCacheDir string,
 		}
 	}()
 
-	err = installScheduler(ctx, anchorCertPath, caCertPath)
+	controllerCertPath, err := createControllerCert(ctx, anchorCertPath)
+	if err != nil {
+		return certPaths{}, nil, errors.Wrap(err, "Error installing controller certs")
+	}
+
+	certs.anchorCertPath = anchorCertPath
+	certs.caCertPath = caCertPath
+	certs.controllerCertPath = controllerCertPath
+
+	return certs, func() {
+		_ = SudoRemoveFile(context.Background(), controllerCertPath)
+		_ = SudoRemoveFile(context.Background(), ciaoConfigPath)
+		_ = SudoRemoveDirectory(context.Background(), ciaoConfigDir)
+		_ = SudoRemoveFile(context.Background(), anchorCertPath)
+		_ = SudoRemoveFile(context.Background(), caCertPath)
+		_ = SudoRemoveFile(context.Background(), authCaCertPath)
+		_ = SudoRemoveFile(context.Background(), authCertPath)
+	}, nil
+}
+
+func setupControlPlane(ctx context.Context, imageCacheDir string, certs certPaths) (errOut error) {
+	err := installScheduler(ctx, certs.anchorCertPath, certs.caCertPath)
 	if err != nil {
 		return errors.Wrap(err, "Error installing scheduler")
 	}
@@ -448,17 +475,7 @@ func installCertsAndTools(ctx context.Context, force bool, imageCacheDir string,
 		}
 	}()
 
-	controllerCertPath, err := createControllerCert(ctx, anchorCertPath)
-	if err != nil {
-		return errors.Wrap(err, "Error installing controller certs")
-	}
-	defer func() {
-		if errOut != nil {
-			_ = SudoRemoveFile(context.Background(), controllerCertPath)
-		}
-	}()
-
-	err = installController(ctx, controllerCertPath, caCertPath)
+	err = installController(ctx, certs.controllerCertPath, certs.caCertPath)
 	if err != nil {
 		return errors.Wrap(err, "Error installing controller")
 	}
@@ -468,7 +485,7 @@ func installCertsAndTools(ctx context.Context, force bool, imageCacheDir string,
 		}
 	}()
 
-	err = CreateCNCIImage(ctx, anchorCertPath, caCertPath, imageCacheDir)
+	err = CreateCNCIImage(ctx, certs.anchorCertPath, certs.caCertPath, imageCacheDir)
 	if err != nil {
 		return errors.Wrap(err, "Error creating CNCI image")
 	}
@@ -478,16 +495,27 @@ func installCertsAndTools(ctx context.Context, force bool, imageCacheDir string,
 
 // SetupMaster configures this machine to be a master node of the cluster
 func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration) (errOut error) {
-	cleanup, err := createUserAndDirs(ctx)
+	cleanupUsers, err := createUserAndDirs(ctx)
 	if err != nil {
 		return
 	}
 	defer func() {
 		if errOut != nil {
-			cleanup()
+			cleanupUsers()
 		}
 	}()
-	return installCertsAndTools(ctx, force, imageCacheDir, clusterConf)
+
+	certs, cleanupCerts, err := installControlPlaneCerts(ctx, force, clusterConf)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if errOut != nil {
+			cleanupCerts()
+		}
+	}()
+
+	return setupControlPlane(ctx, imageCacheDir, certs)
 }
 
 func createLocalLauncherCert(ctx context.Context, anchorCertPath string) (string, error) {
