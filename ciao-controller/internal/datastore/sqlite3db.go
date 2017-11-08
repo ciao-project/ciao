@@ -870,19 +870,17 @@ func (ds *sqliteDB) addWorkload(w types.Workload) error {
 	}
 
 	// add in any workload storage resources
-	if len(w.Storage) > 0 {
-		for i := range w.Storage {
-			err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
-			if err != nil {
-				_ = tx.Rollback()
-				return err
-			}
+	for i := range w.Storage {
+		err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
+		if err != nil {
+			_ = tx.Rollback()
+			return err
 		}
 	}
 
 	// write config to file.
 	filename := fmt.Sprintf("%s_config.yaml", w.ID)
-	path := fmt.Sprintf("%s/%s", ds.workloadsPath, filename)
+	path := filepath.Join(ds.workloadsPath, filename)
 	err = ioutil.WriteFile(path, []byte(w.Config), 0644)
 	if err != nil {
 		_ = tx.Rollback()
