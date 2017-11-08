@@ -75,7 +75,7 @@ func populateQuotasFromDatastore(qs *quotas.Quotas, ds *datastore.Datastore) err
 		}
 
 		for _, instance := range instances {
-			wl, err := ds.GetWorkload(t.ID, instance.WorkloadID)
+			wl, err := ds.GetWorkload(instance.WorkloadID)
 			if err != nil {
 				return errors.Wrapf(err, "error getting workload")
 			}

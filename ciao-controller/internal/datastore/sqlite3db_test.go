@@ -976,21 +976,23 @@ users:
 	filename := fmt.Sprintf("%s/%s_config.yaml", *workloadsPath, wl.ID)
 	defer func() { _ = os.Remove(filename) }()
 
-	err = db.updateWorkload(wl)
+	err = db.addWorkload(wl)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tenant, err := db.getTenant(tn.ID)
+	workloads, err := db.getWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(tenant.workloads) != 1 {
-		t.Fatal("Expected a workload associated with tenant")
+	var wl2 types.Workload
+	for i, w := range workloads {
+		if w.ID == wl.ID {
+			wl2 = workloads[i]
+			break
+		}
 	}
-
-	wl2 := tenant.workloads[0]
 
 	if !reflect.DeepEqual(wl, wl2) {
 		fmt.Fprintf(os.Stderr, "got %v\n", wl2)
@@ -1004,13 +1006,13 @@ users:
 		t.Fatal(err)
 	}
 
-	tenant, err = db.getTenant(tn.ID)
+	workloads, err = db.getWorkloads()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(tenant.workloads) != 0 {
-		t.Fatal("Expected no workloads associated with tenant")
+	if len(workloads) != 0 {
+		t.Fatal("Expected no workloads")
 	}
 
 	db.disconnect()

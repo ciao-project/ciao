@@ -39,7 +39,7 @@ func (c *controller) restartInstance(instanceID string) error {
 		return errors.New("You may only restart paused instances")
 	}
 
-	w, err := c.ds.GetWorkload(i.TenantID, i.WorkloadID)
+	w, err := c.ds.GetWorkload(i.WorkloadID)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		return nil, errors.New("Missing number of instances to start")
 	}
 
-	wl, err := c.ds.GetWorkload(w.TenantID, w.WorkloadID)
+	wl, err := c.ds.GetWorkload(w.WorkloadID)
 	if err != nil {
 		return nil, err
 	}

@@ -149,7 +149,7 @@ func (i *instance) Clean() error {
 		return errors.Wrap(err, "error releasing tenant IP")
 	}
 
-	wl, err := i.ctl.ds.GetWorkload(i.TenantID, i.WorkloadID)
+	wl, err := i.ctl.ds.GetWorkload(i.WorkloadID)
 	if err != nil {
 		return errors.Wrap(err, "error getting workload from datastore")
 	}
@@ -173,7 +173,7 @@ func (i *instance) Allowed() (bool, error) {
 
 	ds := i.ctl.ds
 
-	wl, err := ds.GetWorkload(i.TenantID, i.WorkloadID)
+	wl, err := ds.GetWorkload(i.WorkloadID)
 	if err != nil {
 		return true, errors.Wrap(err, "error getting workload from datastore")
 	}

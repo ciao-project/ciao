@@ -246,8 +246,7 @@ func (d workloadTemplateData) Init() error {
 		fw_type text,
 		vm_type text,
 		image_name text,
-		internal integer,
-		foreign key(tenant_id) references tenants(id)
+		visibility text
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -783,12 +782,10 @@ func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 		glog.V(2).Info(err)
 	}
 
-	t.workloads, err = ds.getTenantWorkloads(t.ID)
-
 	return t, err
 }
 
-func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error) {
+func (ds *sqliteDB) getWorkloads() ([]types.Workload, error) {
 	var workloads []types.Workload
 
 	db := ds.db
@@ -798,12 +795,11 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 			 description,
 			 fw_type,
 			 vm_type,
-			 image_name
-		  FROM workload_template
-		  WHERE internal = 0 AND tenant_id = ?`
+			 image_name,
+			 visibility
+		  FROM workload_template`
 
-	// handle case where tenant simply doesn't have any workloads.
-	rows, err := db.Query(query, tenantID)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -813,10 +809,17 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 		var wl types.Workload
 
 		var VMType string
+		var visibility string
 
-		err = rows.Scan(&wl.ID, &wl.TenantID, &wl.Description, &wl.FWType, &VMType, &wl.ImageName)
+		err = rows.Scan(&wl.ID, &wl.TenantID, &wl.Description, &wl.FWType, &VMType, &wl.ImageName, &visibility)
 		if err != nil {
 			return nil, err
+		}
+
+		wl.Visibility = types.Visibility(visibility)
+
+		if wl.Visibility == types.Internal {
+			continue
 		}
 
 		wl.Config, err = ds.getConfig(wl.ID)
@@ -838,24 +841,16 @@ func (ds *sqliteDB) getTenantWorkloads(tenantID string) ([]types.Workload, error
 
 		workloads = append(workloads, wl)
 	}
+
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+
 	return workloads, nil
 }
 
-func (ds *sqliteDB) updateWorkload(w types.Workload) error {
+func (ds *sqliteDB) addWorkload(w types.Workload) error {
 	db := ds.getTableDB("workload_template")
-
-	workloads, err := ds.getTenantWorkloads(w.TenantID)
-	if err != nil {
-		return err
-	}
-
-	m := make(map[string]bool)
-	for _, work := range workloads {
-		m[work.ID] = true
-	}
 
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
@@ -865,47 +860,37 @@ func (ds *sqliteDB) updateWorkload(w types.Workload) error {
 		return err
 	}
 
-	// if this is a new workload, put it in, otherwise just update.
-	_, ok := m[w.ID]
-	if !ok {
-		// add in workload resources
-		for _, d := range w.Defaults {
-			err := ds.createWorkloadDefault(tx, w.ID, d)
-			if err != nil {
-				_ = tx.Rollback()
-				return err
-			}
-		}
-
-		// add in any workload storage resources
-		if len(w.Storage) > 0 {
-			for i := range w.Storage {
-				err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
-				if err != nil {
-					_ = tx.Rollback()
-					return err
-				}
-			}
-		}
-
-		// write config to file.
-		filename := fmt.Sprintf("%s_config.yaml", w.ID)
-		path := fmt.Sprintf("%s/%s", ds.workloadsPath, filename)
-		err := ioutil.WriteFile(path, []byte(w.Config), 0644)
+	// add in workload resources
+	for _, d := range w.Defaults {
+		err := ds.createWorkloadDefault(tx, w.ID, d)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
 		}
+	}
 
-		_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, internal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, false)
+	// add in any workload storage resources
+	for i := range w.Storage {
+		err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
 		if err != nil {
 			_ = tx.Rollback()
 			return err
 		}
-	} else {
-		// update not supported yet.
+	}
+
+	// write config to file.
+	filename := fmt.Sprintf("%s_config.yaml", w.ID)
+	path := filepath.Join(ds.workloadsPath, filename)
+	err = ioutil.WriteFile(path, []byte(w.Config), 0644)
+	if err != nil {
 		_ = tx.Rollback()
-		return errors.New("Workload Update not supported yet")
+		return err
+	}
+
+	_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, w.Visibility)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
 	}
 
 	err = tx.Commit()
@@ -998,11 +983,6 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 		}
 
 		t.devices, err = ds.getTenantDevices(t.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		t.workloads, err = ds.getTenantWorkloads(t.ID)
 		if err != nil {
 			return nil, err
 		}

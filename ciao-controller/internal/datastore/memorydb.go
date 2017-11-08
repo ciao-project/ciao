@@ -221,12 +221,16 @@ func (db *MemoryDB) getMappedIPs() map[string]types.MappedIP {
 	return make(map[string]types.MappedIP)
 }
 
-func (db *MemoryDB) updateWorkload(wl types.Workload) error {
+func (db *MemoryDB) addWorkload(wl types.Workload) error {
 	return nil
 }
 
 func (db *MemoryDB) deleteWorkload(ID string) error {
 	return nil
+}
+
+func (db *MemoryDB) getWorkloads() ([]types.Workload, error) {
+	return []types.Workload{}, nil
 }
 
 func (db *MemoryDB) updateQuotas(tenantID string, qds []types.QuotaDetails) error {
