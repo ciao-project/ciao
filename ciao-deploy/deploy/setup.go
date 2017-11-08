@@ -381,7 +381,8 @@ func createCiaoDirectory(ctx context.Context, path string) error {
 }
 
 func createUserAndDirs(ctx context.Context) (func(), error) {
-	cmd := exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser, "-G", "docker,kvm")
+	cmd := exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser, "-G",
+		"docker,kvm", "-d", ciaoDataDir, "-s", "/bin/false")
 	if err := cmd.Run(); err != nil {
 		return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
