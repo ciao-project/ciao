@@ -28,6 +28,7 @@ import (
 	"path"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -85,6 +86,8 @@ var hardReset bool
 var diskLimit bool
 var memLimit bool
 var cephID string
+var prepare bool
+var roles string
 var simulate bool
 var childProcessCreds *syscall.SysProcAttr
 var childProcessKVMCreds *syscall.SysProcAttr
@@ -97,6 +100,8 @@ func init() {
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
 	flag.StringVar(&cephID, "ceph_id", "", "ceph client id")
+	flag.BoolVar(&prepare, "osprepare", false, "Install dependencies")
+	flag.StringVar(&roles, "roles", "agent", "Roles for which dependencies are to be installed")
 }
 
 const (
@@ -113,8 +118,12 @@ const (
 	resourcePeriod  = 30
 )
 
-func installLauncherDeps(role ssntp.Role, doneCh chan struct{}) {
+func installLauncherDeps(roles string, doneCh chan os.Signal) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
+	rolesSet := make(map[string]struct{})
+	for _, k := range strings.Split(roles, ",") {
+		rolesSet[k] = struct{}{}
+	}
 
 	ch := make(chan error)
 	go func() {
@@ -124,10 +133,10 @@ func installLauncherDeps(role ssntp.Role, doneCh chan struct{}) {
 
 		launcherDeps := osprepare.NewPackageRequirements()
 
-		if role.IsNetAgent() {
+		if _, ok := rolesSet["net-agent"]; ok {
 			launcherDeps.Append(launcherNetNodeDeps)
 		}
-		if role.IsAgent() {
+		if _, ok := rolesSet["agent"]; ok {
 			launcherDeps.Append(launcherComputeNodeDeps)
 		}
 
@@ -413,8 +422,6 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 		}
 		printClusterConfig()
 
-		installLauncherDeps(client.conn.Role(), doneCh)
-
 		err = startNetwork(doneCh)
 		if err != nil {
 			glog.Errorf("Failed to start network: %v\n", err)
@@ -587,6 +594,13 @@ func main() {
 	}()
 
 	flag.Parse()
+
+	if prepare {
+		signalCh := make(chan os.Signal, 1)
+		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		installLauncherDeps(roles, signalCh)
+		return
+	}
 
 	if simulate == false && getLock() != nil {
 		os.Exit(1)
