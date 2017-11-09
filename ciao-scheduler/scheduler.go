@@ -41,6 +41,7 @@ var cert = flag.String("cert", "/etc/pki/ciao/cert-Scheduler-localhost.pem", "Se
 var cacert = flag.String("cacert", "/etc/pki/ciao/CAcert-server-localhost.pem", "CA certificate")
 var cpuprofile = flag.String("cpuprofile", "", "Write cpu profile to file")
 var heartbeat = flag.Bool("heartbeat", false, "Emit status heartbeat text")
+var prepare = flag.Bool("osprepare", false, "Install dependencies")
 var logDir = "/var/lib/ciao/logs/scheduler"
 var configURI = flag.String("configuration-uri", "file:///etc/ciao/configuration.yaml",
 	"Cluster configuration URI")
@@ -1129,6 +1130,14 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 }
 
 func initLogger() error {
+	if *prepare {
+		logToStderr := flag.Lookup("logtostderr")
+		if logToStderr != nil {
+			logToStderr.Value.Set("true")
+		}
+		return nil
+	}
+
 	logDirFlag := flag.Lookup("log_dir")
 	if logDirFlag == nil {
 		return fmt.Errorf("log_dir does not exist")
@@ -1182,9 +1191,12 @@ func main() {
 
 	glog.Info("Starting Scheduler")
 
-	logger := gloginterface.CiaoGlogLogger{}
-	osprepare.Bootstrap(context.TODO(), logger)
-	osprepare.InstallDeps(context.TODO(), schedDeps, logger)
+	if *prepare {
+		logger := gloginterface.CiaoGlogLogger{}
+		osprepare.Bootstrap(context.TODO(), logger)
+		osprepare.InstallDeps(context.TODO(), schedDeps, logger)
+		return
+	}
 
 	sched := configSchedulerServer()
 	if sched == nil {
