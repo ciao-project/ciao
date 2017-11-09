@@ -83,11 +83,9 @@ func (cur *PackageRequirements) Append(newReqs PackageRequirements) {
 // functionality across all Ciao components
 var BootstrapRequirements = PackageRequirements{
 	"ubuntu": {
-		{"/usr/bin/cephfs", "ceph-fs-common"},
 		{"/usr/bin/ceph", "ceph-common"},
 	},
 	"fedora": {
-		{"/usr/bin/cephfs", "ceph"},
 		{"/usr/bin/ceph", "ceph-common"},
 	},
 	"clearlinux": {
