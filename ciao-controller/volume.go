@@ -27,13 +27,9 @@ import (
 
 // CreateVolume will create a new block device and store it in the datastore.
 func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types.Volume, error) {
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return types.Volume{}, err
-	}
-
 	var bd storage.BlockDevice
 
+	var err error
 	// no limits checking for now.
 	if req.ImageRef != "" {
 		// create bootable volume
@@ -92,11 +88,6 @@ func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types
 }
 
 func (c *controller) DeleteVolume(tenant string, volume string) error {
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return err
-	}
-
 	// get the block device information
 	info, err := c.ds.GetBlockDevice(volume)
 	if err != nil {
@@ -134,11 +125,6 @@ func (c *controller) DeleteVolume(tenant string, volume string) error {
 }
 
 func (c *controller) AttachVolume(tenant string, volume string, instance string, mountpoint string) error {
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return err
-	}
-
 	// get the block device information
 	info, err := c.ds.GetBlockDevice(volume)
 	if err != nil {
@@ -200,11 +186,6 @@ func (c *controller) AttachVolume(tenant string, volume string, instance string,
 }
 
 func (c *controller) DetachVolume(tenant string, volume string, attachment string) error {
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return err
-	}
-
 	// we don't support detaching by attachment ID yet.
 	if attachment != "" {
 		return errors.New("Detaching by attachment ID not implemented")
@@ -282,11 +263,6 @@ func (c *controller) DetachVolume(tenant string, volume string, attachment strin
 func (c *controller) ListVolumesDetail(tenant string) ([]types.Volume, error) {
 	vols := []types.Volume{}
 
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return vols, err
-	}
-
 	devs, err := c.ds.GetBlockDevices(tenant)
 	if err != nil {
 		return vols, err
@@ -304,11 +280,6 @@ func (c *controller) ListVolumesDetail(tenant string) ([]types.Volume, error) {
 }
 
 func (c *controller) ShowVolumeDetails(tenant string, volume string) (types.Volume, error) {
-	err := c.confirmTenant(tenant)
-	if err != nil {
-		return types.Volume{}, err
-	}
-
 	vol, err := c.ds.GetBlockDevice(volume)
 	if err != nil {
 		return types.Volume{}, err

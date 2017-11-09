@@ -281,11 +281,6 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		return nil, err
 	}
 
-	err = c.confirmTenant(w.TenantID)
-	if err != nil {
-		return nil, err
-	}
-
 	var IPPool []net.IP
 
 	// if this is for a CNCI, we don't want to allocate any IPs.
