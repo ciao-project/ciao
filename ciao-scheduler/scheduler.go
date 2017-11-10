@@ -501,6 +501,16 @@ func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workRe
 		node.status == ssntp.READY &&
 		node.isNetNode == workload.requirements.NetworkNode {
 
+		if workload.requirements.Hostname != "" &&
+			workload.requirements.Hostname != node.hostname {
+			return false
+		}
+
+		if workload.requirements.NodeID != "" &&
+			workload.requirements.NodeID != node.uuid {
+			return false
+		}
+
 		return true
 	}
 	return false

@@ -133,7 +133,7 @@ var tests = []test{
 		`{"id":"","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!"}`,
 		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusCreated,
-		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","storage":null,"visibility":"public","workload_requirements":{"MemMB":0,"VCPUs":0,"NetworkNode":false}},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
+		`{"workload":{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","storage":null,"visibility":"public","workload_requirements":{"MemMB":0,"VCPUs":0,"NodeID":"","Hostname":"","NetworkNode":false}},"link":{"rel":"self","href":"/workloads/ba58f471-0735-4773-9550-188e2d012941"}}`,
 	},
 	{
 		"DELETE",
@@ -149,7 +149,7 @@ var tests = []test{
 		"",
 		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusOK,
-		`{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","storage":null,"visibility":"private","workload_requirements":{"MemMB":0,"VCPUs":0,"NetworkNode":false}}`,
+		`{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","storage":null,"visibility":"private","workload_requirements":{"MemMB":0,"VCPUs":0,"NodeID":"","Hostname":"","NetworkNode":false}}`,
 	},
 	{
 		"GET",
@@ -157,7 +157,7 @@ var tests = []test{
 		"",
 		fmt.Sprintf("application/%s", WorkloadsV1),
 		http.StatusOK,
-		`[{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","storage":null,"visibility":"private","workload_requirements":{"MemMB":0,"VCPUs":0,"NetworkNode":false}}]`,
+		`[{"id":"ba58f471-0735-4773-9550-188e2d012941","description":"testWorkload","fw_type":"legacy","vm_type":"qemu","image_name":"","config":"this will totally work!","storage":null,"visibility":"private","workload_requirements":{"MemMB":0,"VCPUs":0,"NodeID":"","Hostname":"","NetworkNode":false}}]`,
 	},
 	{
 		"GET",
