@@ -1115,11 +1115,6 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 			Operand: ssntp.StartFailure,
 			Dest:    ssntp.Controller,
 		},
-
-		{ // all StopFailure errors go to all Controllers
-			Operand: ssntp.StopFailure,
-			Dest:    ssntp.Controller,
-		},
 		{ // all DeleteFailure errors go to all Controllers
 			Operand: ssntp.DeleteFailure,
 			Dest:    ssntp.Controller,

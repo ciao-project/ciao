@@ -213,11 +213,6 @@ const StopYaml = `stop:
   stop: false
 `
 
-// StopFailureYaml is a sample workload StopFailure ssntp.Error payload for test cases
-const StopFailureYaml = `instance_uuid: ` + InstanceUUID + `
-reason: already_stopped
-`
-
 // DeleteYaml is a sample workload DELETE ssntp.Command payload for test cases
 const DeleteYaml = `delete:
   instance_uuid: ` + InstanceUUID + `

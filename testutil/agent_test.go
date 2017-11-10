@@ -75,13 +75,13 @@ func TestAgentStatusChanTimeout(t *testing.T) {
 }
 
 func TestAgentErrorChan(t *testing.T) {
-	agentCh := agent.AddErrorChan(ssntp.StopFailure)
+	agentCh := agent.AddErrorChan(ssntp.StartFailure)
 
 	var result Result
 	result.Err = errors.New("foo")
-	go agent.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+	go agent.SendResultAndDelErrorChan(ssntp.StartFailure, result)
 
-	r, err := agent.GetErrorChanResult(agentCh, ssntp.StopFailure)
+	r, err := agent.GetErrorChanResult(agentCh, ssntp.StartFailure)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -95,18 +95,18 @@ func TestAgentErrorChanTimeout(t *testing.T) {
 		t.Skip()
 	}
 
-	agentCh := agent.AddErrorChan(ssntp.StopFailure)
+	agentCh := agent.AddErrorChan(ssntp.StartFailure)
 
 	// should time out
-	_, err := agent.GetErrorChanResult(agentCh, ssntp.StopFailure)
+	_, err := agent.GetErrorChanResult(agentCh, ssntp.StartFailure)
 	if err == nil {
 		t.Fatal(err)
 	}
 
 	// don't leave the result on the channel
 	var result Result
-	go agent.SendResultAndDelErrorChan(ssntp.StopFailure, result)
-	_, err = agent.GetErrorChanResult(agentCh, ssntp.StopFailure)
+	go agent.SendResultAndDelErrorChan(ssntp.StartFailure, result)
+	_, err = agent.GetErrorChanResult(agentCh, ssntp.StartFailure)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,8 +197,8 @@ func TestAgentCloseChans(t *testing.T) {
 	_ = agent.AddEventChan(ssntp.TraceReport)
 	go agent.SendResultAndDelEventChan(ssntp.TraceReport, result)
 
-	_ = agent.AddErrorChan(ssntp.StopFailure)
-	go agent.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+	_ = agent.AddErrorChan(ssntp.StartFailure)
+	go agent.SendResultAndDelErrorChan(ssntp.StartFailure, result)
 
 	_ = agent.AddStatusChan(ssntp.READY)
 	go agent.SendResultAndDelStatusChan(ssntp.READY, result)

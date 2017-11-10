@@ -399,19 +399,6 @@ func (client *ssntpClient) startFailure(payload []byte) {
 	}
 }
 
-func (client *ssntpClient) stopFailure(payload []byte) {
-	var failure payloads.ErrorStopFailure
-	err := yaml.Unmarshal(payload, &failure)
-	if err != nil {
-		glog.Warningf("Error unmarshalling StopFailure: %v", err)
-		return
-	}
-	err = client.ctl.ds.StopFailure(failure.InstanceUUID, failure.Reason)
-	if err != nil {
-		glog.Warningf("Error adding StopFailure to datastore: %v", err)
-	}
-}
-
 func (client *ssntpClient) attachVolumeFailure(payload []byte) {
 	var failure payloads.ErrorAttachVolumeFailure
 	err := yaml.Unmarshal(payload, &failure)
@@ -472,9 +459,6 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 	switch err {
 	case ssntp.StartFailure:
 		client.startFailure(payload)
-
-	case ssntp.StopFailure:
-		client.stopFailure(payload)
 
 	case ssntp.AttachVolumeFailure:
 		client.attachVolumeFailure(payload)

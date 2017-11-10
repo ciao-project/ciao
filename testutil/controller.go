@@ -340,7 +340,6 @@ func (ctl *SsntpTestController) ErrorNotify(error ssntp.Error, frame *ssntp.Fram
 	/* FIXME: implement
 	case ssntp.InvalidFrameType:
 	case ssntp.StartFailure:
-	case ssntp.StopFailure:
 	case ssntp.ConnectionFailure:
 	case ssntp.DeleteFailure:
 	case ssntp.ConnectionAborted:

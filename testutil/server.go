@@ -517,9 +517,6 @@ func (server *SsntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame
 	case ssntp.StartFailure: //FIXME
 		fallthrough
 
-	case ssntp.StopFailure: //FIXME
-		fallthrough
-
 	case ssntp.ConnectionFailure: //FIXME
 		fallthrough
 
@@ -664,10 +661,6 @@ func StartTestServer() *SsntpTestServer {
 			},
 			{ // all StartFailure errors go to all Controllers
 				Operand: ssntp.StartFailure,
-				Dest:    ssntp.Controller,
-			},
-			{ // all StopFailure errors go to all Controllers
-				Operand: ssntp.StopFailure,
 				Dest:    ssntp.Controller,
 			},
 			{ // all DeleteFailure errors go to all Controllers

@@ -710,31 +710,6 @@ with an additional error string.
 +--------------------------------------------------------------------------+
 ```
 
-#### StopFailure ####
-When the Controller client needs to stop a running instance on a given CN,
-it sends a STOP SSNTP command to the Scheduler. The STOP command
-payload contains the instance UUID and the CN Agent UUID where that
-instance is running.
-
-* If the Scheduler can no longer find the CN Agent, it must send
-  a StopFailure error frame back to the Controller.
-
-* If the CN Agent cannot stop the instance because, for example, it
-  is no longer running, it must send a StopFailure error frame back
-  to the Scheduler and the Scheduler must forward it to the Controller.
-
-The [StopFailure YAML payload]
-(https://github.com/ciao-project/ciao/blob/master/payloads/startfailure.go)
-contains the instance UUID that failed to be stopped together
-with an additional error string.
-
-```
-+--------------------------------------------------------------------------+
-| Major | Minor | Type  | Operand |  Payload Length | YAML formatted frame |
-|       |       | (0x4) |  (0x2)  |                 | error information    |
-+--------------------------------------------------------------------------+
-```
-
 #### ConnectionFailure ####
 Both SSNTP clients and servers can send a ConnectionFailure error
 frame when the initial connection could not be completed but should

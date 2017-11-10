@@ -53,10 +53,9 @@ type Status uint8
 // It can be UNKNOWN, SERVER, Controller, AGENT, SCHEDULER, NETAGENT or CNCIAGENT.
 type Role uint32
 
-// Error is the SSNTP Error operand.
-// It can be InvalidFrameType Error, StartFailure,
-// StopFailure, ConnectionFailure,
-// DeleteFailure, ConnectionAborted or InvalidConfiguration.
+// Error is the SSNTP Error operand. It can be InvalidFrameType Error,
+// StartFailure, ConnectionFailure, DeleteFailure, ConnectionAborted or
+// InvalidConfiguration.
 type Error uint8
 
 // Event is the SSNTP Event operand.
@@ -498,9 +497,6 @@ const (
 	// StartFailure is sent by launcher agents to report a workload start failure.
 	StartFailure
 
-	// StopFailure is sent by launcher agents to report a workload pause failure.
-	StopFailure
-
 	// ConnectionFailure is sent to report an SSNTP connection failure.
 	// It can be sent by servers and clients.
 	ConnectionFailure
@@ -637,8 +633,6 @@ func (error Error) String() string {
 		return "Invalid SSNTP frame type"
 	case StartFailure:
 		return "Could not start instance"
-	case StopFailure:
-		return "Could not stop instance"
 	case ConnectionFailure:
 		return "SSNTP Connection failed"
 	case DeleteFailure:
