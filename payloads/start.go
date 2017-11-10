@@ -72,11 +72,6 @@ const (
 	// command in which it is embedded applies to a compute node.
 	ComputeNode = "compute_node"
 
-	// PhysicalNetwork indicates a resource is specifying an network on
-	// a network node (ie: only relevant when resource NetworkNode has
-	// value true.
-	PhysicalNetwork = "physical_network"
-
 	// Instance is used to indicate that this requested resource is an instance.
 	Instance = "instance"
 

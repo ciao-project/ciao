@@ -482,7 +482,6 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 	for idx := range work.Start.RequestedResources {
 		reqType := work.Start.RequestedResources[idx].Type
 		reqValue := work.Start.RequestedResources[idx].Value
-		reqString := work.Start.RequestedResources[idx].ValueString
 
 		// memory:
 		if reqType == payloads.MemMB {
@@ -505,13 +504,6 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 				workload.networkNode = false
 			}
 
-		}
-
-		// network node physical networks
-		if workload.networkNode {
-			if reqType == payloads.PhysicalNetwork {
-				workload.physNets = append(workload.physNets, reqString)
-			}
 		}
 
 		// etc...
