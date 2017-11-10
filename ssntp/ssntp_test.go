@@ -2539,7 +2539,6 @@ func TestErrorStringer(t *testing.T) {
 		{StartFailure, "Could not start instance"},
 		{StopFailure, "Could not stop instance"},
 		{ConnectionFailure, "SSNTP Connection failed"},
-		{RestartFailure, "Could not restart instance"},
 		{DeleteFailure, "Could not delete instance"},
 		{ConnectionAborted, "SSNTP Connection aborted"},
 		{InvalidConfiguration, "Cluster configuration is invalid"},

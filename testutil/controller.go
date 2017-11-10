@@ -342,7 +342,6 @@ func (ctl *SsntpTestController) ErrorNotify(error ssntp.Error, frame *ssntp.Fram
 	case ssntp.StartFailure:
 	case ssntp.StopFailure:
 	case ssntp.ConnectionFailure:
-	case ssntp.RestartFailure:
 	case ssntp.DeleteFailure:
 	case ssntp.ConnectionAborted:
 	case ssntp.InvalidConfiguration:

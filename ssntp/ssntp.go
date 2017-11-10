@@ -55,7 +55,7 @@ type Role uint32
 
 // Error is the SSNTP Error operand.
 // It can be InvalidFrameType Error, StartFailure,
-// StopFailure, ConnectionFailure, RestartFailure,
+// StopFailure, ConnectionFailure,
 // DeleteFailure, ConnectionAborted or InvalidConfiguration.
 type Error uint8
 
@@ -505,9 +505,6 @@ const (
 	// It can be sent by servers and clients.
 	ConnectionFailure
 
-	// RestartFailure is sent by launcher agents to report a workload re-start failure.
-	RestartFailure
-
 	// DeleteFailure is sent by launcher agents to report a workload deletion failure.
 	DeleteFailure
 
@@ -644,8 +641,6 @@ func (error Error) String() string {
 		return "Could not stop instance"
 	case ConnectionFailure:
 		return "SSNTP Connection failed"
-	case RestartFailure:
-		return "Could not restart instance"
 	case DeleteFailure:
 		return "Could not delete instance"
 	case ConnectionAborted:

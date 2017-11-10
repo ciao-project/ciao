@@ -772,28 +772,6 @@ with an additional error string.
 +--------------------------------------------------------------------------+
 ```
 
-#### RestartFailure ####
-When the Controller client wants to restart a stopped instance on a given CN,
-it sends a RESTART SSNTP command to the Scheduler.
-
-* If the Scheduler can no longer find the CN Agent, it must send
-  a RestartFailure error frame back to the Controller.
-
-* If the CN Agent cannot restart the instance because, for example, it
-  is no longer present, it must send a RestartFailure error frame back
-  to the Scheduler and the Scheduler must forward it to the Controller.
-
-The [RestartFailure YAML payload]
-(https://github.com/ciao-project/ciao/blob/master/payloads/startfailure.go)
-contains the instance UUID that failed to be stopped together
-with an additional error string.
-```
-+--------------------------------------------------------------------------+
-| Major | Minor | Type  | Operand |  Payload Length | YAML formatted frame |
-|       |       | (0x4) |  (0x5)  |                 | error information    |
-+--------------------------------------------------------------------------+
-```
-
 #### ConnectionAborted ####
 Both SSNTP clients and servers can send a ConnectionAborted error
 frame when either the CONNECT command frame or the CONNECTED status

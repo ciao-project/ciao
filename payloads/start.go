@@ -234,38 +234,3 @@ type Start struct {
 	// Start contains information about the instance to create.
 	Start StartCmd `yaml:"start"`
 }
-
-// RestartCmd contains information needed to restart an instance.
-type RestartCmd struct {
-	// TenantUUID is the tenant ID of the instance to restart.
-	TenantUUID string `yaml:"tenant_uuid"`
-
-	// InstanceUUID is the UUID of the instance to restart.
-	InstanceUUID string `yaml:"instance_uuid"`
-
-	// WorkloadAgentUUID identifies the node on which the instance is
-	// running.  This information is needed by the scheduler to route
-	// the command to the correct CN/NN.
-	WorkloadAgentUUID string `yaml:"workload_agent_uuid"`
-
-	// FWType indicates the type of firmware needed to boot the instance.
-	FWType Firmware `yaml:"fw_type"`
-
-	// InstancePersistence is the persistence type for the instance.
-	InstancePersistence Persistence `yaml:"persistence"`
-
-	// RequestedResources contains a list of the resources that are to be
-	// assigned to the new instance.
-	RequestedResources []RequestedResource `yaml:"requested_resources"`
-
-	// Networking contains all the information required to set up networking
-	// for the new instance.
-	Networking NetworkResources `yaml:"networking"`
-}
-
-// Restart represents the unmarshalled version of the contents of a SSNTP
-// RESTART payload.  The structure contains enough information to restart a CN
-// or NN instance.
-type Restart struct {
-	Restart RestartCmd `yaml:"restart"`
-}
