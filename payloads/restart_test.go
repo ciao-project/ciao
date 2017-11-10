@@ -43,14 +43,7 @@ func TestRestartMarshal(t *testing.T) {
 		Value:     4096,
 		Mandatory: true,
 	}
-	estVcpus := EstimatedResource{
-		Type:  "vcpus",
-		Value: 1,
-	}
-	estMem := EstimatedResource{
-		Type:  "mem_mb",
-		Value: 128,
-	}
+
 
 	var cmd Restart
 	cmd.Restart.TenantUUID = testutil.TenantUUID
@@ -58,8 +51,7 @@ func TestRestartMarshal(t *testing.T) {
 	cmd.Restart.WorkloadAgentUUID = testutil.AgentUUID
 	cmd.Restart.RequestedResources = append(cmd.Restart.RequestedResources, reqVcpus)
 	cmd.Restart.RequestedResources = append(cmd.Restart.RequestedResources, reqMem)
-	cmd.Restart.EstimatedResources = append(cmd.Restart.EstimatedResources, estVcpus)
-	cmd.Restart.EstimatedResources = append(cmd.Restart.EstimatedResources, estMem)
+
 	cmd.Restart.FWType = EFI
 	cmd.Restart.InstancePersistence = Host
 

@@ -152,15 +152,6 @@ type RequestedResource struct {
 	Mandatory bool `yaml:"mandatory"`
 }
 
-// EstimatedResource contains the definition of estimated value of a resource.
-type EstimatedResource struct {
-	// Type is the resource type.
-	Type Resource `yaml:"type"`
-
-	// value is the value of the resource.
-	Value int `yaml:"value"`
-}
-
 // NetworkResources contains all the networking information for an instance.
 type NetworkResources struct {
 
@@ -228,9 +219,6 @@ type StartCmd struct {
 	// assigned to the new instance.
 	RequestedResources []RequestedResource `yaml:"requested_resources"`
 
-	// EstimatedResources represents the estimated value of the instance resource.
-	EstimatedResources []EstimatedResource `yaml:"estimated_resources"`
-
 	// Networking contains all the information required to set up networking
 	// for the new instance.
 	Networking NetworkResources `yaml:"networking"`
@@ -274,9 +262,6 @@ type RestartCmd struct {
 	// RequestedResources contains a list of the resources that are to be
 	// assigned to the new instance.
 	RequestedResources []RequestedResource `yaml:"requested_resources"`
-
-	// EstimatedResources represents the estimated value of the instance resource.
-	EstimatedResources []EstimatedResource `yaml:"estimated_resources"`
 
 	// Networking contains all the information required to set up networking
 	// for the new instance.

@@ -43,14 +43,6 @@ func TestStartMarshal(t *testing.T) {
 		Value:     4096,
 		Mandatory: true,
 	}
-	estVcpus := EstimatedResource{
-		Type:  "vcpus",
-		Value: 1,
-	}
-	estMem := EstimatedResource{
-		Type:  "mem_mb",
-		Value: 128,
-	}
 
 	var cmd Start
 	cmd.Start.TenantUUID = testutil.TenantUUID
@@ -58,8 +50,6 @@ func TestStartMarshal(t *testing.T) {
 	cmd.Start.DockerImage = testutil.DockerImage
 	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqVcpus)
 	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqMem)
-	cmd.Start.EstimatedResources = append(cmd.Start.EstimatedResources, estVcpus)
-	cmd.Start.EstimatedResources = append(cmd.Start.EstimatedResources, estMem)
 	cmd.Start.FWType = EFI
 	cmd.Start.InstancePersistence = Host
 	cmd.Start.VMType = QEMU
