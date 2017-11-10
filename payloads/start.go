@@ -185,6 +185,18 @@ type NetworkResources struct {
 	PublicIP bool `yaml:"public_ip"`
 }
 
+// WorkloadRequirements contains the requirements to execute the workload
+type WorkloadRequirements struct {
+	// MemMB species the required memory for this workload in MiB
+	MemMB int `yaml:"mem_mb"`
+
+	// VCPUs specifies the required number of CPUs for the workload
+	VCPUs int `yaml:"vcpus"`
+
+	// NetworkNode specifies that this workload must be scheduled on a network node
+	NetworkNode bool `yaml:"network_node,omitempty"`
+}
+
 // StartCmd contains the information needed to start a new instance.
 type StartCmd struct {
 	// TenantUUID is the UUID of the tenant to which the new instance will
@@ -210,10 +222,6 @@ type StartCmd struct {
 	// VMType indicates whether we are creating a qemu or docker instance.
 	VMType Hypervisor `yaml:"vm_type"`
 
-	// RequestedResources contains a list of the resources that are to be
-	// assigned to the new instance.
-	RequestedResources []RequestedResource `yaml:"requested_resources"`
-
 	// Networking contains all the information required to set up networking
 	// for the new instance.
 	Networking NetworkResources `yaml:"networking"`
@@ -221,6 +229,9 @@ type StartCmd struct {
 	// Storage contains all the information required to attach or boot
 	// from storage for the new instance.
 	Storage []StorageResource `yaml:"storage,omitempty"`
+
+	// Requirements indicates what resources are needed for this workload
+	Requirements WorkloadRequirements `yaml:"requirements"`
 
 	// Restart is set to true if the payload represents a request to
 	// restart an existing instance on a new node.

@@ -34,11 +34,9 @@ var startTests = []struct {
 	{
 		`
 start:
-  requested_resources:
-     - type: vcpus
-       value: 2
-     - type: mem_mb
-       value: 370
+  requirements:
+    vcpus: 2
+    mem_mb: 370
   instance_uuid: d7d86208-b46c-4465-9018-ee14087d415f
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f
   fw_type: legacy
@@ -82,11 +80,9 @@ start:
 	{
 		`
 start:
-  requested_resources:
-     - type: vcpus
-       value: 2
-     - type: mem_mb
-       value: 370
+  requirements:
+    vcpus: 2
+    mem_mb: 370
   instance_uuid: imnotvalid
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f
   fw_type: legacy
@@ -106,11 +102,9 @@ start:
 	{
 		`
 start:
-  requested_resources:
-     - type: vcpus
-       value: 2
-     - type: mem_mb
-       value: 370
+  requirements:
+    vcpus: 2
+    mem_mb: 370
   instance_uuid: d7d86208-b46c-4465-9018-ee14087d415f
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f
   fw_type: imnotvalid
@@ -130,11 +124,9 @@ start:
 	{
 		`
 start:
-  requested_resources:
-     - type: vcpus
-       value: 2
-     - type: mem_mb
-       value: 370
+  requirements:
+    vcpus: 2
+    mem_mb: 370
   instance_uuid: d7d86208-b46c-4465-9018-ee14087d415f
   vm_type: askajajlsj
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f

@@ -136,13 +136,6 @@ const StartYaml = `start:
   fw_type: efi
   persistence: host
   vm_type: qemu
-  requested_resources:
-  - type: vcpus
-    value: 2
-    mandatory: true
-  - type: mem_mb
-    value: 4096
-    mandatory: true
   networking:
     vnic_mac: ""
     vnic_uuid: ""
@@ -153,6 +146,9 @@ const StartYaml = `start:
     subnet_uuid: ""
     private_ip: ""
     public_ip: false
+  requirements:
+    mem_mb: 4096
+    vcpus: 2
   restart: false
 `
 
@@ -162,18 +158,10 @@ const CNCIStartYaml = `start:
   fw_type: efi
   persistence: host
   vm_type: qemu
-  requested_resources:
-    - type: vcpus
-      value: 4
-      mandatory: true
-    - type: mem_mb
-      value: 4096
-      mandatory: true
-    - type: network_node
-      value: 1
-      mandatory: true
-    - type: physical_network
-      value_string: ` + ComputeNet + `
+  requirements:
+    vcpus: 4
+    mem_mb: 4096
+    network_node: true
   networking:
     vnic_mac: ` + VNICMAC + `
     vnic_uuid: ` + VNICUUID + `
@@ -193,10 +181,8 @@ const PartialStartYaml = `start:
   fw_type: efi
   persistence: host
   vm_type: qemu
-  requested_resources:
-    - type: vcpus
-      value: 2
-      mandatory: true
+  requirements:
+    vcpus: 2
 `
 
 // StartFailureYaml is a sample workload StartFailure ssntp.Error payload for test cases

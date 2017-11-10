@@ -584,7 +584,7 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		FWType:              payloads.Firmware(w.FWType),
 		VMType:              w.VMType,
 		InstancePersistence: payloads.Host,
-		RequestedResources:  w.Defaults,
+		Requirements:        workloadDefaultsToRequirements(w),
 		Networking: payloads.NetworkResources{
 			VnicMAC:  i.MACAddress,
 			VnicUUID: i.VnicUUID,

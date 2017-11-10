@@ -124,22 +124,8 @@ func createStartWorkload(vCpus int, memMB int, diskMB int) *payloads.Start {
 	var work payloads.Start
 
 	work.Start.InstanceUUID = "c73322e8-d5fe-4d57-874c-dcee4fd368cd"
-
-	reqVcpus := payloads.RequestedResource{
-		Type:      "vcpus",
-		Value:     vCpus,
-		Mandatory: true,
-	}
-	reqMem := payloads.RequestedResource{
-		Type:      "mem_mb",
-		Value:     memMB,
-		Mandatory: true,
-	}
-	work.Start.RequestedResources = append(work.Start.RequestedResources, reqVcpus)
-	work.Start.RequestedResources = append(work.Start.RequestedResources, reqMem)
-
-	//TODO: add EstimatedResources
-
+	work.Start.Requirements.VCPUs = vCpus
+	work.Start.Requirements.MemMB = memMB
 	work.Start.FWType = payloads.EFI
 	work.Start.InstancePersistence = payloads.Host
 
@@ -174,8 +160,8 @@ func TestPickComputeNode(t *testing.T) {
 	resources, err := sched.getWorkloadResources(work)
 	if err != nil ||
 		resources.instanceUUID != "c73322e8-d5fe-4d57-874c-dcee4fd368cd" ||
-		resources.memReqMB != 256 {
-		t.Fatalf("bad workload resources %s, %d", resources.instanceUUID, resources.memReqMB)
+		resources.requirements.MemMB != 256 {
+		t.Fatalf("bad workload resources %s, %d", resources.instanceUUID, resources.requirements.MemMB)
 	}
 
 	// no compute nodes
@@ -293,7 +279,7 @@ func TestPickNetworkNode(t *testing.T) {
 	resources, err := sched.getWorkloadResources(&work)
 	if err != nil ||
 		resources.instanceUUID != testutil.CNCIInstanceUUID {
-		t.Fatalf("bad CNCI workload resources %s, %d", resources.instanceUUID, resources.memReqMB)
+		t.Fatalf("bad CNCI workload resources %s, %d", resources.instanceUUID, resources.requirements.MemMB)
 	}
 
 	// no network nodes
