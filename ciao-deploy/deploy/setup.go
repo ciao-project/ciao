@@ -57,10 +57,13 @@ type unitFileConf struct {
 	CACertPath string
 	CertPath   string
 	Caps       []string
+	Roles      []string
 }
 
 var ciaoLockDir = "/tmp/lock/ciao"
 var ciaoDataDir = "/var/lib/ciao"
+var ciaoLogsDir = ciaoDataDir + "/logs"
+var ciaoLocalRolesDir = ciaoDataDir + "/local/uuid-storage/role/client"
 var ciaoLocalCertsDir = ciaoDataDir + "/local/certs"
 var ciaoConfigDir = "/etc/ciao"
 var ciaoPKIDir = "/etc/pki/ciao"
@@ -215,7 +218,8 @@ func createSchedulerCerts(ctx context.Context, force bool, serverIP string) (str
 
 var systemdServiceData = `[Unit]
 Description={{.Tool}} service
-After=network.target
+Wants={{.Tool}}-prepare.service
+After={{.Tool}}-prepare.service
 
 [Service]
 Type=simple
@@ -231,15 +235,57 @@ User={{.User}}
 Group={{.User}}
 
 [Install]
+WantedBy={{.Tool}}-prepare
+`
+
+var systemdOsPrepareData = `[Unit]
+Description={{.Tool}}-prepare service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/{{.Tool}} --osprepare --v 3 --logtostderr {{if (gt (len .Roles) 0)}}--roles="
+{{- range $i, $v := .Roles}}{{if (gt $i 0)}},{{end}}{{$v}}{{end}}"{{end}}
+Restart=no
+KillMode=control-group
+
+[Install]
 WantedBy=multi-user.target
 `
 
+func installUnitFile(ctx context.Context, unitName, serviceFilePath string, data *bytes.Buffer) error {
+	fmt.Printf("Installing systemd unit file %s\n", unitName)
+
+	f, err := ioutil.TempFile("", fmt.Sprintf("%s.service", unitName))
+	if err != nil {
+		return errors.Wrapf(err, "Error creating temporary file for service unit %s", unitName)
+	}
+	defer func() { _ = f.Close() }()
+	defer func() { _ = os.Remove(f.Name()) }()
+
+	if _, err := f.Write(data.Bytes()); err != nil {
+		return errors.Wrap(err, "Error writing service file data")
+	}
+
+	if err := SudoCopyFile(ctx, serviceFilePath, f.Name()); err != nil {
+		return errors.Wrapf(err, "Error copying systemd service file to destination %s", serviceFilePath)
+	}
+	return nil
+}
+
 // InstallTool installs a tool to its final destination and manages it via systemd
 func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
-	var systemdData bytes.Buffer
-	err := template.Must(template.New("unit").Parse(systemdServiceData)).Execute(&systemdData, config)
+	var serviceData bytes.Buffer
+	var osPrepareData bytes.Buffer
+
+	err := template.Must(template.New("unit-service").Parse(systemdServiceData)).Execute(&serviceData, config)
 	if err != nil {
-		return errors.Wrapf(err, "Error generating systemd file for %s", config.Tool)
+		return errors.Wrapf(err, "Error generating service systemd file for %s", config.Tool)
+	}
+
+	err = template.Must(template.New("unit-osprepare").Parse(systemdOsPrepareData)).Execute(&osPrepareData, config)
+	if err != nil {
+		return errors.Wrapf(err, "Error generating osprepare systemd file for %s", config.Tool)
 	}
 
 	fmt.Printf("Installing %s\n", config.Tool)
@@ -262,26 +308,24 @@ func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
 		}
 	}()
 
-	fmt.Println("Installing systemd unit file")
 	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", config.Tool))
-
-	f, err := ioutil.TempFile("", fmt.Sprintf("%s.service", config.Tool))
-	if err != nil {
-		return errors.Wrap(err, "Error creating temporary file for service unit")
-	}
-	defer func() { _ = f.Close() }()
-	defer func() { _ = os.Remove(f.Name()) }()
-
-	if _, err := f.Write(systemdData.Bytes()); err != nil {
-		return errors.Wrap(err, "Error writing service file data")
-	}
-
-	if err := SudoCopyFile(ctx, serviceFilePath, f.Name()); err != nil {
-		return errors.Wrap(err, "Error copying systemd service file to destination")
+	if err := installUnitFile(ctx, config.Tool, serviceFilePath, &serviceData); err != nil {
+		return err
 	}
 	defer func() {
 		if errOut != nil {
 			_ = SudoRemoveFile(context.Background(), serviceFilePath)
+		}
+	}()
+
+	osPrepareName := fmt.Sprintf("%s-prepare", config.Tool)
+	osPrepareFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", osPrepareName))
+	if err := installUnitFile(ctx, osPrepareName, osPrepareFilePath, &osPrepareData); err != nil {
+		return err
+	}
+	defer func() {
+		if errOut != nil {
+			_ = SudoRemoveFile(context.Background(), osPrepareFilePath)
 		}
 	}()
 
@@ -290,6 +334,18 @@ func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
 	if err := cmd.Run(); err != nil {
 		return errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
+
+	fmt.Printf("Starting %s\n", osPrepareName)
+	cmd = exec.Command("sudo", "systemctl", "start", osPrepareName)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+
+	defer func() {
+		if errOut != nil {
+			_ = exec.Command("sudo", "systemctl", "stop", osPrepareName).Run()
+		}
+	}()
 
 	fmt.Printf("Starting %s\n", config.Tool)
 	cmd = exec.Command("sudo", "systemctl", "start", config.Tool)
@@ -316,6 +372,10 @@ func uninstallTool(ctx context.Context, tool string) {
 
 	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", tool))
 	_ = SudoRemoveFile(context.Background(), serviceFilePath)
+
+	osPrepareName := fmt.Sprintf("%s-prepare", tool)
+	osPrepareFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", osPrepareName))
+	_ = SudoRemoveFile(context.Background(), osPrepareFilePath)
 
 	cmd = exec.Command("sudo", "systemctl", "daemon-reload")
 	_ = cmd.Run()
@@ -380,25 +440,29 @@ func createCiaoDirectory(ctx context.Context, path string) error {
 	return nil
 }
 
-func createUserAndDirs(ctx context.Context) (func(), error) {
+func createUserAndDirs(ctx context.Context) (f func(), err error) {
 	cmd := exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser, "-G",
 		"docker,kvm", "-d", ciaoDataDir, "-s", "/bin/false")
 	if err := cmd.Run(); err != nil {
 		return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
 
-	if err := createCiaoDirectory(ctx, ciaoDataDir); err != nil {
-		return nil, err
-	}
-
-	if err := createCiaoDirectory(ctx, ciaoLockDir); err != nil {
-		_ = SudoRemoveDirectory(context.Background(), ciaoDataDir)
-		return nil, err
+	dirs := []string{ciaoDataDir, ciaoLockDir, ciaoLocalRolesDir, ciaoLogsDir}
+	for _, dir := range dirs {
+		if err := createCiaoDirectory(ctx, dir); err != nil {
+			return nil, err
+		}
+		defer func(dir string) {
+			if err != nil {
+				_ = SudoRemoveDirectory(context.Background(), dir)
+			}
+		}(dir)
 	}
 
 	return func() {
-		_ = SudoRemoveDirectory(context.Background(), ciaoLockDir)
-		_ = SudoRemoveDirectory(context.Background(), ciaoDataDir)
+		for _, dir := range dirs {
+			_ = SudoRemoveDirectory(context.Background(), dir)
+		}
 	}, nil
 }
 
@@ -596,6 +660,9 @@ func installLocalLauncher(ctx context.Context, launcherCertPath string, caCertPa
 			"CAP_NET_ADMIN", "CAP_NET_RAW", "CAP_DAC_OVERRIDE",
 			"CAP_DAC_OVERRIDE", "CAP_SETGID", "CAP_SETUID", "CAP_SYS_PTRACE",
 			"CAP_SYS_MODULE",
+		},
+		Roles: []string{
+			"agent", "net-agent",
 		},
 	})
 	return errors.Wrap(err, "Error installing launcher")
