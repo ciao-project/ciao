@@ -280,6 +280,7 @@ func (ovs *overseer) sendReadyStatusCommand(cns *cnStats) {
 	for i, nic := range nicInfo {
 		s.Networks[i] = *nic
 	}
+	s.NodeHostName = hostname
 
 	payload, err := yaml.Marshal(&s)
 	if err != nil {
