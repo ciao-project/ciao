@@ -33,7 +33,11 @@ var eventDelCmd = &cobra.Command{
 	Use:  "event",
 	Long: `Delete all events.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Deleting all events...")
+		err := C.DeleteEvents()
+		if err != nil {
+			fmt.Printf("Error deleting events: %s\n", err)
+		}
+		fmt.Printf("Deleted all event logs\n")
 	},
 }
 
@@ -51,7 +55,12 @@ var imageDelCmd = &cobra.Command{
 	Long: `Delete an image.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("image delete called")
+		err := C.DeleteImage(args[0])
+		if err != nil {
+			fmt.Printf("Error deleting image: %s\n", err)
+		}
+
+		fmt.Printf("Deleted image %s\n", args[0])
 	},
 }
 
@@ -60,7 +69,24 @@ var instanceDelCmd = &cobra.Command{
 	Long: `Delete a specific instance to the ciao cluster.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("instance delete called")
+		if CommandFlags.All {
+		err := C.DeleteAllInstances()
+		if err != nil {
+			fmt.Printf("Error deleting all instances: %s\n", err)
+		}
+		fmt.Printf("Deleted all instances\n")
+		}
+		instance := args[0]
+		if instance == "" {
+			fmt.Println("Missing required instance UUID parameter")
+		}
+
+		err := C.DeleteInstance(instance)
+		if err != nil {
+			fmt.Printf("Error deleting instance: %s\n", err)
+		}
+
+		fmt.Printf("Deleted instance: %s\n", instance)
 	},
 }
 
@@ -69,7 +95,17 @@ var poolDelCmd = &cobra.Command{
 	Long: `Delete an external IP pool.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("pool delete called")
+		name := args[0]
+		if  name == "" {
+			fmt.Println("Missing required pool NAME parameter")
+		}
+
+		err := C.DeleteExternalIPPool(name)
+		if err != nil {
+			fmt.Printf("Error deleting external IP pool:%s\n", err)
+		}
+
+		fmt.Printf("Deleted pool: %s\n", name)
 	},
 }
 
@@ -78,16 +114,32 @@ var volumeDelCmd = &cobra.Command{
 	Long: `Delete a volume.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("volume delete called")
+		volume := args[0]
+		if volume == "" {
+			fmt.Println("Error missing required volume UUID parameter")
+		}
+
+		err := C.DeleteVolume(volume)
+		if err != nil {
+			fmt.Printf("Error deleting volume: %s\n", err)
+		}
 	},
 }
 
 var workloadDelCmd = &cobra.Command{
 	Use:  "workload [UUID]",
 	Long: `Delete a workload.`,
-	Args: cobra.MinimumNArgs(2),
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("workload delete called")
+		workload := args[0]
+		if workload == "" {
+			fmt.Println("Missing required workload UUID paramter")
+		}
+
+		err := C.DeleteWorkload(workload)
+		if err != nil {
+			fmt.Printf("Error deleting workload: %s\n", err)
+		}
 	},
 }
 

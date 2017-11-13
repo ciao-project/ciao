@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ciao-project/ciao/ciao-sdk"
+	"github.com/ciao-project/ciao/ciao/tool"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ var eventShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -47,7 +47,7 @@ var externalipShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -60,7 +60,7 @@ var imageShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -73,7 +73,7 @@ var instanceShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -86,7 +86,7 @@ var nodeShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -99,7 +99,7 @@ var poolShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -112,7 +112,7 @@ var quotasShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -125,7 +125,7 @@ var tenantShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -138,7 +138,7 @@ var traceShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -151,7 +151,7 @@ var volumeShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}
@@ -164,7 +164,7 @@ var workloadShowCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		object := strings.Fields(cmd.Use)[0]
 		CommandFlags.Args = args
-		result, err := sdk.Show(&C, object, *CommandFlags)
+		result, err := tool.Show(&C, object, *CommandFlags)
 		if err == nil {
 			fmt.Println(result.String())
 		}

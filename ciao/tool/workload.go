@@ -1,4 +1,4 @@
-package sdk
+package tool
 
 import (
 	"github.com/ciao-project/ciao/ciao-controller/types"

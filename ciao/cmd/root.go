@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ciao-project/ciao/ciao-sdk"
+	"github.com/ciao-project/ciao/ciao/tool"
 	"github.com/ciao-project/ciao/client"
 
 	"github.com/mitchellh/go-homedir"
@@ -28,7 +28,7 @@ import (
 
 var C client.Client
 
-var CommandFlags = new(sdk.CommandOpts)
+var CommandFlags = new(tool.CommandOpts)
 
 var cfgFile string
 

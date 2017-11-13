@@ -1,4 +1,4 @@
-package sdk
+package tool
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 )
 
 /* Intended calling convention by user would be:
- * instances := sdk.Show(ClientHandle, "instance", nil)
+ * instances := tool.Show(ClientHandle, "instance", nil)
  * for example, to return a string of all instances using
  * the default tfortools template {{table .}}. This can
  * then be printed or parsed as needed. */
