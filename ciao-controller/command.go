@@ -146,6 +146,10 @@ func (c *controller) deleteInstance(instanceID string) error {
 		return types.ErrInstanceNotAssigned
 	}
 
+	if i.State == payloads.Missing {
+		return types.ErrInstanceNotAssigned
+	}
+
 	// check for any external IPs
 	IPs := c.ds.GetMappedIPs(&i.TenantID)
 	for _, m := range IPs {
