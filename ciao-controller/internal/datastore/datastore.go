@@ -1027,41 +1027,6 @@ func (ds *Datastore) AddInstance(instance *types.Instance) error {
 	return nil
 }
 
-// RestartFailure logs a RestartFailure in the datastore
-func (ds *Datastore) RestartFailure(instanceID string, reason payloads.RestartFailureReason) error {
-	i, err := ds.GetInstance(instanceID)
-	if err != nil {
-		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
-	}
-
-	msg := fmt.Sprintf("Restart Failure %s: %s", instanceID, reason.String())
-	event := types.LogEntry{
-		TenantID:  i.TenantID,
-		Message:   msg,
-		EventType: string(userError),
-		NodeID:    i.NodeID,
-	}
-	return errors.Wrap(ds.db.logEvent(event), "Error logging event")
-}
-
-// StopFailure logs a StopFailure in the datastore
-func (ds *Datastore) StopFailure(instanceID string, reason payloads.StopFailureReason) error {
-	i, err := ds.GetInstance(instanceID)
-	if err != nil {
-		return errors.Wrapf(err, "error getting instance (%v)", instanceID)
-	}
-
-	msg := fmt.Sprintf("Stop Failure %s: %s", instanceID, reason.String())
-	event := types.LogEntry{
-		TenantID:  i.TenantID,
-		Message:   msg,
-		EventType: string(userError),
-		NodeID:    i.NodeID,
-	}
-
-	return errors.Wrap(ds.db.logEvent(event), "Error logging event")
-}
-
 // StartFailure will clean up after a failure to start an instance.
 // If an instance was a CNCI, this function will remove the CNCI instance
 // for this tenant. If the instance was a normal tenant instance, the

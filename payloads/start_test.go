@@ -33,33 +33,12 @@ func TestStartUnmarshal(t *testing.T) {
 }
 
 func TestStartMarshal(t *testing.T) {
-	reqVcpus := RequestedResource{
-		Type:      "vcpus",
-		Value:     2,
-		Mandatory: true,
-	}
-	reqMem := RequestedResource{
-		Type:      "mem_mb",
-		Value:     4096,
-		Mandatory: true,
-	}
-	estVcpus := EstimatedResource{
-		Type:  "vcpus",
-		Value: 1,
-	}
-	estMem := EstimatedResource{
-		Type:  "mem_mb",
-		Value: 128,
-	}
-
 	var cmd Start
 	cmd.Start.TenantUUID = testutil.TenantUUID
 	cmd.Start.InstanceUUID = testutil.InstanceUUID
 	cmd.Start.DockerImage = testutil.DockerImage
-	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqVcpus)
-	cmd.Start.RequestedResources = append(cmd.Start.RequestedResources, reqMem)
-	cmd.Start.EstimatedResources = append(cmd.Start.EstimatedResources, estVcpus)
-	cmd.Start.EstimatedResources = append(cmd.Start.EstimatedResources, estMem)
+	cmd.Start.Requirements.VCPUs = 2
+	cmd.Start.Requirements.MemMB = 4096
 	cmd.Start.FWType = EFI
 	cmd.Start.InstancePersistence = Host
 	cmd.Start.VMType = QEMU
@@ -89,23 +68,14 @@ func TestStartUnmarshalPartial(t *testing.T) {
 	expectedCmd.Start.FWType = EFI
 	expectedCmd.Start.InstancePersistence = Host
 	expectedCmd.Start.VMType = QEMU
-	vcpus := RequestedResource{
-		Type:      "vcpus",
-		Value:     2,
-		Mandatory: true,
-	}
-	expectedCmd.Start.RequestedResources = append(expectedCmd.Start.RequestedResources, vcpus)
+	expectedCmd.Start.Requirements.VCPUs = 2
 
 	if cmd.Start.InstanceUUID != expectedCmd.Start.InstanceUUID ||
 		cmd.Start.DockerImage != expectedCmd.Start.DockerImage ||
 		cmd.Start.FWType != expectedCmd.Start.FWType ||
 		cmd.Start.InstancePersistence != expectedCmd.Start.InstancePersistence ||
 		cmd.Start.VMType != expectedCmd.Start.VMType ||
-		len(cmd.Start.RequestedResources) != 1 ||
-		len(expectedCmd.Start.RequestedResources) != 1 ||
-		cmd.Start.RequestedResources[0].Type != expectedCmd.Start.RequestedResources[0].Type ||
-		cmd.Start.RequestedResources[0].Value != expectedCmd.Start.RequestedResources[0].Value ||
-		cmd.Start.RequestedResources[0].Mandatory != expectedCmd.Start.RequestedResources[0].Mandatory {
+		cmd.Start.Requirements.VCPUs != expectedCmd.Start.Requirements.VCPUs {
 		t.Error("Unexpected values in Start")
 	}
 }

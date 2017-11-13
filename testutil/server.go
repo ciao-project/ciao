@@ -327,22 +327,13 @@ func getAttachVolumeResult(payload []byte, result *Result) {
 
 func getStartResults(payload []byte, result *Result) {
 	var startCmd payloads.Start
-	var nn bool
 
 	err := yaml.Unmarshal(payload, &startCmd)
 	result.Err = err
 	if err == nil {
-		resources := startCmd.Start.RequestedResources
-
-		for i := range resources {
-			if resources[i].Type == payloads.NetworkNode {
-				nn = true
-				break
-			}
-		}
 		result.InstanceUUID = startCmd.Start.InstanceUUID
 		result.TenantUUID = startCmd.Start.TenantUUID
-		result.CNCI = nn
+		result.CNCI = startCmd.Start.Requirements.NetworkNode
 	}
 }
 
@@ -517,13 +508,7 @@ func (server *SsntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame
 	case ssntp.StartFailure: //FIXME
 		fallthrough
 
-	case ssntp.StopFailure: //FIXME
-		fallthrough
-
 	case ssntp.ConnectionFailure: //FIXME
-		fallthrough
-
-	case ssntp.RestartFailure: //FIXME
 		fallthrough
 
 	case ssntp.DeleteFailure: //FIXME
@@ -544,7 +529,6 @@ func (server *SsntpTestServer) ErrorNotify(uuid string, error ssntp.Error, frame
 
 func (server *SsntpTestServer) handleStart(payload []byte) (dest ssntp.ForwardDestination) {
 	var startCmd payloads.Start
-	var nn bool
 
 	err := yaml.Unmarshal(payload, &startCmd)
 
@@ -552,16 +536,7 @@ func (server *SsntpTestServer) handleStart(payload []byte) (dest ssntp.ForwardDe
 		return
 	}
 
-	resources := startCmd.Start.RequestedResources
-
-	for i := range resources {
-		if resources[i].Type == payloads.NetworkNode {
-			nn = true
-			break
-		}
-	}
-
-	if nn {
+	if startCmd.Start.Requirements.NetworkNode {
 		server.netClientsLock.Lock()
 		defer server.netClientsLock.Unlock()
 		if len(server.netClients) > 0 {
@@ -667,14 +642,6 @@ func StartTestServer() *SsntpTestServer {
 			},
 			{ // all StartFailure errors go to all Controllers
 				Operand: ssntp.StartFailure,
-				Dest:    ssntp.Controller,
-			},
-			{ // all StopFailure errors go to all Controllers
-				Operand: ssntp.StopFailure,
-				Dest:    ssntp.Controller,
-			},
-			{ // all RestartFailure errors go to all Controllers
-				Operand: ssntp.RestartFailure,
 				Dest:    ssntp.Controller,
 			},
 			{ // all DeleteFailure errors go to all Controllers

@@ -399,32 +399,6 @@ func (client *ssntpClient) startFailure(payload []byte) {
 	}
 }
 
-func (client *ssntpClient) stopFailure(payload []byte) {
-	var failure payloads.ErrorStopFailure
-	err := yaml.Unmarshal(payload, &failure)
-	if err != nil {
-		glog.Warningf("Error unmarshalling StopFailure: %v", err)
-		return
-	}
-	err = client.ctl.ds.StopFailure(failure.InstanceUUID, failure.Reason)
-	if err != nil {
-		glog.Warningf("Error adding StopFailure to datastore: %v", err)
-	}
-}
-
-func (client *ssntpClient) restartFailure(payload []byte) {
-	var failure payloads.ErrorRestartFailure
-	err := yaml.Unmarshal(payload, &failure)
-	if err != nil {
-		glog.Warningf("Error unmarshalling RestartFailure: %v", err)
-		return
-	}
-	err = client.ctl.ds.RestartFailure(failure.InstanceUUID, failure.Reason)
-	if err != nil {
-		glog.Warningf("Error adding RestartFailure to datastore: %v", err)
-	}
-}
-
 func (client *ssntpClient) attachVolumeFailure(payload []byte) {
 	var failure payloads.ErrorAttachVolumeFailure
 	err := yaml.Unmarshal(payload, &failure)
@@ -485,12 +459,6 @@ func (client *ssntpClient) ErrorNotify(err ssntp.Error, frame *ssntp.Frame) {
 	switch err {
 	case ssntp.StartFailure:
 		client.startFailure(payload)
-
-	case ssntp.StopFailure:
-		client.stopFailure(payload)
-
-	case ssntp.RestartFailure:
-		client.restartFailure(payload)
 
 	case ssntp.AttachVolumeFailure:
 		client.attachVolumeFailure(payload)
@@ -616,7 +584,7 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		FWType:              payloads.Firmware(w.FWType),
 		VMType:              w.VMType,
 		InstancePersistence: payloads.Host,
-		RequestedResources:  w.Defaults,
+		Requirements:        workloadDefaultsToRequirements(w),
 		Networking: payloads.NetworkResources{
 			VnicMAC:  i.MACAddress,
 			VnicUUID: i.VnicUUID,

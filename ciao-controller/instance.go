@@ -390,6 +390,29 @@ func storageConfig(ctl *controller, tenant *types.Tenant, instanceID string, vol
 	return storage, nil
 }
 
+func workloadDefaultsToRequirements(wl *types.Workload) payloads.WorkloadRequirements {
+	requirements := payloads.WorkloadRequirements{}
+
+	for _, rr := range wl.Defaults {
+		if rr.Type == payloads.MemMB {
+			requirements.MemMB = rr.Value
+			continue
+		}
+
+		if rr.Type == payloads.VCPUs {
+			requirements.VCPUs = rr.Value
+			continue
+		}
+
+		if rr.Type == payloads.NetworkNode {
+			requirements.NetworkNode = true
+			continue
+		}
+	}
+
+	return requirements
+}
+
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
 	volumes []storage.BlockDevice, name string, IPaddr net.IP) (config, error) {
 	var metaData userData
@@ -398,7 +421,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	var storage []payloads.StorageResource
 
 	baseConfig := wl.Config
-	defaults := wl.Defaults
+
 	fwType := wl.FWType
 	config.cnci = isCNCIWorkload(wl)
 	metaData.UUID = instanceID
@@ -443,9 +466,9 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		FWType:              payloads.Firmware(fwType),
 		VMType:              wl.VMType,
 		InstancePersistence: payloads.Host,
-		RequestedResources:  defaults,
 		Networking:          networking,
 		Storage:             storage,
+		Requirements:        workloadDefaultsToRequirements(wl),
 	}
 
 	if wl.VMType == payloads.Docker {

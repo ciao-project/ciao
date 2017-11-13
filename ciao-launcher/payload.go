@@ -68,12 +68,7 @@ func printCloudinit(data *payloads.Start) {
 	glog.Infof("ConcUUID:             %v", net.ConcentratorUUID)
 	glog.Infof("VnicUUID:             %v", net.VnicUUID)
 	glog.Infof("Restart:              %t", start.Restart)
-
-	glog.Info("Requested resources:")
-	for i := range start.RequestedResources {
-		glog.Infof("%8s:     %v", start.RequestedResources[i].Type,
-			start.RequestedResources[i].Value)
-	}
+	glog.Infof("Requirements:         %+v", start.Requirements)
 
 	for _, storage := range start.Storage {
 		if storage.ID != "" {
@@ -139,23 +134,14 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	}
 	legacy := fwType == payloads.Legacy
 
-	var cpus, mem int
-	var networkNode bool
 	container, err := parseVMTtype(start)
 	if err != nil {
 		return nil, &payloadError{err, payloads.InvalidData}
 	}
 
-	for i := range start.RequestedResources {
-		switch start.RequestedResources[i].Type {
-		case payloads.VCPUs:
-			cpus = start.RequestedResources[i].Value
-		case payloads.MemMB:
-			mem = start.RequestedResources[i].Value
-		case payloads.NetworkNode:
-			networkNode = start.RequestedResources[i].Value != 0
-		}
-	}
+	cpus := start.Requirements.VCPUs
+	mem := start.Requirements.MemMB
+	networkNode := start.Requirements.NetworkNode
 
 	net := &start.Networking
 	vnicIP := strings.TrimSpace(net.PrivateIP)

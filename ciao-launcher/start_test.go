@@ -30,11 +30,9 @@ runcmd:
   - cloud-init: [ciao, openstack]
 `
 	startString = `start:
-  requested_resources:
-     - type: vcpus
-       value: 2
-     - type: mem_mb
-       value: 256
+  requirements:
+    vcpus: 2
+    mem_mb: 256
   instance_uuid: 67d86208-b46c-4465-9018-fe14087d415f
   image_uuid: b286cd45-7d0c-4525-a140-4db6c95e41fa
 `

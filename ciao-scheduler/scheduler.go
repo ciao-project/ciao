@@ -471,52 +471,11 @@ func (sched *ssntpSchedulerServer) StatusNotify(uuid string, status ssntp.Status
 
 type workResources struct {
 	instanceUUID string
-	memReqMB     int
 	diskReqMB    int
-	networkNode  bool
-	physNets     []string
+	requirements payloads.WorkloadRequirements
 }
 
 func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (workload workResources, err error) {
-	// loop the array to find resources
-	for idx := range work.Start.RequestedResources {
-		reqType := work.Start.RequestedResources[idx].Type
-		reqValue := work.Start.RequestedResources[idx].Value
-		reqString := work.Start.RequestedResources[idx].ValueString
-
-		// memory:
-		if reqType == payloads.MemMB {
-			workload.memReqMB = reqValue
-		}
-
-		// network node
-		if reqType == payloads.NetworkNode {
-			wantsNetworkNode := reqValue
-
-			// validate input: requested resource values are always integers
-			if wantsNetworkNode != 0 && wantsNetworkNode != 1 {
-				return workload, fmt.Errorf("invalid start payload resource demand: network_node (%d) is not 0 or 1", wantsNetworkNode)
-			}
-
-			// convert to more natural bool for local struct
-			if wantsNetworkNode == 1 {
-				workload.networkNode = true
-			} else { //wantsNetworkNode == 0
-				workload.networkNode = false
-			}
-
-		}
-
-		// network node physical networks
-		if workload.networkNode {
-			if reqType == payloads.PhysicalNetwork {
-				workload.physNets = append(workload.physNets, reqString)
-			}
-		}
-
-		// etc...
-	}
-
 	// volumes
 	for _, volume := range work.Start.Storage {
 		if volume.Local {
@@ -524,13 +483,7 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 		}
 	}
 
-	// validate the found resources
-	if workload.memReqMB <= 0 {
-		return workload, fmt.Errorf("invalid start payload resource demand: mem_mb (%d) <= 0, must be > 0", workload.memReqMB)
-	}
-	if workload.diskReqMB < 0 {
-		return workload, fmt.Errorf("invalid start payload local disk demand: disk MB (%d) < 0, must be >= 0", workload.diskReqMB)
-	}
+	workload.requirements = work.Start.Requirements
 
 	// note the uuid
 	workload.instanceUUID = work.Start.InstanceUUID
@@ -538,37 +491,13 @@ func (sched *ssntpSchedulerServer) getWorkloadResources(work *payloads.Start) (w
 	return workload, nil
 }
 
-func networkDemandsSatisfied(node *nodeStat, workload *workResources) bool {
-	if !node.isNetNode {
-		return true
-	}
-
-	var matchedNetworksCount int
-	var requestedNetworksCount int
-
-	for _, requestedNetwork := range workload.physNets {
-		requestedNetworksCount++
-		for _, availableNetwork := range node.networks {
-			if requestedNetwork == availableNetwork.NodeIP {
-				matchedNetworksCount++
-				break
-			}
-		}
-	}
-	if requestedNetworksCount != matchedNetworksCount {
-		return false
-	}
-
-	return true
-}
-
 // Check resource demands are satisfiable by the referenced, locked nodeStat object
 func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workResources) bool {
 	// simple scheduling policy == first fit
-	if node.memAvailMB >= workload.memReqMB &&
+	if node.memAvailMB >= workload.requirements.MemMB &&
 		node.diskAvailMB >= workload.diskReqMB &&
 		node.status == ssntp.READY &&
-		networkDemandsSatisfied(node, workload) {
+		node.isNetNode == workload.requirements.NetworkNode {
 
 		return true
 	}
@@ -697,7 +626,7 @@ func (sched *ssntpSchedulerServer) fwdCmdToComputeNode(command ssntp.Command, pa
 
 // Decrement resource claims for the referenced locked nodeStat object
 func (sched *ssntpSchedulerServer) decrementResourceUsage(node *nodeStat, workload *workResources) {
-	node.memAvailMB -= workload.memReqMB
+	node.memAvailMB -= workload.requirements.MemMB
 }
 
 // Find suitable compute node, returning referenced to a locked nodeStat if found
@@ -808,7 +737,7 @@ func startWorkload(sched *ssntpSchedulerServer, controllerUUID string, payload [
 
 	var targetNode *nodeStat
 
-	if workload.networkNode {
+	if workload.requirements.NetworkNode {
 		targetNode = pickNetworkNode(sched, controllerUUID, &workload, work.Start.Restart)
 	} else { //workload.network_node == false
 		targetNode = pickComputeNode(sched, controllerUUID, &workload, work.Start.Restart)
@@ -1121,14 +1050,6 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 		},
 		{ // all StartFailure errors go to all Controllers
 			Operand: ssntp.StartFailure,
-			Dest:    ssntp.Controller,
-		},
-		{ // all StopFailure errors go to all Controllers
-			Operand: ssntp.StopFailure,
-			Dest:    ssntp.Controller,
-		},
-		{ // all RestartFailure errors go to all Controllers
-			Operand: ssntp.RestartFailure,
 			Dest:    ssntp.Controller,
 		},
 		{ // all DeleteFailure errors go to all Controllers

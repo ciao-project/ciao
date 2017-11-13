@@ -72,11 +72,6 @@ const (
 	// command in which it is embedded applies to a compute node.
 	ComputeNode = "compute_node"
 
-	// PhysicalNetwork indicates a resource is specifying an network on
-	// a network node (ie: only relevant when resource NetworkNode has
-	// value true.
-	PhysicalNetwork = "physical_network"
-
 	// Instance is used to indicate that this requested resource is an instance.
 	Instance = "instance"
 
@@ -152,15 +147,6 @@ type RequestedResource struct {
 	Mandatory bool `yaml:"mandatory"`
 }
 
-// EstimatedResource contains the definition of estimated value of a resource.
-type EstimatedResource struct {
-	// Type is the resource type.
-	Type Resource `yaml:"type"`
-
-	// value is the value of the resource.
-	Value int `yaml:"value"`
-}
-
 // NetworkResources contains all the networking information for an instance.
 type NetworkResources struct {
 
@@ -199,6 +185,18 @@ type NetworkResources struct {
 	PublicIP bool `yaml:"public_ip"`
 }
 
+// WorkloadRequirements contains the requirements to execute the workload
+type WorkloadRequirements struct {
+	// MemMB species the required memory for this workload in MiB
+	MemMB int `yaml:"mem_mb"`
+
+	// VCPUs specifies the required number of CPUs for the workload
+	VCPUs int `yaml:"vcpus"`
+
+	// NetworkNode specifies that this workload must be scheduled on a network node
+	NetworkNode bool `yaml:"network_node,omitempty"`
+}
+
 // StartCmd contains the information needed to start a new instance.
 type StartCmd struct {
 	// TenantUUID is the UUID of the tenant to which the new instance will
@@ -224,13 +222,6 @@ type StartCmd struct {
 	// VMType indicates whether we are creating a qemu or docker instance.
 	VMType Hypervisor `yaml:"vm_type"`
 
-	// RequestedResources contains a list of the resources that are to be
-	// assigned to the new instance.
-	RequestedResources []RequestedResource `yaml:"requested_resources"`
-
-	// EstimatedResources represents the estimated value of the instance resource.
-	EstimatedResources []EstimatedResource `yaml:"estimated_resources"`
-
 	// Networking contains all the information required to set up networking
 	// for the new instance.
 	Networking NetworkResources `yaml:"networking"`
@@ -238,6 +229,9 @@ type StartCmd struct {
 	// Storage contains all the information required to attach or boot
 	// from storage for the new instance.
 	Storage []StorageResource `yaml:"storage,omitempty"`
+
+	// Requirements indicates what resources are needed for this workload
+	Requirements WorkloadRequirements `yaml:"requirements"`
 
 	// Restart is set to true if the payload represents a request to
 	// restart an existing instance on a new node.
@@ -250,42 +244,4 @@ type StartCmd struct {
 type Start struct {
 	// Start contains information about the instance to create.
 	Start StartCmd `yaml:"start"`
-}
-
-// RestartCmd contains information needed to restart an instance.
-type RestartCmd struct {
-	// TenantUUID is the tenant ID of the instance to restart.
-	TenantUUID string `yaml:"tenant_uuid"`
-
-	// InstanceUUID is the UUID of the instance to restart.
-	InstanceUUID string `yaml:"instance_uuid"`
-
-	// WorkloadAgentUUID identifies the node on which the instance is
-	// running.  This information is needed by the scheduler to route
-	// the command to the correct CN/NN.
-	WorkloadAgentUUID string `yaml:"workload_agent_uuid"`
-
-	// FWType indicates the type of firmware needed to boot the instance.
-	FWType Firmware `yaml:"fw_type"`
-
-	// InstancePersistence is the persistence type for the instance.
-	InstancePersistence Persistence `yaml:"persistence"`
-
-	// RequestedResources contains a list of the resources that are to be
-	// assigned to the new instance.
-	RequestedResources []RequestedResource `yaml:"requested_resources"`
-
-	// EstimatedResources represents the estimated value of the instance resource.
-	EstimatedResources []EstimatedResource `yaml:"estimated_resources"`
-
-	// Networking contains all the information required to set up networking
-	// for the new instance.
-	Networking NetworkResources `yaml:"networking"`
-}
-
-// Restart represents the unmarshalled version of the contents of a SSNTP
-// RESTART payload.  The structure contains enough information to restart a CN
-// or NN instance.
-type Restart struct {
-	Restart RestartCmd `yaml:"restart"`
 }

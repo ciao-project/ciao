@@ -10,11 +10,9 @@ do
   cat > /tmp/container-$i.yaml <<EOF
 ---
 start:
-  requested_resources:
-     - type: vcpus
-       value: 1
-     - type: mem_mb
-       value: 16
+  requirements:
+    vcpus: 1
+    mem_mb: 16
   instance_uuid: 67d86208-b46c-4465-9018-e14187d4$i
   tenant_uuid: 67d86208-000-4465-9018-fe14087d415f
   docker_image: ubuntu:latest

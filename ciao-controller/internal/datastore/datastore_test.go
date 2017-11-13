@@ -1168,54 +1168,6 @@ func TestReleaseTenantIP(t *testing.T) {
 	}
 }
 
-func TestRestartFailure(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wls, err := ds.GetWorkloads(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	instance, err := addTestInstance(tenant, wls[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	reason := payloads.RestartNoInstance
-
-	err = ds.RestartFailure(instance.ID, reason)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestStopFailure(t *testing.T) {
-	tenant, err := addTestTenant()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wls, err := ds.GetWorkloads(tenant.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	instance, err := addTestInstance(tenant, wls[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	reason := payloads.StopNoInstance
-
-	err = ds.StopFailure(instance.ID, reason)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestStartFailureFullCloud(t *testing.T) {
 	tenant, err := addTestTenant()
 	if err != nil {

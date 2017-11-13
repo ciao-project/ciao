@@ -2257,7 +2257,7 @@ func TestErrorFwd(t *testing.T) {
 func TestErrorFwder(t *testing.T) {
 	var server ssntpServer
 	var controller, agent ssntpClient
-	error := StopFailure
+	error := StartFailure
 
 	server.t = t
 	serverConfig, err := buildTestConfig(SCHEDULER)
@@ -2537,9 +2537,7 @@ func TestErrorStringer(t *testing.T) {
 	}{
 		{InvalidFrameType, "Invalid SSNTP frame type"},
 		{StartFailure, "Could not start instance"},
-		{StopFailure, "Could not stop instance"},
 		{ConnectionFailure, "SSNTP Connection failed"},
-		{RestartFailure, "Could not restart instance"},
 		{DeleteFailure, "Could not delete instance"},
 		{ConnectionAborted, "SSNTP Connection aborted"},
 		{InvalidConfiguration, "Cluster configuration is invalid"},

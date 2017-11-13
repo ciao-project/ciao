@@ -63,13 +63,13 @@ func TestServerStatusChanTimeout(t *testing.T) {
 }
 
 func TestServerErrorChan(t *testing.T) {
-	serverCh := server.AddErrorChan(ssntp.StopFailure)
+	serverCh := server.AddErrorChan(ssntp.StartFailure)
 
 	var result Result
 	result.Err = errors.New("foo")
-	go server.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+	go server.SendResultAndDelErrorChan(ssntp.StartFailure, result)
 
-	r, err := server.GetErrorChanResult(serverCh, ssntp.StopFailure)
+	r, err := server.GetErrorChanResult(serverCh, ssntp.StartFailure)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -83,18 +83,18 @@ func TestServerErrorChanTimeout(t *testing.T) {
 		t.Skip()
 	}
 
-	serverCh := server.AddErrorChan(ssntp.StopFailure)
+	serverCh := server.AddErrorChan(ssntp.StartFailure)
 
 	// should time out
-	_, err := server.GetErrorChanResult(serverCh, ssntp.StopFailure)
+	_, err := server.GetErrorChanResult(serverCh, ssntp.StartFailure)
 	if err == nil {
 		t.Fatal(err)
 	}
 
 	// don't leave the result on the channel
 	var result Result
-	go server.SendResultAndDelErrorChan(ssntp.StopFailure, result)
-	_, err = server.GetErrorChanResult(serverCh, ssntp.StopFailure)
+	go server.SendResultAndDelErrorChan(ssntp.StartFailure, result)
+	_, err = server.GetErrorChanResult(serverCh, ssntp.StartFailure)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,8 +185,8 @@ func TestServerCloseChans(t *testing.T) {
 	_ = server.AddEventChan(ssntp.TraceReport)
 	go server.SendResultAndDelEventChan(ssntp.TraceReport, result)
 
-	_ = server.AddErrorChan(ssntp.StopFailure)
-	go server.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+	_ = server.AddErrorChan(ssntp.StartFailure)
+	go server.SendResultAndDelErrorChan(ssntp.StartFailure, result)
 
 	_ = server.AddStatusChan(ssntp.READY)
 	go server.SendResultAndDelStatusChan(ssntp.READY, result)

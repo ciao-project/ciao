@@ -136,18 +136,6 @@ const StartYaml = `start:
   fw_type: efi
   persistence: host
   vm_type: qemu
-  requested_resources:
-  - type: vcpus
-    value: 2
-    mandatory: true
-  - type: mem_mb
-    value: 4096
-    mandatory: true
-  estimated_resources:
-  - type: vcpus
-    value: 1
-  - type: mem_mb
-    value: 128
   networking:
     vnic_mac: ""
     vnic_uuid: ""
@@ -158,6 +146,9 @@ const StartYaml = `start:
     subnet_uuid: ""
     private_ip: ""
     public_ip: false
+  requirements:
+    mem_mb: 4096
+    vcpus: 2
   restart: false
 `
 
@@ -167,18 +158,10 @@ const CNCIStartYaml = `start:
   fw_type: efi
   persistence: host
   vm_type: qemu
-  requested_resources:
-    - type: vcpus
-      value: 4
-      mandatory: true
-    - type: mem_mb
-      value: 4096
-      mandatory: true
-    - type: network_node
-      value: 1
-      mandatory: true
-    - type: physical_network
-      value_string: ` + ComputeNet + `
+  requirements:
+    vcpus: 4
+    mem_mb: 4096
+    network_node: true
   networking:
     vnic_mac: ` + VNICMAC + `
     vnic_uuid: ` + VNICUUID + `
@@ -198,10 +181,8 @@ const PartialStartYaml = `start:
   fw_type: efi
   persistence: host
   vm_type: qemu
-  requested_resources:
-    - type: vcpus
-      value: 2
-      mandatory: true
+  requirements:
+    vcpus: 2
 `
 
 // StartFailureYaml is a sample workload StartFailure ssntp.Error payload for test cases
@@ -211,64 +192,11 @@ reason: full_cloud
 restart: false
 `
 
-// RestartYaml is a sample workload RESTART ssntp.Command payload for test cases
-const RestartYaml = `restart:
-  tenant_uuid: ` + TenantUUID + `
-  instance_uuid: ` + InstanceUUID + `
-  workload_agent_uuid: ` + AgentUUID + `
-  fw_type: efi
-  persistence: host
-  requested_resources:
-  - type: vcpus
-    value: 2
-    mandatory: true
-  - type: mem_mb
-    value: 4096
-    mandatory: true
-  estimated_resources:
-  - type: vcpus
-    value: 1
-  - type: mem_mb
-    value: 128
-  networking:
-    vnic_mac: ""
-    vnic_uuid: ""
-    concentrator_uuid: ""
-    concentrator_ip: ""
-    subnet: ""
-    subnet_key: ""
-    subnet_uuid: ""
-    private_ip: ""
-    public_ip: false
-`
-
-// PartialRestartYaml is a sample minimal workload RESTART ssntp.Command payload for test cases
-const PartialRestartYaml = `restart:
-  instance_uuid: ` + InstanceUUID + `
-  workload_agent_uuid: ` + AgentUUID + `
-  fw_type: efi
-  persistence: host
-  requested_resources:
-    - type: vcpus
-      value: 2
-      mandatory: true
-`
-
-// RestartFailureYaml is a sample workload RestartFailure ssntp.Error payload for test cases
-const RestartFailureYaml = `instance_uuid: ` + InstanceUUID + `
-reason: already_running
-`
-
 // StopYaml is a sample workload STOP ssntp.Command payload for test cases
 const StopYaml = `stop:
   instance_uuid: ` + InstanceUUID + `
   workload_agent_uuid: ` + AgentUUID + `
   stop: false
-`
-
-// StopFailureYaml is a sample workload StopFailure ssntp.Error payload for test cases
-const StopFailureYaml = `instance_uuid: ` + InstanceUUID + `
-reason: already_stopped
 `
 
 // DeleteYaml is a sample workload DELETE ssntp.Command payload for test cases

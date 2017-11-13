@@ -38,10 +38,6 @@ type SsntpTestClient struct {
 	Role                   ssntp.Role
 	StartFail              bool
 	StartFailReason        payloads.StartFailureReason
-	StopFail               bool
-	StopFailReason         payloads.StopFailureReason
-	RestartFail            bool
-	RestartFailReason      payloads.RestartFailureReason
 	DeleteFail             bool
 	DeleteFailReason       payloads.DeleteFailureReason
 	AttachFail             bool

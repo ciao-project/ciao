@@ -32,13 +32,13 @@ func TestNewSsntpTestControllerConnectionArgs(t *testing.T) {
 }
 
 func TestControllerErrorChan(t *testing.T) {
-	controllerCh := controller.AddErrorChan(ssntp.StopFailure)
+	controllerCh := controller.AddErrorChan(ssntp.StartFailure)
 
 	var result Result
 	result.Err = errors.New("foo")
-	go controller.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+	go controller.SendResultAndDelErrorChan(ssntp.StartFailure, result)
 
-	r, err := controller.GetErrorChanResult(controllerCh, ssntp.StopFailure)
+	r, err := controller.GetErrorChanResult(controllerCh, ssntp.StartFailure)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -52,18 +52,18 @@ func TestControllerErrorChanTimeout(t *testing.T) {
 		t.Skip()
 	}
 
-	controllerCh := controller.AddErrorChan(ssntp.StopFailure)
+	controllerCh := controller.AddErrorChan(ssntp.StartFailure)
 
 	// should time out
-	_, err := controller.GetErrorChanResult(controllerCh, ssntp.StopFailure)
+	_, err := controller.GetErrorChanResult(controllerCh, ssntp.StartFailure)
 	if err == nil {
 		t.Fatal(err)
 	}
 
 	// don't leave the result on the channel
 	var result Result
-	go controller.SendResultAndDelErrorChan(ssntp.StopFailure, result)
-	_, err = controller.GetErrorChanResult(controllerCh, ssntp.StopFailure)
+	go controller.SendResultAndDelErrorChan(ssntp.StartFailure, result)
+	_, err = controller.GetErrorChanResult(controllerCh, ssntp.StartFailure)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,8 +154,8 @@ func TestControllerCloseChans(t *testing.T) {
 	_ = controller.AddEventChan(ssntp.TraceReport)
 	go controller.SendResultAndDelEventChan(ssntp.TraceReport, result)
 
-	_ = controller.AddErrorChan(ssntp.StopFailure)
-	go controller.SendResultAndDelErrorChan(ssntp.StopFailure, result)
+	_ = controller.AddErrorChan(ssntp.StartFailure)
+	go controller.SendResultAndDelErrorChan(ssntp.StartFailure, result)
 
 	CloseControllerChans(controller)
 	OpenControllerChans(controller)
