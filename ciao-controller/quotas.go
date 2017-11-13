@@ -79,8 +79,10 @@ func populateQuotasFromDatastore(qs *quotas.Quotas, ds *datastore.Datastore) err
 			if err != nil {
 				return errors.Wrapf(err, "error getting workload")
 			}
-			resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
-			resources = append(resources, wl.Defaults...)
+			resources := []payloads.RequestedResource{
+				{Type: payloads.Instance, Value: 1},
+				{Type: payloads.MemMB, Value: wl.Requirements.MemMB},
+				{Type: payloads.VCPUs, Value: wl.Requirements.VCPUs}}
 			<-qs.Consume(t.ID, resources...)
 		}
 	}

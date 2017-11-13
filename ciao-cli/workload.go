@@ -82,20 +82,13 @@ func (cmd *workloadListCommand) run(args []string) error {
 	}
 
 	var workloads []Workload
-	for i, wl := range wls {
+	for _, wl := range wls {
 		workloads = append(workloads, Workload{
 			Name: wl.Description,
 			ID:   wl.ID,
+			Mem:  wl.Requirements.MemMB,
+			CPUs: wl.Requirements.VCPUs,
 		})
-
-		for _, r := range wl.Defaults {
-			if r.Type == payloads.MemMB {
-				workloads[i].Mem = r.Value
-			}
-			if r.Type == payloads.VCPUs {
-				workloads[i].CPUs = r.Value
-			}
-		}
 	}
 
 	if cmd.template != "" {
@@ -240,20 +233,8 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 		return err
 	}
 
-	// all default resources are required.
-	defaults := opt.Defaults
-
-	r := payloads.RequestedResource{
-		Type:  payloads.VCPUs,
-		Value: defaults.VCPUs,
-	}
-	req.Defaults = append(req.Defaults, r)
-
-	r = payloads.RequestedResource{
-		Type:  payloads.MemMB,
-		Value: defaults.MemMB,
-	}
-	req.Defaults = append(req.Defaults, r)
+	req.Requirements.MemMB = opt.Defaults.MemMB
+	req.Requirements.VCPUs = opt.Defaults.VCPUs
 
 	return nil
 }
@@ -265,13 +246,8 @@ func outputWorkload(w types.Workload) {
 	opt.VMType = string(w.VMType)
 	opt.FWType = w.FWType
 	opt.ImageName = w.ImageName
-	for _, d := range w.Defaults {
-		if d.Type == payloads.VCPUs {
-			opt.Defaults.VCPUs = d.Value
-		} else if d.Type == payloads.MemMB {
-			opt.Defaults.MemMB = d.Value
-		}
-	}
+	opt.Defaults.MemMB = w.Requirements.MemMB
+	opt.Defaults.VCPUs = w.Requirements.VCPUs
 
 	for _, s := range w.Storage {
 		d := disk{

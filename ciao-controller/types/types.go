@@ -80,16 +80,16 @@ type StorageResource struct {
 // Workload contains resource and configuration information for a user
 // workload.
 type Workload struct {
-	ID          string                       `json:"id"`
-	TenantID    string                       `json:"-"`
-	Description string                       `json:"description"`
-	FWType      string                       `json:"fw_type"`
-	VMType      payloads.Hypervisor          `json:"vm_type"`
-	ImageName   string                       `json:"image_name"`
-	Config      string                       `json:"config"`
-	Defaults    []payloads.RequestedResource `json:"defaults"`
-	Storage     []StorageResource            `json:"storage"`
-	Visibility  Visibility                   `json:"visibility"`
+	ID           string                        `json:"id"`
+	TenantID     string                        `json:"-"`
+	Description  string                        `json:"description"`
+	FWType       string                        `json:"fw_type"`
+	VMType       payloads.Hypervisor           `json:"vm_type"`
+	ImageName    string                        `json:"image_name"`
+	Config       string                        `json:"config"`
+	Storage      []StorageResource             `json:"storage"`
+	Visibility   Visibility                    `json:"visibility"`
+	Requirements payloads.WorkloadRequirements `json:"workload_requirements"`
 }
 
 // WorkloadResponse will be returned from /workloads apis

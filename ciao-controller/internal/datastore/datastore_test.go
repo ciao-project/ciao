@@ -54,13 +54,6 @@ func addInstance(tenant *types.Tenant, workload types.Workload, name string) (in
 		Mask: mask,
 	}
 
-	resources := make(map[string]int)
-	rr := workload.Defaults
-
-	for i := range rr {
-		resources[string(rr[i].Type)] = rr[i].Value
-	}
-
 	instance = &types.Instance{
 		TenantID:   tenant.ID,
 		WorkloadID: workload.ID,
@@ -111,17 +104,6 @@ users:
     - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDerQfD+qkb0V0XdQs8SBWqy4sQmqYFP96n/kI4Cq162w4UE8pTxy0ozAPldOvBJjljMvgaNKSAddknkhGcrNUvvJsUcZFm2qkafi32WyBdGFvIc45A+8O7vsxPXgHEsS9E3ylEALXAC3D0eX7pPtRiAbasLlY+VcACRqr3bPDSZTfpCmIkV2334uZD9iwOvTVeR+FjGDqsfju4DyzoAIqpPasE0+wk4Vbog7osP+qvn1gj5kQyusmr62+t0wx+bs2dF5QemksnFOswUrv9PGLhZgSMmDQrRYuvEfIAC7IdN/hfjTn0OokzljBiuWQ4WIIba/7xTYLVujJV65qH3heaSMxJJD7eH9QZs9RdbbdTXMFuJFsHV2OF6wZRp18tTNZZJMqiHZZSndC5WP1WrUo3Au/9a+ighSaOiVddHsPG07C/TOEnr3IrwU7c9yIHeeRFHmcQs9K0+n9XtrmrQxDQ9/mLkfje80Ko25VJ/QpAQPzCKh2KfQ4RD+/PxBUScx/lHIHOIhTSCh57ic629zWgk0coSQDi4MKSa5guDr3cuDvt4RihGviDM6V68ewsl0gh6Z9c0Hw7hU0vky4oxak5AiySiPz0FtsOnAzIL0UON+yMuKzrJgLjTKodwLQ0wlBXu43cD+P8VXwQYeqNSzfrhBnHqsrMf4lTLtc7kDDTcw== ciao@ciao
 ...
 	`
-	cpus := payloads.RequestedResource{
-		Type:      payloads.VCPUs,
-		Value:     2,
-		Mandatory: false,
-	}
-
-	mem := payloads.RequestedResource{
-		Type:      payloads.MemMB,
-		Value:     512,
-		Mandatory: false,
-	}
 
 	storage := types.StorageResource{
 		ID:        "",
@@ -137,8 +119,11 @@ users:
 		VMType:      payloads.QEMU,
 		ImageName:   "",
 		Config:      testConfig,
-		Defaults:    []payloads.RequestedResource{cpus, mem},
-		Storage:     []types.StorageResource{storage},
+		Requirements: payloads.WorkloadRequirements{
+			VCPUs: 2,
+			MemMB: 512,
+		},
+		Storage: []types.StorageResource{storage},
 	}
 
 	return ds.AddWorkload(wl)
