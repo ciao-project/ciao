@@ -235,7 +235,7 @@ User={{.User}}
 Group={{.User}}
 
 [Install]
-WantedBy={{.Tool}}-prepare
+WantedBy={{.Tool}}-prepare.service
 `
 
 var systemdOsPrepareData = `[Unit]
@@ -273,6 +273,23 @@ func installUnitFile(ctx context.Context, unitName, serviceFilePath string, data
 	return nil
 }
 
+func startAndEnableService(ctx context.Context, unitName string) error {
+	fmt.Printf("Starting %s\n", unitName)
+	cmd := exec.CommandContext(ctx, "sudo", "systemctl", "start", unitName)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+
+	fmt.Printf("Enabling %s\n", unitName)
+	cmd = exec.CommandContext(ctx, "sudo", "systemctl", "enable", unitName)
+	if err := cmd.Run(); err != nil {
+		_ = exec.Command("sudo", "systemctl", "stop", unitName).Run()
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+
+	return nil
+}
+
 // InstallTool installs a tool to its final destination and manages it via systemd
 func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
 	var serviceData bytes.Buffer
@@ -288,15 +305,20 @@ func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
 		return errors.Wrapf(err, "Error generating osprepare systemd file for %s", config.Tool)
 	}
 
+	osPrepareName := fmt.Sprintf("%s-prepare", config.Tool)
+
 	fmt.Printf("Installing %s\n", config.Tool)
 
-	fmt.Printf("Stopping %s\n", config.Tool)
-	cmd := exec.Command("sudo", "systemctl", "stop", config.Tool)
-
-	toolPath := InGoPath(path.Join("/bin", config.Tool))
+	fmt.Printf("Stopping %s\n", osPrepareName)
+	cmd := exec.Command("sudo", "systemctl", "stop", osPrepareName)
 	// Actively ignore this error as systemctl will fail if the service file is not
 	// yet installed. This is fine as that will be the case for new installs.
 	_ = cmd.Run()
+
+	fmt.Printf("Stopping %s\n", config.Tool)
+	_ = exec.Command("sudo", "systemctl", "stop", config.Tool).Run()
+
+	toolPath := InGoPath(path.Join("/bin", config.Tool))
 
 	systemToolPath := path.Join("/usr/local/bin/", config.Tool)
 	if err := SudoCopyFile(ctx, systemToolPath, toolPath); err != nil {
@@ -318,7 +340,6 @@ func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
 		}
 	}()
 
-	osPrepareName := fmt.Sprintf("%s-prepare", config.Tool)
 	osPrepareFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", osPrepareName))
 	if err := installUnitFile(ctx, osPrepareName, osPrepareFilePath, &osPrepareData); err != nil {
 		return err
@@ -330,30 +351,23 @@ func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
 	}()
 
 	fmt.Println("Reloading systemd unit files")
-	cmd = exec.Command("sudo", "systemctl", "daemon-reload")
+	cmd = exec.CommandContext(ctx, "sudo", "systemctl", "daemon-reload")
 	if err := cmd.Run(); err != nil {
 		return errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
 
-	fmt.Printf("Starting %s\n", osPrepareName)
-	cmd = exec.Command("sudo", "systemctl", "start", osPrepareName)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	if err := startAndEnableService(ctx, osPrepareName); err != nil {
+		return err
 	}
 
 	defer func() {
 		if errOut != nil {
+			_ = exec.Command("sudo", "systemctl", "disable", osPrepareName).Run()
 			_ = exec.Command("sudo", "systemctl", "stop", osPrepareName).Run()
 		}
 	}()
 
-	fmt.Printf("Starting %s\n", config.Tool)
-	cmd = exec.Command("sudo", "systemctl", "start", config.Tool)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "Error running: %v", cmd.Args)
-	}
-
-	return nil
+	return startAndEnableService(ctx, config.Tool)
 }
 
 func installScheduler(ctx context.Context, anchorCertPath string, caCertPath string) error {
@@ -367,7 +381,10 @@ func installScheduler(ctx context.Context, anchorCertPath string, caCertPath str
 }
 
 func uninstallTool(ctx context.Context, tool string) {
-	cmd := exec.Command("sudo", "systemctl", "stop", tool)
+	cmd := exec.Command("sudo", "systemctl", "disable", tool)
+	_ = cmd.Run()
+
+	cmd = exec.Command("sudo", "systemctl", "stop", tool)
 	_ = cmd.Run()
 
 	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", tool))
