@@ -271,7 +271,7 @@ func (ds *Datastore) initWorkloads() error {
 				return errors.Wrapf(err, "Database inconsistent: tenant in workload not in database: %s", wl.TenantID)
 			}
 
-			ds.tenants[wl.TenantID].images = append(ds.tenants[wl.TenantID].images, wl.ID)
+			ds.tenants[wl.TenantID].workloads = append(ds.tenants[wl.TenantID].workloads, wl.ID)
 		}
 	}
 
