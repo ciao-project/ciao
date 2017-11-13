@@ -148,6 +148,10 @@ const (
 
 	// Hung indicates that an instance is not responding to commands.
 	Hung = "hung"
+
+	// Missing indicates that the node this instance is running on is not
+	// active
+	Missing = "missing"
 )
 
 // Init initialises instances of the Stat structure.

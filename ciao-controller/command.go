@@ -126,7 +126,7 @@ func (c *controller) deleteInstanceSync(instanceID string) error {
 	case <-wait:
 		return nil
 	case <-time.After(2 * time.Minute):
-		err = transitionInstanceState(i, payloads.Hung)
+		err = i.TransitionInstanceState(payloads.Hung)
 		if err != nil {
 			glog.Warningf("Error transitioning instance to hung state: %v", err)
 		}
@@ -143,6 +143,10 @@ func (c *controller) deleteInstance(instanceID string) error {
 	}
 
 	if i.NodeID == "" && i.State == payloads.Pending {
+		return types.ErrInstanceNotAssigned
+	}
+
+	if i.State == payloads.Missing {
 		return types.ErrInstanceNotAssigned
 	}
 

@@ -27,6 +27,7 @@ import (
 	"github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
+	"github.com/golang/glog"
 )
 
 // SourceType contains the valid values of the storage source.
@@ -835,4 +836,30 @@ type Image struct {
 	CreateTime time.Time  `json:"create_time"`
 	Size       uint64     `json:"size"`
 	Visibility Visibility `json:"visibility"`
+}
+
+// TransitionInstanceState safely sets thes state on an instance
+func (i *Instance) TransitionInstanceState(to string) error {
+	i.StateLock.Lock()
+	defer i.StateLock.Unlock()
+
+	glog.V(2).Infof("Instance %s: %s -> %s", i.ID, i.State, to)
+
+	switch to {
+	case payloads.Stopping:
+		if i.State != payloads.Running {
+			return errors.New("Stop operation not allowed")
+		}
+	case payloads.Running:
+		if i.State != payloads.Pending {
+			return errors.New("Set active without pending")
+		}
+	}
+
+	i.StateChange.L.Lock()
+	i.State = to
+	i.StateChange.L.Unlock()
+	i.StateChange.Signal()
+
+	return nil
 }
