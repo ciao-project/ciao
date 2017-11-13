@@ -23,6 +23,7 @@ import (
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+
 	"github.com/pkg/errors"
 )
 
