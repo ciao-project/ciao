@@ -79,7 +79,7 @@ func testCreateWorkload(t *testing.T, public bool) {
 	source := getWorkloadSource(ctx, t, tenant)
 
 	// fill out the opt structure for this workload.
-	defaults := bat.DefaultResources{
+	requirements := bat.WorkloadRequirements{
 		VCPUs: 2,
 		MemMB: 128,
 	}
@@ -91,11 +91,11 @@ func testCreateWorkload(t *testing.T, public bool) {
 	}
 
 	opt := bat.WorkloadOptions{
-		Description: "BAT VM Test",
-		VMType:      "qemu",
-		FWType:      "legacy",
-		Defaults:    defaults,
-		Disks:       []bat.Disk{disk},
+		Description:  "BAT VM Test",
+		VMType:       "qemu",
+		FWType:       "legacy",
+		Requirements: requirements,
+		Disks:        []bat.Disk{disk},
 	}
 
 	var ID string
@@ -116,7 +116,7 @@ func testCreateWorkload(t *testing.T, public bool) {
 		t.Fatal(err)
 	}
 
-	if w.Name != opt.Description || w.CPUs != opt.Defaults.VCPUs || w.Mem != opt.Defaults.MemMB {
+	if w.Name != opt.Description || w.CPUs != opt.Requirements.VCPUs || w.Mem != opt.Requirements.MemMB {
 		t.Fatalf("Workload not defined correctly")
 	}
 
@@ -183,7 +183,7 @@ func TestCreateWorkloadWithSizedVolume(t *testing.T) {
 
 	source := getWorkloadSource(ctx, t, tenant)
 
-	defaults := bat.DefaultResources{
+	requirements := bat.WorkloadRequirements{
 		VCPUs: 2,
 		MemMB: 128,
 	}
@@ -196,11 +196,11 @@ func TestCreateWorkloadWithSizedVolume(t *testing.T) {
 	}
 
 	opt := bat.WorkloadOptions{
-		Description: "BAT VM Test",
-		VMType:      "qemu",
-		FWType:      "legacy",
-		Defaults:    defaults,
-		Disks:       []bat.Disk{disk},
+		Description:  "BAT VM Test",
+		VMType:       "qemu",
+		FWType:       "legacy",
+		Requirements: requirements,
+		Disks:        []bat.Disk{disk},
 	}
 
 	workloadID, err := bat.CreateWorkload(ctx, tenant, opt, vmCloudInit)

@@ -50,21 +50,21 @@ type Disk struct {
 	Ephemeral bool    `yaml:"ephemeral"`
 }
 
-// DefaultResources indicate how many cpus and mem to allocate.
-type DefaultResources struct {
+// WorkloadRequirements indicate how many cpus and mem to allocate.
+type WorkloadRequirements struct {
 	VCPUs int `yaml:"vcpus"`
 	MemMB int `yaml:"mem_mb"`
 }
 
 // WorkloadOptions is used to generate a workload definition in yaml.
 type WorkloadOptions struct {
-	Description     string           `yaml:"description"`
-	VMType          string           `yaml:"vm_type"`
-	FWType          string           `yaml:"fw_type"`
-	ImageName       string           `yaml:"image_name"`
-	Defaults        DefaultResources `yaml:"defaults"`
-	CloudConfigFile string           `yaml:"cloud_init"`
-	Disks           []Disk           `yaml:"disks"`
+	Description     string               `yaml:"description"`
+	VMType          string               `yaml:"vm_type"`
+	FWType          string               `yaml:"fw_type"`
+	ImageName       string               `yaml:"image_name"`
+	Requirements    WorkloadRequirements `yaml:"requirements"`
+	CloudConfigFile string               `yaml:"cloud_init"`
+	Disks           []Disk               `yaml:"disks"`
 }
 
 // this function should output the yaml file for the workload definition
