@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -35,18 +36,10 @@ var eventDelCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := C.DeleteEvents()
 		if err != nil {
-			fmt.Printf("Error deleting events: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error deleting events: %s\n", err)
+			return
 		}
 		fmt.Printf("Deleted all event logs\n")
-	},
-}
-
-var externalipDelCmd = &cobra.Command{
-	Use:  "external-ip [POOL NAME]",
-	Long: `Delete unmapped external IPs from a pool.`,
-	Args: cobra.MinimumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("delete unmapped external ips from: " + args[0])
 	},
 }
 
@@ -57,7 +50,8 @@ var imageDelCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := C.DeleteImage(args[0])
 		if err != nil {
-			fmt.Printf("Error deleting image: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error deleting image: %s\n", err)
+			return
 		}
 
 		fmt.Printf("Deleted image %s\n", args[0])
@@ -70,20 +64,23 @@ var instanceDelCmd = &cobra.Command{
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if CommandFlags.All {
-		err := C.DeleteAllInstances()
-		if err != nil {
-			fmt.Printf("Error deleting all instances: %s\n", err)
-		}
-		fmt.Printf("Deleted all instances\n")
+			err := C.DeleteAllInstances()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error deleting all instances: %s\n", err)
+				return
+			}
+			fmt.Printf("Deleted all instances\n")
 		}
 		instance := args[0]
 		if instance == "" {
 			fmt.Println("Missing required instance UUID parameter")
+			return
 		}
 
 		err := C.DeleteInstance(instance)
 		if err != nil {
-			fmt.Printf("Error deleting instance: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error deleting instance: %s\n", err)
+			return
 		}
 
 		fmt.Printf("Deleted instance: %s\n", instance)
@@ -98,11 +95,13 @@ var poolDelCmd = &cobra.Command{
 		name := args[0]
 		if  name == "" {
 			fmt.Println("Missing required pool NAME parameter")
+			return
 		}
 
 		err := C.DeleteExternalIPPool(name)
 		if err != nil {
-			fmt.Printf("Error deleting external IP pool:%s\n", err)
+			fmt.Fprintf(os.Stderr, "Error deleting external IP pool:%s\n", err)
+			return
 		}
 
 		fmt.Printf("Deleted pool: %s\n", name)
@@ -117,12 +116,14 @@ var volumeDelCmd = &cobra.Command{
 		volume := args[0]
 		if volume == "" {
 			fmt.Println("Error missing required volume UUID parameter")
+			return
 		}
 
 		err := C.DeleteVolume(volume)
 		if err != nil {
-			fmt.Printf("Error deleting volume: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error deleting volume: %s\n", err)
 		}
+		fmt.Printf("Deleted volume %s\n", volume)
 	},
 }
 
@@ -134,23 +135,23 @@ var workloadDelCmd = &cobra.Command{
 		workload := args[0]
 		if workload == "" {
 			fmt.Println("Missing required workload UUID paramter")
+			return
 		}
 
 		err := C.DeleteWorkload(workload)
 		if err != nil {
-			fmt.Printf("Error deleting workload: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error deleting workload: %s\n", err)
+			return
 		}
+		fmt.Printf("Deleted workload %s\n", workload)
 	},
 }
 
-var delCmds = []*cobra.Command{eventDelCmd, externalipDelCmd, imageDelCmd, instanceDelCmd, poolDelCmd, volumeDelCmd, workloadDelCmd}
+var delCmds = []*cobra.Command{eventDelCmd, imageDelCmd, instanceDelCmd, poolDelCmd, volumeDelCmd, workloadDelCmd}
 
 func init() {
 	for _, cmd := range delCmds {
 		deleteCmd.AddCommand(cmd)
 	}
 	RootCmd.AddCommand(deleteCmd)
-
-	externalipDelCmd.Flags().StringVar(&ip, "ip", "", "IPv4 Address")
-	externalipDelCmd.Flags().StringVar(&subnet, "subnet", "", "Subnet in CIDR format")
 }
