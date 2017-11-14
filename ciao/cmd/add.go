@@ -24,9 +24,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ciao-project/ciao/ciao/tool"
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/ciao/tool"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/uuid"
 
@@ -34,7 +34,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-
 )
 
 var config string
@@ -65,31 +64,31 @@ type volumeFlag struct {
 type volumeFlagSlice []volumeFlag
 
 type instanceAddFlags struct {
-	instances	int
-	label		string
-	name		string
-	volumes		volumeFlagSlice
-	workload	string	
+	instances int
+	label     string
+	name      string
+	volumes   volumeFlagSlice
+	workload  string
 }
 
 type poolAddFlags struct {
-	name		string
-	subnet		string
-	new			bool
+	name   string
+	subnet string
+	new    bool
 }
 
 type tenantAddFlags struct {
-	cidrPrefixSize	int
-	name			string
-	tenantID		string
+	cidrPrefixSize int
+	name           string
+	tenantID       string
 }
 
 type volumeAddFlags struct {
-	description	string
-	name		string
-	size		int
-	source		string
-	sourcetype	string
+	description string
+	name        string
+	size        int
+	source      string
+	sourcetype  string
 }
 
 var imgFlags imageAddFlags
@@ -538,7 +537,7 @@ func processInstanceVolumeSubArg(subArg string, stringArgsMap map[string]string,
 }
 
 var instanceAddCmd = &cobra.Command{
-	Use:  "instance [UUID]",
+	Use: "instance [UUID]",
 	Long: `Add and launch a specific instance.
 
 The volume flag allows specification of a volume to be attached
@@ -659,7 +658,7 @@ var poolAddCmd = &cobra.Command{
 }
 
 var tenantAddCmd = &cobra.Command{
-	Use: "tenant [NAME]",
+	Use:  "tenant [NAME]",
 	Long: `Create a new tenant with the supplied flags`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if !C.IsPrivileged() {
@@ -738,7 +737,6 @@ var volumeAddCmd = &cobra.Command{
 		fmt.Fprintf(os.Stderr, "Created new volume: %s\n", vol.ID)
 	},
 }
-
 
 func optToReqStorage(opt tool.WorkloadOptions) ([]types.StorageResource, error) {
 	storage := make([]types.StorageResource, 0)
@@ -842,23 +840,23 @@ var workloadAddCmd = &cobra.Command{
 		if config == "" {
 			fmt.Fprintf(os.Stderr, "Please supply a config for the workload.")
 			return
-		} 
+		}
 
 		f, err := ioutil.ReadFile(config)
 		if err != nil {
-			fmt.Fprintf(os.Stderr,"Unable to read workload config file: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Unable to read workload config file: %s\n", err)
 			return
 		}
 
 		err = yaml.Unmarshal(f, &opt)
 		if err != nil {
-			fmt.Fprintf(os.Stderr,"Config file invalid: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Config file invalid: %s\n", err)
 			return
 		}
 
 		err = optToReq(opt, &req)
 		if err != nil {
-			fmt.Fprintf(os.Stderr,err.Error())
+			fmt.Fprintf(os.Stderr, err.Error())
 		}
 
 		workloadID, err := C.CreateWorkload(req)

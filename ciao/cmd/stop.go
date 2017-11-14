@@ -16,6 +16,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
+	"github.com/ciao-project/ciao/ciao/tool"
 
 	"github.com/spf13/cobra"
 )
@@ -26,7 +29,11 @@ var stopCmd = &cobra.Command{
 	Long:  `Stop a Ciao instance.`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Stopping instance " + args[0])
+		instance := args[0]
+		err := tool.StartStopInstance(&C, instance, true)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to stop instance %s: %s\n", instance, err)
+		}
 	},
 }
 

@@ -93,7 +93,7 @@ var poolDelCmd = &cobra.Command{
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
-		if  name == "" {
+		if name == "" {
 			fmt.Println("Missing required pool NAME parameter")
 			return
 		}

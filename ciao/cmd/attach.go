@@ -21,16 +21,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type volumeAttachFlags struct{
-	instance	string
-	mode		string
-	mountpoint	string
-	volume		string
+type volumeAttachFlags struct {
+	instance   string
+	mode       string
+	mountpoint string
+	volume     string
 }
 
-type externalipAttachFlags struct{
-	instance	string
-	name		string
+type externalipAttachFlags struct {
+	instance string
+	name     string
 }
 
 var volAttachFlags volumeAttachFlags

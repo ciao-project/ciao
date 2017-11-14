@@ -7,6 +7,29 @@ import (
 	"github.com/pkg/errors"
 )
 
+func StartStopInstance(c *client.Client, instance string, stop bool) error {
+	if c.TenantID == "" {
+		return errors.New("Missing required -tenant-id parameter")
+	}
+
+	if instance == "" {
+		return errors.New("Missing required -instance parameter")
+	}
+
+	if stop == true {
+		err := c.StopInstance(instance)
+		if err != nil {
+			return errors.Wrap(err, "Error stopping instance")
+		}
+	} else {
+		err := c.StartInstance(instance)
+		if err != nil {
+			return errors.Wrap(err, "Error starting instance")
+		}
+	}
+	return nil
+}
+
 func GetInstance(c *client.Client, flags CommandOpts) (api.Server, error) {
 	if len(flags.Args) == 0 {
 		errors.New("Missing required -cn parameter")
