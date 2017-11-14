@@ -48,6 +48,7 @@ type packageInfo struct {
 	vendored  bool
 	installed bool
 	CGO       bool `json:"cgo"`
+	SFiles    bool `json:"sfiles"`
 	Standard  bool `json:"standard"`
 }
 
@@ -56,6 +57,7 @@ type subPackage struct {
 	wildcard string
 	docs     []string
 	cgo      bool
+	sFiles   bool
 }
 
 type clientInfo struct {
@@ -94,7 +96,8 @@ var directTemplate = `
 func getPackageDetails(name string) *packageInfo {
 	packageTemplate := `{
   "standard" : {{.Standard}},
-  "cgo" : {{if .CFiles}}true{{else}}false{{end}}
+  "cgo" : {{if .CFiles}}true{{else}}false{{end}},
+  "sfiles" : {{if .SFiles}}true{{else}}false{{end}}
 }`
 	pi := &packageInfo{name: name}
 	cmd := exec.Command("go", "list", "-f", packageTemplate, name)
@@ -207,6 +210,9 @@ func copyRepos(cwd, sourceRoot string, subPackages map[string][]*subPackage) err
 				}
 				if a.cgo {
 					args = append(args, a.wildcard+".[ch]")
+				}
+				if a.sFiles {
+					args = append(args, a.wildcard+".s")
 				}
 				args = append(args, a.docs...)
 			}
@@ -383,9 +389,9 @@ func computeSubPackages(deps piList) map[string][]*subPackage {
 
 			pkg := d.name[len(k):]
 			if pkg == "" {
-				packages = append([]*subPackage{{name: k, wildcard: "*", cgo: d.CGO}}, packages...)
+				packages = append([]*subPackage{{name: k, wildcard: "*", cgo: d.CGO, sFiles: d.SFiles}}, packages...)
 			} else if pkg[0] == '/' {
-				packages = append(packages, &subPackage{name: d.name, wildcard: pkg[1:] + "/*", cgo: d.CGO})
+				packages = append(packages, &subPackage{name: d.name, wildcard: pkg[1:] + "/*", cgo: d.CGO, sFiles: d.SFiles})
 			} else {
 				fmt.Printf("Warning: unvendored package: %s\n", d.name)
 			}
