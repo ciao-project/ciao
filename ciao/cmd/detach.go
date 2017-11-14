@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,14 @@ var detachIpCmd = &cobra.Command{
 	Long: `Detach an external IP`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Detaching IP: " + args[0])
+		IP := args[0] /* Guaranteed from MinimumNArgs(1) */
+		err := C.UnmapExternalIP(IP)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error unmapping external IP: %s\n", err)
+			return
+		}
+
+		fmt.Printf("Requested unmap of: %s\n", IP)
 	},
 }
 
@@ -41,7 +49,14 @@ var detachVolCmd = &cobra.Command{
 	Long: `Detach a volume from an instance`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Detaching Volume " + args[0])
+		volume := args[0] /* Guaranteed from MinimumNArgs(1) */
+		err := C.DetachVolume(volume)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error detaching volume: %s\n", err)
+			return
+		}
+
+		fmt.Printf("Detached volume: %s\n", volume)
 	},
 }
 
