@@ -2512,23 +2512,6 @@ users:
     - ` + key + `
 ...
 `
-	cpus := payloads.RequestedResource{
-		Type:      payloads.VCPUs,
-		Value:     vcpus,
-		Mandatory: false,
-	}
-
-	mem := payloads.RequestedResource{
-		Type:      payloads.MemMB,
-		Value:     memMB,
-		Mandatory: false,
-	}
-
-	network := payloads.RequestedResource{
-		Type:      payloads.NetworkNode,
-		Value:     1,
-		Mandatory: true,
-	}
 
 	storage := types.StorageResource{
 		ID:         "",
@@ -2545,9 +2528,13 @@ users:
 		FWType:      string(payloads.EFI),
 		VMType:      payloads.QEMU,
 		Config:      config,
-		Defaults:    []payloads.RequestedResource{cpus, mem, network},
-		Storage:     []types.StorageResource{storage},
-		Visibility:  types.Internal,
+		Requirements: payloads.WorkloadRequirements{
+			VCPUs:       vcpus,
+			MemMB:       memMB,
+			NetworkNode: true,
+		},
+		Storage:    []types.StorageResource{storage},
+		Visibility: types.Internal,
 	}
 
 	// for now we have a single global cnci workload.

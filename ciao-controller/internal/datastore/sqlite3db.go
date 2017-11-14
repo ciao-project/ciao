@@ -17,6 +17,7 @@ package datastore
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -210,27 +211,6 @@ func (d tenantData) Init() error {
 	return d.ds.exec(d.db, cmd)
 }
 
-// workload resources
-type workloadResourceData struct {
-	namedData
-}
-
-func (d workloadResourceData) Init() error {
-	cmd := `CREATE TABLE IF NOT EXISTS workload_resources
-		(
-		workload_id varchar(32),
-		resource_type string,
-		default_value int,
-		estimated_value int,
-		mandatory int,
-		foreign key(workload_id) references workload_template(id)
-		);
-		CREATE UNIQUE INDEX IF NOT EXISTS wlr_index
-		ON workload_resources(workload_id, resource_type);`
-
-	return d.ds.exec(d.db, cmd)
-}
-
 // workload template data
 type workloadTemplateData struct {
 	namedData
@@ -246,7 +226,8 @@ func (d workloadTemplateData) Init() error {
 		fw_type text,
 		vm_type text,
 		image_name text,
-		visibility text
+		visibility text,
+		requirements text
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -513,7 +494,6 @@ func (ds *sqliteDB) init(config Config) error {
 		tenantData{namedData{ds: ds, name: "tenants", db: ds.db}},
 		instanceData{namedData{ds: ds, name: "instances", db: ds.db}},
 		workloadTemplateData{namedData{ds: ds, name: "workload_template", db: ds.db}},
-		workloadResourceData{namedData{ds: ds, name: "workload_resources", db: ds.db}},
 		nodeStatisticsData{namedData{ds: ds, name: "node_statistics", db: ds.db}},
 		logData{namedData{ds: ds, name: "log", db: ds.db}},
 		subnetData{namedData{ds: ds, name: "tenant_network", db: ds.db}},
@@ -640,54 +620,6 @@ func (ds *sqliteDB) getConfig(ID string) (string, error) {
 	return config, nil
 }
 
-func (ds *sqliteDB) getWorkloadDefaults(ID string) ([]payloads.RequestedResource, error) {
-	query := `SELECT resource_type, default_value, mandatory FROM workload_resources
-	     WHERE workload_id = ? ORDER BY resource_type `
-
-	db := ds.getTableDB("workload_resources")
-
-	rows, err := db.Query(query, ID)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	var defaults []payloads.RequestedResource
-
-	for rows.Next() {
-		var val int
-		var rname string
-		var mandatory bool
-
-		err = rows.Scan(&rname, &val, &mandatory)
-		if err != nil {
-			return nil, err
-		}
-		r := payloads.RequestedResource{
-			Type:      payloads.Resource(rname),
-			Value:     val,
-			Mandatory: mandatory,
-		}
-		defaults = append(defaults, r)
-	}
-
-	return defaults, nil
-}
-
-// lock must be held by caller
-func (ds *sqliteDB) createWorkloadDefault(tx *sql.Tx, workloadID string, resource payloads.RequestedResource) error {
-	_, err := tx.Exec("INSERT INTO workload_resources (workload_id, resource_type, default_value, estimated_value, mandatory) VALUES (?, ?, ?, ?, ?)", workloadID, string(resource.Type), resource.Value, resource.Value, resource.Mandatory)
-
-	return err
-}
-
-// lock must be held by caller
-func (ds *sqliteDB) deleteWorkloadDefault(tx *sql.Tx, workloadID string) error {
-	_, err := tx.Exec("DELETE FROM workload_resources WHERE workload_id = ?", workloadID)
-
-	return err
-}
-
 // lock must be held by caller
 func (ds *sqliteDB) createWorkloadStorage(tx *sql.Tx, workloadID string, storage *types.StorageResource) error {
 	_, err := tx.Exec("INSERT INTO workload_storage (workload_id, volume_id, bootable, ephemeral, size, source_type, source_id, tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", workloadID, storage.ID, storage.Bootable, storage.Ephemeral, storage.Size, string(storage.SourceType), storage.SourceID, storage.Tag)
@@ -796,7 +728,8 @@ func (ds *sqliteDB) getWorkloads() ([]types.Workload, error) {
 			 fw_type,
 			 vm_type,
 			 image_name,
-			 visibility
+			 visibility,
+			 requirements
 		  FROM workload_template`
 
 	rows, err := db.Query(query)
@@ -810,8 +743,14 @@ func (ds *sqliteDB) getWorkloads() ([]types.Workload, error) {
 
 		var VMType string
 		var visibility string
+		var requirements []byte
 
-		err = rows.Scan(&wl.ID, &wl.TenantID, &wl.Description, &wl.FWType, &VMType, &wl.ImageName, &visibility)
+		err = rows.Scan(&wl.ID, &wl.TenantID, &wl.Description, &wl.FWType, &VMType, &wl.ImageName, &visibility, &requirements)
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal(requirements, &wl.Requirements)
 		if err != nil {
 			return nil, err
 		}
@@ -823,11 +762,6 @@ func (ds *sqliteDB) getWorkloads() ([]types.Workload, error) {
 		}
 
 		wl.Config, err = ds.getConfig(wl.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		wl.Defaults, err = ds.getWorkloadDefaults(wl.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -860,15 +794,6 @@ func (ds *sqliteDB) addWorkload(w types.Workload) error {
 		return err
 	}
 
-	// add in workload resources
-	for _, d := range w.Defaults {
-		err := ds.createWorkloadDefault(tx, w.ID, d)
-		if err != nil {
-			_ = tx.Rollback()
-			return err
-		}
-	}
-
 	// add in any workload storage resources
 	for i := range w.Storage {
 		err := ds.createWorkloadStorage(tx, w.ID, &w.Storage[i])
@@ -887,7 +812,13 @@ func (ds *sqliteDB) addWorkload(w types.Workload) error {
 		return err
 	}
 
-	_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, w.Visibility)
+	requirements, err := json.Marshal(w.Requirements)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec("INSERT INTO workload_template (id, tenant_id, description, filename, fw_type, vm_type, image_name, visibility, requirements) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", w.ID, w.TenantID, w.Description, filename, w.FWType, string(w.VMType), w.ImageName, w.Visibility, string(requirements))
 	if err != nil {
 		_ = tx.Rollback()
 		return err
@@ -905,12 +836,6 @@ func (ds *sqliteDB) deleteWorkload(ID string) error {
 
 	tx, err := db.Begin()
 	if err != nil {
-		return err
-	}
-
-	err = ds.deleteWorkloadDefault(tx, ID)
-	if err != nil {
-		_ = tx.Rollback()
 		return err
 	}
 

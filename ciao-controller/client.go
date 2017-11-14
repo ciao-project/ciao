@@ -109,8 +109,10 @@ func (client *ssntpClient) releaseResources(instanceID string) error {
 		return errors.Wrapf(err, "error getting workload for instance from datastore")
 	}
 
-	resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
-	resources = append(resources, wl.Defaults...)
+	resources := []payloads.RequestedResource{
+		{Type: payloads.Instance, Value: 1},
+		{Type: payloads.MemMB, Value: wl.Requirements.MemMB},
+		{Type: payloads.VCPUs, Value: wl.Requirements.VCPUs}}
 	client.ctl.qs.Release(i.TenantID, resources...)
 	return nil
 }
@@ -584,7 +586,7 @@ func (client *ssntpClient) RestartInstance(i *types.Instance, w *types.Workload,
 		FWType:              payloads.Firmware(w.FWType),
 		VMType:              w.VMType,
 		InstancePersistence: payloads.Host,
-		Requirements:        workloadDefaultsToRequirements(w),
+		Requirements:        w.Requirements,
 		Networking: payloads.NetworkResources{
 			VnicMAC:  i.MACAddress,
 			VnicUUID: i.VnicUUID,

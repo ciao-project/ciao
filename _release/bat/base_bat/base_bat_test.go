@@ -380,7 +380,7 @@ func TestStartBadWorkload(t *testing.T) {
 		Description: "BAD Workload test",
 		VMType:      payloads.Docker,
 		ImageName:   uuid.Generate().String(),
-		Defaults: bat.DefaultResources{
+		Requirements: bat.WorkloadRequirements{
 			VCPUs: 2,
 			MemMB: 128,
 		},
