@@ -16,9 +16,25 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
+
+type volumeAttachFlags struct{
+	instance	string
+	mode		string
+	mountpoint	string
+	volume		string
+}
+
+type externalipAttachFlags struct{
+	instance	string
+	name		string
+}
+
+var volAttachFlags volumeAttachFlags
+var externalipFlags externalipAttachFlags
 
 var attachCmd = &cobra.Command{
 	Use:   "attach",
@@ -28,20 +44,47 @@ var attachCmd = &cobra.Command{
 }
 
 var attachIpCmd = &cobra.Command{
-	Use:  "external-ip [POOL] [INSTANCE UUID]",
+	Use:  "external-ip",
 	Long: `Attach an external IP from a given pool to an instance.`,
-	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Attaching ip from " + args[0] + " to " + args[1])
+		if externalipFlags.instance == "" {
+			fmt.Fprintf(os.Stderr, "Missing required --instance parameter")
+			return
+		}
+		if externalipFlags.name == "" {
+			fmt.Fprintf(os.Stderr, "Missing required --pool parameter")
+			return
+		}
+		err := C.MapExternalIP(externalipFlags.name, externalipFlags.instance)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error mapping external IP: %s\n", err)
+		}
+
+		fmt.Printf("Requested external IP for: %s\n", externalipFlags.instance)
 	},
 }
 
 var attachVolCmd = &cobra.Command{
-	Use:  "volume [UUID] [INSTANCE UUID]",
+	Use:  "volume",
 	Long: `Attach a volume to an instance.`,
-	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Attaching Volume " + args[0] + " to " + args[1])
+		if volAttachFlags.volume == "" {
+			fmt.Fprintf(os.Stderr, "Missing required --volume parameter")
+			return
+		}
+
+		if volAttachFlags.instance == "" {
+			fmt.Fprintf(os.Stderr, "Missing required --instance parameter")
+			return
+		}
+
+		err := C.AttachVolume(volAttachFlags.volume, volAttachFlags.instance, volAttachFlags.mountpoint, volAttachFlags.mode)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error attaching volume: %s\n", err)
+			return
+		}
+
+		fmt.Printf("Attached volume: %s\n", volAttachFlags.volume)
 	},
 }
 
@@ -51,6 +94,11 @@ func init() {
 
 	RootCmd.AddCommand(attachCmd)
 
-	attachVolCmd.Flags().StringP("mode", "m", "", "Access mode (default \"rw\")")
-	attachVolCmd.Flags().StringP("mountpoint", "p", "", "Mount point (default \"/mnt\")")
+	attachVolCmd.Flags().StringVar(&volAttachFlags.instance, "instance", "", "Instance UUID")
+	attachVolCmd.Flags().StringVar(&volAttachFlags.mode, "mode", "", "Access mode (default \"rw\")")
+	attachVolCmd.Flags().StringVar(&volAttachFlags.mountpoint, "mountpoint", "", "Mount point (default \"/mnt\")")
+	attachVolCmd.Flags().StringVar(&volAttachFlags.volume, "volume", "", "Volume UUID")
+
+	attachIpCmd.Flags().StringVar(&externalipFlags.instance, "instance", "", "ID of the instance to map IP to")
+	attachIpCmd.Flags().StringVar(&externalipFlags.name, "pool", "", "Name of the pool to map from")
 }
