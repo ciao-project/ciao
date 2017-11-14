@@ -32,7 +32,7 @@ type Workload struct {
 
 // we currently only use the first disk due to lack of support
 // in types.Workload for multiple storage resources.
-type workloadOptions struct {
+type WorkloadOptions struct {
 	Description     string           `yaml:"description"`
 	VMType          string           `yaml:"vm_type"`
 	FWType          string           `yaml:"fw_type,omitempty"`
