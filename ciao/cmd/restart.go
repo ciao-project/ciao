@@ -16,9 +16,36 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/pkg/errors"
 )
+
+func startStopInstance(instance string, stop bool) error {
+	if C.TenantID == "" {
+		return errors.New("Missing required -tenant-id parameter")
+	}
+
+	if instance == "" {
+		return errors.New("Missing required -instance parameter")
+	}
+
+	if stop == true {
+		err := C.StopInstance(instance)
+		if err != nil {
+			return errors.Wrap(err, "Error stopping instance")
+		}
+		fmt.Printf("Instance %s stopped\n", instance)
+	} else {
+		err := C.StartInstance(instance)
+		if err != nil {
+			return errors.Wrap(err, "Error starting instance")
+		}
+		fmt.Printf("Instance %s restarted\n", instance)
+	}
+	return nil
+}
 
 var restartCmd = &cobra.Command{
 	Use:   "restart [UUID]",
@@ -26,7 +53,11 @@ var restartCmd = &cobra.Command{
 	Long:  `Restart a Ciao instance.`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Restarting instance " + args[0])
+		instance := args[0]
+		err := startStopInstance(instance, false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to restart instance %s: %s\n", instance, err)
+		}
 	},
 }
 
