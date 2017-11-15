@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/client"
 
 	"github.com/pkg/errors"
@@ -38,7 +39,8 @@ func Show(c *client.Client, objName string, data CommandOpts) (bytes.Buffer, err
 		} else {
 			instance, err := GetInstance(c, data)
 			if err == nil {
-				c.PrettyPrint(&result, "list-instance", instance)
+				details := []api.ServerDetails{instance.Server}
+				c.PrettyPrint(&result, "list-instance", details)
 			}
 		}
 	case "image":
