@@ -16,6 +16,7 @@ package workloadbat
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -264,4 +265,187 @@ func TestCreateWorkloadWithSizedVolume(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Workload not deleted correctly")
 	}
+}
+
+func testSchedulableWorkloadRequirements(ctx context.Context, t *testing.T, requirements bat.WorkloadRequirements, schedulable bool) {
+	tenant := ""
+
+	source := getWorkloadSource(ctx, t, tenant)
+
+	disk := bat.Disk{
+		Bootable:  true,
+		Source:    &source,
+		Ephemeral: true,
+		Size:      10,
+	}
+
+	opt := bat.WorkloadOptions{
+		Description:  "BAT VM Test",
+		VMType:       "qemu",
+		FWType:       "legacy",
+		Requirements: requirements,
+		Disks:        []bat.Disk{disk},
+	}
+
+	workloadID, err := bat.CreateWorkload(ctx, tenant, opt, vmCloudInit)
+	if err != nil {
+		t.Error(err)
+	}
+
+	w, err := bat.GetWorkloadByID(ctx, tenant, workloadID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	instances, err := bat.LaunchInstances(ctx, tenant, w.ID, 1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	scheduled, err := bat.WaitForInstancesLaunch(ctx, tenant, instances, false)
+	if schedulable {
+		if err != nil {
+			t.Errorf("Instances failed to launch: %v", err)
+		}
+
+		if len(scheduled) != 1 {
+			t.Errorf("Unexpected number of instances: %d", len(scheduled))
+		}
+
+		instance, err := bat.GetInstance(ctx, tenant, scheduled[0])
+		if err != nil {
+			t.Error(err)
+		}
+
+		if requirements.NodeID != "" && instance.NodeID != requirements.NodeID {
+			t.Error("Instance not scheduled to correct node")
+		}
+
+	} else {
+		if err == nil {
+			t.Errorf("Expected instance launch to fail")
+		}
+	}
+
+	for _, i := range scheduled {
+		err = bat.DeleteInstanceAndWait(ctx, "", i)
+		if err != nil {
+			t.Errorf("Failed to delete instances: %v", err)
+		}
+	}
+
+	err = bat.DeleteWorkload(ctx, tenant, w.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Check that scheduling by requirement works if the workload
+// cannot be scheduled
+//
+// Create a workload with a node id requirement that cannot be met
+//
+// The workload should be created but an instance should not be successfully
+// created for that workload.
+func TestCreateUnschedulableNodeIDWorkload(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	requirements := bat.WorkloadRequirements{
+		VCPUs:  2,
+		MemMB:  128,
+		NodeID: "made-up-node-id",
+	}
+
+	testSchedulableWorkloadRequirements(ctx, t, requirements, false)
+}
+
+// Check that scheduling by requirement works if the workload
+// cannot be scheduled
+//
+// Create a workload with a hostname requirement that cannot be met
+//
+// The workload should be created but an instance should not be successfully
+// created for that workload.
+func TestCreateUnschedulableHostnameWorkload(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	requirements := bat.WorkloadRequirements{
+		VCPUs:    2,
+		MemMB:    128,
+		Hostname: "made-up-hostname",
+	}
+
+	testSchedulableWorkloadRequirements(ctx, t, requirements, false)
+}
+
+func getSchedulableNodeDetails(ctx context.Context) (string, string, error) {
+	nodeData := []struct {
+		NodeID   string `json:"id"`
+		Hostname string `json:"hostname"`
+	}{}
+
+	args := []string{"node", "list", "--compute", "-f", "{{ tojson . }}"}
+	err := bat.RunCIAOCLIAsAdminJS(ctx, "", args, &nodeData)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	if len(nodeData) == 0 {
+		return "", "", errors.New("No nodes available")
+	}
+
+	return nodeData[0].NodeID, nodeData[0].Hostname, nil
+}
+
+// Check that scheduling by requirement works if the workload
+// can be scheduled on a node
+//
+// Create a workload with a node id requirement that can be met
+//
+// The workload should be created and an instance should be successfully
+// created for that workload.
+func TestCreateSchedulableNodeIDWorkload(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	nodeID, _, err := getSchedulableNodeDetails(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requirements := bat.WorkloadRequirements{
+		VCPUs:  2,
+		MemMB:  128,
+		NodeID: nodeID,
+	}
+
+	testSchedulableWorkloadRequirements(ctx, t, requirements, true)
+}
+
+// Check that scheduling by requirement works if the workload
+// can be scheduled on a node
+//
+// Create a workload with a hostname requirement that can be met
+//
+// The workload should be created and an instance should be successfully
+// created for that workload.
+func TestCreateSchedulableHostnameWorkload(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	_, hs, err := getSchedulableNodeDetails(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requirements := bat.WorkloadRequirements{
+		VCPUs:    2,
+		MemMB:    128,
+		Hostname: hs,
+	}
+
+	testSchedulableWorkloadRequirements(ctx, t, requirements, true)
 }
