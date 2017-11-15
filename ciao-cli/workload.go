@@ -143,8 +143,10 @@ type disk struct {
 }
 
 type workloadRequirements struct {
-	VCPUs int `yaml:"vcpus"`
-	MemMB int `yaml:"mem_mb"`
+	VCPUs    int    `yaml:"vcpus"`
+	MemMB    int    `yaml:"mem_mb"`
+	NodeID   string `yaml:"node_id,omitempty"`
+	Hostname string `yaml:"hostname,omitempty"`
 }
 
 // we currently only use the first disk due to lack of support
@@ -235,6 +237,8 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 
 	req.Requirements.MemMB = opt.Requirements.MemMB
 	req.Requirements.VCPUs = opt.Requirements.VCPUs
+	req.Requirements.Hostname = opt.Requirements.Hostname
+	req.Requirements.NodeID = opt.Requirements.NodeID
 
 	return nil
 }
@@ -248,6 +252,8 @@ func outputWorkload(w types.Workload) {
 	opt.ImageName = w.ImageName
 	opt.Requirements.MemMB = w.Requirements.MemMB
 	opt.Requirements.VCPUs = w.Requirements.VCPUs
+	opt.Requirements.Hostname = w.Requirements.Hostname
+	opt.Requirements.NodeID = w.Requirements.NodeID
 
 	for _, s := range w.Storage {
 		d := disk{
