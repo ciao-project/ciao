@@ -320,7 +320,11 @@ func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
 
 	toolPath := InGoPath(path.Join("/bin", config.Tool))
 
-	systemToolPath := path.Join("/usr/local/bin/", config.Tool)
+	installDir := "/usr/local/bin"
+	systemToolPath := path.Join(installDir, config.Tool)
+	if err := SudoMakeDirectory(ctx, installDir); err != nil {
+		return errors.Wrapf(err, "Error creating %s", installDir)
+	}
 	if err := SudoCopyFile(ctx, systemToolPath, toolPath); err != nil {
 		return errors.Wrap(err, "Error copying tool to destination")
 	}
@@ -680,6 +684,9 @@ func installLocalLauncher(ctx context.Context, launcherCertPath string, caCertPa
 		},
 		Roles: []string{
 			"agent", "net-agent",
+		},
+		Deps: []string{
+			"docker.service",
 		},
 	})
 	return errors.Wrap(err, "Error installing launcher")

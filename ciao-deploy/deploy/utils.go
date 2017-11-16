@@ -302,6 +302,11 @@ func SSHRunCommand(ctx context.Context, user string, host string, command string
 
 // SSHCreateFile creates a file on a remote machine
 func SSHCreateFile(ctx context.Context, user string, host string, dest string, f io.Reader) error {
+	err := SSHRunCommand(ctx, user, host, fmt.Sprintf("sudo mkdir -p %s", filepath.Dir(dest)))
+	if err != nil {
+		return errors.Wrapf(err, "Error creating %s", filepath.Dir(dest))
+	}
+
 	client, err := sshClient(ctx, user, host)
 	if err != nil {
 		return errors.Wrap(err, "Error creating client")
