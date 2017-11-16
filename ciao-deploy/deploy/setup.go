@@ -58,6 +58,7 @@ type unitFileConf struct {
 	CertPath   string
 	Caps       []string
 	Roles      []string
+	Deps       []string
 }
 
 var ciaoLockDir = "/tmp/lock/ciao"
@@ -219,6 +220,7 @@ func createSchedulerCerts(ctx context.Context, force bool, serverIP string) (str
 var systemdServiceData = `[Unit]
 Description={{.Tool}} service
 Wants={{.Tool}}-prepare.service
+{{range .Deps}}Wants={{.}}{{println}}{{end}}
 After={{.Tool}}-prepare.service
 
 [Service]
