@@ -466,9 +466,16 @@ func createCiaoDirectory(ctx context.Context, path string) error {
 	return nil
 }
 
-func createUserAndDirs(ctx context.Context) (f func(), err error) {
-	cmd := exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser, "-G",
-		"docker,kvm", "-d", ciaoDataDir, "-s", "/bin/false")
+func createUserAndDirs(ctx context.Context, localLauncher bool) (f func(), err error) {
+	var cmd *exec.Cmd
+
+	if localLauncher {
+		cmd = exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser, "-G",
+			"docker,kvm", "-d", ciaoDataDir, "-s", "/bin/false")
+	} else {
+		cmd = exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser,
+			"-d", ciaoDataDir, "-s", "/bin/false")
+	}
 	if err := cmd.Run(); err != nil {
 		status := 0
 		if err, ok := err.(*exec.ExitError); ok {
@@ -481,9 +488,11 @@ func createUserAndDirs(ctx context.Context) (f func(), err error) {
 			return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
 		}
 
-		cmd := exec.CommandContext(ctx, "sudo", "usermod", "-a", "-G", "docker,kvm", ciaoUser)
-		if err := cmd.Run(); err != nil {
-			return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
+		if localLauncher {
+			cmd := exec.CommandContext(ctx, "sudo", "usermod", "-a", "-G", "docker,kvm", ciaoUser)
+			if err := cmd.Run(); err != nil {
+				return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
+			}
 		}
 	}
 
@@ -646,8 +655,9 @@ func setupControlPlane(ctx context.Context, imageCacheDir string, certs certPath
 }
 
 // SetupMaster configures this machine to be a master node of the cluster
-func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration) (errOut error) {
-	cleanupUsers, err := createUserAndDirs(ctx)
+func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration,
+	localLauncher bool) (errOut error) {
+	cleanupUsers, err := createUserAndDirs(ctx, localLauncher)
 	if err != nil {
 		return
 	}
