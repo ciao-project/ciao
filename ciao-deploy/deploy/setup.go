@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"syscall"
 	"text/template"
 
 	yaml "gopkg.in/yaml.v2"
@@ -60,6 +61,8 @@ type unitFileConf struct {
 	Roles      []string
 	Deps       []string
 }
+
+const userAlreadyExistsStatus = 9
 
 var ciaoLockDir = "/tmp/lock/ciao"
 var ciaoDataDir = "/var/lib/ciao"
@@ -467,7 +470,21 @@ func createUserAndDirs(ctx context.Context) (f func(), err error) {
 	cmd := exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser, "-G",
 		"docker,kvm", "-d", ciaoDataDir, "-s", "/bin/false")
 	if err := cmd.Run(); err != nil {
-		return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
+		status := 0
+		if err, ok := err.(*exec.ExitError); ok {
+			if ws, ok := err.Sys().(syscall.WaitStatus); ok {
+				status = ws.ExitStatus()
+			}
+		}
+
+		if status != userAlreadyExistsStatus {
+			return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
+		}
+
+		cmd := exec.CommandContext(ctx, "sudo", "usermod", "-a", "-G", "docker,kvm", ciaoUser)
+		if err := cmd.Run(); err != nil {
+			return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
+		}
 	}
 
 	dirs := []string{ciaoDataDir, ciaoLockDir, ciaoLocalRolesDir, ciaoLogsDir}

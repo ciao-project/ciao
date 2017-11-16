@@ -300,6 +300,23 @@ func SSHRunCommand(ctx context.Context, user string, host string, command string
 	return nil
 }
 
+// SSHRunCommandWithStatus is a convenience function to run a command on a given host.
+// This assumes the key is already in the keyring for the provided user. On success,
+// the function returns nil, 0.  On failure, the function returns an error and if
+// the cause of the error was due to an exit error on the remote node, and an integer
+// containing the exit code.  If the code is -1, the exit code was not available.
+func SSHRunCommandWithStatus(ctx context.Context, user string, host string, command string) (error, int) {
+	status := -1
+	err := SSHRunCommand(ctx, user, host, command)
+	if err == nil {
+		return nil, 0
+	}
+	if err, ok := errors.Cause(err).(*ssh.ExitError); ok {
+		status = err.ExitStatus()
+	}
+	return err, status
+}
+
 // SSHCreateFile creates a file on a remote machine
 func SSHCreateFile(ctx context.Context, user string, host string, dest string, f io.Reader) error {
 	err := SSHRunCommand(ctx, user, host, fmt.Sprintf("sudo mkdir -p %s", filepath.Dir(dest)))

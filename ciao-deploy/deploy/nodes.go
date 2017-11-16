@@ -196,10 +196,18 @@ func createRemoteCiaoDirectory(ctx context.Context, hostname, sshUser, path stri
 }
 
 func setupNode(ctx context.Context, anchorCertPath string, caCertPath string, hostname string, sshUser string, networkNode bool) (errOut error) {
-	err := SSHRunCommand(ctx, sshUser, hostname,
+	err, status := SSHRunCommandWithStatus(ctx, sshUser, hostname,
 		fmt.Sprintf("sudo useradd -r %s -G docker,kvm -d %s -s /bin/false", ciaoUser, ciaoDataDir))
 	if err != nil {
-		return errors.Wrapf(err, "Error creating %s user", ciaoUser)
+		if status != userAlreadyExistsStatus {
+			return errors.Wrapf(err, "Error creating %s user", ciaoUser)
+		}
+
+		err := SSHRunCommand(ctx, sshUser, hostname,
+			fmt.Sprintf("sudo usermod -a -G docker,kvm %s", ciaoUser))
+		if err != nil {
+			return errors.Wrapf(err, "Error setting groups for user %s", ciaoUser)
+		}
 	}
 
 	err = createRemoteCiaoDirectory(ctx, hostname, sshUser, ciaoDataDir)
