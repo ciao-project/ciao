@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -56,6 +57,23 @@ type controller struct {
 	httpServers         []*http.Server
 }
 
+type cnciNetFlag string
+
+func (c *cnciNetFlag) String() string {
+	return string(*c)
+}
+
+func (c *cnciNetFlag) Set(val string) error {
+	IP := net.ParseIP(val)
+	if IP == nil {
+		return fmt.Errorf("Unable to parse CNCI network address")
+	}
+
+	*c = cnciNetFlag(IP.String())
+
+	return nil
+}
+
 var cert = flag.String("cert", "", "Client certificate")
 var caCert = flag.String("cacert", "", "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
@@ -72,6 +90,10 @@ var clientCertCAPath = "/etc/pki/ciao/auth-CA.pem"
 var cephID = flag.String("ceph_id", "", "ceph client id")
 
 var adminSSHKey = ""
+
+// this default allows us to have up to 32K hosts within the upper part
+// of the 192.168.0.0/16 private address space.
+var cnciNet cnciNetFlag = "192.168.128.0"
 
 func init() {
 	flag.Parse()
@@ -193,6 +215,14 @@ func main() {
 
 	if clusterConfig.Configure.Controller.ClientAuthCACertPath != "" {
 		clientCertCAPath = clusterConfig.Configure.Controller.ClientAuthCACertPath
+	}
+
+	if clusterConfig.Configure.Controller.CNCINet != "" {
+		err = cnciNet.Set(clusterConfig.Configure.Controller.CNCINet)
+		if err != nil {
+			glog.Fatalf("Invalid CNCI Net cluster configuration: %v", err)
+			return
+		}
 	}
 
 	ctl.ds.GenerateCNCIWorkload(cnciVCPUs, cnciMem, cnciDisk, adminSSHKey)

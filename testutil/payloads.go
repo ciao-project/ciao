@@ -60,6 +60,9 @@ const ComputeNet = "192.168.1.110"
 // MgmtNet is a test management network
 const MgmtNet = "192.168.1.111"
 
+// CNCINet is a test CNCI network
+const CNCINet = "10.10.0.0"
+
 // ManagementID is a test identifier for a Ceph ID
 const ManagementID = "ciao"
 
@@ -312,6 +315,7 @@ const ConfigureYaml = `configure:
     cnci_disk: 0
     admin_ssh_key: ""
     client_auth_ca_cert_path: ""
+    cnci_net: 10.10.0.0
   launcher:
     compute_net:
     - ` + ComputeNet + `
