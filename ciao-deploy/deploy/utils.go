@@ -47,6 +47,32 @@ func DefaultImageCacheDir() string {
 	return path.Join(u.HomeDir, ".cache", "ciao", "images")
 }
 
+// CleanupImages will remove all images from the cache directory that
+// match a specific pattern. Images that match this pattern but should
+// be preserved can be specified in the "keep" slice.
+func CleanupImages(pattern string, keep []string, imageCacheDir string) error {
+	imagePath := fmt.Sprintf("%s/%s", imageCacheDir, pattern)
+
+	matches, err := filepath.Glob(imagePath)
+	if err != nil {
+		return errors.Wrap(err, "Unable to clean old images")
+	}
+
+	keepMap := make(map[string]bool)
+	for _, k := range keep {
+		keepMap[k] = true
+	}
+
+	for _, m := range matches {
+		if keepMap[m] {
+			continue
+		}
+
+		os.Remove(m)
+	}
+	return nil
+}
+
 // DownloadImage checks for a cached image in the cache directory and downloads
 // otherwise. The returned string is the path to the file and the boolean
 // indicates if it was downloaded on this function call.
