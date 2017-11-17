@@ -45,6 +45,7 @@ func TestReadyMarshal(t *testing.T) {
 			{NodeIP: "192.168.1.1", NodeMAC: "02:00:15:03:6f:49"},
 			{NodeIP: "10.168.1.1", NodeMAC: "02:00:8c:ba:f9:45"},
 		},
+		NodeHostName: "host1",
 	}
 
 	y, err := yaml.Marshal(&cmd)

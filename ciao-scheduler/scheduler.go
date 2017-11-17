@@ -99,6 +99,7 @@ type nodeStat struct {
 	cpus        int
 	isNetNode   bool
 	networks    []payloads.NetworkStat
+	hostname    string
 }
 
 type controllerStatus uint8
@@ -432,6 +433,7 @@ func (sched *ssntpSchedulerServer) updateNodeStat(node *nodeStat, status ssntp.S
 		node.load = stats.Load
 		node.cpus = stats.CpusOnline
 		node.networks = stats.Networks
+		node.hostname = stats.NodeHostName
 
 		//any changes to the payloads.Ready struct should be
 		//accompanied by a change here
@@ -499,6 +501,16 @@ func (sched *ssntpSchedulerServer) workloadFits(node *nodeStat, workload *workRe
 		node.diskAvailMB >= workload.diskReqMB &&
 		node.status == ssntp.READY &&
 		node.isNetNode == workload.requirements.NetworkNode {
+
+		if workload.requirements.Hostname != "" &&
+			workload.requirements.Hostname != node.hostname {
+			return false
+		}
+
+		if workload.requirements.NodeID != "" &&
+			workload.requirements.NodeID != node.uuid {
+			return false
+		}
 
 		return true
 	}

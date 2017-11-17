@@ -54,13 +54,7 @@ type userData struct {
 }
 
 func isCNCIWorkload(workload *types.Workload) bool {
-	for r := range workload.Defaults {
-		if workload.Defaults[r].Type == payloads.NetworkNode {
-			return true
-		}
-	}
-
-	return false
+	return workload.Requirements.NetworkNode
 }
 
 func newInstance(ctl *controller, tenantID string, workload *types.Workload,
@@ -153,8 +147,11 @@ func (i *instance) Clean() error {
 	if err != nil {
 		return errors.Wrap(err, "error getting workload from datastore")
 	}
-	resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
-	resources = append(resources, wl.Defaults...)
+
+	resources := []payloads.RequestedResource{
+		{Type: payloads.Instance, Value: 1},
+		{Type: payloads.MemMB, Value: wl.Requirements.MemMB},
+		{Type: payloads.VCPUs, Value: wl.Requirements.VCPUs}}
 	i.ctl.qs.Release(i.TenantID, resources...)
 
 	err = i.ctl.deleteEphemeralStorage(i.ID)
@@ -178,8 +175,10 @@ func (i *instance) Allowed() (bool, error) {
 		return true, errors.Wrap(err, "error getting workload from datastore")
 	}
 
-	resources := []payloads.RequestedResource{{Type: payloads.Instance, Value: 1}}
-	resources = append(resources, wl.Defaults...)
+	resources := []payloads.RequestedResource{
+		{Type: payloads.Instance, Value: 1},
+		{Type: payloads.MemMB, Value: wl.Requirements.MemMB},
+		{Type: payloads.VCPUs, Value: wl.Requirements.VCPUs}}
 	res := <-i.ctl.qs.Consume(i.TenantID, resources...)
 
 	// Cleanup on disallowed happens in Clean()
@@ -390,29 +389,6 @@ func storageConfig(ctl *controller, tenant *types.Tenant, instanceID string, vol
 	return storage, nil
 }
 
-func workloadDefaultsToRequirements(wl *types.Workload) payloads.WorkloadRequirements {
-	requirements := payloads.WorkloadRequirements{}
-
-	for _, rr := range wl.Defaults {
-		if rr.Type == payloads.MemMB {
-			requirements.MemMB = rr.Value
-			continue
-		}
-
-		if rr.Type == payloads.VCPUs {
-			requirements.VCPUs = rr.Value
-			continue
-		}
-
-		if rr.Type == payloads.NetworkNode {
-			requirements.NetworkNode = true
-			continue
-		}
-	}
-
-	return requirements
-}
-
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
 	volumes []storage.BlockDevice, name string, IPaddr net.IP) (config, error) {
 	var metaData userData
@@ -468,7 +444,7 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 		InstancePersistence: payloads.Host,
 		Networking:          networking,
 		Storage:             storage,
-		Requirements:        workloadDefaultsToRequirements(wl),
+		Requirements:        wl.Requirements,
 	}
 
 	if wl.VMType == payloads.Docker {

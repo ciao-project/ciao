@@ -19,7 +19,7 @@ package main
 const workloadTemplate = `description: "{{.Description}}"
 vm_type: qemu
 fw_type: legacy
-defaults:
+requirements:
     vcpus: {{.VCPUs}}
     mem_mb: {{.RAMMiB}}
 cloud_init: "{{.UserDataFile}}"

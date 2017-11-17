@@ -92,7 +92,7 @@ var images = []workloadDetails{
 			Description: "Fedora test VM",
 			VMType:      "qemu",
 			FWType:      "legacy",
-			Defaults: bat.DefaultResources{
+			Requirements: bat.WorkloadRequirements{
 				VCPUs: 2,
 				MemMB: 128,
 			},
@@ -107,7 +107,7 @@ var images = []workloadDetails{
 			Description: "Ubuntu test VM",
 			VMType:      "qemu",
 			FWType:      "legacy",
-			Defaults: bat.DefaultResources{
+			Requirements: bat.WorkloadRequirements{
 				VCPUs: 2,
 				MemMB: 256,
 			},
@@ -121,7 +121,7 @@ var images = []workloadDetails{
 				Description: "Clear Linux test VM",
 				VMType:      "qemu",
 				FWType:      "efi",
-				Defaults: bat.DefaultResources{
+				Requirements: bat.WorkloadRequirements{
 					VCPUs: 2,
 					MemMB: 128,
 				},
@@ -134,7 +134,7 @@ var images = []workloadDetails{
 			Description: "Debian latest test container",
 			VMType:      "docker",
 			ImageName:   "debian:latest",
-			Defaults: bat.DefaultResources{
+			Requirements: bat.WorkloadRequirements{
 				VCPUs: 2,
 				MemMB: 128,
 			},
@@ -146,7 +146,7 @@ var images = []workloadDetails{
 			Description: "Ubuntu latest test container",
 			VMType:      "docker",
 			ImageName:   "ubuntu:latest",
-			Defaults: bat.DefaultResources{
+			Requirements: bat.WorkloadRequirements{
 				VCPUs: 2,
 				MemMB: 128,
 			},

@@ -49,6 +49,9 @@ type Ready struct {
 	// CN/NN
 	Networks []NetworkStat
 
+	// Hostname of the CN/NN
+	NodeHostName string `yaml:"hostname"`
+
 	// Any changes to this struct should be accompanied by a change to
 	// the ciao-scheduler/scheduler.go:updateNodeStat() function
 }

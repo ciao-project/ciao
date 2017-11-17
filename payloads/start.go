@@ -193,6 +193,12 @@ type WorkloadRequirements struct {
 	// VCPUs specifies the required number of CPUs for the workload
 	VCPUs int `yaml:"vcpus"`
 
+	// NodeID specifies the node that the instance must be scheduled on
+	NodeID string `yaml:"node_id,omitempty"`
+
+	// Hostname specifies the node that the instance must be scheduled on
+	Hostname string `yaml:"hostname,omitempty"`
+
 	// NetworkNode specifies that this workload must be scheduled on a network node
 	NetworkNode bool `yaml:"network_node,omitempty"`
 }
