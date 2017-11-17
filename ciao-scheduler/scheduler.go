@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"runtime/pprof"
 	"sync"
 	"syscall"
@@ -1153,6 +1154,13 @@ func configSchedulerServer() (sched *ssntpSchedulerServer) {
 }
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Errorf("%s", debug.Stack())
+			glog.Flush()
+		}
+	}()
+
 	flag.Parse()
 
 	if err := initLogger(); err != nil {

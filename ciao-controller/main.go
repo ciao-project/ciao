@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync"
 	"syscall"
 
@@ -118,6 +119,13 @@ func getNameFromCert(httpsCAcert, httpsKey string) (string, error) {
 }
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Errorf("%s", debug.Stack())
+			glog.Flush()
+		}
+	}()
+
 	var wg sync.WaitGroup
 	var err error
 
