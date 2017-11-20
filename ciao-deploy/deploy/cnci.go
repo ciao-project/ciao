@@ -18,8 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -30,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+var cnciURL = "https://download.clearlinux.org/demos/ciao/clear-8260-ciao-networking.img.xz"
 var cnciImageID = "4e16e743-265a-4bf2-9fd1-57ada0b28904"
 
 func mountImage(ctx context.Context, fp string, mntDir string) (string, error) {
@@ -82,27 +81,6 @@ func unMountImage(ctx context.Context, devPath string, mntDir string) error {
 	return errOut
 }
 
-func getProxy(env string) (string, error) {
-	proxy := os.Getenv(strings.ToLower(env))
-	if proxy == "" {
-		proxy = os.Getenv(strings.ToUpper(env))
-	}
-
-	if proxy == "" {
-		return "", nil
-	}
-
-	if proxy[len(proxy)-1] == '/' {
-		proxy = proxy[:len(proxy)-1]
-	}
-
-	proxyURL, err := url.Parse(proxy)
-	if err != nil {
-		return "", fmt.Errorf("Failed to parse %s : %v", proxy, err)
-	}
-	return proxyURL.String(), nil
-}
-
 func copyFiles(ctx context.Context, mntDir string, agentCertPath string, caCertPath string) error {
 	p := path.Join(mntDir, "/var/lib/ciao")
 	err := SudoMakeDirectory(ctx, p)
@@ -140,33 +118,7 @@ func copyFiles(ctx context.Context, mntDir string, agentCertPath string, caCertP
 		return errors.Wrap(err, "Error making systemd default directory")
 	}
 
-	p = path.Join(mntDir, "/etc")
-	err = SudoCopyFile(ctx, p, "/etc/resolv.conf")
-	if err != nil {
-		return errors.Wrap(err, "Error copying temporary resolv.conf")
-	}
-
-	httpProxy, err := getProxy("https_proxy")
-	if err != nil {
-		return errors.Wrap(err, "Error obtaining proxy info")
-	}
-
-	proxyEnv := fmt.Sprintf("https_proxy=%s", httpProxy)
-
-	cmd := SudoCommandContext(ctx, proxyEnv, "chroot", mntDir, "swupd", "bundle-add", "dhcp-server")
-	err = cmd.Run()
-	if err != nil {
-		return errors.Wrap(err, "Error adding clear bundle")
-	}
-
-	p = path.Join(mntDir, "/etc/resolv.conf")
-
-	err = SudoRemoveFile(ctx, p)
-	if err != nil {
-		return errors.Wrap(err, "Error removing temporary resolv.conf")
-	}
-
-	cmd = SudoCommandContext(ctx, "chroot", mntDir, "systemctl", "enable", "ciao-cnci-agent.service")
+	cmd := SudoCommandContext(ctx, "chroot", mntDir, "systemctl", "enable", "ciao-cnci-agent.service")
 	err = cmd.Run()
 	if err != nil {
 		return errors.Wrap(err, "Error enabling cnci agent on startup")
@@ -189,22 +141,12 @@ func prepareImage(ctx context.Context, baseImage string, agentCertPath string, c
 	if err != nil {
 		return "", errors.Wrap(err, "Error uncompressing cnci image")
 	}
-	defer func(tempImage string) {
-		_ = os.Remove(tempImage)
-	}(preparedImagePath)
-
-	rawImagePath := fmt.Sprintf("%s.%s", preparedImagePath, "raw")
-	cmd = SudoCommandContext(ctx, "qemu-img", "convert", "-f", "qcow2", "-O", "raw", preparedImagePath, rawImagePath)
-	err = cmd.Run()
-	if err != nil {
-		return "", errors.Wrap(err, "Error converting cnci image")
-	}
 	defer func() {
 		if errOut != nil {
-			_ = os.Remove(rawImagePath)
+			fmt.Printf("Removing %s\n", preparedImagePath)
+			_ = os.Remove(preparedImagePath)
 		}
 	}()
-	preparedImagePath = rawImagePath
 
 	mntDir, err := ioutil.TempDir("", "cnci-mount")
 	if err != nil {
@@ -241,33 +183,6 @@ func prepareImage(ctx context.Context, baseImage string, agentCertPath string, c
 	return preparedImagePath, nil
 }
 
-func getCNCIURL(ctx context.Context) (string, error) {
-	req, err := http.NewRequest(http.MethodGet, "https://download.clearlinux.org/latest", nil)
-	if err != nil {
-		return "", errors.Wrap(err, "Error downloading clear version info")
-	}
-	req = req.WithContext(ctx)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "Error making HTTP request")
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Unexpected status when downloading clear version info: %s", resp.Status)
-	}
-
-	versionBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "Error reading clear version info")
-	}
-	version := strings.TrimSpace(string(versionBytes))
-
-	cnciURL := fmt.Sprintf("https://download.clearlinux.org/image/clear-%s-cloud.img.xz", version)
-	return cnciURL, nil
-}
-
 // CreateCNCIImage creates a customised CNCI image in the system
 func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath string, imageCacheDir string) (errOut error) {
 	agentCertPath, err := GenerateCert(anchorCertPath, ssntp.CNCIAGENT)
@@ -276,12 +191,7 @@ func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath stri
 	}
 	defer func() { _ = os.Remove(agentCertPath) }()
 
-	baseURL, err := getCNCIURL(ctx)
-	if err != nil {
-		return err
-	}
-
-	baseImagePath, downloaded, err := DownloadImage(ctx, baseURL, imageCacheDir)
+	baseImagePath, downloaded, err := DownloadImage(ctx, cnciURL, imageCacheDir)
 	if err != nil {
 		return errors.Wrap(err, "Error downloading image")
 	}
@@ -312,14 +222,6 @@ func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath stri
 	}
 
 	fmt.Printf("CNCI image uploaded as %s\n", i.ID)
-
-	// clean up any old images
-	pattern := "clear-*-cloud.img.xz"
-	keep := []string{baseImagePath}
-	err = CleanupImages(pattern, keep, imageCacheDir)
-	if err != nil {
-		fmt.Printf("Error cleaning old images: %v", err)
-	}
 
 	return nil
 }
