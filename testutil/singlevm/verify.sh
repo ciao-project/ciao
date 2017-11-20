@@ -18,9 +18,21 @@ function exitOnError {
 
 #Checks that no network artifacts are left behind
 function checkForNetworkArtifacts() {
+	local retry=0
 
 	#Verify that there are no ciao related artifacts left behind
-	ciao_networks=`sudo docker network ls --filter driver=ciao -q | wc -l`
+	until [ $retry -ge 6 ]
+	do
+		ciao_networks=`sudo docker network ls --filter driver=ciao -q | wc -l`
+
+		if [ $ciao_networks -eq 0 ]
+		then
+			break
+		fi
+
+		let retry=retry+1
+		sleep 5
+	done
 
 	if [ $ciao_networks -ne 0 ]
 	then
@@ -29,11 +41,23 @@ function checkForNetworkArtifacts() {
 		exit 1
 	fi
 
+	let retry=0
 
 	#The only ciao interfaces left behind should be CNCI VNICs
 	#Once we can delete tenants we should not even have them around
-	cnci_vnics=`ip -d link | grep alias | grep cnci | wc -l`
-	ciao_vnics=`ip -d link | grep alias | wc -l`
+	until [ $retry -ge 6 ]
+	do
+		cnci_vnics=`ip -d link | grep alias | grep cnci | wc -l`
+		ciao_vnics=`ip -d link | grep alias | wc -l`
+
+		if [ $cnci_vnics -eq $ciao_vnics ]
+		then
+			break
+		fi
+
+		let retry=retry+1
+		sleep 5
+	done
 
 	if [ $cnci_vnics -ne $ciao_vnics ]
 	then
@@ -65,7 +89,7 @@ function rebootCNCI {
 function checkExtIPConnectivity {
     #We checked the event before calling this, so the mapping should exist
     testip=`"$ciao_gobin"/ciao-cli external-ip list -f '{{with index . 0}}{{.ExternalIP}}{{end}}'`
-    test_instance=`"$ciao_gobin"/ciao-cli instance list -f '{{with index . 0}}{{.ID}}{{end}}'`
+    test_instance=$1
 
     sudo ip route add 203.0.113.0/24 dev ciaovlan
     ping -w 90 -c 3 $testip
@@ -259,7 +283,7 @@ retry=0
 until [ $retry -ge 6 ]
 do
 	ssh_ip=""
-	ssh_ip=$("$ciao_gobin"/ciao-cli instance list --workload=$vm_wlid -f='{{if gt (len .) 0}}{{(index . 0).SSHIP}}{{end}}')
+	read -r ssh_ip ssh_port <<<$("$ciao_gobin"/ciao-cli instance list --workload=$vm_wlid -f='{{if gt (len .) 0}}{{with (index . 0)}}{{println .SSHIP}}{{println .SSHPort}}{{end}}{{end}}')
 
 	if [ "$ssh_ip" == "" ] 
 	then
@@ -269,9 +293,9 @@ do
 		continue
 	fi
 
-	ssh_check=$(head -1 < /dev/tcp/"$ssh_ip"/33002)
+	ssh_check=$(head -1 < /dev/tcp/"$ssh_ip"/"$ssh_port")
 
-	echo "Attempting to ssh to: $ssh_ip"
+	echo "Attempting to ssh to: $ssh_ip:$ssh_port"
 
 	if [[ "$ssh_check" == *SSH-2.0-OpenSSH* ]]
 	then
@@ -305,7 +329,7 @@ clearAllEvents
 #We have already checked that the VM is up.
 createExternalIPPool
 
-testinstance=`"$ciao_gobin"/ciao-cli instance list -f '{{with index . 0}}{{.ID}}{{end}}'`
+testinstance=`"$ciao_gobin"/ciao-cli instance list --workload=$vm_wlid -f '{{with index . 0}}{{.ID}}{{end}}'`
 "$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
 
 #Wait for the CNCI to report successful map
@@ -314,12 +338,12 @@ checkEventStatus $event_counter "Mapped"
 "$ciao_gobin"/ciao-cli event list
 "$ciao_gobin"/ciao-cli external-ip list
 
-checkExtIPConnectivity
+checkExtIPConnectivity $testinstance
 
 #Check that the CNCI retains state after reboot
 #If state has been restored, the Ext IP should be reachable
 rebootCNCI
-checkExtIPConnectivity
+checkExtIPConnectivity $testinstance
 
 "$ciao_gobin"/ciao-cli external-ip unmap -address $testip
 
@@ -358,6 +382,7 @@ checkEventStatus $event_counter "Unmapped"
 #Cleanup pools
 deleteExternalIPPool
 
+to_delete=`"$ciao_gobin"/ciao-cli instance list -f '{{len .}}'`
 #Now delete all instances
 "$ciao_gobin"/ciao-cli instance delete --all
 exitOnError $?  "Unable to delete instances"
@@ -365,7 +390,7 @@ exitOnError $?  "Unable to delete instances"
 "$ciao_gobin"/ciao-cli instance list
 
 #Wait for all the instance deletions to be reported back
-event_counter=$((event_counter+4))
+event_counter=$((event_counter+$to_delete))
 checkEventStatus $event_counter "Deleted"
 
 #Verify that there are no ciao related artifacts left behind
