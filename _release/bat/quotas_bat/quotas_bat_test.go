@@ -214,9 +214,11 @@ func launchMultipleInstances(ctx context.Context, t *testing.T, tenantID string,
 
 		scheduled, err := bat.WaitForInstancesLaunch(ctx, "", instances, false)
 		defer func() {
-			_, err := bat.DeleteInstances(ctx, "", scheduled)
-			if err != nil {
-				t.Errorf("Failed to delete instances: %v", err)
+			for _, s := range scheduled {
+				err := bat.DeleteInstanceAndWait(ctx, "", s)
+				if err != nil {
+					t.Errorf("Failed to delete instances: %v", err)
+				}
 			}
 		}()
 		if err != nil {
