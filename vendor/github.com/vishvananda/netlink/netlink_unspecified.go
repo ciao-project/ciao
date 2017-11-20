@@ -2,14 +2,7 @@
 
 package netlink
 
-import (
-	"errors"
-	"net"
-)
-
-var (
-	ErrNotImplemented = errors.New("not implemented")
-)
+import "net"
 
 func LinkSetUp(link Link) error {
 	return ErrNotImplemented
@@ -23,7 +16,7 @@ func LinkSetMTU(link Link, mtu int) error {
 	return ErrNotImplemented
 }
 
-func LinkSetMaster(link Link, master *Link) error {
+func LinkSetMaster(link Link, master *Bridge) error {
 	return ErrNotImplemented
 }
 
@@ -71,6 +64,14 @@ func LinkSetXdpFd(link Link, fd int) error {
 	return ErrNotImplemented
 }
 
+func LinkSetARPOff(link Link) error {
+	return ErrNotImplemented
+}
+
+func LinkSetARPOn(link Link) error {
+	return ErrNotImplemented
+}
+
 func LinkByName(name string) (Link, error) {
 	return nil, ErrNotImplemented
 }
@@ -104,6 +105,10 @@ func LinkSetRootBlock(link Link, mode bool) error {
 }
 
 func LinkSetFlood(link Link, mode bool) error {
+	return ErrNotImplemented
+}
+
+func LinkSetTxQLen(link Link, qlen int) error {
 	return ErrNotImplemented
 }
 
@@ -163,7 +168,7 @@ func RouteDel(route *Route) error {
 	return ErrNotImplemented
 }
 
-func RouteList(link *Link, family int) ([]Route, error) {
+func RouteList(link Link, family int) ([]Route, error) {
 	return nil, ErrNotImplemented
 }
 
@@ -212,5 +217,9 @@ func NeighList(linkIndex, family int) ([]Neigh, error) {
 }
 
 func NeighDeserialize(m []byte) (*Neigh, error) {
+	return nil, ErrNotImplemented
+}
+
+func SocketGet(local, remote net.Addr) (*Socket, error) {
 	return nil, ErrNotImplemented
 }
