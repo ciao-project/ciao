@@ -184,8 +184,7 @@ func processCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- interface{}) 
 			wg.Add(1)
 			go func(i ovsInstance) {
 				i.cmdCh <- &insDeleteCmd{
-					stop:    true,
-					running: i.running,
+					stop: true,
 				}
 				errCh := make(chan error)
 				ovsCh <- &ovsRemoveCmd{i.instance, errCh}
@@ -236,7 +235,6 @@ func processInstanceCommand(conn serverConn, cmd *cmdWrapper, ovsCh chan<- inter
 			return
 		}
 		delCmd = insCmd
-		delCmd.running = insState.running
 	default:
 		target = insCmdChannel(cmd.instance, ovsCh)
 	}

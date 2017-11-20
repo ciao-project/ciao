@@ -41,7 +41,7 @@ func deleteVnic(instanceDir string, conn serverConn) {
 	}
 }
 
-func processDelete(vm virtualizer, instanceDir string, conn serverConn, running ovsRunningState) error {
+func processDelete(vm virtualizer, instanceDir string, conn serverConn, creating bool) error {
 
 	// We have to ignore these errors for the time being.  There's no way to distinguish
 	// between the various sort of errors that docker can return.  We could be getting
@@ -50,7 +50,7 @@ func processDelete(vm virtualizer, instanceDir string, conn serverConn, running 
 
 	_ = vm.deleteImage()
 
-	if networking && running != ovsPending {
+	if networking && !creating {
 		glog.Info("Deleting Vnic")
 		deleteVnic(instanceDir, conn)
 	}

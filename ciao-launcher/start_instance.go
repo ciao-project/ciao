@@ -115,6 +115,9 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	err = createInstance(vm, instanceDir, cfg, bridge, gatewayIP, cmd.userData,
 		cmd.metaData)
 	if err != nil {
+		if vnicCfg != nil {
+			destroyVnic(conn, vnicCfg)
+		}
 		return nil, &startError{err, payloads.ImageFailure, cmd.cfg.Restart}
 	}
 
@@ -122,6 +125,9 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 
 	err = vm.startVM(vnicName, getNodeIPAddress(), cephID)
 	if err != nil {
+		if vnicCfg != nil {
+			destroyVnic(conn, vnicCfg)
+		}
 		return nil, &startError{err, payloads.LaunchFailure, cmd.cfg.Restart}
 	}
 

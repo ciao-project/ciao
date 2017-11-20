@@ -43,7 +43,11 @@ func createDockerVnic(vnicCfg *libsnnet.VnicConfig) (*libsnnet.Vnic, *libsnnet.S
 	// of launcher.  Should the network really fail to be created
 	// the container will not launch.
 
-	_ = createDockerNetwork(context.Background(), info)
+	err = createDockerNetwork(context.Background(), info)
+	if err != nil {
+		glog.Infof("Failed to create docker network %s.  May already exist? : %v",
+			info.Bridge, err)
+	}
 	return vnic, event, info, nil
 }
 

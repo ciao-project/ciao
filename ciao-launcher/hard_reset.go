@@ -167,4 +167,13 @@ func purgeLauncherState() {
 	if err = os.RemoveAll(dataDir); err != nil {
 		glog.Warningf("Unable to delete data dir %s: %v", dataDir, err)
 	}
+
+	if err = os.RemoveAll(instancesDir); err != nil {
+		glog.Warningf("Unable to delete instances dir %s: %v", instancesDir, err)
+	}
+
+	lockPath := path.Join(lockDir, lockFile)
+	if err = os.RemoveAll(lockPath); err != nil {
+		glog.Warningf("Unable to delete lock file %s: %v", lockPath, err)
+	}
 }
