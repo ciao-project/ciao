@@ -241,31 +241,41 @@ func prepareImage(ctx context.Context, baseImage string, agentCertPath string, c
 	return preparedImagePath, nil
 }
 
-func getCNCIURL(ctx context.Context) (string, error) {
+func getCNCIURLs(ctx context.Context) ([]string, error) {
+	const knownGoodImage = "19150"
+	knownGoodURL := fmt.Sprintf("https://download.clearlinux.org/releases/%[1]s/clear/clear-%[1]s-cloud.img.xz", knownGoodImage)
+
 	req, err := http.NewRequest(http.MethodGet, "https://download.clearlinux.org/latest", nil)
 	if err != nil {
-		return "", errors.Wrap(err, "Error downloading clear version info")
+		return nil, errors.Wrap(err, "Error downloading clear version info")
 	}
 	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "Error making HTTP request")
+		fmt.Printf("Unable to determine latest clear release (%v), falling back to %s\n", err, knownGoodImage)
+		return []string{knownGoodURL}, nil
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Unexpected status when downloading clear version info: %s", resp.Status)
+		fmt.Printf("Unexpected status (%s) when determining latest clear release, falling back to %s\n",
+			resp.Status, knownGoodImage)
+		return []string{knownGoodURL}, nil
 	}
 
 	versionBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrap(err, "Error reading clear version info")
+		fmt.Printf("Unable to read latest clear release (%v), falling back to %s\n", err, knownGoodImage)
+		return []string{knownGoodURL}, nil
 	}
 	version := strings.TrimSpace(string(versionBytes))
 
-	cnciURL := fmt.Sprintf("https://download.clearlinux.org/image/clear-%s-cloud.img.xz", version)
-	return cnciURL, nil
+	cnciURLs := []string{
+		fmt.Sprintf("https://download.clearlinux.org/image/clear-%s-cloud.img.xz", version),
+		knownGoodURL,
+	}
+	return cnciURLs, nil
 }
 
 // CreateCNCIImage creates a customised CNCI image in the system
@@ -276,15 +286,32 @@ func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath stri
 	}
 	defer func() { _ = os.Remove(agentCertPath) }()
 
-	baseURL, err := getCNCIURL(ctx)
+	baseURLs, err := getCNCIURLs(ctx)
 	if err != nil {
 		return err
 	}
 
-	baseImagePath, downloaded, err := DownloadImage(ctx, baseURL, imageCacheDir)
+	var baseImagePath string
+	var downloaded bool
+	var url int
+	for url = 0; url < len(baseURLs); url++ {
+		baseImagePath, downloaded, err = DownloadImage(ctx, baseURLs[url], imageCacheDir)
+		if err == nil {
+			break
+		}
+		if url+1 < len(baseURLs) {
+			fmt.Printf("Error downloading image %s\n", baseURLs[url])
+		}
+	}
+
 	if err != nil {
 		return errors.Wrap(err, "Error downloading image")
 	}
+
+	if url > 0 {
+		fmt.Printf("Downloaded backup image %s\n", baseURLs[url])
+	}
+
 	defer func() {
 		if errOut != nil && downloaded {
 			_ = os.Remove(baseImagePath)
