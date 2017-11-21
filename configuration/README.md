@@ -57,6 +57,7 @@ configure:
     mgmt_net: list [The launcher management network(s)]
     disk_limit: bool
     mem_limit: bool
+    child_user: string [ User and group under which launcher's child processes are to run.  If empty they run as the same user as launcher ]
 ```
 
 ## Configuration Examples

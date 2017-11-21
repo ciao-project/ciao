@@ -60,6 +60,7 @@ type controller struct {
 var cert = flag.String("cert", "", "Client certificate")
 var caCert = flag.String("cacert", "", "CA certificate")
 var serverURL = flag.String("url", "", "Server URL")
+var prepare = flag.Bool("osprepare", false, "Install dependencies")
 var controllerAPIPort = api.Port
 var httpsCAcert = "/etc/pki/ciao/ciao-controller-cacert.pem"
 var httpsKey = "/etc/pki/ciao/ciao-controller-key.pem"
@@ -78,6 +79,14 @@ var adminPassword = "$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkc
 
 func init() {
 	flag.Parse()
+
+	if *prepare {
+		logToStderr := flag.Lookup("logtostderr")
+		if logToStderr != nil {
+			logToStderr.Value.Set("true")
+		}
+		return
+	}
 
 	logDirFlag := flag.Lookup("log_dir")
 	if logDirFlag == nil {
@@ -125,6 +134,13 @@ func main() {
 			glog.Flush()
 		}
 	}()
+
+	if *prepare {
+		logger := gloginterface.CiaoGlogLogger{}
+		osprepare.Bootstrap(context.TODO(), logger)
+		osprepare.InstallDeps(context.TODO(), controllerDeps, logger)
+		return
+	}
 
 	var wg sync.WaitGroup
 	var err error
@@ -197,10 +213,6 @@ func main() {
 	ctl.ds.GenerateCNCIWorkload(cnciVCPUs, cnciMem, cnciDisk, adminSSHKey, adminPassword)
 
 	database.Logger = gloginterface.CiaoGlogLogger{}
-
-	logger := gloginterface.CiaoGlogLogger{}
-	osprepare.Bootstrap(context.TODO(), logger)
-	osprepare.InstallDeps(context.TODO(), controllerDeps, logger)
 
 	ctl.BlockDriver = func() storage.BlockDriver {
 		driver := storage.CephDriver{

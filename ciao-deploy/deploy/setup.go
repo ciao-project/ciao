@@ -15,12 +15,16 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"syscall"
+	"text/template"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -48,8 +52,27 @@ type ClusterConfiguration struct {
 	DisableLimits     bool
 }
 
+type unitFileConf struct {
+	Tool       string
+	User       string
+	CACertPath string
+	CertPath   string
+	Caps       []string
+	Roles      []string
+	Deps       []string
+}
+
+const userAlreadyExistsStatus = 9
+
+var ciaoLockDir = "/tmp/lock/ciao"
+var ciaoDataDir = "/var/lib/ciao"
+var ciaoLogsDir = ciaoDataDir + "/logs"
+var ciaoLocalRolesDir = ciaoDataDir + "/local/uuid-storage/role/client"
+var ciaoLocalCertsDir = ciaoDataDir + "/local/certs"
 var ciaoConfigDir = "/etc/ciao"
 var ciaoPKIDir = "/etc/pki/ciao"
+var ciaoUser = "ciao"
+var ciaoUserAndGroup = ciaoUser + ":" + ciaoUser
 
 func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfiguration) (string, error) {
 	var adminSSHKeyData string
@@ -84,6 +107,7 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 	// See issue #1541
 	config.Configure.Launcher.DiskLimit = false
 	config.Configure.Launcher.MemoryLimit = !clusterConf.DisableLimits
+	config.Configure.Launcher.ChildUser = ciaoUser
 
 	data, err := yaml.Marshal(config)
 	if err != nil {
@@ -113,6 +137,12 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 	if err != nil {
 		_ = SudoRemoveDirectory(context.Background(), ciaoConfigDir)
 		return "", errors.Wrap(err, "Error copying configuration file to destination")
+	}
+
+	cmd := exec.Command("sudo", "chown", ciaoUserAndGroup, ciaoConfigPath)
+	if err := cmd.Run(); err != nil {
+		_ = SudoRemoveDirectory(context.Background(), ciaoConfigDir)
+		return "", errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
 
 	return ciaoConfigPath, nil
@@ -190,35 +220,116 @@ func createSchedulerCerts(ctx context.Context, force bool, serverIP string) (str
 
 }
 
-var systemdServiceData = `
-[Unit]
-Description=%s service
-After=network.target
+var systemdServiceData = `[Unit]
+Description={{.Tool}} service
+Wants={{.Tool}}-prepare.service
+{{range .Deps}}Wants={{.}}{{println}}{{end}}
+After={{.Tool}}-prepare.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/%s --cacert=%s --cert=%s --v 3
+ExecStart=/usr/local/bin/{{.Tool}} --cacert={{.CACertPath}} --cert={{.CertPath}} --v 3
 Restart=no
 KillMode=process
 TasksMax=infinity
+{{with .Caps}}
+CapabilityBoundingSet={{range $i, $v := .}}{{if (gt $i 0)}} {{end}}{{$v}}{{- end}}
+{{else}}
+User={{.User}}
+{{end}}
+Group={{.User}}
+
+[Install]
+WantedBy={{.Tool}}-prepare.service
+`
+
+var systemdOsPrepareData = `[Unit]
+Description={{.Tool}}-prepare service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/{{.Tool}} --osprepare --v 3 --logtostderr {{if (gt (len .Roles) 0)}}--roles="
+{{- range $i, $v := .Roles}}{{if (gt $i 0)}},{{end}}{{$v}}{{end}}"{{end}}
+Restart=no
+KillMode=control-group
 
 [Install]
 WantedBy=multi-user.target
 `
 
+func installUnitFile(ctx context.Context, unitName, serviceFilePath string, data *bytes.Buffer) error {
+	fmt.Printf("Installing systemd unit file %s\n", unitName)
+
+	f, err := ioutil.TempFile("", fmt.Sprintf("%s.service", unitName))
+	if err != nil {
+		return errors.Wrapf(err, "Error creating temporary file for service unit %s", unitName)
+	}
+	defer func() { _ = f.Close() }()
+	defer func() { _ = os.Remove(f.Name()) }()
+
+	if _, err := f.Write(data.Bytes()); err != nil {
+		return errors.Wrap(err, "Error writing service file data")
+	}
+
+	if err := SudoCopyFile(ctx, serviceFilePath, f.Name()); err != nil {
+		return errors.Wrapf(err, "Error copying systemd service file to destination %s", serviceFilePath)
+	}
+	return nil
+}
+
+func startAndEnableService(ctx context.Context, unitName string) error {
+	fmt.Printf("Starting %s\n", unitName)
+	cmd := exec.CommandContext(ctx, "sudo", "systemctl", "start", unitName)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+
+	fmt.Printf("Enabling %s\n", unitName)
+	cmd = exec.CommandContext(ctx, "sudo", "systemctl", "enable", unitName)
+	if err := cmd.Run(); err != nil {
+		_ = exec.Command("sudo", "systemctl", "stop", unitName).Run()
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+
+	return nil
+}
+
 // InstallTool installs a tool to its final destination and manages it via systemd
-func InstallTool(ctx context.Context, tool string, certPath string, caCertPath string) (errOut error) {
-	fmt.Printf("Installing %s\n", tool)
+func InstallTool(ctx context.Context, config unitFileConf) (errOut error) {
+	var serviceData bytes.Buffer
+	var osPrepareData bytes.Buffer
 
-	fmt.Printf("Stopping %s\n", tool)
-	cmd := exec.Command("sudo", "systemctl", "stop", tool)
+	err := template.Must(template.New("unit-service").Parse(systemdServiceData)).Execute(&serviceData, config)
+	if err != nil {
+		return errors.Wrapf(err, "Error generating service systemd file for %s", config.Tool)
+	}
 
-	toolPath := InGoPath(path.Join("/bin", tool))
+	err = template.Must(template.New("unit-osprepare").Parse(systemdOsPrepareData)).Execute(&osPrepareData, config)
+	if err != nil {
+		return errors.Wrapf(err, "Error generating osprepare systemd file for %s", config.Tool)
+	}
+
+	osPrepareName := fmt.Sprintf("%s-prepare", config.Tool)
+
+	fmt.Printf("Installing %s\n", config.Tool)
+
+	fmt.Printf("Stopping %s\n", osPrepareName)
+	cmd := exec.Command("sudo", "systemctl", "stop", osPrepareName)
 	// Actively ignore this error as systemctl will fail if the service file is not
 	// yet installed. This is fine as that will be the case for new installs.
 	_ = cmd.Run()
 
-	systemToolPath := path.Join("/usr/local/bin/", tool)
+	fmt.Printf("Stopping %s\n", config.Tool)
+	_ = exec.Command("sudo", "systemctl", "stop", config.Tool).Run()
+
+	toolPath := InGoPath(path.Join("/bin", config.Tool))
+
+	installDir := "/usr/local/bin"
+	systemToolPath := path.Join(installDir, config.Tool)
+	if err := SudoMakeDirectory(ctx, installDir); err != nil {
+		return errors.Wrapf(err, "Error creating %s", installDir)
+	}
 	if err := SudoCopyFile(ctx, systemToolPath, toolPath); err != nil {
 		return errors.Wrap(err, "Error copying tool to destination")
 	}
@@ -228,23 +339,9 @@ func InstallTool(ctx context.Context, tool string, certPath string, caCertPath s
 		}
 	}()
 
-	fmt.Println("Installing systemd unit file")
-	systemdData := fmt.Sprintf(systemdServiceData, tool, tool, caCertPath, certPath)
-	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", tool))
-
-	f, err := ioutil.TempFile("", fmt.Sprintf("%s.service", tool))
-	if err != nil {
-		return errors.Wrap(err, "Error creating temporary file for service unit")
-	}
-	defer func() { _ = f.Close() }()
-	defer func() { _ = os.Remove(f.Name()) }()
-
-	if _, err := f.Write([]byte(systemdData)); err != nil {
-		return errors.Wrap(err, "Error writing service file data")
-	}
-
-	if err := SudoCopyFile(ctx, serviceFilePath, f.Name()); err != nil {
-		return errors.Wrap(err, "Error copying systemd service file to destination")
+	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", config.Tool))
+	if err := installUnitFile(ctx, config.Tool, serviceFilePath, &serviceData); err != nil {
+		return err
 	}
 	defer func() {
 		if errOut != nil {
@@ -252,32 +349,59 @@ func InstallTool(ctx context.Context, tool string, certPath string, caCertPath s
 		}
 	}()
 
+	osPrepareFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", osPrepareName))
+	if err := installUnitFile(ctx, osPrepareName, osPrepareFilePath, &osPrepareData); err != nil {
+		return err
+	}
+	defer func() {
+		if errOut != nil {
+			_ = SudoRemoveFile(context.Background(), osPrepareFilePath)
+		}
+	}()
+
 	fmt.Println("Reloading systemd unit files")
-	cmd = exec.Command("sudo", "systemctl", "daemon-reload")
+	cmd = exec.CommandContext(ctx, "sudo", "systemctl", "daemon-reload")
 	if err := cmd.Run(); err != nil {
 		return errors.Wrapf(err, "Error running: %v", cmd.Args)
 	}
 
-	fmt.Printf("Starting %s\n", tool)
-	cmd = exec.Command("sudo", "systemctl", "start", tool)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	if err := startAndEnableService(ctx, osPrepareName); err != nil {
+		return err
 	}
 
-	return nil
+	defer func() {
+		if errOut != nil {
+			_ = exec.Command("sudo", "systemctl", "disable", osPrepareName).Run()
+			_ = exec.Command("sudo", "systemctl", "stop", osPrepareName).Run()
+		}
+	}()
+
+	return startAndEnableService(ctx, config.Tool)
 }
 
 func installScheduler(ctx context.Context, anchorCertPath string, caCertPath string) error {
-	err := InstallTool(ctx, "ciao-scheduler", anchorCertPath, caCertPath)
+	err := InstallTool(ctx, unitFileConf{
+		Tool:       "ciao-scheduler",
+		User:       ciaoUser,
+		CertPath:   anchorCertPath,
+		CACertPath: caCertPath,
+	})
 	return errors.Wrap(err, "Error installing scheduler")
 }
 
 func uninstallTool(ctx context.Context, tool string) {
-	cmd := exec.Command("sudo", "systemctl", "stop", tool)
+	cmd := exec.Command("sudo", "systemctl", "disable", tool)
+	_ = cmd.Run()
+
+	cmd = exec.Command("sudo", "systemctl", "stop", tool)
 	_ = cmd.Run()
 
 	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", tool))
 	_ = SudoRemoveFile(context.Background(), serviceFilePath)
+
+	osPrepareName := fmt.Sprintf("%s-prepare", tool)
+	osPrepareFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", osPrepareName))
+	_ = SudoRemoveFile(context.Background(), osPrepareFilePath)
 
 	cmd = exec.Command("sudo", "systemctl", "daemon-reload")
 	_ = cmd.Run()
@@ -307,7 +431,12 @@ func createControllerCert(ctx context.Context, anchorCertPath string) (string, e
 }
 
 func installController(ctx context.Context, controllerCertPath string, caCertPath string) error {
-	err := InstallTool(ctx, "ciao-controller", controllerCertPath, caCertPath)
+	err := InstallTool(ctx, unitFileConf{
+		Tool:       "ciao-controller",
+		User:       ciaoUser,
+		CertPath:   controllerCertPath,
+		CACertPath: caCertPath,
+	})
 	return errors.Wrap(err, "Error installing controller")
 }
 
@@ -324,11 +453,109 @@ func OutputEnvironment(conf *ClusterConfiguration) {
 	fmt.Printf("export CIAO_ADMIN_CLIENT_CERT_FILE=\"%s\"\n", conf.AuthAdminCertPath)
 }
 
-// SetupMaster configures this machine to be a master node of the cluster
-func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration) (errOut error) {
+func createCiaoDirectory(ctx context.Context, path string) error {
+	cmd := exec.CommandContext(ctx, "sudo", "mkdir", "-p", path)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error creating %s", path)
+	}
+	cmd = exec.CommandContext(ctx, "sudo", "chown", ciaoUserAndGroup, path)
+	if err := cmd.Run(); err != nil {
+		_ = SudoRemoveDirectory(context.Background(), path)
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+	return nil
+}
+
+func createUserAndDirs(ctx context.Context, localLauncher bool) (f func(), err error) {
+	var cmd *exec.Cmd
+
+	if localLauncher {
+		cmd = exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser, "-G",
+			"docker,kvm", "-d", ciaoDataDir, "-s", "/bin/false")
+	} else {
+		cmd = exec.CommandContext(ctx, "sudo", "useradd", "-r", ciaoUser,
+			"-d", ciaoDataDir, "-s", "/bin/false")
+	}
+	if err := cmd.Run(); err != nil {
+		status := 0
+		if err, ok := err.(*exec.ExitError); ok {
+			if ws, ok := err.Sys().(syscall.WaitStatus); ok {
+				status = ws.ExitStatus()
+			}
+		}
+
+		if status != userAlreadyExistsStatus {
+			return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
+		}
+
+		if localLauncher {
+			cmd := exec.CommandContext(ctx, "sudo", "usermod", "-a", "-G", "docker,kvm", ciaoUser)
+			if err := cmd.Run(); err != nil {
+				return nil, errors.Wrapf(err, "Error running: %v", cmd.Args)
+			}
+		}
+	}
+
+	dirs := []string{ciaoDataDir, ciaoLockDir, ciaoLocalRolesDir, ciaoLogsDir}
+	for _, dir := range dirs {
+		if err := createCiaoDirectory(ctx, dir); err != nil {
+			return nil, err
+		}
+		defer func(dir string) {
+			if err != nil {
+				_ = SudoRemoveDirectory(context.Background(), dir)
+			}
+		}(dir)
+	}
+
+	return func() {
+		for _, dir := range dirs {
+			_ = SudoRemoveDirectory(context.Background(), dir)
+		}
+	}, nil
+}
+
+func copyHTTPCreds(ctx context.Context, clusterConf *ClusterConfiguration) (cert string, key string, err error) {
+	if err = createCiaoDirectory(ctx, ciaoLocalCertsDir); err != nil {
+		return "", "", err
+	}
+	defer func() {
+		if err != nil {
+			_ = SudoRemoveDirectory(context.Background(), ciaoLocalCertsDir)
+		}
+	}()
+
+	cert = filepath.Join(ciaoLocalCertsDir, filepath.Base(clusterConf.HTTPSCaCertPath))
+	key = filepath.Join(ciaoLocalCertsDir, filepath.Base(clusterConf.HTTPSCertPath))
+
+	err = SudoCopyFile(ctx, cert, clusterConf.HTTPSCaCertPath)
+	if err != nil {
+		return "", "", err
+	}
+
+	err = SudoCopyFile(ctx, key, clusterConf.HTTPSCertPath)
+	if err != nil {
+		return "", "", err
+	}
+
+	err = SudoChownFiles(ctx, cert, key)
+	if err != nil {
+		return "", "", err
+	}
+
+	return cert, key, nil
+}
+
+type certPaths struct {
+	anchorCertPath     string
+	caCertPath         string
+	controllerCertPath string
+}
+
+func installControlPlaneCerts(ctx context.Context, force bool, clusterConf *ClusterConfiguration) (certs certPaths, cleanup func(), errOut error) {
 	authCaCertPath, authCertPath, err := CreateAdminCert(ctx, force)
 	if err != nil {
-		return errors.Wrap(err, "Error creating authentication certs")
+		return certPaths{}, nil, errors.Wrap(err, "Error creating authentication certs")
 	}
 	defer func() {
 		if errOut != nil {
@@ -340,9 +567,22 @@ func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterC
 	clusterConf.AuthCACertPath = authCaCertPath
 	clusterConf.AuthAdminCertPath = authCertPath
 
+	HTTPcert, HTTPkey, err := copyHTTPCreds(ctx, clusterConf)
+	if err != nil {
+		return certPaths{}, nil, errors.Wrap(err, "Error copy HTTP certificates")
+	}
+	defer func() {
+		if errOut != nil {
+			_ = SudoRemoveDirectory(context.Background(), ciaoLocalCertsDir)
+		}
+	}()
+
+	clusterConf.HTTPSCaCertPath = HTTPcert
+	clusterConf.HTTPSCertPath = HTTPkey
+
 	ciaoConfigPath, err := createConfigurationFile(ctx, clusterConf)
 	if err != nil {
-		return errors.Wrap(err, "Error creating cluster configuration file")
+		return certPaths{}, nil, errors.Wrap(err, "Error creating cluster configuration file")
 	}
 	defer func() {
 		if errOut != nil {
@@ -355,7 +595,7 @@ func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterC
 
 	anchorCertPath, caCertPath, err := createSchedulerCerts(ctx, force, clusterConf.ServerIP)
 	if err != nil {
-		return errors.Wrap(err, "Error creating scheduler certificates")
+		return certPaths{}, nil, errors.Wrap(err, "Error creating scheduler certificates")
 	}
 	defer func() {
 		if errOut != nil {
@@ -364,7 +604,29 @@ func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterC
 		}
 	}()
 
-	err = installScheduler(ctx, anchorCertPath, caCertPath)
+	controllerCertPath, err := createControllerCert(ctx, anchorCertPath)
+	if err != nil {
+		return certPaths{}, nil, errors.Wrap(err, "Error installing controller certs")
+	}
+
+	certs.anchorCertPath = anchorCertPath
+	certs.caCertPath = caCertPath
+	certs.controllerCertPath = controllerCertPath
+
+	return certs, func() {
+		_ = SudoRemoveFile(context.Background(), controllerCertPath)
+		_ = SudoRemoveFile(context.Background(), ciaoConfigPath)
+		_ = SudoRemoveDirectory(context.Background(), ciaoConfigDir)
+		_ = SudoRemoveFile(context.Background(), anchorCertPath)
+		_ = SudoRemoveFile(context.Background(), caCertPath)
+		_ = SudoRemoveDirectory(context.Background(), ciaoLocalCertsDir)
+		_ = SudoRemoveFile(context.Background(), authCaCertPath)
+		_ = SudoRemoveFile(context.Background(), authCertPath)
+	}, nil
+}
+
+func setupControlPlane(ctx context.Context, imageCacheDir string, certs certPaths) (errOut error) {
+	err := installScheduler(ctx, certs.anchorCertPath, certs.caCertPath)
 	if err != nil {
 		return errors.Wrap(err, "Error installing scheduler")
 	}
@@ -374,17 +636,7 @@ func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterC
 		}
 	}()
 
-	controllerCertPath, err := createControllerCert(ctx, anchorCertPath)
-	if err != nil {
-		return errors.Wrap(err, "Error installing controller certs")
-	}
-	defer func() {
-		if errOut != nil {
-			_ = SudoRemoveFile(context.Background(), controllerCertPath)
-		}
-	}()
-
-	err = installController(ctx, controllerCertPath, caCertPath)
+	err = installController(ctx, certs.controllerCertPath, certs.caCertPath)
 	if err != nil {
 		return errors.Wrap(err, "Error installing controller")
 	}
@@ -394,12 +646,38 @@ func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterC
 		}
 	}()
 
-	err = CreateCNCIImage(ctx, anchorCertPath, caCertPath, imageCacheDir)
+	err = CreateCNCIImage(ctx, certs.anchorCertPath, certs.caCertPath, imageCacheDir)
 	if err != nil {
 		return errors.Wrap(err, "Error creating CNCI image")
 	}
 
 	return nil
+}
+
+// SetupMaster configures this machine to be a master node of the cluster
+func SetupMaster(ctx context.Context, force bool, imageCacheDir string, clusterConf *ClusterConfiguration,
+	localLauncher bool) (errOut error) {
+	cleanupUsers, err := createUserAndDirs(ctx, localLauncher)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if errOut != nil {
+			cleanupUsers()
+		}
+	}()
+
+	certs, cleanupCerts, err := installControlPlaneCerts(ctx, force, clusterConf)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if errOut != nil {
+			cleanupCerts()
+		}
+	}()
+
+	return setupControlPlane(ctx, imageCacheDir, certs)
 }
 
 func createLocalLauncherCert(ctx context.Context, anchorCertPath string) (string, error) {
@@ -423,7 +701,23 @@ func createLocalLauncherCert(ctx context.Context, anchorCertPath string) (string
 }
 
 func installLocalLauncher(ctx context.Context, launcherCertPath string, caCertPath string) error {
-	err := InstallTool(ctx, "ciao-launcher", launcherCertPath, caCertPath)
+	err := InstallTool(ctx, unitFileConf{
+		Tool:       "ciao-launcher",
+		User:       ciaoUser,
+		CertPath:   launcherCertPath,
+		CACertPath: caCertPath,
+		Caps: []string{
+			"CAP_NET_ADMIN", "CAP_NET_RAW", "CAP_DAC_OVERRIDE",
+			"CAP_DAC_OVERRIDE", "CAP_SETGID", "CAP_SETUID", "CAP_SYS_PTRACE",
+			"CAP_SYS_MODULE",
+		},
+		Roles: []string{
+			"agent", "net-agent",
+		},
+		Deps: []string{
+			"docker.service",
+		},
+	})
 	return errors.Wrap(err, "Error installing launcher")
 }
 

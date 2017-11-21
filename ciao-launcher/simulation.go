@@ -18,6 +18,7 @@ package main
 
 import (
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 
@@ -93,7 +94,7 @@ VM:
 
 }
 
-func (s *simulation) startVM(vnicName, ipAddress, cephID string) error {
+func (s *simulation) startVM(vnicName, ipAddress, cephID string, fds []*os.File) error {
 	glog.Infof("startVM\n")
 
 	s.killCh = make(chan struct{})

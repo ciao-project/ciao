@@ -167,11 +167,13 @@ func createVMVnic(v *Vnic) (link netlink.Link, err error) {
 	tap := &netlink.Tuntap{
 		LinkAttrs: netlink.LinkAttrs{Name: v.LinkName},
 		Mode:      netlink.TUNTAP_MODE_TAP,
+		Queues:    v.queues,
 	}
 
 	if err := netlink.LinkAdd(tap); err != nil {
 		return nil, netError(v, "create link add %v %v", v.GlobalID, err)
 	}
+	v.FDs = tap.Fds
 
 	link, err = netlink.LinkByName(v.LinkName)
 	if err != nil {

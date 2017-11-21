@@ -66,6 +66,7 @@ type VnicConfig struct {
 	TenantID   string // UUID
 	SubnetID   string // UUID
 	ConcID     string // UUID
+	Queues     int
 }
 
 // CNSsntpEvent to be generated in response to a VNIC creation
@@ -662,6 +663,12 @@ func (cn *ComputeNode) DestroyCnciVnic(cfg *VnicConfig) error {
 // will setup the far side of the  tunnel which is required to connect this CN
 // tenant bridge to the tenant Subnet
 //
+// If a TenantVM Vnic is being created and the cfg.Queues value is > 1 on
+// entry to this function and no error is returned, the FDs field will contain
+// a slice of *os.File objects containing open file descriptors that point
+// to the newly created tap interface.  It's up to the caller to close these
+// file descriptors when they're finished with them.
+//
 // Note: The caller of this function is responsible to send the message to the scheduler
 func (cn *ComputeNode) CreateVnic(cfg *VnicConfig) (*Vnic, *SsntpEventInfo, *ContainerInfo, error) {
 	if cn.cnTopology == nil || cfg == nil {
@@ -703,6 +710,7 @@ func newCNVnic(cfg *VnicConfig, id string) (*Vnic, error) {
 	switch cfg.VnicRole {
 	case TenantVM:
 		vnic, err = NewVnic(id)
+		vnic.queues = cfg.Queues
 	case TenantContainer:
 		vnic, err = NewContainerVnic(id)
 	}
@@ -987,10 +995,17 @@ func createAndEnableBridge(bridge *Bridge, gre *GreTunEP) error {
 }
 
 //Physically create the VNIC and attach it to the bridge
-func createAndEnableVnic(vnic *Vnic, bridge *Bridge) error {
+func createAndEnableVnic(vnic *Vnic, bridge *Bridge) (err error) {
 	if err := vnic.Create(); err != nil {
 		return fmt.Errorf("VNIC creation failed %s %s", vnic.GlobalID, err.Error())
 	}
+	defer func() {
+		if err != nil {
+			for _, f := range vnic.FDs {
+				_ = f.Close()
+			}
+		}
+	}()
 
 	vnicPeer, err := initializeVnicPeer(vnic)
 	if err != nil {

@@ -373,7 +373,7 @@ func (d *docker) deleteImage() error {
 	return dockerDeleteContainer(d.cli, d.dockerID, d.cfg.Instance)
 }
 
-func (d *docker) startVM(vnicName, ipAddress, cephID string) error {
+func (d *docker) startVM(vnicName, ipAddress, cephID string, fds []*os.File) error {
 	err := d.initDockerClient()
 	if err != nil {
 		return err

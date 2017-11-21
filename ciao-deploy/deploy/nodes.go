@@ -21,22 +21,58 @@ import (
 	"os"
 	"path"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/ciao-project/ciao/ssntp"
 	"github.com/pkg/errors"
 )
 
-// InstallToolRemote installs a tool a on a remote machine and setups it up with systemd
-func InstallToolRemote(ctx context.Context, sshUser string, hostname string, tool string, certPath string, caCertPath string) (errOut error) {
-	fmt.Printf("%s: Installing %s\n", hostname, tool)
+func startAndEnableRemoteService(ctx context.Context, sshUser, hostname, unitName string) error {
+	fmt.Printf("%s: Starting %s\n", hostname, unitName)
+	err := SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl start %s", unitName))
+	if err != nil {
+		return errors.Wrapf(err, "Error starting tool (%s) on node", unitName)
+	}
 
-	fmt.Printf("%s: Stopping %s\n", hostname, tool)
-	_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl stop %s", tool))
+	fmt.Printf("%s: Enabling %s\n", hostname, unitName)
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl enable %s", unitName))
+	if err != nil {
+		_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl stop %s", unitName))
+		return errors.Wrapf(err, "Error enabling tool (%s) on node", unitName)
+	}
+
+	return nil
+}
+
+// InstallToolRemote installs a tool a on a remote machine and setups it up with systemd
+func InstallToolRemote(ctx context.Context, sshUser string, hostname string, config unitFileConf) (errOut error) {
+	var systemdData bytes.Buffer
+	var osPrepareData bytes.Buffer
+
+	err := template.Must(template.New("unit-service").Parse(systemdServiceData)).Execute(&systemdData, config)
+	if err != nil {
+		return errors.Wrapf(err, "Error generating systemd file for %s", config.Tool)
+	}
+
+	err = template.Must(template.New("unit-osprepare").Parse(systemdOsPrepareData)).Execute(&osPrepareData, config)
+	if err != nil {
+		return errors.Wrapf(err, "Error generating osprepare systemd file for %s", config.Tool)
+	}
+
+	fmt.Printf("%s: Installing %s\n", hostname, config.Tool)
+
+	osPrepareName := fmt.Sprintf("%s-prepare", config.Tool)
+
+	fmt.Printf("%s: Stopping %s\n", hostname, osPrepareName)
+	_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl stop %s", osPrepareName))
 	// Actively ignore this error as systemctl will fail if the service file is not
 	// yet installed. This is fine as that will be the case for new installs.
 
-	toolPath := InGoPath(path.Join("/bin", tool))
+	fmt.Printf("%s: Stopping %s\n", hostname, config.Tool)
+	_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl stop %s", config.Tool))
+
+	toolPath := InGoPath(path.Join("/bin", config.Tool))
 
 	tf, err := os.Open(toolPath)
 	if err != nil {
@@ -44,7 +80,7 @@ func InstallToolRemote(ctx context.Context, sshUser string, hostname string, too
 	}
 	defer func() { _ = tf.Close() }()
 
-	systemToolPath := path.Join("/usr/local/bin/", tool)
+	systemToolPath := path.Join("/usr/local/bin/", config.Tool)
 	err = SSHCreateFile(ctx, sshUser, hostname, systemToolPath, tf)
 	if err != nil {
 		return errors.Wrap(err, "Error copying file to destination")
@@ -61,18 +97,26 @@ func InstallToolRemote(ctx context.Context, sshUser string, hostname string, too
 	}
 
 	fmt.Printf("%s: Installing systemd unit file\n", hostname)
-	systemdData := fmt.Sprintf(systemdServiceData, tool, tool, caCertPath, certPath)
-	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", tool))
+	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", config.Tool))
 
-	f := bytes.NewReader([]byte(systemdData))
-
-	err = SSHCreateFile(ctx, sshUser, hostname, serviceFilePath, f)
+	err = SSHCreateFile(ctx, sshUser, hostname, serviceFilePath, &systemdData)
 	if err != nil {
-		return errors.Wrap(err, "Error copying file to destination")
+		return errors.Wrapf(err, "Error copying file %s to destination", serviceFilePath)
 	}
 	defer func() {
 		if errOut != nil {
 			_ = SSHRunCommand(context.Background(), sshUser, hostname, fmt.Sprintf("sudo rm %s", serviceFilePath))
+		}
+	}()
+
+	osPrepareFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", osPrepareName))
+	err = SSHCreateFile(ctx, sshUser, hostname, osPrepareFilePath, &osPrepareData)
+	if err != nil {
+		return errors.Wrapf(err, "Error copying file %s to destination", osPrepareFilePath)
+	}
+	defer func() {
+		if errOut != nil {
+			_ = SSHRunCommand(context.Background(), sshUser, hostname, fmt.Sprintf("sudo rm %s", osPrepareFilePath))
 		}
 	}()
 
@@ -82,13 +126,17 @@ func InstallToolRemote(ctx context.Context, sshUser string, hostname string, too
 		return errors.Wrap(err, "Error restarting systemctl on node")
 	}
 
-	fmt.Printf("%s: Starting %s\n", hostname, tool)
-	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl start %s", tool))
-	if err != nil {
-		return errors.Wrap(err, "Error starting tool on node")
+	if err := startAndEnableRemoteService(ctx, sshUser, hostname, osPrepareName); err != nil {
+		return err
 	}
+	defer func() {
+		if errOut != nil {
+			_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl disable %s", osPrepareName))
+			_ = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl stop %s", osPrepareName))
+		}
+	}()
 
-	return nil
+	return startAndEnableRemoteService(ctx, sshUser, hostname, config.Tool)
 }
 
 func createRemoteLauncherCert(ctx context.Context, anchorCertPath string, role ssntp.Role, hostname string, sshUser string) (string, error) {
@@ -134,10 +182,61 @@ func createRemoteCACert(ctx context.Context, caCertPath string, hostname string,
 	return nil
 }
 
+func createRemoteCiaoDirectory(ctx context.Context, hostname, sshUser, path string) error {
+	err := SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo mkdir -p %s", path))
+	if err != nil {
+		return errors.Wrapf(err, "Error creating remote directory %s", path)
+	}
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo chown %s %s", ciaoUserAndGroup, path))
+	if err != nil {
+		_ = SSHRunCommand(context.Background(), sshUser, hostname, fmt.Sprintf("sudo rmdir %s", path))
+		return errors.Wrapf(err, "Error chowning %s", path)
+	}
+	return nil
+}
+
 func setupNode(ctx context.Context, anchorCertPath string, caCertPath string, hostname string, sshUser string, networkNode bool) (errOut error) {
+	status, err := SSHRunCommandWithStatus(ctx, sshUser, hostname,
+		fmt.Sprintf("sudo useradd -r %s -G docker,kvm -d %s -s /bin/false", ciaoUser, ciaoDataDir))
+	if err != nil {
+		if status != userAlreadyExistsStatus {
+			return errors.Wrapf(err, "Error creating %s user", ciaoUser)
+		}
+
+		err := SSHRunCommand(ctx, sshUser, hostname,
+			fmt.Sprintf("sudo usermod -a -G docker,kvm %s", ciaoUser))
+		if err != nil {
+			return errors.Wrapf(err, "Error setting groups for user %s", ciaoUser)
+		}
+	}
+
+	err = createRemoteCiaoDirectory(ctx, hostname, sshUser, ciaoDataDir)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if errOut != nil {
+			_ = SSHRunCommand(context.Background(), sshUser, hostname, fmt.Sprintf("sudo rm -rf %s", ciaoDataDir))
+		}
+	}()
+
+	err = createRemoteCiaoDirectory(ctx, hostname, sshUser, ciaoLockDir)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if errOut != nil {
+			_ = SSHRunCommand(context.Background(), sshUser, hostname, fmt.Sprintf("sudo rm -rf %s", ciaoLockDir))
+		}
+	}()
+
 	var role ssntp.Role = ssntp.AGENT
+	roles := []string{"agent"}
 	if networkNode {
 		role = ssntp.NETAGENT
+		roles = []string{"net-agent"}
 	}
 
 	remoteCertPath, err := createRemoteLauncherCert(ctx, anchorCertPath, role, hostname, sshUser)
@@ -160,7 +259,18 @@ func setupNode(ctx context.Context, anchorCertPath string, caCertPath string, ho
 		}
 	}()
 
-	err = InstallToolRemote(ctx, sshUser, hostname, "ciao-launcher", remoteCertPath, caCertPath)
+	err = InstallToolRemote(ctx, sshUser, hostname, unitFileConf{
+		Tool:       "ciao-launcher",
+		User:       ciaoUser,
+		CertPath:   remoteCertPath,
+		CACertPath: caCertPath,
+		Caps: []string{"CAP_NET_ADMIN", "CAP_NET_RAW", "CAP_DAC_OVERRIDE",
+			"CAP_SETGID", "CAP_SETUID", "CAP_SYS_PTRACE", "CAP_SYS_MODULE"},
+		Roles: roles,
+		Deps: []string{
+			"docker.service",
+		},
+	})
 	if err != nil {
 		return errors.Wrap(err, "Error installing tool on node")
 	}
@@ -187,26 +297,45 @@ func SetupNodes(ctx context.Context, sshUser string, networkNode bool, hosts []s
 	return nil
 }
 
-func teardownNode(ctx context.Context, hostname string, sshUser string) error {
+func teardownService(ctx context.Context, hostname, sshUser, unitName string) error {
 	var errOut error
-	tool := "ciao-launcher"
-	fmt.Printf("%s: Stopping %s\n", hostname, tool)
-	err := SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl stop %s", tool))
+
+	fmt.Printf("%s: Disabling %s\n", hostname, unitName)
+	err := SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl disable %s", unitName))
+	if err != nil {
+		errOut = errors.Wrap(err, "Error disabling tool on node")
+		fmt.Fprintln(os.Stderr, errOut.Error())
+	}
+
+	fmt.Printf("%s: Stopping %s\n", hostname, unitName)
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo systemctl stop %s", unitName))
 	if err != nil {
 		errOut = errors.Wrap(err, "Error stopping tool on node")
 		fmt.Fprintln(os.Stderr, errOut.Error())
 	}
 
-	fmt.Printf("%s: Removing %s service file\n", hostname, tool)
-	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", tool))
+	fmt.Printf("%s: Removing %s service file\n", hostname, unitName)
+	serviceFilePath := path.Join("/etc/systemd/system", fmt.Sprintf("%s.service", unitName))
 	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", serviceFilePath))
 	if err != nil {
 		errOut = errors.Wrap(err, "Error removing systemd service file")
 		fmt.Fprintln(os.Stderr, errOut.Error())
 	}
 
+	return errOut
+}
+
+func teardownNode(ctx context.Context, hostname string, sshUser string) error {
+	var errOut error
+
+	tool := "ciao-launcher"
+	osPrepareName := fmt.Sprintf("%s-prepare", tool)
+
+	errOut = teardownService(ctx, hostname, sshUser, tool)
+	errOut = teardownService(ctx, hostname, sshUser, osPrepareName)
+
 	fmt.Printf("%s: Reloading systemd unit files\n", hostname)
-	err = SSHRunCommand(ctx, sshUser, hostname, "sudo systemctl daemon-reload")
+	err := SSHRunCommand(ctx, sshUser, hostname, "sudo systemctl daemon-reload")
 	if err != nil {
 		errOut = errors.Wrap(err, "Error restarting systemctl on node")
 		fmt.Fprintln(os.Stderr, errOut.Error())
@@ -250,6 +379,18 @@ func teardownNode(ctx context.Context, hostname string, sshUser string) error {
 	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm %s", systemToolPath))
 	if err != nil {
 		errOut = errors.Wrap(err, "Error removing tool binary")
+		fmt.Fprintln(os.Stderr, errOut.Error())
+	}
+
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm -rf %s", ciaoLockDir))
+	if err != nil {
+		errOut = errors.Wrapf(err, "Error removing %s", ciaoLockDir)
+		fmt.Fprintln(os.Stderr, errOut.Error())
+	}
+
+	err = SSHRunCommand(ctx, sshUser, hostname, fmt.Sprintf("sudo rm -rf %s", ciaoDataDir))
+	if err != nil {
+		errOut = errors.Wrapf(err, "Error removing %s", ciaoDataDir)
 		fmt.Fprintln(os.Stderr, errOut.Error())
 	}
 

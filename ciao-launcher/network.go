@@ -235,7 +235,9 @@ func createCNVnicCfg(cfg *vmConfig) (*libsnnet.VnicConfig, error) {
 		InstanceID: cfg.Instance,
 		TenantID:   cfg.TenantUUID,
 		SubnetID:   cfg.SubnetIP,
-		ConcID:     cfg.ConcUUID}, nil
+		ConcID:     cfg.ConcUUID,
+		Queues:     1,
+	}, nil
 }
 
 func createCNCIVnicCfg(cfg *vmConfig) (*libsnnet.VnicConfig, error) {
@@ -282,10 +284,11 @@ func sendNetworkEvent(conn serverConn, eventType ssntp.Event,
 	}
 }
 
-func createVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) (string, string, string, error) {
+func createVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) (string, string, string, []*os.File, error) {
 	var name string
 	var bridge string
 	var gatewayIP string
+	var fds []*os.File
 
 	//BUG(markus): This function needs a context parameter
 
@@ -298,15 +301,16 @@ func createVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) (string, string, 
 			vnic, event, info, err = createDockerVnic(vnicCfg)
 			if err != nil {
 				glog.Errorf("cn.CreateVnic failed %v", err)
-				return "", "", "", err
+				return "", "", "", nil, err
 			}
 			bridge = info.SubnetID
 		} else {
 			vnic, event, info, err = cnNet.CreateVnic(vnicCfg)
 			if err != nil {
 				glog.Errorf("cn.CreateVnic failed %v", err)
-				return "", "", "", err
+				return "", "", "", nil, err
 			}
+			fds = vnic.FDs
 		}
 		sendNetworkEvent(conn, ssntp.TenantAdded, event)
 		name = vnic.LinkName
@@ -316,13 +320,13 @@ func createVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) (string, string, 
 		vnic, err := cnNet.CreateCnciVnic(vnicCfg)
 		if err != nil {
 			glog.Errorf("cn.CreateCnciVnic failed %v", err)
-			return "", "", "", err
+			return "", "", "", nil, err
 		}
 		name = vnic.LinkName
 		glog.Infoln("CNCI VNIC created =", name)
 	}
 
-	return name, bridge, gatewayIP, nil
+	return name, bridge, gatewayIP, fds, nil
 }
 
 func destroyVnic(conn serverConn, vnicCfg *libsnnet.VnicConfig) error {

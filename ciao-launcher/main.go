@@ -24,8 +24,11 @@ import (
 	"math"
 	"os"
 	"os/signal"
+	"os/user"
 	"path"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -83,7 +86,11 @@ var hardReset bool
 var diskLimit bool
 var memLimit bool
 var cephID string
+var prepare bool
+var roles string
 var simulate bool
+var childProcessCreds *syscall.SysProcAttr
+var childProcessKVMCreds *syscall.SysProcAttr
 var maxInstances = int(math.MaxInt32)
 
 func init() {
@@ -93,6 +100,8 @@ func init() {
 	flag.BoolVar(&hardReset, "hard-reset", false, "Kill and delete all instances, reset networking and exit")
 	flag.BoolVar(&simulate, "simulation", false, "Launcher simulation")
 	flag.StringVar(&cephID, "ceph_id", "", "ceph client id")
+	flag.BoolVar(&prepare, "osprepare", false, "Install dependencies")
+	flag.StringVar(&roles, "roles", "agent", "Roles for which dependencies are to be installed")
 }
 
 const (
@@ -109,8 +118,12 @@ const (
 	resourcePeriod  = 30
 )
 
-func installLauncherDeps(role ssntp.Role, doneCh chan struct{}) {
+func installLauncherDeps(roles string, doneCh chan os.Signal) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
+	rolesSet := make(map[string]struct{})
+	for _, k := range strings.Split(roles, ",") {
+		rolesSet[k] = struct{}{}
+	}
 
 	ch := make(chan error)
 	go func() {
@@ -120,10 +133,10 @@ func installLauncherDeps(role ssntp.Role, doneCh chan struct{}) {
 
 		launcherDeps := osprepare.NewPackageRequirements()
 
-		if role.IsNetAgent() {
+		if _, ok := rolesSet["net-agent"]; ok {
 			launcherDeps.Append(launcherNetNodeDeps)
 		}
-		if role.IsAgent() {
+		if _, ok := rolesSet["agent"]; ok {
 			launcherDeps.Append(launcherComputeNodeDeps)
 		}
 
@@ -288,6 +301,56 @@ func loadClusterConfig(conn serverConn) error {
 		cephID = clusterConfig.Configure.Storage.CephID
 	}
 
+	childUser := clusterConfig.Configure.Launcher.ChildUser
+	if childUser != "" {
+		usr, err := user.Lookup(childUser)
+		if err != nil {
+			return err
+		}
+		uid, err := strconv.Atoi(usr.Uid)
+		if err != nil {
+			return err
+		}
+		grp, err := user.LookupGroup(childUser)
+		if err != nil {
+			return err
+		}
+		gid, err := strconv.Atoi(grp.Gid)
+		if err != nil {
+			return err
+		}
+		childProcessCreds = &syscall.SysProcAttr{
+			Credential: &syscall.Credential{
+				Uid: uint32(uid),
+				Gid: uint32(gid),
+			},
+		}
+		grp, err = user.LookupGroup("kvm")
+		if err != nil {
+			return err
+		}
+		kgid, err := strconv.Atoi(grp.Gid)
+		if err != nil {
+			return err
+		}
+		grp, err = user.LookupGroup("disk")
+		if err != nil {
+			return err
+		}
+		dgid, err := strconv.Atoi(grp.Gid)
+		if err != nil {
+			return err
+		}
+
+		childProcessKVMCreds = &syscall.SysProcAttr{
+			Credential: &syscall.Credential{
+				Uid:    uint32(uid),
+				Gid:    uint32(gid),
+				Groups: []uint32{uint32(kgid), uint32(dgid)},
+			},
+		}
+	}
+
 	if err := netConfig.Save(); err != nil {
 		glog.Warningf("Unable to save networking config: %v", err)
 	}
@@ -303,6 +366,11 @@ func printClusterConfig() {
 	glog.Infof("Disk Limit:           %v", diskLimit)
 	glog.Infof("Memory Limit:         %v", memLimit)
 	glog.Infof("Ceph ID:              %v", cephID)
+	if childProcessCreds != nil {
+		glog.Infof("Credentials:          %d:%d",
+			childProcessCreds.Credential.Uid,
+			childProcessCreds.Credential.Gid)
+	}
 }
 
 func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
@@ -353,8 +421,6 @@ func connectToServer(doneCh chan struct{}, statusCh chan struct{}) {
 			return
 		}
 		printClusterConfig()
-
-		installLauncherDeps(client.conn.Role(), doneCh)
 
 		err = startNetwork(doneCh)
 		if err != nil {
@@ -528,6 +594,13 @@ func main() {
 	}()
 
 	flag.Parse()
+
+	if prepare {
+		signalCh := make(chan os.Signal, 1)
+		signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		installLauncherDeps(roles, signalCh)
+		return
+	}
 
 	if simulate == false && getLock() != nil {
 		os.Exit(1)

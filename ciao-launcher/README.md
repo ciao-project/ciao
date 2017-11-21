@@ -105,8 +105,12 @@ Usage of ciao-launcher:
         log to standard error instead of files
   -network
         Enable networking (default true)
+  -osprepare
+        Install dependencies
   -qemu-virtualisation value
         QEMU virtualisation method. Can be 'kvm', 'auto' or 'software' (default kvm)
+  -roles string
+        Roles for which dependencies are to be installed (default "agent")
   -simulation
         Launcher simulation
   -stderrthreshold value

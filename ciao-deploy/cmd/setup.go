@@ -33,7 +33,7 @@ func setup() int {
 	ctx, cancelFunc := getSignalContext()
 	defer cancelFunc()
 
-	err := deploy.SetupMaster(ctx, force, imageCacheDirectory, clusterConf)
+	err := deploy.SetupMaster(ctx, force, imageCacheDirectory, clusterConf, localLauncher)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error provisioning system as master: %v\n", err)
 		return 1

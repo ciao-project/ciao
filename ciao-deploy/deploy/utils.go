@@ -153,6 +153,15 @@ func SudoRemoveFile(ctx context.Context, dest string) error {
 	return nil
 }
 
+// SudoChownFiles changes the user and group one or more files to ciaoUserAndGroup
+func SudoChownFiles(ctx context.Context, dest ...string) error {
+	cmd := SudoCommandContext(ctx, "chown", append([]string{ciaoUserAndGroup}, dest...)...)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "Error running: %v", cmd.Args)
+	}
+	return nil
+}
+
 // InGoPath returns the desired path relative to $GOPATH
 func InGoPath(path string) string {
 	data, err := exec.Command("go", "env", "GOPATH").Output()
@@ -291,8 +300,30 @@ func SSHRunCommand(ctx context.Context, user string, host string, command string
 	return nil
 }
 
+// SSHRunCommandWithStatus is a convenience function to run a command on a given host.
+// This assumes the key is already in the keyring for the provided user. On success,
+// the function returns 0, nil.  On failure, the function returns an integer indicating
+// the exit code of the command and an error.  The exit code is set to -1, if the exit
+// code was not available.
+func SSHRunCommandWithStatus(ctx context.Context, user string, host string, command string) (int, error) {
+	status := -1
+	err := SSHRunCommand(ctx, user, host, command)
+	if err == nil {
+		return 0, nil
+	}
+	if err, ok := errors.Cause(err).(*ssh.ExitError); ok {
+		status = err.ExitStatus()
+	}
+	return status, err
+}
+
 // SSHCreateFile creates a file on a remote machine
 func SSHCreateFile(ctx context.Context, user string, host string, dest string, f io.Reader) error {
+	err := SSHRunCommand(ctx, user, host, fmt.Sprintf("sudo mkdir -p %s", filepath.Dir(dest)))
+	if err != nil {
+		return errors.Wrapf(err, "Error creating %s", filepath.Dir(dest))
+	}
+
 	client, err := sshClient(ctx, user, host)
 	if err != nil {
 		return errors.Wrap(err, "Error creating client")

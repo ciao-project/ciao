@@ -36,9 +36,14 @@ type startTimes struct {
 
 func createInstance(vm virtualizer, instanceDir string, cfg *vmConfig,
 	bridge, gatewayIP string, userData, metaData []byte) (err error) {
-	err = os.MkdirAll(instanceDir, 0755)
+	err = os.MkdirAll(instanceDir, 0775)
 	if err != nil {
-		glog.Errorf("Cannot create instance directory for VM: %v", err)
+		glog.Errorf("Cannot create instance directory: %v", err)
+		return
+	}
+	err = os.Chmod(instanceDir, 0775)
+	if err != nil {
+		glog.Errorf("Unable to set permissions for instance directory: %v", err)
 		return
 	}
 
@@ -71,6 +76,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	var gatewayIP string
 	var vnicCfg *libsnnet.VnicConfig
 	var st startTimes
+	var fds []*os.File
 
 	st.startStamp = time.Now()
 
@@ -104,10 +110,15 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 	}
 
 	if vnicCfg != nil {
-		vnicName, bridge, gatewayIP, err = createVnic(conn, vnicCfg)
+		vnicName, bridge, gatewayIP, fds, err = createVnic(conn, vnicCfg)
 		if err != nil {
 			return nil, &startError{err, payloads.NetworkFailure, cmd.cfg.Restart}
 		}
+		defer func() {
+			for _, f := range fds {
+				_ = f.Close()
+			}
+		}()
 	}
 
 	st.networkStamp = time.Now()
@@ -123,7 +134,7 @@ func processStart(cmd *insStartCmd, instanceDir string, vm virtualizer, conn ser
 
 	st.creationStamp = time.Now()
 
-	err = vm.startVM(vnicName, getNodeIPAddress(), cephID)
+	err = vm.startVM(vnicName, getNodeIPAddress(), cephID, fds)
 	if err != nil {
 		if vnicCfg != nil {
 			destroyVnic(conn, vnicCfg)

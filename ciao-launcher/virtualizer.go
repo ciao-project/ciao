@@ -18,6 +18,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"sync"
 )
 
@@ -62,7 +63,7 @@ type virtualizer interface {
 	deleteImage() error
 
 	// Boots a VM.  This method is called by START
-	startVM(vnicName, ipAddress, cephID string) error
+	startVM(vnicName, ipAddress, cephID string, fds []*os.File) error
 
 	//BUG(markus): Need to use context rather than the monitor channel to
 	//detect when we need to quit.
