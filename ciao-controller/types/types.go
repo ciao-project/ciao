@@ -106,7 +106,6 @@ type WorkloadRequest struct {
 	TenantID   string
 	Instances  int
 	TraceLabel string
-	Volumes    []storage.BlockDevice
 	Name       string
 	Subnet     string
 }

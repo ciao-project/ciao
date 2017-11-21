@@ -251,9 +251,8 @@ func BenchmarkNewConfig(b *testing.B) {
 	ip := net.ParseIP("172.16.0.2")
 
 	b.ResetTimer()
-	noVolumes := []storage.BlockDevice{}
 	for n := 0; n < b.N; n++ {
-		_, err := newConfig(ctl, &wls[0], id.String(), tenant.ID, noVolumes, fmt.Sprintf("test-%d", n), ip)
+		_, err := newConfig(ctl, &wls[0], id.String(), tenant.ID, fmt.Sprintf("test-%d", n), ip)
 		if err != nil {
 			b.Error(err)
 		}
@@ -1337,8 +1336,7 @@ func TestStorageConfig(t *testing.T) {
 
 	ip := net.ParseIP("172.16.0.2")
 
-	noVolumes := []storage.BlockDevice{}
-	_, err = newConfig(ctl, &wls[0], id.String(), tenant.ID, noVolumes, "test", ip)
+	_, err = newConfig(ctl, &wls[0], id.String(), tenant.ID, "test", ip)
 	if err != nil {
 		t.Fatal(err)
 	}

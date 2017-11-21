@@ -235,7 +235,7 @@ func (c *controller) confirmTenant(tenantID string) error {
 func (c *controller) createInstance(w types.WorkloadRequest, wl types.Workload, name string, newIP net.IP) (*types.Instance, error) {
 	startTime := time.Now()
 
-	instance, err := newInstance(c, w.TenantID, &wl, w.Volumes, name, w.Subnet, newIP)
+	instance, err := newInstance(c, w.TenantID, &wl, name, w.Subnet, newIP)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating instance")
 	}
