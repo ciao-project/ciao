@@ -37,8 +37,8 @@ import (
 // Source is provided to the disk structure to indicate whether the
 // disk should be cloned from a volume or an image.
 type Source struct {
-	Type string `yaml:"service"`
-	ID   string `yaml:"id"`
+	Type   string `yaml:"service"`
+	Source string `yaml:"source"`
 }
 
 // Disk describes the storage for the workload definition.

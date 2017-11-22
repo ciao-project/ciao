@@ -315,8 +315,8 @@ func (wd *baseWorkload) CreateWorkload(ctx context.Context, sshPublickey string,
 		opts.Disks = []bat.Disk{
 			{
 				Source: &bat.Source{
-					Type: "image",
-					ID:   wd.imageID,
+					Type:   "image",
+					Source: wd.imageID,
 				},
 				Ephemeral: true,
 				Bootable:  true,

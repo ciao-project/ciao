@@ -44,8 +44,8 @@ const vmWorkloadImageName = "ubuntu-server-16.04"
 func getWorkloadSource(ctx context.Context, t *testing.T, tenant string) bat.Source {
 	// get the Image ID to use.
 	source := bat.Source{
-		Type: "image",
-		ID:   vmWorkloadImageName,
+		Type:   "image",
+		Source: vmWorkloadImageName,
 	}
 
 	return source

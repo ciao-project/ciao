@@ -8,6 +8,6 @@ cloud_init: fedora_vm.yaml
 disks:
   - source:
        service: image
-       id: "73a86d7e-93c0-480e-9c41-ab42f69b7799"
+       source: "73a86d7e-93c0-480e-9c41-ab42f69b7799"
     ephemeral: true
     bootable: true
