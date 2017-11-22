@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
@@ -42,6 +43,11 @@ func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (t
 			glog.Errorf("Error on parsing UUID: %v", err)
 			return types.Image{}, api.ErrBadUUID
 		}
+	}
+
+	r := regexp.MustCompile("^[a-z0-9-.]{1,64}$")
+	if !r.MatchString(req.Name) {
+		return types.Image{}, types.ErrBadName
 	}
 
 	i := types.Image{

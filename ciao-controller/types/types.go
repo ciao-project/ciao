@@ -607,6 +607,9 @@ var (
 
 	// ErrWorkloadInUse is returned by DeleteWorkload when an instance of a workload is still active.
 	ErrWorkloadInUse = errors.New("Workload definition still in use")
+
+	// ErrBadName is returned when a name doesn't match the requirements
+	ErrBadName = errors.New("Requested name doesn't match requirements")
 )
 
 // Link provides a url and relationship for a resource.
