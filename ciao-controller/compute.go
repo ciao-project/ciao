@@ -164,7 +164,7 @@ func (c *controller) CreateServer(tenant string, server api.CreateServerRequest)
 		// Between 1 and 64 (HOST_NAME_MAX) alphanum (+ "-")
 		r := regexp.MustCompile("^[a-z0-9-]{1,64}?$")
 		if !r.MatchString(server.Server.Name) {
-			return server, fmt.Errorf("Requested name must be between 1 and 64 lowercase letters, numbers and hyphens")
+			return server, types.ErrBadName
 		}
 	}
 
