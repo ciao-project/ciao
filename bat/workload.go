@@ -37,7 +37,7 @@ import (
 // Source is provided to the disk structure to indicate whether the
 // disk should be cloned from a volume or an image.
 type Source struct {
-	Type   string `yaml:"service"`
+	Type   string `yaml:"type"`
 	Source string `yaml:"source"`
 }
 

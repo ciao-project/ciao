@@ -130,7 +130,7 @@ The create flags are:
 }
 
 type source struct {
-	Type   types.SourceType `yaml:"service"`
+	Type   types.SourceType `yaml:"type"`
 	Source string           `yaml:"source"`
 }
 
