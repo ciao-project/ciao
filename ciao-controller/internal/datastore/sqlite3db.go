@@ -622,7 +622,7 @@ func (ds *sqliteDB) getConfig(ID string) (string, error) {
 
 // lock must be held by caller
 func (ds *sqliteDB) createWorkloadStorage(tx *sql.Tx, workloadID string, storage *types.StorageResource) error {
-	_, err := tx.Exec("INSERT INTO workload_storage (workload_id, volume_id, bootable, ephemeral, size, source_type, source_id, tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", workloadID, storage.ID, storage.Bootable, storage.Ephemeral, storage.Size, string(storage.SourceType), storage.SourceID, storage.Tag)
+	_, err := tx.Exec("INSERT INTO workload_storage (workload_id, volume_id, bootable, ephemeral, size, source_type, source_id, tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", workloadID, storage.ID, storage.Bootable, storage.Ephemeral, storage.Size, string(storage.SourceType), storage.Source, storage.Tag)
 
 	return err
 }
@@ -651,7 +651,7 @@ func (ds *sqliteDB) getWorkloadStorage(ID string) ([]types.StorageResource, erro
 
 	for rows.Next() {
 		var r types.StorageResource
-		err := rows.Scan(&r.ID, &r.Bootable, &r.Ephemeral, &r.Size, &sourceType, &r.SourceID, &r.Tag)
+		err := rows.Scan(&r.ID, &r.Bootable, &r.Ephemeral, &r.Size, &sourceType, &r.Source, &r.Tag)
 
 		if err != nil {
 			return []types.StorageResource{}, err

@@ -66,9 +66,9 @@ type StorageResource struct {
 	// Needed only for new storage.
 	SourceType SourceType `json:"source_type"`
 
-	// SourceID represents the ID of either the image or the volume
+	// Source represents the ID or name of either the image or the volume
 	// that the storage resource is based on.
-	SourceID string `json:"source_id"`
+	Source string `json:"source_id"`
 
 	// Tag is a piece of abitrary search/sort identifier text
 	Tag string

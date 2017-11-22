@@ -2518,7 +2518,7 @@ users:
 		Bootable:   true,
 		Ephemeral:  true,
 		SourceType: types.ImageService,
-		SourceID:   "4e16e743-265a-4bf2-9fd1-57ada0b28904",
+		Source:     "4e16e743-265a-4bf2-9fd1-57ada0b28904",
 		Internal:   true,
 	}
 

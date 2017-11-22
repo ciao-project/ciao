@@ -182,9 +182,9 @@ func optToReqStorage(opt workloadOptions) ([]types.StorageResource, error) {
 
 			if disk.Source.Type != types.Empty {
 				res.SourceType = disk.Source.Type
-				res.SourceID = disk.Source.ID
+				res.Source = disk.Source.ID
 
-				if res.SourceID == "" {
+				if res.Source == "" {
 					return nil, errors.New("Invalid workload yaml: when using a source an id must also be specified")
 				}
 			} else {
@@ -267,7 +267,7 @@ func outputWorkload(w types.Workload) {
 
 		src := source{
 			Type: s.SourceType,
-			ID:   s.SourceID,
+			ID:   s.Source,
 		}
 
 		d.Source = src

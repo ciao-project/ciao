@@ -47,7 +47,7 @@ func validateContainerWorkload(req types.Workload) error {
 }
 
 func (c *controller) validateWorkloadStorageSourceID(storage *types.StorageResource, tenantID string) error {
-	if storage.SourceID == "" {
+	if storage.Source == "" {
 		// you may only use no source id with empty type
 		if storage.SourceType != types.Empty {
 			return types.ErrBadRequest
@@ -55,14 +55,14 @@ func (c *controller) validateWorkloadStorageSourceID(storage *types.StorageResou
 	}
 
 	if storage.SourceType == types.ImageService {
-		_, err := c.GetImage(tenantID, storage.SourceID)
+		_, err := c.GetImage(tenantID, storage.Source)
 		if err != nil {
 			return types.ErrBadRequest
 		}
 	}
 
 	if storage.SourceType == types.VolumeService {
-		_, err := c.ShowVolumeDetails(tenantID, storage.SourceID)
+		_, err := c.ShowVolumeDetails(tenantID, storage.Source)
 		if err != nil {
 			return types.ErrBadRequest
 		}

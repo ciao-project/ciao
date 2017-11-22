@@ -264,14 +264,14 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 	var err error
 	switch s.SourceType {
 	case types.ImageService:
-		device, err = c.CreateBlockDeviceFromSnapshot(s.SourceID, "ciao-image")
+		device, err = c.CreateBlockDeviceFromSnapshot(s.Source, "ciao-image")
 		if err != nil {
 			glog.Errorf("Unable to get block device for image: %v", err)
 			return payloads.StorageResource{}, err
 		}
 
 	case types.VolumeService:
-		device, err = c.CopyBlockDevice(s.SourceID)
+		device, err = c.CopyBlockDevice(s.Source)
 		if err != nil {
 			return payloads.StorageResource{}, err
 		}

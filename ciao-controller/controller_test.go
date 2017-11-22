@@ -1214,7 +1214,7 @@ func TestGetStorageForVolume(t *testing.T) {
 		Bootable:   true,
 		Ephemeral:  false,
 		SourceType: types.VolumeService,
-		SourceID:   sourceVolume.ID,
+		Source:     sourceVolume.ID,
 	}
 
 	pl, err := getStorage(ctl, s, tenant.ID, "")
@@ -1265,7 +1265,7 @@ func TestGetStorageForImage(t *testing.T) {
 		Bootable:   true,
 		Ephemeral:  false,
 		SourceType: types.ImageService,
-		SourceID:   filepath.Base(tmpfile.Name()),
+		Source:     filepath.Base(tmpfile.Name()),
 	}
 
 	pl, err := getStorage(ctl, s, tenant.ID, "")
@@ -1327,7 +1327,7 @@ func TestStorageConfig(t *testing.T) {
 		Bootable:   true,
 		Ephemeral:  false,
 		SourceType: types.ImageService,
-		SourceID:   info.Name(),
+		Source:     info.Name(),
 	}
 
 	wls[0].Storage = []types.StorageResource{s}
