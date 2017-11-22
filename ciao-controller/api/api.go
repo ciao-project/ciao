@@ -97,54 +97,16 @@ type RequestedVolume struct {
 	ImageRef    string `json:"imageRef,omitempty"`
 }
 
-// BlockDeviceMapping represents extra block devices that can be added to an instance
-type BlockDeviceMapping struct {
-	// DeviceName: the name the hypervisor should assign to the block
-	// device, eg: "vda"
-	DeviceName string `json:"device_name,omitempty"`
-
-	// SourceType: blank, snapshot, volume, or image
-	SourceType string `json:"source_type"`
-
-	// DestinationType: optional flag to indicate whether the block
-	// device is backed locally or from the volume service
-	DestinationType string `json:"destination_type,omitempty"`
-
-	// DeleteOnTermination: optional flag to indicate the volume should
-	// autodelete upon termination of the instance
-	DeleteOnTermination bool `json:"delete_on_termination,omitempty"`
-
-	// GuestFormat: optionally format a created volume as "swap" or
-	// leave "ephemeral" (unformatted) for any use by the instance
-	GuestFormat string `json:"guest_format,omitempty"`
-
-	// BootIndex: hint to hypervisor for boot order among multiple
-	// bootable devices, eg: floppy, cdrom, disk.  Default "none".
-	// Disable booting via negative number or "none"
-	BootIndex string `json:"boot_index"`
-
-	// Tag: optional arbitrary text identifier for the block device, useful
-	// for human identification or programmatic searching/sorting
-	Tag string `json:"tag,omitempty"`
-
-	// UUID: the volume/image/snapshot to attach
-	UUID string `json:"uuid,omitempty"`
-
-	// VolumeSize: integer number of gigabytes for ephemeral or swap
-	VolumeSize int `json:"volume_size,omitempty"`
-}
-
 // CreateServerRequest contains the details needed to start new instance(s)
 type CreateServerRequest struct {
 	Server struct {
-		ID                  string               `json:"id"`
-		Name                string               `json:"name"`
-		Image               string               `json:"imageRef"`
-		WorkloadID          string               `json:"workload_id"`
-		MaxInstances        int                  `json:"max_count"`
-		MinInstances        int                  `json:"min_count"`
-		BlockDeviceMappings []BlockDeviceMapping `json:"block_device_mapping,omitempty"`
-		Metadata            map[string]string    `json:"metadata,omitempty"`
+		ID           string            `json:"id"`
+		Name         string            `json:"name"`
+		Image        string            `json:"imageRef"`
+		WorkloadID   string            `json:"workload_id"`
+		MaxInstances int               `json:"max_count"`
+		MinInstances int               `json:"min_count"`
+		Metadata     map[string]string `json:"metadata,omitempty"`
 	} `json:"server"`
 }
 

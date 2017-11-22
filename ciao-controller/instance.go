@@ -58,7 +58,7 @@ func isCNCIWorkload(workload *types.Workload) bool {
 }
 
 func newInstance(ctl *controller, tenantID string, workload *types.Workload,
-	volumes []storage.BlockDevice, name string, subnet string, IPAddr net.IP) (*instance, error) {
+	name string, subnet string, IPAddr net.IP) (*instance, error) {
 	id := uuid.Generate()
 
 	if name != "" {
@@ -72,7 +72,7 @@ func newInstance(ctl *controller, tenantID string, workload *types.Workload,
 		}
 	}
 
-	config, err := newConfig(ctl, workload, id.String(), tenantID, volumes, name, IPAddr)
+	config, err := newConfig(ctl, workload, id.String(), tenantID, name, IPAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -298,18 +298,6 @@ func getStorage(c *controller, s types.StorageResource, tenant string, instanceI
 	return addBlockDevice(c, tenant, instanceID, device, s)
 }
 
-func controllerStorageResourceFromPayload(volume payloads.StorageResource) (s types.StorageResource) {
-	s.ID = volume.ID
-	s.Bootable = volume.Bootable
-	s.Ephemeral = volume.Ephemeral
-	s.Size = volume.Size
-	s.SourceType = ""
-	s.SourceID = ""
-	s.Tag = volume.Tag
-
-	return
-}
-
 func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.NetworkResources, cnci bool, ipAddress net.IP) error {
 	networking.VnicUUID = uuid.Generate().String()
 
@@ -347,50 +335,8 @@ func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.N
 	return nil
 }
 
-func storageConfig(ctl *controller, tenant *types.Tenant, instanceID string, volumes []storage.BlockDevice) ([]payloads.StorageResource, error) {
-	var storage []payloads.StorageResource
-
-	// handle storage resources for just this instance
-	for _, volume := range volumes {
-		instanceStorage := payloads.StorageResource{
-			ID:        volume.ID,
-			Bootable:  volume.Bootable,
-			Ephemeral: volume.Ephemeral,
-			Local:     volume.Local,
-			Swap:      volume.Swap,
-			BootIndex: volume.BootIndex,
-			Tag:       volume.Tag,
-			Size:      volume.Size,
-		}
-
-		// controller created (as opposed to launcher
-		// created) instance storage (workload storage is later)
-		if volume.ID == "" && !volume.Local {
-			// auto-create empty
-			device, err := ctl.CreateBlockDevice("", "", volume.Size)
-			if err != nil {
-				return storage, err
-			}
-
-			instanceStorage.ID = device.ID
-			s := controllerStorageResourceFromPayload(instanceStorage)
-			_, err = addBlockDevice(ctl, tenant.ID, instanceID, device, s)
-			if err != nil {
-				return storage, err
-			}
-		} /* else {
-			// volume.ID != "": launcher will attach pre-existing volume
-			// volume.Local: launcher will create ephemeral volume
-		} */
-
-		storage = append(storage, instanceStorage)
-	}
-
-	return storage, nil
-}
-
 func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID string,
-	volumes []storage.BlockDevice, name string, IPaddr net.IP) (config, error) {
+	name string, IPaddr net.IP) (config, error) {
 	var metaData userData
 	var config config
 	var networking payloads.NetworkResources
@@ -415,11 +361,6 @@ func newConfig(ctl *controller, wl *types.Workload, instanceID string, tenantID 
 	metaData.Hostname = instanceID
 	if name != "" {
 		metaData.Hostname = name
-	}
-
-	storage, err = storageConfig(ctl, tenant, instanceID, volumes)
-	if err != nil {
-		return config, err
 	}
 
 	config.ip = networking.PrivateIP

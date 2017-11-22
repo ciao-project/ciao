@@ -22,7 +22,6 @@ import (
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/uuid"
 	"github.com/gorilla/mux"
 )
@@ -136,55 +135,6 @@ func (c *controller) validateBlockDeviceMappingBootIndex(index string) error {
 	return nil
 }
 
-func (c *controller) validateBlockDeviceAutoEphemeral(bd api.BlockDeviceMapping) (bool, error) {
-	// local dest with blank source is always an auto-created, non-bootable, non-persistent,
-	// data or swap disk.  This implies UUID must be "" and size must be specified.
-	if bd.DestinationType != "local" {
-		return false, nil
-	}
-
-	if bd.SourceType != "blank" && bd.SourceType != "" {
-		return false, fmt.Errorf("Invalid block device source type. Expected \"blank\" or unset source with \"local\" destination type, got source type \"%s\"", bd.SourceType)
-	}
-	if !noBlockDeviceMappingBootIndex(bd.BootIndex) {
-		return false, fmt.Errorf("Invalid block device boot index.  Expected \"none\" or negative boot index with \"local\" destination type, got boot index \"%s\"", bd.BootIndex)
-	}
-	if bd.UUID != "" {
-		return false, fmt.Errorf("Invalid block device uuid.  Expected uuid unset with \"local\" destination type, got uuid \"%s\"", bd.UUID)
-	}
-	if bd.VolumeSize <= 0 {
-		return false, fmt.Errorf("Invalid block device size.  Expected positive integer GB size with \"local\" destination type, got size \"%d\"", bd.VolumeSize)
-	}
-	if bd.DeleteOnTermination != true {
-		return false, fmt.Errorf("Invalid block device delete on termination flag.  Expected \"false\" with \"local\" destination type, got \"true\"")
-	}
-
-	return true, nil
-}
-
-func (c *controller) validateBlockDeviceAuto(bd api.BlockDeviceMapping) (bool, error) {
-	// volume dest with blank source is always an auto-created, non-bootable,
-	// data or swap disk.  This implies UUID must be "" and size must be specified.
-	if bd.DestinationType != "volume" {
-		return false, nil
-	}
-
-	if bd.SourceType != "blank" && bd.SourceType != "" {
-		return false, fmt.Errorf("Invalid block device source type. Expected \"blank\" or unset source with \"volume\" destination type, got source type \"%s\"", bd.SourceType)
-	}
-	if !noBlockDeviceMappingBootIndex(bd.BootIndex) {
-		return false, fmt.Errorf("Invalid block device boot index.  Expected \"none\" or negative boot index with \"volume\" destination type, got boot index \"%s\"", bd.BootIndex)
-	}
-	if bd.UUID != "" {
-		return false, fmt.Errorf("Invalid block device uuid.  Expected uuid unset with \"volume\" destination type, got uuid \"%s\"", bd.UUID)
-	}
-	if bd.VolumeSize <= 0 {
-		return false, fmt.Errorf("Invalid block device size.  Expected positive integer GB size with \"volume\" destination type, got size \"%d\"", bd.VolumeSize)
-	}
-
-	return true, nil
-}
-
 func (c *controller) validateUUIDForPreCreatedVolume(sourceType string, UUID string) error {
 	if sourceType == "volume" || sourceType == "image" {
 		_, err := uuid.Parse(UUID)
@@ -199,139 +149,6 @@ func (c *controller) validateUUIDForPreCreatedVolume(sourceType string, UUID str
 	}
 
 	return nil
-}
-
-func (c *controller) validateBlockDevicePreCreated(bd api.BlockDeviceMapping, nInstances int) (bool, error) {
-	// pre-created snapshot/volume/image sources map to a volume destination by UUID
-	if bd.UUID == "" ||
-		(bd.SourceType != "snapshot" && bd.SourceType != "volume" && bd.SourceType != "image") {
-
-		return false, nil
-	}
-
-	if bd.DestinationType != "volume" && bd.DestinationType != "" {
-		return false, fmt.Errorf("Invalid block device destination type.  Expected \"volume\" or unset destination type with snapshot/volume/image source types, got destination type \"%s\"", bd.DestinationType)
-	}
-
-	err := c.validateUUIDForPreCreatedVolume(bd.SourceType, bd.UUID)
-	if err != nil {
-		return false, err
-	}
-
-	if bd.GuestFormat != "ephemeral" && bd.GuestFormat != "" {
-		return false, fmt.Errorf("Invalid block device guest format.  Expected \"ephemeral\" or unset guest format with snapshot/volume/image source types, got format \"%s\"", bd.GuestFormat)
-	}
-	if bd.VolumeSize != 0 {
-		return false, fmt.Errorf("Invalid block device size.  Expected unset size with snapshot/volume/image source types, got size \"%d\"", bd.VolumeSize)
-	}
-	if nInstances != 1 {
-		return false, fmt.Errorf("Invalid instance count (%d).  A volume may only be connected to one instance at a time", nInstances)
-	}
-
-	return true, nil
-}
-
-func (c *controller) validateBlockDeviceMappings(blockDeviceMappings []api.BlockDeviceMapping, nInstances int) error {
-	for _, bd := range blockDeviceMappings {
-		// Check individual fields conform to spec
-		err := c.validateBlockDeviceMappingSourceType(bd.SourceType)
-		if err != nil {
-			return err
-		}
-		err = c.validateBlockDeviceMappingDestinationType(bd.DestinationType)
-		if err != nil {
-			return err
-		}
-		err = c.validateBlockDeviceMappingGuestFormat(bd.GuestFormat)
-		if err != nil {
-			return err
-		}
-		err = c.validateBlockDeviceMappingBootIndex(bd.BootIndex)
-		if err != nil {
-			return err
-		}
-
-		// Check field combinations match at least one semantically
-		// rational set of choices
-		ok, err := c.validateBlockDevicePreCreated(bd, nInstances)
-		if err != nil {
-			return err
-		}
-		if ok {
-			continue
-		}
-		ok, err = c.validateBlockDeviceAuto(bd)
-		if err != nil {
-			return err
-		}
-		if ok {
-			continue
-		}
-		ok, err = c.validateBlockDeviceAutoEphemeral(bd)
-		if err != nil {
-			return err
-		}
-		if ok {
-			continue
-		}
-
-		return fmt.Errorf("Invalid block device mapping: %v", bd)
-	}
-
-	return nil
-}
-
-// The storage.BlockDevice has a "bootable" flag because the payloads.Start
-// is going to be populated with requested storage resources and that yaml
-// includes a bootable flag as a hint to hypervisor when the storage is
-// coming from a legacy Cinder data flow.  We must infer for the
-// api.BlockDeviceMappingV2 if the device may be bootable.
-func isBootable(volume api.BlockDeviceMapping) bool {
-	if !(volume.SourceType == "snapshot" || volume.SourceType == "volume" || volume.SourceType == "image") ||
-		volume.DestinationType != "volume" ||
-		volume.GuestFormat == "swap" ||
-		noBlockDeviceMappingBootIndex(volume.BootIndex) ||
-		volume.UUID == "" ||
-		volume.VolumeSize != 0 {
-
-		return false
-	}
-
-	return true
-}
-
-// abstractBlockDevices assumes its input blockDeviceMappings data contents
-// have been validated to not contain illegal values
-func abstractBlockDevices(blockDeviceMappings []api.BlockDeviceMapping) (volumes []storage.BlockDevice) {
-	for _, bd := range blockDeviceMappings {
-		var volume storage.BlockDevice
-
-		volume.ID = bd.UUID
-
-		if isBootable(bd) {
-			volume.Bootable = true
-			integerIndex, _ := strconv.Atoi(bd.BootIndex)
-			volume.BootIndex = integerIndex
-		}
-
-		volume.Ephemeral = bd.DeleteOnTermination
-
-		if bd.DestinationType == "local" {
-			volume.Local = true
-		}
-
-		if bd.GuestFormat == "swap" {
-			volume.Swap = true
-		}
-
-		volume.Tag = bd.Tag
-
-		volume.Size = bd.VolumeSize
-
-		volumes = append(volumes, volume)
-	}
-
-	return
 }
 
 func (c *controller) CreateServer(tenant string, server api.CreateServerRequest) (resp interface{}, err error) {
@@ -351,13 +168,6 @@ func (c *controller) CreateServer(tenant string, server api.CreateServerRequest)
 		}
 	}
 
-	blockDeviceMappings := server.Server.BlockDeviceMappings
-	err = c.validateBlockDeviceMappings(blockDeviceMappings, nInstances)
-	if err != nil {
-		return server, err
-	}
-	volumes := abstractBlockDevices(blockDeviceMappings)
-
 	label := server.Server.Metadata["label"]
 
 	w := types.WorkloadRequest{
@@ -365,7 +175,6 @@ func (c *controller) CreateServer(tenant string, server api.CreateServerRequest)
 		TenantID:   tenant,
 		Instances:  nInstances,
 		TraceLabel: label,
-		Volumes:    volumes,
 		Name:       server.Server.Name,
 	}
 	var e error
