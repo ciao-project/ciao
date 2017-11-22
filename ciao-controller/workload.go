@@ -22,7 +22,7 @@ import (
 	"github.com/ciao-project/ciao/uuid"
 )
 
-func validateVMWorkload(req types.Workload) error {
+func validateVMWorkload(req *types.Workload) error {
 	// FWType must be either EFI or legacy.
 	if req.FWType != string(payloads.EFI) && req.FWType != payloads.Legacy {
 		return types.ErrBadRequest
@@ -36,7 +36,7 @@ func validateVMWorkload(req types.Workload) error {
 	return nil
 }
 
-func validateContainerWorkload(req types.Workload) error {
+func validateContainerWorkload(req *types.Workload) error {
 	// we should reject anything with ImageID set, but
 	// we'll just ignore it.
 	if req.ImageName == "" {
@@ -55,10 +55,12 @@ func (c *controller) validateWorkloadStorageSourceID(storage *types.StorageResou
 	}
 
 	if storage.SourceType == types.ImageService {
-		_, err := c.GetImage(tenantID, storage.Source)
+		// If the source was specified by name this will resolve it to an ID and fix it
+		image, err := c.GetImage(tenantID, storage.Source)
 		if err != nil {
 			return types.ErrBadRequest
 		}
+		storage.Source = image.ID
 	}
 
 	if storage.SourceType == types.VolumeService {
@@ -70,7 +72,7 @@ func (c *controller) validateWorkloadStorageSourceID(storage *types.StorageResou
 	return nil
 }
 
-func (c *controller) validateWorkloadStorage(req types.Workload) error {
+func (c *controller) validateWorkloadStorage(req *types.Workload) error {
 	bootableCount := 0
 	for i := range req.Storage {
 		// check that a workload type is specified
@@ -116,7 +118,7 @@ func (c *controller) validateWorkloadStorage(req types.Workload) error {
 }
 
 // this is probably an insufficient amount of checking.
-func (c *controller) validateWorkloadRequest(req types.Workload) error {
+func (c *controller) validateWorkloadRequest(req *types.Workload) error {
 	// ID must be blank.
 	if req.ID != "" {
 		glog.V(2).Info("Invalid workload request: ID is not blank")
@@ -161,7 +163,10 @@ func (c *controller) validateWorkloadRequest(req types.Workload) error {
 }
 
 func (c *controller) CreateWorkload(req types.Workload) (types.Workload, error) {
-	err := c.validateWorkloadRequest(req)
+	// If the any storage sources use a name for an image these will be resolved to
+	// an ID in-place. Hence why this takes a pointer to the workload.
+
+	err := c.validateWorkloadRequest(&req)
 	if err != nil {
 		return req, err
 	}

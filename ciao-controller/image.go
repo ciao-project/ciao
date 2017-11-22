@@ -201,11 +201,11 @@ func (c *controller) DeleteImage(tenantID, imageID string) error {
 	return nil
 }
 
-// GetImage will get the raw image data
+// GetImage gets image metadata after checking permissions
 func (c *controller) GetImage(tenantID, imageID string) (types.Image, error) {
 	glog.Infof("Getting Image [%v] from [%v]", imageID, tenantID)
 
-	image, err := c.ds.GetImage(imageID)
+	image, err := c.ds.ResolveImage(imageID)
 	if err != nil {
 		return types.Image{}, err
 	}
