@@ -212,7 +212,7 @@ func CreateCNCIImage(ctx context.Context, anchorCertPath string, caCertPath stri
 	imageOpts := &bat.ImageOptions{
 		ID:         cnciImageID,
 		Visibility: "internal",
-		Name:       "ciao CNCI image",
+		Name:       "ciao-cnci",
 	}
 
 	fmt.Printf("Uploading image as %s\n", imageOpts.ID)

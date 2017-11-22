@@ -85,7 +85,7 @@ type workloadDetails interface {
 var images = []workloadDetails{
 	&baseWorkload{
 		url:       "https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2",
-		imageName: "Fedora Cloud Base 24-1.2",
+		imageName: "fedora-cloud-base-24-1.2",
 		extra:     true,
 		cloudInit: vmCloudInit,
 		opts: bat.WorkloadOptions{
@@ -100,7 +100,7 @@ var images = []workloadDetails{
 	},
 	&baseWorkload{
 		url:       "https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img",
-		imageName: "Ubuntu Server 16.04",
+		imageName: "ubuntu-server-16.04",
 		extra:     false,
 		cloudInit: vmCloudInit,
 		opts: bat.WorkloadOptions{
@@ -306,7 +306,7 @@ func (wd *baseWorkload) Upload(ctx context.Context) error {
 }
 
 func (cwd *clearWorkload) Upload(ctx context.Context) error {
-	return cwd.wd.upload(ctx, cwd.wd.localPath, fmt.Sprintf("Clear Linux %s", cwd.version))
+	return cwd.wd.upload(ctx, cwd.wd.localPath, fmt.Sprintf("clear-linux-%s", cwd.version))
 }
 
 func (wd *baseWorkload) CreateWorkload(ctx context.Context, sshPublickey string, password string) error {
