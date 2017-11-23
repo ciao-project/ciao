@@ -52,10 +52,11 @@ type Disk struct {
 
 // WorkloadRequirements indicate how many cpus and mem to allocate.
 type WorkloadRequirements struct {
-	VCPUs    int    `yaml:"vcpus"`
-	MemMB    int    `yaml:"mem_mb"`
-	NodeID   string `yaml:"node_id,omitempty"`
-	Hostname string `yaml:"hostname,omitempty"`
+	VCPUs      int    `yaml:"vcpus"`
+	MemMB      int    `yaml:"mem_mb"`
+	NodeID     string `yaml:"node_id,omitempty"`
+	Hostname   string `yaml:"hostname,omitempty"`
+	Privileged bool   `yaml:"privileged,omitempty"`
 }
 
 // WorkloadOptions is used to generate a workload definition in yaml.
