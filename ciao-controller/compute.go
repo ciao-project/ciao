@@ -162,7 +162,7 @@ func (c *controller) CreateServer(tenant string, server api.CreateServerRequest)
 
 	if server.Server.Name != "" {
 		// Between 1 and 64 (HOST_NAME_MAX) alphanum (+ "-")
-		r := regexp.MustCompile("^[a-z0-9-]{1,64}?$")
+		r := regexp.MustCompile("^[a-z0-9-]{1,64}$")
 		if !r.MatchString(server.Server.Name) {
 			return server, types.ErrBadName
 		}
