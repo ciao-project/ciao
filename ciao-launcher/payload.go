@@ -142,6 +142,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 	cpus := start.Requirements.VCPUs
 	mem := start.Requirements.MemMB
 	networkNode := start.Requirements.NetworkNode
+	privileged := start.Requirements.Privileged
 
 	net := &start.Networking
 	vnicIP := strings.TrimSpace(net.PrivateIP)
@@ -178,6 +179,7 @@ func parseStartPayload(data []byte) (*vmConfig, *payloadError) {
 		SSHPort:     sshPort,
 		Volumes:     volumes,
 		Restart:     clouddata.Start.Restart,
+		Privileged:  privileged,
 	}, nil
 }
 

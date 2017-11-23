@@ -230,6 +230,15 @@ func (d *docker) createConfigs(bridge, gatewayIP string, userData,
 		hostConfig.CPUQuota = hostConfig.CPUPeriod * int64(d.cfg.Cpus)
 	}
 
+	if d.cfg.Privileged {
+		hostConfig.Privileged = true
+		hostConfig.PidMode = "host"
+		hostConfig.IpcMode = "host"
+		hostConfig.SecurityOpt = []string{"seccomp=unconfined"}
+		hostConfig.Binds = append(hostConfig.Binds, "/dev:/dev")
+		hostConfig.Binds = append(hostConfig.Binds, "/sys:/sys")
+	}
+
 	networkConfig = &network.NetworkingConfig{}
 	if bridge != "" {
 		config.MacAddress = d.cfg.VnicMAC
