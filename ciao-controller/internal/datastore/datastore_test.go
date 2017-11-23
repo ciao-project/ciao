@@ -2734,6 +2734,80 @@ func TestAddRemoveDuplicateImage(t *testing.T) {
 	}
 }
 
+func TestAddRemoveDuplicateNameImage(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i := types.Image{
+		ID:         uuid.Generate().String(),
+		Name:       "test-image-1",
+		Visibility: types.Private,
+		TenantID:   tenant.ID,
+	}
+
+	err = ds.AddImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i2 := types.Image{
+		ID:         uuid.Generate().String(),
+		Name:       "test-image-1",
+		Visibility: types.Private,
+		TenantID:   tenant.ID,
+	}
+
+	err = ds.AddImage(i2)
+	if err != api.ErrAlreadyExists {
+		t.Fatal("Expected error when adding duplicate")
+	}
+
+	err = ds.DeleteImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ds.DeleteImage(i2.ID)
+	if err != api.ErrNoImage {
+		t.Fatal("Expected error when trying to delete again")
+	}
+}
+
+func TestResolveImage(t *testing.T) {
+	tenant, err := addTestTenant()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i := types.Image{
+		ID:         uuid.Generate().String(),
+		Name:       "test-image-1",
+		Visibility: types.Private,
+		TenantID:   tenant.ID,
+	}
+
+	err = ds.AddImage(i)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i2, err := ds.ResolveImage(i.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i3, err := ds.ResolveImage(i.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(i2, i3) {
+		t.Fatal("Expected images returned by name and ID resolution equal")
+	}
+}
+
 var ds *Datastore
 
 var workloadsPath = flag.String("workloads_path", "../../workloads", "path to yaml files")

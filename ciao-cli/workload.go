@@ -130,8 +130,8 @@ The create flags are:
 }
 
 type source struct {
-	Type types.SourceType `yaml:"service"`
-	ID   string           `yaml:"id"`
+	Type   types.SourceType `yaml:"type"`
+	Source string           `yaml:"source"`
 }
 
 type disk struct {
@@ -182,9 +182,9 @@ func optToReqStorage(opt workloadOptions) ([]types.StorageResource, error) {
 
 			if disk.Source.Type != types.Empty {
 				res.SourceType = disk.Source.Type
-				res.SourceID = disk.Source.ID
+				res.Source = disk.Source.Source
 
-				if res.SourceID == "" {
+				if res.Source == "" {
 					return nil, errors.New("Invalid workload yaml: when using a source an id must also be specified")
 				}
 			} else {
@@ -266,8 +266,8 @@ func outputWorkload(w types.Workload) {
 		}
 
 		src := source{
-			Type: s.SourceType,
-			ID:   s.SourceID,
+			Type:   s.SourceType,
+			Source: s.Source,
 		}
 
 		d.Source = src

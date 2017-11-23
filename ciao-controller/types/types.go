@@ -66,9 +66,9 @@ type StorageResource struct {
 	// Needed only for new storage.
 	SourceType SourceType `json:"source_type"`
 
-	// SourceID represents the ID of either the image or the volume
+	// Source represents the ID or name of either the image or the volume
 	// that the storage resource is based on.
-	SourceID string `json:"source_id"`
+	Source string `json:"source_id"`
 
 	// Tag is a piece of abitrary search/sort identifier text
 	Tag string
@@ -607,6 +607,9 @@ var (
 
 	// ErrWorkloadInUse is returned by DeleteWorkload when an instance of a workload is still active.
 	ErrWorkloadInUse = errors.New("Workload definition still in use")
+
+	// ErrBadName is returned when a name doesn't match the requirements
+	ErrBadName = errors.New("Requested name doesn't match requirements")
 )
 
 // Link provides a url and relationship for a resource.

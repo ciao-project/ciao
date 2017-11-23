@@ -25,8 +25,8 @@ requirements:
 cloud_init: "{{.UserDataFile}}"
 disks:
   - source:
-       service: image
-       id: "{{.ImageUUID}}"
+       type: image
+       source: "{{.ImageUUID}}"
     size: {{.DiskGiB}}
     ephemeral: true
     bootable: true

@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"text/template"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
@@ -73,6 +74,11 @@ func (cmd *imageAddCommand) parseArgs(args []string) []string {
 func (cmd *imageAddCommand) run(args []string) error {
 	if cmd.name == "" {
 		return errors.New("Missing required -name parameter")
+	}
+
+	r := regexp.MustCompile("^[a-z0-9-.]{1,64}$")
+	if !r.MatchString(cmd.name) {
+		return errors.New("Requested name must be between 1 and 64 lowercase letters, numbers, hyphens and dots")
 	}
 
 	if cmd.file == "" {

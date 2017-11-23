@@ -90,7 +90,7 @@ func (cmd *instanceAddCommand) validateAddCommandArgs() {
 	}
 
 	if cmd.name != "" {
-		r := regexp.MustCompile("^[a-z0-9-]{1,64}?$")
+		r := regexp.MustCompile("^[a-z0-9-]{1,64}$")
 		if !r.MatchString(cmd.name) {
 			errorf("Requested name must be between 1 and 64 lowercase letters, numbers and hyphens")
 		}

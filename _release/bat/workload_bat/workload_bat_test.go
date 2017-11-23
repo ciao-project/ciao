@@ -39,30 +39,13 @@ users:
 ...
 `
 
-const vmWorkloadImageName = "Ubuntu Server 16.04"
+const vmWorkloadImageName = "ubuntu-server-16.04"
 
 func getWorkloadSource(ctx context.Context, t *testing.T, tenant string) bat.Source {
 	// get the Image ID to use.
 	source := bat.Source{
-		Type: "image",
-	}
-
-	// if we pass in "" for tenant, we get whatever the CIAO_USERNAME value
-	// is set to.
-	images, err := bat.GetImages(ctx, false, tenant)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for ID, image := range images {
-		if image.Name != vmWorkloadImageName {
-			continue
-		}
-		source.ID = ID
-	}
-
-	if source.ID == "" {
-		t.Fatalf("vm Image %s not available", vmWorkloadImageName)
+		Type:   "image",
+		Source: vmWorkloadImageName,
 	}
 
 	return source

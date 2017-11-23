@@ -192,6 +192,7 @@ type Datastore struct {
 
 	imageLock      *sync.RWMutex
 	images         map[string]types.Image
+	imagesByName   map[string]string
 	publicImages   []string
 	internalImages []string
 
@@ -223,12 +224,14 @@ func (ds *Datastore) initExternalIPs() {
 func (ds *Datastore) initImages() error {
 	ds.imageLock = &sync.RWMutex{}
 	ds.images = make(map[string]types.Image)
+	ds.imagesByName = make(map[string]string)
 	images, err := ds.db.getImages()
 	if err != nil {
 		return errors.Wrap(err, "error getting images from database")
 	}
 	for _, i := range images {
 		ds.images[i.ID] = i
+		ds.imagesByName[i.Name] = i.ID
 
 		if i.Visibility == types.Public {
 			ds.publicImages = append(ds.publicImages, i.ID)
@@ -2518,7 +2521,7 @@ users:
 		Bootable:   true,
 		Ephemeral:  true,
 		SourceType: types.ImageService,
-		SourceID:   "4e16e743-265a-4bf2-9fd1-57ada0b28904",
+		Source:     "4e16e743-265a-4bf2-9fd1-57ada0b28904",
 		Internal:   true,
 	}
 
@@ -2579,6 +2582,10 @@ func (ds *Datastore) AddImage(i types.Image) error {
 		return api.ErrAlreadyExists
 	}
 
+	if _, ok := ds.imagesByName[i.Name]; ok {
+		return api.ErrAlreadyExists
+	}
+
 	err := ds.db.updateImage(i)
 	if err != nil {
 		return errors.Wrap(err, "Unable to add image to database")
@@ -2597,6 +2604,7 @@ func (ds *Datastore) AddImage(i types.Image) error {
 	}
 
 	ds.images[i.ID] = i
+	ds.imagesByName[i.Name] = i.ID
 
 	if i.Visibility == types.Public {
 		ds.publicImages = append(ds.publicImages, i.ID)
@@ -2630,6 +2638,11 @@ func (ds *Datastore) UpdateImage(i types.Image) error {
 
 	ds.images[i.ID] = i
 
+	if oldImage.Name != i.Name {
+		delete(ds.imagesByName, oldImage.Name)
+		ds.imagesByName[i.Name] = i.ID
+	}
+
 	return nil
 }
 
@@ -2639,6 +2652,24 @@ func (ds *Datastore) GetImage(ID string) (types.Image, error) {
 	defer ds.imageLock.RUnlock()
 
 	image, ok := ds.images[ID]
+	if !ok {
+		return types.Image{}, api.ErrNoImage
+	}
+
+	return image, nil
+}
+
+// ResolveImage retrieves an image by name or ID
+func (ds *Datastore) ResolveImage(name string) (types.Image, error) {
+	ds.imageLock.RLock()
+	defer ds.imageLock.RUnlock()
+
+	id, ok := ds.imagesByName[name]
+	if ok {
+		name = id
+	}
+
+	image, ok := ds.images[name]
 	if !ok {
 		return types.Image{}, api.ErrNoImage
 	}
@@ -2728,6 +2759,7 @@ func (ds *Datastore) DeleteImage(ID string) error {
 	}
 
 	delete(ds.images, ID)
+	delete(ds.imagesByName, image.Name)
 
 	return nil
 }

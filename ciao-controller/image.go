@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
@@ -42,6 +43,11 @@ func (c *controller) CreateImage(tenantID string, req api.CreateImageRequest) (t
 			glog.Errorf("Error on parsing UUID: %v", err)
 			return types.Image{}, api.ErrBadUUID
 		}
+	}
+
+	r := regexp.MustCompile("^[a-z0-9-.]{1,64}$")
+	if !r.MatchString(req.Name) {
+		return types.Image{}, types.ErrBadName
 	}
 
 	i := types.Image{
@@ -195,11 +201,11 @@ func (c *controller) DeleteImage(tenantID, imageID string) error {
 	return nil
 }
 
-// GetImage will get the raw image data
+// GetImage gets image metadata after checking permissions
 func (c *controller) GetImage(tenantID, imageID string) (types.Image, error) {
 	glog.Infof("Getting Image [%v] from [%v]", imageID, tenantID)
 
-	image, err := c.ds.GetImage(imageID)
+	image, err := c.ds.ResolveImage(imageID)
 	if err != nil {
 		return types.Image{}, err
 	}
