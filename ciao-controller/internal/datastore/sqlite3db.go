@@ -205,7 +205,8 @@ func (d tenantData) Init() error {
 		(
 		id varchar(32) primary key,
 		name text,
-		subnet_bits int
+		subnet_bits int,
+		permissions text
 		);`
 
 	return d.ds.exec(d.db, cmd)
@@ -666,7 +667,12 @@ func (ds *sqliteDB) addTenant(ID string, config types.TenantConfig) error {
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	err := ds.create("tenants", ID, config.Name, config.SubnetBits)
+	perms, err := json.Marshal(config.Permissions)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling permissions")
+	}
+
+	err = ds.create("tenants", ID, config.Name, config.SubnetBits, string(perms))
 
 	return err
 }
@@ -674,7 +680,8 @@ func (ds *sqliteDB) addTenant(ID string, config types.TenantConfig) error {
 func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 	query := `SELECT	tenants.id,
 				tenants.name,
-				tenants.subnet_bits
+				tenants.subnet_bits,
+				tenants.permissions
 		  FROM tenants
 		  WHERE tenants.id = ?`
 
@@ -684,7 +691,8 @@ func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 
 	t := &tenant{}
 
-	err := row.Scan(&t.ID, &t.Name, &t.SubnetBits)
+	var perms []byte
+	err := row.Scan(&t.ID, &t.Name, &t.SubnetBits, &perms)
 	if err != nil {
 		glog.Warning("unable to retrieve tenant from tenants")
 
@@ -694,6 +702,10 @@ func (ds *sqliteDB) getTenant(ID string) (*tenant, error) {
 		}
 
 		return nil, err
+	}
+
+	if err := json.Unmarshal(perms, &t.Permissions); err != nil {
+		return nil, errors.Wrap(err, "Error unmarshalling permissions")
 	}
 
 	// for these items below, its ok to get err returned
@@ -870,7 +882,8 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 
 	query := `SELECT	tenants.id,
 				tenants.name,
-				tenants.subnet_bits
+				tenants.subnet_bits,
+				tenants.permissions
 		  FROM tenants `
 
 	rows, err := db.Query(query)
@@ -882,9 +895,10 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 	for rows.Next() {
 		var id sql.NullString
 		var name sql.NullString
+		var perms []byte
 
 		t := new(tenant)
-		err = rows.Scan(&id, &name, &t.SubnetBits)
+		err = rows.Scan(&id, &name, &t.SubnetBits, &perms)
 		if err != nil {
 			return nil, err
 		}
@@ -895,6 +909,10 @@ func (ds *sqliteDB) getTenants() ([]*tenant, error) {
 
 		if name.Valid {
 			t.Name = name.String
+		}
+
+		if err := json.Unmarshal(perms, &t.Permissions); err != nil {
+			return nil, errors.Wrap(err, "Error getting unmarshalling permissions")
 		}
 
 		err = ds.getTenantNetwork(t)
@@ -1021,7 +1039,12 @@ func (ds *sqliteDB) updateTenant(tenant *types.Tenant) error {
 	ds.dbLock.Lock()
 	defer ds.dbLock.Unlock()
 
-	_, err := db.Exec("UPDATE tenants SET name = ?, subnet_bits = ? WHERE id = ?", tenant.Name, tenant.SubnetBits, tenant.ID)
+	perms, err := json.Marshal(tenant.Permissions)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling permissions")
+	}
+
+	_, err = db.Exec("UPDATE tenants SET name = ?, subnet_bits = ?, permissions = ? WHERE id = ?", tenant.Name, tenant.SubnetBits, string(perms), tenant.ID)
 
 	return err
 }

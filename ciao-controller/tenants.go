@@ -63,10 +63,7 @@ func (c *controller) ShowTenant(tenantID string) (types.TenantConfig, error) {
 		return config, err
 	}
 
-	config.Name = tenant.Name
-	config.SubnetBits = tenant.SubnetBits
-
-	return config, err
+	return tenant.TenantConfig, err
 }
 
 func (c *controller) PatchTenant(tenantID string, patch []byte) error {

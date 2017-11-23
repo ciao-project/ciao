@@ -181,7 +181,7 @@ var tests = []test{
 		"",
 		fmt.Sprintf("application/%s", TenantsV1),
 		http.StatusOK,
-		`{"name":"Test Tenant","subnet_bits":24}`,
+		`{"name":"Test Tenant","subnet_bits":24,"permissions":{"privileged_containers":false}}`,
 	},
 	{
 		"PATCH",

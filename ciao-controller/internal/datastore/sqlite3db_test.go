@@ -1207,9 +1207,9 @@ func TestSQLiteDBUpdateTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// change the name and subnet bits
 	tenant.Name = "name2"
 	tenant.SubnetBits = 20
+	tenant.Permissions.PrivilegedContainers = true
 
 	err = db.updateTenant(&tenant.Tenant)
 	if err != nil {
@@ -1221,8 +1221,56 @@ func TestSQLiteDBUpdateTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if tenant.Name != "name2" || tenant.SubnetBits != 20 {
+	if tenant.Name != "name2" || tenant.SubnetBits != 20 || tenant.Permissions.PrivilegedContainers != true {
 		t.Fatal("update not successful")
+	}
+
+	db.disconnect()
+}
+
+func TestSQLiteDBTenantPermissions(t *testing.T) {
+	db, err := getPersistentStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenantID := uuid.Generate().String()
+	config := types.TenantConfig{
+		Name:       "name1",
+		SubnetBits: 24,
+	}
+	config.Permissions.PrivilegedContainers = true
+
+	err = db.addTenant(tenantID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tenant, err := db.getTenant(tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !tenant.Permissions.PrivilegedContainers {
+		t.Fatal("Expected tenant permission set correctly")
+	}
+
+	ts, err := db.getTenants()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(ts) != 1 {
+		t.Fatalf("Unexpected number of tenants")
+	}
+
+	if !ts[0].Permissions.PrivilegedContainers {
+		t.Fatal("Expected tenant permission set correctly")
+	}
+
+	err = db.deleteTenant(tenantID)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	db.disconnect()

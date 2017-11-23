@@ -81,9 +81,11 @@ func (db *MemoryDB) getEventLog() ([]*types.LogEntry, error) {
 func (db *MemoryDB) addTenant(id string, config types.TenantConfig) error {
 	t := &tenant{
 		Tenant: types.Tenant{
-			ID:         id,
-			Name:       config.Name,
-			SubnetBits: config.SubnetBits,
+			ID: id,
+			TenantConfig: types.TenantConfig{
+				Name:       config.Name,
+				SubnetBits: config.SubnetBits,
+			},
 		},
 		network:   make(map[uint32]map[uint32]bool),
 		instances: make(map[string]*types.Instance),
