@@ -201,6 +201,10 @@ type WorkloadRequirements struct {
 
 	// NetworkNode specifies that this workload must be scheduled on a network node
 	NetworkNode bool `yaml:"network_node,omitempty"`
+
+	// Privileged indicates that this container workload should be run with increased
+	// permissions
+	Privileged bool `yaml:"privileged,omitempty"`
 }
 
 // StartCmd contains the information needed to start a new instance.
