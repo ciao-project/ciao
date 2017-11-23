@@ -285,6 +285,17 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 		return nil, err
 	}
 
+	if wl.Requirements.Privileged {
+		tenant, err := c.ds.GetTenant(w.TenantID)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting tenant from datastore")
+		}
+
+		if !tenant.Permissions.PrivilegedContainers {
+			return nil, errors.New("Permission denied: you do not have permission to create privileged workloads")
+		}
+	}
+
 	var IPPool []net.IP
 
 	// if this is for a CNCI, we don't want to allocate any IPs.
