@@ -124,32 +124,29 @@ func (client *Client) GetTenantConfig(ID string) (types.TenantConfig, error) {
 }
 
 // UpdateTenantConfig updates the tenant configuration
-func (client *Client) UpdateTenantConfig(ID string, name string, bits int) error {
-	var config types.TenantConfig
-
+func (client *Client) UpdateTenantConfig(ID string, config types.TenantConfig) error {
 	url, err := client.getCiaoTenantRef(ID)
 	if err != nil {
 		return err
 	}
 
-	err = client.getResource(url, api.TenantsV1, nil, &config)
+	var oldconfig types.TenantConfig
+	err = client.getResource(url, api.TenantsV1, nil, &oldconfig)
 	if err != nil {
 		return err
-	}
-
-	oldconfig := config
-
-	if name != "" {
-		config.Name = name
-	}
-
-	if bits != 0 {
-		config.SubnetBits = bits
 	}
 
 	a, err := json.Marshal(oldconfig)
 	if err != nil {
 		return err
+	}
+
+	if config.Name == "" {
+		config.Name = oldconfig.Name
+	}
+
+	if config.SubnetBits == 0 {
+		config.SubnetBits = oldconfig.SubnetBits
 	}
 
 	b, err := json.Marshal(config)
@@ -171,7 +168,7 @@ func (client *Client) UpdateTenantConfig(ID string, name string, bits int) error
 }
 
 // CreateTenantConfig creates a new tenant configuration
-func (client *Client) CreateTenantConfig(tenantID string, name string, bits int) (types.TenantSummary, error) {
+func (client *Client) CreateTenantConfig(tenantID string, config types.TenantConfig) (types.TenantSummary, error) {
 	var req types.TenantRequest
 	var summary types.TenantSummary
 
@@ -185,10 +182,7 @@ func (client *Client) CreateTenantConfig(tenantID string, name string, bits int)
 	}
 
 	req.ID = tenantID
-	req.Config = types.TenantConfig{
-		Name:       name,
-		SubnetBits: bits,
-	}
+	req.Config = config
 
 	err = client.postResource(url, api.TenantsV1, &req, &summary)
 
