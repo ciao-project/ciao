@@ -2503,9 +2503,17 @@ func (ds *Datastore) GenerateCNCIWorkload(vcpus int, memMB int, diskMB int, key 
 #cloud-config
 users:
   - name: cloud-admin
-    gecos: CIAO Cloud Admin
+	gecos: CIAO Cloud Admin
+	`
+
+	if password != "" {
+		config += `
     lock-passwd: false
-    passwd: ` + password + `
+	passwd: ` + password + `
+	`
+	}
+
+	config += `
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh-authorized-keys:
     - ` + key + `
