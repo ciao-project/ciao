@@ -74,9 +74,6 @@ var cephID = flag.String("ceph_id", "", "ceph client id")
 
 var adminSSHKey = ""
 
-// default password set to "ciao"
-var adminPassword = "$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO."
-
 func init() {
 	flag.Parse()
 
@@ -202,15 +199,11 @@ func main() {
 
 	adminSSHKey = clusterConfig.Configure.Controller.AdminSSHKey
 
-	if clusterConfig.Configure.Controller.AdminPassword != "" {
-		adminPassword = clusterConfig.Configure.Controller.AdminPassword
-	}
-
 	if clusterConfig.Configure.Controller.ClientAuthCACertPath != "" {
 		clientCertCAPath = clusterConfig.Configure.Controller.ClientAuthCACertPath
 	}
 
-	ctl.ds.GenerateCNCIWorkload(cnciVCPUs, cnciMem, cnciDisk, adminSSHKey, adminPassword)
+	ctl.ds.GenerateCNCIWorkload(cnciVCPUs, cnciMem, cnciDisk, adminSSHKey)
 
 	database.Logger = gloginterface.CiaoGlogLogger{}
 
