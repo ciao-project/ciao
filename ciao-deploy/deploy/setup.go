@@ -42,7 +42,6 @@ type ClusterConfiguration struct {
 	HTTPSCaCertPath   string
 	HTTPSCertPath     string
 	AdminSSHKeyPath   string
-	AdminSSHPassword  string
 	ComputeNet        string
 	MgmtNet           string
 	ServerIP          string
@@ -97,7 +96,6 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 	config.Configure.Controller.HTTPSKey = clusterConf.HTTPSCertPath
 	config.Configure.Controller.ClientAuthCACertPath = clusterConf.AuthCACertPath
 
-	config.Configure.Controller.AdminPassword = clusterConf.AdminSSHPassword
 	config.Configure.Controller.AdminSSHKey = adminSSHKeyData
 
 	config.Configure.Launcher.ComputeNetwork = []string{clusterConf.ComputeNet}
