@@ -72,11 +72,6 @@ var clientCertCAPath = "/etc/pki/ciao/auth-CA.pem"
 
 var cephID = flag.String("ceph_id", "", "ceph client id")
 
-var adminSSHKey = ""
-
-// default password set to "ciao"
-var adminPassword = "$6$rounds=4096$w9I3hR4g/hu$AnYjaC2DfznbPSG3vxsgtgAS4mJwWBkcR74Y/KHNB5OsfAlA4gpU5j6CHWMOkkt9j.9d7OYJXJ4icXHzKXTAO."
-
 func init() {
 	flag.Parse()
 
@@ -200,11 +195,8 @@ func main() {
 	cnciMem := clusterConfig.Configure.Controller.CNCIMem
 	cnciDisk := clusterConfig.Configure.Controller.CNCIDisk
 
-	adminSSHKey = clusterConfig.Configure.Controller.AdminSSHKey
-
-	if clusterConfig.Configure.Controller.AdminPassword != "" {
-		adminPassword = clusterConfig.Configure.Controller.AdminPassword
-	}
+	adminSSHKey := clusterConfig.Configure.Controller.AdminSSHKey
+	adminPassword := clusterConfig.Configure.Controller.AdminPassword
 
 	if clusterConfig.Configure.Controller.ClientAuthCACertPath != "" {
 		clientCertCAPath = clusterConfig.Configure.Controller.ClientAuthCACertPath
