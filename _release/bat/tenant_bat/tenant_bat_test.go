@@ -184,3 +184,77 @@ func TestUpdateTenantConfig(t *testing.T) {
 		t.Fatalf("Failed to update tenant config: expected %s %d, got %s %d", config.Name, config.SubnetBits, cfg.Name, cfg.SubnetBits)
 	}
 }
+
+// Test setting and clearing permission
+//
+// Create a tenant with permission for privileged containers unset, set the bit,
+// query the tenant and test if it's set, clear and check the clearing is
+// visible.
+//
+// This test passes if the permission bit for the tenant is correctly set,
+// queried, cleared and queried.
+func TestTenantPermissionsUpdate(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	config := bat.TenantConfig{
+		Name: "TestTenantPermissionsUpdate",
+	}
+
+	tenant, err := bat.CreateTenant(ctx, config)
+	if err != nil {
+		t.Fatalf("Failed to create tenant : %v", err)
+	}
+
+	defer func() {
+		err = bat.DeleteTenant(ctx, tenant.ID)
+		if err != nil {
+			t.Fatalf("Failed to delete tenant: %v", err)
+		}
+	}()
+
+	if tenant.Name != config.Name {
+		t.Fatalf("Failed to create tenant")
+	}
+
+	cfg, err := bat.GetTenantConfig(ctx, tenant.ID)
+	if err != nil {
+		t.Fatalf("Failed to retrieve tenant config: %v", err)
+	}
+
+	if cfg.Name != config.Name || cfg.Permissions.PrivilegedContainers != false {
+		t.Fatalf("Failed to retrieve tenant config")
+	}
+
+	config.Permissions.PrivilegedContainers = true
+
+	err = bat.UpdateTenant(ctx, tenant.ID, config)
+	if err != nil {
+		t.Fatalf("Failed to update tenant: %v", err)
+	}
+
+	cfg, err = bat.GetTenantConfig(ctx, tenant.ID)
+	if err != nil {
+		t.Fatalf("Failed to retrieve tenant config: %v", err)
+	}
+
+	if cfg.Name != config.Name || cfg.Permissions.PrivilegedContainers != true {
+		t.Fatalf("Failed to retrieve tenant config")
+	}
+
+	config.Permissions.PrivilegedContainers = false
+
+	err = bat.UpdateTenant(ctx, tenant.ID, config)
+	if err != nil {
+		t.Fatalf("Failed to update tenant: %v", err)
+	}
+
+	cfg, err = bat.GetTenantConfig(ctx, tenant.ID)
+	if err != nil {
+		t.Fatalf("Failed to retrieve tenant config: %v", err)
+	}
+
+	if cfg.Name != config.Name || cfg.Permissions.PrivilegedContainers != false {
+		t.Fatalf("Failed to retrieve tenant config")
+	}
+}
