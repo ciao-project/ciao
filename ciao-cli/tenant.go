@@ -54,18 +54,20 @@ type tenantListCommand struct {
 }
 
 type tenantUpdateCommand struct {
-	Flag           flag.FlagSet
-	name           string
-	cidrPrefixSize int
-	tenantID       string
+	Flag                       flag.FlagSet
+	name                       string
+	cidrPrefixSize             int
+	createPrivilegedContainers bool
+	tenantID                   string
 }
 
 type tenantCreateCommand struct {
-	Flag           flag.FlagSet
-	name           string
-	cidrPrefixSize int
-	tenantID       string
-	template       string
+	Flag                       flag.FlagSet
+	name                       string
+	cidrPrefixSize             int
+	createPrivilegedContainers bool
+	tenantID                   string
+	template                   string
 }
 
 type tenantDeleteCommand struct {
@@ -88,6 +90,7 @@ The update flags are:
 func (cmd *tenantUpdateCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.tenantID, "for-tenant", "", "Tenant to update")
 	cmd.Flag.IntVar(&cmd.cidrPrefixSize, "cidr-prefix-size", 0, "Number of bits in network mask (12-30)")
+	cmd.Flag.BoolVar(&cmd.createPrivilegedContainers, "create-privileged-containers", false, "Whether this tenant can create privileged containers")
 	cmd.Flag.StringVar(&cmd.name, "name", "", "Tenant name")
 	cmd.Flag.Usage = func() { cmd.usage() }
 	cmd.Flag.Parse(args)
@@ -111,7 +114,13 @@ func (cmd *tenantUpdateCommand) run(args []string) error {
 		cmd.usage()
 	}
 
-	return c.UpdateTenantConfig(cmd.tenantID, cmd.name, cmd.cidrPrefixSize)
+	config := types.TenantConfig{
+		Name:       cmd.name,
+		SubnetBits: cmd.cidrPrefixSize,
+	}
+	config.Permissions.PrivilegedContainers = cmd.createPrivilegedContainers
+
+	return c.UpdateTenantConfig(cmd.tenantID, config)
 }
 
 func (cmd *tenantCreateCommand) usage(...string) {
@@ -133,6 +142,7 @@ The template passed to the -f option operates on the following struct:
 func (cmd *tenantCreateCommand) parseArgs(args []string) []string {
 	cmd.Flag.StringVar(&cmd.tenantID, "tenant", "", "ID for new tenant")
 	cmd.Flag.IntVar(&cmd.cidrPrefixSize, "cidr-prefix-size", 0, "Number of bits in network mask (12-30)")
+	cmd.Flag.BoolVar(&cmd.createPrivilegedContainers, "create-privileged-containers", false, "Whether this tenant can create privileged containers")
 	cmd.Flag.StringVar(&cmd.name, "name", "", "Tenant name")
 	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
 	cmd.Flag.Usage = func() { cmd.usage() }
@@ -170,7 +180,13 @@ func (cmd *tenantCreateCommand) run(args []string) error {
 		fatalf("Tenant ID must be a UUID4")
 	}
 
-	summary, err := c.CreateTenantConfig(tuuid.String(), cmd.name, cmd.cidrPrefixSize)
+	config := types.TenantConfig{
+		Name:       cmd.name,
+		SubnetBits: cmd.cidrPrefixSize,
+	}
+	config.Permissions.PrivilegedContainers = cmd.createPrivilegedContainers
+
+	summary, err := c.CreateTenantConfig(tuuid.String(), config)
 	if err != nil {
 		return errors.Wrap(err, "Error creating tenant configuration")
 	}
@@ -406,6 +422,7 @@ func listTenantConfig(t *template.Template, tenantID string) error {
 	fmt.Printf("Tenant [%s]\n", tenantID)
 	fmt.Printf("\tName: %s\n", config.Name)
 	fmt.Printf("\tCIDR Prefix Size: %d\n", config.SubnetBits)
+	fmt.Printf("\tCan create privileged containers: %v\n", config.Permissions.PrivilegedContainers)
 
 	return nil
 }

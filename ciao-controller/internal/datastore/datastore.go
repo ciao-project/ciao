@@ -488,10 +488,7 @@ func (ds *Datastore) JSONPatchTenant(ID string, patch []byte) error {
 		return ErrNoTenant
 	}
 
-	oldconfig := types.TenantConfig{
-		Name:       tenant.Name,
-		SubnetBits: tenant.SubnetBits,
-	}
+	oldconfig := tenant.TenantConfig
 
 	orig, err := json.Marshal(oldconfig)
 	if err != nil {
@@ -517,8 +514,7 @@ func (ds *Datastore) JSONPatchTenant(ID string, patch []byte) error {
 		}
 	}
 
-	tenant.Name = config.Name
-	tenant.SubnetBits = config.SubnetBits
+	tenant.TenantConfig = config
 
 	return ds.db.updateTenant(&tenant.Tenant)
 }

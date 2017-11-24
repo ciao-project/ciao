@@ -662,6 +662,78 @@ func TestDockerCreateImageWithResources(t *testing.T) {
 	}
 }
 
+// Check createImage creates privileged images correctly
+//
+// Create an image with the privileged set and check the arguments
+// are correctly sety
+//
+// The image is correctly created, the resources are computed/allocated correctly,
+// and the image is deleted correctly
+func TestDockerCreateImagePrivileged(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "ciao-docker-tests")
+	if err != nil {
+		t.Fatal("Unable to create temporary directory")
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+	tc := &dockerTestClient{}
+	d := &docker{instanceDir: tmpDir, cli: tc,
+		cfg: &vmConfig{
+			Mem:        10,
+			Cpus:       2,
+			VnicMAC:    testutil.VNICMAC,
+			VnicIP:     testutil.AgentIP,
+			Privileged: true,
+		}}
+
+	if err := d.createImage("bridge", "172.16.0.1", nil, nil); err != nil {
+		t.Errorf("Unable to create image : %v", err)
+	}
+
+	if tc.hostConfig.Privileged != true {
+		t.Error("Expected privileged host config")
+	}
+
+	if tc.hostConfig.PidMode != "host" || tc.hostConfig.IpcMode != "host" {
+		t.Errorf("Namespace values not as expected: PidMode=%v IpcMode=%v",
+			tc.hostConfig.PidMode, tc.hostConfig.IpcMode)
+	}
+
+	found := false
+	for _, so := range tc.hostConfig.SecurityOpt {
+		if so == "seccomp=unconfined" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Error("Require security option not found")
+	}
+
+	count := 0
+	for _, b := range tc.hostConfig.Binds {
+		if b == "/dev:/dev" {
+			count |= 1
+			continue
+		}
+		if b == "/sys:/sys" {
+			count |= 2
+			continue
+		}
+	}
+
+	if count != 3 {
+		t.Error("Missing entries from volumes")
+	}
+
+	err = d.deleteImage()
+	if err != nil {
+		t.Errorf("Unable to delete container : %v", err)
+	}
+}
+
 // Checks the monitorVM function works correctly.
 //
 // This test creates a new instance, calls monitor VM, waits for the connected

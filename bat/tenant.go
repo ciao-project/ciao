@@ -36,8 +36,11 @@ type TenantsListResponse struct {
 
 // TenantConfig stores the configurable attributes of a tenant.
 type TenantConfig struct {
-	Name       string `json:"name"`
-	SubnetBits int    `json:"subnet_bits"`
+	Name        string `json:"name"`
+	SubnetBits  int    `json:"subnet_bits"`
+	Permissions struct {
+		PrivilegedContainers bool `json:"privileged_containers"`
+	} `json:"permissions"`
 }
 
 // GetAllTenants retrieves a list of all tenants in the cluster by calling
@@ -62,6 +65,11 @@ func CreateTenant(ctx context.Context, config TenantConfig) (TenantSummary, erro
 	var summary TenantSummary
 
 	args := []string{"tenant", "create", "-tenant", uuid.Generate().String(), "-name", config.Name, "-cidr-prefix-size", strconv.Itoa(config.SubnetBits), "-f", "{{tojson .}}"}
+
+	if config.Permissions.PrivilegedContainers == true {
+		args = append(args, "-create-privileged-containers")
+	}
+
 	err := RunCIAOCLIAsAdminJS(ctx, "", args, &summary)
 
 	return summary, err
@@ -79,6 +87,10 @@ func UpdateTenant(ctx context.Context, ID string, config TenantConfig) error {
 	if config.SubnetBits != 0 {
 		bits := []string{"-cidr-prefix-size", strconv.Itoa(config.SubnetBits)}
 		args = append(args, bits...)
+	}
+
+	if config.Permissions.PrivilegedContainers == true {
+		args = append(args, "-create-privileged-containers")
 	}
 
 	_, err := RunCIAOCLIAsAdmin(ctx, "", args)

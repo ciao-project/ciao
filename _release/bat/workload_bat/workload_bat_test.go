@@ -38,6 +38,12 @@ users:
       - %s
 ...
 `
+const dockerCloudInit = `---
+#cloud-config
+runcmd:
+- [ /bin/bash, -c, "while true; do sleep 60; done" ]
+...
+`
 
 const vmWorkloadImageName = "ubuntu-server-16.04"
 
@@ -431,4 +437,111 @@ func TestCreateSchedulableHostnameWorkload(t *testing.T) {
 	}
 
 	testSchedulableWorkloadRequirements(ctx, t, requirements, true)
+}
+
+func testSchedulableContainerWorkload(ctx context.Context, t *testing.T, requirements bat.WorkloadRequirements, schedulable bool) {
+	tenant := ""
+
+	opt := bat.WorkloadOptions{
+		Description:  "BAT Docker Test",
+		ImageName:    "debian:latest",
+		VMType:       "docker",
+		Requirements: requirements,
+	}
+
+	workloadID, err := bat.CreateWorkload(ctx, tenant, opt, dockerCloudInit)
+	if err != nil {
+		t.Error(err)
+	}
+
+	w, err := bat.GetWorkloadByID(ctx, tenant, workloadID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	instances, err := bat.LaunchInstances(ctx, tenant, w.ID, 1)
+	if schedulable {
+		if err != nil {
+			t.Error(err)
+		}
+	} else {
+		if err == nil {
+			t.Errorf("Expected instance launch to fail")
+		}
+	}
+
+	scheduled, err := bat.WaitForInstancesLaunch(ctx, tenant, instances, false)
+	if err != nil {
+		t.Errorf("Instances failed to launch: %v", err)
+	}
+
+	for _, i := range scheduled {
+		err = bat.DeleteInstanceAndWait(ctx, "", i)
+		if err != nil {
+			t.Errorf("Failed to delete instances: %v", err)
+		}
+	}
+
+	err = bat.DeleteWorkload(ctx, tenant, w.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Check that creating a privileged container is limited by permissions
+//
+// Create a workload with a container that should be privileged. Check that
+// launching fails and then change the tenant permission to enable the
+// permission and check launching succeeds.
+//
+// The workload should be created and without permission the launching should
+// fail. With permission the launching should succeed.
+func TestPriviligedWorkload(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	requirements := bat.WorkloadRequirements{
+		VCPUs:      2,
+		MemMB:      128,
+		Privileged: true,
+	}
+
+	testSchedulableContainerWorkload(ctx, t, requirements, false)
+
+	tenants, err := bat.GetUserTenants(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tenants) == 0 {
+		t.Fatal("Wrong number of tenants returned")
+	}
+
+	oldcfg, err := bat.GetTenantConfig(ctx, tenants[0].ID)
+	if err != nil {
+		t.Fatalf("Failed to retrieve tenant config: %v", err)
+	}
+
+	cfg := oldcfg
+	cfg.Permissions.PrivilegedContainers = true
+
+	err = bat.UpdateTenant(ctx, tenants[0].ID, cfg)
+	if err != nil {
+		t.Fatalf("Failed to update tenant: %v", err)
+	}
+
+	defer func() {
+		err := bat.UpdateTenant(ctx, tenants[0].ID, oldcfg)
+		if err != nil {
+			t.Fatalf("Failed to update tenant: %v", err)
+		}
+
+	}()
+	requirements = bat.WorkloadRequirements{
+		VCPUs:      2,
+		MemMB:      128,
+		Privileged: true,
+	}
+
+	testSchedulableContainerWorkload(ctx, t, requirements, true)
 }

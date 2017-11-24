@@ -48,6 +48,7 @@ type vmConfig struct {
 	SSHPort     int
 	Volumes     []volumeConfig
 	Restart     bool
+	Privileged  bool
 }
 
 func loadVMConfig(instanceDir string) (*vmConfig, error) {
