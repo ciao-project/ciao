@@ -439,12 +439,12 @@ func TestCreateSchedulableHostnameWorkload(t *testing.T) {
 	testSchedulableWorkloadRequirements(ctx, t, requirements, true)
 }
 
-func testSchedulableContainerWorkload(ctx context.Context, t *testing.T, requirements bat.WorkloadRequirements, schedulable bool) {
+func testSchedulableContainerWorkload(ctx context.Context, t *testing.T, imageName string, requirements bat.WorkloadRequirements, schedulable bool) {
 	tenant := ""
 
 	opt := bat.WorkloadOptions{
 		Description:  "BAT Docker Test",
-		ImageName:    "debian:latest",
+		ImageName:    imageName,
 		VMType:       "docker",
 		Requirements: requirements,
 	}
@@ -506,7 +506,7 @@ func TestPriviligedWorkload(t *testing.T) {
 		Privileged: true,
 	}
 
-	testSchedulableContainerWorkload(ctx, t, requirements, false)
+	testSchedulableContainerWorkload(ctx, t, "debian:latest", requirements, false)
 
 	tenants, err := bat.GetUserTenants(ctx)
 	if err != nil {
@@ -543,5 +543,40 @@ func TestPriviligedWorkload(t *testing.T) {
 		Privileged: true,
 	}
 
-	testSchedulableContainerWorkload(ctx, t, requirements, true)
+	testSchedulableContainerWorkload(ctx, t, "debian:latest", requirements, true)
+}
+
+// Check that launching a container works
+//
+// Create a workload with a container image name. Check that launching succeeds.
+//
+// The workload should be created and launching a container should succeed.
+func TestContainerWorkload(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	requirements := bat.WorkloadRequirements{
+		VCPUs: 2,
+		MemMB: 128,
+	}
+
+	testSchedulableContainerWorkload(ctx, t, "debian:latest", requirements, true)
+}
+
+// Check that launching a container from a specified registry works
+//
+// Create a workload with a container image name from a specific registry. Check
+// that launching succeeds.
+//
+// The workload should be created and launching a container should succeed.
+func TestContainerRegistryWorkload(t *testing.T) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
+	defer cancelFunc()
+
+	requirements := bat.WorkloadRequirements{
+		VCPUs: 2,
+		MemMB: 128,
+	}
+
+	testSchedulableContainerWorkload(ctx, t, "docker.io/library/ubuntu:latest", requirements, true)
 }
