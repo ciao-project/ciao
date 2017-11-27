@@ -171,7 +171,6 @@ ciao-deploy setup \
 --https-cert="$https_key" \
 --https-ca-cert="$https_cert" \
 --admin-ssh-key="$workload_sshkey".pub \
---admin-password="$test_passwd" \
 --local-launcher \
 --mgmt-net="$ciao_vlan_subnet" --compute-net="$ciao_vlan_subnet" \
 --server-ip="$ciao_vlan_ip" \

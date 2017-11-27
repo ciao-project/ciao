@@ -2497,15 +2497,14 @@ func (ds *Datastore) UnMapExternalIP(address string) error {
 
 // GenerateCNCIWorkload is used to create a workload definition for the CNCI.
 // This function should be called prior to any workload launch.
-func (ds *Datastore) GenerateCNCIWorkload(vcpus int, memMB int, diskMB int, key string, password string) {
+func (ds *Datastore) GenerateCNCIWorkload(vcpus int, memMB int, diskMB int, key string) {
 	// generate the CNCI workload.
 	config := `---
 #cloud-config
 users:
   - name: cloud-admin
     gecos: CIAO Cloud Admin
-    lock-passwd: false
-    passwd: ` + password + `
+    lock-passwd: true
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh-authorized-keys:
     - ` + key + `

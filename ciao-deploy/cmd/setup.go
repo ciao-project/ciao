@@ -116,7 +116,6 @@ func init() {
 	setupCmd.Flags().StringVar(&clusterConf.HTTPSCaCertPath, "https-ca-cert", "", "Path to CA certificate for HTTP service")
 	setupCmd.Flags().StringVar(&clusterConf.HTTPSCertPath, "https-cert", "", "Path to certificate for HTTPS service")
 	setupCmd.Flags().StringVar(&clusterConf.AdminSSHKeyPath, "admin-ssh-key", "", "Path to SSH public key for accessing CNCI")
-	setupCmd.Flags().StringVar(&clusterConf.AdminSSHPassword, "admin-password", "", "Password for accessing CNCI")
 	setupCmd.Flags().StringVar(&clusterConf.ComputeNet, "compute-net", hostNetwork, "Network range for compute network")
 	setupCmd.Flags().StringVar(&clusterConf.MgmtNet, "mgmt-net", hostNetwork, "Network range for management network")
 	setupCmd.Flags().StringVar(&clusterConf.ServerIP, "server-ip", hostIP, "IP address nodes can reach this host on")

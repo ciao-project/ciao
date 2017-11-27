@@ -64,7 +64,6 @@ const fullValidConf = `configure:
     cnci_mem: 128
     cnci_disk: 128
     admin_ssh_key: ""
-    admin_password: ""
     client_auth_ca_cert_path: /etc/pki/ciao/auth-CA.pem
   launcher:
     compute_net:

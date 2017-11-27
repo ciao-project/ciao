@@ -50,7 +50,6 @@ type ConfigureController struct {
 	CNCIMem              int    `yaml:"cnci_mem"`
 	CNCIDisk             int    `yaml:"cnci_disk"`
 	AdminSSHKey          string `yaml:"admin_ssh_key"`
-	AdminPassword        string `yaml:"admin_password"`
 	ClientAuthCACertPath string `yaml:"client_auth_ca_cert_path"`
 }
 

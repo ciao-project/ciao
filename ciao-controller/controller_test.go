@@ -2094,7 +2094,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	ctl.ds.GenerateCNCIWorkload(4, 128, 128, "", "")
+	ctl.ds.GenerateCNCIWorkload(4, 128, 128, "")
 
 	ctl.qs.Init()
 
