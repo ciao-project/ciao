@@ -586,12 +586,6 @@ DONE:
 }
 
 func main() {
-	defer func() {
-		if r := recover(); r != nil {
-			glog.Errorf("%s", debug.Stack())
-			glog.Flush()
-		}
-	}()
 
 	flag.Parse()
 
