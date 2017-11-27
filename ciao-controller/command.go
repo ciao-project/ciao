@@ -330,32 +330,24 @@ func (c *controller) startWorkload(w types.WorkloadRequest) ([]*types.Instance, 
 
 		go func(newIP net.IP, name string) {
 			sem <- 1
-			var err error
-			var instance *types.Instance
-			defer func() {
-				ret := result{
-					err:      err,
-					instance: instance,
-				}
-				<-sem
-				errChan <- ret
-			}()
-
-			instance, err = c.createInstance(w, wl, name, newIP)
-			if err != nil {
-				err = errors.Wrap(err, "Error creating instance")
-				return
+			instance, err := c.createInstance(w, wl, name, newIP)
+			ret := result{
+				err:      err,
+				instance: instance,
 			}
+			<-sem
+			errChan <- ret
 		}(newIP, name)
 	}
 
 	for i := 0; i < w.Instances; i++ {
 		retVal := <-errChan
-		if e == nil {
+		if retVal.err == nil {
+			newInstances = append(newInstances, retVal.instance)
+		} else if e == nil {
 			// return the first error
 			e = retVal.err
 		}
-		newInstances = append(newInstances, retVal.instance)
 	}
 
 	return newInstances, e
