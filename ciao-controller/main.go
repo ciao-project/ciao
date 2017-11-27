@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"sync"
 	"syscall"
 
@@ -125,13 +124,6 @@ func getNameFromCert(httpsCAcert, httpsKey string) (string, error) {
 }
 
 func main() {
-	defer func() {
-		if r := recover(); r != nil {
-			glog.Errorf("%s", debug.Stack())
-			glog.Flush()
-		}
-	}()
-
 	if *prepare {
 		logger := gloginterface.CiaoGlogLogger{}
 		osprepare.Bootstrap(context.TODO(), logger)
