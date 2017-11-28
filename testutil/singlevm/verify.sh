@@ -166,7 +166,7 @@ function checkEventStatus {
 	#We only need to wait for as many events as the index
 	total_events=$((event_index + 1))
 
-	until [ $retry -ge 6 ]
+	until [ $retry -ge 10 ]
 	do
 		ciao_events=`"$ciao_gobin"/ciao-cli event list -f '{{len .}}'`
 
@@ -176,7 +176,7 @@ function checkEventStatus {
 		fi
 
 		let retry=retry+1
-		sleep 1
+		sleep 2
 	done
 
 	if [ $ciao_events -ne $total_events ]
