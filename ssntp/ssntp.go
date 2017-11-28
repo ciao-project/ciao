@@ -42,7 +42,7 @@ type Type uint8
 
 // Command is the SSNTP Command operand.
 // It can be CONNECT, START, STOP, STATS, EVACUATE, DELETE, RESTART,
-// AssignPublicIP, ReleasePublicIP, CONFIGURE or AttachVolume.
+// AssignPublicIP, ReleasePublicIP, CONFIGURE, AttachVolume or RefreshCNCI.
 type Command uint8
 
 // Status is the SSNTP Status operand.
@@ -228,6 +228,11 @@ const (
 	//	|       |       | (0x0) |  (0x4)  |                 |                             |
 	//	+---------------------------------------------------------------------------------+
 	Restore
+
+	// RefreshCNCI is used to ask a CNCI agent to update it's CNCI
+	// tunnel information.
+	// The payload for this command contains the UIID of the CNCI to refresh.
+	RefreshCNCI
 )
 
 const (
@@ -578,6 +583,8 @@ func (command Command) String() string {
 		return "Attach storage volume"
 	case Restore:
 		return "Restore"
+	case RefreshCNCI:
+		return "Refresh CNCI List"
 	}
 
 	return ""

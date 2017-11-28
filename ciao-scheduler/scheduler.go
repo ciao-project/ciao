@@ -546,6 +546,10 @@ func (sched *ssntpSchedulerServer) getCommandConcentratorUUID(command ssntp.Comm
 		var cmd payloads.CommandReleasePublicIP
 		err := yaml.Unmarshal(payload, &cmd)
 		return cmd.ReleaseIP.ConcentratorUUID, err
+	case ssntp.RefreshCNCI:
+		var cmd payloads.CommandCNCIRefresh
+		err := yaml.Unmarshal(payload, &cmd)
+		return cmd.Command.CNCIUUID, err
 	}
 }
 
@@ -811,6 +815,8 @@ func (sched *ssntpSchedulerServer) CommandForward(controllerUUID string, command
 		fallthrough
 	case ssntp.Restore:
 		dest, instanceUUID = sched.fwdCmdToComputeNode(command, payload)
+	case ssntp.RefreshCNCI:
+		fallthrough
 	case ssntp.AssignPublicIP:
 		fallthrough
 	case ssntp.ReleasePublicIP:
@@ -1123,6 +1129,10 @@ func setSSNTPForwardRules(sched *ssntpSchedulerServer) {
 		},
 		{ // all ReleasePublicIP commands are processed by the Command forwarder
 			Operand:        ssntp.ReleasePublicIP,
+			CommandForward: sched,
+		},
+		{ // all RefreshCNCI commands are processed by the Command forwarder
+			Operand:        ssntp.RefreshCNCI,
 			CommandForward: sched,
 		},
 	}
