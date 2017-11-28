@@ -189,3 +189,14 @@ type GreTapEP struct {
 	CNCIId   string // UUID of the CNCI
 	CNId     string // UUID of the CN
 }
+
+// GreTunEP ciao GRE Tun device representation
+// This represents one end of a GRE point to multipoint tunnel
+type GreTunEP struct {
+	Attrs
+	Link    *netlink.Gretun
+	Key     uint32
+	LocalIP net.IP
+	CNCIId  string // UUID of the CNCI
+	CNId    string // UUID of the CN
+}
