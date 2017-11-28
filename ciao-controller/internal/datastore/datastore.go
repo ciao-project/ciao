@@ -192,7 +192,6 @@ type Datastore struct {
 
 	imageLock      *sync.RWMutex
 	images         map[string]types.Image
-	imagesByName   map[string]string
 	publicImages   []string
 	internalImages []string
 
@@ -224,14 +223,12 @@ func (ds *Datastore) initExternalIPs() {
 func (ds *Datastore) initImages() error {
 	ds.imageLock = &sync.RWMutex{}
 	ds.images = make(map[string]types.Image)
-	ds.imagesByName = make(map[string]string)
 	images, err := ds.db.getImages()
 	if err != nil {
 		return errors.Wrap(err, "error getting images from database")
 	}
 	for _, i := range images {
 		ds.images[i.ID] = i
-		ds.imagesByName[i.Name] = i.ID
 
 		if i.Visibility == types.Public {
 			ds.publicImages = append(ds.publicImages, i.ID)
@@ -2577,11 +2574,21 @@ func (ds *Datastore) AddImage(i types.Image) error {
 		return api.ErrAlreadyExists
 	}
 
-	if _, ok := ds.imagesByName[i.Name]; ok {
+	_, err := ds.ResolveImage(i.TenantID, i.Name)
+	if err == nil {
 		return api.ErrAlreadyExists
+	} else if err != api.ErrNoImage {
+		return err
 	}
 
-	err := ds.db.updateImage(i)
+	_, err = ds.ResolveImage(i.TenantID, i.ID)
+	if err == nil {
+		return api.ErrAlreadyExists
+	} else if err != api.ErrNoImage {
+		return err
+	}
+
+	err = ds.db.updateImage(i)
 	if err != nil {
 		return errors.Wrap(err, "Unable to add image to database")
 	}
@@ -2599,7 +2606,6 @@ func (ds *Datastore) AddImage(i types.Image) error {
 	}
 
 	ds.images[i.ID] = i
-	ds.imagesByName[i.Name] = i.ID
 
 	if i.Visibility == types.Public {
 		ds.publicImages = append(ds.publicImages, i.ID)
@@ -2627,16 +2633,20 @@ func (ds *Datastore) UpdateImage(i types.Image) error {
 		return errors.New("Changing visibility or tenant for image not permitted")
 	}
 
+	if oldImage.Name != i.Name {
+		_, err := ds.ResolveImage(i.TenantID, i.Name)
+		if err == nil {
+			return api.ErrAlreadyExists
+		} else if err != api.ErrNoImage {
+			return err
+		}
+	}
+
 	if err := ds.db.updateImage(i); err != nil {
 		return errors.Wrap(err, "Error updating image in database")
 	}
 
 	ds.images[i.ID] = i
-
-	if oldImage.Name != i.Name {
-		delete(ds.imagesByName, oldImage.Name)
-		ds.imagesByName[i.Name] = i.ID
-	}
 
 	return nil
 }
@@ -2655,21 +2665,39 @@ func (ds *Datastore) GetImage(ID string) (types.Image, error) {
 }
 
 // ResolveImage retrieves an image by name or ID
-func (ds *Datastore) ResolveImage(name string) (types.Image, error) {
-	ds.imageLock.RLock()
-	defer ds.imageLock.RUnlock()
+func (ds *Datastore) ResolveImage(tenantID string, name string) (string, error) {
+	ds.tenantsLock.RLock()
+	defer ds.tenantsLock.RUnlock()
 
-	id, ok := ds.imagesByName[name]
-	if ok {
-		name = id
+	if tenantID != "" && tenantID != "admin" {
+		t, ok := ds.tenants[tenantID]
+		if !ok {
+			return "", fmt.Errorf("Tenant not found: %s", tenantID)
+		}
+
+		for _, id := range t.images {
+			i := ds.images[id]
+			if i.Name == name || i.ID == name {
+				return i.ID, nil
+			}
+		}
 	}
 
-	image, ok := ds.images[name]
-	if !ok {
-		return types.Image{}, api.ErrNoImage
+	for _, id := range ds.publicImages {
+		i := ds.images[id]
+		if i.Name == name || i.ID == name {
+			return i.ID, nil
+		}
 	}
 
-	return image, nil
+	for _, id := range ds.internalImages {
+		i := ds.images[id]
+		if i.Name == name || i.ID == name {
+			return i.ID, nil
+		}
+	}
+
+	return "", api.ErrNoImage
 }
 
 // GetImages obtains the images available for the optional tenantID/admin combo
@@ -2754,7 +2782,6 @@ func (ds *Datastore) DeleteImage(ID string) error {
 	}
 
 	delete(ds.images, ID)
-	delete(ds.imagesByName, image.Name)
 
 	return nil
 }
