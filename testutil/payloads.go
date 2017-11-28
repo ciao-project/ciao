@@ -16,13 +16,15 @@
 
 package testutil
 
+import "fmt"
 import "github.com/ciao-project/ciao/payloads"
+import "hash/crc32"
 
 // AgentIP is a test agent IP address
 const AgentIP = "10.2.3.4"
 
 //TenantSubnet is a test tenant subnet
-const TenantSubnet = "10.2.0.0/16"
+const TenantSubnet = "172.16.0.0/16"
 
 // SubnetKey is a test tenant subnet key
 const SubnetKey = "8"
@@ -31,7 +33,7 @@ const SubnetKey = "8"
 const InstancePublicIP = "10.1.2.3"
 
 // InstancePrivateIP is a test instance private IP
-const InstancePrivateIP = "192.168.1.2"
+const InstancePrivateIP = "172.16.0.2"
 
 // VNICMAC is a test instance VNIC MAC address
 const VNICMAC = "aa:bb:cc:01:02:03"
@@ -228,6 +230,23 @@ const EvacuateYaml = `evacuate:
 // RestoreYaml is a sample node Restore ssntp.Command payload for test cases
 const RestoreYaml = `restore:
   workload_agent_uuid: ` + AgentUUID + `
+`
+
+// CNCITunnelID is a gre tunnel ID derived from the tenant UUID
+var CNCITunnelID = crc32.ChecksumIEEE([]byte(TenantUUID))
+
+// CNCITunnelIDstr is the string representation of the CNCITunnelID
+var CNCITunnelIDstr = fmt.Sprint(CNCITunnelID)
+
+// CNCIRefreshYaml is a sample ConcentratorInstanceRefresh ssntp.Event payload
+// for test cases
+var CNCIRefreshYaml = `cnci_refresh:
+  cnci_uuid: ` + CNCIUUID + `
+  cncis:
+  - physical_ip: 10.10.10.1
+    subnet: 172.16.0.0/24
+    tunnel_ip: 192.168.0.0
+    tunnel_id: ` + CNCITunnelIDstr + `
 `
 
 // CNCIAddedYaml is a sample ConcentratorInstanceAdded ssntp.Event payload for test cases
