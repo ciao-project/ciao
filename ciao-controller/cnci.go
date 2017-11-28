@@ -16,8 +16,11 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"hash/crc32"
+	"net"
 	"sync"
 	"time"
 
@@ -122,6 +125,36 @@ func (c *CNCI) transitionState(to CNCIState) {
 	}
 }
 
+func getTunnelIP(subnet string) net.IP {
+	startTunnelIP := net.ParseIP(cnciNet.String())
+	IP, ipNet, err := net.ParseCIDR(subnet)
+	if err != nil {
+		return nil
+	}
+
+	ones, bits := ipNet.Mask.Size()
+	hostBits := bits - ones
+
+	addr := binary.BigEndian.Uint32(IP.To4())
+	mask := binary.BigEndian.Uint32(ipNet.Mask)
+	start := binary.BigEndian.Uint32(startTunnelIP.To4())
+	subnetNum := addr & mask
+
+	// to calculate the tunnelIP, use the significant subnet
+	// bits only. Since the top 12 bits are always the same,
+	// get rid of them.
+	tunnelNum := (subnetNum & 0x00cfffff) >> uint(hostBits)
+
+	// add one to this value so that we don't allocate host 0
+	tunnelNum++
+
+	tunnelIP := make(net.IP, net.IPv4len)
+	addr = start + uint32(tunnelNum)
+	binary.BigEndian.PutUint32(tunnelIP, addr)
+
+	return tunnelIP
+}
+
 // Active will return true if the CNCI has been launched successfully
 func (c *CNCIManager) Active(ID string) bool {
 	c.cnciLock.RLock()
@@ -223,7 +256,12 @@ func (c *CNCIManager) WaitForActive(subnet string) error {
 
 	// we release the lock before waiting because
 	// we need to be able to read the event channel.
-	return waitForEventTimeout(ch, added, cnciEventTimeout)
+	err = waitForEventTimeout(ch, added, cnciEventTimeout)
+	if err != nil {
+		return err
+	}
+
+	return c.refresh()
 }
 
 // ScheduleRemoveSubnet will kick off a timer to remove a subnet after 5 min.
@@ -294,7 +332,12 @@ func (c *CNCIManager) RemoveSubnet(subnet string) error {
 
 	c.cnciLock.Unlock()
 
-	return waitForEventTimeout(ch, removed, cnciEventTimeout)
+	err = waitForEventTimeout(ch, removed, cnciEventTimeout)
+	if err != nil {
+		return err
+	}
+
+	return c.refresh()
 }
 
 // CNCIRemoved will move the CNCI back to the initial state
@@ -399,6 +442,41 @@ func (c *CNCIManager) waitForActive(subnet string) error {
 	}
 
 	return errors.New("CNCI not active")
+}
+
+func (c *CNCIManager) refresh() error {
+	c.cnciLock.RLock()
+	defer c.cnciLock.RUnlock()
+
+	var cnciList []payloads.CNCINet
+
+	// create a ConcentratorInstanceRefresh struct for each cnci
+	for _, cnci := range c.cncis {
+		tunnelID := crc32.ChecksumIEEE([]byte(c.tenant))
+		tunnelIP := getTunnelIP(cnci.instance.Subnet)
+		if tunnelIP == nil {
+			return errors.New("Unable to derive CNCI tunnel IP")
+		}
+
+		r := payloads.CNCINet{
+			PhysicalIP: cnci.instance.IPAddress,
+			Subnet:     cnci.instance.Subnet,
+			TunnelIP:   tunnelIP.String(),
+			TunnelID:   tunnelID,
+		}
+		cnciList = append(cnciList, r)
+	}
+
+	// send the event to each cnci
+	for _, cnci := range c.cncis {
+		err := c.ctrl.client.CNCIRefresh(cnci.instance.ID, cnciList)
+		if err != nil {
+			// keep going, but log error.
+			glog.Warningf("Unable to send cnci refresh to %s: (%v)", cnci.instance.ID, err)
+		}
+	}
+
+	return nil
 }
 
 // GetInstanceCNCI will return the CNCI Instance for a specific tenant Instance

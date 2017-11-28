@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/ssntp"
 )
 
@@ -271,4 +272,8 @@ func (client *ssntpClientWrapper) sendAndDelEventChan(cmd ssntp.Event) {
 
 func (client *ssntpClientWrapper) RemoveInstance(ID string) {
 	client.realClient.RemoveInstance(ID)
+}
+
+func (client *ssntpClientWrapper) CNCIRefresh(cnciID string, cnciList []payloads.CNCINet) error {
+	return client.realClient.CNCIRefresh(cnciID, cnciList)
 }
