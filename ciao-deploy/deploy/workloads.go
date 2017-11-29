@@ -85,8 +85,8 @@ type workloadDetails interface {
 
 var images = []workloadDetails{
 	&baseWorkload{
-		url:       "https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2",
-		imageName: "fedora-cloud-base-24-1.2",
+		url:       "https://download.fedoraproject.org/pub/fedora/linux/releases/27/CloudImages/x86_64/images/Fedora-Cloud-Base-27-1.6.x86_64.qcow2",
+		imageName: "fedora-cloud-base-27-1.6",
 		extra:     true,
 		cloudInit: vmCloudInit,
 		opts: bat.WorkloadOptions{
