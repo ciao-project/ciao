@@ -18,11 +18,9 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"strconv"
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
-	"github.com/ciao-project/ciao/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -55,100 +53,6 @@ func instanceToServer(ctl *controller, instance *types.Instance) (api.ServerDeta
 	}
 
 	return server, nil
-}
-
-func (c *controller) validateBlockDeviceMappingSourceType(srcType string) error {
-	validSourceTypes := []string{
-		"blank",
-		"snapshot",
-		"volume",
-		"image",
-	}
-	for _, validSourceType := range validSourceTypes {
-		if srcType == validSourceType {
-			return nil
-		}
-	}
-	return fmt.Errorf("Invalid block device mapping source type.  Expected value in %v, got \"%s\"", validSourceTypes, srcType)
-}
-
-func (c *controller) validateBlockDeviceMappingDestinationType(dstType string) error {
-	validDestinationTypes := []string{
-		"",
-		"local",
-		"volume",
-	}
-	for _, validDestinationType := range validDestinationTypes {
-		if dstType == validDestinationType {
-			return nil
-		}
-	}
-	return fmt.Errorf("Invalid block device mapping destination type.  Expected value in %v, got \"%s\"", validDestinationTypes, dstType)
-}
-
-func (c *controller) validateBlockDeviceMappingGuestFormat(format string) error {
-	validGuestFormat := []string{
-		"",
-		"ephemeral",
-		"swap",
-	}
-	for _, validGuestFormat := range validGuestFormat {
-		if format == validGuestFormat {
-			return nil
-		}
-	}
-	return fmt.Errorf("Invalid block device mapping format type.  Expected value in %v, got \"%s\"", validGuestFormat, format)
-}
-
-func noBlockDeviceMappingBootIndex(index string) bool {
-	// Openstack docu says negative or "none" means don't use as bootable
-	// also allow an empty string in case the value was not present at all
-	if index == "none" || index == "" {
-		return true
-	}
-
-	integerIndex, err := strconv.Atoi(index)
-	if err != nil {
-		return false
-	}
-
-	if integerIndex < 0 {
-		return true
-	}
-
-	return false
-}
-
-func (c *controller) validateBlockDeviceMappingBootIndex(index string) error {
-	// Openstack docu says negative or "none" means don't use as bootable,
-	// otherwise 0..N are boot order possibilities
-
-	if noBlockDeviceMappingBootIndex(index) {
-		return nil
-	}
-
-	_, err := strconv.Atoi(index)
-	if err != nil {
-		return fmt.Errorf("Invalid block device boot index.  Expected integer, got \"%s\". %s", index, err)
-	}
-
-	return nil
-}
-
-func (c *controller) validateUUIDForPreCreatedVolume(sourceType string, UUID string) error {
-	if sourceType == "volume" || sourceType == "image" {
-		_, err := uuid.Parse(UUID)
-		if err != nil {
-			return fmt.Errorf("Invalid block device uuid. \"%s\" is invalid: %s", UUID, err)
-		}
-	} else { // sourceType == "snapshot"
-		err := c.IsValidSnapshotUUID(UUID)
-		if err != nil {
-			return fmt.Errorf("Invalid block device snapshot uuid. \"%s\" is invalid: %s", UUID, err)
-		}
-	}
-
-	return nil
 }
 
 func (c *controller) CreateServer(tenant string, server api.CreateServerRequest) (resp interface{}, err error) {
