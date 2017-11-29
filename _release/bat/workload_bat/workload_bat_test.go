@@ -46,12 +46,18 @@ runcmd:
 `
 
 const vmWorkloadImageName = "ubuntu-server-16.04"
+const vmPublicWorkloadImageName = "clear-linux-latest"
 
-func getWorkloadSource(ctx context.Context, t *testing.T, tenant string) bat.Source {
-	// get the Image ID to use.
+func getWorkloadSource(ctx context.Context, t *testing.T, public bool) bat.Source {
 	source := bat.Source{
 		Type:   "image",
 		Source: vmWorkloadImageName,
+	}
+
+	if public {
+		source.Source = vmPublicWorkloadImageName
+	} else {
+		source.Source = vmWorkloadImageName
 	}
 
 	return source
@@ -66,7 +72,7 @@ func testCreateWorkload(t *testing.T, public bool) {
 
 	// generate ssh test keys?
 
-	source := getWorkloadSource(ctx, t, tenant)
+	source := getWorkloadSource(ctx, t, public)
 
 	// fill out the opt structure for this workload.
 	requirements := bat.WorkloadRequirements{
@@ -171,7 +177,7 @@ func TestCreateWorkloadWithSizedVolume(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()
 
-	source := getWorkloadSource(ctx, t, tenant)
+	source := getWorkloadSource(ctx, t, false)
 
 	requirements := bat.WorkloadRequirements{
 		VCPUs: 2,
@@ -259,7 +265,7 @@ func TestCreateWorkloadWithSizedVolume(t *testing.T) {
 func testSchedulableWorkloadRequirements(ctx context.Context, t *testing.T, requirements bat.WorkloadRequirements, schedulable bool) {
 	tenant := ""
 
-	source := getWorkloadSource(ctx, t, tenant)
+	source := getWorkloadSource(ctx, t, false)
 
 	disk := bat.Disk{
 		Bootable:  true,
