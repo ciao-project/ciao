@@ -1235,13 +1235,12 @@ func TestGetStorageForVolume(t *testing.T) {
 	}
 
 	createdVolume, err := ctl.ds.GetBlockDevice(pl.ID)
-
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(createdVolume.Name) == 0 {
-		t.Errorf("block device name not set")
+	if createdVolume.State != types.Available {
+		t.Fatal("Expected newly created block device to be available")
 	}
 }
 
@@ -1286,13 +1285,12 @@ func TestGetStorageForImage(t *testing.T) {
 	}
 
 	createdVolume, err := ctl.ds.GetBlockDevice(pl.ID)
-
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(createdVolume.Name) == 0 {
-		t.Errorf("block device name not set")
+	if createdVolume.State != types.Available {
+		t.Fatal("Expected newly created block device to be available")
 	}
 }
 

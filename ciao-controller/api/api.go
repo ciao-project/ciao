@@ -95,6 +95,7 @@ type RequestedVolume struct {
 	Description string `json:"description,omitempty"`
 	Name        string `json:"name,omitempty"`
 	ImageRef    string `json:"imageRef,omitempty"`
+	Internal    bool   `json:"-"`
 }
 
 // CreateServerRequest contains the details needed to start new instance(s)

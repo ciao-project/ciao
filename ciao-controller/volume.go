@@ -62,25 +62,33 @@ func (c *controller) CreateVolume(tenant string, req api.RequestedVolume) (types
 		State:       types.Available,
 		Name:        req.Name,
 		Description: req.Description,
+		Internal:    req.Internal,
 	}
 
 	// It's best to make the quota request here as we don't know the volume
 	// size earlier. If the ceph cluster is full then it might error out
 	// earlier.
-	res := <-c.qs.Consume(tenant,
-		payloads.RequestedResource{Type: payloads.Volume, Value: 1},
-		payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: bd.Size})
+	resources := []payloads.RequestedResource{
+		{Type: payloads.Volume, Value: 1},
+		{Type: payloads.SharedDiskGiB, Value: bd.Size},
+	}
 
-	if !res.Allowed() {
-		_ = c.DeleteBlockDevice(bd.ID)
-		c.qs.Release(tenant, res.Resources()...)
-		return types.Volume{}, api.ErrQuota
+	if !data.Internal {
+		res := <-c.qs.Consume(tenant, resources...)
+
+		if !res.Allowed() {
+			_ = c.DeleteBlockDevice(bd.ID)
+			c.qs.Release(tenant, res.Resources()...)
+			return types.Volume{}, api.ErrQuota
+		}
 	}
 
 	err = c.ds.AddBlockDevice(data)
 	if err != nil {
 		_ = c.DeleteBlockDevice(bd.ID)
-		c.qs.Release(tenant, res.Resources()...)
+		if !data.Internal {
+			c.qs.Release(tenant, resources...)
+		}
 		return types.Volume{}, err
 	}
 

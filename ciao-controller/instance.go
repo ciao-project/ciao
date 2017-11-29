@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
 	"github.com/ciao-project/ciao/ciao-controller/utils"
-	"github.com/ciao-project/ciao/ciao-storage"
 	"github.com/ciao-project/ciao/payloads"
 	"github.com/ciao-project/ciao/uuid"
 	"github.com/golang/glog"
@@ -196,106 +196,35 @@ func instanceActive(i *types.Instance) bool {
 	return false
 }
 
-func addBlockDevice(c *controller, tenant string, instanceID string, device storage.BlockDevice, s types.StorageResource) (payloads.StorageResource, error) {
-	// don't you need to add support for indicating whether
-	// a block device is bootable.
-	data := types.Volume{
-		BlockDevice: device,
-		CreateTime:  time.Now(),
-		TenantID:    tenant,
-		Name:        fmt.Sprintf("Storage for instance: %s", instanceID),
-		Description: s.Tag,
-		Internal:    s.Internal,
-	}
-
-	if !data.Internal {
-		res := <-c.qs.Consume(tenant,
-			payloads.RequestedResource{Type: payloads.Volume, Value: 1},
-			payloads.RequestedResource{Type: payloads.SharedDiskGiB, Value: device.Size})
-
-		if !res.Allowed() {
-			_ = c.DeleteBlockDevice(device.ID)
-			c.qs.Release(tenant, res.Resources()...)
-			return payloads.StorageResource{}, fmt.Errorf("Error creating volume: %s", res.Reason())
-		}
-	}
-
-	err := c.ds.AddBlockDevice(data)
-	if err != nil {
-		_ = c.DeleteBlockDevice(device.ID)
-		return payloads.StorageResource{}, err
-	}
-
-	return payloads.StorageResource{ID: data.ID, Bootable: s.Bootable, Ephemeral: s.Ephemeral}, nil
-}
-
 func getStorage(c *controller, s types.StorageResource, tenant string, instanceID string) (payloads.StorageResource, error) {
 	// storage already exists, use preexisting definition.
 	if s.ID != "" {
 		return payloads.StorageResource{ID: s.ID, Bootable: s.Bootable}, nil
 	}
 
-	// new storage.
-	// TBD: handle all these cases
-	// - create bootable volume from image.
-	//   assumptions: SourceType is "image"
-	//                Bootable is true
-	//                SourceID points to existing image
-	// - create bootable volume from volume.
-	//   Assumptions: SourceType is "volume"
-	//                Bootable is true
-	//                SourceID points to existing volume
-	// - create attachable empty volume.
-	//   Assumptions: SourceType is "empty"
-	//                Bootable is ignored
-	//                SourceID is ignored
-	// - create attachable volume from image?
-	//   Assumptions: SourceType is "image"
-	//                Bootable is false
-	//                SourceID points to existing image
-	// - create attachable volume from volume.
-	//   Assumptions: SourceType is "volume"
-	//                Bootable is false
-	//                SourceID points to existing volume.
-	// assume always persistent for now.
-	// assume we have already checked quotas.
-	// ID of source is the image id.
-	var device storage.BlockDevice
 	var err error
+	req := api.RequestedVolume{
+		Description: fmt.Sprintf("Volume for instance: %s", instanceID),
+		Internal:    s.Internal,
+		Size:        s.Size,
+	}
+
 	switch s.SourceType {
 	case types.ImageService:
-		device, err = c.CreateBlockDeviceFromSnapshot(s.Source, "ciao-image")
-		if err != nil {
-			glog.Errorf("Unable to get block device for image: %v", err)
-			return payloads.StorageResource{}, err
-		}
-
+		req.ImageRef = s.Source
 	case types.VolumeService:
-		device, err = c.CopyBlockDevice(s.Source)
-		if err != nil {
-			return payloads.StorageResource{}, err
-		}
-
+		req.SourceVolID = s.Source
 	case types.Empty:
-		device, err = c.CreateBlockDevice("", "", s.Size)
-		if err != nil {
-			return payloads.StorageResource{}, err
-		}
-
+		break
 	default:
 		return payloads.StorageResource{}, errors.New("Unsupported workload storage variant in getStorage()")
 	}
 
-	if device.Size < s.Size {
-		device.Size, err = c.Resize(device.ID, s.Size)
-	}
-
+	volume, err := c.CreateVolume(tenant, req)
 	if err != nil {
-		_ = c.DeleteBlockDevice(device.ID)
-		return payloads.StorageResource{}, errors.Wrap(err, "error resizing volume")
+		return payloads.StorageResource{}, errors.Wrap(err, "Error creating volume")
 	}
-
-	return addBlockDevice(c, tenant, instanceID, device, s)
+	return payloads.StorageResource{ID: volume.ID, Bootable: s.Bootable, Ephemeral: s.Ephemeral}, nil
 }
 
 func networkConfig(ctl *controller, tenant *types.Tenant, networking *payloads.NetworkResources, cnci bool, ipAddress net.IP) error {
