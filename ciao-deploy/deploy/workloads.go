@@ -67,6 +67,7 @@ type baseWorkload struct {
 	opts       bat.WorkloadOptions
 	downloaded bool
 	workloadID string
+	public     bool
 }
 
 type clearWorkload struct {
@@ -84,8 +85,8 @@ type workloadDetails interface {
 
 var images = []workloadDetails{
 	&baseWorkload{
-		url:       "https://download.fedoraproject.org/pub/fedora/linux/releases/24/CloudImages/x86_64/images/Fedora-Cloud-Base-24-1.2.x86_64.qcow2",
-		imageName: "fedora-cloud-base-24-1.2",
+		url:       "https://download.fedoraproject.org/pub/fedora/linux/releases/27/CloudImages/x86_64/images/Fedora-Cloud-Base-27-1.6.x86_64.qcow2",
+		imageName: "fedora-cloud-base-27-1.6",
 		extra:     true,
 		cloudInit: vmCloudInit,
 		opts: bat.WorkloadOptions{
@@ -115,8 +116,8 @@ var images = []workloadDetails{
 	},
 	&clearWorkload{
 		wd: baseWorkload{
-			extra:     true,
 			cloudInit: vmCloudInit,
+			imageName: "clear-linux-latest",
 			opts: bat.WorkloadOptions{
 				Description: "Clear Linux test VM",
 				VMType:      "qemu",
@@ -126,6 +127,7 @@ var images = []workloadDetails{
 					MemMB: 128,
 				},
 			},
+			public: true,
 		},
 	},
 	&baseWorkload{
@@ -286,8 +288,12 @@ func (wd *baseWorkload) upload(ctx context.Context, fp, name string) error {
 		Name: name,
 	}
 
+	if wd.public {
+		opts.Visibility = "public"
+	}
+
 	fmt.Printf("Uploading image from %s\n", fp)
-	i, err := bat.AddImage(ctx, false, "", fp, &opts)
+	i, err := bat.AddImage(ctx, wd.public, "", fp, &opts)
 	if err != nil {
 		return errors.Wrap(err, "Error creating image")
 	}
@@ -306,7 +312,7 @@ func (wd *baseWorkload) Upload(ctx context.Context) error {
 }
 
 func (cwd *clearWorkload) Upload(ctx context.Context) error {
-	return cwd.wd.upload(ctx, cwd.wd.localPath, fmt.Sprintf("clear-linux-%s", cwd.version))
+	return cwd.wd.upload(ctx, cwd.wd.localPath, cwd.wd.imageName)
 }
 
 func (wd *baseWorkload) CreateWorkload(ctx context.Context, sshPublickey string, password string) error {
@@ -339,10 +345,20 @@ func (wd *baseWorkload) CreateWorkload(ctx context.Context, sshPublickey string,
 		return errors.Wrap(err, "Error executing cloud init template")
 	}
 
-	workloadID, err := bat.CreateWorkload(ctx, "", opts, strings.TrimSpace(buf.String()))
-	if err == nil {
-		wd.workloadID = workloadID
-		fmt.Printf("Workload created \"%s\" as %s\n", opts.Description, wd.workloadID)
+	var err error
+	var workloadID string
+	if wd.public {
+		workloadID, err = bat.CreatePublicWorkload(ctx, "", opts, strings.TrimSpace(buf.String()))
+		if err == nil {
+			wd.workloadID = workloadID
+			fmt.Printf("Public workload created \"%s\" as %s\n", opts.Description, wd.workloadID)
+		}
+	} else {
+		workloadID, err = bat.CreateWorkload(ctx, "", opts, strings.TrimSpace(buf.String()))
+		if err == nil {
+			wd.workloadID = workloadID
+			fmt.Printf("Workload created \"%s\" as %s\n", opts.Description, wd.workloadID)
+		}
 	}
 
 	return err

@@ -205,7 +205,12 @@ func (c *controller) DeleteImage(tenantID, imageID string) error {
 func (c *controller) GetImage(tenantID, imageID string) (types.Image, error) {
 	glog.Infof("Getting Image [%v] from [%v]", imageID, tenantID)
 
-	image, err := c.ds.ResolveImage(imageID)
+	id, err := c.ds.ResolveImage(tenantID, imageID)
+	if err != nil {
+		return types.Image{}, err
+	}
+
+	image, err := c.ds.GetImage(id)
 	if err != nil {
 		return types.Image{}, err
 	}

@@ -2793,18 +2793,18 @@ func TestResolveImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i2, err := ds.ResolveImage(i.Name)
+	id2, err := ds.ResolveImage(tenant.ID, i.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	i3, err := ds.ResolveImage(i.ID)
+	id3, err := ds.ResolveImage(tenant.ID, i.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(i2, i3) {
-		t.Fatal("Expected images returned by name and ID resolution equal")
+	if id2 != id3 {
+		t.Fatal("Expected image ID returned by name and ID resolution equal")
 	}
 }
 
