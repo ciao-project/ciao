@@ -90,10 +90,7 @@ const udMasterTemplate = `
  - {{template "PROXIES" .}}no_proxy=` + "`hostname -i`" + ` kubeadm init --pod-network-cidr 10.244.0.0/16 --token {{.Token}} {{if len .ExternalIP}}--apiserver-cert-extra-sans={{.ExternalIP}}{{end}}
  - cp /etc/kubernetes/admin.conf /home/{{.User}}/
  - chown {{.User}}:{{.User}} /home/{{.User}}/admin.conf
- - {{template "PROXIES" .}}wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel-rbac.yml
- - KUBECONFIG=/home/{{.User}}/admin.conf kubectl create -f kube-flannel-rbac.yml
- - {{template "PROXIES" .}}wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
- - KUBECONFIG=/home/{{.User}}/admin.conf kubectl create --namespace kube-system -f kube-flannel.yml
+ - {{template "PROXIES" .}}no_proxy=` + "`hostname -i`" + ` KUBECONFIG=/home/{{.User}}/admin.conf kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml
  - if [ $? -eq 0 ] ; then cat /home/{{.User}}/admin.conf | sed -E 's/\/\/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/\/\/{{.ExternalIP}}/' | curl -T - {{.PhoneHomeIP}}:9000/success ; else cat /var/log/cloud-init-output.log | curl -T - {{.PhoneHomeIP}}:9000/failure; fi
 ...
 `

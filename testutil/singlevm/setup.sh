@@ -175,7 +175,8 @@ ciao-deploy setup \
 --mgmt-net="$ciao_vlan_subnet" --compute-net="$ciao_vlan_subnet" \
 --server-ip="$ciao_vlan_ip" \
 --ceph-id="ciao" \
---image-cache-directory="$ciao_bin"
+--image-cache-directory="$ciao_bin" \
+--cnci="tiny"
 ciao-deploy auth create testuser
 
 # Make configuration.yaml world readable otherwise storage tests will be skipped.
