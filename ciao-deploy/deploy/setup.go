@@ -49,6 +49,7 @@ type ClusterConfiguration struct {
 	AuthAdminCertPath string
 	ServerHostname    string
 	DisableLimits     bool
+	CNCISize          string
 }
 
 type unitFileConf struct {
@@ -106,6 +107,18 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 	config.Configure.Launcher.DiskLimit = false
 	config.Configure.Launcher.MemoryLimit = !clusterConf.DisableLimits
 	config.Configure.Launcher.ChildUser = ciaoUser
+
+	switch clusterConf.CNCISize {
+	case "tiny":
+		config.Configure.Controller.CNCIVcpus = 1
+		config.Configure.Controller.CNCIMem = 128
+	case "medium":
+		config.Configure.Controller.CNCIVcpus = 2
+		config.Configure.Controller.CNCIMem = 1024
+	case "large":
+		config.Configure.Controller.CNCIVcpus = 4
+		config.Configure.Controller.CNCIMem = 2048
+	}
 
 	data, err := yaml.Marshal(config)
 	if err != nil {

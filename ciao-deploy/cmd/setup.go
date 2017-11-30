@@ -25,14 +25,36 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
+type cnciFlag string
+
+func (f *cnciFlag) String() string {
+	return string(*f)
+}
+
+func (f *cnciFlag) Type() string {
+	return "string"
+}
+
+func (f *cnciFlag) Set(val string) error {
+	if val != "tiny" && val != "medium" && val != "large" {
+		return fmt.Errorf("tiny, medium or large expected")
+	}
+
+	*f = cnciFlag(val)
+
+	return nil
+}
+
 var clusterConf = &deploy.ClusterConfiguration{}
 var force bool
 var localLauncher bool
+var cnciSize cnciFlag = "large"
 
 func setup() int {
 	ctx, cancelFunc := getSignalContext()
 	defer cancelFunc()
 
+	clusterConf.CNCISize = cnciSize.String()
 	err := deploy.SetupMaster(ctx, force, imageCacheDirectory, clusterConf, localLauncher)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error provisioning system as master: %v\n", err)
@@ -124,4 +146,5 @@ func init() {
 	setupCmd.Flags().BoolVar(&force, "force", false, "Overwrite existing files which might break the cluster")
 	setupCmd.Flags().BoolVar(&localLauncher, "local-launcher", false, "Enable a local launcher on this node (for testing)")
 	setupCmd.Flags().BoolVar(&clusterConf.DisableLimits, "disable-limits", false, "Disable memory limit checking for cluster nodes")
+	setupCmd.Flags().Var(&cnciSize, "cnci", "Specifies the resources (mem, cpu) available to CNCIs.  Can be 'tiny', 'medium', 'large'")
 }
