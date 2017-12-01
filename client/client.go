@@ -31,11 +31,14 @@ import (
 
 	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/golang/glog"
+	"github.com/intel/tfortools"
 	"github.com/pkg/errors"
 )
 
 // Client represents a client for accessing ciao controller
 type Client struct {
+	Template       string
 	ControllerURL  string
 	TenantID       string
 	CACertFile     string
@@ -49,6 +52,28 @@ type Client struct {
 
 type queryValue struct {
 	name, value string
+}
+
+func Infof(format string, args ...interface{}) {
+	if glog.V(1) {
+		glog.InfoDepth(1, fmt.Sprintf("ciao-cli INFO: "+format, args...))
+	}
+}
+
+func Errorf(format string, args ...interface{}) {
+	glog.ErrorDepth(1, fmt.Sprintf("ciao-cli ERROR: "+format, args...))
+}
+
+func Fatalf(format string, args ...interface{}) {
+	glog.FatalDepth(1, fmt.Sprintf("ciao-cli FATAL: "+format, args...))
+}
+
+func (client *Client) PrettyPrint(buff *bytes.Buffer, tname string, obj interface{}) {
+	if client.Template != "" {
+		tfortools.OutputToTemplate(buff, tname, client.Template, obj, nil)
+	} else {
+		tfortools.OutputToTemplate(buff, tname, "{{table .}}", obj, nil)
+	}
 }
 
 func (client *Client) prepareCAcert() error {
