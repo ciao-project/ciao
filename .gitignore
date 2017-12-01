@@ -12,6 +12,8 @@ _DeploymentAndDistroPackaging/ansible/openrc
 .DS_Store
 ciao-cert/ciao-cert
 ciao-cli/ciao-cli
+ciao/ciao
+ciao/ciao-sdk
 ciao-controller/ciao-controller
 ciao-launcher/ciao-launcher
 ciao-launcher/tests/ciao-launcher-server/ciao-launcher-server
