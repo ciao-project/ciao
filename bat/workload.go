@@ -29,8 +29,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strings"
 
+	"github.com/ciao-project/ciao/ciao-controller/types"
 	"gopkg.in/yaml.v2"
 )
 
@@ -117,11 +117,11 @@ func createWorkload(ctx context.Context, tenant string, opt WorkloadOptions, con
 }
 
 func deleteWorkload(ctx context.Context, tenant string, workload string, public bool) (err error) {
-	args := []string{"workload", "delete", "-workload", workload}
+	args := []string{"delete", "workload", workload}
 	if public {
-		_, err = RunCIAOCLIAsAdmin(ctx, tenant, args)
+		_, err = RunCIAOCmdAsAdmin(ctx, tenant, args)
 	} else {
-		_, err = RunCIAOCLI(ctx, tenant, args)
+		_, err = RunCIAOCmd(ctx, tenant, args)
 	}
 
 	return err
@@ -143,27 +143,22 @@ func CreatePublicWorkload(ctx context.Context, tenant string, opt WorkloadOption
 // workload definition file will remain intact after the call returns.
 // The id of the new workload is returned upon success.
 func CreateWorkloadFromFile(ctx context.Context, public bool, tenant, wdPath string) (string, error) {
-	args := []string{"workload", "create", "-yaml", wdPath}
+	args := []string{"create", "workload", wdPath, "-f", "{{ tojson .}}"}
 
-	var data []byte
 	var err error
+	var workload types.Workload
+
 	if public {
-		data, err = RunCIAOCLIAsAdmin(ctx, tenant, args)
+		err = RunCIAOCmdAsAdminJS(ctx, tenant, args, &workload)
 	} else {
-		data, err = RunCIAOCLI(ctx, tenant, args)
+		err = RunCIAOCmdJS(ctx, tenant, args, &workload)
 	}
 
 	if err != nil {
 		return "", err
 	}
 
-	// get the returned workload ID
-	s := strings.SplitAfter(string(data), ":")
-	if len(s) != 2 {
-		return "", fmt.Errorf("Problem parsing workload ID")
-	}
-
-	return strings.TrimSpace(s[1]), nil
+	return workload.ID, err
 }
 
 // DeletePublicWorkload will call ciao-cli as admin to delete a workload.
@@ -192,8 +187,8 @@ func CreateWorkload(ctx context.Context, tenant string, opt WorkloadOptions, con
 func GetAllWorkloads(ctx context.Context, tenant string) ([]Workload, error) {
 	var workloads []Workload
 
-	args := []string{"workload", "list", "-f", "{{tojson .}}"}
-	err := RunCIAOCLIJS(ctx, tenant, args, &workloads)
+	args := []string{"list", "workloads", "-f", "{{tojson .}}"}
+	err := RunCIAOCmdJS(ctx, tenant, args, &workloads)
 	if err != nil {
 		return nil, err
 	}

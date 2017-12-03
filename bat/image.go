@@ -48,18 +48,14 @@ type Image struct {
 }
 
 func computeImageAddArgs(options *ImageOptions) []string {
-	args := make([]string, 0, 8)
+	args := []string{}
 
 	if options.ID != "" {
-		args = append(args, "-id", options.ID)
-	}
-
-	if options.Name != "" {
-		args = append(args, "-name", options.Name)
+		args = append(args, "--id", options.ID)
 	}
 
 	if options.Visibility != "" {
-		args = append(args, "-visibility", options.Visibility)
+		args = append(args, "--visibility", options.Visibility)
 	}
 
 	return args
@@ -75,13 +71,13 @@ func computeImageAddArgs(options *ImageOptions) []string {
 // CIAO_CONTROLLER.
 func AddImage(ctx context.Context, admin bool, tenant, path string, options *ImageOptions) (*Image, error) {
 	var img *Image
-	args := []string{"image", "add", "-f", "{{tojson .}}", "-file", path}
+	args := []string{"create", "image", "-f", "{{tojson .}}", options.Name, path}
 	args = append(args, computeImageAddArgs(options)...)
 	var err error
 	if admin {
-		err = RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
+		err = RunCIAOCmdAsAdminJS(ctx, tenant, args, &img)
 	} else {
-		err = RunCIAOCLIJS(ctx, tenant, args, &img)
+		err = RunCIAOCmdJS(ctx, tenant, args, &img)
 	}
 	if err != nil {
 		return nil, err
@@ -112,12 +108,12 @@ func AddRandomImage(ctx context.Context, admin bool, tenant string, size int, op
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set)
 // otherwise CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func DeleteImage(ctx context.Context, admin bool, tenant, ID string) error {
-	args := []string{"image", "delete", "-image", ID}
+	args := []string{"delete", "image", ID}
 	var err error
 	if admin {
-		_, err = RunCIAOCLIAsAdmin(ctx, tenant, args)
+		_, err = RunCIAOCmdAsAdmin(ctx, tenant, args)
 	} else {
-		_, err = RunCIAOCLI(ctx, tenant, args)
+		_, err = RunCIAOCmd(ctx, tenant, args)
 	}
 	return err
 }
@@ -127,17 +123,17 @@ func DeleteImage(ctx context.Context, admin bool, tenant, ID string) error {
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set)
 // otherwise CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetImage(ctx context.Context, admin bool, tenant, ID string) (*Image, error) {
-	var img *Image
-	args := []string{"image", "show", "-image", ID, "-f", "{{tojson .}}"}
+	var image *Image
+	args := []string{"show", "image", ID, "-f", "{{tojson .}}"}
 
 	var err error
 	if admin {
-		err = RunCIAOCLIAsAdminJS(ctx, tenant, args, &img)
+		err = RunCIAOCmdAsAdminJS(ctx, tenant, args, &image)
 	} else {
-		err = RunCIAOCLIJS(ctx, tenant, args, &img)
+		err = RunCIAOCmdJS(ctx, tenant, args, &image)
 	}
 
-	return img, err
+	return image, err
 }
 
 // GetImages retrieves the meta data for all images. It is implemented by
@@ -154,12 +150,12 @@ func GetImages(ctx context.Context, admin bool, tenant string) (map[string]*Imag
 {{- end }}
 }
 `
-	args := []string{"image", "list", "-f", template}
+	args := []string{"list", "images", "-f", template}
 	var err error
 	if admin {
-		err = RunCIAOCLIAsAdminJS(ctx, tenant, args, &images)
+		err = RunCIAOCmdAsAdminJS(ctx, tenant, args, &images)
 	} else {
-		err = RunCIAOCLIJS(ctx, tenant, args, &images)
+		err = RunCIAOCmdJS(ctx, tenant, args, &images)
 	}
 	if err != nil {
 		return nil, err
@@ -173,13 +169,13 @@ func GetImages(ctx context.Context, admin bool, tenant string) (map[string]*Imag
 // are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set) otherwise
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetImageCount(ctx context.Context, admin bool, tenant string) (int, error) {
-	args := []string{"image", "list", "-f", "{{len .}}"}
+	args := []string{"list", "images", "-f", "{{len .}}"}
 
 	var data []byte
 	if admin {
-		data, _ = RunCIAOCLIAsAdmin(ctx, tenant, args)
+		data, _ = RunCIAOCmdAsAdmin(ctx, tenant, args)
 	} else {
-		data, _ = RunCIAOCLI(ctx, tenant, args)
+		data, _ = RunCIAOCmd(ctx, tenant, args)
 	}
 
 	return strconv.Atoi(string(data))

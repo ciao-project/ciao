@@ -45,8 +45,8 @@ type TenantConfig struct {
 func GetAllTenants(ctx context.Context) ([]TenantSummary, error) {
 	var tenants []TenantSummary
 
-	args := []string{"tenant", "list", "-all", "-f", "{{tojson .}}"}
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &tenants)
+	args := []string{"list", "tenants", "-f", "{{tojson .}}"}
+	err := RunCIAOCmdAsAdminJS(ctx, "", args, &tenants)
 	if err != nil {
 		return tenants, err
 	}
@@ -59,13 +59,13 @@ func GetAllTenants(ctx context.Context) ([]TenantSummary, error) {
 func CreateTenant(ctx context.Context, config TenantConfig) (TenantSummary, error) {
 	var summary TenantSummary
 
-	args := []string{"tenant", "create", "-tenant", uuid.Generate().String(), "-name", config.Name, "-cidr-prefix-size", strconv.Itoa(config.SubnetBits), "-f", "{{tojson .}}"}
+	args := []string{"create", "tenant", uuid.Generate().String(), "--name", config.Name, "--cidr-prefix-size", strconv.Itoa(config.SubnetBits), "-f", "{{tojson .}}"}
 
 	if config.Permissions.PrivilegedContainers == true {
-		args = append(args, "-create-privileged-containers")
+		args = append(args, "--create-privileged-containers")
 	}
 
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &summary)
+	err := RunCIAOCmdAsAdminJS(ctx, "", args, &summary)
 
 	return summary, err
 }
@@ -73,22 +73,22 @@ func CreateTenant(ctx context.Context, config TenantConfig) (TenantSummary, erro
 // UpdateTenant updates a new tenant with the given config.
 // It calls ciao-cli tenant update.
 func UpdateTenant(ctx context.Context, ID string, config TenantConfig) error {
-	args := []string{"tenant", "update", "-for-tenant", ID}
+	args := []string{"update", "tenant", ID}
 	if config.Name != "" {
-		name := []string{"-name", config.Name}
+		name := []string{"--name", config.Name}
 		args = append(args, name...)
 	}
 
 	if config.SubnetBits != 0 {
-		bits := []string{"-cidr-prefix-size", strconv.Itoa(config.SubnetBits)}
+		bits := []string{"--cidr-prefix-size", strconv.Itoa(config.SubnetBits)}
 		args = append(args, bits...)
 	}
 
 	if config.Permissions.PrivilegedContainers == true {
-		args = append(args, "-create-privileged-containers")
+		args = append(args, "--create-privileged-containers")
 	}
 
-	_, err := RunCIAOCLIAsAdmin(ctx, "", args)
+	_, err := RunCIAOCmdAsAdmin(ctx, "", args)
 	return err
 }
 
@@ -96,8 +96,8 @@ func UpdateTenant(ctx context.Context, ID string, config TenantConfig) error {
 func GetTenantConfig(ctx context.Context, ID string) (TenantConfig, error) {
 	var config TenantConfig
 
-	args := []string{"tenant", "list", "-config", "-for-tenant", ID, "-f", "{{tojson .}}"}
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &config)
+	args := []string{"show", "tenant", ID, "-f", "{{tojson .}}"}
+	err := RunCIAOCmdAsAdminJS(ctx, "", args, &config)
 
 	return config, err
 }
@@ -105,8 +105,8 @@ func GetTenantConfig(ctx context.Context, ID string) (TenantConfig, error) {
 // DeleteTenant will delete the given tenant.
 // It calls ciao-cli tenant delete.
 func DeleteTenant(ctx context.Context, ID string) error {
-	args := []string{"tenant", "delete", "-tenant", ID}
-	_, err := RunCIAOCLIAsAdmin(ctx, "", args)
+	args := []string{"delete", "tenant", ID}
+	_, err := RunCIAOCmdAsAdmin(ctx, "", args)
 
 	return err
 }

@@ -23,6 +23,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 func checkEnv(vars []string) error {
@@ -45,11 +47,16 @@ func RunCIAOCmd(ctx context.Context, tenant string, args []string) ([]byte, erro
 		return nil, err
 	}
 
+	envCopy := os.Environ()
+
 	if tenant != "" {
-		args = append([]string{"-tenant-id", tenant}, args...)
+		envCopy = append(envCopy, fmt.Sprintf("CIAO_TENANT_ID=%s", tenant))
 	}
 
-	data, err := exec.CommandContext(ctx, "ciao", args...).Output()
+	cmd := exec.CommandContext(ctx, "ciao", args...)
+	cmd.Env = envCopy
+
+	data, err := cmd.Output()
 	if err != nil {
 		var failureText string
 		if err, ok := err.(*exec.ExitError); ok {
@@ -74,7 +81,7 @@ func RunCIAOCmdJS(ctx context.Context, tenant string, args []string, jsdata inte
 
 	err = json.Unmarshal(data, jsdata)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Cannot unmarshal data: %s", string(data))
 	}
 
 	return nil
@@ -91,10 +98,6 @@ func RunCIAOCmdAsAdmin(ctx context.Context, tenant string, args []string) ([]byt
 		return nil, err
 	}
 
-	if tenant != "" {
-		args = append([]string{"-tenant-id", tenant}, args...)
-	}
-
 	env := os.Environ()
 	envCopy := make([]string, 0, len(env))
 	for _, v := range env {
@@ -104,6 +107,10 @@ func RunCIAOCmdAsAdmin(ctx context.Context, tenant string, args []string) ([]byt
 	}
 	envCopy = append(envCopy, fmt.Sprintf("CIAO_CLIENT_CERT_FILE=%s",
 		os.Getenv("CIAO_ADMIN_CLIENT_CERT_FILE")))
+
+	if tenant != "" {
+		envCopy = append(envCopy, fmt.Sprintf("CIAO_TENANT_ID=%s", tenant))
+	}
 
 	cmd := exec.CommandContext(ctx, "ciao", args...)
 	cmd.Env = envCopy
@@ -133,7 +140,7 @@ func RunCIAOCmdAsAdminJS(ctx context.Context, tenant string, args []string,
 
 	err = json.Unmarshal(data, jsdata)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Cannot unmarshal data: %s", string(data))
 	}
 
 	return nil

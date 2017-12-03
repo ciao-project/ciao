@@ -32,8 +32,8 @@ type ExternalIP struct {
 // following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func CreateExternalIPPool(ctx context.Context, tenant, name string) error {
-	args := []string{"pool", "create", "-name", name}
-	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
+	args := []string{"create", "pool", name}
+	_, err := RunCIAOCmdAsAdmin(ctx, tenant, args)
 	return err
 }
 
@@ -42,8 +42,8 @@ func CreateExternalIPPool(ctx context.Context, tenant, name string) error {
 // following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func AddExternalIPToPool(ctx context.Context, tenant, name, ip string) error {
-	args := []string{"pool", "add", "-name", name, ip}
-	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
+	args := []string{"add", "external-ip", name, ip}
+	_, err := RunCIAOCmdAsAdmin(ctx, tenant, args)
 	return err
 }
 
@@ -52,8 +52,8 @@ func AddExternalIPToPool(ctx context.Context, tenant, name, ip string) error {
 // be returned if the following environment variables are not set;
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func MapExternalIP(ctx context.Context, tenant, pool, instance string) error {
-	args := []string{"external-ip", "map", "-instance", instance, "-pool", pool}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"attach", "external-ip", pool, instance}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
@@ -62,8 +62,8 @@ func MapExternalIP(ctx context.Context, tenant, pool, instance string) error {
 // returned if the following environment variables are not set;
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func UnmapExternalIP(ctx context.Context, tenant, address string) error {
-	args := []string{"external-ip", "unmap", "-address", address}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"detach", "external-ip", address}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
@@ -72,8 +72,8 @@ func UnmapExternalIP(ctx context.Context, tenant, address string) error {
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func DeleteExternalIPPool(ctx context.Context, tenant, name string) error {
-	args := []string{"pool", "delete", "-name", name}
-	_, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
+	args := []string{"delete", "pool", name}
+	_, err := RunCIAOCmdAsAdmin(ctx, tenant, args)
 	return err
 }
 
@@ -84,8 +84,8 @@ func DeleteExternalIPPool(ctx context.Context, tenant, name string) error {
 // CIAO_CONTROLLER.
 func ListExternalIPs(ctx context.Context, tenant string) ([]*ExternalIP, error) {
 	var externalIPs []*ExternalIP
-	args := []string{"external-ip", "list", "-f", "{{tojson .}}"}
-	err := RunCIAOCLIAsAdminJS(ctx, tenant, args, &externalIPs)
+	args := []string{"list", "external-ips", "-f", "{{tojson .}}"}
+	err := RunCIAOCmdAsAdminJS(ctx, tenant, args, &externalIPs)
 	if err != nil {
 		return nil, err
 	}

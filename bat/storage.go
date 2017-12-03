@@ -17,11 +17,11 @@
 package bat
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/ciao-project/ciao/ciao-controller/types"
 )
 
 // VolumeOptions contains user supplied volume meta data
@@ -44,14 +44,14 @@ type Volume struct {
 // volume. An error will be returned if the following environment variables are
 // not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetVolume(ctx context.Context, tenant, ID string) (*Volume, error) {
-	var vol *Volume
-	args := []string{"volume", "show", "--volume", ID, "-f", "{{tojson .}}"}
-	err := RunCIAOCLIJS(ctx, tenant, args, &vol)
+	var vol Volume
+	args := []string{"show", "volume", ID, "-f", "{{tojson .}}"}
+	err := RunCIAOCmdJS(ctx, tenant, args, &vol)
 	if err != nil {
 		return nil, err
 	}
 
-	return vol, nil
+	return &vol, err
 }
 
 // DeleteVolume deletes the specified volume from a given tenant. The volume is
@@ -59,8 +59,8 @@ func GetVolume(ctx context.Context, tenant, ID string) (*Volume, error) {
 // following environment variables are not set; CIAO_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func DeleteVolume(ctx context.Context, tenant, ID string) error {
-	args := []string{"volume", "delete", "--volume", ID}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"delete", "volume", ID}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
@@ -69,13 +69,13 @@ func DeleteVolume(ctx context.Context, tenant, ID string) error {
 // are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func AddVolume(ctx context.Context, tenant, source, sourceType string,
 	options *VolumeOptions) (string, error) {
-	args := []string{"volume", "add"}
+	args := []string{"create", "volume", "-f", "{{ tojson . }}"}
 
 	if sourceType != "" {
 		if source == "" {
 			panic("sourceType supplied but source is empty")
 		}
-		args = append(args, "--source_type", sourceType)
+		args = append(args, "--source-type", sourceType)
 	}
 
 	if source != "" {
@@ -94,17 +94,13 @@ func AddVolume(ctx context.Context, tenant, source, sourceType string,
 		args = append(args, "--size", fmt.Sprintf("%d", options.Size))
 	}
 
-	data, err := RunCIAOCLI(ctx, tenant, args)
+	var vol types.Volume
+	err := RunCIAOCmdJS(ctx, tenant, args, &vol)
 	if err != nil {
 		return "", err
 	}
 
-	split := bytes.Split(data, []byte{':'})
-	if len(split) != 2 {
-		return "", fmt.Errorf("unable to determine id of created volume")
-	}
-
-	return strings.TrimSpace(string(split[1])), nil
+	return vol.ID, nil
 }
 
 // GetAllVolumes returns a map of all the volumes defined in the specified
@@ -122,8 +118,8 @@ func GetAllVolumes(ctx context.Context, tenant string) (map[string]*Volume, erro
 {{- end }}
 }
 `
-	args := []string{"volume", "list", "-f", template}
-	err := RunCIAOCLIJS(ctx, tenant, args, &volumes)
+	args := []string{"list", "volumes", "-f", template}
+	err := RunCIAOCmdJS(ctx, tenant, args, &volumes)
 	if err != nil {
 		return nil, err
 	}
@@ -160,9 +156,8 @@ func WaitForVolumeStatus(ctx context.Context, tenant, volume, status string) err
 // the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func AttachVolume(ctx context.Context, tenant, instance, volume string) error {
-	args := []string{"volume", "attach", "--volume", volume,
-		"--instance", instance}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"attach", "volume", volume, instance}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
@@ -182,8 +177,8 @@ func AttachVolumeAndWait(ctx context.Context, tenant, instance, volume string) e
 // the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func DetachVolume(ctx context.Context, tenant, volume string) error {
-	args := []string{"volume", "detach", "--volume", volume}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"detach", "volume", volume}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
