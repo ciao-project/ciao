@@ -103,15 +103,6 @@ type NodeStatus struct {
 	Hostname              string    `json:"hostname"`
 }
 
-func checkEnv(vars []string) error {
-	for _, k := range vars {
-		if os.Getenv(k) == "" {
-			return fmt.Errorf("%s is not defined", k)
-		}
-	}
-	return nil
-}
-
 // RunCIAOCLI execs the ciao-cli command with a set of arguments. The ciao-cli
 // process will be killed if the context is Done. An error will be returned if
 // the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
