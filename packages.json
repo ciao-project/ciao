@@ -104,6 +104,11 @@
 		"version": "198e27a",
 		"license": "BSD (3 clause)"
 	},
+	"golang.org/x/net/html": {
+		"url": "https://github.com/golang/net.git",
+		"version": "a8b9294",
+		"license": "BSD (3 Clause)"
+	},
 	"golang.org/x/sys/unix": {
 		"url": "https://github.com/golang/sys",
 		"version": "665f652",
