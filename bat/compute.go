@@ -100,6 +100,7 @@ type NodeStatus struct {
 	TotalRunningInstances int       `json:"total_running_instances"`
 	TotalPendingInstances int       `json:"total_pending_instances"`
 	TotalPausedInstances  int       `json:"total_paused_instances"`
+	Hostname              string    `json:"hostname"`
 }
 
 func checkEnv(vars []string) error {

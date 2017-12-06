@@ -376,23 +376,17 @@ func TestCreateUnschedulableHostnameWorkload(t *testing.T) {
 }
 
 func getSchedulableNodeDetails(ctx context.Context) (string, string, error) {
-	nodeData := []struct {
-		NodeID   string `json:"id"`
-		Hostname string `json:"hostname"`
-	}{}
-
-	args := []string{"node", "list", "--compute", "-f", "{{ tojson . }}"}
-	err := bat.RunCIAOCLIAsAdminJS(ctx, "", args, &nodeData)
-
+	nodes, err := bat.GetComputeNodes(ctx)
 	if err != nil {
 		return "", "", err
 	}
 
-	if len(nodeData) == 0 {
-		return "", "", errors.New("No nodes available")
+	for _, node := range nodes {
+		return node.ID, node.Hostname, nil
 	}
 
-	return nodeData[0].NodeID, nodeData[0].Hostname, nil
+	return "", "", errors.New("No nodes available")
+
 }
 
 // Check that scheduling by requirement works if the workload
