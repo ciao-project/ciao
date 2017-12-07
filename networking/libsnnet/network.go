@@ -34,7 +34,7 @@ func netError(dev interface{}, format string, args ...interface{}) error {
 		return fmt.Errorf("vnic error: "+format, args...)
 	case CnciVnic, *CnciVnic:
 		return fmt.Errorf("cncivnic error: "+format, args...)
-	case GreTunEP, *GreTunEP:
+	case GreTapEP, *GreTapEP:
 		return fmt.Errorf("gre error: "+format, args...)
 	}
 	return fmt.Errorf("network error: "+format, args...)
@@ -178,9 +178,9 @@ type CnciVnic struct {
 	Link *netlink.Macvtap
 }
 
-// GreTunEP ciao GRE Tunnel representation
+// GreTapEP ciao GRE Tap device representation
 // This represents one end of the tunnel
-type GreTunEP struct {
+type GreTapEP struct {
 	Attrs
 	Link     *netlink.Gretap
 	Key      uint32

@@ -97,7 +97,7 @@ func getPrefix(device interface{}) (string, error) {
 		case TenantContainer:
 			prefix = prefixVnicHost
 		}
-	case *GreTunEP:
+	case *GreTapEP:
 		prefix = prefixGretap
 	case *CnciVnic:
 		prefix = prefixCnciVnic

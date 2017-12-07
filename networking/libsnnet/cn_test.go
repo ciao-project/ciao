@@ -726,7 +726,7 @@ func TestCN_Whitebox(t *testing.T) {
 		remote := concIP
 
 		greAlias := fmt.Sprintf("gre_%s_%s_%s", tenantUUID, subnetUUID, concUUID)
-		gre, _ := newGreTunEP(greAlias, local, remote, subnetKey)
+		gre, _ := newGreTapEP(greAlias, local, remote, subnetKey)
 
 		assert.Nil(gre.create())
 		defer func() { _ = gre.destroy() }()

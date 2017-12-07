@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func performGreOps(shouldPass bool, assert *assert.Assertions, gre *GreTunEP) {
+func performGreOps(shouldPass bool, assert *assert.Assertions, gre *GreTapEP) {
 	a := assert.Nil
 	if !shouldPass {
 		a = assert.NotNil
@@ -49,7 +49,7 @@ func TestGre_Basic(t *testing.T) {
 	remote := local
 	key := uint32(0xF)
 
-	gre, err := newGreTunEP(id, local, remote, key)
+	gre, err := newGreTapEP(id, local, remote, key)
 	assert.Nil(err)
 
 	assert.Nil(gre.create())
@@ -71,7 +71,7 @@ func TestGre_Bridge(t *testing.T) {
 	remote := local
 	key := uint32(0xF)
 
-	gre, err := newGreTunEP(id, local, remote, key)
+	gre, err := newGreTapEP(id, local, remote, key)
 	assert.Nil(err)
 	bridge, err := NewBridge("testbridge")
 	assert.Nil(err)
@@ -104,9 +104,9 @@ func TestGre_Negative(t *testing.T) {
 	remote := local
 	key := uint32(0xF)
 
-	gre, err := newGreTunEP(id, local, remote, key)
+	gre, err := newGreTapEP(id, local, remote, key)
 	assert.Nil(err)
-	greDupl, err := newGreTunEP(id, local, remote, key)
+	greDupl, err := newGreTapEP(id, local, remote, key)
 	assert.Nil(err)
 
 	assert.Nil(gre.create())

@@ -167,7 +167,7 @@ func TestCNCI_Internal(t *testing.T) {
 	remote := cnIP
 	key := subnetKey
 
-	gre, _ := newGreTunEP(greAlias, local, remote, key)
+	gre, _ := newGreTapEP(greAlias, local, remote, key)
 
 	assert.Nil(gre.create())
 	defer func() { _ = gre.destroy() }()

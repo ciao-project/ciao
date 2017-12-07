@@ -377,7 +377,7 @@ func createCnciBridge(bridge *Bridge, brInfo *bridgeInfo, tenant string, subnet 
 	return err
 }
 
-func createCnciTunnel(gre *GreTunEP) (err error) {
+func createCnciTunnel(gre *GreTapEP) (err error) {
 	if err = gre.create(); err != nil {
 		return err
 	}
@@ -405,7 +405,7 @@ func checkInputParams(subnet net.IPNet, subnetKey int, cnIP net.IP) error {
 //If the function returns error the bridgeName can be ignored
 //If the function does not return error and has a valid bridge name
 //then the subnet has been found and no further processing is needed
-func (cnci *Cnci) addSubnetToTopology(bridge *Bridge, gre *GreTunEP, brInfo **bridgeInfo) (brExists bool,
+func (cnci *Cnci) addSubnetToTopology(bridge *Bridge, gre *GreTapEP, brInfo **bridgeInfo) (brExists bool,
 	greExists bool, bLink *linkInfo, gLink *linkInfo, err error) {
 	err = nil
 
@@ -477,7 +477,7 @@ func (cnci *Cnci) AddRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 		return "", err
 	}
 
-	gre, err := newGreTunEP(genGreAlias(subnet, cnIP), cnci.ComputeAddr[0].IPNet.IP, cnIP, uint32(subnetKey))
+	gre, err := newGreTapEP(genGreAlias(subnet, cnIP), cnci.ComputeAddr[0].IPNet.IP, cnIP, uint32(subnetKey))
 	if err != nil {
 		return "", err
 	}
@@ -542,7 +542,7 @@ func (cnci *Cnci) DelRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 
 	bridgeID := genBridgeAlias(subnet)
 
-	gre, err := newGreTunEP(genGreAlias(subnet, cnIP),
+	gre, err := newGreTapEP(genGreAlias(subnet, cnIP),
 		cnci.ComputeAddr[0].IPNet.IP,
 		cnIP, uint32(subnetKey))
 

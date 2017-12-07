@@ -142,7 +142,7 @@ func TestNwPrimitives_Fuzz(t *testing.T) {
 		_ = bridge.Destroy()
 	}
 
-	gre := &GreTunEP{}
+	gre := &GreTapEP{}
 	_ = gre.create()
 	_ = gre.enable()
 	_ = gre.disable()
@@ -153,7 +153,7 @@ func TestNwPrimitives_Fuzz(t *testing.T) {
 		f.Fuzz(&gre.LocalIP)
 		f.Fuzz(&gre.RemoteIP)
 		f.Fuzz(&gre.Key)
-		gre, _ = newGreTunEP(gre.GlobalID, gre.LocalIP, gre.RemoteIP, gre.Key)
+		gre, _ = newGreTapEP(gre.GlobalID, gre.LocalIP, gre.RemoteIP, gre.Key)
 		_ = gre.create()
 		_ = gre.enable()
 		_ = gre.disable()
