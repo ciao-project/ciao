@@ -165,12 +165,12 @@ func TestInstanceUsage(t *testing.T) {
 		t.Skip()
 	}
 
-	instances, err := bat.LaunchInstances(ctx, "", wl.ID, 3)
+	instances, err := bat.LaunchInstances(ctx, tenantID, wl.ID, 3)
 	if err != nil {
 		t.Error(err)
 	}
 
-	scheduled, err := bat.WaitForInstancesLaunch(ctx, "", instances, false)
+	scheduled, err := bat.WaitForInstancesLaunch(ctx, tenantID, instances, false)
 	if err != nil {
 		t.Errorf("Instances failed to launch: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestInstanceUsage(t *testing.T) {
 	}
 
 	for _, i := range scheduled {
-		err = bat.DeleteInstanceAndWait(ctx, "", i)
+		err = bat.DeleteInstanceAndWait(ctx, tenantID, i)
 		if err != nil {
 			t.Errorf("Failed to delete instances: %v", err)
 		}
