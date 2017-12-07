@@ -110,29 +110,6 @@ func TestListComputeNodes(t *testing.T) {
 	}
 }
 
-// Confirm that the cluster is ready
-//
-// Retrieve the cluster status.
-//
-// Cluster status is retrieved successfully, the cluster contains more than one
-// node and all nodes are ready.
-func TestGetClusterStatus(t *testing.T) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
-	status, err := bat.GetClusterStatus(ctx)
-	cancelFunc()
-	if err != nil {
-		t.Fatalf("Failed to retrieve cluster status : %v", err)
-	}
-
-	if status.TotalNodes == 0 {
-		t.Fatalf("Cluster has no nodes")
-	}
-
-	if status.TotalNodes != status.TotalNodesReady {
-		t.Fatalf("Some nodes in the cluster are not ready")
-	}
-}
-
 // Get all available workloads
 //
 // TestGetWorkloads calls ciao-cli workload list
