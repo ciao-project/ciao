@@ -105,16 +105,6 @@ func (client *Client) ListCNCIs() (types.CiaoCNCIs, error) {
 	return nodes, err
 }
 
-// GetNodeSummary returns summary information about the cluster
-func (client *Client) GetNodeSummary() (types.CiaoClusterStatus, error) {
-	var status types.CiaoClusterStatus
-
-	url := client.buildComputeURL("nodes/summary")
-	err := client.getResource(url, "", nil, &status)
-
-	return status, err
-}
-
 // GetCNCI returns information about a CNCI
 func (client *Client) GetCNCI(cnciID string) (types.CiaoCNCI, error) {
 	var cnci types.CiaoCNCI
