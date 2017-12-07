@@ -461,19 +461,6 @@ func NewCiaoServersStats() (servers CiaoServersStats) {
 	return
 }
 
-// CiaoClusterStatus represents the unmarshalled version of the contents of a
-// v2.1/nodes/summary response.  It contains information about the nodes that
-// make up a ciao cluster.
-type CiaoClusterStatus struct {
-	Status struct {
-		TotalNodes            int `json:"total_nodes"`
-		TotalNodesReady       int `json:"total_nodes_ready"`
-		TotalNodesFull        int `json:"total_nodes_full"`
-		TotalNodesOffline     int `json:"total_nodes_offline"`
-		TotalNodesMaintenance int `json:"total_nodes_maintenance"`
-	} `json:"cluster"`
-}
-
 // CNCIDetail stores the IPv4 for a CNCI Agent.
 type CNCIDetail struct {
 	IPv4 string `json:"IPv4"`

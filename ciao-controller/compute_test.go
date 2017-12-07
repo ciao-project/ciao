@@ -726,48 +726,6 @@ func TestListNodes(t *testing.T) {
 	testListNodes(t, http.StatusOK, true)
 }
 
-func testNodeSummary(t *testing.T, httpExpectedStatus int, validToken bool) {
-	var expected types.CiaoClusterStatus
-
-	computeNodes := ctl.ds.GetNodeLastStats()
-
-	expected.Status.TotalNodes = len(computeNodes.Nodes)
-	for _, node := range computeNodes.Nodes {
-		if node.Status == ssntp.READY.String() {
-			expected.Status.TotalNodesReady++
-		} else if node.Status == ssntp.FULL.String() {
-			expected.Status.TotalNodesFull++
-		} else if node.Status == ssntp.OFFLINE.String() {
-			expected.Status.TotalNodesOffline++
-		} else if node.Status == ssntp.MAINTENANCE.String() {
-			expected.Status.TotalNodesMaintenance++
-		}
-	}
-
-	url := testutil.ComputeURL + "/v2.1/nodes/summary"
-
-	body := testHTTPRequest(t, "GET", url, httpExpectedStatus, nil, validToken)
-	// stop evaluating in case the scenario is InvalidToken
-	if httpExpectedStatus == 401 {
-		return
-	}
-
-	var result types.CiaoClusterStatus
-
-	err := json.Unmarshal(body, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if reflect.DeepEqual(expected, result) == false {
-		t.Fatalf("expected: \n%+v\n result: \n%+v\n", expected, result)
-	}
-}
-
-func TestNodeSummary(t *testing.T) {
-	testNodeSummary(t, http.StatusOK, true)
-}
-
 func testListCNCIs(t *testing.T, httpExpectedStatus int, validToken bool) {
 	var expected types.CiaoCNCIs
 

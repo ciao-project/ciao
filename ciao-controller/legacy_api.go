@@ -107,10 +107,6 @@ func legacyListNetworkNodes(c *controller, w http.ResponseWriter, r *http.Reques
 	return listNetworkNodes(c, w, r)
 }
 
-func legacyNodesSummary(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	return nodesSummary(c, w, r)
-}
-
 func legacyListNodeServers(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	return listNodeServers(c, w, r)
 }
@@ -155,8 +151,6 @@ func legacyComputeRoutes(ctl *controller, r *mux.Router) *mux.Router {
 
 	r.Handle("/v2.1/nodes",
 		legacyAPIHandler{ctl, legacyListNodes, true}).Methods("GET")
-	r.Handle("/v2.1/nodes/summary",
-		legacyAPIHandler{ctl, legacyNodesSummary, true}).Methods("GET")
 	r.Handle("/v2.1/nodes/{node}/servers/detail",
 		legacyAPIHandler{ctl, legacyListNodeServers, true}).Methods("GET")
 	r.Handle("/v2.1/nodes/compute",

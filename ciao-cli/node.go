@@ -31,7 +31,6 @@ import (
 var nodeCommand = &command{
 	SubCommands: map[string]subCommand{
 		"list":     new(nodeListCommand),
-		"status":   new(nodeStatusCommand),
 		"show":     new(nodeShowCommand),
 		"evacuate": new(nodeEvacuateCommand),
 		"restore":  new(nodeRestoreCommand),
@@ -197,49 +196,6 @@ func listCNCINodes(t *template.Template) error {
 			fmt.Printf("\t\t%s\n", subnet.Subnet)
 		}
 	}
-	return nil
-}
-
-type nodeStatusCommand struct {
-	Flag     flag.FlagSet
-	template string
-}
-
-func (cmd *nodeStatusCommand) usage(...string) {
-	fmt.Fprintf(os.Stderr, `usage: ciao-cli [options] node status
-
-Show cluster status
-`)
-	cmd.Flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, "\n%s",
-		tfortools.GenerateUsageDecorated("f", types.CiaoClusterStatus{}.Status, nil))
-	os.Exit(2)
-}
-
-func (cmd *nodeStatusCommand) parseArgs(args []string) []string {
-	cmd.Flag.StringVar(&cmd.template, "f", "", "Template used to format output")
-	cmd.Flag.Usage = func() { cmd.usage() }
-	cmd.Flag.Parse(args)
-	return cmd.Flag.Args()
-}
-
-func (cmd *nodeStatusCommand) run(args []string) error {
-	status, err := c.GetNodeSummary()
-	if err != nil {
-		return errors.Wrap(err, "Error getting node summary")
-	}
-
-	if cmd.template != "" {
-		return tfortools.OutputToTemplate(os.Stdout, "node-status", cmd.template,
-			&status.Status, nil)
-	}
-
-	fmt.Printf("Total Nodes %d\n", status.Status.TotalNodes)
-	fmt.Printf("\tReady %d\n", status.Status.TotalNodesReady)
-	fmt.Printf("\tFull %d\n", status.Status.TotalNodesFull)
-	fmt.Printf("\tOffline %d\n", status.Status.TotalNodesOffline)
-	fmt.Printf("\tMaintenance %d\n", status.Status.TotalNodesMaintenance)
-
 	return nil
 }
 

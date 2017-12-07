@@ -671,21 +671,6 @@ func GetNetworkNodes(ctx context.Context) (map[string]*NodeStatus, error) {
 	return getNodes(ctx, args)
 }
 
-// GetClusterStatus returns the status of the ciao cluster. The information is
-// retrieved by calling ciao-cli node status. An error will be returned if the
-// following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
-// CIAO_CONTROLLER.
-func GetClusterStatus(ctx context.Context) (*ClusterStatus, error) {
-	var cs *ClusterStatus
-	args := []string{"node", "status", "-f", "{{tojson .}}"}
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &cs)
-	if err != nil {
-		return nil, err
-	}
-
-	return cs, nil
-}
-
 // Evacuate evacuates a given node of a ciao cluster.  An error will be returned
 // if the following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.

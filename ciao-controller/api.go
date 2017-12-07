@@ -457,29 +457,6 @@ func listNodes(c *controller, w http.ResponseWriter, r *http.Request) (APIRespon
 	return listSubsetOfNodes(c, w, r, ssntp.UNKNOWN)
 }
 
-func nodesSummary(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
-	var nodesStatus types.CiaoClusterStatus
-
-	computeNodes := c.ds.GetNodeLastStats()
-
-	glog.V(2).Infof("nodesSummary %d nodes", len(computeNodes.Nodes))
-
-	nodesStatus.Status.TotalNodes = len(computeNodes.Nodes)
-	for _, node := range computeNodes.Nodes {
-		if node.Status == ssntp.READY.String() {
-			nodesStatus.Status.TotalNodesReady++
-		} else if node.Status == ssntp.FULL.String() {
-			nodesStatus.Status.TotalNodesFull++
-		} else if node.Status == ssntp.OFFLINE.String() {
-			nodesStatus.Status.TotalNodesOffline++
-		} else if node.Status == ssntp.MAINTENANCE.String() {
-			nodesStatus.Status.TotalNodesMaintenance++
-		}
-	}
-
-	return APIResponse{http.StatusOK, nodesStatus}, nil
-}
-
 func listNodeServers(c *controller, w http.ResponseWriter, r *http.Request) (APIResponse, error) {
 	vars := mux.Vars(r)
 	nodeID := vars["node"]
