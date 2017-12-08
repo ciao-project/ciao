@@ -29,11 +29,6 @@ type TenantSummary struct {
 	Name string `json:"name"`
 }
 
-// TenantsListResponse stores a list of tenants retrieved by listTenants
-type TenantsListResponse struct {
-	Tenants []TenantSummary `json:"tenants"`
-}
-
 // TenantConfig stores the configurable attributes of a tenant.
 type TenantConfig struct {
 	Name        string `json:"name"`
@@ -47,8 +42,8 @@ type TenantConfig struct {
 // ciao-cli tenant list -all. An error will be returned if the following
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
-func GetAllTenants(ctx context.Context) (TenantsListResponse, error) {
-	var tenants TenantsListResponse
+func GetAllTenants(ctx context.Context) ([]TenantSummary, error) {
+	var tenants []TenantSummary
 
 	args := []string{"tenant", "list", "-all", "-f", "{{tojson .}}"}
 	err := RunCIAOCLIAsAdminJS(ctx, "", args, &tenants)

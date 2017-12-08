@@ -78,7 +78,7 @@ func TestCreateTenant(t *testing.T) {
 		t.Fatalf("Failed to retrieve tenant list : %v", err)
 	}
 
-	for _, tt := range tenants.Tenants {
+	for _, tt := range tenants {
 		if tt.Name == config.Name {
 			return
 		}
