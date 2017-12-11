@@ -128,7 +128,7 @@ func genIPsInSubnet(subnet net.IPNet) []net.IP {
 	if bits != 32 || ones > 30 || ones == 0 {
 		return nil
 	}
-	subnetSize := ^(^0 << uint32(32-ones))
+	subnetSize := ^(^0 << uint32(32-ones)) + 1
 	subnetSize -= 3 //network, gateway and broadcast
 
 	//Skip the network address and gateway
