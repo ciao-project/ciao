@@ -84,12 +84,17 @@ const (
 	helpFilterFoldedIndex
 	helpFilterRegexpIndex
 	helpToJSONIndex
+	helpToCSVIndex
 	helpSelectIndex
 	helpSelectAltIndex
 	helpTableIndex
 	helpTableAltIndex
 	helpTableXIndex
 	helpTableXAltIndex
+	helpHTableIndex
+	helpHTableAltIndex
+	helpHTableXIndex
+	helpHTableXAltIndex
 	helpColsIndex
 	helpSortIndex
 	helpRowsIndex
@@ -98,6 +103,7 @@ const (
 	helpDescribeIndex
 	helpPromoteIndex
 	helpSliceofIndex
+	helpToTableIndex
 	helpIndexCount
 )
 
@@ -304,6 +310,31 @@ func OptToJSON(c *Config) {
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{"tojson", helpToJSON, helpToJSONIndex})
 }
 
+const helpToCSV = `- 'tocsv' converts a [][]string or a slice of structs to csv format, e.g.,
+  {{tocsv .}}
+
+  'tocsv' takes an optional boolean parameter, which if true, omits the
+  first row containing the structure field name derived column headings.
+  This boolean parameter defaults to false and is ignored when operating
+  on a [][]string.
+`
+
+// OptToCSV indicates that the 'tocsv' function should be enabled.
+// 'tocsv' converts a [][]string or a slice of structs to csv format, e.g.,
+// {{tocsv .}}
+//
+// 'tocsv' takes an optional boolean parameter, which if true, omits the
+// first row containing the structure field name derived column headings.
+// This boolean parameter defaults to false and is ignored when operating
+// on a [][]string.
+func OptToCSV(c *Config) {
+	if _, ok := c.funcMap["tocsv"]; ok {
+		return
+	}
+	c.funcMap["tocsv"] = toCSV
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"tocsv", helpToCSV, helpToCSVIndex})
+}
+
 const helpSelect = `- 'select' operates on a slice of structs.  It outputs the value of a specified
   field for each struct on a new line , e.g.,
 
@@ -380,15 +411,15 @@ func OptTableAlt(c *Config) {
 
 const helpTableX = `- 'tablex' is similar to table but it allows the caller more control over the
   table's appearance.  Users can control the names of the headings and also set
-  the tab and column width.  'tablex' takes 3 or more parameters.  The first
+  the tab and column width.  'tablex' takes 4 or more parameters.  The first
   parameter is the slice of structs to output, the second is the minimum column
-  width, the third the tab width.  The fourth and subsequent parameters are the
-  names of the column headings.  The column headings are optional and the field
-  names of the structure will be used if they are absent.  Example of its usage
-  are:
+  width, the third the tab width  and the fourth is the padding.  The fifth and
+  subsequent parameters are the names of the column headings.  The column
+  headings are optional and the field names of the structure will be used if
+  they are absent.  Example of its usage are:
 
-  {{tablex . 12 8 "Column 1" "Column 2"}}
-  {{tablex . 8 8}}
+  {{tablex . 12 8 1 "Column 1" "Column 2"}}
+  {{tablex . 8 8 1}}
 `
 
 // OptTableX indicates that the 'tablex' function should be enabled. 'tablex' is
@@ -396,7 +427,7 @@ const helpTableX = `- 'tablex' is similar to table but it allows the caller more
 // appearance. Users can control the names of the headings and also set the tab
 // and column width. 'tablex' takes 4 or more parameters. The first parameter is
 // the slice of structs to output, the second is the minimum column width, the
-// third the tab width and the fourth is the padding. The fift and subsequent
+// third the tab width and the fourth is the padding. The fifth and subsequent
 // parameters are the names of the column headings. The column headings are
 // optional and the field names of the structure will be used if they are
 // absent. Example of its usage are:
@@ -423,6 +454,92 @@ func OptTableXAlt(c *Config) {
 	c.funcMap["tablexalt"] = tablexAlt
 	c.funcHelp = append(c.funcHelp,
 		funcHelpInfo{"tablexalt", helpTableXAlt, helpTableXAltIndex})
+}
+
+const helpHTable = `- 'htable' outputs each element of an array or a slice of structs
+  in its own two column table.  The values for the first column are taken from
+  the names of the structs' fields.  The second column contains the field values.
+  Hidden fields and fields of type channel are ignored. The tabwidth and minimum
+  column width are hardcoded to 8.  An example of htable's usage is
+
+  {{htable .}}
+`
+
+// OptHTable indicates that the 'htable' function should be enabled.
+// 'htable' outputs each element of an array or a slice of structs in its own
+// two column table.  The values for the first column are taken from
+// the names of the structs' fields.  The second column contains the field values.
+// Hidden fields and fields of type channel are ignored. The tabwidth and minimum
+// column width are hardcoded to 8.  An example of htable's usage is
+//
+//  {{htable .}}
+func OptHTable(c *Config) {
+	if _, ok := c.funcMap["htable"]; ok {
+		return
+	}
+	c.funcMap["htable"] = htable
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"htable", helpHTable, helpHTableIndex})
+}
+
+const helpHTableAlt = `- 'htablealt' Similar to htable except that objects are formatted using %#v
+`
+
+// OptHTableAlt indicates that the 'htablealt' function should be enabled.
+// 'htablealt' Similar to table except that objects are formatted using %#v
+func OptHTableAlt(c *Config) {
+	if _, ok := c.funcMap["htablealt"]; ok {
+		return
+	}
+	c.funcMap["htablealt"] = htableAlt
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"htablealt", helpHTableAlt, helpHTableAltIndex})
+}
+
+const helpHTableX = `- 'htablex' is similar to htable but it allows the caller more control over the
+  tables' appearances.  Users can control the names displayed in the first column
+  and also set the tab and column width.  'htablex' takes 4 or more parameters.
+  The first parameter is the slice of structs to output, the second is the minimum
+  column width, the third the tab width  and the fourth is the padding.  The
+  fifth and subsequent parameters are the values displayed in the first column
+  of each table.  These first column values are optional and the field names of
+  the structures will be used if they are absent.  Example of its usage are:
+
+  {{htablex . 12 8 1 "Field 1" "Field 2"}}
+  {{htablex . 8 8 1}}
+`
+
+// OptHTableX indicates that the 'htablex' function should be enabled.  'htablex'
+// is similar to htable but it allows the caller more control over the
+// tables' appearances.  Users can control the names displayed in the first column
+// and also set the tab and column width.  'htablex' takes 4 or more parameters.
+// The first parameter is the slice of structs to output, the second is the minimum
+// column width, the third the tab width  and the fourth is the padding.  The
+// fifth and subsequent parameters are the values displayed in the first column of
+// each table.  These first column values are optional and the field names of the
+// structures will be used if they are absent.  Example of its usage are:
+//
+//  {{htablex . 12 8 1 "Field 1" "Field 2"}}
+//  {{htablex . 8 8 1}}
+func OptHTableX(c *Config) {
+	if _, ok := c.funcMap["htablex"]; ok {
+		return
+	}
+	c.funcMap["htablex"] = htablex
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"htablex", helpHTableX, helpHTableXIndex})
+}
+
+const helpHTableXAlt = `- 'htablexalt' Similar to htablex except that objects are formatted using %#v
+`
+
+// OptHTableXAlt indicates that the 'htablexalt' function should be enabled.
+// 'htablexalt' Similar to htablex except that objects are formatted using %#v
+func OptHTableXAlt(c *Config) {
+	if _, ok := c.funcMap["htablexalt"]; ok {
+		return
+	}
+	c.funcMap["htablexalt"] = htablexAlt
+	c.funcHelp = append(c.funcHelp,
+		funcHelpInfo{"htablexalt", helpHTableXAlt, helpHTableXAltIndex})
 }
 
 const helpCols = `- 'cols' can be used to extract certain columns from a table consisting of a
@@ -666,6 +783,33 @@ func OptSliceof(c *Config) {
 	}
 	c.funcMap["sliceof"] = sliceof
 	c.funcHelp = append(c.funcHelp, funcHelpInfo{"sliceof", helpSliceof, helpSliceofIndex})
+}
+
+const helpToTable = `- 'totable' converts a slice of a slice of strings into a slice of
+  structures.  The field names of the structures are taken from the values of
+  the first row in the slice.  The types of the fields are derived from the
+  values specified in the second row.  The input slice should be of length 2
+  or greater.  Data in columns in the second and subsequent rows should be
+  homogenous.  The elements of the first row should be unique and ideally be
+  valid exported variable names.  'totable' will try to sanitize the field
+  names, if they are not valid go identifiers.
+`
+
+// OptToTable indicates that the 'totable' function should be enabled. 'totable'
+// takes a slice of a slice of strings as an argument and returns a slice of
+// structures.  The field names of the structures are taken from the values of
+// the first row in the slice.  The types of the fields are derived from the
+// values specified in the second row.  The input slice should be of length 2
+// or greater.  Data in columns in the second and subsequent rows should be
+// homogenous.  The elements of the first row should be unique and ideally
+// be valid exported variable names.  'totable' will try to sanitize the field
+// names, if they are not valid go identifiers.
+func OptToTable(c *Config) {
+	if _, ok := c.funcMap["totable"]; ok {
+		return
+	}
+	c.funcMap["totable"] = toTable
+	c.funcHelp = append(c.funcHelp, funcHelpInfo{"totable", helpToTable, helpToTableIndex})
 }
 
 // NewConfig creates a new Config object that can be passed to other functions

@@ -26,12 +26,17 @@ var funcMap = template.FuncMap{
 	"filterFolded":    filterByFolded,
 	"filterRegexp":    filterByRegexp,
 	"tojson":          toJSON,
+	"tocsv":           toCSV,
 	"select":          selectField,
 	"selectalt":       selectFieldAlt,
 	"table":           table,
 	"tablealt":        tableAlt,
 	"tablex":          tablex,
 	"tablexalt":       tablexAlt,
+	"htable":          htable,
+	"htablealt":       htableAlt,
+	"htablex":         htablex,
+	"htablexalt":      htablexAlt,
 	"cols":            cols,
 	"sort":            sortSlice,
 	"rows":            rows,
@@ -40,6 +45,7 @@ var funcMap = template.FuncMap{
 	"describe":        describe,
 	"promote":         promote,
 	"sliceof":         sliceof,
+	"totable":         toTable,
 }
 
 var funcHelpSlice = []funcHelpInfo{
@@ -50,12 +56,17 @@ var funcHelpSlice = []funcHelpInfo{
 	{"filterFolded", helpFilterFolded, helpFilterFoldedIndex},
 	{"filterRegexp", helpFilterRegexp, helpFilterRegexpIndex},
 	{"tojson", helpToJSON, helpToJSONIndex},
+	{"tocsv", helpToCSV, helpToCSVIndex},
 	{"select", helpSelect, helpSelectIndex},
 	{"selectalt", helpSelectAlt, helpSelectAltIndex},
 	{"table", helpTable, helpTableIndex},
 	{"tablealt", helpTableAlt, helpTableAltIndex},
 	{"tablex", helpTableX, helpTableXIndex},
 	{"tablexalt", helpTableXAlt, helpTableXAltIndex},
+	{"htable", helpHTable, helpHTableIndex},
+	{"htablealt", helpHTableAlt, helpHTableAltIndex},
+	{"htablex", helpHTableX, helpHTableXIndex},
+	{"htablexalt", helpHTableXAlt, helpHTableXAltIndex},
 	{"cols", helpCols, helpColsIndex},
 	{"sort", helpSort, helpSortIndex},
 	{"rows", helpRows, helpRowsIndex},
@@ -64,6 +75,7 @@ var funcHelpSlice = []funcHelpInfo{
 	{"describe", helpDescribe, helpDescribeIndex},
 	{"promote", helpPromote, helpPromoteIndex},
 	{"sliceof", helpSliceof, helpSliceofIndex},
+	{"totable", helpToTable, helpToTableIndex},
 }
 
 func getFuncMap(cfg *Config) template.FuncMap {
