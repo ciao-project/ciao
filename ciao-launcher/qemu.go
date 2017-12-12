@@ -31,8 +31,8 @@ import (
 
 	"context"
 
-	"github.com/ciao-project/ciao/qemu"
 	"github.com/golang/glog"
+	"github.com/intel/govmm/qemu"
 )
 
 const (
