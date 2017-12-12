@@ -54,6 +54,11 @@
 		"version": "757bef9",
 		"license": "BSD (3 clause)"
 	},
+	"github.com/intel/govmm/qemu": {
+		"url": "https://github.com/intel/govmm.git",
+		"version": "eacde4d",
+		"license": "Apache v2.0"
+	},
 	"github.com/intel/tfortools": {
 		"url": "https://github.com/intel/tfortools.git",
 		"version": "v0.2.0",
