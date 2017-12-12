@@ -44,17 +44,17 @@ func (client *Client) ListWorkloads() ([]types.Workload, error) {
 }
 
 // CreateWorkload creates a worklaod
-func (client *Client) CreateWorkload(request types.Workload) (string, error) {
+func (client *Client) CreateWorkload(request types.Workload) (types.Workload, error) {
 	url, err := client.getCiaoWorkloadsResource()
 	if err != nil {
-		return "", errors.Wrap(err, "Error getting workloads resource")
+		return types.Workload{}, errors.Wrap(err, "Error getting workloads resource")
 	}
 
 	var response types.WorkloadResponse
 
 	err = client.postResource(url, api.WorkloadsV1, &request, &response)
 
-	return response.Workload.ID, err
+	return response.Workload, err
 }
 
 // DeleteWorkload deletes the given workload
