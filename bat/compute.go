@@ -18,12 +18,8 @@ package bat
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -101,111 +97,6 @@ type NodeStatus struct {
 	TotalPendingInstances int       `json:"total_pending_instances"`
 	TotalPausedInstances  int       `json:"total_paused_instances"`
 	Hostname              string    `json:"hostname"`
-}
-
-// RunCIAOCLI execs the ciao-cli command with a set of arguments. The ciao-cli
-// process will be killed if the context is Done. An error will be returned if
-// the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
-// CIAO_CONTROLLER. On success the data written to ciao-cli on stdout will be
-// returned.
-func RunCIAOCLI(ctx context.Context, tenant string, args []string) ([]byte, error) {
-	vars := []string{"CIAO_CLIENT_CERT_FILE", "CIAO_CONTROLLER"}
-	if err := checkEnv(vars); err != nil {
-		return nil, err
-	}
-
-	if tenant != "" {
-		args = append([]string{"-tenant-id", tenant}, args...)
-	}
-
-	data, err := exec.CommandContext(ctx, "ciao-cli", args...).Output()
-	if err != nil {
-		var failureText string
-		if err, ok := err.(*exec.ExitError); ok {
-			failureText = string(err.Stderr)
-		}
-		return nil, fmt.Errorf("failed to launch ciao-cli %v : %v\n%s",
-			args, err, failureText)
-	}
-
-	return data, nil
-}
-
-// RunCIAOCLIJS is similar to RunCIAOCLI with the exception that the output
-// of the ciao-cli command is expected to be in json format.  The json is
-// decoded into the jsdata parameter which should be a pointer to a type
-// that corresponds to the json output.
-func RunCIAOCLIJS(ctx context.Context, tenant string, args []string, jsdata interface{}) error {
-	data, err := RunCIAOCLI(ctx, tenant, args)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(data, jsdata)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// RunCIAOCLIAsAdmin execs the ciao-cli command as the admin user with a set of
-// provided arguments. The ciao-cli process will be killed if the context is
-// Done. An error will be returned if the following environment variables are
-// not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER. On success the data
-// written to ciao-cli on stdout will be returned.
-func RunCIAOCLIAsAdmin(ctx context.Context, tenant string, args []string) ([]byte, error) {
-	vars := []string{"CIAO_ADMIN_CLIENT_CERT_FILE", "CIAO_CONTROLLER"}
-	if err := checkEnv(vars); err != nil {
-		return nil, err
-	}
-
-	if tenant != "" {
-		args = append([]string{"-tenant-id", tenant}, args...)
-	}
-
-	env := os.Environ()
-	envCopy := make([]string, 0, len(env))
-	for _, v := range env {
-		if !strings.HasPrefix(v, "CIAO_CLIENT_CERT_FILE") {
-			envCopy = append(envCopy, v)
-		}
-	}
-	envCopy = append(envCopy, fmt.Sprintf("CIAO_CLIENT_CERT_FILE=%s",
-		os.Getenv("CIAO_ADMIN_CLIENT_CERT_FILE")))
-
-	cmd := exec.CommandContext(ctx, "ciao-cli", args...)
-	cmd.Env = envCopy
-	data, err := cmd.Output()
-	if err != nil {
-		var failureText string
-		if err, ok := err.(*exec.ExitError); ok {
-			failureText = string(err.Stderr)
-		}
-		return nil, fmt.Errorf("failed to launch ciao-cli %v : %v\n%v",
-			args, err, failureText)
-	}
-
-	return data, nil
-}
-
-// RunCIAOCLIAsAdminJS is similar to RunCIAOCLIAsAdmin with the exception that
-// the output of the ciao-cli command is expected to be in json format.  The
-// json is decoded into the jsdata parameter which should be a pointer to a type
-// that corresponds to the json output.
-func RunCIAOCLIAsAdminJS(ctx context.Context, tenant string, args []string,
-	jsdata interface{}) error {
-	data, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(data, jsdata)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // GetUserTenants retrieves a list of all the tenants the current user has
