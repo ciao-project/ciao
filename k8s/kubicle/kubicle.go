@@ -100,7 +100,7 @@ func createFlags() (*options, error) {
 			diskGiB: 10,
 		},
 		workers:    1,
-		k8sVersion: "1.7.11",
+		k8sVersion: "1.8.4",
 	}
 
 	opts.user = os.Getenv("USER")
