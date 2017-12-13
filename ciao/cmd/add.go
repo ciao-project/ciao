@@ -59,9 +59,10 @@ func addIPSubnet(name, address string) error {
 }
 
 var addExternalIPCmd = &cobra.Command{
-	Use:  "external-ip POOL SUBNET or IP",
-	Long: `Add an external IP address to a pool. This command takes either a subnet in CIDR format of a list of IPs.`,
-	Args: cobra.MinimumNArgs(2),
+	Use:   "external-ip POOL SUBNET or IP",
+	Short: "Add IP to external IP pool",
+	Long:  `Add an external IP address to a pool. This command takes either a subnet in CIDR format of a list of IPs.`,
+	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 2 {
 			return addIPList(args[0], args[1:])
@@ -72,8 +73,8 @@ var addExternalIPCmd = &cobra.Command{
 }
 
 var addCmd = &cobra.Command{
-	Use:  "add",
-	Long: "Add objects to objects in the cluster.",
+	Use:   "add",
+	Short: "Add objects to objects in the cluster",
 }
 
 func init() {

@@ -33,9 +33,8 @@ func restoreNode(args []string) int {
 }
 
 var restoreCmd = &cobra.Command{
-	Use:   "restore [NODE ID]",
+	Use:   "restore [NODE]",
 	Short: "Restore a node",
-	Long:  `Restore a node.`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		os.Exit(restoreNode(args))

@@ -22,9 +22,9 @@ import (
 )
 
 var evacuateCmd = &cobra.Command{
-	Use:  "evacuate NODE",
-	Long: `Evacuate a node.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "evacuate NODE",
+	Short: "Evacuate a node",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.ChangeNodeStatus(args[0], types.NodeStatusMaintenance),
 			"Error changing node status")

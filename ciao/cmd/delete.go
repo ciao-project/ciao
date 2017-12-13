@@ -20,22 +20,22 @@ import (
 )
 
 var deleteCmd = &cobra.Command{
-	Use:  "delete",
-	Long: `Delete the objects from the cluster`,
+	Use:   "delete",
+	Short: "Delete an object from the cluster",
 }
 
 var eventsDelCmd = &cobra.Command{
-	Use:  "events",
-	Long: `Delete all events.`,
+	Use:   "events",
+	Short: "Delete all events",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.DeleteEvents(), "Error deleting events")
 	},
 }
 
 var imageDelCmd = &cobra.Command{
-	Use:  "image ID",
-	Long: `Delete an image.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "image ID",
+	Short: "Delete an image",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.DeleteImage(args[0]), "Error deleting image")
 	},
@@ -46,8 +46,8 @@ var deleteInstanceFlags = struct {
 }{}
 
 var instanceDelCmd = &cobra.Command{
-	Use:  "instance ID",
-	Long: `Delete instance from cluster.`,
+	Use:   "instance ID",
+	Short: "Delete instance from cluster",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if deleteInstanceFlags.all {
 			return errors.Wrap(c.DeleteAllInstances(), "Error deleting all instances")
@@ -62,36 +62,36 @@ var instanceDelCmd = &cobra.Command{
 }
 
 var poolDelCmd = &cobra.Command{
-	Use:  "pool NAME",
-	Long: `Delete an external IP pool.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "pool NAME",
+	Short: "Delete an external IP pool",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.DeleteExternalIPPool(args[0]), "Error deleting external IP pool")
 	},
 }
 
 var volumeDelCmd = &cobra.Command{
-	Use:  "volume ID",
-	Long: `Delete a volume.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "volume ID",
+	Short: "Delete a volume",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.DeleteVolume(args[0]), "Error deleting volume")
 	},
 }
 
 var tenantDelCmd = &cobra.Command{
-	Use:  "tenant ID",
-	Long: `Delete a tenant`,
-	Args: cobra.ExactArgs(1),
+	Use:   "tenant ID",
+	Short: "Delete a tenant",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.DeleteTenant(args[0]), "Error deleting tenant")
 	},
 }
 
 var workloadDelCmd = &cobra.Command{
-	Use:  "workload ID",
-	Long: `Delete a workload.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "workload ID",
+	Short: "Delete a workload",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.DeleteWorkload(args[0]), "Error deleting workload")
 	},

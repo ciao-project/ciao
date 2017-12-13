@@ -59,10 +59,9 @@ func getCiaoEnvVariables() {
 var rootCmd = &cobra.Command{
 	Use: "ciao",
 	Long: `
-Command-line interface for the Cloud Integrated Advanced Orchestrator (CIAO).
+Command line interface for the Cloud Integrated Advanced Orchestrator (CIAO).
 
-The ciao cli sends HTTPS requests to the Ciao controller compute API endpoints,
-enabling one to get information and control a Ciao cluster.`,
+The CIAO CLI sends HTTPS requests to the CIAO controller enabling one to control a CIAO cluster.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

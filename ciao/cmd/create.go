@@ -31,7 +31,7 @@ import (
 
 var createCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create cluster objects.",
+	Short: "Create cluster objects",
 }
 
 var imgFlags = struct {
@@ -61,9 +61,9 @@ var volFlags = struct {
 }{}
 
 var imageCreateCmd = &cobra.Command{
-	Use:  "image NAME FILE",
-	Long: `Add a specific image to the ciao cluster.`,
-	Args: cobra.ExactArgs(2),
+	Use:   "image NAME FILE",
+	Short: `Add an image to the cluster`,
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		file := args[1]
@@ -125,9 +125,9 @@ func populateCreateServerRequest(server *api.CreateServerRequest) {
 }
 
 var instanceCreateCmd = &cobra.Command{
-	Use:  "instance WORKLOAD",
-	Long: `Create and launch a specific instance.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "instance WORKLOAD",
+	Short: "Create an instance of a workload",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := validateCreateCommandArgs(); err != nil {
 			return err
@@ -150,18 +150,18 @@ var instanceCreateCmd = &cobra.Command{
 }
 
 var poolCreateCmd = &cobra.Command{
-	Use:  "pool NAME",
-	Long: `Add a pool to the cluster.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "pool NAME",
+	Short: `Add a pool to the cluster.`,
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.CreateExternalIPPool(args[0]), "Error creating external IP pool")
 	},
 }
 
 var tenantCreateCmd = &cobra.Command{
-	Use:  "tenant ID",
-	Long: `Create a new tenant with the supplied flags`,
-	Args: cobra.ExactArgs(1),
+	Use:   "tenant ID",
+	Short: "Create a new tenant in the cluster",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !c.IsPrivileged() {
 			return errors.New("Creating tenants is restricted to privileged users")
@@ -195,8 +195,8 @@ var tenantCreateCmd = &cobra.Command{
 }
 
 var volumeCreateCmd = &cobra.Command{
-	Use:  "volume",
-	Long: `Add a volume to a given instance.`,
+	Use:   "volume",
+	Short: "Create a volume in the cluster",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		createReq := api.RequestedVolume{
 			Description: volFlags.description,
@@ -334,9 +334,9 @@ func optToReq(opt workloadOptions, req *types.Workload) error {
 }
 
 var workloadCreateCmd = &cobra.Command{
-	Use:  "workload FILE",
-	Long: `Create a new workload.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "workload FILE",
+	Short: `Create a new workload`,
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var opt workloadOptions
 		var req types.Workload

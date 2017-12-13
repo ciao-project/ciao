@@ -22,7 +22,7 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List information about various ciao objects",
+	Short: "List objects",
 }
 
 var cnciListCmd = &cobra.Command{

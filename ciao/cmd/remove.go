@@ -22,14 +22,14 @@ import (
 )
 
 var removeCmd = &cobra.Command{
-	Use:  "remove",
-	Long: `Remove objects from other objects in the cluster.`,
+	Use:   "remove",
+	Short: "Remove objects from other objects in the cluster",
 }
 
 var removeExternalIPCmd = &cobra.Command{
-	Use:  "external-ip POOL SUBNET or IP",
-	Long: `Remove IP address or subnet from the pool`,
-	Args: cobra.ExactArgs(2),
+	Use:   "external-ip POOL SUBNET or IP",
+	Short: "Remove IP address or subnet from the pool",
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 

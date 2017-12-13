@@ -25,23 +25,24 @@ var volAttachFlags = struct {
 }{}
 
 var attachCmd = &cobra.Command{
-	Use:  "attach",
-	Long: `Attach objects to other objects in the cluster.`,
+	Use:   "attach",
+	Short: "Attach objects to other objects in the cluster.",
 }
 
 var attachIPCmd = &cobra.Command{
-	Use:  "external-ip POOL INSTANCE",
-	Long: `Attach an external IP from a given pool to an instance.`,
-	Args: cobra.ExactArgs(2),
+	Use:   "external-ip POOL INSTANCE",
+	Short: "Attach external IP to instance",
+	Long:  `Attach an external IP from a given pool to an instance.`,
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.MapExternalIP(args[0], args[1]), "Error mapping external IP")
 	},
 }
 
 var attachVolCmd = &cobra.Command{
-	Use:  "volume VOLUME INSTANCE",
-	Long: `Attach a volume to an instance.`,
-	Args: cobra.ExactArgs(2),
+	Use:   "volume VOLUME INSTANCE",
+	Short: `Attach a volume to an instance`,
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.AttachVolume(args[0], args[1], volAttachFlags.mountpoint, volAttachFlags.mode),
 			"Error attaching volume")

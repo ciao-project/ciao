@@ -20,17 +20,17 @@ import (
 )
 
 var restartInstanceCmd = &cobra.Command{
-	Use:  "instance ID",
-	Long: `Restart an instance.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "instance ID",
+	Short: "Restart an instance",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.StartInstance(args[0]), "Error starting instance")
 	},
 }
 
 var restartCmd = &cobra.Command{
-	Use:  "restart",
-	Long: "Restart an object in the cluster",
+	Use:   "restart",
+	Short: "Restart an object in the cluster",
 }
 
 func init() {

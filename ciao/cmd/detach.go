@@ -21,23 +21,22 @@ import (
 
 var detachCmd = &cobra.Command{
 	Use:   "detach",
-	Short: "Detach various ciao objects",
-	Long:  `Detach the objects below from their given connections`,
+	Short: "Detach objects from other opbjects.",
 }
 
 var detachIPCmd = &cobra.Command{
-	Use:  "external-ip IP",
-	Long: `Detach an external IP`,
-	Args: cobra.ExactArgs(1),
+	Use:   "external-ip IP",
+	Short: "Detach an external IP from an instance",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.UnmapExternalIP(args[0]), "Error unmapping external IP")
 	},
 }
 
 var detachVolCmd = &cobra.Command{
-	Use:  "volume VOLUME",
-	Long: `Detach a volume from an instance`,
-	Args: cobra.ExactArgs(1),
+	Use:   "volume VOLUME",
+	Short: "Detach a volume from an instance",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.DetachVolume(args[0]), "Error detaching volume")
 	},

@@ -25,14 +25,14 @@ import (
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update various ciao objects",
-	Long:  `Update the objects below in the ciao cluster.`,
+	Short: "Update status of an object",
 }
 
 var updateQuotasCmd = &cobra.Command{
-	Use:  "quota TENANT NAME VALUE",
-	Long: `Updates the quota entry for the supplied tenant with the value or limit.`,
-	Args: cobra.ExactArgs(3),
+	Use:   "quota TENANT NAME VALUE",
+	Short: "Update tenant quotas",
+	Long:  "Updates the quota entry for the supplied tenant with the value or limit",
+	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !c.IsPrivileged() {
 			return errors.New("Updating quotas is restricted to privileged users")
@@ -63,9 +63,9 @@ var updateQuotasCmd = &cobra.Command{
 }
 
 var tenantUpdateCmd = &cobra.Command{
-	Use:  "tenant ID",
-	Long: `Update a tenant with the supplied flags.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "tenant ID",
+	Short: "Update tenant configuration",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !c.IsPrivileged() {
 			return errors.New("Updating tenants is restricted to privileged users")

@@ -24,13 +24,13 @@ import (
 
 var showCmd = &cobra.Command{
 	Use:   "show",
-	Short: "Show detailed information about a ciao object",
+	Short: "Show detailed information about an object",
 }
 
 var cnciShowCmd = &cobra.Command{
-	Use:  "cnci ID",
-	Long: "Show information about a CNCI.",
-	Args: cobra.ExactArgs(1),
+	Use:   "cnci ID",
+	Short: "Show information about a CNCI",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !c.IsPrivileged() {
 			return errors.New("CNCI information is restricted to privileged users")
@@ -58,9 +58,9 @@ var cnciShowCmd = &cobra.Command{
 }
 
 var imageShowCmd = &cobra.Command{
-	Use:  "image ID",
-	Long: "Show information about an image.",
-	Args: cobra.ExactArgs(1),
+	Use:   "image ID",
+	Short: "Show information about an image",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		image, err := c.GetImage(args[0])
 		if err != nil {
@@ -72,9 +72,9 @@ var imageShowCmd = &cobra.Command{
 }
 
 var instanceShowCmd = &cobra.Command{
-	Use:  "instance ID",
-	Long: "Show information about an instance",
-	Args: cobra.ExactArgs(1),
+	Use:   "instance ID",
+	Short: "Show information about an instance",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		server, err := c.GetInstance(args[0])
 		if err != nil {
@@ -86,9 +86,9 @@ var instanceShowCmd = &cobra.Command{
 }
 
 var nodeShowCmd = &cobra.Command{
-	Use:  "node ID",
-	Long: "Show information about a node.",
-	Args: cobra.ExactArgs(1),
+	Use:   "node ID",
+	Short: "Show information about a node",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !c.IsPrivileged() {
 			return errors.New("Node information is restricted to privileged users")
@@ -116,9 +116,9 @@ var nodeShowCmd = &cobra.Command{
 }
 
 var tenantShowCmd = &cobra.Command{
-	Use:  "tenant ID",
-	Long: "Show tenant configuration.",
-	Args: cobra.ExactArgs(1),
+	Use:   "tenant ID",
+	Short: "Show tenant configuration",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !c.IsPrivileged() {
 			return errors.New("Tenant configuration is restricted to privileged users")
@@ -134,9 +134,9 @@ var tenantShowCmd = &cobra.Command{
 }
 
 var traceShowCmd = &cobra.Command{
-	Use:  "trace LABEL",
-	Long: "Show trace data.",
-	Args: cobra.ExactArgs(1),
+	Use:   "trace LABEL",
+	Short: "Show trace data for a label",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		data, err := c.GetTraceData(args[0])
 		if err != nil {
@@ -148,9 +148,9 @@ var traceShowCmd = &cobra.Command{
 }
 
 var volumeShowCmd = &cobra.Command{
-	Use:  "volume ID",
-	Long: "Show volume information.",
-	Args: cobra.ExactArgs(1),
+	Use:   "volume ID",
+	Short: "Show volume information",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		volume, err := c.GetVolume(args[0])
 		if err != nil {
@@ -162,9 +162,9 @@ var volumeShowCmd = &cobra.Command{
 }
 
 var workloadShowCmd = &cobra.Command{
-	Use:  "workload ID",
-	Long: "Show workload information.",
-	Args: cobra.ExactArgs(1),
+	Use:   "workload ID",
+	Short: "Show workload information",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		workload, err := c.GetWorkload(args[0])
 		if err != nil {

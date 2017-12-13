@@ -20,17 +20,17 @@ import (
 )
 
 var stopInstanceCmd = &cobra.Command{
-	Use:  "instance ID",
-	Long: `Restart an instance.`,
-	Args: cobra.ExactArgs(1),
+	Use:   "instance ID",
+	Short: "Stop an instance",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(c.StopInstance(args[0]), "Error stopping instance")
 	},
 }
 
 var stopCmd = &cobra.Command{
-	Use:  "stop",
-	Long: "Stop an object in the cluster",
+	Use:   "stop",
+	Short: "Stop an object in the cluster",
 }
 
 func init() {
