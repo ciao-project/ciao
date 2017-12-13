@@ -347,6 +347,7 @@ func findDocs(dir, prefix string) ([]string, error) {
 		"AUTHORS*",
 		"CONTRIBUTORS*",
 		"VERSION",
+		"COPYING",
 	}
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

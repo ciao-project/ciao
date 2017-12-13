@@ -54,7 +54,7 @@
 		"version": "757bef9",
 		"license": "BSD (3 clause)"
 	},
-	"github.com/intel/govmm/qemu": {
+	"github.com/intel/govmm": {
 		"url": "https://github.com/intel/govmm.git",
 		"version": "eacde4d",
 		"license": "Apache v2.0"
@@ -114,7 +114,7 @@
 		"version": "a8b9294",
 		"license": "BSD (3 Clause)"
 	},
-	"golang.org/x/sys/unix": {
+	"golang.org/x/sys": {
 		"url": "https://github.com/golang/sys",
 		"version": "665f652",
 		"license": "BSD (3 clause)"
