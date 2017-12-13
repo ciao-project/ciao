@@ -88,7 +88,7 @@ function rebootCNCI {
 
 function checkExtIPConnectivity {
     #We checked the event before calling this, so the mapping should exist
-    testip=`"$ciao_gobin"/ciao-cli external-ip list -f '{{with index . 0}}{{.ExternalIP}}{{end}}'`
+    testip=`"$ciao_gobin"/ciao list external-ips -f '{{with index . 0}}{{.ExternalIP}}{{end}}'`
     test_instance=$1
 
     sudo ip route add 203.0.113.0/24 dev ciaovlan
@@ -132,7 +132,7 @@ function clearAllEvents() {
 	ciao_client_cert_file=$CIAO_CLIENT_CERT_FILE
 	export CIAO_CLIENT_CERT_FILE=$CIAO_ADMIN_CLIENT_CERT_FILE
 
-	"$ciao_gobin"/ciao-cli event delete
+	"$ciao_gobin"/ciao delete events
 
 	#Wait for the event count to drop to 0
 	retry=0
@@ -140,7 +140,7 @@ function clearAllEvents() {
 
 	until [ $retry -ge 6 ]
 	do
-		ciao_events=`"$ciao_gobin"/ciao-cli event list -f '{{len .}}'`
+		ciao_events=`"$ciao_gobin"/ciao list events -f '{{len .}}'`
 
 		if [ $ciao_events -eq 0 ]
 		then
@@ -168,7 +168,7 @@ function checkEventStatus {
 
 	until [ $retry -ge 10 ]
 	do
-		ciao_events=`"$ciao_gobin"/ciao-cli event list -f '{{len .}}'`
+		ciao_events=`"$ciao_gobin"/ciao list events -f '{{len .}}'`
 
 		if [ $ciao_events -eq $total_events ]
 		then
@@ -182,20 +182,20 @@ function checkEventStatus {
 	if [ $ciao_events -ne $total_events ]
 	then
 		echo "FATAL ERROR: ciao event not reported. Events seen =" $ciao_events
-		"$ciao_gobin"/ciao-cli event list
+		"$ciao_gobin"/ciao list events
 		exit 1
 	fi
 
-	code=$("$ciao_gobin"/ciao-cli event list -f "{{(index . ${event_index}).Message}}" | cut -d ' ' -f 1)
+	code=$("$ciao_gobin"/ciao list events -f "{{(index . ${event_index}).Message}}" | cut -d ' ' -f 1)
 
 	if [ "$event_code" != "$code" ]
 	then
 		echo "FATAL ERROR: Unknown event $code. Looking for $event_code"
-		"$ciao_gobin"/ciao-cli event list
+		"$ciao_gobin"/ciao list events
 		exit 1
 	fi
 
-	"$ciao_gobin"/ciao-cli event list
+	"$ciao_gobin"/ciao list events
 }
 
 function createExternalIPPool() {
@@ -207,8 +207,8 @@ function createExternalIPPool() {
 	ciao_client_cert_file=$CIAO_CLIENT_CERT_FILE
 	export CIAO_CLIENT_CERT_FILE=$CIAO_ADMIN_CLIENT_CERT_FILE
 	
-	"$ciao_gobin"/ciao-cli pool create -name test
-	"$ciao_gobin"/ciao-cli pool add -subnet 203.0.113.0/24 -name test
+	"$ciao_gobin"/ciao create pool test
+	"$ciao_gobin"/ciao add external-ip test 203.0.113.0/24
 	
 	export CIAO_CLIENT_CERT_FILE=$ciao_client_cert_file
 }
@@ -218,7 +218,7 @@ function deleteExternalIPPool() {
 	ciao_client_cert_file=$CIAO_CLIENT_CERT_FILE
 	export CIAO_CLIENT_CERT_FILE=$CIAO_ADMIN_CLIENT_CERT_FILE
 
-	"$ciao_gobin"/ciao-cli pool delete -name test
+	"$ciao_gobin"/ciao delete pool test
 	exitOnError $?  "Unable to delete pool"
 
 	export CIAO_CLIENT_CERT_FILE=$ciao_client_cert_file
@@ -227,9 +227,9 @@ function deleteExternalIPPool() {
 # Read cluster env variables
 . $ciao_bin/demo.sh
 
-for item in `ciao-cli workload list -f '{{select . "ID"}} '`
+for item in `ciao list workloads -f '{{select . "ID"}} '`
 do
-    type=`ciao-cli workload show --workload $item -f '{{.VMType}}'`;
+    type=`ciao show workload $item -f '{{.VMType}}'`;
     if [ $type == "qemu" ]
     then
 	vm_wlid=$item
@@ -243,39 +243,39 @@ then
     exit 1
 fi
 
-"$ciao_gobin"/ciao-cli instance add --workload=$vm_wlid --instances=2
+"$ciao_gobin"/ciao create instance $vm_wlid --instances=2
 exitOnError $?  "Unable to launch VMs"
 
-"$ciao_gobin"/ciao-cli instance list
+"$ciao_gobin"/ciao list instances
 exitOnError $? "Unable to list instances"
 
 #Launch containers
 #Pre-cache the image to reduce the start latency
 sudo docker pull debian
-debian_wlid=$("$ciao_gobin"/ciao-cli workload list -f='{{$x := filter . "Name" "Debian latest test container"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
+debian_wlid=$("$ciao_gobin"/ciao list workloads  -f='{{$x := filter . "Name" "Debian latest test container"}}{{if gt (len $x) 0}}{{(index $x 0).ID}}{{end}}')
 echo "Starting workload $debian_wlid"
-"$ciao_gobin"/ciao-cli instance add --workload=$debian_wlid --instances=1
+"$ciao_gobin"/ciao create instance $debian_wlid --instances=1
 exitOnError $? "Unable to launch containers"
 
 sleep 5
 
-"$ciao_gobin"/ciao-cli instance list
+"$ciao_gobin"/ciao list instances
 exitOnError $? "Unable to list instances"
 
 container_1=`sudo docker ps -q -l`
 container_1_ip=`sudo docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $container_1`
 
-"$ciao_gobin"/ciao-cli instance add --workload=$debian_wlid --instances=1
+"$ciao_gobin"/ciao create instance $debian_wlid --instances=1
 exitOnError $?  "Unable to launch containers"
 sleep 5
 
-"$ciao_gobin"/ciao-cli instance list
+"$ciao_gobin"/ciao list instances
 exitOnError $?  "Unable to list instances"
 
 container_2=`sudo docker ps -q -l`
 
 #Check SSH connectivity
-"$ciao_gobin"/ciao-cli instance list
+"$ciao_gobin"/ciao list instances
 
 #The VM takes time to boot as you are running on two
 #layers of virtualization. Hence wait a bit
@@ -283,7 +283,7 @@ retry=0
 until [ $retry -ge 6 ]
 do
 	ssh_ip=""
-	read -r ssh_ip ssh_port <<<$("$ciao_gobin"/ciao-cli instance list --workload=$vm_wlid -f='{{if gt (len .) 0}}{{with (index . 0)}}{{println .SSHIP}}{{println .SSHPort}}{{end}}{{end}}')
+	read -r ssh_ip ssh_port <<<$("$ciao_gobin"/ciao list instances $vm_wlid -f='{{if gt (len .) 0}}{{with (index . 0)}}{{println .SSHIP}}{{println .SSHPort}}{{end}}{{end}}')
 
 	if [ "$ssh_ip" == "" ] 
 	then
@@ -329,14 +329,14 @@ clearAllEvents
 #We have already checked that the VM is up.
 createExternalIPPool
 
-testinstance=`"$ciao_gobin"/ciao-cli instance list --workload=$vm_wlid -f '{{with index . 0}}{{.ID}}{{end}}'`
-"$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
+testinstance=`"$ciao_gobin"/ciao list instances $vm_wlid -f '{{with index . 0}}{{.ID}}{{end}}'`
+"$ciao_gobin"/ciao attach external-ip test $testinstance 
 
 #Wait for the CNCI to report successful map
 checkEventStatus $event_counter "Mapped"
 
-"$ciao_gobin"/ciao-cli event list
-"$ciao_gobin"/ciao-cli external-ip list
+"$ciao_gobin"/ciao list events
+"$ciao_gobin"/ciao list external-ips
 
 checkExtIPConnectivity $testinstance
 
@@ -345,49 +345,49 @@ checkExtIPConnectivity $testinstance
 rebootCNCI
 checkExtIPConnectivity $testinstance
 
-"$ciao_gobin"/ciao-cli external-ip unmap -address $testip
+"$ciao_gobin"/ciao detach external-ip $testip
 
 #Wait for the CNCI to report successful unmap
 event_counter=$((event_counter+1))
 checkEventStatus $event_counter "Unmapped"
 
-"$ciao_gobin"/ciao-cli external-ip list
+"$ciao_gobin"/ciao list external-ips
 
 #Test for External IP Failures
 
 #Map failure
 triggerIPTablesFailure
-"$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
+"$ciao_gobin"/ciao attach external-ip test $testinstance 
 #Wait for the CNCI to report unsuccessful map
 event_counter=$((event_counter+1))
 checkEventStatus $event_counter "Failed"
 restoreIPTables
 
 #Unmap failure
-"$ciao_gobin"/ciao-cli external-ip map -instance $testinstance -pool test
+"$ciao_gobin"/ciao attach external-ip test $testinstance
 event_counter=$((event_counter+1))
 checkEventStatus $event_counter "Mapped"
 
 triggerIPTablesFailure 
-"$ciao_gobin"/ciao-cli external-ip unmap -address $testip
+"$ciao_gobin"/ciao detach external-ip $testip
 event_counter=$((event_counter+1))
 checkEventStatus $event_counter "Failed"
 restoreIPTables
 
 #Cleanup
-"$ciao_gobin"/ciao-cli external-ip unmap -address $testip
+"$ciao_gobin"/ciao detach external-ip $testip
 event_counter=$((event_counter+1))
 checkEventStatus $event_counter "Unmapped"
 
 #Cleanup pools
 deleteExternalIPPool
 
-to_delete=`"$ciao_gobin"/ciao-cli instance list -f '{{len .}}'`
+to_delete=`"$ciao_gobin"/ciao list instances -f '{{len .}}'`
 #Now delete all instances
-"$ciao_gobin"/ciao-cli instance delete --all
+"$ciao_gobin"/ciao delete instance --all
 exitOnError $?  "Unable to delete instances"
 
-"$ciao_gobin"/ciao-cli instance list
+"$ciao_gobin"/ciao list instances
 
 #Wait for all the instance deletions to be reported back
 event_counter=$((event_counter+$to_delete))

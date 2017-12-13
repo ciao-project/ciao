@@ -310,12 +310,12 @@ func (cmd *workloadCreateCommand) run(args []string) error {
 		fatalf(err.Error())
 	}
 
-	workloadID, err := c.CreateWorkload(req)
+	workload, err := c.CreateWorkload(req)
 	if err != nil {
 		return errors.Wrap(err, "Error creating workload")
 	}
 
-	fmt.Printf("Created new workload: %s\n", workloadID)
+	fmt.Printf("Created new workload: %s\n", workload.ID)
 
 	return nil
 }

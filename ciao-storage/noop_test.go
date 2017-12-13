@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package storage_test
 
 import (
 	"os"
 	"testing"
 
 	"github.com/ciao-project/ciao/bat"
+	"github.com/ciao-project/ciao/ciao-storage"
 )
 
-var noopDriver = NoopDriver{}
+var noopDriver = storage.NoopDriver{}
 
 // Check creating a ceph backed block device works
 //

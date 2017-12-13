@@ -33,11 +33,11 @@ func ListQuotas(ctx context.Context, tenantID string, forTenantID string) ([]Quo
 	var qds []QuotaDetails
 	var err error
 	if forTenantID == "" {
-		args := []string{"quotas", "list", "-f", "{{tojson .}}"}
-		err = RunCIAOCLIJS(ctx, tenantID, args, &qds)
+		args := []string{"list", "quotas", "-f", "{{tojson .}}"}
+		err = RunCIAOCmdJS(ctx, tenantID, args, &qds)
 	} else {
-		args := []string{"quotas", "list", "-for-tenant", forTenantID, "-f", "{{tojson .}}"}
-		err = RunCIAOCLIAsAdminJS(ctx, tenantID, args, &qds)
+		args := []string{"list", "quotas", forTenantID, "-f", "{{tojson .}}"}
+		err = RunCIAOCmdAsAdminJS(ctx, tenantID, args, &qds)
 	}
 
 	if err != nil {
@@ -50,9 +50,9 @@ func ListQuotas(ctx context.Context, tenantID string, forTenantID string) ([]Quo
 // UpdateQuota updates the provided named quota for the provided tenant (using
 // forTenantID) to the desired value.
 func UpdateQuota(ctx context.Context, tenantID string, forTenantID string, name string, value string) error {
-	args := []string{"quotas", "update", "-for-tenant", forTenantID, "-name", name, "-value", value}
+	args := []string{"update", "quota", forTenantID, name, value}
 
-	_, err := RunCIAOCLIAsAdmin(ctx, tenantID, args)
+	_, err := RunCIAOCmdAsAdmin(ctx, tenantID, args)
 
 	return err
 }

@@ -18,12 +18,8 @@ package bat
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -103,128 +99,14 @@ type NodeStatus struct {
 	Hostname              string    `json:"hostname"`
 }
 
-func checkEnv(vars []string) error {
-	for _, k := range vars {
-		if os.Getenv(k) == "" {
-			return fmt.Errorf("%s is not defined", k)
-		}
-	}
-	return nil
-}
-
-// RunCIAOCLI execs the ciao-cli command with a set of arguments. The ciao-cli
-// process will be killed if the context is Done. An error will be returned if
-// the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
-// CIAO_CONTROLLER. On success the data written to ciao-cli on stdout will be
-// returned.
-func RunCIAOCLI(ctx context.Context, tenant string, args []string) ([]byte, error) {
-	vars := []string{"CIAO_CLIENT_CERT_FILE", "CIAO_CONTROLLER"}
-	if err := checkEnv(vars); err != nil {
-		return nil, err
-	}
-
-	if tenant != "" {
-		args = append([]string{"-tenant-id", tenant}, args...)
-	}
-
-	data, err := exec.CommandContext(ctx, "ciao-cli", args...).Output()
-	if err != nil {
-		var failureText string
-		if err, ok := err.(*exec.ExitError); ok {
-			failureText = string(err.Stderr)
-		}
-		return nil, fmt.Errorf("failed to launch ciao-cli %v : %v\n%s",
-			args, err, failureText)
-	}
-
-	return data, nil
-}
-
-// RunCIAOCLIJS is similar to RunCIAOCLI with the exception that the output
-// of the ciao-cli command is expected to be in json format.  The json is
-// decoded into the jsdata parameter which should be a pointer to a type
-// that corresponds to the json output.
-func RunCIAOCLIJS(ctx context.Context, tenant string, args []string, jsdata interface{}) error {
-	data, err := RunCIAOCLI(ctx, tenant, args)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(data, jsdata)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// RunCIAOCLIAsAdmin execs the ciao-cli command as the admin user with a set of
-// provided arguments. The ciao-cli process will be killed if the context is
-// Done. An error will be returned if the following environment variables are
-// not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER. On success the data
-// written to ciao-cli on stdout will be returned.
-func RunCIAOCLIAsAdmin(ctx context.Context, tenant string, args []string) ([]byte, error) {
-	vars := []string{"CIAO_ADMIN_CLIENT_CERT_FILE", "CIAO_CONTROLLER"}
-	if err := checkEnv(vars); err != nil {
-		return nil, err
-	}
-
-	if tenant != "" {
-		args = append([]string{"-tenant-id", tenant}, args...)
-	}
-
-	env := os.Environ()
-	envCopy := make([]string, 0, len(env))
-	for _, v := range env {
-		if !strings.HasPrefix(v, "CIAO_CLIENT_CERT_FILE") {
-			envCopy = append(envCopy, v)
-		}
-	}
-	envCopy = append(envCopy, fmt.Sprintf("CIAO_CLIENT_CERT_FILE=%s",
-		os.Getenv("CIAO_ADMIN_CLIENT_CERT_FILE")))
-
-	cmd := exec.CommandContext(ctx, "ciao-cli", args...)
-	cmd.Env = envCopy
-	data, err := cmd.Output()
-	if err != nil {
-		var failureText string
-		if err, ok := err.(*exec.ExitError); ok {
-			failureText = string(err.Stderr)
-		}
-		return nil, fmt.Errorf("failed to launch ciao-cli %v : %v\n%v",
-			args, err, failureText)
-	}
-
-	return data, nil
-}
-
-// RunCIAOCLIAsAdminJS is similar to RunCIAOCLIAsAdmin with the exception that
-// the output of the ciao-cli command is expected to be in json format.  The
-// json is decoded into the jsdata parameter which should be a pointer to a type
-// that corresponds to the json output.
-func RunCIAOCLIAsAdminJS(ctx context.Context, tenant string, args []string,
-	jsdata interface{}) error {
-	data, err := RunCIAOCLIAsAdmin(ctx, tenant, args)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(data, jsdata)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // GetUserTenants retrieves a list of all the tenants the current user has
 // access to. An error will be returned if the following environment variables
 // are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetUserTenants(ctx context.Context) ([]*Tenant, error) {
 	var tenants []*Tenant
 
-	args := []string{"tenant", "list", "-f", "{{tojson .}}"}
-	err := RunCIAOCLIJS(ctx, "", args, &tenants)
+	args := []string{"list", "tenants", "-f", "{{tojson .}}"}
+	err := RunCIAOCmdJS(ctx, "", args, &tenants)
 	if err != nil {
 		return nil, err
 	}
@@ -238,8 +120,9 @@ func GetUserTenants(ctx context.Context) ([]*Tenant, error) {
 // are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetInstance(ctx context.Context, tenant string, uuid string) (*Instance, error) {
 	var instance *Instance
-	args := []string{"instance", "show", "--instance", uuid, "-f", instanceTemplateDesc}
-	err := RunCIAOCLIJS(ctx, tenant, args, &instance)
+	template := instanceTemplateDesc
+	args := []string{"show", "instance", uuid, "-f", template}
+	err := RunCIAOCmdJS(ctx, tenant, args, &instance)
 	if err != nil {
 		return nil, err
 	}
@@ -262,8 +145,8 @@ func GetAllInstances(ctx context.Context, tenant string) (map[string]*Instance, 
 {{- end }}
 }
 `
-	args := []string{"instance", "list", "-f", template}
-	err := RunCIAOCLIJS(ctx, tenant, args, &instances)
+	args := []string{"list", "instances", "-f", template}
+	err := RunCIAOCmdJS(ctx, tenant, args, &instances)
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +159,8 @@ func GetAllInstances(ctx context.Context, tenant string) (map[string]*Instance, 
 // returned if the following environment variables are not set;
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func RetrieveInstanceStatus(ctx context.Context, tenant string, instance string) (string, error) {
-	args := []string{"instance", "show", "-instance", instance, "-f", "{{.Status}}"}
-	data, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"show", "instance", instance, "-f", "{{.Status}}"}
+	data, err := RunCIAOCmd(ctx, tenant, args)
 	if err != nil {
 		return "", err
 	}
@@ -298,8 +181,8 @@ func RetrieveInstancesStatuses(ctx context.Context, tenant string) (map[string]s
 {{- end }}
 }
 `
-	args := []string{"instance", "list", "-f", template}
-	err := RunCIAOCLIJS(ctx, tenant, args, &statuses)
+	args := []string{"list", "instances", "-f", template}
+	err := RunCIAOCmdJS(ctx, tenant, args, &statuses)
 	if err != nil {
 		return nil, err
 	}
@@ -310,8 +193,8 @@ func RetrieveInstancesStatuses(ctx context.Context, tenant string) (map[string]s
 // command. An error will be returned if the following environment variables are
 // not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func StopInstance(ctx context.Context, tenant string, instance string) error {
-	args := []string{"instance", "stop", "-instance", instance}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"stop", "instance", instance}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
@@ -353,8 +236,8 @@ func StopInstanceAndWait(ctx context.Context, tenant string, instance string) er
 // restart command. An error will be returned if the following environment
 // variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func RestartInstance(ctx context.Context, tenant string, instance string) error {
-	args := []string{"instance", "restart", "-instance", instance}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"restart", "instance", instance}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
@@ -390,8 +273,8 @@ func RestartInstanceAndWait(ctx context.Context, tenant string, instance string)
 // following environment variables are not set; CIAO_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func DeleteInstance(ctx context.Context, tenant string, instance string) error {
-	args := []string{"instance", "delete", "-instance", instance}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"delete", "instance", instance}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
@@ -458,8 +341,8 @@ func DeleteInstances(ctx context.Context, tenant string, instances []string) ([]
 // command fails.An error will be returned if the following environment
 // variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func DeleteAllInstances(ctx context.Context, tenant string) error {
-	args := []string{"instance", "delete", "-all"}
-	_, err := RunCIAOCLI(ctx, tenant, args)
+	args := []string{"delete", "instance", "--all"}
+	_, err := RunCIAOCmd(ctx, tenant, args)
 	return err
 }
 
@@ -541,10 +424,10 @@ func LaunchInstances(ctx context.Context, tenant string, workload string, num in
 {{- end }}
 ]
 `
-	args := []string{"instance", "add", "--workload", workload,
+	args := []string{"create", "instance", workload,
 		"--instances", fmt.Sprintf("%d", num), "-f", template}
 	var instances []string
-	err := RunCIAOCLIJS(ctx, tenant, args, &instances)
+	err := RunCIAOCmdJS(ctx, tenant, args, &instances)
 	if err != nil {
 		return nil, err
 	}
@@ -591,8 +474,8 @@ func GetCNCIs(ctx context.Context) (map[string]*CNCI, error) {
   {{- end }}
 }
 `
-	args := []string{"node", "list", "-cnci", "-f", template}
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &CNCIs)
+	args := []string{"list", "cncis", "-f", template}
+	err := RunCIAOCmdAsAdminJS(ctx, "", args, &CNCIs)
 	if err != nil {
 		return nil, err
 	}
@@ -602,7 +485,7 @@ func GetCNCIs(ctx context.Context) (map[string]*CNCI, error) {
 
 func getNodes(ctx context.Context, args []string) (map[string]*NodeStatus, error) {
 	var nodeList []*NodeStatus
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &nodeList)
+	err := RunCIAOCmdAsAdminJS(ctx, "", args, &nodeList)
 	if err != nil {
 		return nil, err
 	}
@@ -621,8 +504,8 @@ func getNodes(ctx context.Context, args []string) (map[string]*NodeStatus, error
 // CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetComputeNode(ctx context.Context, nodeID string) (*NodeStatus, error) {
 	var node NodeStatus
-	args := []string{"node", "show", "-node-id", nodeID, "-f", "{{tojson .}}"}
-	err := RunCIAOCLIAsAdminJS(ctx, "", args, &node)
+	args := []string{"show", "node", nodeID, "-f", "{{tojson .}}"}
+	err := RunCIAOCmdAsAdminJS(ctx, "", args, &node)
 	if err != nil {
 		return nil, err
 	}
@@ -657,7 +540,7 @@ func WaitForComputeNodeStatus(ctx context.Context, nodeID, status string) error 
 // be returned if the following environment variables are not set;
 // CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetComputeNodes(ctx context.Context) (map[string]*NodeStatus, error) {
-	args := []string{"node", "list", "-compute", "-f", "{{tojson .}}"}
+	args := []string{"list", "nodes", "--compute-nodes", "-f", "{{tojson .}}"}
 	return getNodes(ctx, args)
 }
 
@@ -667,7 +550,7 @@ func GetComputeNodes(ctx context.Context) (map[string]*NodeStatus, error) {
 // be returned if the following environment variables are not set;
 // CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetNetworkNodes(ctx context.Context) (map[string]*NodeStatus, error) {
-	args := []string{"node", "list", "-network", "-f", "{{tojson .}}"}
+	args := []string{"list", "nodes", "--network-nodes", "-f", "{{tojson .}}"}
 	return getNodes(ctx, args)
 }
 
@@ -675,8 +558,8 @@ func GetNetworkNodes(ctx context.Context) (map[string]*NodeStatus, error) {
 // if the following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func Evacuate(ctx context.Context, nodeid string) error {
-	args := []string{"node", "evacuate", "-node-id", nodeid}
-	_, err := RunCIAOCLIAsAdmin(ctx, "", args)
+	args := []string{"evacuate", nodeid}
+	_, err := RunCIAOCmdAsAdmin(ctx, "", args)
 	return err
 }
 
@@ -684,7 +567,7 @@ func Evacuate(ctx context.Context, nodeid string) error {
 // if the following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func Restore(ctx context.Context, nodeid string) error {
-	args := []string{"node", "restore", "-node-id", nodeid}
-	_, err := RunCIAOCLIAsAdmin(ctx, "", args)
+	args := []string{"restore", nodeid}
+	_, err := RunCIAOCmdAsAdmin(ctx, "", args)
 	return err
 }

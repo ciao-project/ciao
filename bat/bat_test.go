@@ -97,12 +97,11 @@ func TestImageOptions(t *testing.T) {
 
 	computedArgs := computeImageAddArgs(opts)
 	expectedArgs := []string{
-		"-id", "test-id",
-		"-name", "test-name",
-		"-visibility", "private",
+		"--id", "test-id",
+		"--visibility", "private",
 	}
 
 	if !reflect.DeepEqual(computedArgs, expectedArgs) {
-		t.Fatalf("Compute image arguments are incorrect")
+		t.Fatalf("Compute image arguments are incorrect: %s vs %s", computedArgs, expectedArgs)
 	}
 }
