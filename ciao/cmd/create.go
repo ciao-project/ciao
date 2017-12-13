@@ -146,7 +146,7 @@ var instanceCreateCmd = &cobra.Command{
 
 		return render(cmd, servers.Servers)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: instanceListCmd.Annotations,
 }
 
 var poolCreateCmd = &cobra.Command{
