@@ -147,6 +147,14 @@ var traceShowCmd = &cobra.Command{
 	},
 }
 
+var volumeShowTemplate = `ID:		{{ .ID}}
+Name:		{{ .Name }}
+Description:	{{ .Description }}
+State:		{{ .State }}
+Size:		{{ .Size }}
+CreateTime:	{{ .CreateTime }}
+`
+
 var volumeShowCmd = &cobra.Command{
 	Use:   "volume ID",
 	Short: "Show volume information",
@@ -159,6 +167,7 @@ var volumeShowCmd = &cobra.Command{
 
 		return render(cmd, volume)
 	},
+	Annotations: map[string]string{"default_template": volumeShowTemplate},
 }
 
 var workloadShowCmd = &cobra.Command{

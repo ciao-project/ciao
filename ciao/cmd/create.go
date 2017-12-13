@@ -217,6 +217,7 @@ var volumeCreateCmd = &cobra.Command{
 
 		return render(cmd, vol)
 	},
+	Annotations: volumeShowCmd.Annotations,
 }
 
 type source struct {
