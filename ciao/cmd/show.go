@@ -131,6 +131,7 @@ var tenantShowCmd = &cobra.Command{
 
 		return render(cmd, tenant)
 	},
+	Annotations: map[string]string{"default_template": `{{ htable (cols (sliceof .) "ID" "Name") }}`},
 }
 
 var traceShowCmd = &cobra.Command{

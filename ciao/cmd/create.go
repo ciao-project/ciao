@@ -192,6 +192,7 @@ var tenantCreateCmd = &cobra.Command{
 
 		return render(cmd, summary)
 	},
+	Annotations: tenantShowCmd.Annotations,
 }
 
 var volumeCreateCmd = &cobra.Command{
