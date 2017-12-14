@@ -367,6 +367,7 @@ var workloadCreateCmd = &cobra.Command{
 
 		return render(cmd, workload)
 	},
+	Annotations: workloadShowCmd.Annotations,
 }
 
 var createCmds = []*cobra.Command{imageCreateCmd, instanceCreateCmd, poolCreateCmd, volumeCreateCmd, workloadCreateCmd, tenantCreateCmd}
