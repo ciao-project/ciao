@@ -231,6 +231,9 @@ var traceListCmd = &cobra.Command{
 	Annotations: map[string]string{"default_template": "{{ table .}}"},
 }
 
+var volumeListTemplate = `{{ range . }}` + volumeShowTemplate + `
+{{ end }}`
+
 var volumeListCmd = &cobra.Command{
 	Use:  "volumes",
 	Long: `List volumes.`,
@@ -243,7 +246,7 @@ var volumeListCmd = &cobra.Command{
 
 		return render(cmd, volumes)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{"default_template": volumeListTemplate},
 }
 
 type workload struct {
