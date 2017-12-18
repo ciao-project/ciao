@@ -131,6 +131,7 @@ var tenantShowCmd = &cobra.Command{
 
 		return render(cmd, tenant)
 	},
+	Annotations: map[string]string{"default_template": `{{ htable (cols (sliceof .) "ID" "Name") }}`},
 }
 
 var traceShowCmd = &cobra.Command{
@@ -147,7 +148,7 @@ var traceShowCmd = &cobra.Command{
 	},
 }
 
-var volumeShowTemplate = `ID:		{{ .ID}}
+var volumeShowTemplate = `ID:		{{ .ID }}
 Name:		{{ .Name }}
 Description:	{{ .Description }}
 State:		{{ .State }}
@@ -170,6 +171,31 @@ var volumeShowCmd = &cobra.Command{
 	Annotations: map[string]string{"default_template": volumeShowTemplate},
 }
 
+var workloadShowTemplate = `ID:			{{ .ID }}
+Description: 		{{ .Description }}
+{{ if eq .VMType "qemu" -}}
+FWType:			{{ .FWType }}
+{{ else -}}
+ImageName:		{{ .ImageName }}
+{{ end -}}
+Visibility:		{{ .Visibility }}
+Requirements:
+	MemMB:		{{ .Requirements.MemMB }}
+	VCPUs:		{{ .Requirements.VCPUs }}
+	NodeID:		{{ .Requirements.NodeID }}
+	Hostname	{{ .Requirements.Hostname }}
+	NetworkNode	{{ .Requirements.NetworkNode }}
+	Privileged	{{ .Requirements.Privileged }}
+Storage:
+{{- range .Storage }}
+	ID:		{{ .ID }}
+	Size:		{{ .Size }}
+	Ephemeral:	{{ .Ephemeral }}
+	Bootable:	{{ .Bootable }}
+	SourceType:	{{ .SourceType }}
+	Source:		{{ .Source }}
+{{ end }}`
+
 var workloadShowCmd = &cobra.Command{
 	Use:   "workload ID",
 	Short: "Show workload information",
@@ -182,6 +208,7 @@ var workloadShowCmd = &cobra.Command{
 
 		return render(cmd, workload)
 	},
+	Annotations: map[string]string{"default_template": workloadShowTemplate},
 }
 
 var showCmds = []*cobra.Command{

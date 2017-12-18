@@ -82,7 +82,7 @@ var externalipListCmd = &cobra.Command{
 
 		return render(cmd, IPs)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{"default_template": `{{ table (cols . "ExternalIP" "InternalIP" "InstanceID" "PoolName")}}`},
 }
 
 var imageListCmd = &cobra.Command{
@@ -150,7 +150,7 @@ var nodeListCmd = &cobra.Command{
 
 		return render(cmd, n.Nodes)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{"default_template": `{{ table (cols . "ID" "Hostname" "Status")}}`},
 }
 
 var poolListCmd = &cobra.Command{
@@ -165,7 +165,7 @@ var poolListCmd = &cobra.Command{
 
 		return render(cmd, p.Pools)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{"default_template": `{{ table (cols . "Name" "Free" "TotalIPs")}}`},
 }
 
 var quotasListCmd = &cobra.Command{
@@ -213,7 +213,7 @@ var tenantListCmd = &cobra.Command{
 
 		return render(cmd, tenants)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{"default_template": `{{ table (cols . "ID" "Name")}}`},
 }
 
 var traceListCmd = &cobra.Command{
@@ -231,6 +231,9 @@ var traceListCmd = &cobra.Command{
 	Annotations: map[string]string{"default_template": "{{ table .}}"},
 }
 
+var volumeListTemplate = `{{ range . }}` + volumeShowTemplate + `
+{{ end }}`
+
 var volumeListCmd = &cobra.Command{
 	Use:  "volumes",
 	Long: `List volumes.`,
@@ -243,7 +246,7 @@ var volumeListCmd = &cobra.Command{
 
 		return render(cmd, volumes)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{"default_template": volumeListTemplate},
 }
 
 type workload struct {
