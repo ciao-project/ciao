@@ -96,6 +96,7 @@ var imageCreateCmd = &cobra.Command{
 
 		return render(cmd, image)
 	},
+	Annotations: imageShowCmd.Annotations,
 }
 
 func validateCreateCommandArgs() error {

@@ -28,6 +28,7 @@ import (
 var c client.Client
 
 var template string
+var rootUsageFunc (func(cmd *cobra.Command) error)
 
 func render(cmd *cobra.Command, data interface{}) error {
 	if template == "" && cmd.Annotations != nil {
@@ -40,6 +41,25 @@ func render(cmd *cobra.Command, data interface{}) error {
 
 	return errors.Wrap(tfortools.OutputToTemplate(os.Stdout, "", template, data, nil),
 		"Error generating template output")
+}
+
+func templatedUsageFunc(cmd *cobra.Command) error {
+	err := rootUsageFunc(cmd)
+	if err != nil {
+		return err
+	}
+
+	if cmd.Annotations == nil {
+		return nil
+	}
+
+	templateUsage := cmd.Annotations["template_usage"]
+	if templateUsage != "" {
+		fmt.Printf("When using the template flag the following structure is provided:\n\n")
+		fmt.Println(templateUsage)
+	}
+
+	return nil
 }
 
 const (
@@ -78,6 +98,9 @@ func init() {
 		fmt.Fprintf(os.Stderr, "Failed to init the CLI: %s\n", err)
 		os.Exit(1)
 	}
+
+	rootUsageFunc = rootCmd.UsageFunc()
+	rootCmd.SetUsageFunc(templatedUsageFunc)
 
 	rootCmd.PersistentFlags().StringVarP(&template, "template", "f", "", "Template used to format output")
 }
