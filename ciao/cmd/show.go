@@ -225,7 +225,6 @@ var showCmds = []*cobra.Command{
 func init() {
 	for _, cmd := range showCmds {
 		showCmd.AddCommand(cmd)
-		cmd.Flags().StringVarP(&template, "template", "f", "", "Template used to format output")
 	}
 
 	rootCmd.AddCommand(showCmd)
