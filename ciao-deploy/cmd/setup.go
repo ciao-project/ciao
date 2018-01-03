@@ -140,6 +140,7 @@ func init() {
 	setupCmd.Flags().StringVar(&clusterConf.AdminSSHKeyPath, "admin-ssh-key", "", "Path to SSH public key for accessing CNCI")
 	setupCmd.Flags().StringVar(&clusterConf.ComputeNet, "compute-net", hostNetwork, "Network range for compute network")
 	setupCmd.Flags().StringVar(&clusterConf.MgmtNet, "mgmt-net", hostNetwork, "Network range for management network")
+	setupCmd.Flags().StringVar(&clusterConf.CNCINet, "cnci-net", "192.168.128.0", "Host start address for CNCI mgmt network - must be at least /18")
 	setupCmd.Flags().StringVar(&clusterConf.ServerIP, "server-ip", hostIP, "IP address nodes can reach this host on")
 	setupCmd.Flags().StringVar(&clusterConf.ServerHostname, "server-hostname", deploy.HostnameWithFallback(), "Name or FQDN that this host can be reached on")
 	setupCmd.Flags().StringVar(&imageCacheDirectory, "image-cache-directory", deploy.DefaultImageCacheDir(), "Directory to use for caching of downloaded images")
