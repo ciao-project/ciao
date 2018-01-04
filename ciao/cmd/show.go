@@ -17,7 +17,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/intel/tfortools"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -55,6 +57,9 @@ var cnciShowCmd = &cobra.Command{
 
 		return render(cmd, cnci)
 	},
+	Annotations: map[string]string{
+		"template_usage": tfortools.GenerateUsageUndecorated(types.CiaoCNCI{}),
+	},
 }
 
 var imageShowCmd = &cobra.Command{
@@ -69,6 +74,9 @@ var imageShowCmd = &cobra.Command{
 
 		return render(cmd, image)
 	},
+	Annotations: map[string]string{
+		"template_usage": tfortools.GenerateUsageUndecorated(types.Image{}),
+	},
 }
 
 var instanceShowCmd = &cobra.Command{
@@ -82,6 +90,9 @@ var instanceShowCmd = &cobra.Command{
 		}
 
 		return render(cmd, server.Server)
+	},
+	Annotations: map[string]string{
+		"template_usage": tfortools.GenerateUsageUndecorated(api.ServerDetails{}),
 	},
 }
 
@@ -113,6 +124,9 @@ var nodeShowCmd = &cobra.Command{
 
 		return render(cmd, node)
 	},
+	Annotations: map[string]string{
+		"template_usage": tfortools.GenerateUsageUndecorated(types.CiaoNode{}),
+	},
 }
 
 var tenantShowCmd = &cobra.Command{
@@ -131,7 +145,10 @@ var tenantShowCmd = &cobra.Command{
 
 		return render(cmd, tenant)
 	},
-	Annotations: map[string]string{"default_template": `{{ htable (cols (sliceof .) "ID" "Name") }}`},
+	Annotations: map[string]string{
+		"default_template": `{{ htable (cols (sliceof .) "ID" "Name") }}`,
+		"template_usage":   tfortools.GenerateUsageUndecorated(types.TenantConfig{}),
+	},
 }
 
 var traceShowCmd = &cobra.Command{
@@ -145,6 +162,9 @@ var traceShowCmd = &cobra.Command{
 		}
 
 		return render(cmd, data.Summary)
+	},
+	Annotations: map[string]string{
+		"template_usage": tfortools.GenerateUsageUndecorated(types.CiaoBatchFrameStat{}),
 	},
 }
 
@@ -168,7 +188,10 @@ var volumeShowCmd = &cobra.Command{
 
 		return render(cmd, volume)
 	},
-	Annotations: map[string]string{"default_template": volumeShowTemplate},
+	Annotations: map[string]string{
+		"default_template": volumeShowTemplate,
+		"template_usage":   tfortools.GenerateUsageUndecorated(types.Volume{}),
+	},
 }
 
 var workloadShowTemplate = `ID:			{{ .ID }}
@@ -208,7 +231,10 @@ var workloadShowCmd = &cobra.Command{
 
 		return render(cmd, workload)
 	},
-	Annotations: map[string]string{"default_template": workloadShowTemplate},
+	Annotations: map[string]string{
+		"default_template": workloadShowTemplate,
+		"template_usage":   tfortools.GenerateUsageUndecorated(types.Workload{}),
+	},
 }
 
 var showCmds = []*cobra.Command{
@@ -225,7 +251,6 @@ var showCmds = []*cobra.Command{
 func init() {
 	for _, cmd := range showCmds {
 		showCmd.AddCommand(cmd)
-		cmd.Flags().StringVarP(&template, "template", "f", "", "Template used to format output")
 	}
 
 	rootCmd.AddCommand(showCmd)

@@ -15,7 +15,9 @@
 package cmd
 
 import (
+	"github.com/ciao-project/ciao/ciao-controller/api"
 	"github.com/ciao-project/ciao/ciao-controller/types"
+	"github.com/intel/tfortools"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +43,10 @@ var cnciListCmd = &cobra.Command{
 
 		return render(cmd, cncis.CNCIs)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{
+		"default_template": "{{ table .}}",
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.CiaoCNCI{}),
+	},
 }
 
 var eventListCmd = &cobra.Command{
@@ -67,7 +72,10 @@ var eventListCmd = &cobra.Command{
 
 		return render(cmd, events.Events)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{
+		"default_template": "{{ table .}}",
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.CiaoEvent{}),
+	},
 }
 
 var externalipListCmd = &cobra.Command{
@@ -82,7 +90,10 @@ var externalipListCmd = &cobra.Command{
 
 		return render(cmd, IPs)
 	},
-	Annotations: map[string]string{"default_template": `{{ table (cols . "ExternalIP" "InternalIP" "InstanceID" "PoolName")}}`},
+	Annotations: map[string]string{
+		"default_template": `{{ table (cols . "ExternalIP" "InternalIP" "InstanceID" "PoolName")}}`,
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.MappedIP{}),
+	},
 }
 
 var imageListCmd = &cobra.Command{
@@ -97,7 +108,10 @@ var imageListCmd = &cobra.Command{
 
 		return render(cmd, images)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{
+		"default_template": "{{ table .}}",
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.Image{}),
+	},
 }
 
 var instanceListCmd = &cobra.Command{
@@ -117,7 +131,10 @@ var instanceListCmd = &cobra.Command{
 
 		return render(cmd, servers.Servers)
 	},
-	Annotations: map[string]string{"default_template": `{{ table (cols . "Name" "ID" "SSHIP" "SSHPort" "Status") }}`},
+	Annotations: map[string]string{
+		"default_template": `{{ table (cols . "Name" "ID" "SSHIP" "SSHPort" "Status") }}`,
+		"template_usage":   tfortools.GenerateUsageUndecorated([]api.ServerDetails{}),
+	},
 }
 
 var nodeListFlags = struct {
@@ -150,7 +167,10 @@ var nodeListCmd = &cobra.Command{
 
 		return render(cmd, n.Nodes)
 	},
-	Annotations: map[string]string{"default_template": `{{ table (cols . "ID" "Hostname" "Status")}}`},
+	Annotations: map[string]string{
+		"default_template": `{{ table (cols . "ID" "Hostname" "Status")}}`,
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.CiaoNode{}),
+	},
 }
 
 var poolListCmd = &cobra.Command{
@@ -165,7 +185,10 @@ var poolListCmd = &cobra.Command{
 
 		return render(cmd, p.Pools)
 	},
-	Annotations: map[string]string{"default_template": `{{ table (cols . "Name" "Free" "TotalIPs")}}`},
+	Annotations: map[string]string{
+		"default_template": `{{ table (cols . "Name" "Free" "TotalIPs")}}`,
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.PoolSummary{}),
+	},
 }
 
 var quotasListCmd = &cobra.Command{
@@ -188,7 +211,10 @@ var quotasListCmd = &cobra.Command{
 
 		return render(cmd, quotas)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{
+		"default_template": "{{ table .}}",
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.QuotaDetails{}),
+	},
 }
 
 var tenantListCmd = &cobra.Command{
@@ -213,7 +239,10 @@ var tenantListCmd = &cobra.Command{
 
 		return render(cmd, tenants)
 	},
-	Annotations: map[string]string{"default_template": `{{ table (cols . "ID" "Name")}}`},
+	Annotations: map[string]string{
+		"default_template": `{{ table (cols . "ID" "Name")}}`,
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.TenantSummary{}),
+	},
 }
 
 var traceListCmd = &cobra.Command{
@@ -228,7 +257,10 @@ var traceListCmd = &cobra.Command{
 
 		return render(cmd, t.Summaries)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{
+		"default_template": "{{ table .}}",
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.CiaoTracesSummary{}),
+	},
 }
 
 var volumeListTemplate = `{{ range . }}` + volumeShowTemplate + `
@@ -246,7 +278,10 @@ var volumeListCmd = &cobra.Command{
 
 		return render(cmd, volumes)
 	},
-	Annotations: map[string]string{"default_template": volumeListTemplate},
+	Annotations: map[string]string{
+		"default_template": volumeListTemplate,
+		"template_usage":   tfortools.GenerateUsageUndecorated([]types.Volume{}),
+	},
 }
 
 type workload struct {
@@ -278,7 +313,10 @@ var workloadListCmd = &cobra.Command{
 
 		return render(cmd, workloads)
 	},
-	Annotations: map[string]string{"default_template": "{{ table .}}"},
+	Annotations: map[string]string{
+		"default_template": "{{ table .}}",
+		"template_usage":   tfortools.GenerateUsageUndecorated([]workload{}),
+	},
 }
 
 var listCmds = []*cobra.Command{
