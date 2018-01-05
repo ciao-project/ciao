@@ -33,9 +33,9 @@ const standardTimeout = time.Second * 300
 // various fields are correct.  Finally, it deletes the image. It will also
 // receive the visibility in order images are created with the right visibility
 //
-// The image is successfully uploaded, it appears when ciao-cli image show is
+// The image is successfully uploaded, it appears when ciao show image is
 // executed, it can be successfully deleted and is no longer present in the
-// ciao-cli image list output after deletion.
+// ciao list images output after deletion.
 func addShowDelete(t *testing.T, visibility string) {
 	name := fmt.Sprintf("test-image-%v", visibility)
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
@@ -161,7 +161,7 @@ func TestImageList(t *testing.T) {
 	}
 
 	if !foundNewImage {
-		t.Errorf("New image was not returned by ciao-cli image list")
+		t.Errorf("New image was not returned by ciao list images")
 	}
 
 	err = bat.DeleteImage(ctx, false, "", img.ID)

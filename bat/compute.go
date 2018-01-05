@@ -115,8 +115,8 @@ func GetUserTenants(ctx context.Context) ([]*Tenant, error) {
 }
 
 // GetInstance returns an Instance structure that contains information about a
-// specific instance. The informaion is retrieved by calling ciao-cli show
-// --instance. An error will be returned if the following environment variables
+// specific instance. The information is retrieved by calling ciao show
+// instance. An error will be returned if the following environment variables
 // are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetInstance(ctx context.Context, tenant string, uuid string) (*Instance, error) {
 	var instance *Instance
@@ -132,7 +132,7 @@ func GetInstance(ctx context.Context, tenant string, uuid string) (*Instance, er
 
 // GetAllInstances returns information about all instances in the specified
 // tenant in a map. The key of the map is the instance uuid. The information is
-// retrieved by calling ciao-cli instance list. An error will be returned if the
+// retrieved by calling ciao list instances. An error will be returned if the
 // following environment variables are not set; CIAO_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func GetAllInstances(ctx context.Context, tenant string) (map[string]*Instance, error) {
@@ -155,7 +155,7 @@ func GetAllInstances(ctx context.Context, tenant string) (map[string]*Instance, 
 }
 
 // RetrieveInstanceStatus retrieve the status of a specific instance. This
-// information is retrieved using ciao-cli instance show. An error will be
+// information is retrieved using ciao show instances . An error will be
 // returned if the following environment variables are not set;
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func RetrieveInstanceStatus(ctx context.Context, tenant string, instance string) (string, error) {
@@ -168,7 +168,7 @@ func RetrieveInstanceStatus(ctx context.Context, tenant string, instance string)
 }
 
 // RetrieveInstancesStatuses retrieves the statuses of a slice of specific
-// instances. This information is retrieved using ciao-cli instance list. An
+// instances. This information is retrieved using ciao list instances. An
 // error will be returned if the following environment variables are not set;
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func RetrieveInstancesStatuses(ctx context.Context, tenant string) (map[string]string, error) {
@@ -189,7 +189,7 @@ func RetrieveInstancesStatuses(ctx context.Context, tenant string) (map[string]s
 	return statuses, nil
 }
 
-// StopInstance stops a ciao instance by invoking the ciao-cli instance stop
+// StopInstance stops a ciao instance by invoking the ciao stop instance
 // command. An error will be returned if the following environment variables are
 // not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func StopInstance(ctx context.Context, tenant string, instance string) error {
@@ -221,8 +221,8 @@ func WaitForInstanceExit(ctx context.Context, tenant string, instance string) er
 	}
 }
 
-// StopInstanceAndWait stops a ciao instance by invoking the ciao-cli instance
-// stop command. It then waits until the instance's status changes to exited. An
+// StopInstanceAndWait stops a ciao instance by invoking the ciao instance stop
+// command. It then waits until the instance's status changes to exited. An
 // error will be returned if the following environment variables are not set;
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func StopInstanceAndWait(ctx context.Context, tenant string, instance string) error {
@@ -232,8 +232,8 @@ func StopInstanceAndWait(ctx context.Context, tenant string, instance string) er
 	return WaitForInstanceExit(ctx, tenant, instance)
 }
 
-// RestartInstance restarts a ciao instance by invoking the ciao-cli instance
-// restart command. An error will be returned if the following environment
+// RestartInstance restarts a ciao instance by invoking the ciao restart
+// instance command. An error will be returned if the following environment
 // variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func RestartInstance(ctx context.Context, tenant string, instance string) error {
 	args := []string{"restart", "instance", instance}
@@ -241,10 +241,10 @@ func RestartInstance(ctx context.Context, tenant string, instance string) error 
 	return err
 }
 
-// RestartInstanceAndWait restarts a ciao instance by invoking the ciao-cli
-// instance restart command. It then waits until the instance's status changes
-// to active. An error will be returned if the following environment variables
-// are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+// RestartInstanceAndWait restarts a ciao instance by invoking the ciao instance
+// restart command. It then waits until the instance's status changes to active.
+// An error will be returned if the following environment variables are not set;
+// CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func RestartInstanceAndWait(ctx context.Context, tenant string, instance string) error {
 	if err := RestartInstance(ctx, tenant, instance); err != nil {
 		return err
@@ -269,7 +269,7 @@ func RestartInstanceAndWait(ctx context.Context, tenant string, instance string)
 }
 
 // DeleteInstance deletes a specific instance from the cluster. It deletes the
-// instance using ciao-cli instance delete. An error will be returned if the
+// instance using ciao delete instance. An error will be returned if the
 // following environment variables are not set; CIAO_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func DeleteInstance(ctx context.Context, tenant string, instance string) error {
@@ -279,10 +279,10 @@ func DeleteInstance(ctx context.Context, tenant string, instance string) error {
 }
 
 // DeleteInstanceAndWait deletes a specific instance from the cluster. It
-// deletes the instance using ciao-cli instance delete and then blocks until
-// ciao-cli reports that the instance is truly deleted. An error will be
-// returned if the following environment variables are not set;
-// CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+// deletes the instance using ciao delete instance and then blocks until ciao
+// reports that the instance is truly deleted. An error will be returned if the
+// following environment variables are not set; CIAO_CLIENT_CERT_FILE,
+// CIAO_CONTROLLER.
 func DeleteInstanceAndWait(ctx context.Context, tenant string, instance string) error {
 	if err := DeleteInstance(ctx, tenant, instance); err != nil {
 		return err
@@ -337,8 +337,8 @@ func DeleteInstances(ctx context.Context, tenant string, instances []string) ([]
 }
 
 // DeleteAllInstances deletes all the instances created for the specified tenant
-// by calling ciao-cli instance delete -all. It returns an error if the ciao-cli
-// command fails.An error will be returned if the following environment
+// by calling ciao delete instance --all. It returns an error if the ciao
+// command fails. An error will be returned if the following environment
 // variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func DeleteAllInstances(ctx context.Context, tenant string) error {
 	args := []string{"delete", "instance", "--all"}
@@ -412,7 +412,7 @@ func WaitForInstancesLaunch(ctx context.Context, tenant string, instances []stri
 // LaunchInstances launches num instances of the specified workload. On success
 // the function returns a slice of UUIDs of the successfully launched instances.
 // If some instances failed to start then the error can be found in the event
-// log. The instances are launched using ciao-cli instance add. If no instances
+// log. The instances are launched using ciao create instance. If no instances
 // successfully launch then an error will be returned. An error will be returned
 // if the following environment variables are not set; CIAO_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
@@ -454,9 +454,9 @@ func StartRandomInstances(ctx context.Context, tenant string, num int) ([]string
 }
 
 // GetCNCIs returns a map of the CNCIs present in the cluster. The key of the
-// map is the CNCI ID. The CNCI information is retrieved using ciao-cli list
-// -cnci command. An error will be returned if the following environment
-// variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+// map is the CNCI ID. The CNCI information is retrieved using ciao list cncis
+// command. An error will be returned if the following environment variables are
+// not set; CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetCNCIs(ctx context.Context) (map[string]*CNCI, error) {
 	var CNCIs map[string]*CNCI
 	template := `
@@ -499,7 +499,7 @@ func getNodes(ctx context.Context, args []string) (map[string]*NodeStatus, error
 }
 
 // GetComputeNode returns status information for a given node in the cluster.
-// The information is retrieved using ciao-cli show -compute command. An error will
+// The information is retrieved using caio show node command. An error will
 // be returned if the following environment variables are not set;
 // CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetComputeNode(ctx context.Context, nodeID string) (*NodeStatus, error) {
@@ -536,7 +536,7 @@ func WaitForComputeNodeStatus(ctx context.Context, nodeID, status string) error 
 
 // GetComputeNodes returns a map containing status information about each
 // compute node in the cluster. The key of the map is the Node ID. The
-// information is retrieved using ciao-cli list -compute command. An error will
+// information is retrieved using ciao list nodes command. An error will
 // be returned if the following environment variables are not set;
 // CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetComputeNodes(ctx context.Context) (map[string]*NodeStatus, error) {
@@ -546,7 +546,7 @@ func GetComputeNodes(ctx context.Context) (map[string]*NodeStatus, error) {
 
 // GetNetworkNodes returns a map containing status information about each
 // network node in the cluster. The key of the map is the Node ID. The
-// information is retrieved using ciao-cli list -network command. An error will
+// information is retrieved using ciao list nodes command. An error will
 // be returned if the following environment variables are not set;
 // CIAO_ADMIN_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetNetworkNodes(ctx context.Context) (map[string]*NodeStatus, error) {

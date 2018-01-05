@@ -17,9 +17,9 @@
 // Package bat contains a number of helper functions that can be used to perform
 // various operations on a ciao cluster such as creating an instance or retrieving
 // a list of all the defined workloads, etc.  All of these helper functions are
-// implemented by calling ciao-cli rather than by using ciao's REST APIs.  This
+// implemented by calling ciao rather than by using ciao's REST APIs.  This
 // package is mainly intended for use by BAT tests.  Manipulating the cluster
-// via ciao-cli, rather than through the REST APIs, allows us to test a little
+// via ciao, rather than through the REST APIs, allows us to test a little
 // bit more of ciao.
 package bat
 
@@ -127,18 +127,18 @@ func deleteWorkload(ctx context.Context, tenant string, workload string, public 
 	return err
 }
 
-// CreatePublicWorkload will call ciao-cli as admin to create a workload.
+// CreatePublicWorkload will call ciao as admin to create a workload.
 // It will first output the cloud init yaml file to the current working
 // directory. Then it will output the workload definition to the current
-// working directory. Finally it will call ciao-cli workload create -yaml
+// working directory. Finally it will call ciao create workload
 // to upload the workload definition. It will clean up all the files it
 // created when it is done.
 func CreatePublicWorkload(ctx context.Context, tenant string, opt WorkloadOptions, config string) (string, error) {
 	return createWorkload(ctx, "", opt, config, true)
 }
 
-// CreateWorkloadFromFile will call ciao-cli workload create -yaml
-// to create a workload from the specified file.  ciao-cli will be invoked
+// CreateWorkloadFromFile will call ciao create workload
+// to create a workload from the specified file.  ciao will be invoked
 // using the admin user if the public flag is set to true.  The provided
 // workload definition file will remain intact after the call returns.
 // The id of the new workload is returned upon success.
@@ -161,20 +161,20 @@ func CreateWorkloadFromFile(ctx context.Context, public bool, tenant, wdPath str
 	return workload.ID, err
 }
 
-// DeletePublicWorkload will call ciao-cli as admin to delete a workload.
+// DeletePublicWorkload will call ciao as admin to delete a workload.
 func DeletePublicWorkload(ctx context.Context, workload string) error {
 	return deleteWorkload(ctx, "", workload, true)
 }
 
-// DeleteWorkload will call ciao-cli as a tenant to delete a workload.
+// DeleteWorkload will call ciao as a tenant to delete a workload.
 func DeleteWorkload(ctx context.Context, tenant string, workload string) error {
 	return deleteWorkload(ctx, tenant, workload, false)
 }
 
-// CreateWorkload will call ciao-cli to create a workload definition.
+// CreateWorkload will call ciao to create a workload definition.
 // It will first output the cloud init yaml file to the current working
 // directory. Then it will output the workload definition to the current
-// working directory. Finally it will call ciao-cli workload create -yaml
+// working directory. Finally it will call ciao create workload
 // to upload the workload definition. It will clean up all the files it
 // created when it is done.
 func CreateWorkload(ctx context.Context, tenant string, opt WorkloadOptions, config string) (string, error) {
@@ -182,7 +182,7 @@ func CreateWorkload(ctx context.Context, tenant string, opt WorkloadOptions, con
 }
 
 // GetAllWorkloads retrieves a list of all workloads in the cluster by calling
-// ciao-cli workload list. An error will be returned if the following
+// ciao list workloads . An error will be returned if the following
 // environment variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetAllWorkloads(ctx context.Context, tenant string) ([]Workload, error) {
 	var workloads []Workload

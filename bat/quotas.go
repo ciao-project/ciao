@@ -25,7 +25,7 @@ type QuotaDetails struct {
 	Usage string `json:"usage"`
 }
 
-// ListQuotas returns the quotas by calling "ciao-cli quotas list". If a
+// ListQuotas returns the quotas by calling ciao list quotas. If a
 // forTenantID is specified then it is run as an admin and the quotas for the
 // the specified tenant will be returned. Otherwise it will provide the quotas
 // for the current tenant.
