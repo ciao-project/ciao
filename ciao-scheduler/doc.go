@@ -42,8 +42,8 @@ user, ciao splits the problem:
                 | launcher |
                 +----------+
 
-At the top level, ciao-cli
-(https://github.com/ciao-project/ciao/tree/master/ciao-cli) and ciao-controller
+At the top level, the cli (ciao)
+(https://github.com/ciao-project/ciao/tree/master/ciao) and ciao-controller
 (https://github.com/ciao-project/ciao/tree/master/ciao-controller) are
 responsible for interacting with the user.  Ciao-controller enforces
 policy, checking that the users' actions are allowed.  For allowed
