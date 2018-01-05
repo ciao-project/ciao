@@ -113,7 +113,7 @@ fi
 cd "$ciao_bin"
 
 #Check if the build was a success
-if [ ! -f "$ciao_gobin"/ciao-cli ]
+if [ ! -f "$ciao_gobin"/ciao ]
 then
 	echo "FATAL ERROR: build failed"
 	exit 1
@@ -202,9 +202,9 @@ echo "Verify the cluster is working correctly by running"
 echo ""
 echo "$GOPATH/src/github.com/ciao-project/ciao/testutil/singlevm/verify.sh"
 echo ""
-echo "Use ciao-cli to manipulate and inspect the cluster, e.g., "
+echo "Use ciao to manipulate and inspect the cluster, e.g., "
 echo ""
-echo "ciao-cli instance add --workload=ab68111c-03a6-11e6-87de-001320fb6e31 --instances=1"
+echo "ciao create instance ab68111c-03a6-11e6-87de-001320fb6e31"
 echo ""
 echo "When you're finished run the following command to cleanup"
 echo ""
