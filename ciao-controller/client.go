@@ -45,6 +45,7 @@ type controllerClient interface {
 	unMapExternalIP(t types.Tenant, m types.MappedIP) error
 	attachVolume(volID string, instanceID string, nodeID string) error
 	ssntpClient() *ssntp.Client
+	CNCIRefresh(cnciID string, cnciList []payloads.CNCINet) error
 }
 
 type ssntpClient struct {
@@ -775,5 +776,25 @@ func (client *ssntpClient) unMapExternalIP(t types.Tenant, m types.MappedIP) err
 	glog.V(1).Info(string(y))
 
 	_, err = client.ssntp.SendCommand(ssntp.ReleasePublicIP, y)
+	return err
+}
+
+func (client *ssntpClient) CNCIRefresh(cnciID string, cnciList []payloads.CNCINet) error {
+	payload := payloads.CommandCNCIRefresh{
+		Command: payloads.CNCIRefreshCommand{
+			CNCIUUID: cnciID,
+			CNCIList: cnciList,
+		},
+	}
+
+	y, err := yaml.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	glog.Infof("Refresh CNCI %s: %v\n", cnciID, cnciList)
+	glog.V(1).Info(string(y))
+
+	_, err = client.ssntp.SendCommand(ssntp.RefreshCNCI, y)
 	return err
 }

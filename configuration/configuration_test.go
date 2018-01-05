@@ -65,6 +65,7 @@ const fullValidConf = `configure:
     cnci_disk: 128
     admin_ssh_key: ""
     client_auth_ca_cert_path: /etc/pki/ciao/auth-CA.pem
+    cnci_net: 10.10.0.0
   launcher:
     compute_net:
     - 192.168.1.0/24
@@ -119,6 +120,7 @@ func fillPayload(conf *payloads.Configure) {
 	conf.Configure.Controller.CNCIMem = 128
 	conf.Configure.Controller.CNCIDisk = 128
 	conf.Configure.Controller.ClientAuthCACertPath = clientAuthCACert
+	conf.Configure.Controller.CNCINet = "10.10.0.0"
 	conf.Configure.Launcher.ComputeNetwork = []string{computeNet}
 	conf.Configure.Launcher.ManagementNetwork = []string{mgmtNet}
 	conf.Configure.Launcher.ChildUser = "ciao"

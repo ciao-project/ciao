@@ -747,7 +747,7 @@ func (cn *ComputeNode) waitForExistingVnic(vnic *Vnic, bridge *Bridge, vLink *li
 
 }
 
-func (cn *ComputeNode) createDevicesFromCfg(cfg *VnicConfig) (*Vnic, *Bridge, *GreTunEP, error) {
+func (cn *ComputeNode) createDevicesFromCfg(cfg *VnicConfig) (*Vnic, *Bridge, *GreTapEP, error) {
 
 	alias := genCnVnicAliases(cfg)
 
@@ -762,7 +762,7 @@ func (cn *ComputeNode) createDevicesFromCfg(cfg *VnicConfig) (*Vnic, *Bridge, *G
 	}
 
 	local := cn.ComputeAddr[0].IPNet.IP
-	gre, err := newGreTunEP(alias.gre, local, cfg.ConcIP, uint32(cfg.SubnetKey))
+	gre, err := newGreTapEP(alias.gre, local, cfg.ConcIP, uint32(cfg.SubnetKey))
 	if err != nil {
 		return nil, nil, nil, NewAPIError(err.Error())
 	}
@@ -944,7 +944,7 @@ func (cn *ComputeNode) logicallyCreateVnic(vnic *Vnic) (err error) {
 //The physical devices are not yet created but their names aliases
 //are added to the topology reserving them
 //TODO: Check for global topology issues. E.g. Two tenants with same CNCI
-func (cn *ComputeNode) logicallyCreateBridge(bridge *Bridge, gre *GreTunEP, vnic *Vnic) (err error) {
+func (cn *ComputeNode) logicallyCreateBridge(bridge *Bridge, gre *GreTapEP, vnic *Vnic) (err error) {
 	if bridge.LinkName, err = cn.genLinkName(bridge); err != nil {
 		return err
 	}
@@ -974,7 +974,7 @@ func (cn *ComputeNode) logicallyCreateBridge(bridge *Bridge, gre *GreTunEP, vnic
 //Physically create the devices by calling into the kernel
 //TODO: Try to be more fault tolerant here. We may miss errors but try to
 // honor the request  e.g. If bridge exists use it and try and create tunnel
-func createAndEnableBridge(bridge *Bridge, gre *GreTunEP) error {
+func createAndEnableBridge(bridge *Bridge, gre *GreTapEP) error {
 	if err := bridge.Create(); err != nil {
 		return fmt.Errorf("Bridge creation failed %s %s", bridge.GlobalID, err.Error())
 	}
@@ -1123,7 +1123,7 @@ func (cn *ComputeNode) deleteVnicInternal(vnic *Vnic, vLink *linkInfo) (err erro
 }
 
 //Note: Can only be called when holding the topology lock cn.cnTopology.Lock()
-func (cn *ComputeNode) deleteGreInternal(gre *GreTunEP, gLink *linkInfo) (err error) {
+func (cn *ComputeNode) deleteGreInternal(gre *GreTapEP, gLink *linkInfo) (err error) {
 	gre.LinkName, gre.Link.Index, err = waitForDeviceReady(gLink, cn.APITimeout)
 	if err != nil {
 		return NewFatalError(gre.GlobalID + err.Error())
@@ -1215,7 +1215,7 @@ func (cn *ComputeNode) destroyVnicInternal(cfg *VnicConfig) (*SsntpEventInfo, er
 		return nil, NewFatalError(err.Error())
 	}
 
-	gre, err := newGreTunEP(alias.gre, nil, nil, 0)
+	gre, err := newGreTapEP(alias.gre, nil, nil, 0)
 	if err != nil {
 		return nil, NewFatalError(err.Error())
 	}

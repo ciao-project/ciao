@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/vishvananda/netlink"
 )
 
@@ -83,6 +84,14 @@ func reinitTopology(topology *cnciTopology) {
 type bridgeInfo struct {
 	tunnels int
 	*Dnsmasq
+}
+
+// Neighbor contains information about other CNCIs for this tenant.
+type Neighbor struct {
+	PhysicalIP string
+	Subnet     string
+	TunnelIP   string
+	TunnelID   uint32
 }
 
 func enableForwarding() error {
@@ -377,7 +386,7 @@ func createCnciBridge(bridge *Bridge, brInfo *bridgeInfo, tenant string, subnet 
 	return err
 }
 
-func createCnciTunnel(gre *GreTunEP) (err error) {
+func createCnciTunnel(gre *GreTapEP) (err error) {
 	if err = gre.create(); err != nil {
 		return err
 	}
@@ -405,7 +414,7 @@ func checkInputParams(subnet net.IPNet, subnetKey int, cnIP net.IP) error {
 //If the function returns error the bridgeName can be ignored
 //If the function does not return error and has a valid bridge name
 //then the subnet has been found and no further processing is needed
-func (cnci *Cnci) addSubnetToTopology(bridge *Bridge, gre *GreTunEP, brInfo **bridgeInfo) (brExists bool,
+func (cnci *Cnci) addSubnetToTopology(bridge *Bridge, gre *GreTapEP, brInfo **bridgeInfo) (brExists bool,
 	greExists bool, bLink *linkInfo, gLink *linkInfo, err error) {
 	err = nil
 
@@ -462,6 +471,209 @@ func (cnci *Cnci) addSubnetToTopology(bridge *Bridge, gre *GreTunEP, brInfo **br
 	return
 }
 
+// confirm that the gre tunnel device exists. If not, create
+// it. Confirm that the correct address is associated with
+// the tunnel device.
+func (cnci *Cnci) confirmTunnel(n Neighbor) (*GreTunEP, error) {
+	IP := net.ParseIP(n.PhysicalIP)
+	if IP == nil {
+		return nil, fmt.Errorf("Unable to parse local physical IP address")
+	}
+
+	tun, err := newGreTunEP("cncitun", IP, n.TunnelID)
+	if err != nil {
+		return nil, err
+	}
+
+	// see if the device already exists
+	err = tun.getDevice()
+	if err != nil {
+		if err = tun.create(); err != nil {
+			return nil, err
+		}
+		if err = tun.enable(); err != nil {
+			return nil, err
+		}
+	}
+
+	// see if my address already exists
+	addrs, err := netlink.AddrList(tun.Link, netlink.FAMILY_V4)
+	if err != nil {
+		return nil, err
+	}
+
+	// XXX: hardcode netmask to 18 for now.
+	addr, err := netlink.ParseAddr(fmt.Sprintf("%s/%d", n.TunnelIP, 18))
+	if err != nil {
+		return nil, err
+	}
+
+	var added bool
+	for _, a := range addrs {
+		if addr.Equal(a) {
+			added = true
+		} else {
+			// we should remove this addr.
+			// we can do this because there should
+			// be only one.
+			err = netlink.AddrDel(tun.Link, &a)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	if !added {
+		err = netlink.AddrAdd(tun.Link, addr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return tun, nil
+}
+
+func neighborEqual(a netlink.Neigh, b netlink.Neigh) (equal bool) {
+	if a.IP.Equal(b.IP) && a.LLIPAddr.Equal(b.LLIPAddr) {
+		return true
+	}
+	return false
+}
+
+// make sure that the neighbor entries are correct, as well as the
+// route entry for the neighbor.
+func (cnci *Cnci) confirmNeighbors(tun *GreTunEP, n Neighbor, neighs []netlink.Neigh) (netlink.Neigh, error) {
+	neigh := netlink.Neigh{
+		IP:        net.ParseIP(n.TunnelIP),
+		LLIPAddr:  net.ParseIP(n.PhysicalIP),
+		LinkIndex: tun.Link.Index,
+		State:     netlink.NUD_PERMANENT,
+	}
+
+	var exists bool
+	// see if this already exists
+	for _, neighbor := range neighs {
+		exists = neighborEqual(neighbor, neigh)
+		if exists {
+			break
+		}
+	}
+
+	if !exists {
+		err := netlink.NeighAdd(&neigh)
+		if err != nil {
+			return neigh, err
+		}
+
+		dst := net.IPNet{
+			IP:   net.ParseIP(n.TunnelIP),
+			Mask: net.CIDRMask(32, 32),
+		}
+
+		route := netlink.Route{
+			LinkIndex: tun.Link.Index,
+			Dst:       &dst,
+		}
+		err = netlink.RouteAdd(&route)
+		if err != nil {
+			return neigh, err
+		}
+
+		_, IPnet, err := net.ParseCIDR(n.Subnet)
+		if err != nil {
+			return neigh, err
+		}
+
+		route = netlink.Route{
+			LinkIndex: tun.Link.Index,
+			Dst:       IPnet,
+			Gw:        net.ParseIP(n.TunnelIP),
+		}
+
+		err = netlink.RouteAdd(&route)
+		if err != nil {
+			return neigh, err
+		}
+	}
+	return neigh, nil
+}
+
+func (cnci *Cnci) confirmRoutes(tun *GreTunEP, updated []netlink.Neigh, old []netlink.Neigh) error {
+	routes, err := netlink.RouteList(tun.Link, netlink.FAMILY_V4)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range old {
+		var found bool
+		for _, new := range updated {
+			found = neighborEqual(n, new)
+			if found {
+				break
+			}
+		}
+
+		if !found {
+			err := netlink.NeighDel(&n)
+			if err != nil {
+				glog.Warningf("Unable to delete stale neighbor: (%v)\n", err)
+				// keep going.
+			}
+
+			// remove routes.
+			for _, r := range routes {
+				if r.Dst.IP.Equal(n.IP) || r.Gw.Equal(n.IP) {
+					err = netlink.RouteDel(&r)
+					if err != nil {
+						glog.Warningf("Unable to delete stale route (%v)\n", err)
+						// keep going.
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// UpdateNeighbors will create a point to multipoint gre tunnel between
+// all the CNCIs for this tenant.
+func (cnci *Cnci) UpdateNeighbors(neighbors []Neighbor) error {
+	var tun *GreTunEP
+	var err error
+
+	// this must be done first
+	for _, n := range neighbors {
+		if n.PhysicalIP == cnci.ComputeAddr[0].IPNet.IP.String() {
+			tun, err = cnci.confirmTunnel(n)
+			if err != nil {
+				return err
+			}
+			break
+		}
+	}
+
+	neighs, err := netlink.NeighList(tun.Link.Index, netlink.FAMILY_V4)
+	if err != nil {
+		return err
+	}
+
+	var updated []netlink.Neigh
+	for _, n := range neighbors {
+		if n.PhysicalIP == cnci.ComputeAddr[0].IPNet.IP.String() {
+			continue
+		}
+
+		neigh, err := cnci.confirmNeighbors(tun, n, neighs)
+		if err != nil {
+			return err
+		}
+
+		updated = append(updated, neigh)
+	}
+
+	// clean up any routes neighbors that need removing.
+	return cnci.confirmRoutes(tun, updated, neighs)
+}
+
 //AddRemoteSubnet attaches a remote subnet to a local bridge on the CNCI
 //If the bridge and DHCP server does not exist it will be created.
 //If the tunnel exists and the bridge does not exist the bridge is created
@@ -477,7 +689,7 @@ func (cnci *Cnci) AddRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 		return "", err
 	}
 
-	gre, err := newGreTunEP(genGreAlias(subnet, cnIP), cnci.ComputeAddr[0].IPNet.IP, cnIP, uint32(subnetKey))
+	gre, err := newGreTapEP(genGreAlias(subnet, cnIP), cnci.ComputeAddr[0].IPNet.IP, cnIP, uint32(subnetKey))
 	if err != nil {
 		return "", err
 	}
@@ -542,7 +754,7 @@ func (cnci *Cnci) DelRemoteSubnet(subnet net.IPNet, subnetKey int, cnIP net.IP) 
 
 	bridgeID := genBridgeAlias(subnet)
 
-	gre, err := newGreTunEP(genGreAlias(subnet, cnIP),
+	gre, err := newGreTapEP(genGreAlias(subnet, cnIP),
 		cnci.ComputeAddr[0].IPNet.IP,
 		cnIP, uint32(subnetKey))
 

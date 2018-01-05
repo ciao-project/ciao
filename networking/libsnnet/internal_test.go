@@ -65,7 +65,7 @@ func TestCN_dbRebuild(t *testing.T) {
 		remote := vnicCfg.ConcIP
 		subnetKey := vnicCfg.SubnetKey
 
-		gre, _ := newGreTunEP(greAlias, local, remote, uint32(subnetKey))
+		gre, _ := newGreTapEP(greAlias, local, remote, uint32(subnetKey))
 
 		assert.Nil(gre.create())
 		defer func() { _ = gre.destroy() }()

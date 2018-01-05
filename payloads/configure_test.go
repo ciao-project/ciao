@@ -60,6 +60,7 @@ func TestConfigureMarshal(t *testing.T) {
 	cfg.Configure.Controller.CiaoPort = p
 	cfg.Configure.Controller.HTTPSCACert = testutil.HTTPSCACert
 	cfg.Configure.Controller.HTTPSKey = testutil.HTTPSKey
+	cfg.Configure.Controller.CNCINet = testutil.CNCINet
 
 	cfg.Configure.Storage.CephID = testutil.ManagementID
 

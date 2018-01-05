@@ -44,6 +44,7 @@ type ClusterConfiguration struct {
 	AdminSSHKeyPath   string
 	ComputeNet        string
 	MgmtNet           string
+	CNCINet           string
 	ServerIP          string
 	AuthCACertPath    string
 	AuthAdminCertPath string
@@ -96,6 +97,7 @@ func createConfigurationFile(ctx context.Context, clusterConf *ClusterConfigurat
 	config.Configure.Controller.HTTPSCACert = clusterConf.HTTPSCaCertPath
 	config.Configure.Controller.HTTPSKey = clusterConf.HTTPSCertPath
 	config.Configure.Controller.ClientAuthCACertPath = clusterConf.AuthCACertPath
+	config.Configure.Controller.CNCINet = clusterConf.CNCINet
 
 	config.Configure.Controller.AdminSSHKey = adminSSHKeyData
 

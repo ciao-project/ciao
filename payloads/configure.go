@@ -51,6 +51,7 @@ type ConfigureController struct {
 	CNCIDisk             int    `yaml:"cnci_disk"`
 	AdminSSHKey          string `yaml:"admin_ssh_key"`
 	ClientAuthCACertPath string `yaml:"client_auth_ca_cert_path"`
+	CNCINet              string `yaml:"cnci_net"`
 }
 
 // ConfigureLauncher contains the unmarshalled configurations for the
@@ -92,4 +93,5 @@ func (conf *Configure) InitDefaults() {
 	conf.Configure.Controller.CNCIDisk = 2048
 	conf.Configure.Controller.CNCIMem = 2048
 	conf.Configure.Controller.CNCIVcpus = 4
+	conf.Configure.Controller.CNCINet = "192.168.0.0"
 }

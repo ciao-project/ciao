@@ -409,3 +409,20 @@ func releasePubIP(cmd *payloads.PublicIPCommand) error {
 	err = gFw.PublicIPAccess(libsnnet.FwDisable, prIP, puIP, gCnci.ComputeLink[0].Attrs().Name)
 	return errors.Wrapf(err, "release ip")
 }
+
+func refreshCNCI(cmd *payloads.CNCIRefreshCommand) error {
+	var neighbors []libsnnet.Neighbor
+
+	cncis := cmd.CNCIList
+	for _, c := range cncis {
+		n := libsnnet.Neighbor{
+			PhysicalIP: c.PhysicalIP,
+			Subnet:     c.Subnet,
+			TunnelIP:   c.TunnelIP,
+			TunnelID:   c.TunnelID,
+		}
+		neighbors = append(neighbors, n)
+	}
+
+	return gCnci.UpdateNeighbors(neighbors)
+}

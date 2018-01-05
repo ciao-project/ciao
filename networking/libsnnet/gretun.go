@@ -24,18 +24,17 @@ import (
 
 // NewGreTunEP is used to initialize the GRE tunnel properties
 // This has to be called prior to Create() or GetDevice()
-func newGreTapEP(id string, localIP net.IP, remoteIP net.IP, key uint32) (*GreTapEP, error) {
-	gre := &GreTapEP{}
-	gre.Link = &netlink.Gretap{}
+func newGreTunEP(id string, localIP net.IP, key uint32) (*GreTunEP, error) {
+	gre := &GreTunEP{}
+	gre.Link = &netlink.Gretun{}
 	gre.GlobalID = id
 	gre.LocalIP = localIP
-	gre.RemoteIP = remoteIP
 	gre.Key = key
 	return gre, nil
 }
 
 // GetDevice associates the tunnel with an existing GRE tunnel end point
-func (g *GreTapEP) getDevice() error {
+func (g *GreTunEP) getDevice() error {
 
 	if g.GlobalID == "" {
 		return netError(g, "get device unnamed gretap device")
@@ -46,14 +45,13 @@ func (g *GreTapEP) getDevice() error {
 		return netError(g, "get device interface does not exist: %v %v", g.GlobalID, err)
 	}
 
-	gl, ok := link.(*netlink.Gretap)
+	gl, ok := link.(*netlink.Gretun)
 	if !ok {
 		return netError(g, "get device incorrect interface type %v %v", g.GlobalID, link.Type())
 	}
 	g.Link = gl
 	g.LinkName = gl.Name
 	g.LocalIP = gl.Local
-	g.RemoteIP = gl.Remote
 	if gl.IKey == gl.OKey {
 		g.Key = gl.IKey
 	} else {
@@ -64,31 +62,20 @@ func (g *GreTapEP) getDevice() error {
 }
 
 // Create instantiates a tunnel
-func (g *GreTapEP) create() error {
+func (g *GreTunEP) create() error {
 	var err error
 
 	if g.GlobalID == "" || g.Key == 0 {
 		return netError(g, "create cannot create an unnamed gretap device")
 	}
 
-	if g.LinkName == "" {
-		if g.LinkName, err = genIface(g, false); err != nil {
-			return netError(g, "create geniface %v, %v", g.GlobalID, err)
-		}
-
-		if lerr, err := netlink.LinkByAlias(g.GlobalID); err == nil {
-			return netError(g, "create interface exists %v, %v", g.GlobalID, lerr)
-		}
-	}
-
 	attrs := netlink.NewLinkAttrs()
-	attrs.Name = g.LinkName
+	attrs.Name = g.GlobalID
 
-	gretap := &netlink.Gretap{LinkAttrs: attrs,
+	gretap := &netlink.Gretun{LinkAttrs: attrs,
 		IKey:     g.Key,
 		OKey:     g.Key,
 		Local:    g.LocalIP,
-		Remote:   g.RemoteIP,
 		PMtuDisc: 1,
 	}
 
@@ -96,12 +83,12 @@ func (g *GreTapEP) create() error {
 		return netError(g, "create link add %v %v", g.GlobalID, err)
 	}
 
-	link, err := netlink.LinkByName(g.LinkName)
+	link, err := netlink.LinkByName(g.GlobalID)
 	if err != nil {
 		return netError(g, "create link by name %v %v", g.GlobalID, err)
 	}
 
-	gl, ok := link.(*netlink.Gretap)
+	gl, ok := link.(*netlink.Gretun)
 	if !ok {
 		return netError(g, "create incorrect interface type %v, %v", g.GlobalID, link.Type())
 	}
@@ -116,7 +103,7 @@ func (g *GreTapEP) create() error {
 }
 
 // Destroy an existing Tunnel
-func (g *GreTapEP) destroy() error {
+func (g *GreTunEP) destroy() error {
 
 	if g.Link == nil || g.Link.Index == 0 {
 		return netError(g, "destroy invalid gre link: %v", g)
@@ -130,7 +117,7 @@ func (g *GreTapEP) destroy() error {
 }
 
 // Enable the GreTunnel
-func (g *GreTapEP) enable() error {
+func (g *GreTunEP) enable() error {
 
 	if g.Link == nil || g.Link.Index == 0 {
 		return netError(g, "enable invalid gre link: %v", g)
@@ -145,7 +132,7 @@ func (g *GreTapEP) enable() error {
 }
 
 // Disable the Tunnel
-func (g *GreTapEP) disable() error {
+func (g *GreTunEP) disable() error {
 	if g.Link == nil || g.Link.Index == 0 {
 		return netError(g, "disable invalid gre link: %v", g)
 	}
@@ -156,59 +143,13 @@ func (g *GreTapEP) disable() error {
 	return nil
 }
 
-func (g *GreTapEP) setAlias(alias string) error {
+func (g *GreTunEP) setAlias(alias string) error {
 	if g.Link == nil || g.Link.Index == 0 {
 		return netError(g, "set alias invalid gre link: %v", g)
 	}
 
 	if err := netlink.LinkSetAlias(g.Link, alias); err != nil {
 		return netError(g, "set alias link set alias %v %v", alias, err)
-	}
-
-	return nil
-}
-
-// Attach the GRE tunnel to a device/bridge/switch
-func (g *GreTapEP) attach(dev interface{}) error {
-
-	if g.Link == nil || g.Link.Index == 0 {
-		return netError(g, "attach gre tunnel unnitialized")
-	}
-
-	br, ok := dev.(*Bridge)
-	if !ok {
-		return netError(g, "attach unknown device %v, %T", dev, dev)
-	}
-
-	if br.Link == nil || br.Link.Index == 0 {
-		return netError(g, "attach bridge unnitialized")
-	}
-
-	err := netlink.LinkSetMaster(g.Link, br.Link)
-	if err != nil {
-		return netError(g, "attach link set master %v", err)
-	}
-
-	return nil
-}
-
-// Detach the GRE Tunnel from the device/bridge it is attached to
-func (g *GreTapEP) detach(dev interface{}) error {
-	if g.Link == nil || g.Link.Index == 0 {
-		return netError(g, "detach invalid gre link: %v", g)
-	}
-
-	br, ok := dev.(*Bridge)
-	if !ok {
-		return netError(g, "detach incorrect device type %v, %T", dev, dev)
-	}
-
-	if br.Link == nil || br.Link.Index == 0 {
-		return netError(g, "detach bridge unnitialized")
-	}
-
-	if err := netlink.LinkSetNoMaster(g.Link); err != nil {
-		return netError(g, "detach link set no master %v", err)
 	}
 
 	return nil

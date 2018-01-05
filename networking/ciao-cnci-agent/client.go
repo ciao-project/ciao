@@ -169,6 +169,17 @@ func createMandatoryDirs() error {
 	return nil
 }
 
+func processRefreshCNCI(cmd *payloads.CommandCNCIRefresh) {
+	c := &cmd.Command
+	glog.Infof("Processing: CiaoCommandCNCIRefresh %v", c)
+
+	// add call to function to refresh cnci.
+	err := refreshCNCI(c)
+	if err != nil {
+		glog.Errorf("Unable to refresh CNCI list: %v", err)
+	}
+}
+
 func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 
 	switch netCmd := cmd.cmd.(type) {
@@ -232,6 +243,10 @@ func processCommand(client *ssntpConn, cmd *cmdWrapper) {
 			}
 		}(cmd)
 
+	case *payloads.CommandCNCIRefresh:
+
+		go processRefreshCNCI(netCmd)
+
 	case *statusConnected:
 		//Block and send this as it does not make sense to send other events
 		//or process commands when we have not yet registered
@@ -289,6 +304,22 @@ func (client *agentClient) CommandNotify(cmd ssntp.Command, frame *ssntp.Frame) 
 			}
 
 			client.cmdCh <- &cmdWrapper{&releaseIP}
+		}(payload)
+
+	case ssntp.RefreshCNCI:
+		glog.Infof("CMD: ssntp.RefreshCNCI %v", len(payload))
+
+		go func(payload []byte) {
+			var refreshCNCI payloads.CommandCNCIRefresh
+
+			err := yaml.Unmarshal(payload, &refreshCNCI)
+			if err != nil {
+				glog.Warning("Error unmarshalling CNCI refresh")
+				return
+			}
+			glog.Infof("CMD: ssntp.RefreshCNCI %v", refreshCNCI)
+
+			client.cmdCh <- &cmdWrapper{&refreshCNCI}
 		}(payload)
 
 	default:
