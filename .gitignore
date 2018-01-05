@@ -11,7 +11,6 @@ _DeploymentAndDistroPackaging/ansible/images/
 _DeploymentAndDistroPackaging/ansible/openrc
 .DS_Store
 ciao-cert/ciao-cert
-ciao-cli/ciao-cli
 ciao/ciao
 ciao-controller/ciao-controller
 ciao-launcher/ciao-launcher
