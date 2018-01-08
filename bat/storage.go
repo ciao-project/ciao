@@ -55,7 +55,7 @@ func GetVolume(ctx context.Context, tenant, ID string) (*Volume, error) {
 }
 
 // DeleteVolume deletes the specified volume from a given tenant. The volume is
-// deleted by calling ciao-cli volume delete. An error will be returned if the
+// deleted by calling ciao delete volume. An error will be returned if the
 // following environment variables are not set; CIAO_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func DeleteVolume(ctx context.Context, tenant, ID string) error {
@@ -64,9 +64,9 @@ func DeleteVolume(ctx context.Context, tenant, ID string) error {
 	return err
 }
 
-// AddVolume adds a new volume to a tenant. The volume is added using ciao-cli
-// volume add. An error will be returned if the following environment variables
-// are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
+// AddVolume adds a new volume to a tenant. The volume is added using ciao
+// create volume. An error will be returned if the following environment
+// variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func AddVolume(ctx context.Context, tenant, source, sourceType string,
 	options *VolumeOptions) (string, error) {
 	args := []string{"create", "volume", "-f", "{{ tojson . }}"}
@@ -105,7 +105,7 @@ func AddVolume(ctx context.Context, tenant, source, sourceType string,
 
 // GetAllVolumes returns a map of all the volumes defined in the specified
 // tenant. The map is indexed by volume ID. The map is retrieved by calling
-// ciao-cli volume list. An error will be returned if the following environment
+// ciao list volumes. An error will be returned if the following environment
 // variables are not set; CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetAllVolumes(ctx context.Context, tenant string) (map[string]*Volume, error) {
 	var volumes map[string]*Volume

@@ -29,7 +29,7 @@ const standardTimeout = time.Second * 300
 
 // Get all tenants
 //
-// TestGetTenants calls ciao-cli tenant list -all.
+// TestGetTenants calls ciao list tenants
 //
 // The test passes if the list of tenants defined for the cluster can
 // be retrieved, even if the list is empty.
@@ -44,10 +44,10 @@ func TestGetTenants(t *testing.T) {
 
 // Create a tenant
 //
-// TestCreateTenant calls ciao-cli tenant create.
+// TestCreateTenant calls ciao create tenant
 //
 // The test passes if a tenant is created successfully and can
-// be retrieved using ciao-cli tenant list -all
+// be retrieved using ciao list tenants
 func TestCreateTenant(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()
@@ -89,10 +89,10 @@ func TestCreateTenant(t *testing.T) {
 
 // Get a tenant config
 //
-// TestGetTenantConfig will call ciao-cli tenant list -config -for-tenant <id>
+// TestGetTenantConfig will call ciao show tenant <id>
 //
 // This test passes if a tenant is successfully created and it's config
-// can be retrieved using ciao-cli tenant list -config -for-tenant <id>
+// can be retrieved using ciao show tenant <id>
 func TestGetTenantConfig(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), standardTimeout)
 	defer cancelFunc()
@@ -130,7 +130,7 @@ func TestGetTenantConfig(t *testing.T) {
 
 // Update a tenant config
 //
-// TestUpdateTenantConfig will call ciao-cli tenant update -for-tenant <id>
+// TestUpdateTenantConfig will call ciao update tenant <id>
 //
 // This test passes if a tenant config can be updated
 func TestUpdateTenantConfig(t *testing.T) {

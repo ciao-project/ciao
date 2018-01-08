@@ -28,7 +28,7 @@ type ExternalIP struct {
 }
 
 // CreateExternalIPPool creates a new pool for external ips. The pool is created
-// using the ciao-cli pool create command. An error will be returned if the
+// using the ciao create pool command. An error will be returned if the
 // following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func CreateExternalIPPool(ctx context.Context, tenant, name string) error {
@@ -38,7 +38,7 @@ func CreateExternalIPPool(ctx context.Context, tenant, name string) error {
 }
 
 // AddExternalIPToPool adds an external ips to an existing pool. The address is
-// added using the ciao-cli pool add command. An error will be returned if the
+// added using the ciao add external-ip command. An error will be returned if the
 // following environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func AddExternalIPToPool(ctx context.Context, tenant, name, ip string) error {
@@ -48,7 +48,7 @@ func AddExternalIPToPool(ctx context.Context, tenant, name, ip string) error {
 }
 
 // MapExternalIP maps an external ip from a given pool to an instance. The
-// address is mapped using the ciao-cli external-ip map command. An error will
+// address is mapped using the ciao attach external-ip command. An error will
 // be returned if the following environment variables are not set;
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func MapExternalIP(ctx context.Context, tenant, pool, instance string) error {
@@ -58,7 +58,7 @@ func MapExternalIP(ctx context.Context, tenant, pool, instance string) error {
 }
 
 // UnmapExternalIP unmaps an external ip from an instance. The address is
-// unmapped using the ciao-cli external-ip unmap command. An error will be
+// unmapped using the ciao detach external-ip command. An error will be
 // returned if the following environment variables are not set;
 // CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func UnmapExternalIP(ctx context.Context, tenant, address string) error {
@@ -68,7 +68,7 @@ func UnmapExternalIP(ctx context.Context, tenant, address string) error {
 }
 
 // DeleteExternalIPPool deletes an external-ip pool. The pool is deleted using
-// the ciao-cli pool delete command. An error will be returned if the following
+// the ciao delete pool command. An error will be returned if the following
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func DeleteExternalIPPool(ctx context.Context, tenant, name string) error {
@@ -77,9 +77,9 @@ func DeleteExternalIPPool(ctx context.Context, tenant, name string) error {
 	return err
 }
 
-// ListExternalIPs returns detailed information about all the external ips
-// defined for the given tenant. The information is retrieved using the ciao-cli
-// external-ip list command. An error will be returned if the following
+// ListExternalIPs returns detailed information about all the external ips //
+// defined for the given tenant. The information is retrieved using the ciao
+// list external-ips command. An error will be returned if the following //
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func ListExternalIPs(ctx context.Context, tenant string) ([]*ExternalIP, error) {

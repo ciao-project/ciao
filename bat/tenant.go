@@ -39,7 +39,7 @@ type TenantConfig struct {
 }
 
 // GetAllTenants retrieves a list of all tenants in the cluster by calling
-// ciao-cli tenant list -all. An error will be returned if the following
+// ciao list tenants. An error will be returned if the following
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE,
 // CIAO_CONTROLLER.
 func GetAllTenants(ctx context.Context) ([]TenantSummary, error) {
@@ -55,7 +55,7 @@ func GetAllTenants(ctx context.Context) ([]TenantSummary, error) {
 }
 
 // CreateTenant creates a new tenant with the given config.
-// It calls ciao-cli tenant create.
+// It calls ciao create tenant
 func CreateTenant(ctx context.Context, config TenantConfig) (TenantSummary, error) {
 	var summary TenantSummary
 
@@ -71,7 +71,7 @@ func CreateTenant(ctx context.Context, config TenantConfig) (TenantSummary, erro
 }
 
 // UpdateTenant updates a new tenant with the given config.
-// It calls ciao-cli tenant update.
+// It calls ciao update tenant
 func UpdateTenant(ctx context.Context, ID string, config TenantConfig) error {
 	args := []string{"update", "tenant", ID}
 	if config.Name != "" {
@@ -103,7 +103,7 @@ func GetTenantConfig(ctx context.Context, ID string) (TenantConfig, error) {
 }
 
 // DeleteTenant will delete the given tenant.
-// It calls ciao-cli tenant delete.
+// It calls ciao delete tenant
 func DeleteTenant(ctx context.Context, ID string) error {
 	args := []string{"delete", "tenant", ID}
 	_, err := RunCIAOCmdAsAdmin(ctx, "", args)

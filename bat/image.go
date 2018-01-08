@@ -17,9 +17,9 @@
 // Package bat contains a number of helper functions that can be used to perform
 // various operations on a ciao cluster such as creating an instance or retrieving
 // a list of all the defined workloads, etc.  All of these helper functions are
-// implemented by calling ciao-cli rather than by using ciao's REST APIs.  This
+// implemented by calling ciao rather than by using ciao's REST APIs.  This
 // package is mainly intended for use by BAT tests.  Manipulating the cluster
-// via ciao-cli, rather than through the REST APIs, allows us to test a little
+// via ciao, rather than through the REST APIs, allows us to test a little
 // bit more of ciao.
 package bat
 
@@ -63,7 +63,7 @@ func computeImageAddArgs(options *ImageOptions) []string {
 
 // AddImage uploads a new image to the ciao-image service. The caller can supply
 // a number of pieces of meta data about the image via the options parameter. It
-// is implemented by calling ciao-cli image add. On success the function returns
+// is implemented by calling ciao create image . On success the function returns
 // the entire meta data of the newly updated image that includes the caller
 // supplied meta data and the meta data added by the image service. An error
 // will be returned if the following environment variables are not set;
@@ -88,7 +88,7 @@ func AddImage(ctx context.Context, admin bool, tenant, path string, options *Ima
 
 // AddRandomImage uploads a new image of the desired size using random data. The
 // caller can supply a number of pieces of meta data about the image via the
-// options parameter. It is implemented by calling ciao-cli image add. On
+// options parameter. It is implemented by calling ciao create image. On
 // success the function returns the entire meta data of the newly updated image
 // that includes the caller supplied meta data and the meta data added by the
 // image service. An error  will be returned if the following environment
@@ -104,7 +104,7 @@ func AddRandomImage(ctx context.Context, admin bool, tenant string, size int, op
 }
 
 // DeleteImage deletes an image from the image service. It is implemented by
-// calling ciao-cli image delete. An error will be returned if the following
+// calling ciao delete image. An error will be returned if the following
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set)
 // otherwise CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func DeleteImage(ctx context.Context, admin bool, tenant, ID string) error {
@@ -119,7 +119,7 @@ func DeleteImage(ctx context.Context, admin bool, tenant, ID string) error {
 }
 
 // GetImage retrieves the meta data for a given image. It is implemented by
-// calling ciao-cli image show. An error will be returned if the following
+// calling ciao show image. An error will be returned if the following
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin set)
 // otherwise CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetImage(ctx context.Context, admin bool, tenant, ID string) (*Image, error) {
@@ -137,7 +137,7 @@ func GetImage(ctx context.Context, admin bool, tenant, ID string) (*Image, error
 }
 
 // GetImages retrieves the meta data for all images. It is implemented by
-// calling ciao-cli image list. An error will be returned if the following
+// calling ciao list images. An error will be returned if the following
 // environment variables are not set; CIAO_ADMIN_CLIENT_CERT_FILE (if admin
 // set) otherwise CIAO_CLIENT_CERT_FILE, CIAO_CONTROLLER.
 func GetImages(ctx context.Context, admin bool, tenant string) (map[string]*Image, error) {

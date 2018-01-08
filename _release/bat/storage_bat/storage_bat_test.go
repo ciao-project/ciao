@@ -118,7 +118,7 @@ func checkBootedVolume(ctx context.Context, t *testing.T, tenant, instanceID str
 // Test bootable volumes are created and deleted correctly
 //
 // Boot a VM which has no data volumes attached, retrieve the volume ID from
-// ciao-cli, retrieve information about the volume, delete the instance and
+// ciao show volume, retrieve information about the volume, delete the instance and
 // check that the volume has also been deleted.
 //
 // The instance should be created successfully.  It should have one volume attached.

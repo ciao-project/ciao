@@ -112,7 +112,7 @@ func TestListComputeNodes(t *testing.T) {
 
 // Get all available workloads
 //
-// TestGetWorkloads calls ciao-cli workload list
+// TestGetWorkloads calls ciao list workload
 //
 // The test passes if the list of workloads defined for the cluster can
 // be retrieved, even if the list is empty.
