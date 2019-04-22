@@ -63,6 +63,8 @@ func getDistro() distro {
 	} else if strings.Contains(osRelease.ID, "ubuntu") {
 		// Store the Ubuntu codename, i.e. "xenial'
 		return &ubuntuDistro{CodeName: osRelease.GetValue("UBUNTU_CODENAME")}
+	} else if strings.Contains(osRelease.ID, "debian") {
+		return &debianDistro{}
 	} else if strings.Contains(osRelease.ID, "fedora") {
 		return &fedoraDistro{}
 	}
@@ -132,6 +134,18 @@ func (d *ubuntuDistro) getID() string {
 }
 
 func (d *ubuntuDistro) InstallPackages(ctx context.Context, packages []string, logger clogger.CiaoLog) bool {
+	return sudoFormatCommand(ctx, "apt-get --yes --force-yes install %s", packages, logger)
+}
+
+//Debian
+type debianDistro struct {
+}
+
+func (d *debianDistro) getID() string {
+	return "debian"
+}
+
+func (d *debianDistro) InstallPackages(ctx context.Context, packages []string, logger clogger.CiaoLog) bool {
 	return sudoFormatCommand(ctx, "apt-get --yes --force-yes install %s", packages, logger)
 }
 
